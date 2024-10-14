@@ -100,5 +100,10 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - name: cargo test --all-targets --all-features
-        run: cargo test --all-targets --all-features
+      # Building with `--all-features` requires extra build tools like `nasm`.
+      - uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          pixi-version: v0.25.0
+
+      - name: pixi run cargo test --all-targets --all-features
+        run: pixi run cargo test --all-targets --all-features

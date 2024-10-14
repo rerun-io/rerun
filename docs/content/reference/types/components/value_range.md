@@ -10,9 +10,9 @@ Range of expected or valid values, specifying a lower and upper bound.
 * range: [`Range1D`](../datatypes/range1d.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `ValueRange`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ValueRange.html)
- * 🐍 [Python API docs for `ValueRange`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.ValueRange)
- * 🦀 [Rust API docs for `ValueRange`](https://docs.rs/rerun/latest/rerun/components/struct.ValueRange.html)
+ * 🌊 [C++ API docs for `ValueRange`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ValueRange.html?speculative-link)
+ * 🐍 [Python API docs for `ValueRange`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.ValueRange)
+ * 🦀 [Rust API docs for `ValueRange`](https://docs.rs/rerun/latest/rerun/components/struct.ValueRange.html?speculative-link)
 
 
 ## Used by
