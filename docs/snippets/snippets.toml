@@ -81,6 +81,9 @@ views = [
   "cpp",  # Not implemented
   "rust", # Not implemented
 ]
+"quick_start/quick_start_data_out" = [
+  "py",  # Requires context (an RRD file to be exported by the user)
+]
 
 # These entries will run but their results won't be compared to the baseline.
 #
