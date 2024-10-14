@@ -83,4 +83,4 @@ The OPEN/CLOSE label is displayed along the bounding box on the 2D view, and the
 
 Here is the complete script used by this guide to load data, analyze it, and log the result back:
 
-snippet: quick_start/quick_start_data_out
+snippet: tutorials/data_out
