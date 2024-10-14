@@ -27,22 +27,28 @@ message Schema {
 message Query {
     // database view defined by entity paths and components
     ViewContents view_contents = 1;
+    // define whethere the view_contents should include semantically empty columns
+    bool include_semantically_empty_columns = 2;
+    // define whether the view_contents should ignore columns corresponding to indicator components
+    bool include_indicator_columns = 3;
+    // define whether the view_contents should ignore columns corresponding to `Clear`-related components.
+    bool include_tombstone_columns = 4;
     // filtering index (just a string i.e. a name of the timeline for starters)
-    IndexColumnSelector filtered_index = 2;
+    IndexColumnSelector filtered_index = 5;
     // Optional specific range for the index selector
-    IndexRange filtered_index_range = 3;
+    IndexRange filtered_index_range = 6;
     // Optional specific values for the index selector
-    IndexValues filtered_index_values = 4;
+    IndexValues filtered_index_values = 7;
     // Optional index selector sampling
-    IndexValues using_index_values = 5;
+    IndexValues using_index_values = 8;
     // PoV (filtering) component
-    ComponentColumnSelector filtered_pov = 6;
+    ComponentColumnSelector filtered_pov = 9;
     // which columns to include in the response
     // Note - we have one more layer of indiraction to ensure the field is optional,
     // same as in the query expression. We can't have both 'repeated' and 'optional' field labels.
-    ColumnSelection column_selection = 7;
+    ColumnSelection column_selection = 10;
     // how are null values filled in the response
-    SparseFillStrategy sparse_fill_strategy = 8;
+    SparseFillStrategy sparse_fill_strategy = 11;
 }
 
 message ColumnSelection {

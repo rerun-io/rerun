@@ -69,7 +69,10 @@ pub mod v0 {
 
             Ok(Self {
                 view_contents: value.view_contents.map(|vc| vc.into()),
-                filtered_index,
+                include_semantically_empty_columns: value.include_semantically_empty_columns,
+                include_indicator_columns: value.include_indicator_columns,
+                include_tombstone_columns: value.include_tombstone_columns,
+                filtered_index: Some(filtered_index),
                 filtered_index_range: value
                     .filtered_index_range
                     .map(|ir| ir.try_into())
@@ -165,14 +168,14 @@ pub mod v0 {
                 .ok_or(TypeConversionError::MissingField("entity_path"))?
                 .into();
 
-            let component = value
+            let component_name = value
                 .component
                 .ok_or(TypeConversionError::MissingField("component"))?
                 .name;
 
             Ok(Self {
                 entity_path,
-                component: re_dataframe::external::re_chunk::ComponentName::new(&component),
+                component_name,
                 join_encoding: re_dataframe::external::re_chunk_store::JoinEncoding::default(), // TODO(zehiko) implement
             })
         }
@@ -243,6 +246,9 @@ mod tests {
                     }),
                 }],
             }),
+            include_indicator_columns: false,
+            include_semantically_empty_columns: true,
+            include_tombstone_columns: true,
             filtered_index: Some(IndexColumnSelector {
                 timeline: Some(Timeline {
                     name: "log_time".to_owned(),
@@ -296,7 +302,10 @@ mod tests {
                     re_dataframe::external::re_chunk::ComponentName::new("component"),
                 ])),
             )])),
-            filtered_index: re_log_types::Timeline::new_temporal("log_time"),
+            include_indicator_columns: false,
+            include_semantically_empty_columns: true,
+            include_tombstone_columns: true,
+            filtered_index: Some(re_log_types::Timeline::new_temporal("log_time")),
             filtered_index_range: Some(re_dataframe::external::re_chunk_store::IndexRange::new(
                 0, 100,
             )),
@@ -315,7 +324,7 @@ mod tests {
             filtered_point_of_view: Some(
                 re_dataframe::external::re_chunk_store::ComponentColumnSelector {
                     entity_path: re_log_types::EntityPath::from("/somepath/c"),
-                    component: re_dataframe::external::re_chunk::ComponentName::new("component"),
+                    component_name: "component".to_owned(),
                     join_encoding: re_dataframe::external::re_chunk_store::JoinEncoding::default(),
                 },
             ),
@@ -324,7 +333,7 @@ mod tests {
             selection: Some(vec![
                 re_dataframe::external::re_chunk_store::ComponentColumnSelector {
                     entity_path: re_log_types::EntityPath::from("/somepath/c"),
-                    component: re_dataframe::external::re_chunk::ComponentName::new("component"),
+                    component_name: "component".to_owned(),
                     join_encoding: re_dataframe::external::re_chunk_store::JoinEncoding::default(),
                 }
                 .into(),
