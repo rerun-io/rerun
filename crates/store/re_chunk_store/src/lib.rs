@@ -26,8 +26,8 @@ mod writes;
 
 pub use self::dataframe::{
     ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector, Index,
-    IndexRange, IndexValue, JoinEncoding, QueryExpression, SparseFillStrategy,
-    TimeColumnDescriptor, TimeColumnSelector, ViewContentsSelector,
+    IndexRange, IndexValue, QueryExpression, SparseFillStrategy, TimeColumnDescriptor,
+    TimeColumnSelector, ViewContentsSelector,
 };
 pub use self::events::{ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent};
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};

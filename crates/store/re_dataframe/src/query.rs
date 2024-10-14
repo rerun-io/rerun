@@ -23,8 +23,7 @@ use re_chunk::{
 };
 use re_chunk_store::{
     ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector, Index,
-    IndexValue, JoinEncoding, QueryExpression, SparseFillStrategy, TimeColumnDescriptor,
-    TimeColumnSelector,
+    IndexValue, QueryExpression, SparseFillStrategy, TimeColumnDescriptor, TimeColumnSelector,
 };
 use re_log_types::ResolvedTimeRange;
 use re_types_core::components::ClearIsRecursive;
@@ -399,7 +398,6 @@ impl QueryHandle<'_> {
                         let ComponentColumnSelector {
                             entity_path: selected_entity_path,
                             component_name: selected_component_name,
-                            join_encoding: _,
                         } = selected_column;
 
                         view_contents
@@ -425,7 +423,6 @@ impl QueryHandle<'_> {
                                                 selected_component_name.clone(),
                                             ),
                                             store_datatype: arrow2::datatypes::DataType::Null,
-                                            join_encoding: JoinEncoding::default(),
                                             is_static: false,
                                             is_indicator: false,
                                             is_tombstone: false,
@@ -1575,7 +1572,6 @@ mod tests {
                 filtered_point_of_view: Some(ComponentColumnSelector {
                     entity_path: "no/such/entity".into(),
                     component_name: MyPoint::name().to_string(),
-                    join_encoding: Default::default(),
                 }),
                 ..Default::default()
             };
@@ -1605,7 +1601,6 @@ mod tests {
                 filtered_point_of_view: Some(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
                     component_name: "AComponentColumnThatDoesntExist".into(),
-                    join_encoding: Default::default(),
                 }),
                 ..Default::default()
             };
@@ -1635,7 +1630,6 @@ mod tests {
                 filtered_point_of_view: Some(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
                     component_name: MyPoint::name().to_string(),
-                    join_encoding: Default::default(),
                 }),
                 ..Default::default()
             };
@@ -1675,7 +1669,6 @@ mod tests {
                 filtered_point_of_view: Some(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
                     component_name: MyColor::name().to_string(),
-                    join_encoding: Default::default(),
                 }),
                 ..Default::default()
             };
@@ -1901,22 +1894,18 @@ mod tests {
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         component_name: MyColor::name().to_string(),
-                        join_encoding: Default::default(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         component_name: MyColor::name().to_string(),
-                        join_encoding: Default::default(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: "non_existing_entity".into(),
                         component_name: MyColor::name().to_string(),
-                        join_encoding: Default::default(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         component_name: "AComponentColumnThatDoesntExist".into(),
-                        join_encoding: Default::default(),
                     }),
                 ]),
                 ..Default::default()
@@ -1993,17 +1982,14 @@ mod tests {
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         component_name: MyPoint::name().to_string(),
-                        join_encoding: Default::default(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         component_name: MyColor::name().to_string(),
-                        join_encoding: Default::default(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         component_name: MyLabel::name().to_string(),
-                        join_encoding: Default::default(),
                     }),
                 ]),
                 ..Default::default()
@@ -2197,7 +2183,6 @@ mod tests {
                 filtered_point_of_view: Some(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
                     component_name: MyPoint::name().to_string(),
-                    join_encoding: Default::default(),
                 }),
                 ..Default::default()
             };
