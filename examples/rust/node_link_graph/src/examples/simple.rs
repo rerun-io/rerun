@@ -9,6 +9,7 @@ pub fn run(args: &Args) -> anyhow::Result<()> {
     rec.log(
         "kitchen/objects",
         &GraphNodes::new(["sink", "fridge"])
+            .with_labels(["Sink", "Fridge"])
             .with_colors([Color::from_rgb(255, 0, 0), Color::from_rgb(255, 255, 0)]),
     )?;
 
@@ -22,7 +23,10 @@ pub fn run(args: &Args) -> anyhow::Result<()> {
     rec.log("hallway/nodes", &GraphNodes::new(["area0"]))?;
 
     rec.set_time_sequence("frame", 2);
-    rec.log("living/objects", &GraphNodes::new(["table"]))?;
+    rec.log(
+        "living/objects",
+        &GraphNodes::new(["table"]).with_labels(["Table"]),
+    )?;
     rec.log(
         "living/nodes",
         &GraphNodes::new(["area0", "area1", "area2"]),

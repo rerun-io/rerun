@@ -1,8 +1,6 @@
 use re_log_types::EntityPath;
 use re_viewer::external::{re_types::datatypes, re_viewer_context::SpaceViewSystemExecutionError};
 
-use crate::graph::NodeIndex;
-
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("edge has unknown node")]

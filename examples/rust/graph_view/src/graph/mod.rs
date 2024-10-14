@@ -4,7 +4,6 @@ use re_log_types::EntityPath;
 use re_viewer::external::re_types::datatypes;
 
 use crate::{
-    error::Error,
     types::{EdgeInstance, NodeInstance, UnknownNodeInstance},
     visualizers::{EdgesDirectedData, EdgesUndirectedData, NodeVisualizerData},
 };

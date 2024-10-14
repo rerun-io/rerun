@@ -27,7 +27,7 @@ impl std::fmt::Debug for NodeIdHash {
 
 impl From<&datatypes::GraphNodeId> for NodeIdHash {
     fn from(node_id: &datatypes::GraphNodeId) -> Self {
-        Self(Hash64::hash(&node_id))
+        Self(Hash64::hash(node_id))
     }
 }
 

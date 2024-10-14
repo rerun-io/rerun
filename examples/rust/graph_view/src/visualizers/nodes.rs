@@ -53,7 +53,7 @@ impl NodeVisualizerData {
             node_id,
             instance,
             color: color.map(|c| Color32::from(c.0)),
-            show_labels: self.show_labels.map_or(false, bool::from),
+            show_labels: self.show_labels.map_or(true, bool::from),
             label,
         })
     }
