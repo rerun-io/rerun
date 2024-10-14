@@ -8,3 +8,10 @@ impl Default for ShowLabels {
         Self(true.into())
     }
 }
+
+impl From<ShowLabels> for bool {
+    #[inline]
+    fn from(value: ShowLabels) -> Self {
+        value.0.into()
+    }
+}
