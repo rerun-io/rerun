@@ -27,6 +27,7 @@ use super::{DecodeHardwareAcceleration, DecodingError, VideoFrameTexture};
 const DECODING_GRACE_DELAY: Duration = Duration::from_millis(400);
 
 #[allow(unused)] // Unused for certain build flags
+#[derive(Debug)]
 struct TimedDecodingError {
     time_of_first_error: Instant,
     latest_error: DecodingError,
@@ -90,8 +91,10 @@ pub struct VideoDecoder {
     current_gop_idx: usize,
     current_sample_idx: usize,
 
-    error: Option<TimedDecodingError>,
-    error_on_last_frame_at: bool,
+    /// Last error that was encountered during decoding.
+    ///
+    /// Only fully reset after a successful decode.
+    last_error: Option<TimedDecodingError>,
 }
 
 impl VideoDecoder {
@@ -174,8 +177,7 @@ impl VideoDecoder {
             current_gop_idx: usize::MAX,
             current_sample_idx: usize::MAX,
 
-            error: None,
-            error_on_last_frame_at: false,
+            last_error: None,
         }
     }
 
@@ -194,6 +196,7 @@ impl VideoDecoder {
         let presentation_timestamp = Time::from_secs(presentation_timestamp_s, self.data.timescale);
         let presentation_timestamp = presentation_timestamp.min(self.data.duration); // Don't seek past the end of the video.
 
+        let error_on_last_frame_at = self.last_error.is_some();
         let result = self.frame_at_internal(render_ctx, presentation_timestamp);
 
         match result {
@@ -204,7 +207,7 @@ impl VideoDecoder {
                     .contains(&presentation_timestamp);
 
                 let is_pending = !is_active_frame;
-                if is_pending && self.error_on_last_frame_at {
+                if is_pending && error_on_last_frame_at {
                     // If we switched from error to pending, clear the texture.
                     // This is important to avoid flickering, in particular when switching from
                     // benign errors like DecodingError::NegativeTimestamp.
@@ -212,8 +215,6 @@ impl VideoDecoder {
                     clear_texture(render_ctx, &self.video_texture.texture);
                     self.video_texture.time_range = Time::MAX..Time::MAX;
                 }
-
-                self.error_on_last_frame_at = false;
 
                 let show_spinner = if presentation_timestamp < self.video_texture.time_range.start {
                     // We're seeking backwards and somehow forgot to reset.
@@ -239,10 +240,7 @@ impl VideoDecoder {
                 })
             }
 
-            Err(err) => {
-                self.error_on_last_frame_at = true;
-                Err(err)
-            }
+            Err(err) => Err(err),
         }
     }
 
@@ -296,7 +294,7 @@ impl VideoDecoder {
 
         // 4. Enqueue GOPs as needed.
 
-        // First, check for decoding errors that may have been set asynchronously and reset if it's a new error.
+        // First, check for decoding errors that may have been set asynchronously and reset.
         if let Some(error) = self.chunk_decoder.take_error() {
             // For each new (!) error after entering the error state, we reset the decoder.
             // This way, it might later recover from the error as we progress in the video.
@@ -306,7 +304,13 @@ impl VideoDecoder {
             self.current_gop_idx = usize::MAX;
             self.current_sample_idx = usize::MAX;
 
-            self.error = Some(error);
+            // If we already have an error set, preserve its occurrence time.
+            // Otherwise, set the error using the time at which it was registered.
+            if let Some(last_error) = &mut self.last_error {
+                last_error.latest_error = error.latest_error;
+            } else {
+                self.last_error = Some(error);
+            }
         }
 
         // We maintain a buffer of 2 GOPs, so we can always smoothly transition to the next GOP.
@@ -355,7 +359,7 @@ impl VideoDecoder {
                 // since we want to keep playing the video fine even if parts of it are broken.
                 // That said, practically we reset the decoder and thus all frames upon error,
                 // so it doesn't make a lot of difference.
-                if let Some(timed_error) = &self.error {
+                if let Some(timed_error) = &self.last_error {
                     if DECODING_GRACE_DELAY <= timed_error.time_of_first_error.elapsed() {
                         // Report the error only if we have been in an error state for a certain amount of time.
                         // Don't immediately report the error, since we might immediately recover from it.
@@ -372,6 +376,7 @@ impl VideoDecoder {
                 Err(err)
             }
         } else {
+            self.last_error = None;
             Ok(())
         }
     }
@@ -398,9 +403,9 @@ impl VideoDecoder {
     /// Reset the video decoder and discard all frames.
     fn reset(&mut self) -> Result<(), DecodingError> {
         self.chunk_decoder.reset()?;
-        self.error = None;
         self.current_gop_idx = usize::MAX;
         self.current_sample_idx = usize::MAX;
+        // Do *not* reset the error state. We want to keep track of the last error.
         Ok(())
     }
 }
