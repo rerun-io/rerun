@@ -77,19 +77,19 @@ pub mod column_selector {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct IndexColumnSelector {
-    /// TODO (zehiko) we need to add support for other types of index selectors
+    /// TODO(zehiko) we need to add support for other types of index selectors
     #[prost(message, optional, tag = "1")]
     pub timeline: ::core::option::Option<Timeline>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct IndexRange {
-    /// TODO (zehiko) support for other ranges for other index selectors
+    /// TODO(zehiko) support for other ranges for other index selectors
     #[prost(message, optional, tag = "1")]
     pub time_range: ::core::option::Option<TimeRange>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct IndexValues {
-    /// TODO (zehiko) we need to add support for other types of index selectors
+    /// TODO(zehiko) we need to add support for other types of index selectors
     #[prost(message, repeated, tag = "1")]
     pub time_points: ::prost::alloc::vec::Vec<TimeInt>,
 }
@@ -140,7 +140,6 @@ pub struct TimeColumnSelector {
 pub struct ComponentColumnSelector {
     #[prost(message, optional, tag = "1")]
     pub entity_path: ::core::option::Option<EntityPath>,
-    /// TODO do we need join encoding?
     #[prost(message, optional, tag = "2")]
     pub component: ::core::option::Option<Component>,
 }
@@ -176,7 +175,7 @@ pub struct RegisterRecordingsRequest {
     pub description: ::prost::alloc::string::String,
     #[prost(message, optional, tag = "2")]
     pub obj_storage: ::core::option::Option<ObjectStorage>,
-    /// TODO (zehiko) should this be auto-discoverable?
+    /// TODO(zehiko) should this be auto-discoverable?
     #[prost(enumeration = "RecordingType", tag = "3")]
     pub typ: i32,
 }
@@ -189,7 +188,7 @@ pub struct ObjectStorage {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterRecordingsResponse {
-    /// Note / TODO (zehiko): this implies we read the record (for example go through entire .rrd file
+    /// Note / TODO(zehiko): this implies we read the record (for example go through entire .rrd file
     /// chunk by chunk) and extract the metadata. So we might want to 1/ not do this i.e.
     /// only do it as part of explicit GetMetadata request or 2/ do it if Request has "include_metadata=true"
     /// or 3/ do it always
@@ -428,7 +427,7 @@ pub mod storage_node_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// TODO (zehiko) - should this be singular recording registration? Currently we can have 1 rrd => many recordings
+        /// TODO(zehiko) - should this be singular recording registration? Currently we can have 1 rrd => many recordings
         pub async fn register_recordings(
             &mut self,
             request: impl tonic::IntoRequest<super::RegisterRecordingsRequest>,
@@ -480,7 +479,7 @@ pub mod storage_node_server {
             &self,
             request: tonic::Request<super::GetRecordingMetadataRequest>,
         ) -> std::result::Result<tonic::Response<super::GetRecordingMetadataResponse>, tonic::Status>;
-        /// TODO (zehiko) - should this be singular recording registration? Currently we can have 1 rrd => many recordings
+        /// TODO(zehiko) - should this be singular recording registration? Currently we can have 1 rrd => many recordings
         async fn register_recordings(
             &self,
             request: tonic::Request<super::RegisterRecordingsRequest>,

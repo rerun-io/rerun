@@ -57,17 +57,17 @@ message ColumnSelector {
 }
 
 message IndexColumnSelector {
-    // TODO (zehiko) we need to add support for other types of index selectors
+    // TODO(zehiko) we need to add support for other types of index selectors
     Timeline timeline = 1;
 }
 
 message IndexRange {
-    // TODO (zehiko) support for other ranges for other index selectors
+    // TODO(zehiko) support for other ranges for other index selectors
     TimeRange time_range = 1;
 }
 
 message IndexValues {
-    // TODO (zehiko) we need to add support for other types of index selectors
+    // TODO(zehiko) we need to add support for other types of index selectors
     repeated TimeInt time_points = 1;
 }
 
@@ -108,7 +108,6 @@ message TimeColumnSelector {
 message ComponentColumnSelector {
     EntityPath entity_path = 1;
     Component component = 2;
-    // TODO do we need join encoding?
 }
 
 enum SparseFillStrategy {
