@@ -3,7 +3,8 @@
 """
 Runs custom linting on our code.
 
-Adding "NOLINT" to any line makes the linter ignore that line.
+Adding "NOLINT" to any line makes the linter ignore that line. Adding a pair of "NOLINT_START" and "NOLINT_END" makes
+the linter ignore these lines, as well as all lines in between.
 """
 
 from __future__ import annotations
@@ -973,7 +974,19 @@ class SourceFile:
         self.content = "".join(self.lines)
 
         # gather lines with a `NOLINT` marker
-        self.no_lints = {i for i, line in enumerate(self.lines) if "NOLINT" in line}
+        self.no_lints = set()
+        is_in_no_lint_block = False
+        for i, line in enumerate(self.lines):
+            if "NOLINT" in line:
+                self.no_lints.add(i)
+
+            if "NOLINT_START" in line:
+                is_in_no_lint_block = True
+
+            if is_in_no_lint_block:
+                self.no_lints.add(i)
+                if "NOLINT_END" in line:
+                    is_in_no_lint_block = False
 
     def rewrite(self, new_lines: list[str]) -> None:
         """Rewrite the contents of the file."""
@@ -1020,8 +1033,18 @@ def lint_file(filepath: str, args: Any) -> int:
 
     is_in_docstring = False
 
+    is_in_no_lint_block = False
+
     prev_line = None
     for line_nr, line in enumerate(source.lines):
+        if "NOLINT_START" in line:
+            is_in_no_lint_block = True
+
+        if is_in_no_lint_block:
+            if "NOLINT_END" in line:
+                is_in_no_lint_block = False
+            continue
+
         if line == "" or line[-1] != "\n":
             error = "Missing newline at end of file"
         else:
