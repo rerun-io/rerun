@@ -48,3 +48,9 @@ impl LayoutProvider {
         }
     }
 }
+
+impl Default for LayoutProvider {
+    fn default() -> Self {
+        LayoutProvider::new_fruchterman_reingold()
+    }
+}

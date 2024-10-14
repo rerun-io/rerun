@@ -9,14 +9,14 @@ use re_viewer::external::{
 
 use crate::{graph::NodeIndex, layout::LayoutProvider};
 
-use super::bounding_rect_from_iter;
+use super::{bounding_rect_from_iter, scene::ViewBuilder};
 
 /// Space view state for the custom space view.
 ///
 /// This state is preserved between frames, but not across Viewer sessions.
+#[derive(Default)]
 pub(crate) struct GraphSpaceViewState {
-    pub world_to_view: emath::TSTransform,
-    pub clip_rect_window: egui::Rect,
+    pub viewer: ViewBuilder,
 
     // Debug information
     pub show_debug: bool,
@@ -26,37 +26,7 @@ pub(crate) struct GraphSpaceViewState {
     pub layout_provider: LayoutProvider,
 }
 
-impl Default for GraphSpaceViewState {
-    fn default() -> Self {
-        Self {
-            world_to_view: Default::default(),
-            clip_rect_window: egui::Rect::NOTHING,
-            show_debug: Default::default(),
-            layout: Default::default(),
-            layout_provider: LayoutProvider::new_fruchterman_reingold(),
-        }
-    }
-}
-
 impl GraphSpaceViewState {
-    pub fn fit_to_screen(&mut self, bounding_rect: egui::Rect, available_size: egui::Vec2) {
-        // Compute the scale factor to fit the bounding rectangle into the available screen size.
-        let scale_x = available_size.x / bounding_rect.width();
-        let scale_y = available_size.y / bounding_rect.height();
-
-        // Use the smaller of the two scales to ensure the whole rectangle fits on the screen.
-        let scale = scale_x.min(scale_y).min(1.0);
-
-        // Compute the translation to center the bounding rect in the screen.
-        let center_screen = egui::Pos2::new(available_size.x / 2.0, available_size.y / 2.0);
-        let center_world = bounding_rect.center().to_vec2();
-
-        // Set the transformation to scale and then translate to center.
-        self.world_to_view =
-            emath::TSTransform::from_translation(center_screen.to_vec2() - center_world * scale)
-                * emath::TSTransform::from_scaling(scale);
-    }
-
     pub fn bounding_box_ui(&mut self, ui: &mut egui::Ui) {
         if let Some(layout) = &self.layout {
             ui.grid_left_hand_label("Bounding box")
@@ -75,7 +45,7 @@ impl GraphSpaceViewState {
                 .clicked()
             {
                 if let Some(bounding_rect) = bounding_rect_from_iter(layout.values()) {
-                    self.fit_to_screen(bounding_rect, self.clip_rect_window.size());
+                    self.viewer.fit_to_screen(bounding_rect);
                 }
             }
             ui.end_row();

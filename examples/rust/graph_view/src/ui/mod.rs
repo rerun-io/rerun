@@ -13,6 +13,8 @@ pub(crate) use node::draw_node;
 mod state;
 pub(crate) use state::GraphSpaceViewState;
 
+pub(crate) mod scene;
+
 use crate::{
     graph::{Node, NodeIndex},
     types::UnknownNodeInstance,

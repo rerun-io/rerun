@@ -3,7 +3,7 @@ use re_viewer::external::re_types::datatypes;
 
 use super::NodeIdHash;
 
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub(crate) struct NodeIndex {
     pub entity_hash: EntityPathHash,
     pub node_id: NodeIdHash,

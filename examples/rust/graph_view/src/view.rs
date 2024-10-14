@@ -130,9 +130,6 @@ impl SpaceViewClass for GraphSpaceView {
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
-        let (id, clip_rect_window) = ui.allocate_space(ui.available_size());
-        state.clip_rect_window = clip_rect_window;
-
         let Some(layout) = &mut state.layout else {
             let node_sizes = ui::measure_node_sizes(ui, graph.all_nodes());
 
@@ -151,12 +148,11 @@ impl SpaceViewClass for GraphSpaceView {
                     .layout_provider
                     .compute(node_sizes.into_iter(), undirected, directed)?;
 
-            if let Some(bounding_box) = ui::bounding_rect_from_iter(layout.values()) {
-                state.fit_to_screen(
-                    bounding_box.scale_from_center(1.05),
-                    clip_rect_window.size(),
-                );
-            }
+            // if let Some(bounding_box) = ui::bounding_rect_from_iter(layout.values()) {
+            //     state
+            //         .viewer
+            //         .fit_to_screen(bounding_box.scale_from_center(1.05));
+            // }
 
             state.layout = Some(layout);
 
@@ -171,225 +167,140 @@ impl SpaceViewClass for GraphSpaceView {
             return Ok(());
         }
 
-        let response = ui.interact(clip_rect_window, id, egui::Sense::click_and_drag());
+        state.viewer.scene(ui, |mut scene| {
+            for data in node_system.data.iter() {
+                let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
-        // Allow dragging the background as well.
-        if response.dragged() {
-            state.world_to_view.translation += response.drag_delta();
-        }
+                // We keep track of the size of the current entity.
+                // TODO: let mut entity_rect: Option<egui::Rect> = None;
 
-        let view_to_window = TSTransform::from_translation(ui.min_rect().left_top().to_vec2());
-        let world_to_window = view_to_window * state.world_to_view;
+                for node in data.nodes() {
+                    let index = NodeIndex::from(&node);
+                    let current = layout.get(&index).unwrap();
 
-        #[cfg(debug_assertions)]
-        if response.double_clicked() {
-            if let Some(window) = response.interact_pointer_pos() {
-                log::debug!(
-                    "Click event! Window: {:?}, View: {:?} World: {:?}",
-                    window,
-                    view_to_window.inverse() * window,
-                    world_to_window.inverse() * window,
-                );
+                    let response = scene.node(current.min, |ui| {
+                        ui::draw_node(ui, &node, ent_highlight.index_highlight(node.instance))
+                    });
+
+                    let instance = InstancePath::instance(data.entity_path.clone(), node.instance);
+                    ctx.select_hovered_on_click(
+                        &response,
+                        Item::DataResult(query.space_view_id, instance),
+                    );
+
+                    layout.insert(index, response.rect);
+                    // entity_rect =
+                    //     entity_rect.map_or(Some(response.rect), |e| Some(e.union(response.rect)));
+                }
             }
-        }
+        });
 
-        if let Some(pointer) = ui.ctx().input(|i| i.pointer.hover_pos()) {
-            // Note: doesn't catch zooming / panning if a button in this PanZoom container is hovered.
-            if response.hovered() {
-                let pointer_in_world = world_to_window.inverse() * pointer;
-                let zoom_delta = ui.ctx().input(|i| i.zoom_delta());
-                let pan_delta = ui.ctx().input(|i| i.smooth_scroll_delta);
+        //     let entity_path = data.entity_path.clone();
 
-                // Zoom in on pointer:
-                state.world_to_view = state.world_to_view
-                    * TSTransform::from_translation(pointer_in_world.to_vec2())
-                    * TSTransform::from_scaling(zoom_delta)
-                    * TSTransform::from_translation(-pointer_in_world.to_vec2());
+        //     if let Some(entity_rect) = entity_rect {
+        //         let entity_id = egui::LayerId::new(
+        //             egui::Order::Background,
+        //             id.with(("debug", entity_path.hash())),
+        //         );
+        //         ui.ctx().set_transform_layer(entity_id, world_to_window);
+        //         ui::draw_entity(
+        //             ui,
+        //             clip_rect_world,
+        //             entity_id,
+        //             entity_rect,
+        //             &entity_path,
+        //             &query.highlights,
+        //         );
+        //     }
+        // }
 
-                // Pan:
-                state.world_to_view =
-                    TSTransform::from_translation(pan_delta) * state.world_to_view;
-            }
-        }
+        // for dummy in graph.unknown_nodes() {
+        //     let index = NodeIndex::from(&dummy);
+        //     let current_extent = layout
+        //         .get(&index)
+        //         .expect("missing layout information for dummy node");
+        //     let response = egui::Area::new(id.with(&index))
+        //         .current_pos(current_extent.min)
+        //         .order(egui::Order::Middle)
+        //         .constrain(false)
+        //         .show(ui.ctx(), |ui| {
+        //             ui.set_clip_rect(clip_rect_world);
+        //             ui::draw_dummy(ui, &dummy)
+        //         })
+        //         .response;
 
-        let clip_rect_world = world_to_window.inverse() * clip_rect_window;
+        //     layout.insert(index, response.rect);
 
-        let window_layer = ui.layer_id();
+        //     let id = response.layer_id;
+        //     ui.ctx().set_transform_layer(id, world_to_window);
+        //     ui.ctx().set_sublayer(window_layer, id);
+        // }
 
-        if state.show_debug {
-            let debug_id = egui::LayerId::new(egui::Order::Debug, id.with("debug_layer"));
-            ui.ctx().set_transform_layer(debug_id, world_to_window);
+        // for data in undirected_system.data.iter() {
+        //     let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
-            // Paint the coordinate system.
-            let painter = egui::Painter::new(ui.ctx().clone(), debug_id, clip_rect_world);
+        //     for edge in data.edges() {
+        //         let source_ix = NodeIndex::from(edge.source);
+        //         let target_ix = NodeIndex::from(edge.target);
+        //         let source_pos = layout.get(&source_ix).ok_or(Error::EdgeUnknownNode)?;
+        //         let target_pos = layout.get(&target_ix).ok_or(Error::EdgeUnknownNode)?;
 
-            // paint coordinate system at the world origin
-            let origin = egui::Pos2::new(0.0, 0.0);
-            let x_axis = egui::Pos2::new(100.0, 0.0);
-            let y_axis = egui::Pos2::new(0.0, 100.0);
+        //         let response = egui::Area::new(id.with((data.entity_path.hash(), edge.instance)))
+        //             .current_pos(source_pos.center())
+        //             .order(egui::Order::Background)
+        //             .constrain(false)
+        //             .show(ui.ctx(), |ui| {
+        //                 ui.set_clip_rect(world_to_window.inverse() * clip_rect_window);
+        //                 ui::draw_edge(
+        //                     ui,
+        //                     edge.color,
+        //                     source_pos,
+        //                     target_pos,
+        //                     ent_highlight.index_highlight(edge.instance),
+        //                     false,
+        //                 );
+        //             })
+        //             .response;
 
-            painter.line_segment([origin, x_axis], egui::Stroke::new(1.0, egui::Color32::RED));
-            painter.line_segment(
-                [origin, y_axis],
-                egui::Stroke::new(2.0, egui::Color32::GREEN),
-            );
+        //         let id = response.layer_id;
 
-            if let Some(bounding_box) = ui::bounding_rect_from_iter(layout.values()) {
-                painter.rect(
-                    bounding_box,
-                    0.0,
-                    egui::Color32::from_rgba_unmultiplied(255, 0, 255, 8),
-                    egui::Stroke::new(1.0, egui::Color32::from_rgb(255, 0, 255)),
-                );
-            }
-        }
+        //         ui.ctx().set_transform_layer(id, world_to_window);
+        //         ui.ctx().set_sublayer(window_layer, id);
+        //     }
+        // }
 
-        for data in node_system.data.iter() {
-            let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
-            // We keep track of the size of the current entity.
-            let mut entity_rect: Option<egui::Rect> = None;
+        // for data in directed_system.data.iter() {
+        //     let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
-            for node in data.nodes() {
-                let index = NodeIndex::from(&node);
-                let Some(current_extent) = layout.get(&index) else {
-                    return Err(Error::MissingLayoutInformation(
-                        data.entity_path.clone(),
-                        node.node_id.clone(),
-                    )
-                    .into());
-                };
-                let response = egui::Area::new(id.with(&index))
-                    .current_pos(current_extent.min)
-                    .order(egui::Order::Middle)
-                    .constrain(false)
-                    .show(ui.ctx(), |ui| {
-                        let highlight = ent_highlight.index_highlight(node.instance);
-                        ui.set_clip_rect(clip_rect_world);
-                        ui::draw_node(ui, &node, highlight)
-                    })
-                    .response;
+        //     for edge in data.edges() {
+        //         let source_ix = NodeIndex::from(edge.source);
+        //         let target_ix = NodeIndex::from(edge.target);
+        //         let source_pos = layout.get(&source_ix).ok_or(Error::EdgeUnknownNode)?;
+        //         let target_pos = layout.get(&target_ix).ok_or(Error::EdgeUnknownNode)?;
 
-                let instance = InstancePath::instance(data.entity_path.clone(), node.instance);
-                ctx.select_hovered_on_click(
-                    &response,
-                    Item::DataResult(query.space_view_id, instance),
-                );
+        //         let response = egui::Area::new(id.with((data.entity_path.hash(), edge.instance)))
+        //             .current_pos(source_pos.center())
+        //             .order(egui::Order::Background)
+        //             .constrain(false)
+        //             .show(ui.ctx(), |ui| {
+        //                 ui.set_clip_rect(world_to_window.inverse() * clip_rect_window);
+        //                 ui::draw_edge(
+        //                     ui,
+        //                     edge.color,
+        //                     source_pos,
+        //                     target_pos,
+        //                     ent_highlight.index_highlight(edge.instance),
+        //                     true,
+        //                 );
+        //             })
+        //             .response;
 
-                layout.insert(index, response.rect);
-                entity_rect =
-                    entity_rect.map_or(Some(response.rect), |e| Some(e.union(response.rect)));
+        //         let id = response.layer_id;
 
-                let id = response.layer_id;
-                ui.ctx().set_transform_layer(id, world_to_window);
-                ui.ctx().set_sublayer(window_layer, id);
-            }
-
-            let entity_path = data.entity_path.clone();
-
-            if let Some(entity_rect) = entity_rect {
-                let entity_id = egui::LayerId::new(
-                    egui::Order::Background,
-                    id.with(("debug", entity_path.hash())),
-                );
-                ui.ctx().set_transform_layer(entity_id, world_to_window);
-                ui::draw_entity(
-                    ui,
-                    clip_rect_world,
-                    entity_id,
-                    entity_rect,
-                    &entity_path,
-                    &query.highlights,
-                );
-            }
-        }
-
-        for dummy in graph.unknown_nodes() {
-            let index = NodeIndex::from(&dummy);
-            let current_extent = layout
-                .get(&index)
-                .expect("missing layout information for dummy node");
-            let response = egui::Area::new(id.with(&index))
-                .current_pos(current_extent.min)
-                .order(egui::Order::Middle)
-                .constrain(false)
-                .show(ui.ctx(), |ui| {
-                    ui.set_clip_rect(clip_rect_world);
-                    ui::draw_dummy(ui, &dummy)
-                })
-                .response;
-
-            layout.insert(index, response.rect);
-
-            let id = response.layer_id;
-            ui.ctx().set_transform_layer(id, world_to_window);
-            ui.ctx().set_sublayer(window_layer, id);
-        }
-
-        for data in undirected_system.data.iter() {
-            let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
-
-            for edge in data.edges() {
-                let source_ix = NodeIndex::from(edge.source);
-                let target_ix = NodeIndex::from(edge.target);
-                let source_pos = layout.get(&source_ix).ok_or(Error::EdgeUnknownNode)?;
-                let target_pos = layout.get(&target_ix).ok_or(Error::EdgeUnknownNode)?;
-
-                let response = egui::Area::new(id.with((data.entity_path.hash(), edge.instance)))
-                    .current_pos(source_pos.center())
-                    .order(egui::Order::Background)
-                    .constrain(false)
-                    .show(ui.ctx(), |ui| {
-                        ui.set_clip_rect(world_to_window.inverse() * clip_rect_window);
-                        ui::draw_edge(
-                            ui,
-                            edge.color,
-                            source_pos,
-                            target_pos,
-                            ent_highlight.index_highlight(edge.instance),
-                            false,
-                        );
-                    })
-                    .response;
-
-                let id = response.layer_id;
-
-                ui.ctx().set_transform_layer(id, world_to_window);
-                ui.ctx().set_sublayer(window_layer, id);
-            }
-        }
-
-        for data in directed_system.data.iter() {
-            let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
-
-            for edge in data.edges() {
-                let source_ix = NodeIndex::from(edge.source);
-                let target_ix = NodeIndex::from(edge.target);
-                let source_pos = layout.get(&source_ix).ok_or(Error::EdgeUnknownNode)?;
-                let target_pos = layout.get(&target_ix).ok_or(Error::EdgeUnknownNode)?;
-
-                let response = egui::Area::new(id.with((data.entity_path.hash(), edge.instance)))
-                    .current_pos(source_pos.center())
-                    .order(egui::Order::Background)
-                    .constrain(false)
-                    .show(ui.ctx(), |ui| {
-                        ui.set_clip_rect(world_to_window.inverse() * clip_rect_window);
-                        ui::draw_edge(
-                            ui,
-                            edge.color,
-                            source_pos,
-                            target_pos,
-                            ent_highlight.index_highlight(edge.instance),
-                            true,
-                        );
-                    })
-                    .response;
-
-                let id = response.layer_id;
-
-                ui.ctx().set_transform_layer(id, world_to_window);
-                ui.ctx().set_sublayer(window_layer, id);
-            }
-        }
+        //         ui.ctx().set_transform_layer(id, world_to_window);
+        //         ui.ctx().set_sublayer(window_layer, id);
+        //     }
+        // }
 
         Ok(())
     }
