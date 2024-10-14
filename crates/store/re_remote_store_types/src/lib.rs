@@ -126,6 +126,7 @@ pub mod v0 {
                 .ok_or(TypeConversionError::MissingField("timeline"))?
                 .name;
 
+            // TODO(cmc): QueryExpression::filtered_index gotta be a selector
             #[allow(clippy::match_same_arms)]
             let timeline = match timeline_name.as_str() {
                 "log_time" => Self::new_temporal(timeline_name),
