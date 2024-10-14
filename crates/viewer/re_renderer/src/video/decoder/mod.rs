@@ -139,7 +139,7 @@ impl VideoDecoder {
                     });
                 }
 
-                if cfg!(debug_assertions) {
+                if false && cfg!(debug_assertions) {
                     return Err(DecodingError::NoNativeDebug); // because debug builds of rav1d are EXTREMELY slow
                 } else {
                     let av1_decoder = re_video::decode::av1::SyncDav1dDecoder::new(debug_name.clone())

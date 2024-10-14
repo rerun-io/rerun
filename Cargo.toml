@@ -563,3 +563,6 @@ missing_errors_doc = "allow"
 # commit on `rerun-io/re_arrow2` `main` branch
 # https://github.com/rerun-io/re_arrow2/commit/e4717d6debc6d4474ec10db8f629f823f57bad07
 re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2", rev = "e4717d6debc6d4474ec10db8f629f823f57bad07" }
+
+# dav1d = { git = "https://github.com/rerun-io/rav1d", branch = "cmc/bidouille", package = "re_rav1d", version = "0.1.0" }
+dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }
