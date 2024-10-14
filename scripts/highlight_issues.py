@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Generate a list of GitHub issues that needs attention."""
+"""Generate a list of GitHub issues that need attention."""
 
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ OFFICIAL_RERUN_DEVS = [
     "roym899",
     "teh-cmc",
     "Wumpf",
-    "zehiko"
+    "zehiko",
 ]
 
 
@@ -63,7 +63,7 @@ def fetch_issue(issue_json: dict) -> dict:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate a changelog.")
+    parser = argparse.ArgumentParser(description="Generate a list of GitHub issues that need attention.")
     parser.add_argument("--list-external", action="store_true", help="List all external issues")
     args = parser.parse_args()
 
