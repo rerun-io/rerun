@@ -51,30 +51,24 @@ pub fn run(args: &Args) -> anyhow::Result<()> {
     // rec.set_time_sequence("frame", 0);
     let entries = parse_data_file()?;
 
+    let nodes = entries
+        .iter()
+        .flat_map(|i| [i.person_a.clone(), i.person_b.clone()])
+        .collect::<HashSet<_>>();
+
+    rec.log_static(
+        "/persons",
+        &GraphNodes::new(
+            nodes.iter().map(|n| {
+                components::GraphNodeId::from(datatypes::GraphNodeId(n.to_string().into()))
+            }),
+        ),
+    )?;
+
     for (timestamp, chunk) in &entries.into_iter().chunk_by(|t| t.timestamp) {
         let interactions = chunk.collect::<Vec<_>>();
 
-        let mut nodes = HashSet::new();
-        for i in interactions.iter() {
-            nodes.insert(i.person_a.clone());
-            nodes.insert(i.person_b.clone());
-        }
-
-        if nodes.is_empty() {
-            continue;
-        }
-
-        log::info!("Logging nodes for timestamp `{timestamp}`: {:?}", nodes);
-
         rec.set_time_sequence("frame", timestamp);
-
-        rec.log(
-            "/persons",
-            &GraphNodes::new(nodes.iter().map(|n| {
-                components::GraphNodeId::from(datatypes::GraphNodeId(n.to_string().into()))
-            })),
-        )?;
-
         rec.log(
             "/interactions",
             &GraphEdgesUndirected::new(
