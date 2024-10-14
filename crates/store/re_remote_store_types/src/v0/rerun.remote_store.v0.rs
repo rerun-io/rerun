@@ -31,28 +31,37 @@ pub struct Query {
     /// database view defined by entity paths and components
     #[prost(message, optional, tag = "1")]
     pub view_contents: ::core::option::Option<ViewContents>,
+    /// define whethere the view_contents should include semantically empty columns
+    #[prost(bool, tag = "2")]
+    pub include_semantically_empty_columns: bool,
+    /// define whether the view_contents should ignore columns corresponding to indicator components
+    #[prost(bool, tag = "3")]
+    pub include_indicator_columns: bool,
+    /// define whether the view_contents should ignore columns corresponding to `Clear`-related components.
+    #[prost(bool, tag = "4")]
+    pub include_tombstone_columns: bool,
     /// filtering index (just a string i.e. a name of the timeline for starters)
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag = "5")]
     pub filtered_index: ::core::option::Option<IndexColumnSelector>,
     /// Optional specific range for the index selector
-    #[prost(message, optional, tag = "3")]
+    #[prost(message, optional, tag = "6")]
     pub filtered_index_range: ::core::option::Option<IndexRange>,
     /// Optional specific values for the index selector
-    #[prost(message, optional, tag = "4")]
+    #[prost(message, optional, tag = "7")]
     pub filtered_index_values: ::core::option::Option<IndexValues>,
     /// Optional index selector sampling
-    #[prost(message, optional, tag = "5")]
+    #[prost(message, optional, tag = "8")]
     pub using_index_values: ::core::option::Option<IndexValues>,
     /// PoV (filtering) component
-    #[prost(message, optional, tag = "6")]
+    #[prost(message, optional, tag = "9")]
     pub filtered_pov: ::core::option::Option<ComponentColumnSelector>,
     /// which columns to include in the response
     /// Note - we have one more layer of indiraction to ensure the field is optional,
     /// same as in the query expression. We can't have both 'repeated' and 'optional' field labels.
-    #[prost(message, optional, tag = "7")]
+    #[prost(message, optional, tag = "10")]
     pub column_selection: ::core::option::Option<ColumnSelection>,
     /// how are null values filled in the response
-    #[prost(enumeration = "SparseFillStrategy", tag = "8")]
+    #[prost(enumeration = "SparseFillStrategy", tag = "11")]
     pub sparse_fill_strategy: i32,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
