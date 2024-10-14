@@ -16,13 +16,10 @@ class IndexColumnSelector:
 class ComponentColumnDescriptor:
     """A column containing the component data."""
 
-    def with_dictionary_encoding(self) -> ComponentColumnDescriptor: ...
-
 class ComponentColumnSelector:
     """A selector for a component column."""
 
     def __init__(self, entity_path: str, component: ComponentLike): ...
-    def with_dictionary_encoding(self) -> ComponentColumnSelector: ...
 
 class Schema:
     """The schema representing all columns in a [`Recording`][]."""
