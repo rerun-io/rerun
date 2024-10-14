@@ -93,7 +93,7 @@ pub struct VideoDecoder {
 
     /// Last error that was encountered during decoding.
     ///
-    /// Only resets after a successful decode.
+    /// Only fully reset after a successful decode.
     last_error: Option<TimedDecodingError>,
 }
 
@@ -294,16 +294,21 @@ impl VideoDecoder {
 
         // 4. Enqueue GOPs as needed.
 
-        // First, check for decoding errors that may have been set asynchronously and reset if it's a new error.
-        if self.last_error.is_none() {
-            if let Some(error) = self.chunk_decoder.take_error() {
-                // For each new (!) error after entering the error state, we reset the decoder.
-                // This way, it might later recover from the error as we progress in the video.
-                //
-                // By resetting the current GOP/sample indices, the frame enqueued code below
-                // is forced to reset the decoder.
-                self.current_gop_idx = usize::MAX;
-                self.current_sample_idx = usize::MAX;
+        // First, check for decoding errors that may have been set asynchronously and reset.
+        if let Some(error) = self.chunk_decoder.take_error() {
+            // For each new (!) error after entering the error state, we reset the decoder.
+            // This way, it might later recover from the error as we progress in the video.
+            //
+            // By resetting the current GOP/sample indices, the frame enqueued code below
+            // is forced to reset the decoder.
+            self.current_gop_idx = usize::MAX;
+            self.current_sample_idx = usize::MAX;
+
+            // If we already have an error set, preserve its occurence time.
+            // Otherwise, set the error using the time at which it was registered.
+            if let Some(last_error) = &mut self.last_error {
+                last_error.latest_error = error.latest_error;
+            } else {
                 self.last_error = Some(error);
             }
         }
