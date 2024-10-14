@@ -850,7 +850,7 @@ def fix_enforced_upper_case(s: str) -> str:
     return "".join(new_words)
 
 
-def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[str]]:
+def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[str]]:
     """Only for .md files."""
 
     errors = []
@@ -864,12 +864,12 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
     in_code_of_conduct = filepath.endswith("CODE_OF_CONDUCT.md")
 
     if in_code_of_conduct:
-        return errors, lines_in
+        return errors, source.lines
 
     in_code_block = False
     in_frontmatter = False
     in_metadata = False
-    for line_nr, line in enumerate(lines_in):
+    for line_nr, line in enumerate(source.lines):
         line_nr = line_nr + 1
 
         if line.strip().startswith("```"):
@@ -882,11 +882,7 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
         if in_metadata and line.startswith("-->"):
             in_metadata = False
 
-        if "NOLINT" in line:
-            lines_out.append(line)
-            continue
-
-        if not in_code_block:
+        if not in_code_block and not source.should_ignore(line_nr):
             if not in_metadata:
                 # Check the casing on markdown headers
                 if m := re.match(r"(\#+ )(.*)", line):
@@ -1037,16 +1033,9 @@ def lint_file(filepath: str, args: Any) -> int:
 
     is_in_docstring = False
 
-    is_in_no_lint_block = False
-
     prev_line = None
     for line_nr, line in enumerate(source.lines):
-        if "NOLINT_START" in line:
-            is_in_no_lint_block = True
-
-        if is_in_no_lint_block:
-            if "NOLINT_END" in line:
-                is_in_no_lint_block = False
+        if source.should_ignore(line_nr):
             continue
 
         if line == "" or line[-1] != "\n":
@@ -1076,7 +1065,7 @@ def lint_file(filepath: str, args: Any) -> int:
             source.rewrite(lines_out)
 
     if filepath.endswith(".md"):
-        errors, lines_out = lint_markdown(filepath, source.lines)
+        errors, lines_out = lint_markdown(filepath, source)
 
         for error in errors:
             print(source.error(error))
