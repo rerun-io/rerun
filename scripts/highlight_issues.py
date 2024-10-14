@@ -24,6 +24,7 @@ OFFICIAL_RERUN_DEVS = [
     "roym899",
     "teh-cmc",
     "Wumpf",
+    "zehiko"
 ]
 
 
