@@ -18,6 +18,8 @@ pub mod v0 {
     #[path = "../v0/rerun.remote_store.v0.rs"]
     mod _v0;
 
+    use column_selector::SelectorType;
+
     pub use self::_v0::*;
 
     // ==== below are all necessary transforms from internal rerun types to protobuf types =====
@@ -53,14 +55,14 @@ pub mod v0 {
                 .map(|cs| {
                     cs.columns
                         .into_iter()
-                        .map(|c| re_dataframe::ColumnSelector::try_from(c))
+                        .map(re_dataframe::ColumnSelector::try_from)
                         .collect::<Result<Vec<_>, _>>()
                 })
                 .transpose()?;
 
             let filtered_point_of_view = value
                 .filtered_pov
-                .map(|fp| re_dataframe::ComponentColumnSelector::try_from(fp))
+                .map(re_dataframe::ComponentColumnSelector::try_from)
                 .transpose()?;
 
             Ok(Self {
@@ -211,11 +213,104 @@ pub mod v0 {
             }
         }
     }
+
+    // ---- conversion from rerun's QueryExpression into protobuf Query ----
+
+    impl From<re_dataframe::QueryExpression> for Query {
+        fn from(value: re_dataframe::QueryExpression) -> Self {
+            let view_contents = value
+                .view_contents
+                .map(|vc| {
+                    vc.into_iter()
+                        .map(|(path, components)| ViewContentsPart {
+                            path: Some(path.into()),
+                            components: components.map(|cs| ComponentsSet {
+                                components: cs
+                                    .into_iter()
+                                    .map(|c| Component {
+                                        name: c.to_string(),
+                                    })
+                                    .collect(),
+                            }),
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .map(|cs| ViewContents { contents: cs });
+
+            Self {
+                view_contents,
+                include_semantically_empty_columns: value.include_semantically_empty_columns,
+                include_indicator_columns: value.include_indicator_columns,
+                include_tombstone_columns: value.include_tombstone_columns,
+                filtered_index: value.filtered_index.map(|timeline| IndexColumnSelector {
+                    timeline: Some(Timeline {
+                        name: timeline.name().to_string(),
+                    }),
+                }),
+                filtered_index_range: value.filtered_index_range.map(|ir| IndexRange {
+                    time_range: Some(ir.into()),
+                }),
+                filtered_index_values: value.filtered_index_values.map(|iv| IndexValues {
+                    time_points: iv
+                        .into_iter()
+                        .map(|v| TimeInt { time: v.as_i64() })
+                        .collect(),
+                }),
+                using_index_values: value.using_index_values.map(|uiv| IndexValues {
+                    time_points: uiv
+                        .into_iter()
+                        .map(|v| TimeInt { time: v.as_i64() })
+                        .collect(),
+                }),
+                filtered_pov: value
+                    .filtered_point_of_view
+                    .map(|cs| ComponentColumnSelector {
+                        entity_path: Some(cs.entity_path.into()),
+                        component: Some(Component {
+                            name: cs.component_name,
+                        }),
+                    }),
+                column_selection: value.selection.map(|cs| ColumnSelection {
+                    columns: cs.into_iter().map(|c| c.into()).collect(),
+                }),
+                sparse_fill_strategy: SparseFillStrategy::None.into(), // TODO(zehiko) implement
+            }
+        }
+    }
+
+    impl From<re_dataframe::EntityPath> for EntityPath {
+        fn from(value: re_dataframe::EntityPath) -> Self {
+            Self {
+                path: value.to_string(),
+            }
+        }
+    }
+
+    impl From<re_dataframe::ColumnSelector> for ColumnSelector {
+        fn from(value: re_dataframe::ColumnSelector) -> Self {
+            match value {
+                re_dataframe::ColumnSelector::Component(ccs) => Self {
+                    selector_type: Some(SelectorType::ComponentColumn(ComponentColumnSelector {
+                        entity_path: Some(ccs.entity_path.into()),
+                        component: Some(Component {
+                            name: ccs.component_name,
+                        }),
+                    })),
+                },
+                re_dataframe::ColumnSelector::Time(tcs) => Self {
+                    selector_type: Some(SelectorType::TimeColumn(TimeColumnSelector {
+                        timeline: Some(Timeline {
+                            name: tcs.timeline.to_string(),
+                        }),
+                    })),
+                },
+            }
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::collections::{BTreeMap, BTreeSet};
 
     use crate::v0::{
         column_selector::SelectorType, ColumnSelection, ColumnSelector, Component,
@@ -226,8 +321,7 @@ mod tests {
 
     #[test]
     pub fn test_query_conversion() {
-        // from grpc type
-        let query = Query {
+        let grpc_query_before = Query {
             view_contents: Some(ViewContents {
                 contents: vec![ViewContentsPart {
                     path: Some(EntityPath {
@@ -288,47 +382,10 @@ mod tests {
             sparse_fill_strategy: SparseFillStrategy::None.into(),
         };
 
-        // to chunk store query expression
-        let expected_qe = re_dataframe::QueryExpression {
-            view_contents: Some(BTreeMap::from([(
-                re_log_types::EntityPath::from("/somepath"),
-                Some(BTreeSet::from([
-                    re_dataframe::external::re_chunk::ComponentName::new("component"),
-                ])),
-            )])),
-            include_indicator_columns: false,
-            include_semantically_empty_columns: true,
-            include_tombstone_columns: true,
-            filtered_index: Some(re_log_types::Timeline::new_temporal("log_time")),
-            filtered_index_range: Some(re_dataframe::IndexRange::new(0, 100)),
-            filtered_index_values: Some(
-                vec![0, 1, 2]
-                    .into_iter()
-                    .map(re_log_types::TimeInt::new_temporal)
-                    .collect::<BTreeSet<_>>(),
-            ),
-            using_index_values: Some(
-                vec![3, 4, 5]
-                    .into_iter()
-                    .map(re_log_types::TimeInt::new_temporal)
-                    .collect::<BTreeSet<_>>(),
-            ),
-            filtered_point_of_view: Some(re_dataframe::ComponentColumnSelector {
-                entity_path: re_log_types::EntityPath::from("/somepath/c"),
-                component_name: "component".to_owned(),
-                join_encoding: re_dataframe::JoinEncoding::default(),
-            }),
-            sparse_fill_strategy: re_dataframe::SparseFillStrategy::default(),
-            selection: Some(vec![re_dataframe::ComponentColumnSelector {
-                entity_path: re_log_types::EntityPath::from("/somepath/c"),
-                component_name: "component".to_owned(),
-                join_encoding: re_dataframe::JoinEncoding::default(),
-            }
-            .into()]),
-        };
+        let query_expression_native: re_dataframe::QueryExpression =
+            grpc_query_before.clone().try_into().unwrap();
+        let grpc_query_after = query_expression_native.into();
 
-        let query_expression: re_dataframe::QueryExpression = query.try_into().unwrap();
-
-        assert_eq!(query_expression, expected_qe);
+        assert_eq!(grpc_query_before, grpc_query_after);
     }
 }
