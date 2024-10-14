@@ -303,6 +303,11 @@ fn init_video_decoder(
         Closure::wrap(Box::new(move |err: js_sys::Error| {
             let err = DecodingError::Decoding(js_error_to_string(&err));
 
+            // Log the error on debug only.
+            // Many of the errors we get from a decoder are recoverable.
+            // They may be very frequent, but it's still useful to see them in the debug log for troubleshooting.
+            re_log::debug!("WebCodec decoder error: {:?}", err);
+
             let mut output = decoder_output.lock();
             if let Some(error) = &mut output.error {
                 error.latest_error = err;
