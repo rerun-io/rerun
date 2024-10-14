@@ -882,6 +882,10 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
         if in_metadata and line.startswith("-->"):
             in_metadata = False
 
+        if "NOLINT" in line:
+            lines_out.append(line)
+            continue
+
         if not in_code_block:
             if not in_metadata:
                 # Check the casing on markdown headers
