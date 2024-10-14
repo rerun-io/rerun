@@ -1,4 +1,4 @@
-use std::{collections::HashSet};
+use std::collections::HashSet;
 
 use re_log_types::EntityPath;
 use re_viewer::external::re_types::datatypes;
