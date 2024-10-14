@@ -128,8 +128,9 @@ egui_extras = { version = "0.29.1", features = [
   "puffin",
   "serde",
 ] }
-egui_plot = "0.29.0"
-egui_tiles = "0.10.1"
+egui_plot = "0.29.0" # https://github.com/emilk/egui_plot
+egui_table = "0.1.0" # https://github.com/rerun-io/egui_table
+egui_tiles = "0.10.1" # https://github.com/rerun-io/egui_tiles
 egui-wgpu = "0.29.1"
 emath = "0.29.1"
 
