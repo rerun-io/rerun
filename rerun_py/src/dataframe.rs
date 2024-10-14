@@ -94,14 +94,6 @@ impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
 
 #[pymethods]
 impl PyComponentColumnDescriptor {
-    fn with_dictionary_encoding(&self) -> Self {
-        Self(
-            self.0
-                .clone()
-                .with_join_encoding(re_chunk_store::JoinEncoding::DictionaryEncode),
-        )
-    }
-
     fn __repr__(&self) -> String {
         format!(
             "Component({}:{})",
@@ -134,16 +126,7 @@ impl PyComponentColumnSelector {
         Self(ComponentColumnSelector {
             entity_path: entity_path.into(),
             component_name: component_name.0,
-            join_encoding: Default::default(),
         })
-    }
-
-    fn with_dictionary_encoding(&self) -> Self {
-        Self(
-            self.0
-                .clone()
-                .with_join_encoding(re_chunk_store::JoinEncoding::DictionaryEncode),
-        )
     }
 
     fn __repr__(&self) -> String {
@@ -630,7 +613,6 @@ impl PyRecording {
         let selector = ComponentColumnSelector {
             entity_path: entity_path.clone(),
             component_name: component_name.into(),
-            join_encoding: Default::default(),
         };
 
         self.store
