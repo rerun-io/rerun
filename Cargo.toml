@@ -106,6 +106,12 @@ re_web_viewer_server = { path = "crates/viewer/re_web_viewer_server", version = 
 ewebsock = "0.6.0"
 re_math = "0.20.0"
 
+# If this package fails to build, install `nasm` locally, or build through `pixi`.
+# NOTE: we use `dav1d` as an alias for our own re_rav1d crate
+# See https://github.com/rerun-io/re_rav1d/pull/2
+dav1d = { package = "re_rav1d", version = "0.1.0", default-features = false }
+# dav1d = { version = "0.10.3" } # Requires separate install of `dav1d` library. Fast in debug builds. Useful for development.
+
 # egui-crates:
 ecolor = "0.29.1"
 eframe = { version = "0.29.1", default-features = false, features = [

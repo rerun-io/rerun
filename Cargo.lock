@@ -4757,29 +4757,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "rav1d"
-version = "1.0.0"
-source = "git+https://github.com/rerun-io/rav1d?rev=a9059f6a02e68cf2aba3795cc370c72f695c4730#a9059f6a02e68cf2aba3795cc370c72f695c4730"
-dependencies = [
- "assert_matches",
- "atomig",
- "av-data",
- "bitflags 2.6.0",
- "cc",
- "cfg-if",
- "cfg_aliases 0.2.1",
- "libc",
- "nasm-rs",
- "parking_lot",
- "paste",
- "raw-cpuid",
- "static_assertions",
- "strum",
- "to_method",
- "zerocopy",
-]
-
-[[package]]
 name = "raw-cpuid"
 version = "11.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5401,6 +5378,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_rav1d"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a9505a568b5cf6d270ab1aabc8159f0b67f43d46c1dd27088a7cd11f845a1fd6"
+dependencies = [
+ "assert_matches",
+ "atomig",
+ "av-data",
+ "bitflags 2.6.0",
+ "cc",
+ "cfg-if",
+ "cfg_aliases 0.2.1",
+ "libc",
+ "nasm-rs",
+ "parking_lot",
+ "paste",
+ "raw-cpuid",
+ "static_assertions",
+ "strum",
+ "to_method",
+ "zerocopy",
+]
+
+[[package]]
 name = "re_renderer"
 version = "0.19.0-alpha.3"
 dependencies = [
@@ -5942,9 +5943,9 @@ dependencies = [
  "indicatif",
  "itertools 0.13.0",
  "parking_lot",
- "rav1d",
  "re_log",
  "re_mp4",
+ "re_rav1d",
  "re_tracing",
  "re_video",
  "thiserror",
