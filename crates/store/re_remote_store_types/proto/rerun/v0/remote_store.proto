@@ -8,7 +8,7 @@ service StorageNode {
     rpc ListRecordings(ListRecordingsRequest) returns (ListRecordingsResponse) {}
     rpc Query(QueryRequest) returns (stream QueryResponse) {}
     rpc GetRecordingMetadata(GetRecordingMetadataRequest) returns (GetRecordingMetadataResponse) {}
-    // TODO (zehiko) - should this be singular recording registration? Currently we can have 1 rrd => many recordings
+    // TODO(zehiko) - should this be singular recording registration? Currently we can have 1 rrd => many recordings
     rpc RegisterRecordings(RegisterRecordingsRequest) returns (RegisterRecordingsResponse) {}
 }
 
@@ -17,7 +17,7 @@ service StorageNode {
 message RegisterRecordingsRequest {
     string description = 1;
     ObjectStorage obj_storage = 2;
-    // TODO (zehiko) should this be auto-discoverable?
+    // TODO(zehiko) should this be auto-discoverable?
     RecordingType typ = 3;
 }
 
@@ -27,7 +27,7 @@ message ObjectStorage {
 }
 
 message RegisterRecordingsResponse {
-    // Note / TODO (zehiko): this implies we read the record (for example go through entire .rrd file
+    // Note / TODO(zehiko): this implies we read the record (for example go through entire .rrd file
     // chunk by chunk) and extract the metadata. So we might want to 1/ not do this i.e.
     // only do it as part of explicit GetMetadata request or 2/ do it if Request has "include_metadata=true"
     // or 3/ do it always
