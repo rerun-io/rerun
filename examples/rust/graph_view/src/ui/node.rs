@@ -61,4 +61,8 @@ pub fn draw_node(
             })
             .response
     }
+    .on_hover_text(format!(
+        "Node ID: `{}` in `{}`",
+        instance.node_id, instance.entity_path
+    ))
 }
