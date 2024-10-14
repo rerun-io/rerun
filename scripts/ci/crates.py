@@ -152,6 +152,8 @@ def get_sorted_publishable_crates(ctx: Context, crates: dict[str, Crate]) -> dic
     ) -> None:
         crate = crates[name]
         for dependency in crate_deps(crate.manifest):
+            if dependency.name == name:
+                continue  # The crate may have itself as a dev-dependency for examples
             if dependency.name not in crates:
                 continue
             if dependency.name in visited:
