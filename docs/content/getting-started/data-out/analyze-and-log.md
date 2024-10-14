@@ -5,15 +5,15 @@ order: 3
 
 
 
-In the previous sections, we explored our data and exported it into a Pandas dataframe. In this section, we will analyze the data to extract a "jaw open state" signal and log it back to the viewer.
+In the previous sections, we explored our data and exported it to a Pandas dataframe. In this section, we will analyze the data to extract a "jaw open state" signal and log it back to the viewer.
 
 
 
 ## Analyze the data
 
-Well, this is not the most complicated part, as we already identified that thresholding the `jawOpen` signal at 0.15 is all we need. Recall that we already flattened that signal into a `"jawOpen"` dataframe column in the [previous section](export-dataframe.md#inspect-the-dataframe)
+This is admittedly not the most complicated part of this guide. We already identified that thresholding the `jawOpen` signal at 0.15 is all we need to produce a binary "jaw open state" signal.
 
-Let's add a boolean column to our Pandas dataframe to hold our jaw open state:
+In the [previous section](export-dataframe.md#inspect-the-dataframe), we prepared a flat, floating point column with the signal of interest called `"jawOpen"`. Let's add a boolean column to our Pandas dataframe to hold our jaw open state:
 
 ```python
 df["jawOpenState"] = df["jawOpen"] > 0.15
@@ -22,16 +22,19 @@ df["jawOpenState"] = df["jawOpen"] > 0.15
 
 ## Log the result back to the viewer
 
-The first step to log the data is to initialize the logging such that the data we log is routed to the exact same recording that we just analyzed. For this, both the application ID and the recording ID must match. Here is how it is done:
+The first step to log the data is to initialize the logging SDK to direct it to the exact same recording that we just analyzed. For this, both the application ID and the recording ID must match. Here is how it is done:
 
 ```python
-rr.init(recording.application_id(), recording_id=recording.recording_id())
+rr.init(
+    recording.application_id()
+    recording_id=recording.recording_id(),
+)
 rr.connect()
 ```
 
-Note: When automating data analysis, you should typically log the results to an RRD file distinct from the source RRD (using `rr.save()`). It is also valid to use the same app ID and recording ID in such a case. In particular, this allows opening both the source and result RRDs in the viewer, which will display both data under the same recording.
+_Note_: When automating data analysis, it is typically preferable to log the results to an distinct RRD file next to the source RRD (using `rr.save()`). In such case, it is also valid to use the same app ID and recording ID. This allows opening both the source and result RRDs in the viewer, which will display both data under the same recording.
 
-Let's log our jaw open state data in two forms:
+We will log our jaw open state data in two forms:
 1. As a standalone `Scalar` component, to hold the raw data.
 2. As a `Text` component on the existing bounding box entity, such that we obtain a textual representation of the state in the visualization.
 
@@ -63,14 +66,21 @@ rr.send_columns(
 )
 ```
 
-Here we first log the [`ShowLabel`](../../reference/types/components/show_labels.md) component as static to enable the display of the label. Then, we use `rr.send_column()` again to send an entire batch of text labels. We use the [`np.where()`](https://numpy.org/doc/stable/reference/generated/numpy.where.html) to produce a label that matches the state for each timestamp.
+Here we first log the [`ShowLabel`](../../reference/types/components/show_labels.md) component as static to enable the display of the label. Then, we use `rr.send_column()` again to send an entire batch of text labels. We use the [`np.where()`](https://numpy.org/doc/stable/reference/generated/numpy.where.html) to produce a label matching the state for each timestamp.
 
 ### Final result
 
-TODO: screen shot
+With some adjustments to the viewer blueprint, we obtain the following result:
+
+<video width="100%" autoplay loop muted controls>
+    <source src="https://static.rerun.io/getting-started-data-out/data-out-final.webm" type="video/webm" />
+</video>
+
+The OPEN/CLOSE label is displayed along the bounding box on the 2D view, and the `/jaw_open_state` signal is visible in both the timeseries and dataframe views.
 
 
 ### Complete script
 
+Here is the complete script used by this guide to load data, analyze it, and log the result back:
 
 snippet: tutorials/data_out

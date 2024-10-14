@@ -19,7 +19,6 @@ df["jawOpen"] = df["/blendshapes/0/jawOpen:Scalar"].explode().astype(float)
 # ----------------------------------------------------------------------------------------------
 # Analyze the data
 
-
 # compute the mouth state
 df["jawOpenState"] = df["jawOpen"] > 0.15
 
