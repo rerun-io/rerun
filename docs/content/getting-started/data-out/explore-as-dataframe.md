@@ -15,7 +15,7 @@ The first step is to create a recording in the viewer using the face tracking ex
 Here is such a recording:
 
 <video width="100%" autoplay loop muted controls>
-    <source src="https://static.rerun.io/getting-started-data-out/data-out-first-look.webm" type="video/webm" />
+    <source src="https://static.rerun.io/getting-started-data-out/data-out-first-look-vp8.webm" type="video/webm" />
 </video>
 
 A person's face is visible and being tracked. Their jaws occasionally open and close. In the middle of the recording, the face is also temporarily hidden and no longer tracked.

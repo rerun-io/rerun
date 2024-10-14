@@ -73,7 +73,7 @@ Here we first log the [`ShowLabel`](../../reference/types/components/show_labels
 With some adjustments to the viewer blueprint, we obtain the following result:
 
 <video width="100%" autoplay loop muted controls>
-    <source src="https://static.rerun.io/getting-started-data-out/data-out-final.webm" type="video/webm" />
+    <source src="https://static.rerun.io/getting-started-data-out/data-out-final-vp8.webm" type="video/webm" />
 </video>
 
 The OPEN/CLOSE label is displayed along the bounding box on the 2D view, and the `/jaw_open_state` signal is visible in both the timeseries and dataframe views.
