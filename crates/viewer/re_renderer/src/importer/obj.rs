@@ -3,7 +3,7 @@ use std::sync::Arc;
 use smallvec::smallvec;
 
 use crate::{
-    mesh::{GpuMesh, Material, Mesh, MeshError},
+    mesh::{GpuMesh, Material, CpuMesh, MeshError},
     renderer::MeshInstance,
     RenderContext, Rgba32Unmul,
 };
@@ -84,7 +84,7 @@ pub fn load_obj_from_buffer(
 
             let texture = ctx.texture_manager_2d.white_texture_unorm_handle();
 
-            let mesh = Mesh {
+            let mesh = CpuMesh {
                 label: model.name.into(),
                 triangle_indices,
                 vertex_positions,
