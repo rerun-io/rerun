@@ -9,27 +9,12 @@ pub use self::query::QueryHandle;
 #[doc(no_inline)]
 pub use self::external::arrow2::chunk::Chunk as ArrowChunk;
 #[doc(no_inline)]
-pub use self::external::re_chunk_store::ColumnSelector;
+pub use self::external::re_chunk_store::{
+    ColumnSelector, ComponentColumnSelector, Index, IndexRange, IndexValue, JoinEncoding,
+    QueryExpression, SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
+};
 #[doc(no_inline)]
-pub use self::external::re_chunk_store::ComponentColumnSelector;
-#[doc(no_inline)]
-pub use self::external::re_chunk_store::Index;
-#[doc(no_inline)]
-pub use self::external::re_chunk_store::IndexRange;
-#[doc(no_inline)]
-pub use self::external::re_chunk_store::IndexValue;
-#[doc(no_inline)]
-pub use self::external::re_chunk_store::JoinEncoding;
-#[doc(no_inline)]
-pub use self::external::re_chunk_store::QueryExpression;
-#[doc(no_inline)]
-pub use self::external::re_chunk_store::SparseFillStrategy;
-#[doc(no_inline)]
-pub use self::external::re_chunk_store::TimeColumnSelector;
-#[doc(no_inline)]
-pub use self::external::re_chunk_store::ViewContentsSelector;
-#[doc(no_inline)]
-pub use self::external::re_log_types::Timeline;
+pub use self::external::re_log_types::{TimeInt, Timeline};
 #[doc(no_inline)]
 pub use self::external::re_query::Caches as QueryCache;
 
