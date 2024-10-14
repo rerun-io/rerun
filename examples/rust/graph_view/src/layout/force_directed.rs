@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use fdg_sim::{self as fdg, ForceGraphHelper};
 use re_viewer::external::egui;
 
-use crate::{error::Error, types::NodeIndex};
+use crate::{error::Error, graph::NodeIndex};
 
 #[deprecated]
 #[derive(Debug, Default, PartialEq, Eq)]
@@ -20,17 +20,13 @@ impl ForceBasedLayout {
         let mut graph: fdg::ForceGraph<(NodeIndex, egui::Vec2), ()> = fdg::ForceGraph::default();
 
         for (node_id, size) in nodes {
-            let ix = graph.add_force_node(node_id.to_string(), (node_id.clone(), size));
+            let ix = graph.add_force_node(format!("{node_id:?}"), (node_id.clone(), size));
             node_to_index.insert(node_id, ix);
         }
 
         for (source, target) in directed.into_iter().chain(undirected) {
-            let source_ix = node_to_index
-                .get(&source)
-                .ok_or_else(|| Error::EdgeUnknownNode(source.to_string()))?;
-            let target_ix = node_to_index
-                .get(&target)
-                .ok_or_else(|| Error::EdgeUnknownNode(source.to_string()))?;
+            let source_ix = node_to_index.get(&source).ok_or(Error::EdgeUnknownNode)?;
+            let target_ix = node_to_index.get(&target).ok_or(Error::EdgeUnknownNode)?;
             graph.add_edge(*source_ix, *target_ix, ());
         }
 

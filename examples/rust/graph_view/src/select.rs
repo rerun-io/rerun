@@ -1,6 +1,6 @@
 use re_viewer::external::egui::{self, ahash::HashMap};
 
-use crate::types::NodeIndex;
+use crate::graph::NodeIndex;
 
 pub struct Layout {
     nodes: HashMap<NodeIndex, egui::Rect>,

@@ -12,7 +12,7 @@ use layout::{
 };
 use re_viewer::external::egui;
 
-use crate::{error::Error, types::NodeIndex};
+use crate::{error::Error, graph::NodeIndex};
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct DotLayout;
@@ -42,22 +42,14 @@ impl DotLayout {
         }
 
         for (source_ix, target_ix) in directed {
-            let source = ix_to_handle
-                .get(&source_ix)
-                .ok_or_else(|| Error::EdgeUnknownNode(source_ix.to_string()))?;
-            let target = ix_to_handle
-                .get(&target_ix)
-                .ok_or_else(|| Error::EdgeUnknownNode(target_ix.to_string()))?;
+            let source = ix_to_handle.get(&source_ix).ok_or(Error::EdgeUnknownNode)?;
+            let target = ix_to_handle.get(&target_ix).ok_or(Error::EdgeUnknownNode)?;
             graph.add_edge(Arrow::simple("test"), *source, *target);
         }
 
         for (source_ix, target_ix) in undirected {
-            let source = ix_to_handle
-                .get(&source_ix)
-                .ok_or_else(|| Error::EdgeUnknownNode(source_ix.to_string()))?;
-            let target = ix_to_handle
-                .get(&target_ix)
-                .ok_or_else(|| Error::EdgeUnknownNode(target_ix.to_string()))?;
+            let source = ix_to_handle.get(&source_ix).ok_or(Error::EdgeUnknownNode)?;
+            let target = ix_to_handle.get(&target_ix).ok_or(Error::EdgeUnknownNode)?;
 
             // TODO(grtlr): find a better way other than adding duplicate edges.
             graph.add_edge(Arrow::simple("test"), *source, *target);

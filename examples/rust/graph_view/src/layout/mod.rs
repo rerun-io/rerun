@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use re_viewer::external::egui;
 
-use crate::{error::Error, types::NodeIndex};
+use crate::{error::Error, graph::NodeIndex};
 
 mod dot;
 pub(crate) use dot::DotLayout;

@@ -4,7 +4,7 @@ use fdg::{nalgebra::Point2, Force as _};
 use rand::distributions::Distribution as _;
 use re_viewer::external::egui;
 
-use crate::{error::Error, types::NodeIndex};
+use crate::{error::Error, graph::NodeIndex};
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct FruchtermanReingoldLayout;
@@ -34,12 +34,8 @@ impl FruchtermanReingoldLayout {
         }
 
         for (source, target) in directed.into_iter().chain(undirected) {
-            let source_ix = node_to_index
-                .get(&source)
-                .ok_or_else(|| Error::EdgeUnknownNode(source.to_string()))?;
-            let target_ix = node_to_index
-                .get(&target)
-                .ok_or_else(|| Error::EdgeUnknownNode(source.to_string()))?;
+            let source_ix = node_to_index.get(&source).ok_or(Error::EdgeUnknownNode)?;
+            let target_ix = node_to_index.get(&target).ok_or(Error::EdgeUnknownNode)?;
             graph.add_edge(*source_ix, *target_ix, ());
         }
 

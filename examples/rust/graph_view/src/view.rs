@@ -15,8 +15,7 @@ use re_viewer::external::{
 
 use crate::{
     error::Error,
-    graph::Graph,
-    types::NodeIndex,
+    graph::{Graph, NodeIndex},
     ui::{self, GraphSpaceViewState},
     visualizers::{EdgesDirectedVisualizer, EdgesUndirectedVisualizer, NodeVisualizer},
 };
@@ -332,12 +331,8 @@ impl SpaceViewClass for GraphSpaceView {
             for edge in data.edges() {
                 let source_ix = NodeIndex::from(edge.source);
                 let target_ix = NodeIndex::from(edge.target);
-                let source_pos = layout
-                    .get(&source_ix)
-                    .ok_or_else(|| Error::EdgeUnknownNode(edge.source.to_string()))?;
-                let target_pos = layout
-                    .get(&target_ix)
-                    .ok_or_else(|| Error::EdgeUnknownNode(edge.target.to_string()))?;
+                let source_pos = layout.get(&source_ix).ok_or(Error::EdgeUnknownNode)?;
+                let target_pos = layout.get(&target_ix).ok_or(Error::EdgeUnknownNode)?;
 
                 let response = egui::Area::new(id.with((data.entity_path.hash(), edge.instance)))
                     .current_pos(source_pos.center())
@@ -369,12 +364,8 @@ impl SpaceViewClass for GraphSpaceView {
             for edge in data.edges() {
                 let source_ix = NodeIndex::from(edge.source);
                 let target_ix = NodeIndex::from(edge.target);
-                let source_pos = layout
-                    .get(&source_ix)
-                    .ok_or_else(|| Error::EdgeUnknownNode(edge.source.to_string()))?;
-                let target_pos = layout
-                    .get(&target_ix)
-                    .ok_or_else(|| Error::EdgeUnknownNode(edge.target.to_string()))?;
+                let source_pos = layout.get(&source_ix).ok_or(Error::EdgeUnknownNode)?;
+                let target_pos = layout.get(&target_ix).ok_or(Error::EdgeUnknownNode)?;
 
                 let response = egui::Area::new(id.with((data.entity_path.hash(), edge.instance)))
                     .current_pos(source_pos.center())

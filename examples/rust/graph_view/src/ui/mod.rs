@@ -13,10 +13,7 @@ pub(crate) use node::draw_node;
 mod state;
 pub(crate) use state::GraphSpaceViewState;
 
-use crate::{
-    graph::Node,
-    types::{NodeIndex, UnknownNodeInstance},
-};
+use crate::{graph::{Node, NodeIndex}, types::UnknownNodeInstance};
 
 pub fn draw_dummy(ui: &mut egui::Ui, instance: &UnknownNodeInstance) -> egui::Response {
     let text = egui::RichText::new(format!("{} @ {}", instance.node_id, instance.entity_path))

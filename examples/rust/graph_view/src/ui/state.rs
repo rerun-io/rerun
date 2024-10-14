@@ -7,7 +7,7 @@ use re_viewer::external::{
     re_viewer_context::SpaceViewState,
 };
 
-use crate::{layout::LayoutProvider, types::NodeIndex};
+use crate::{layout::LayoutProvider, graph::NodeIndex};
 
 use super::bounding_rect_from_iter;
 

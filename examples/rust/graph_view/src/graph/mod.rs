@@ -1,14 +1,18 @@
-use std::{collections::HashSet, hash::Hash};
+use std::{collections::HashSet};
 
-use petgraph::graphmap::EdgesDirected;
 use re_log_types::EntityPath;
 use re_viewer::external::re_types::datatypes;
 
 use crate::{
     error::Error,
-    types::{EdgeInstance, NodeIndex, NodeInstance, UnknownNodeInstance},
+    types::{EdgeInstance, NodeInstance, UnknownNodeInstance},
     visualizers::{EdgesDirectedData, EdgesUndirectedData, NodeVisualizerData},
 };
+
+mod hash;
+pub(crate) use hash::NodeIdHash;
+mod index;
+pub(crate) use index::NodeIndex;
 
 pub(crate) enum Node<'a> {
     Regular(NodeInstance<'a>),

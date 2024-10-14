@@ -1,8 +1,10 @@
-use re_log_types::{EntityPath, EntityPathHash, Instance};
+use re_log_types::{EntityPath, Instance};
 use re_viewer::external::{
     egui,
     re_types::{datatypes, ArrowString},
 };
+
+use crate::graph::NodeIndex;
 
 impl<'a> EdgeInstance<'a> {
     pub fn nodes(&'a self) -> impl Iterator<Item = datatypes::GraphLocation> {
@@ -10,41 +12,11 @@ impl<'a> EdgeInstance<'a> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash)]
-pub(crate) struct NodeIndex {
-    pub entity_hash: EntityPathHash,
-    pub node_id: datatypes::GraphNodeId,
-}
-
-impl From<datatypes::GraphLocation> for NodeIndex {
-    fn from(location: datatypes::GraphLocation) -> Self {
-        Self {
-            entity_hash: EntityPath::from(location.entity_path).hash(),
-            node_id: location.node_id,
-        }
-    }
-}
-
-impl From<&datatypes::GraphLocation> for NodeIndex {
-    fn from(location: &datatypes::GraphLocation) -> Self {
-        Self {
-            entity_hash: EntityPath::from(location.entity_path.clone()).hash(),
-            node_id: location.node_id.clone(),
-        }
-    }
-}
-
-impl std::fmt::Display for NodeIndex {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}@{:?}", self.node_id, self.entity_hash)
-    }
-}
-
 impl<'a> From<&NodeInstance<'a>> for NodeIndex {
     fn from(node: &NodeInstance<'a>) -> Self {
         Self {
             entity_hash: node.entity_path.hash(),
-            node_id: node.node_id.clone(),
+            node_id: node.node_id.into(),
         }
     }
 }
@@ -53,7 +25,7 @@ impl<'a> From<NodeInstance<'a>> for NodeIndex {
     fn from(node: NodeInstance<'a>) -> Self {
         Self {
             entity_hash: node.entity_path.hash(),
-            node_id: node.node_id.clone(),
+            node_id: node.node_id.into(),
         }
     }
 }
@@ -84,7 +56,7 @@ impl<'a> From<&UnknownNodeInstance<'a>> for NodeIndex {
     fn from(node: &UnknownNodeInstance<'a>) -> Self {
         Self {
             entity_hash: node.entity_path.hash(),
-            node_id: node.node_id.clone(),
+            node_id: node.node_id.into(),
         }
     }
 }
@@ -93,7 +65,7 @@ impl<'a> From<UnknownNodeInstance<'a>> for NodeIndex {
     fn from(node: UnknownNodeInstance<'a>) -> Self {
         Self {
             entity_hash: node.entity_path.hash(),
-            node_id: node.node_id.clone(),
+            node_id: node.node_id.into(),
         }
     }
 }
