@@ -18,8 +18,6 @@ pub mod v0 {
     #[path = "../v0/rerun.remote_store.v0.rs"]
     mod _v0;
 
-    use column_selector::SelectorType;
-
     pub use self::_v0::*;
 
     // ==== below are all necessary transforms from internal rerun types to protobuf types =====
@@ -290,19 +288,23 @@ pub mod v0 {
         fn from(value: re_dataframe::ColumnSelector) -> Self {
             match value {
                 re_dataframe::ColumnSelector::Component(ccs) => Self {
-                    selector_type: Some(SelectorType::ComponentColumn(ComponentColumnSelector {
-                        entity_path: Some(ccs.entity_path.into()),
-                        component: Some(Component {
-                            name: ccs.component_name,
-                        }),
-                    })),
+                    selector_type: Some(column_selector::SelectorType::ComponentColumn(
+                        ComponentColumnSelector {
+                            entity_path: Some(ccs.entity_path.into()),
+                            component: Some(Component {
+                                name: ccs.component_name,
+                            }),
+                        },
+                    )),
                 },
                 re_dataframe::ColumnSelector::Time(tcs) => Self {
-                    selector_type: Some(SelectorType::TimeColumn(TimeColumnSelector {
-                        timeline: Some(Timeline {
-                            name: tcs.timeline.to_string(),
-                        }),
-                    })),
+                    selector_type: Some(column_selector::SelectorType::TimeColumn(
+                        TimeColumnSelector {
+                            timeline: Some(Timeline {
+                                name: tcs.timeline.to_string(),
+                            }),
+                        },
+                    )),
                 },
             }
         }
