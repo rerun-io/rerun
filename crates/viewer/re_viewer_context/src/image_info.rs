@@ -104,7 +104,7 @@ impl ImageInfo {
                             u,
                             v,
                             pixel_format.is_limited_yuv_range(),
-                            pixel_format.color_primaries(),
+                            pixel_format.yuv_matrix_coefficients(),
                         );
                         Some(TensorElement::U8(rgb[channel as usize]))
                     } else if channel == 4 {
