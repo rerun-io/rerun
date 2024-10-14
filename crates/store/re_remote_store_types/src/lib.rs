@@ -39,7 +39,7 @@ pub mod v0 {
         }
     }
 
-    impl TryFrom<Query> for re_dataframe::external::re_chunk_store::QueryExpression {
+    impl TryFrom<Query> for re_dataframe::QueryExpression {
         type Error = TypeConversionError;
 
         fn try_from(value: Query) -> Result<Self, Self::Error> {
@@ -53,18 +53,14 @@ pub mod v0 {
                 .map(|cs| {
                     cs.columns
                         .into_iter()
-                        .map(|c| {
-                            re_dataframe::external::re_chunk_store::ColumnSelector::try_from(c)
-                        })
+                        .map(|c| re_dataframe::ColumnSelector::try_from(c))
                         .collect::<Result<Vec<_>, _>>()
                 })
                 .transpose()?;
 
             let filtered_point_of_view = value
                 .filtered_pov
-                .map(|fp| {
-                    re_dataframe::external::re_chunk_store::ComponentColumnSelector::try_from(fp)
-                })
+                .map(|fp| re_dataframe::ComponentColumnSelector::try_from(fp))
                 .transpose()?;
 
             Ok(Self {
@@ -84,14 +80,13 @@ pub mod v0 {
                     .using_index_values
                     .map(|uiv| uiv.time_points.into_iter().map(|v| v.into()).collect()),
                 filtered_point_of_view,
-                sparse_fill_strategy:
-                    re_dataframe::external::re_chunk_store::SparseFillStrategy::default(), // TODO(zehiko) implement support for sparse fill strategy
+                sparse_fill_strategy: re_dataframe::SparseFillStrategy::default(), // TODO(zehiko) implement support for sparse fill strategy
                 selection,
             })
         }
     }
 
-    impl From<ViewContents> for re_dataframe::external::re_chunk_store::ViewContentsSelector {
+    impl From<ViewContents> for re_dataframe::ViewContentsSelector {
         fn from(value: ViewContents) -> Self {
             value
                 .contents
@@ -140,7 +135,7 @@ pub mod v0 {
         }
     }
 
-    impl TryFrom<IndexRange> for re_dataframe::external::re_chunk_store::IndexRange {
+    impl TryFrom<IndexRange> for re_dataframe::IndexRange {
         type Error = TypeConversionError;
 
         fn try_from(value: IndexRange) -> Result<Self, Self::Error> {
@@ -158,9 +153,7 @@ pub mod v0 {
         }
     }
 
-    impl TryFrom<ComponentColumnSelector>
-        for re_dataframe::external::re_chunk_store::ComponentColumnSelector
-    {
+    impl TryFrom<ComponentColumnSelector> for re_dataframe::ComponentColumnSelector {
         type Error = TypeConversionError;
 
         fn try_from(value: ComponentColumnSelector) -> Result<Self, Self::Error> {
@@ -177,12 +170,12 @@ pub mod v0 {
             Ok(Self {
                 entity_path,
                 component_name,
-                join_encoding: re_dataframe::external::re_chunk_store::JoinEncoding::default(), // TODO(zehiko) implement
+                join_encoding: re_dataframe::JoinEncoding::default(), // TODO(zehiko) implement
             })
         }
     }
 
-    impl TryFrom<TimeColumnSelector> for re_dataframe::external::re_chunk_store::TimeColumnSelector {
+    impl TryFrom<TimeColumnSelector> for re_dataframe::TimeColumnSelector {
         type Error = TypeConversionError;
 
         fn try_from(value: TimeColumnSelector) -> Result<Self, Self::Error> {
@@ -196,7 +189,7 @@ pub mod v0 {
         }
     }
 
-    impl TryFrom<ColumnSelector> for re_dataframe::external::re_chunk_store::ColumnSelector {
+    impl TryFrom<ColumnSelector> for re_dataframe::ColumnSelector {
         type Error = TypeConversionError;
 
         fn try_from(value: ColumnSelector) -> Result<Self, Self::Error> {
@@ -205,12 +198,12 @@ pub mod v0 {
                 .ok_or(TypeConversionError::MissingField("selector_type"))?
             {
                 column_selector::SelectorType::ComponentColumn(component_column_selector) => {
-                    let selector: re_dataframe::external::re_chunk_store::ComponentColumnSelector =
+                    let selector: re_dataframe::ComponentColumnSelector =
                         component_column_selector.try_into()?;
                     Ok(selector.into())
                 }
                 column_selector::SelectorType::TimeColumn(time_column_selector) => {
-                    let selector: re_dataframe::external::re_chunk_store::TimeColumnSelector =
+                    let selector: re_dataframe::TimeColumnSelector =
                         time_column_selector.try_into()?;
 
                     Ok(selector.into())
@@ -296,7 +289,7 @@ mod tests {
         };
 
         // to chunk store query expression
-        let expected_qe = re_dataframe::external::re_chunk_store::QueryExpression {
+        let expected_qe = re_dataframe::QueryExpression {
             view_contents: Some(BTreeMap::from([(
                 re_log_types::EntityPath::from("/somepath"),
                 Some(BTreeSet::from([
@@ -307,9 +300,7 @@ mod tests {
             include_semantically_empty_columns: true,
             include_tombstone_columns: true,
             filtered_index: Some(re_log_types::Timeline::new_temporal("log_time")),
-            filtered_index_range: Some(re_dataframe::external::re_chunk_store::IndexRange::new(
-                0, 100,
-            )),
+            filtered_index_range: Some(re_dataframe::IndexRange::new(0, 100)),
             filtered_index_values: Some(
                 vec![0, 1, 2]
                     .into_iter()
@@ -322,27 +313,21 @@ mod tests {
                     .map(re_log_types::TimeInt::new_temporal)
                     .collect::<BTreeSet<_>>(),
             ),
-            filtered_point_of_view: Some(
-                re_dataframe::external::re_chunk_store::ComponentColumnSelector {
-                    entity_path: re_log_types::EntityPath::from("/somepath/c"),
-                    component_name: "component".to_owned(),
-                    join_encoding: re_dataframe::external::re_chunk_store::JoinEncoding::default(),
-                },
-            ),
-            sparse_fill_strategy:
-                re_dataframe::external::re_chunk_store::SparseFillStrategy::default(),
-            selection: Some(vec![
-                re_dataframe::external::re_chunk_store::ComponentColumnSelector {
-                    entity_path: re_log_types::EntityPath::from("/somepath/c"),
-                    component_name: "component".to_owned(),
-                    join_encoding: re_dataframe::external::re_chunk_store::JoinEncoding::default(),
-                }
-                .into(),
-            ]),
+            filtered_point_of_view: Some(re_dataframe::ComponentColumnSelector {
+                entity_path: re_log_types::EntityPath::from("/somepath/c"),
+                component_name: "component".to_owned(),
+                join_encoding: re_dataframe::JoinEncoding::default(),
+            }),
+            sparse_fill_strategy: re_dataframe::SparseFillStrategy::default(),
+            selection: Some(vec![re_dataframe::ComponentColumnSelector {
+                entity_path: re_log_types::EntityPath::from("/somepath/c"),
+                component_name: "component".to_owned(),
+                join_encoding: re_dataframe::JoinEncoding::default(),
+            }
+            .into()]),
         };
 
-        let query_expression: re_dataframe::external::re_chunk_store::QueryExpression =
-            query.try_into().unwrap();
+        let query_expression: re_dataframe::QueryExpression = query.try_into().unwrap();
 
         assert_eq!(query_expression, expected_qe);
     }
