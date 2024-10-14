@@ -305,7 +305,7 @@ fn init_video_decoder(
 
             // Many of the errors we get from a decoder are recoverable.
             // They may be very frequent, but it's still useful to see them in the debug log for troubleshooting.
-            re_log::trace!("WebCodec decoder error: {:?}", err);
+            re_log::trace!("WebCodec decoder error: {err}");
 
             let mut output = decoder_output.lock();
             if let Some(error) = &mut output.error {

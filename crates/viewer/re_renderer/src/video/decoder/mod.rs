@@ -304,7 +304,7 @@ impl VideoDecoder {
             self.current_gop_idx = usize::MAX;
             self.current_sample_idx = usize::MAX;
 
-            // If we already have an error set, preserve its occurence time.
+            // If we already have an error set, preserve its occurrence time.
             // Otherwise, set the error using the time at which it was registered.
             if let Some(last_error) = &mut self.last_error {
                 last_error.latest_error = error.latest_error;
