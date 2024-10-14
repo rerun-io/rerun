@@ -98,17 +98,17 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <FilterByEvent as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "Configuration for the filter-by-event feature of the dataframe view.",
-                placeholder: Some(FilterByEvent::default().to_arrow()?),
-            },
-        ),
-        (
             <FilterByRange as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Configuration for a filter-by-range feature of the dataframe view.",
                 placeholder: Some(FilterByRange::default().to_arrow()?),
+            },
+        ),
+        (
+            <FilterIsNotNull as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Configuration for the filter is not null feature of the dataframe view.",
+                placeholder: Some(FilterIsNotNull::default().to_arrow()?),
             },
         ),
         (
@@ -1570,8 +1570,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Filter by range", docstring_md :
                     "If provided, only rows whose timestamp is within this range will be shown.\n\nNote: will be unset as soon as `timeline` is changed.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.FilterByEvent".into(), display_name :
-                    "Filter by event", docstring_md :
+                    "rerun.blueprint.components.FilterIsNotNull".into(), display_name :
+                    "Filter is not null", docstring_md :
                     "If provided, only show rows which contains a logged event for the specified component.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ApplyLatestAt".into(), display_name :

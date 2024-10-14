@@ -17,7 +17,7 @@ class DataframeQueryExt:
         filter_by_range: tuple[datatypes.TimeInt, datatypes.TimeInt]
         | blueprint_datatypes.FilterByRangeLike
         | None = None,
-        filter_by_event: blueprint_datatypes.ComponentColumnSelectorLike | None = None,
+        filter_is_not_null: blueprint_datatypes.ComponentColumnSelectorLike | None = None,
         apply_latest_at: bool = False,
         select: list[blueprint_datatypes.ComponentColumnSelectorLike | datatypes.Utf8Like | str] | None = None,
     ):
@@ -32,7 +32,7 @@ class DataframeQueryExt:
         filter_by_range:
             If set, a range filter is applied.
 
-        filter_by_event:
+        filter_is_not_null:
             If provided, the dataframe will only contain rows corresponding to timestamps at which an event was logged
             for the provided column.
 
@@ -48,21 +48,21 @@ class DataframeQueryExt:
             start, end = filter_by_range
             filter_by_range = blueprint_components.FilterByRange(start, end)
 
-        if filter_by_event is not None:
-            if isinstance(filter_by_event, str):
-                column = blueprint_datatypes.ComponentColumnSelector(spec=filter_by_event)
+        if filter_is_not_null is not None:
+            if isinstance(filter_is_not_null, str):
+                column = blueprint_datatypes.ComponentColumnSelector(spec=filter_is_not_null)
             else:
-                column = filter_by_event
+                column = filter_is_not_null
 
-            new_filter_by_event = blueprint_components.FilterByEvent(active=True, column=column)
+            new_filter_is_not_null = blueprint_components.FilterIsNotNull(active=True, column=column)
         else:
-            new_filter_by_event = None
+            new_filter_is_not_null = None
 
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
                 timeline=timeline,
                 filter_by_range=filter_by_range,
-                filter_by_event=new_filter_by_event,
+                filter_is_not_null=new_filter_is_not_null,
                 apply_latest_at=apply_latest_at,
                 select=select,
             )

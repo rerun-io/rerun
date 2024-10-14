@@ -27,7 +27,7 @@ class DataframeQuery(DataframeQueryExt, Archetype):
         self.__attrs_init__(
             timeline=None,  # type: ignore[arg-type]
             filter_by_range=None,  # type: ignore[arg-type]
-            filter_by_event=None,  # type: ignore[arg-type]
+            filter_is_not_null=None,  # type: ignore[arg-type]
             apply_latest_at=None,  # type: ignore[arg-type]
             select=None,  # type: ignore[arg-type]
         )
@@ -61,10 +61,10 @@ class DataframeQuery(DataframeQueryExt, Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    filter_by_event: blueprint_components.FilterByEventBatch | None = field(
+    filter_is_not_null: blueprint_components.FilterIsNotNullBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.FilterByEventBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.FilterIsNotNullBatch._optional,  # type: ignore[misc]
     )
     # If provided, only show rows which contains a logged event for the specified component.
     #

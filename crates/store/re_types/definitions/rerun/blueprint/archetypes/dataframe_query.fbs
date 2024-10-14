@@ -18,7 +18,7 @@ table DataframeQuery (
     filter_by_range: rerun.blueprint.components.FilterByRange ("attr.rerun.component_optional", nullable, order: 200);
 
     /// If provided, only show rows which contains a logged event for the specified component.
-    filter_by_event: rerun.blueprint.components.FilterByEvent ("attr.rerun.component_optional", nullable, order: 300);
+    filter_is_not_null: rerun.blueprint.components.FilterIsNotNull ("attr.rerun.component_optional", nullable, order: 300);
 
     /// Should empty cells be filled with latest-at queries?
     apply_latest_at: rerun.blueprint.components.ApplyLatestAt ("attr.rerun.component_optional", nullable, order: 400);
