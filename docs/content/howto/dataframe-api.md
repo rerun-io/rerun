@@ -7,7 +7,7 @@ Rerun 0.19 added the Dataframe API to its SDK, with enables getting data out of 
 
 <!-- TODO(#7499): add links to the Python SDK documentation where appropriate -->
 
-## The Dataframe API
+## The dataframe API
 
 ### Loading a recording
 
@@ -19,7 +19,7 @@ import rerun as rr
 recording = rr.dataframe.load_recording("/path/to/file.rrd")
 ```
 
-Although RRD files generally contain a single recording, they may occasionally contain 2 or more. This can happen for example if the RRD includes a blueprint, which is stored as a recording that is separate from the data.
+Although RRD files generally contain a single recording, they may occasionally contain 2 or more. This can happen, for example, if the RRD includes a blueprint, which is stored as a recording that is separate from the data.
 
 For such RRD, the `load_archive()` function can be used:
 
@@ -52,13 +52,16 @@ The first step for getting data out of a recording is to create a view, which re
 
 As of Rerun 0.19, views must have exactly one index column, which can be any of the recording timelines. Each row of the view will correspond to a unique value of the index column. A `null` value is possible, and corresponds to data logged as static. In the future, it will be possible to have other kinds of column as index, and more than a single index column.
 
-The content defines which columns are included in the view and can be flexibly specified as entity filters, optionally providing a corresponding list of components.
+The content defines which columns are included in the view and can be flexibly specified as entity expression, optionally providing a corresponding list of components.
 
 These are all valid ways to specify view content:
 
 ```python
 # everything in the recording
 view = recording.view(index="frame_nr", contents="/**")
+
+# everything in the recording, except the /world/robot subtree
+view = recording.view(index="frame_nr", contents="/**\n- /world/robot/**")
 
 # all `Scalar` components in the recording
 view = recording.view(index="frame_nr", contents={"/**": ["Scalar"]})
@@ -75,7 +78,7 @@ view = recording.view(index="frame_nr", contents={
 
 A view has several APIs to further filter the rows it will return.
 
-<!-- TODO(rerun-io/landing/issues/521): change these headers to h4 when these are properly supported -->
+<!-- TODO(rerun-io/landing#521): change these headers to h4 when these are properly supported -->
 
 **Filtering by time range**
 
@@ -170,7 +173,7 @@ table = view.select().read_all()
 ```
 
 
-## Load data to a Pandas dataframe
+## Load data to a Pandas dataframe <!-- NOLINT -->
 
 The `RecordBatchReader` provides a [`read_pandas()`](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html#pyarrow.RecordBatchReader.read_pandas) method which returns a [Pandas dataframe](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html):
 
@@ -184,7 +187,7 @@ view = recording.view(index="frame_nr", contents="/**")
 df = view.select().read_pandas()
 ```
 
-## Load data to a Polars dataframe
+## Load data to a Polars dataframe <!-- NOLINT -->
 
 A [Polars dataframe](https://docs.pola.rs/api/python/stable/reference/dataframe/index.html) can be created from a PyArrow table:
 
