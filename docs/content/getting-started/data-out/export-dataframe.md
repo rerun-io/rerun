@@ -4,7 +4,7 @@ order: 2
 ---
 
 
-In the [previous section](explore-as-dataframe.md), we explored some face tracking data using the dataframe view. In this section, we will see how we can use the dataframe API of the Rerun SDK to export the same data into a [Pandas](https://pandas.pydata.org) dataframe to further inspect and process it. 
+In the [previous section](explore-as-dataframe.md), we explored some face tracking data using the dataframe view. In this section, we will see how we can use the dataframe API of the Rerun SDK to export the same data into a [Pandas](https://pandas.pydata.org) dataframe to further inspect and process it.
 
 ## Load the recording
 
@@ -71,11 +71,11 @@ log_time: [[2024-10-13 08:26:46.819571000],[2024-10-13 08:26:46.866358000],...,[
 /blendshapes/0/jawOpen:Scalar: [[[0.03306490555405617]],[[0.03812221810221672]],...,[[0.06996039301156998]],[[0.07366073131561279]]]
 ```
 
-Again, this is a [PyArrow](https://arrow.apache.org/docs/python/index.html) table which contains the result of our query. Further exploring Arrow structures is beyond the scope of the present guide. Yet, it is a reminder that Rerun natively stores—and returns—data in arrow format. As such, it efficiently interoperates with other Arrow-native and/or compatible tools such as [Polars](https://pola.rs) or [DuckDB](https://duckdb.org). 
+Again, this is a [PyArrow](https://arrow.apache.org/docs/python/index.html) table which contains the result of our query. Further exploring Arrow structures is beyond the scope of the present guide. Yet, it is a reminder that Rerun natively stores—and returns—data in arrow format. As such, it efficiently interoperates with other Arrow-native and/or compatible tools such as [Polars](https://pola.rs) or [DuckDB](https://duckdb.org).
 
 
-## Create a Pandas dataframe
- 
+## Create a pandas dataframe
+
 Before exploring the data further, let's convert the table to a Pandas dataframe:
 
 ```python
@@ -99,8 +99,10 @@ print(df)
 
 Here is the result:
 
+<!-- NOLINT_START -->
+
 ```
-          frame_nr              frame_time  log_tick                   log_time /blendshapes/0/jawOpen:Scalar
+     frame_nr              frame_time  log_tick                   log_time /blendshapes/0/jawOpen:Scalar
 0           0 1970-01-01 00:00:00.000        34 2024-10-13 08:26:46.819571         [0.03306490555405617]
 1           1 1970-01-01 00:00:00.040        92 2024-10-13 08:26:46.866358         [0.03812221810221672]
 2           2 1970-01-01 00:00:00.080       150 2024-10-13 08:26:46.899699        [0.027743922546505928]
@@ -116,9 +118,11 @@ Here is the result:
 [414 rows x 5 columns]
 ```
 
+<!-- NOLINT_END -->
+
 We can make several observations from this output.
 
-- The first four columns are timeline columns. These are the various timelines the data is logged to in this recording. 
+- The first four columns are timeline columns. These are the various timelines the data is logged to in this recording.
 - The last columns is named `/blendshapes/0/jawOpen:Scalar`. This is what we call a _component column_, and it corresponds to the [Scalar](../../reference/types/components/scalar.md) component logged to the `/blendshapes/0/jawOpen` entity.
 - Each row in the `/blendshapes/0/jawOpen:Scalar` column consists of a _list_ of (typically one) scalar.
 

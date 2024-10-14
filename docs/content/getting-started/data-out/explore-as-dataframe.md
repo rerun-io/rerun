@@ -18,7 +18,7 @@ Here is such a recording:
     <source src="https://static.rerun.io/getting-started-data-out/data-out-first-look.webm" type="video/webm" />
 </video>
 
-A person's face is visible and being tracked. Their jaws occasionally open and close. In the middle of the recording, the face is also temporarily hidden and no longer tracked.  
+A person's face is visible and being tracked. Their jaws occasionally open and close. In the middle of the recording, the face is also temporarily hidden and no longer tracked.
 
 
 ## Explore the data
@@ -63,7 +63,7 @@ Now, let's look at the actual data as represented in the above screenshot. At ar
 
 Our exploration of the data in the viewer so far provided us with two important pieces of information useful to implement the jaw open detector.
 
-First, we identified that the `Scalar` value contained in `/blendshapes/0/jawOpen` contains relevant data. In particular, thresholding this signal with a value of 0.15 should provide us with a closed/opened jaw state binary indicator. 
+First, we identified that the `Scalar` value contained in `/blendshapes/0/jawOpen` contains relevant data. In particular, thresholding this signal with a value of 0.15 should provide us with a closed/opened jaw state binary indicator.
 
 Then, we explored the numerical data in a dataframe view. Importantly, the way we configured this view for our needs informs us on how to query the recording from code such as to obtain the correct output.
 
