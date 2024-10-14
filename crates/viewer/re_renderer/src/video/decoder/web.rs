@@ -303,10 +303,9 @@ fn init_video_decoder(
         Closure::wrap(Box::new(move |err: js_sys::Error| {
             let err = DecodingError::Decoding(js_error_to_string(&err));
 
-            // Log the error on debug only.
             // Many of the errors we get from a decoder are recoverable.
             // They may be very frequent, but it's still useful to see them in the debug log for troubleshooting.
-            re_log::debug!("WebCodec decoder error: {:?}", err);
+            re_log::trace!("WebCodec decoder error: {:?}", err);
 
             let mut output = decoder_output.lock();
             if let Some(error) = &mut output.error {
@@ -360,7 +359,11 @@ fn js_error_to_string(v: &wasm_bindgen::JsValue) -> String {
     }
 
     if let Some(v) = v.dyn_ref::<js_sys::Error>() {
-        return std::string::ToString::to_string(&v.to_string());
+        // Firefox prefixes most decoding errors with "EncodingError: ", which isn't super helpful.
+        let error = std::string::ToString::to_string(&v.to_string());
+        return error
+            .strip_prefix("EncodingError: ")
+            .map_or(error.clone(), |s| s.to_owned());
     }
 
     format!("{v:#?}")
