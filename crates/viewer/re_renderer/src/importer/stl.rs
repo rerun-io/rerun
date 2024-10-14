@@ -43,7 +43,7 @@ pub fn load_stl_from_buffer(
         albedo_factor: crate::Rgba::WHITE,
     };
 
-    let mesh = mesh::Mesh {
+    let mesh = mesh::CpuMesh {
         label: name.into(),
         triangle_indices: (0..num_vertices as u32)
             .tuples::<(_, _, _)>()

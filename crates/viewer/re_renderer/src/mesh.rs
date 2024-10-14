@@ -45,7 +45,7 @@ pub mod mesh_vertices {
 }
 
 #[derive(Clone)]
-pub struct Mesh {
+pub struct CpuMesh {
     pub label: DebugLabel,
 
     /// Non-empty array of vertex triangle indices.
@@ -70,7 +70,7 @@ pub struct Mesh {
     pub materials: SmallVec<[Material; 1]>,
 }
 
-impl Mesh {
+impl CpuMesh {
     pub fn sanity_check(&self) -> Result<(), MeshError> {
         re_tracing::profile_function!();
 
@@ -210,7 +210,7 @@ pub(crate) mod gpu_data {
 
 impl GpuMesh {
     // TODO(andreas): Take read-only context here and make uploads happen on staging belt.
-    pub fn new(ctx: &RenderContext, data: &Mesh) -> Result<Self, MeshError> {
+    pub fn new(ctx: &RenderContext, data: &CpuMesh) -> Result<Self, MeshError> {
         re_tracing::profile_function!();
 
         data.sanity_check()?;

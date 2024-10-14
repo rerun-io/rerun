@@ -157,7 +157,7 @@ impl LoadedMesh {
                 .clone()
         });
 
-        let mesh = re_renderer::mesh::Mesh {
+        let mesh = re_renderer::mesh::CpuMesh {
             label: name.clone().into(),
             triangle_indices,
             vertex_positions: vertex_positions.into(),
