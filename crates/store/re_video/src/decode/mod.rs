@@ -26,7 +26,7 @@
 //!      * weirdly enough, DO NOT CLAMP! a lot of software may say it's limited but then use the so-called foot and head space anyways to go outside the regular colors
 //!          * reportedly (read this on some forums ;-)) some players _do_ clamp, so let's not get too concerned about this
 //!      * it's a remnant of the analog age, but it's still very common!
-//! * TODO(andreas): It may actually be non-downsamples RGB as well, so skip the entire YUV conversion step! Haven't figured out yet how to determine that.
+//! * TODO(andreas): It may actually be non-downsampled RGB as well, so skip the entire YUV conversion step! Haven't figured out yet how to determine that.
 //!
 //!
 //! ### Given a normalized YUV triplet, how do we get color?
