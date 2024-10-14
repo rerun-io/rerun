@@ -177,7 +177,10 @@ pub enum YuvRange {
 /// For details see `re_renderer`'s `YuvMatrixCoefficients` type.
 #[derive(Debug)]
 pub enum YuvMatrixCoefficients {
-    Bt601,
-    Bt709,
+    /// Interpret YUV as GBR.
     Identity,
+
+    Bt601,
+
+    Bt709,
 }
