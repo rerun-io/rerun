@@ -17,6 +17,8 @@ pub use self::external::re_chunk_store::Index;
 #[doc(no_inline)]
 pub use self::external::re_chunk_store::IndexRange;
 #[doc(no_inline)]
+pub use self::external::re_chunk_store::IndexValue;
+#[doc(no_inline)]
 pub use self::external::re_chunk_store::JoinEncoding;
 #[doc(no_inline)]
 pub use self::external::re_chunk_store::QueryExpression;
@@ -27,11 +29,14 @@ pub use self::external::re_chunk_store::TimeColumnSelector;
 #[doc(no_inline)]
 pub use self::external::re_chunk_store::ViewContentsSelector;
 #[doc(no_inline)]
+pub use self::external::re_log_types::Timeline;
+#[doc(no_inline)]
 pub use self::external::re_query::Caches as QueryCache;
 
 pub mod external {
     pub use re_chunk;
     pub use re_chunk_store;
+    pub use re_log_types;
     pub use re_query;
 
     pub use arrow2;
