@@ -184,7 +184,7 @@ table = view.select().read_all()
 ```
 
 
-## Load data to a Pandas dataframe <!-- NOLINT -->
+## Load data to a Pandas dataframe
 
 The `RecordBatchReader` provides a [`read_pandas()`](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html#pyarrow.RecordBatchReader.read_pandas) method which returns a [Pandas dataframe](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html):
 
@@ -198,7 +198,7 @@ view = recording.view(index="frame_nr", contents="/**")
 df = view.select().read_pandas()
 ```
 
-## Load data to a Polars dataframe <!-- NOLINT -->
+## Load data to a Polars dataframe
 
 A [Polars dataframe](https://docs.pola.rs/api/python/stable/reference/dataframe/index.html) can be created from a PyArrow table:
 
