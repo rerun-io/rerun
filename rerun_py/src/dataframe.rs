@@ -529,7 +529,8 @@ impl PyRecordingView {
             .filter(|c| matches!(c, ColumnDescriptor::Component(_)))
             .collect::<Vec<_>>();
 
-        if !available_data_columns.is_empty()
+        if self.query_expression.using_index_values.is_none()
+            && !available_data_columns.is_empty()
             && available_data_columns.iter().all(|c| c.is_static())
         {
             py_rerun_warn("RecordingView::select: contents only include static columns. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
