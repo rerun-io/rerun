@@ -139,8 +139,10 @@ impl App {
             {target_triple}"
         );
 
-        if !features.is_empty() {
-            label += &format!("\nFeatures: {features}");
+        // It is really the features of `rerun-cli` (the `rerun` binary) that are interesting.
+        // For the web-viewer we get `crate_name: "re_viewer"` here, which is much less interesting.
+        if crate_name == "rerun-cli" && !features.is_empty() {
+            label += &format!("\n{crate_name} features: {features}");
         }
 
         if !rustc_version.is_empty() {
