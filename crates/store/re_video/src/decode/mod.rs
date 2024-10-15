@@ -100,6 +100,11 @@ pub enum Error {
     #[cfg(not(target_arch = "wasm32"))]
     #[error("dav1d: {0}")]
     Dav1d(#[from] dav1d::Error),
+
+    #[cfg(feature = "av1")]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("To enabled native AV1 decoding, compile Rerun with the `nasm` feature enabled.")]
+    Dav1dWithoutNasm,
 }
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
