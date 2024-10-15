@@ -250,14 +250,13 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                         // … but not so far to the right that it doesn't fit.
                         pos.x = pos.x.at_most(ui.max_rect().right() - galley.size().x);
 
+                        let item = re_viewer_context::Item::from(entity_path.clone());
+                        let is_selected = self.ctx.selection().contains_item(&item);
                         let response = ui.put(
                             egui::Rect::from_min_size(pos, galley.size()),
-                            egui::Button::new(galley),
+                            egui::SelectableLabel::new(is_selected, galley),
                         );
-                        self.ctx.select_hovered_on_click(
-                            &response,
-                            re_viewer_context::Item::from(entity_path.clone()),
-                        );
+                        self.ctx.select_hovered_on_click(&response, item);
                     }
                 } else if cell.row_nr == 1 {
                     let column = &self.selected_columns[cell.col_range.start];
