@@ -1,11 +1,7 @@
 use std::collections::HashMap;
 
 use re_format::format_f32;
-use re_viewer::external::{
-    egui::{self, emath},
-    re_ui::UiExt,
-    re_viewer_context::SpaceViewState,
-};
+use re_viewer::external::{egui, re_ui::UiExt, re_viewer_context::SpaceViewState};
 
 use crate::{graph::NodeIndex, layout::LayoutProvider};
 
@@ -18,8 +14,8 @@ use super::{bounding_rect_from_iter, scene::ViewBuilder};
 pub(crate) struct GraphSpaceViewState {
     pub viewer: ViewBuilder,
 
-    // Debug information
-    pub show_debug: bool,
+    /// Indicates if the viewer should fit to the screen the next time it is rendered.
+    pub should_fit_to_screen: bool,
 
     /// Positions of the nodes in world space.
     pub layout: Option<HashMap<NodeIndex, egui::Rect>>,
@@ -39,21 +35,19 @@ impl GraphSpaceViewState {
                 }
             });
             ui.end_row();
+
             if ui
                 .button("Fit to screen")
                 .on_hover_text("Fit the bounding box to the screen")
                 .clicked()
             {
-                if let Some(bounding_rect) = bounding_rect_from_iter(layout.values()) {
-                    self.viewer.fit_to_screen(bounding_rect);
-                }
+                self.should_fit_to_screen = true;
             }
-            ui.end_row();
         }
     }
 
     pub fn debug_ui(&mut self, ui: &mut egui::Ui) {
-        ui.re_checkbox(&mut self.show_debug, "Show debug information")
+        ui.re_checkbox(&mut self.viewer.show_debug, "Show debug information")
             .on_hover_text("Shows debug information for the current graph");
         ui.end_row();
     }

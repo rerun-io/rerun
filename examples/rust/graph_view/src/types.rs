@@ -42,7 +42,7 @@ pub(crate) struct NodeInstance<'a> {
 pub struct EdgeInstance<'a> {
     pub source: &'a datatypes::GraphLocation,
     pub target: &'a datatypes::GraphLocation,
-    pub entity_path: &'a re_log_types::EntityPath,
+    pub _entity_path: &'a re_log_types::EntityPath,
     pub instance: Instance,
     pub color: Option<egui::Color32>,
 }

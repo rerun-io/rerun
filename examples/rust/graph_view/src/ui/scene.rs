@@ -1,12 +1,19 @@
 use std::ops::RangeFrom;
 
-use re_viewer::external::egui::{
-    emath::TSTransform, Area, Id, LayerId, Order, Pos2, Rect, Response, Sense, Ui,
+use re_viewer::external::{
+    egui::{
+        emath::TSTransform, Area, Color32, Id, LayerId, Order, Painter, Pos2, Rect, Response,
+        Sense, Stroke, Ui,
+    },
+    re_log::external::log,
 };
 
 pub struct ViewBuilder {
     world_to_view: TSTransform,
     clip_rect_window: Rect,
+    // TODO(grtlr): separate state from builder
+    pub show_debug: bool,
+    bounding_rect: Rect,
 }
 
 impl Default for ViewBuilder {
@@ -14,12 +21,14 @@ impl Default for ViewBuilder {
         Self {
             world_to_view: Default::default(),
             clip_rect_window: Rect::NOTHING,
+            show_debug: false,
+            bounding_rect: Rect::NOTHING,
         }
     }
 }
 
 impl ViewBuilder {
-    pub fn fit_to_screen(&mut self, bounding_rect: Rect) {
+    fn fit_to_rect(&mut self, bounding_rect: Rect) {
         let available_size = self.clip_rect_window.size();
 
         // Compute the scale factor to fit the bounding rectangle into the available screen size.
@@ -37,6 +46,10 @@ impl ViewBuilder {
         self.world_to_view =
             TSTransform::from_translation(center_screen.to_vec2() - center_world * scale)
                 * TSTransform::from_scaling(scale);
+    }
+
+    pub fn fit_to_screen(&mut self) {
+        self.fit_to_rect(self.bounding_rect);
     }
 
     /// Return the clip rect of the scene in window coordinates.
@@ -59,12 +72,12 @@ impl ViewBuilder {
         #[cfg(debug_assertions)]
         if response.double_clicked() {
             if let Some(window) = response.interact_pointer_pos() {
-                // log::debug!(
-                //     "Click event! Window: {:?}, View: {:?} World: {:?}",
-                //     window,
-                //     view_to_window.inverse() * window,
-                //     world_to_window.inverse() * window,
-                // );
+                log::debug!(
+                    "Click event! Window: {:?}, View: {:?} World: {:?}",
+                    window,
+                    view_to_window.inverse() * window,
+                    world_to_window.inverse() * window,
+                );
             }
         }
 
@@ -90,34 +103,6 @@ impl ViewBuilder {
 
         let window_layer = ui.layer_id();
 
-        // if state.show_debug {
-        //     let debug_id = egui::LayerId::new(egui::Order::Debug, id.with("debug_layer"));
-        //     ui.ctx().set_transform_layer(debug_id, world_to_window);
-
-        //     // Paint the coordinate system.
-        //     let painter = egui::Painter::new(ui.ctx().clone(), debug_id, clip_rect_world);
-
-        //     // paint coordinate system at the world origin
-        //     let origin = egui::Pos2::new(0.0, 0.0);
-        //     let x_axis = egui::Pos2::new(100.0, 0.0);
-        //     let y_axis = egui::Pos2::new(0.0, 100.0);
-
-        //     painter.line_segment([origin, x_axis], egui::Stroke::new(1.0, egui::Color32::RED));
-        //     painter.line_segment(
-        //         [origin, y_axis],
-        //         egui::Stroke::new(2.0, egui::Color32::GREEN),
-        //     );
-
-        //     if let Some(bounding_box) = ui::bounding_rect_from_iter(layout.values()) {
-        //         painter.rect(
-        //             bounding_box,
-        //             0.0,
-        //             egui::Color32::from_rgba_unmultiplied(255, 0, 255, 8),
-        //             egui::Stroke::new(1.0, egui::Color32::from_rgb(255, 0, 255)),
-        //         );
-        //     }
-        // }
-
         add_scene_contents(Scene {
             ui,
             id,
@@ -125,7 +110,35 @@ impl ViewBuilder {
             clip_rect_world,
             world_to_window,
             counter: 0u64..,
+            bounding_rect: &mut self.bounding_rect,
         });
+
+        // We need to draw the debug information after the rest to ensure that we have the correct bounding box.
+        if self.show_debug {
+            let debug_id = LayerId::new(Order::Debug, id.with("debug_layer"));
+            ui.ctx().set_transform_layer(debug_id, world_to_window);
+
+            // Paint the coordinate system.
+            let painter = Painter::new(ui.ctx().clone(), debug_id, clip_rect_world);
+
+            // paint coordinate system at the world origin
+            let origin = Pos2::new(0.0, 0.0);
+            let x_axis = Pos2::new(100.0, 0.0);
+            let y_axis = Pos2::new(0.0, 100.0);
+
+            painter.line_segment([origin, x_axis], Stroke::new(1.0, Color32::RED));
+            painter.line_segment([origin, y_axis], Stroke::new(2.0, Color32::GREEN));
+
+            if self.bounding_rect.is_positive() {
+                painter.rect(
+                    self.bounding_rect,
+                    0.0,
+                    Color32::from_rgba_unmultiplied(255, 0, 255, 8),
+                    Stroke::new(1.0, Color32::from_rgb(255, 0, 255)),
+                );
+            }
+        }
+
         clip_rect_window
     }
 }
@@ -137,6 +150,7 @@ pub struct Scene<'a> {
     clip_rect_world: Rect,
     world_to_window: TSTransform,
     counter: RangeFrom<u64>,
+    bounding_rect: &'a mut Rect,
 }
 
 impl<'a> Scene<'a> {
@@ -145,7 +159,7 @@ impl<'a> Scene<'a> {
     where
         F: for<'b> FnOnce(&'b mut Ui) -> Response,
     {
-        let response = Area::new(self.id.with(("node", self.counter.next().unwrap())))
+        let response = Area::new(self.id.with(("__node", self.counter.next().unwrap())))
             .current_pos(pos)
             .order(Order::Foreground)
             .constrain(false)
@@ -159,14 +173,17 @@ impl<'a> Scene<'a> {
         self.ui.ctx().set_transform_layer(id, self.world_to_window);
         self.ui.ctx().set_sublayer(self.window_layer, id);
 
+        *self.bounding_rect = self.bounding_rect.union(response.rect);
+
         response
     }
 
-    pub fn entity<F>(&mut self, pos: Pos2, add_entity_contents: F)
+    pub fn entity<F>(&mut self, pos: Pos2, add_entity_contents: F) -> Response
     where
-        F: for<'b> FnOnce(&'b mut Ui),
+        F: for<'b> FnOnce(&'b mut Ui) -> Response,
     {
-        let response = Area::new(self.id.with(("entity", self.counter.next().unwrap())))
+        let response = Area::new(self.id.with(("__entity", self.counter.next().unwrap())))
+            .fixed_pos(pos)
             .order(Order::Background)
             .constrain(false)
             .show(self.ui.ctx(), |ui| {
@@ -178,9 +195,11 @@ impl<'a> Scene<'a> {
         let id = response.layer_id;
         self.ui.ctx().set_transform_layer(id, self.world_to_window);
         self.ui.ctx().set_sublayer(self.window_layer, id);
+
+        response
     }
 
-    pub fn edge<F>(&mut self, add_edge_contents: F)
+    pub fn edge<F>(&mut self, add_edge_contents: F) -> Response
     where
         F: for<'b> FnOnce(&'b mut Ui),
     {
@@ -196,5 +215,7 @@ impl<'a> Scene<'a> {
         let id = response.layer_id;
         self.ui.ctx().set_transform_layer(id, self.world_to_window);
         self.ui.ctx().set_sublayer(self.window_layer, id);
+
+        response
     }
 }

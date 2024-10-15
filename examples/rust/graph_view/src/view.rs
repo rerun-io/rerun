@@ -1,5 +1,5 @@
 use re_viewer::external::{
-    egui::{self, emath::TSTransform},
+    egui,
     re_entity_db::InstancePath,
     re_log::external::log,
     re_log_types::EntityPath,
@@ -14,7 +14,6 @@ use re_viewer::external::{
 };
 
 use crate::{
-    error::Error,
     graph::{Graph, NodeIndex},
     ui::{self, GraphSpaceViewState},
     visualizers::{EdgesDirectedVisualizer, EdgesUndirectedVisualizer, NodeVisualizer},
@@ -148,13 +147,9 @@ impl SpaceViewClass for GraphSpaceView {
                     .layout_provider
                     .compute(node_sizes.into_iter(), undirected, directed)?;
 
-            // if let Some(bounding_box) = ui::bounding_rect_from_iter(layout.values()) {
-            //     state
-            //         .viewer
-            //         .fit_to_screen(bounding_box.scale_from_center(1.05));
-            // }
-
             state.layout = Some(layout);
+
+            state.should_fit_to_screen = true;
 
             return Ok(());
         };
@@ -172,11 +167,13 @@ impl SpaceViewClass for GraphSpaceView {
                 let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
                 // We keep track of the size of the current entity.
-                // TODO: let mut entity_rect: Option<egui::Rect> = None;
+                let mut entity_rect: Option<egui::Rect> = None;
 
                 for node in data.nodes() {
                     let index = NodeIndex::from(&node);
-                    let current = layout.get(&index).unwrap();
+                    let current = layout
+                        .get(&index)
+                        .expect("missing layout information for node");
 
                     let response = scene.node(current.min, |ui| {
                         ui::draw_node(ui, &node, ent_highlight.index_highlight(node.instance))
@@ -189,118 +186,86 @@ impl SpaceViewClass for GraphSpaceView {
                     );
 
                     layout.insert(index, response.rect);
-                    // entity_rect =
-                    //     entity_rect.map_or(Some(response.rect), |e| Some(e.union(response.rect)));
+                    entity_rect =
+                        entity_rect.map_or(Some(response.rect), |e| Some(e.union(response.rect)));
+                }
+
+                // TODO(grtlr): handle interactions
+                let _response = entity_rect.map(|rect| {
+                    scene.entity(rect.min, |ui| {
+                        ui::draw_entity(ui, rect, &data.entity_path, &query.highlights)
+                    })
+                });
+            }
+
+            for dummy in graph.unknown_nodes() {
+                let index = NodeIndex::from(&dummy);
+                let current = layout
+                    .get(&index)
+                    .expect("missing layout information for dummy node");
+                let response = scene.node(current.min, |ui| ui::draw_dummy(ui, &dummy));
+                layout.insert(index, response.rect);
+            }
+
+            for data in undirected_system.data.iter() {
+                let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
+
+                for edge in data.edges() {
+                    let source_ix = NodeIndex::from(edge.source);
+                    let target_ix = NodeIndex::from(edge.target);
+                    let source_pos = layout
+                        .get(&source_ix)
+                        .expect("missing layout information for edge source node");
+                    let target_pos = layout
+                        .get(&target_ix)
+                        .expect("missing layout information for edge target node");
+
+                    let _response = scene.edge(|ui| {
+                        ui::draw_edge(
+                            ui,
+                            edge.color,
+                            source_pos,
+                            target_pos,
+                            ent_highlight.index_highlight(edge.instance),
+                            false,
+                        )
+                    });
+                }
+            }
+
+            // TODO(grtlr): consider reducing this duplication?
+            for data in directed_system.data.iter() {
+                let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
+
+                for edge in data.edges() {
+                    let source_ix = NodeIndex::from(edge.source);
+                    let target_ix = NodeIndex::from(edge.target);
+                    let source_pos = layout
+                        .get(&source_ix)
+                        .expect("missing layout information for edge source node");
+                    let target_pos = layout
+                        .get(&target_ix)
+                        .expect("missing layout information for edge target node");
+
+                    let _response = scene.edge(|ui| {
+                        ui::draw_edge(
+                            ui,
+                            edge.color,
+                            source_pos,
+                            target_pos,
+                            ent_highlight.index_highlight(edge.instance),
+                            true,
+                        )
+                    });
                 }
             }
         });
 
-        //     let entity_path = data.entity_path.clone();
-
-        //     if let Some(entity_rect) = entity_rect {
-        //         let entity_id = egui::LayerId::new(
-        //             egui::Order::Background,
-        //             id.with(("debug", entity_path.hash())),
-        //         );
-        //         ui.ctx().set_transform_layer(entity_id, world_to_window);
-        //         ui::draw_entity(
-        //             ui,
-        //             clip_rect_world,
-        //             entity_id,
-        //             entity_rect,
-        //             &entity_path,
-        //             &query.highlights,
-        //         );
-        //     }
-        // }
-
-        // for dummy in graph.unknown_nodes() {
-        //     let index = NodeIndex::from(&dummy);
-        //     let current_extent = layout
-        //         .get(&index)
-        //         .expect("missing layout information for dummy node");
-        //     let response = egui::Area::new(id.with(&index))
-        //         .current_pos(current_extent.min)
-        //         .order(egui::Order::Middle)
-        //         .constrain(false)
-        //         .show(ui.ctx(), |ui| {
-        //             ui.set_clip_rect(clip_rect_world);
-        //             ui::draw_dummy(ui, &dummy)
-        //         })
-        //         .response;
-
-        //     layout.insert(index, response.rect);
-
-        //     let id = response.layer_id;
-        //     ui.ctx().set_transform_layer(id, world_to_window);
-        //     ui.ctx().set_sublayer(window_layer, id);
-        // }
-
-        // for data in undirected_system.data.iter() {
-        //     let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
-
-        //     for edge in data.edges() {
-        //         let source_ix = NodeIndex::from(edge.source);
-        //         let target_ix = NodeIndex::from(edge.target);
-        //         let source_pos = layout.get(&source_ix).ok_or(Error::EdgeUnknownNode)?;
-        //         let target_pos = layout.get(&target_ix).ok_or(Error::EdgeUnknownNode)?;
-
-        //         let response = egui::Area::new(id.with((data.entity_path.hash(), edge.instance)))
-        //             .current_pos(source_pos.center())
-        //             .order(egui::Order::Background)
-        //             .constrain(false)
-        //             .show(ui.ctx(), |ui| {
-        //                 ui.set_clip_rect(world_to_window.inverse() * clip_rect_window);
-        //                 ui::draw_edge(
-        //                     ui,
-        //                     edge.color,
-        //                     source_pos,
-        //                     target_pos,
-        //                     ent_highlight.index_highlight(edge.instance),
-        //                     false,
-        //                 );
-        //             })
-        //             .response;
-
-        //         let id = response.layer_id;
-
-        //         ui.ctx().set_transform_layer(id, world_to_window);
-        //         ui.ctx().set_sublayer(window_layer, id);
-        //     }
-        // }
-
-        // for data in directed_system.data.iter() {
-        //     let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
-
-        //     for edge in data.edges() {
-        //         let source_ix = NodeIndex::from(edge.source);
-        //         let target_ix = NodeIndex::from(edge.target);
-        //         let source_pos = layout.get(&source_ix).ok_or(Error::EdgeUnknownNode)?;
-        //         let target_pos = layout.get(&target_ix).ok_or(Error::EdgeUnknownNode)?;
-
-        //         let response = egui::Area::new(id.with((data.entity_path.hash(), edge.instance)))
-        //             .current_pos(source_pos.center())
-        //             .order(egui::Order::Background)
-        //             .constrain(false)
-        //             .show(ui.ctx(), |ui| {
-        //                 ui.set_clip_rect(world_to_window.inverse() * clip_rect_window);
-        //                 ui::draw_edge(
-        //                     ui,
-        //                     edge.color,
-        //                     source_pos,
-        //                     target_pos,
-        //                     ent_highlight.index_highlight(edge.instance),
-        //                     true,
-        //                 );
-        //             })
-        //             .response;
-
-        //         let id = response.layer_id;
-
-        //         ui.ctx().set_transform_layer(id, world_to_window);
-        //         ui.ctx().set_sublayer(window_layer, id);
-        //     }
-        // }
+        // TODO(grtlr): consider improving this!
+        if state.should_fit_to_screen {
+            state.viewer.fit_to_screen();
+            state.should_fit_to_screen = false;
+        }
 
         Ok(())
     }

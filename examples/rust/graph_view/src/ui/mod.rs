@@ -29,17 +29,15 @@ pub fn draw_dummy(ui: &mut egui::Ui, instance: &UnknownNodeInstance) -> egui::Re
 
 pub fn draw_entity(
     ui: &mut egui::Ui,
-    clip_rect: egui::Rect,
-    layer_id: egui::LayerId,
     rect: egui::Rect,
     entity_path: &EntityPath,
     highlights: &SpaceViewHighlights,
-) {
-    let painter = egui::Painter::new(ui.ctx().clone(), layer_id, clip_rect);
+) -> egui::Response {
+    let (rect, response) = ui.allocate_at_least(rect.size(), egui::Sense::hover());
 
     let padded = rect.expand(10.0);
     let tc = ui.ctx().style().visuals.text_color();
-    painter.rect(
+    ui.painter().rect(
         padded,
         ui.style().visuals.window_rounding,
         egui::Color32::from_rgba_unmultiplied(tc.r(), tc.g(), tc.b(), 4),
@@ -52,7 +50,7 @@ pub fn draw_entity(
         .is_some()
     {
         // TODO(grtlr): text should be presented in window space.
-        painter.text(
+        ui.painter().text(
             padded.left_top(),
             egui::Align2::LEFT_BOTTOM,
             entity_path.to_string(),
@@ -60,6 +58,8 @@ pub fn draw_entity(
             ui.ctx().style().visuals.text_color(),
         );
     }
+
+    response
 }
 
 pub fn measure_node_sizes<'a>(
