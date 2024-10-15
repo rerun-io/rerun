@@ -3,8 +3,7 @@ title: Navigating the viewer
 order: 500
 ---
 
-This guide will familiarize you with the basics of using the Rerun Viewer with an example dataset. By the end you should
-be comfortable with the following topics:
+This guide will familiarize you with the basics of using the Rerun Viewer with an example dataset. By the end you should be comfortable with the following topics:
 
 -   [Launching the demo](#launching-the-demo)
 -   [The Viewer panels](#the-viewer-panels)
@@ -71,7 +70,7 @@ From there you can chose the "Structure from Motion" example. A window that look
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_car_open/b5fa19d6bee481142b01b253ff63eef4066e1c96/1200w.png">
 </picture>
 
-Depending on your display size, the panels may have a different arrangements. Further in this guide you will learn how could you change that.
+Depending on your display size, the panels may have a different arrangements. Further in this guide you will learn how you can change that.
 
 ## The Viewer panels
 
@@ -114,9 +113,7 @@ Let's explore an example of this hierarchy in our scene:
     while the remaining 2 correspond to a [pinhole projection](../reference/types/archetype/pinhole.md). The images are captures by the camera, and a pinhole projection defines the relationship between 2D and 3D space.
 -   Both the images and pinhole projection are hierarchically dependent on the camera's position, which is described by the `/camera` entity. This entity includes a series of transforms that together form a [Transform3D archetype](../reference/types/archetypes/transform3d.md).
 
-The complete hierarchy of logged entity streams and their related component streams could be found under `Streams` in the Timeline panel.
-You might also notice a hierarchical list of similar entities in the Blueprint panel. The key difference between these two panels
-is that Blueprint panel focuses on how the stream data is arranged in the Viewport. In other words, an entity might be logged once but displayed in multiple views.
+The complete hierarchy of logged entity streams and their related component streams could be found under `Streams` in the Timeline panel. You might also notice a hierarchical list of similar entities in the Blueprint panel. The key difference between these two panels is that Blueprint panel focuses on how the stream data is arranged in the Viewport. In other words, an entity might be logged once but displayed in multiple views.
 
 ### Hover and selection
 
