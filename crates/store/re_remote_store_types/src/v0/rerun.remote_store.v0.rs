@@ -272,6 +272,9 @@ pub struct QueryRequest {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryResponse {
+    /// TODO(zehiko) we need to expand this to become something like 'encoder options'
+    /// as we will need to specify additional options like compression, including schema
+    /// in payload, etc.
     #[prost(enumeration = "EncoderVersion", tag = "1")]
     pub encoder_version: i32,
     /// payload is raw bytes that the relevant codec can interpret
