@@ -5379,9 +5379,9 @@ dependencies = [
 
 [[package]]
 name = "re_rav1d"
-version = "0.1.3-alpha.1"
+version = "0.1.3-alpha.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "486358cb779f1af80c8560607ea7c833ef97561c967a793aafd28cef14a72112"
+checksum = "a161ea79d0f551ea217901dcff0a488932385893c7df15147022f0b53abed336"
 dependencies = [
  "assert_matches",
  "atomig",
