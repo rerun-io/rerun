@@ -331,7 +331,6 @@ impl FromPyObject<'_> for ComponentLike {
     }
 }
 
-// TODO(jleibs): Maybe this whole thing moves to the View/Recording
 #[pyclass(frozen, name = "Schema")]
 #[derive(Clone)]
 pub struct PySchema {
@@ -410,6 +409,22 @@ pub struct PyRecordingView {
 /// increasing when data is sent from a single process.
 #[pymethods]
 impl PyRecordingView {
+    fn schema(&self, py: Python<'_>) -> PySchema {
+        let borrowed = self.recording.borrow(py);
+        let engine = borrowed.engine();
+
+        let mut query_expression = self.query_expression.clone();
+        query_expression.selection = None;
+
+        let query_handle = engine.query(query_expression);
+
+        let contents = query_handle.view_contents();
+
+        PySchema {
+            schema: contents.to_vec(),
+        }
+    }
+
     #[pyo3(signature = (
         *args,
         columns = None

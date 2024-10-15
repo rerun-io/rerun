@@ -92,6 +92,10 @@ class RecordingView:
     increasing when data is sent from a single process.
     """
 
+    def schema(self) -> Schema:
+        """The schema of the view."""
+        ...
+
     def filter_range_sequence(self, start: int, end: int) -> RecordingView:
         """
         Filter the view to only include data between the given index sequence numbers.
