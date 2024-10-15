@@ -570,7 +570,7 @@ impl PyRecordingView {
         let column = column.into_selector();
 
         let mut query_expression = self.query_expression.clone();
-        query_expression.filtered_point_of_view = Some(column);
+        query_expression.filtered_is_not_null = Some(column);
 
         Self {
             recording: self.recording.clone(),
@@ -743,7 +743,7 @@ impl PyRecording {
             filtered_index_range: None,
             filtered_index_values: None,
             using_index_values: None,
-            filtered_point_of_view: None,
+            filtered_is_not_null: None,
             sparse_fill_strategy: SparseFillStrategy::None,
             selection: None,
         };

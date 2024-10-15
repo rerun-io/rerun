@@ -542,7 +542,7 @@ pub struct QueryExpression {
     /// Examples: `Some(Timeline("frame"))`, `None` (only static data).
     //
     // TODO(cmc): this has to be a selector otherwise this is a horrible UX.
-    pub filtered_index: Option<Timeline>,
+    pub filtered_index: Option<Index>,
 
     /// The range of index values used to filter out _rows_ from the view contents.
     ///
@@ -589,7 +589,7 @@ pub struct QueryExpression {
     /// Example: `ComponentColumnSelector("rerun.components.Position3D")`.
     //
     // TODO(cmc): multi-pov support
-    pub filtered_point_of_view: Option<ComponentColumnSelector>,
+    pub filtered_is_not_null: Option<ComponentColumnSelector>,
 
     /// Specifies how null values should be filled in the returned dataframe.
     ///
@@ -792,7 +792,7 @@ impl ChunkStore {
             filtered_index_range: _,
             filtered_index_values: _,
             using_index_values: _,
-            filtered_point_of_view: _,
+            filtered_is_not_null: _,
             sparse_fill_strategy: _,
             selection: _,
         } = query;
