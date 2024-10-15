@@ -42,6 +42,16 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     Ok(())
 }
 
+fn py_rerun_warn(msg: &str) -> PyResult<()> {
+    Python::with_gil(|py| {
+        let warning_type = PyModule::import_bound(py, "rerun")?
+            .getattr("error_utils")?
+            .getattr("RerunWarning")?;
+        PyErr::warn_bound(py, &warning_type, msg, 0)?;
+        Ok(())
+    })
+}
+
 /// Python binding for `IndexColumnDescriptor`
 #[pyclass(frozen, name = "IndexColumnDescriptor")]
 #[derive(Clone)]
@@ -512,6 +522,18 @@ impl PyRecordingView {
         query_expression.selection = Self::select_args(args, columns)?;
 
         let query_handle = engine.query(query_expression);
+
+        let available_data_columns = query_handle
+            .view_contents()
+            .iter()
+            .filter(|c| matches!(c, ColumnDescriptor::Component(_)))
+            .collect::<Vec<_>>();
+
+        if !available_data_columns.is_empty()
+            && available_data_columns.iter().all(|c| c.is_static())
+        {
+            py_rerun_warn("RecordingView::select: contents only include static columns. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
+        }
 
         let schema = query_handle.schema();
         let fields: Vec<arrow::datatypes::Field> =
