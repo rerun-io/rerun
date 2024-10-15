@@ -8,18 +8,68 @@ from .types import AnyColumn, ComponentLike, IndexValuesLike, ViewContentsLike
 class IndexColumnDescriptor:
     """A column containing the index values for when the component data was updated."""
 
+    def name(self) -> str:
+        """
+        The name of the index.
+
+        This property is read-only.
+        """
+        ...
+
 class IndexColumnSelector:
     """A selector for an index column."""
 
     def __init__(self, index: str): ...
+    def name(self) -> str:
+        """
+        The name of the index.
+
+        This property is read-only.
+        """
+        ...
 
 class ComponentColumnDescriptor:
     """A column containing the component data."""
+
+    @property
+    def entity_path(self) -> str:
+        """
+        The entity path.
+
+        This property is read-only.
+        """
+        ...
+
+    @property
+    def component_name(self) -> str:
+        """
+        The component name.
+
+        This property is read-only.
+        """
+        ...
 
 class ComponentColumnSelector:
     """A selector for a component column."""
 
     def __init__(self, entity_path: str, component: ComponentLike): ...
+    @property
+    def entity_path(self) -> str:
+        """
+        The entity path.
+
+        This property is read-only.
+        """
+        ...
+
+    @property
+    def component_name(self) -> str:
+        """
+        The component name.
+
+        This property is read-only.
+        """
+        ...
 
 class Schema:
     """The schema representing all columns in a [`Recording`][]."""

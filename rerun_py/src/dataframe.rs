@@ -52,6 +52,11 @@ impl PyIndexColumnDescriptor {
     fn __repr__(&self) -> String {
         format!("Index(timeline:{})", self.0.timeline.name())
     }
+
+    #[getter]
+    fn name(&self) -> &str {
+        self.0.timeline.name()
+    }
 }
 
 impl From<TimeColumnDescriptor> for PyIndexColumnDescriptor {
@@ -77,6 +82,11 @@ impl PyIndexColumnSelector {
 
     fn __repr__(&self) -> String {
         format!("Index(timeline:{})", self.0.timeline)
+    }
+
+    #[getter]
+    fn name(&self) -> &str {
+        &self.0.timeline
     }
 }
 
@@ -104,6 +114,16 @@ impl PyComponentColumnDescriptor {
 
     fn __eq__(&self, other: &Self) -> bool {
         self.0 == other.0
+    }
+
+    #[getter]
+    fn entity_path(&self) -> String {
+        self.0.entity_path.to_string()
+    }
+
+    #[getter]
+    fn component_name(&self) -> &str {
+        &self.0.component_name
     }
 }
 
@@ -134,6 +154,16 @@ impl PyComponentColumnSelector {
             "Component({}:{})",
             self.0.entity_path, self.0.component_name
         )
+    }
+
+    #[getter]
+    fn entity_path(&self) -> String {
+        self.0.entity_path.to_string()
+    }
+
+    #[getter]
+    fn component_name(&self) -> &str {
+        &self.0.component_name
     }
 }
 
