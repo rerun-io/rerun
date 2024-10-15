@@ -52,6 +52,7 @@ class TestDataframe:
         rr.log("points", rr.Points3D([[1, 2, 3], [4, 5, 6], [7, 8, 9]], radii=[]))
         rr.set_time_sequence("my_index", 7)
         rr.log("points", rr.Points3D([[10, 11, 12]], colors=[[255, 0, 0]]))
+        rr.log("static_text", rr.TextLog("Hello"), static=True)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             rrd = tmpdir + "/tmp.rrd"
@@ -100,23 +101,30 @@ class TestDataframe:
 
         # log_tick, log_time, my_index
         assert len(schema.index_columns()) == 3
-        # Color, Points3DIndicator, Position3D, Radius
-        assert len(schema.component_columns()) == 4
+        # Color, Points3DIndicator, Position3D, Radius, Text, TextIndicator
+        assert len(schema.component_columns()) == 6
 
         assert schema.index_columns()[0].name == "log_tick"
         assert schema.index_columns()[1].name == "log_time"
         assert schema.index_columns()[2].name == "my_index"
         assert schema.component_columns()[0].entity_path == "/points"
         assert schema.component_columns()[0].component_name == "rerun.components.Color"
+        assert schema.component_columns()[0].is_static is False
         assert schema.component_columns()[1].entity_path == "/points"
         assert schema.component_columns()[1].component_name == "rerun.components.Points3DIndicator"
+        assert schema.component_columns()[1].is_static is False
         assert schema.component_columns()[2].entity_path == "/points"
         assert schema.component_columns()[2].component_name == "rerun.components.Position3D"
+        assert schema.component_columns()[2].is_static is False
         assert schema.component_columns()[3].entity_path == "/points"
         assert schema.component_columns()[3].component_name == "rerun.components.Radius"
+        assert schema.component_columns()[3].is_static is False
+        assert schema.component_columns()[4].entity_path == "/static_text"
+        assert schema.component_columns()[4].component_name == "rerun.components.Text"
+        assert schema.component_columns()[4].is_static is True
 
     def test_schema_view(self) -> None:
-        schema = self.recording.view(index="my_index", contents="/**").schema()
+        schema = self.recording.view(index="my_index", contents="points").schema()
 
         assert len(schema.index_columns()) == 3
         # Position3D, Color
@@ -133,7 +141,7 @@ class TestDataframe:
         # Force radius to be included
         schema = self.recording.view(
             index="my_index",
-            contents="/**",
+            contents="points",
             include_semantically_empty_columns=True,
         ).schema()
 
@@ -148,7 +156,7 @@ class TestDataframe:
         batches = view.select()
         table = pa.Table.from_batches(batches, batches.schema)
 
-        # my_index, log_time, log_tick, points, colors
+        # my_index, log_time, log_tick, points, colors, text
         assert table.num_columns == 5
         assert table.num_rows == 2
 
