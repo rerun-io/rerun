@@ -151,14 +151,27 @@ class TestDataframe:
         assert schema.component_columns()[2].component_name == "rerun.components.Radius"
 
     def test_full_view(self) -> None:
-        view = self.recording.view(index="my_index", contents="points")
+        view = self.recording.view(index="my_index", contents="/**")
 
-        batches = view.select()
-        table = pa.Table.from_batches(batches, batches.schema)
+        table = view.select().read_all()
 
         # my_index, log_time, log_tick, points, colors, text
+        assert table.num_columns == 6
+        assert table.num_rows == 2
+
+        table = view.select(
+            columns=[col for col in view.schema() if not col.is_static],
+        ).read_all()
+
+        # my_index, log_time, log_tick, points, colors
         assert table.num_columns == 5
         assert table.num_rows == 2
+
+        table = view.select_static().read_all()
+
+        # text
+        assert table.num_columns == 1
+        assert table.num_rows == 1
 
     def test_select_columns(self) -> None:
         view = self.recording.view(index="my_index", contents="points")
