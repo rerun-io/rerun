@@ -122,6 +122,8 @@ pub fn new_decoder(
     debug_name: String,
     video: &crate::VideoData,
 ) -> Result<Box<dyn SyncDecoder + Send + 'static>> {
+    #![allow(unused_variables)] // With some feature flags
+
     re_log::trace!(
         "Looking for decoder for {}",
         video.human_readable_codec_string()
