@@ -9,6 +9,8 @@ pub use self::query::QueryHandle;
 #[doc(no_inline)]
 pub use self::external::arrow2::chunk::Chunk as ArrowChunk;
 #[doc(no_inline)]
+pub use self::external::re_chunk::TransportChunk;
+#[doc(no_inline)]
 pub use self::external::re_chunk_store::{
     ColumnSelector, ComponentColumnSelector, Index, IndexRange, IndexValue, JoinEncoding,
     QueryExpression, SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
