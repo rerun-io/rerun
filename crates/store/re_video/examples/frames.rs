@@ -13,8 +13,6 @@ use std::{
 use indicatif::ProgressBar;
 use parking_lot::Mutex;
 
-use re_video::{decode::SyncDecoder, VideoData};
-
 fn main() {
     // frames <video.mp4>
     let args: Vec<_> = std::env::args().collect();
@@ -36,7 +34,8 @@ fn main() {
         video.config.coded_height
     );
 
-    let mut decoder = re_video::decode::new_decoder(&video).expect("Failed to create decoder");
+    let mut decoder = re_video::decode::new_decoder(video_path.to_string(), &video)
+        .expect("Failed to create decoder");
 
     write_video_frames(&video, decoder.as_mut(), &output_dir);
 }
