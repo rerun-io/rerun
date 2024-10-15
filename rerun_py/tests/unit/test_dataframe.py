@@ -95,7 +95,7 @@ class TestDataframe:
         assert self.recording.application_id() == APP_ID
         assert self.recording.recording_id() == str(RECORDING_ID)
 
-    def test_schema(self) -> None:
+    def test_schema_recording(self) -> None:
         schema = self.recording.schema()
 
         assert len(schema.index_columns()) == 3
@@ -111,6 +111,21 @@ class TestDataframe:
         assert schema.component_columns()[1].component_name == "rerun.components.Points3DIndicator"
         assert schema.component_columns()[2].entity_path == "/points"
         assert schema.component_columns()[2].component_name == "rerun.components.Position3D"
+
+    def test_schema_view(self) -> None:
+        schema = self.recording.view(index="my_index", contents="/**").schema()
+
+        assert len(schema.index_columns()) == 3
+        # Position3D, Color
+        assert len(schema.component_columns()) == 2
+
+        assert schema.index_columns()[0].name == "log_tick"
+        assert schema.index_columns()[1].name == "log_time"
+        assert schema.index_columns()[2].name == "my_index"
+        assert schema.component_columns()[0].entity_path == "/points"
+        assert schema.component_columns()[0].component_name == "rerun.components.Color"
+        assert schema.component_columns()[1].entity_path == "/points"
+        assert schema.component_columns()[1].component_name == "rerun.components.Position3D"
 
     def test_full_view(self) -> None:
         view = self.recording.view(index="my_index", contents="points")
