@@ -352,6 +352,7 @@ impl SchemaIterator {
     fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
         slf
     }
+
     fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
         slf.iter.next()
     }
