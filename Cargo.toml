@@ -109,7 +109,7 @@ re_math = "0.20.0"
 # If this package fails to build, install `nasm` locally, or build through `pixi`.
 # NOTE: we use `dav1d` as an alias for our own re_rav1d crate
 # See https://github.com/rerun-io/re_rav1d/pull/2
-dav1d = { package = "re_rav1d", version = "0.1.1", default-features = false }
+dav1d = { package = "re_rav1d", version = "0.1.2", default-features = false }
 # dav1d = { version = "0.10.3" } # Requires separate install of `dav1d` library. Fast in debug builds. Useful for development.
 
 # egui-crates:
@@ -563,3 +563,5 @@ missing_errors_doc = "allow"
 # commit on `rerun-io/re_arrow2` `main` branch
 # https://github.com/rerun-io/re_arrow2/commit/e4717d6debc6d4474ec10db8f629f823f57bad07
 re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2", rev = "e4717d6debc6d4474ec10db8f629f823f57bad07" }
+
+# dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }
