@@ -5626,6 +5626,7 @@ name = "re_remote_store_types"
 version = "0.20.0-alpha.1+dev"
 dependencies = [
  "prost 0.13.3",
+ "re_arrow2",
  "re_dataframe",
  "re_log_types",
  "thiserror",
