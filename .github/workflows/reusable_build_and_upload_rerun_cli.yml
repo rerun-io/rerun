@@ -180,7 +180,7 @@ jobs:
             --locked \
             -p rerun-cli \
             --no-default-features \
-            --features native_viewer,web_viewer \
+            --features release \
             --release \
             --target ${{ needs.set-config.outputs.TARGET }}
 

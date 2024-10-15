@@ -65,7 +65,7 @@ jobs:
             --locked \
             -p rerun-cli \
             --no-default-features \
-            --features native_viewer,web_viewer \
+            --features release \
             --release \
             --target x86_64-unknown-linux-gnu
 
