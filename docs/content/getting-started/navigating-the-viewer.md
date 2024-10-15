@@ -6,10 +6,10 @@ order: 500
 This guide will familiarize you with the basics of using the Rerun Viewer with an example dataset. By the end you should
 be comfortable with the following topics:
 
-* [Launching the demo](#launching-the-demo)
-* [The Viewer panels](#the-viewer-panels)
-* [Exploring data](#exploring-data)
-* [Navigating the timeline](#navigating-the-timeline)
+-   [Launching the demo](#launching-the-demo)
+-   [The Viewer panels](#the-viewer-panels)
+-   [Exploring data](#exploring-data)
+-   [Navigating the timeline](#navigating-the-timeline)
 
 Here is a preview of the dataset that we will be working with:
 
@@ -54,103 +54,80 @@ like._
 
 This will bring you the Rerun viewer's Welcome screen:
 
-<picture>
-  <img src="https://static.rerun.io/welcome_screen/f3119e719c64d7c18e56ccd34e3ec0eff7039ef6/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/welcome_screen/f3119e719c64d7c18e56ccd34e3ec0eff7039ef6/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/welcome_screen/f3119e719c64d7c18e56ccd34e3ec0eff7039ef6/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/welcome_screen/f3119e719c64d7c18e56ccd34e3ec0eff7039ef6/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/welcome_screen/f3119e719c64d7c18e56ccd34e3ec0eff7039ef6/1200w.png">
+<img src="https://static.rerun.io/welcome-screen/91f9bb2beca6c88ec3bfcdbeb0377d9164457f48/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/welcome-screen/91f9bb2beca6c88ec3bfcdbeb0377d9164457f48/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/welcome-screen/91f9bb2beca6c88ec3bfcdbeb0377d9164457f48/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/welcome-screen/91f9bb2beca6c88ec3bfcdbeb0377d9164457f48/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/welcome-screen/91f9bb2beca6c88ec3bfcdbeb0377d9164457f48/1200w.png">
 </picture>
 
-Click on the "View Examples" button, and then chose the "Structure from Motion" example. A window that looks like this will appear:
+From there you can chose the "Structure from Motion" example. A window that looks like this will appear:
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough1_first_launch/793d828d867a8d341cd3ec35bc553f2d65fba549/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough1_first_launch/793d828d867a8d341cd3ec35bc553f2d65fba549/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough1_first_launch/793d828d867a8d341cd3ec35bc553f2d65fba549/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough1_first_launch/793d828d867a8d341cd3ec35bc553f2d65fba549/1200w.png">
-  <img src="https://static.rerun.io/viewer_walkthrough1_first_launch/793d828d867a8d341cd3ec35bc553f2d65fba549/full.png" alt="viewer walkthrough first launch screenshot">
+  <img src="https://static.rerun.io/viewer_walkthrough_car_open/b5fa19d6bee481142b01b253ff63eef4066e1c96/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_car_open/b5fa19d6bee481142b01b253ff63eef4066e1c96/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_car_open/b5fa19d6bee481142b01b253ff63eef4066e1c96/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_car_open/b5fa19d6bee481142b01b253ff63eef4066e1c96/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_car_open/b5fa19d6bee481142b01b253ff63eef4066e1c96/1200w.png">
 </picture>
 
-Depending on your display size, the panels may have a different arrangements. This does not yet look like the initial
-preview, but the remainder of this guide will walk you through how to configure the Viewer to meet your needs.
+Depending on your display size, the panels may have a different arrangements. Further in this guide you will learn how could you change that.
 
 ## The Viewer panels
 
-There are 4 main parts to this window:
+There are 5 main parts to this window:
 
 -   In the middle of the screen is the [Viewport](../reference/viewer/viewport.md). This is where you see the rendered
     space views for your session.
--   On the left is the [Blueprint](../reference/viewer/blueprint.md) panel. This is where the different space views can be
+-   On the left top is the [Recordings](../concepts/apps-and-recordings.md) panel. This is where you see the list of loaded
+    recordings, corresponding to their applications. You can also navigate back to the welcome screen from there.
+-   Under recordings there is the [Blueprint](../reference/viewer/blueprint.md) panel. This is where the different space views can be
     controlled.
 -   On the right is the [Selection](../reference/viewer/selection.md) panel. This is where you see extra information
     and configuration information for things that you have selected.
 -   On the bottom is the [Timeline](../reference/viewer/timeline.md) panel. This is where you can control the current
     point in time that is being viewed.
 
-Each of the 3 side panels has a corresponding button in the upper right corner. Try clicking each of these to hide and
+Each of the 3 sides has a corresponding button in the upper-right corner. Try clicking each of these to hide and
 show the corresponding panel.
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough2_toggle_panel/26cba988d81f960832801bcda2c7d233c2b34401/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough2_toggle_panel/26cba988d81f960832801bcda2c7d233c2b34401/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough2_toggle_panel/26cba988d81f960832801bcda2c7d233c2b34401/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough2_toggle_panel/26cba988d81f960832801bcda2c7d233c2b34401/1200w.png">
-  <img src="https://static.rerun.io/viewer_walkthrough2_toggle_panel/26cba988d81f960832801bcda2c7d233c2b34401/full.png" alt="viewer walkthrough toggle panel screenshots">
+  <img src="https://static.rerun.io/viewer_walkthrough_car_toggle_panels/438e5e3fd70da11d15426e1d33510c60e0128dc8/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_car_toggle_panels/438e5e3fd70da11d15426e1d33510c60e0128dc8/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_car_toggle_panels/438e5e3fd70da11d15426e1d33510c60e0128dc8/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_car_toggle_panels/438e5e3fd70da11d15426e1d33510c60e0128dc8/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_car_toggle_panels/438e5e3fd70da11d15426e1d33510c60e0128dc8/1200w.png">
 </picture>
 
-For now, leave the panels visible since we will use them through the remainder of this guide.
-
-It is also possible to re-arrange the individual space views. Try grabbing any of the named tabs, such as `image` and
-dragging it to different locations in the Viewport. You can also resize individual views by grabbing the edge of the
-view.
-
-<picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough3_rearrangeOD/ed7299b15ae5795d023d196a821e667a1a50591a/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough3_rearrangeOD/ed7299b15ae5795d023d196a821e667a1a50591a/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough3_rearrangeOD/ed7299b15ae5795d023d196a821e667a1a50591a/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough3_rearrangeOD/ed7299b15ae5795d023d196a821e667a1a50591a/1200w.png">
-  <img src="https://static.rerun.io/viewer_walkthrough3_rearrangeOD/ed7299b15ae5795d023d196a821e667a1a50591a/full.png" alt="viewer walkthrough rearrange panels screenshot">
-</picture>
-
-Feel free to move the views around until you are happy with the layout.
+There are several ways to rearrange the viewer layout to your liking: through the Viewer [user interface](configure-the-viewer/interactively.md),
+via [Blueprint API](configure-the-viewer/through-code-tutorial.md), or by [loading an .rbl file](configure-the-viewer/save-and-load.md).
 
 ## Exploring data
 
-The space views are where you can see the data that was actually logged. This scene has streams of data for 6 different
-primitives, also known as [entities](../concepts/entity-component.md):
+In Rerun, data is modeled using [entities](../concepts/entity-component.md) (essentially objects) that contain batches of [components](../reference/types/components.md)
+that change over time. Each entity is identified by an entity path, which uses a hierarchical syntax to represent relationships between entities.
+Let's explore an example of this hierarchy in our scene:
 
--   [images](../reference/types/archetypes/image.md) that were captured from a camera.
--   [2D keypoints](../reference/types/archetypes/points2d.md) that were detected and tracked in those images.
--   a [pinhole](../reference/types/archetypes/pinhole.md) camera model that describes the relationship between 2D and 3D space.
--   [3D points](../reference/types/archetypes/points3d.md) that were computed by the COLMAP slam pipeline.
--   A sequence of [transforms](../reference/types/archetypes/transform3d.md) describing the 3D location of the camera in space.
--   A [scalar](../reference/types/archetypes/scalar.md) error metric that was computed by the algorithm for each frame.
+-   `/camera/image/keypoints` is an entity stream that contains 3 component streams. One of these components indicates that together, they form a [Points2D archetype](../reference/types/archetypes/points2d.md),
+    representing point clouds that were detected and tracked in images.
+-   The images themselves are represented by the parent entity `/camera/image`. This entity consist of 6 components: 4 form an [Image archetype](../reference/types/archetypes/image.md),
+    while the remaining 2 correspond to a [pinhole projection](../reference/types/archetype/pinhole.md). The images are captures by the camera, and a pinhole projection defines the relationship between 2D and 3D space.
+-   Both the images and pinhole projection are hierarchically dependent on the camera's position, which is described by the `/camera` entity. This entity includes a series of transforms that together form a [Transform3D archetype](../reference/types/archetypes/transform3d.md).
+
+The complete hierarchy of logged entity streams and their related component streams could be found under `Streams` in the Timeline panel.
+You might also notice a hierarchical list of similar entities in the Blueprint panel. The key difference between these two panels
+is that Blueprint panel focuses on how the stream data is arranged in the Viewport. In other words, an entity might be logged once but displayed in multiple views.
 
 ### Hover and selection
 
-You can find out more about these entities by hovering over them in the different views. Hovering will bring up a
-context popup with additional information. You can also click on entities to select them and see more details in the
-[Selection panel](../reference/viewer/selection.md).
-
-<picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough4_hover/a22d892b0f00474aac948a3fce751a8cf559072d/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough4_hover/a22d892b0f00474aac948a3fce751a8cf559072d/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough4_hover/a22d892b0f00474aac948a3fce751a8cf559072d/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough4_hover/a22d892b0f00474aac948a3fce751a8cf559072d/1200w.png">
-  <img src="https://static.rerun.io/viewer_walkthrough4_hover/a22d892b0f00474aac948a3fce751a8cf559072d/full.png" alt="viewer walkthrough hover screenshot">
-</picture>
+You can easily identify the connections between the same entities across different panels through the visual highlights. Hovering over an entity will
+display a popup with additional information about its content. Clicking on it will reveal more details in the [Selection panel](../reference/viewer/selection.md).
 
 Try each of the following:
 
 -   Hover over the image to see a zoomed-in preview
 -   Click on the point cloud to select the whole cloud
 -   With the point cloud selected, hover and click individual points
-
-Note that the views are actually connected. As you hover over points in the `/ (Spatial)` view you will see information
-about the depth of the projection in the image view. Conversely as you hover over pixels in the `image` you will see the
-corresponding ray projected into the `/ (Spatial)` view. See the section on
-[Spaces and Transforms](../concepts/spaces-and-transforms.md) for more information on how this linking works.
 
 ### Rotate, zoom, and pan
 
@@ -160,11 +137,11 @@ double-clicking somewhere in the view. Every view has a "?" icon in the upper ri
 over this icon to find out more information about the specific view.
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough5_nav/7847244e2657a5555d90f4dd804e2650e4fde527/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough5_nav/7847244e2657a5555d90f4dd804e2650e4fde527/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough5_nav/7847244e2657a5555d90f4dd804e2650e4fde527/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough5_nav/7847244e2657a5555d90f4dd804e2650e4fde527/1200w.png">
-  <img src="https://static.rerun.io/viewer_walkthrough5_nav/7847244e2657a5555d90f4dd804e2650e4fde527/full.png" alt="viewer walkthrough rotate zoom and pan screenshot">
+  <img src="https://static.rerun.io/viewer_walkthrough_car_question/a215bd2234a0484ca5187e34d119bacc1ff260cb/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_car_question/a215bd2234a0484ca5187e34d119bacc1ff260cb/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_car_question/a215bd2234a0484ca5187e34d119bacc1ff260cb/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_car_question/a215bd2234a0484ca5187e34d119bacc1ff260cb/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_car_question/a215bd2234a0484ca5187e34d119bacc1ff260cb/1200w.png">
 </picture>
 
 Try each of the following:
@@ -176,24 +153,16 @@ Try each of the following:
 
 ## Navigating the timeline
 
-So far, we have only been exploring data from a single point in time. However, if you look at the Timeline panel at the
-bottom of the window, you will see a series of white dots. Each of those dots represents a piece of data that was logged
-at a different point in time. In fact, if you hover over the dot, the context popup will give you more information about
+If you look at the Timeline panel at the bottom of the window, you will see a series of white dots. Each of those dots
+represents a piece of data that was logged at a different point in time. In fact, if you hover over the dot, the context popup will give you more information about
 the specific thing that was logged.
 
-### Changing the time slider
+There are several ways to navigate through the timeline:
 
-To change the position on the timeline, simply grab the time indicator and pull it to the point in time you are
-interested in seeing. The space views will adjust accordingly. You can also use the play/pause/step/loop controls to
-playback the Rerun data as you might with a video file.
-
-<picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough6_timeline/9816d7becf19399735bef1f17f1d4bb928c278f7/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough6_timeline/9816d7becf19399735bef1f17f1d4bb928c278f7/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough6_timeline/9816d7becf19399735bef1f17f1d4bb928c278f7/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough6_timeline/9816d7becf19399735bef1f17f1d4bb928c278f7/1200w.png">
-  <img src="https://static.rerun.io/viewer_walkthrough6_timeline/9816d7becf19399735bef1f17f1d4bb928c278f7/full.png" alt="viewer walkthrough timeline screenshot">
-</picture>
+-   Move the time indicator by dragging it to a different point on the timeline.
+    For certain timelines, you can also click on the frame number and manually type the desired frame.
+-   Adjust the playback speed, and for some timelines, you can also modify the number of frames per second.
+-   Use the play, pause, step, and loop controls to playback Rerun data, similar to how you would with a video file.
 
 Try out the following:
 
@@ -244,7 +213,7 @@ Again, if you ran into any issues following this guide, please don't hesitate to
 
 ### Up next
 
-- [Get started](./quick-start) by writing a program to log data with the Rerun SDK.
-- Learn how to further [configure the viewer](./configure-the-viewer) to suit your data.
-- Explore other [examples of using Rerun](/examples).
-- Consult the [concept overview](../concepts.md) for more context on the ideas covered here.
+-   [Get started](./quick-start) by writing a program to log data with the Rerun SDK.
+-   Learn how to further [configure the viewer](./configure-the-viewer) to suit your data.
+-   Explore other [examples of using Rerun](/examples).
+-   Consult the [concept overview](../concepts.md) for more context on the ideas covered here.
