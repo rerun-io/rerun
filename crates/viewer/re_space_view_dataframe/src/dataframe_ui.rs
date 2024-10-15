@@ -49,7 +49,7 @@ pub(crate) fn dataframe_ui(
     // salt.
     let table_id_salt = egui::Id::new("__dataframe__")
         .with(&selected_columns)
-        .with(&query_handle.query().filtered_point_of_view);
+        .with(&query_handle.query().filtered_is_not_null);
 
     // For the row expansion cache, we invalidate more aggressively for now.
     let row_expansion_id_salt = egui::Id::new("__dataframe_row_exp__")
