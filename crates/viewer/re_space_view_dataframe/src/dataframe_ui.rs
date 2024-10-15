@@ -290,7 +290,21 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                             &re_ui::icons::VISIBLE,
                             CellStyle::Header,
                             |ui| {
-                                ui.strong(column.short_name());
+                                let text = egui::RichText::new(column.short_name()).strong();
+                                let response = ui.button(text);
+                                match column {
+                                    ColumnDescriptor::Time(_) => {
+                                        // TODO: handle clicking of time columns
+                                    }
+                                    ColumnDescriptor::Component(component_column_descriptor) => {
+                                        self.ctx.select_hovered_on_click(
+                                            &response,
+                                            re_viewer_context::Item::ComponentPath(
+                                                component_column_descriptor.component_path(),
+                                            ),
+                                        );
+                                    }
+                                }
                             },
                         );
 
