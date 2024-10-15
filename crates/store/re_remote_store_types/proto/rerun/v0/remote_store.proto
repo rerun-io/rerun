@@ -61,12 +61,18 @@ message QueryRequest {
     // unique identifier of the recording
     RecordingId recording_id = 1;
     // query to execute
-    Query query = 2;
+    Query query = 3;
 }
 
 message QueryResponse {
-    // single record batch (encoding TBD - TODO).
-    bytes record_batch = 1;
+    EncoderVersion encoder_version = 1;
+    // payload is raw bytes that the relevant codec can interpret
+    bytes payload = 2;
+}
+
+
+enum EncoderVersion {
+    V0 = 0;
 }
 
 
