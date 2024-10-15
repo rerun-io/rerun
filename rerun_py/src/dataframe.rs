@@ -125,6 +125,11 @@ impl PyComponentColumnDescriptor {
     fn component_name(&self) -> &str {
         &self.0.component_name
     }
+
+    #[getter]
+    fn is_static(&self) -> bool {
+        self.0.is_static
+    }
 }
 
 impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {

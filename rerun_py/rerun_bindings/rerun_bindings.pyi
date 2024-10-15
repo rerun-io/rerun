@@ -49,6 +49,15 @@ class ComponentColumnDescriptor:
         """
         ...
 
+    @property
+    def is_static(self) -> bool:
+        """
+        Whether the column is static.
+
+        This property is read-only.
+        """
+        ...
+
 class ComponentColumnSelector:
     """A selector for a component column."""
 
