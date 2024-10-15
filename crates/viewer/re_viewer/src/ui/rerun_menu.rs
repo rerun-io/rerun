@@ -114,6 +114,7 @@ impl App {
     fn about_rerun_ui(&self, frame: &eframe::Frame, ui: &mut egui::Ui) {
         let re_build_info::BuildInfo {
             crate_name,
+            features,
             version,
             rustc_version,
             llvm_version,
@@ -137,6 +138,10 @@ impl App {
             "{crate_name} {version} {git_hash_suffix}\n\
             {target_triple}"
         );
+
+        if !features.is_empty() {
+            label += &format!("\nFeatures: {features}");
+        }
 
         if !rustc_version.is_empty() {
             label += &format!("\nrustc {rustc_version}");

@@ -345,6 +345,7 @@ impl Properties for re_build_info::BuildInfo {
         let git_hash = self.git_hash_or_tag();
         let Self {
             crate_name: _,
+            features,
             version,
             rustc_version,
             llvm_version,
@@ -355,6 +356,7 @@ impl Properties for re_build_info::BuildInfo {
             datetime,
         } = self;
 
+        event.insert("features", features);
         event.insert("git_hash", git_hash);
         event.insert("rerun_version", version.to_string());
         event.insert("rust_version", rustc_version);
