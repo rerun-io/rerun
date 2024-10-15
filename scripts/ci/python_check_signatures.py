@@ -112,6 +112,11 @@ def load_runtime_signatures(module_name: str) -> TotalSignature:
                     class_def[method_name] = inspect.signature(method_obj)
                 except Exception:
                     pass
+            # Get property getters
+            for method_name, method_obj in inspect.getmembers(
+                obj, lambda o: o.__class__.__name__ == "getset_descriptor"
+            ):
+                class_def[method_name] = Signature(parameters=[Parameter("self", Parameter.POSITIONAL_ONLY)])
             signatures[name] = class_def
 
     return signatures
