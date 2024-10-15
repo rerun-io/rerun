@@ -108,3 +108,10 @@ impl ::re_types_core::Loggable for IncludedContent {
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 }
+
+impl ::re_types_core::AsComponents for IncludedContent {
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+        re_tracing::profile_function!();
+        vec![(self as &dyn ComponentBatch).into()]
+    }
+}

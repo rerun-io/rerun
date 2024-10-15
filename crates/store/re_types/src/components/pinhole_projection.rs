@@ -120,3 +120,10 @@ impl ::re_types_core::Loggable for PinholeProjection {
         crate::datatypes::Mat3x3::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
     }
 }
+
+impl ::re_types_core::AsComponents for PinholeProjection {
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+        re_tracing::profile_function!();
+        vec![(self as &dyn ComponentBatch).into()]
+    }
+}

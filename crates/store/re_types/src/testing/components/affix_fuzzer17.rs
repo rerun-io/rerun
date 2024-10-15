@@ -180,3 +180,10 @@ impl ::re_types_core::Loggable for AffixFuzzer17 {
         .with_context("rerun.testing.components.AffixFuzzer17")?)
     }
 }
+
+impl ::re_types_core::AsComponents for AffixFuzzer17 {
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+        re_tracing::profile_function!();
+        vec![(self as &dyn ComponentBatch).into()]
+    }
+}

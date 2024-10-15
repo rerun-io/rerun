@@ -209,3 +209,10 @@ impl ::re_types_core::Loggable for MarkerShape {
             .with_context("rerun.components.MarkerShape")?)
     }
 }
+
+impl ::re_types_core::AsComponents for MarkerShape {
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+        re_tracing::profile_function!();
+        vec![(self as &dyn ComponentBatch).into()]
+    }
+}

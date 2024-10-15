@@ -159,3 +159,10 @@ impl ::re_types_core::Loggable for MagnificationFilter {
             .with_context("rerun.components.MagnificationFilter")?)
     }
 }
+
+impl ::re_types_core::AsComponents for MagnificationFilter {
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+        re_tracing::profile_function!();
+        vec![(self as &dyn ComponentBatch).into()]
+    }
+}

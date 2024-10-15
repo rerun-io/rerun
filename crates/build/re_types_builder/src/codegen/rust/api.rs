@@ -989,6 +989,20 @@ fn quote_trait_impls_for_datatype_or_component(
         }
     };
 
+    let quoted_as_components_impl = if matches!(kind, ObjectKind::Component) {
+        quote! {
+            impl ::re_types_core::AsComponents for #name {
+                fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+                    re_tracing::profile_function!();
+
+                    vec![(self as &dyn ComponentBatch).into()]
+                }
+            }
+        }
+    } else {
+        quote!()
+    };
+
     quote! {
         ::re_types_core::macros::impl_into_cow!(#name);
 
@@ -1016,6 +1030,8 @@ fn quote_trait_impls_for_datatype_or_component(
 
             #quoted_from_arrow
         }
+
+        #quoted_as_components_impl
     }
 }
 

@@ -111,3 +111,10 @@ impl ::re_types_core::Loggable for IncludedSpaceView {
         crate::datatypes::Uuid::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
     }
 }
+
+impl ::re_types_core::AsComponents for IncludedSpaceView {
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+        re_tracing::profile_function!();
+        vec![(self as &dyn ComponentBatch).into()]
+    }
+}
