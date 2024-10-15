@@ -1,6 +1,6 @@
-use re_dataframe::external::re_chunk::TransportChunk;
-use re_log_types::external::arrow2::error::Error as ArrowError;
-use re_log_types::external::arrow2::io::ipc::{read, write};
+use arrow2::error::Error as ArrowError;
+use arrow2::io::ipc::{read, write};
+use re_dataframe::TransportChunk;
 
 use crate::v0::EncoderVersion;
 
@@ -152,7 +152,10 @@ pub fn decode(version: EncoderVersion, data: &[u8]) -> Result<Option<TransportCh
 
 #[cfg(test)]
 mod tests {
-    use re_dataframe::external::re_chunk::{Chunk, RowId, TransportChunk};
+    use re_dataframe::{
+        external::re_chunk::{Chunk, RowId},
+        TransportChunk,
+    };
     use re_log_types::{example_components::MyPoint, Timeline};
 
     use crate::{
