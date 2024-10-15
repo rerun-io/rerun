@@ -1,4 +1,4 @@
-//! Decodes an mp4 with AV1 in it to a folder of images.
+//! Decodes an mp4 to a folder of images.
 
 #![allow(clippy::unwrap_used)]
 
@@ -36,20 +36,9 @@ fn main() {
         video.config.coded_height
     );
 
-    let mut decoder = create_decoder(video_path, &video);
+    let mut decoder = re_video::decode::new_decoder(&video).expect("Failed to create decoder");
 
     write_video_frames(&video, decoder.as_mut(), &output_dir);
-}
-
-fn create_decoder(debug_name: &str, video: &VideoData) -> Box<dyn SyncDecoder> {
-    if video.config.is_av1() {
-        Box::new(
-            re_video::decode::av1::SyncDav1dDecoder::new(debug_name.to_owned())
-                .expect("Failed to start AV1 decoder"),
-        )
-    } else {
-        panic!("Unsupported codec: {}", video.human_readable_codec_string());
-    }
 }
 
 fn write_video_frames(

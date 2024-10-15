@@ -61,7 +61,6 @@ dav1d = { workspace = true, optional = true, default-features = false, features 
 
 [dev-dependencies]
 indicatif.workspace = true
-re_video = { workspace = true, features = ["av1"] } # For the `frames` example
 
 
 [[example]]

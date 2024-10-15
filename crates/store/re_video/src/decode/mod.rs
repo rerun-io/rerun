@@ -93,6 +93,9 @@ use crate::Time;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
+    #[error("Unsupported codec: {0}")]
+    UnsupportedCodec(String),
+
     #[cfg(feature = "av1")]
     #[cfg(not(target_arch = "wasm32"))]
     #[error("dav1d: {0}")]
@@ -112,6 +115,27 @@ pub trait SyncDecoder {
 
     /// Clear and reset everything
     fn reset(&mut self) {}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn new_decoder(
+    debug_name: String,
+    video: &crate::VideoData,
+) -> Result<Box<dyn SyncDecoder + Send + 'static>> {
+    re_log::trace!(
+        "Looking for decoder for {}",
+        video.human_readable_codec_string()
+    );
+
+    match &video.config.stsd.contents {
+        #[cfg(feature = "av1")]
+        re_mp4::StsdBoxContent::Av01(_av01_box) => {
+            re_log::trace!("Decoding AV1…");
+            Ok(Box::new(av1::SyncDav1dDecoder::new(debug_name)?))
+        }
+
+        _ => Err(Error::UnsupportedCodec(video.human_readable_codec_string())),
+    }
 }
 
 /// One chunk of encoded video data; usually one frame.
