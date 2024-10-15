@@ -6,22 +6,21 @@ edition.workspace = true
 homepage.workspace = true
 include.workspace = true
 license.workspace = true
+publish = true
+readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
-publish = true
-readme = "README.md"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [lints]
 workspace = true
+
 
 [package.metadata.docs.rs]
 all-features = false
 no-default-features = true
 features = ["all"]
+
 
 [features]
 default = ["av1"]
@@ -36,6 +35,7 @@ nasm = [
   # The default feature set of our dav1d fork has asm enabled (except on Linux, see above)
   "dav1d?/default",
 ]
+
 
 [dependencies]
 re_log.workspace = true
