@@ -65,6 +65,9 @@ message QueryRequest {
 }
 
 message QueryResponse {
+    // TODO(zehiko) we need to expand this to become something like 'encoder options'
+    // as we will need to specify additional options like compression, including schema
+    // in payload, etc.
     EncoderVersion encoder_version = 1;
     // payload is raw bytes that the relevant codec can interpret
     bytes payload = 2;

@@ -96,12 +96,12 @@ impl TransportMessageV0 {
             MessageHader::RECORD_BATCH => {
                 let metadata = read::read_stream_metadata(&mut reader)
                     .map_err(CodecError::ArrowSerialization)?;
-                let mut sr = read::StreamReader::new(&mut reader, metadata, None);
+                let mut stream = read::StreamReader::new(&mut reader, metadata, None);
 
-                let schema = sr.schema().clone();
+                let schema = stream.schema().clone();
                 // there should be at least one record batch in the stream
-                // TODO(zehiko) isn't there a "read one record batch from bytes" function??
-                let stream_state = sr
+                // TODO(zehiko) isn't there a "read one record batch from bytes" arrow2 function??
+                let stream_state = stream
                     .next()
                     .ok_or(CodecError::MissingRecordBatch)?
                     .map_err(CodecError::ArrowSerialization)?;
@@ -123,6 +123,9 @@ impl TransportMessageV0 {
     }
 }
 
+// TODO(zehiko) add support for separately encoding schema from the record batch to get rid of overhead
+// of sending schema in each transport message for the same stream of batches. This will require codec
+// to become stateful and keep track if schema was sent / received.
 /// Encode a transport chunk into a byte stream.
 pub fn encode(version: EncoderVersion, chunk: TransportChunk) -> Result<Vec<u8>, CodecError> {
     match version {
@@ -130,7 +133,8 @@ pub fn encode(version: EncoderVersion, chunk: TransportChunk) -> Result<Vec<u8>,
     }
 }
 
-/// Encode a `NoData` message into a byte stream.
+/// Encode a `NoData` message into a byte stream. This can be used by the remote store
+/// (i.e. data producer) to signal back to the client that there's no data available.
 pub fn no_data(version: EncoderVersion) -> Result<Vec<u8>, CodecError> {
     match version {
         EncoderVersion::V0 => TransportMessageV0::NoData.to_bytes(),
@@ -152,10 +156,7 @@ pub fn decode(version: EncoderVersion, data: &[u8]) -> Result<Option<TransportCh
 
 #[cfg(test)]
 mod tests {
-    use re_dataframe::{
-        external::re_chunk::{Chunk, RowId},
-        TransportChunk,
-    };
+    use re_dataframe::external::re_chunk::{Chunk, RowId};
     use re_log_types::{example_components::MyPoint, Timeline};
 
     use crate::{
@@ -163,7 +164,7 @@ mod tests {
         v0::EncoderVersion,
     };
 
-    fn get_test_chunk() -> TransportChunk {
+    fn get_test_chunk() -> Chunk {
         let row_id1 = RowId::new();
         let row_id2 = RowId::new();
 
@@ -179,13 +180,11 @@ mod tests {
         let points1 = &[MyPoint::new(1.0, 1.0)];
         let points2 = &[MyPoint::new(2.0, 2.0)];
 
-        let chunk = Chunk::builder("mypoints".into())
+        Chunk::builder("mypoints".into())
             .with_component_batches(row_id1, timepoint1, [points1 as _])
             .with_component_batches(row_id2, timepoint2, [points2 as _])
             .build()
-            .unwrap();
-
-        chunk.to_transport().unwrap()
+            .unwrap()
     }
 
     #[test]
@@ -198,19 +197,18 @@ mod tests {
 
     #[test]
     fn test_message_v0_record_batch() {
-        let transport = get_test_chunk();
-        let expected_chunk = Chunk::from_transport(&transport).unwrap();
+        let expected_chunk = get_test_chunk();
 
-        let msg = TransportMessageV0::RecordBatch(transport);
+        let msg = TransportMessageV0::RecordBatch(expected_chunk.clone().to_transport().unwrap());
         let data = msg.to_bytes().unwrap();
         let decoded = TransportMessageV0::from_bytes(&data).unwrap();
 
+        #[allow(clippy::match_wildcard_for_single_variants)]
         match decoded {
             TransportMessageV0::RecordBatch(transport) => {
                 let decoded_chunk = Chunk::from_transport(&transport).unwrap();
                 assert_eq!(expected_chunk, decoded_chunk);
             }
-            #[allow(clippy::match_wildcard_for_single_variants)]
             _ => panic!("unexpected message type"),
         }
     }
@@ -240,10 +238,13 @@ mod tests {
 
     #[test]
     fn test_v0_codec() {
-        let transport_chunk = get_test_chunk();
-        let expected_chunk = Chunk::from_transport(&transport_chunk).unwrap();
+        let expected_chunk = get_test_chunk();
 
-        let encoded = encode(EncoderVersion::V0, transport_chunk.clone()).unwrap();
+        let encoded = encode(
+            EncoderVersion::V0,
+            expected_chunk.clone().to_transport().unwrap(),
+        )
+        .unwrap();
         let decoded = decode(EncoderVersion::V0, &encoded).unwrap().unwrap();
         let decoded_chunk = Chunk::from_transport(&decoded).unwrap();
 
