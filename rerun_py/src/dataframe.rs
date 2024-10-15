@@ -758,15 +758,22 @@ impl PyRecording {
         }
     }
 
+    #[allow(clippy::fn_params_excessive_bools)]
     #[pyo3(signature = (
         *,
         index,
-        contents
+        contents,
+        include_semantically_empty_columns = false,
+        include_indicator_columns = false,
+        include_tombstone_columns = false,
     ))]
     fn view(
         slf: Bound<'_, Self>,
         index: &str,
         contents: Bound<'_, PyAny>,
+        include_semantically_empty_columns: bool,
+        include_indicator_columns: bool,
+        include_tombstone_columns: bool,
     ) -> PyResult<PyRecordingView> {
         let borrowed_self = slf.borrow();
 
@@ -781,9 +788,9 @@ impl PyRecording {
 
         let query = QueryExpression {
             view_contents: Some(contents),
-            include_semantically_empty_columns: false,
-            include_indicator_columns: false,
-            include_tombstone_columns: false,
+            include_semantically_empty_columns,
+            include_indicator_columns,
+            include_tombstone_columns,
             filtered_index: Some(timeline.timeline),
             filtered_index_range: None,
             filtered_index_values: None,
