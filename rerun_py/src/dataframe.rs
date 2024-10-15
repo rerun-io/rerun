@@ -57,6 +57,12 @@ impl PyIndexColumnDescriptor {
     fn name(&self) -> &str {
         self.0.timeline.name()
     }
+
+    #[allow(clippy::unused_self)]
+    #[getter]
+    fn is_static(&self) -> bool {
+        false
+    }
 }
 
 impl From<TimeColumnDescriptor> for PyIndexColumnDescriptor {
@@ -336,6 +342,21 @@ impl FromPyObject<'_> for ComponentLike {
     }
 }
 
+#[pyclass]
+pub struct SchemaIterator {
+    iter: std::vec::IntoIter<PyObject>,
+}
+
+#[pymethods]
+impl SchemaIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
+        slf.iter.next()
+    }
+}
+
 #[pyclass(frozen, name = "Schema")]
 #[derive(Clone)]
 pub struct PySchema {
@@ -344,6 +365,25 @@ pub struct PySchema {
 
 #[pymethods]
 impl PySchema {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<SchemaIterator>> {
+        let py = slf.py();
+        let iter = SchemaIterator {
+            iter: slf
+                .schema
+                .clone()
+                .into_iter()
+                .map(|col| match col {
+                    ColumnDescriptor::Time(col) => PyIndexColumnDescriptor(col).into_py(py),
+                    ColumnDescriptor::Component(col) => {
+                        PyComponentColumnDescriptor(col).into_py(py)
+                    }
+                })
+                .collect::<Vec<PyObject>>()
+                .into_iter(),
+        };
+        Py::new(slf.py(), iter)
+    }
+
     fn index_columns(&self) -> Vec<PyIndexColumnDescriptor> {
         self.schema
             .iter()

@@ -1,5 +1,5 @@
 import os
-from typing import Optional, Sequence
+from typing import Iterator, Optional, Sequence, Union
 
 import pyarrow as pa
 
@@ -14,6 +14,11 @@ class IndexColumnDescriptor:
 
         This property is read-only.
         """
+        ...
+
+    @property
+    def is_static(self) -> bool:
+        """ColumnDescriptor interface: always False for Index."""
         ...
 
 class IndexColumnSelector:
@@ -83,6 +88,7 @@ class ComponentColumnSelector:
 class Schema:
     """The schema representing all columns in a [`Recording`][]."""
 
+    def __iter__(self) -> Iterator[Union[IndexColumnDescriptor, ComponentColumnDescriptor]]: ...
     def index_columns(self) -> list[IndexColumnDescriptor]: ...
     def component_columns(self) -> list[ComponentColumnDescriptor]: ...
     def column_for(self, entity_path: str, component: ComponentLike) -> Optional[ComponentColumnDescriptor]: ...
