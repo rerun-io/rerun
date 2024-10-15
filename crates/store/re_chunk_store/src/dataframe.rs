@@ -62,6 +62,14 @@ impl ColumnDescriptor {
             Self::Component(descr) => descr.component_name.short_name().to_owned(),
         }
     }
+
+    #[inline]
+    pub fn is_static(&self) -> bool {
+        match self {
+            Self::Time(_) => false,
+            Self::Component(descr) => descr.is_static,
+        }
+    }
 }
 
 /// Describes a time column, such as `log_time`.

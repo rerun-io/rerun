@@ -402,6 +402,29 @@ pub struct PyRecordingView {
     query_expression: QueryExpression,
 }
 
+impl PyRecordingView {
+    fn select_args(
+        args: &Bound<'_, PyTuple>,
+        columns: Option<Vec<AnyColumn>>,
+    ) -> PyResult<Option<Vec<ColumnSelector>>> {
+        // Coerce the arguments into a list of `ColumnSelector`s
+        let args: Vec<AnyColumn> = args
+            .iter()
+            .map(|arg| arg.extract::<AnyColumn>())
+            .collect::<PyResult<_>>()?;
+
+        if columns.is_some() && !args.is_empty() {
+            return Err(PyValueError::new_err(
+                "Cannot specify both `columns` and `args` in `select`.",
+            ));
+        }
+
+        let columns = columns.or_else(|| if !args.is_empty() { Some(args) } else { None });
+
+        Ok(columns.map(|cols| cols.into_iter().map(|col| col.into_selector()).collect()))
+    }
+}
+
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
 ///
 /// Can only be created by calling `view(...)` on a `Recording`.
@@ -445,24 +468,78 @@ impl PyRecordingView {
 
         let mut query_expression = self.query_expression.clone();
 
-        // Coerce the arguments into a list of `ColumnSelector`s
-        let args: Vec<AnyColumn> = args
-            .iter()
-            .map(|arg| arg.extract::<AnyColumn>())
-            .collect::<PyResult<_>>()?;
-
-        if columns.is_some() && !args.is_empty() {
-            return Err(PyValueError::new_err(
-                "Cannot specify both `columns` and `args` in `select`.",
-            ));
-        }
-
-        let columns = columns.or_else(|| if !args.is_empty() { Some(args) } else { None });
-
-        query_expression.selection =
-            columns.map(|cols| cols.into_iter().map(|col| col.into_selector()).collect());
+        query_expression.selection = Self::select_args(args, columns)?;
 
         let query_handle = engine.query(query_expression);
+
+        let schema = query_handle.schema();
+        let fields: Vec<arrow::datatypes::Field> =
+            schema.fields.iter().map(|f| f.clone().into()).collect();
+        let metadata = schema.metadata.clone().into_iter().collect();
+        let schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
+
+        // TODO(jleibs): Need to keep the engine alive
+        /*
+        let reader = RecordBatchIterator::new(
+            query_handle
+                .into_batch_iter()
+                .map(|batch| batch.try_to_arrow_record_batch()),
+            std::sync::Arc::new(schema),
+        );
+        */
+        let batches = query_handle
+            .into_batch_iter()
+            .map(|batch| batch.try_to_arrow_record_batch())
+            .collect::<Vec<_>>();
+
+        let reader = RecordBatchIterator::new(batches.into_iter(), std::sync::Arc::new(schema));
+
+        Ok(PyArrowType(Box::new(reader)))
+    }
+
+    #[pyo3(signature = (
+        *args,
+        columns = None
+    ))]
+    fn select_static(
+        &self,
+        py: Python<'_>,
+        args: &Bound<'_, PyTuple>,
+        columns: Option<Vec<AnyColumn>>,
+    ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+        let borrowed = self.recording.borrow(py);
+        let engine = borrowed.engine();
+
+        let mut query_expression = self.query_expression.clone();
+
+        // This is a static selection, so we clear the filtered index
+        query_expression.filtered_index = None;
+
+        // If no columns provided, select all static columns
+        let static_columns = Self::select_args(args, columns)?.unwrap_or_else(|| {
+            self.schema(py)
+                .schema
+                .iter()
+                .filter(|col| col.is_static())
+                .map(|col| col.clone().into())
+                .collect()
+        });
+
+        query_expression.selection = Some(static_columns);
+
+        let query_handle = engine.query(query_expression);
+
+        let non_static_cols = query_handle
+            .selected_contents()
+            .iter()
+            .filter(|(_, col)| !col.is_static())
+            .collect::<Vec<_>>();
+
+        if !non_static_cols.is_empty() {
+            return Err(PyValueError::new_err(format!(
+                "Static selection resulted in non-static columns: {non_static_cols:?}",
+            )));
+        }
 
         let schema = query_handle.schema();
         let fields: Vec<arrow::datatypes::Field> =

@@ -170,6 +170,9 @@ class RecordingView:
         ...
 
     def select(self, *args: AnyColumn, columns: Optional[Sequence[AnyColumn]] = None) -> pa.RecordBatchReader: ...
+    def select_static(
+        self, *args: AnyColumn, columns: Optional[Sequence[AnyColumn]] = None
+    ) -> pa.RecordBatchReader: ...
 
 class Recording:
     """A single recording."""
