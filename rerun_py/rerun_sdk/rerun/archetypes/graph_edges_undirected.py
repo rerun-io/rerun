@@ -20,7 +20,7 @@ __all__ = ["GraphEdgesUndirected"]
 
 @define(str=False, repr=False, init=False)
 class GraphEdgesUndirected(Archetype):
-    """**Archetype**: A list of nodes in a graph with optional labels, colors, etc."""
+    """**Archetype**: A list of undirected edges in a graph with optional labels, colors, etc."""
 
     def __init__(
         self: Any,

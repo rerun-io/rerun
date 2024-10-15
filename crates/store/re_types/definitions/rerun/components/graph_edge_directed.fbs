@@ -2,7 +2,7 @@ namespace rerun.components;
 
 // ---
 
-/// An undirected edge in a graph connecting two nodes.
+/// A directed edge in a graph connecting two nodes.
 table GraphEdgeDirected (
   "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
   "attr.rust.repr": "transparent",

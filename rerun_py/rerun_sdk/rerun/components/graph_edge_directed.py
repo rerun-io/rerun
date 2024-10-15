@@ -15,7 +15,7 @@ __all__ = ["GraphEdgeDirected", "GraphEdgeDirectedBatch", "GraphEdgeDirectedType
 
 
 class GraphEdgeDirected(datatypes.GraphEdge, ComponentMixin):
-    """**Component**: An undirected edge in a graph connecting two nodes."""
+    """**Component**: A directed edge in a graph connecting two nodes."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of GraphEdgeDirectedExt in graph_edge_directed_ext.py

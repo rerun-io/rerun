@@ -2,7 +2,7 @@ namespace rerun.archetypes;
 
 // ---
 
-/// A list of nodes in a graph with optional labels, colors, etc.
+/// A list of undirected edges in a graph with optional labels, colors, etc.
 table GraphEdgesUndirected (
   "attr.rust.derive": "PartialEq, Eq",
   "attr.docs.category": "Graph",

@@ -14,8 +14,8 @@ This page lists all built-in archetypes.
 
 ## Graph
 
-* [`GraphEdgesDirected`](archetypes/graph_edges_directed.md): A list of nodes in a graph with optional labels, colors, etc.
-* [`GraphEdgesUndirected`](archetypes/graph_edges_undirected.md): A list of nodes in a graph with optional labels, colors, etc.
+* [`GraphEdgesDirected`](archetypes/graph_edges_directed.md): A list of directed edges in a graph with optional labels, colors, etc.
+* [`GraphEdgesUndirected`](archetypes/graph_edges_undirected.md): A list of undirected edges in a graph with optional labels, colors, etc.
 * [`GraphNodes`](archetypes/graph_nodes.md): A list of nodes in a graph with optional labels, colors, etc.
 
 ## Image & tensor
