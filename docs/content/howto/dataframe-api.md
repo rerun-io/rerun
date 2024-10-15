@@ -3,7 +3,7 @@ title: Get data out from Rerun with code
 order: 1600
 ---
 
-Rerun 0.19 added the Dataframe API to its SDK, with enables getting data out of Rerun from code. This page provides an overview of the API, as well as recipes to load the data in popular packages such as [Pandas](https://pandas.pydata.org), [Polars](https://pola.rs), and [DuckDB](https://duckdb.org).
+Rerun comes with a Dataframe API, which enables getting data out of Rerun from code. This page provides an overview of the API, as well as recipes to load the data in popular packages such as [Pandas](https://pandas.pydata.org), [Polars](https://pola.rs), and [DuckDB](https://duckdb.org).
 
 <!-- TODO(#7499): add links to the Python SDK documentation where appropriate -->
 
@@ -48,11 +48,15 @@ schema.component_columns()    # list of all component columns
 
 ### Creating a view
 
-The first step for getting data out of a recording is to create a view, which requires specifying an index column and some content to include.
+The first step for getting data out of a recording is to create a view, which requires specifying an index column and what content to include.
 
-As of Rerun 0.19, views must have exactly one index column, which can be any of the recording timelines. Each row of the view will correspond to a unique value of the index column. A `null` value is possible, and corresponds to data logged as static. In the future, it will be possible to have other kinds of column as index, and more than a single index column.
+As of Rerun 0.19, views must have exactly one index column, which can be any of the recording timelines.
+Each row of the view will correspond to a unique value of the index column.
+If a row has a `null` in the returned index (time) column, it means that data was static.
+In the future, it will be possible to have other kinds of column as index, and more than a single index column.
 
-The content defines which columns are included in the view and can be flexibly specified as entity expression, optionally providing a corresponding list of components.
+The `contents` define which columns are included in the view and can be flexibly specified as entity expression,
+optionally providing a corresponding list of components.
 
 These are all valid ways to specify view content:
 
@@ -94,6 +98,8 @@ This API exists for both temporal and sequence timeline, and for various units:
 - `view.filter_range_seconds(stat_second, end_second)` (takes `float` arguments)
 - `view.filter_range_nanos(start_nano, end_nano)` (takes `int` arguments)
 
+(all ranges are including both start and end values)
+
 **Filtering by index value**
 
 Rows may be filtered to keep only those whose index corresponds to a specific set of value:
@@ -102,7 +108,9 @@ Rows may be filtered to keep only those whose index corresponds to a specific se
 view = view.filter_index_values([0, 5, 10])
 ```
 
-Note that a precise match is required. Since Rerun internally stores times as `int64`, this API is only available for integer arguments (nanos or sequence number). Floating point seconds would risk false mismatch due to numerical conversion.
+Note that a precise match is required.
+Since Rerun internally stores times as `int64`, this method is only available for integer arguments (nanos or sequence number).
+Floating point seconds would risk false mismatch due to numerical conversion.
 
 
 **Filtering by column not null**
@@ -123,14 +131,17 @@ Instead of filtering rows based on the existing data, it is possible to specify 
 view = view.using_index_values(range(0, 1_000_000, 1_000_0000_000))
 ```
 
-In this case, the view will return rows in multiples of 1e6 nanoseconds (i.e. for each millisecond) over a period of one second. A precise match on the index value is required for data to be produced on the row. For this reason, a floating point second API is again not provided for this feature.
+In this case, the view will return rows in multiples of 1e6 nanoseconds (i.e. for each millisecond) over a period of one second.
+A precise match on the index value is required for data to be produced on the row.
+For this reason, a floating point version of this method is not provided for this feature.
 
 Note that this feature is typically used in conjunction with `fill_latest_at()` (see next paragraph) to enable arbitrary resampling of the original data.
 
 
 ### Filling empty values with latest-at data
 
-By default, the rows returned by the view may be sparse and contain values only for the columns where a logging event actually occurred at the corresponding index value. The view can optionally replace these empty cells using a latest-at query. This means that, for each such empty cell, the view traces back to find the last logged value and uses it instead. This is enabled by calling the `fill_latest_at()` method:
+By default, the rows returned by the view may be sparse and contain values only for the columns where a logging event actually occurred at the corresponding index value.
+The view can optionally replace these empty cells using a latest-at query. This means that, for each such empty cell, the view traces back to find the last logged value and uses it instead. This is enabled by calling the `fill_latest_at()` method:
 
 ```python
 view = view.fill_latest_at()
@@ -156,7 +167,7 @@ record_batches = view.select(
 
 The `select()` method returns a [`pyarrow.RecordBatchReader`](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html), which is essentially an iterator over a stream of [`pyarrow.RecordBatch`](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatch.html#pyarrow-recordbatch)es containing the actual data. See the [PyArrow documentation](https://arrow.apache.org/docs/python/index.html) for more information.
 
-In the rest of this page, we explore how these `RecordBatch`es can be ingested in some of the popular data science packages.
+For the rest of this page, we explore how these `RecordBatch`es can be ingested in some of the popular data science packages.
 
 
 ## Load data to a PyArrow `Table`
