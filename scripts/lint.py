@@ -974,19 +974,19 @@ class SourceFile:
         self.content = "".join(self.lines)
 
         # gather lines with a `NOLINT` marker
-        self.no_lints = set()
-        is_in_no_lint_block = False
+        self.nolints = set()
+        is_in_nolint_block = False
         for i, line in enumerate(self.lines):
             if "NOLINT" in line:
-                self.no_lints.add(i)
+                self.nolints.add(i)
 
             if "NOLINT_START" in line:
-                is_in_no_lint_block = True
+                is_in_nolint_block = True
 
-            if is_in_no_lint_block:
-                self.no_lints.add(i)
+            if is_in_nolint_block:
+                self.nolints.add(i)
                 if "NOLINT_END" in line:
-                    is_in_no_lint_block = False
+                    is_in_nolint_block = False
 
     def rewrite(self, new_lines: list[str]) -> None:
         """Rewrite the contents of the file."""
@@ -1006,7 +1006,7 @@ class SourceFile:
 
         if to_line is None:
             to_line = from_line
-        return any(i in self.no_lints for i in range(from_line - 1, to_line + 1))
+        return any(i in self.nolints for i in range(from_line - 1, to_line + 1))
 
     def should_ignore_index(self, start_idx: int, end_idx: int | None = None) -> bool:
         """Same as `should_ignore` but takes 0-based indices instead of line numbers."""
