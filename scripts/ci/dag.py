@@ -162,6 +162,8 @@ class _State(Generic[_T]):
 
         self._queue.extend(state.node for state in self._node_states.values() if state.pending_dependencies == 0)
 
+        assert len(self._node_states) == 0 or 0 < len(self._queue), "No sources in DAG - we have a cyclic dependency!"
+
     def _get_or_insert(self, node: _T) -> _NodeState[_T]:
         if node not in self._node_states:
             self._node_states[node] = _NodeState(node)
