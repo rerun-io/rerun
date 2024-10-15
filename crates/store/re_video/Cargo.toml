@@ -30,9 +30,8 @@ av1 = ["dep:dav1d"]
 
 ## Enable faster native video decoding with assembly.
 ## You need to install [nasm](https://nasm.us/) to compile with this feature.
-# TODO(#7671): this feature flag currently does nothing on Linux.
 nasm = [
-  # The default feature set of our dav1d fork has asm enabled (except on Linux, see above)
+  # The default feature set of our dav1d fork has asm enabled
   "dav1d?/default",
 ]
 

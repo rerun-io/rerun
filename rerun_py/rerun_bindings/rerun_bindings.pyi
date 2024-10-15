@@ -43,15 +43,27 @@ class RecordingView:
     """
 
     def filter_range_sequence(self, start: int, end: int) -> RecordingView:
-        """Filter the view to only include data between the given index sequence numbers."""
+        """
+        Filter the view to only include data between the given index sequence numbers.
+
+        This is including both the value at the start and the value at the end.
+        """
         ...
 
     def filter_range_seconds(self, start: float, end: float) -> RecordingView:
-        """Filter the view to only include data between the given index time values."""
+        """
+        Filter the view to only include data between the given index time values.
+
+        This is including both the value at the start and the value at the end.
+        """
         ...
 
     def filter_range_nanos(self, start: int, end: int) -> RecordingView:
-        """Filter the view to only include data between the given index time values."""
+        """
+        Filter the view to only include data between the given index time values.
+
+        This is including both the value at the start and the value at the end.
+        """
         ...
 
     def filter_index_values(self, values: IndexValuesLike) -> RecordingView:

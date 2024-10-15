@@ -49,7 +49,7 @@ pub(crate) fn dataframe_ui(
     // salt.
     let table_id_salt = egui::Id::new("__dataframe__")
         .with(&selected_columns)
-        .with(&query_handle.query().filtered_point_of_view);
+        .with(&query_handle.query().filtered_is_not_null);
 
     // For the row expansion cache, we invalidate more aggressively for now.
     let row_expansion_id_salt = egui::Id::new("__dataframe_row_exp__")
@@ -250,9 +250,13 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                         // … but not so far to the right that it doesn't fit.
                         pos.x = pos.x.at_most(ui.max_rect().right() - galley.size().x);
 
-                        ui.put(
+                        let response = ui.put(
                             egui::Rect::from_min_size(pos, galley.size()),
-                            egui::Label::new(galley),
+                            egui::Button::new(galley),
+                        );
+                        self.ctx.select_hovered_on_click(
+                            &response,
+                            re_viewer_context::Item::from(entity_path.clone()),
                         );
                     }
                 } else if cell.row_nr == 1 {

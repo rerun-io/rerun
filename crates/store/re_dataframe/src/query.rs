@@ -445,11 +445,7 @@ impl QueryHandle<'_> {
         query: &RangeQuery,
         view_contents: &[ColumnDescriptor],
     ) -> (Option<usize>, Vec<Vec<(AtomicU64, Chunk)>>) {
-        let mut view_pov_chunks_idx = self
-            .query
-            .filtered_point_of_view
-            .as_ref()
-            .map(|_| usize::MAX);
+        let mut view_pov_chunks_idx = self.query.filtered_is_not_null.as_ref().map(|_| usize::MAX);
 
         let view_chunks = view_contents
             .iter()
@@ -462,7 +458,7 @@ impl QueryHandle<'_> {
                         .fetch_chunks(query, &column.entity_path, [column.component_name])
                         .unwrap_or_default();
 
-                    if let Some(pov) = self.query.filtered_point_of_view.as_ref() {
+                    if let Some(pov) = self.query.filtered_is_not_null.as_ref() {
                         if pov.entity_path == column.entity_path
                             && column.component_name.matches(&pov.component_name)
                         {
@@ -1196,7 +1192,7 @@ mod tests {
     // * [x] filtered_index_values
     // * [x] view_contents
     // * [x] selection
-    // * [x] filtered_point_of_view
+    // * [x] filtered_is_not_null
     // * [x] sparse_fill_strategy
     // * [x] using_index_values
     //
@@ -1551,7 +1547,7 @@ mod tests {
     }
 
     #[test]
-    fn filtered_point_of_view() -> anyhow::Result<()> {
+    fn filtered_is_not_null() -> anyhow::Result<()> {
         re_log::setup_logging();
 
         let store = create_nasty_store()?;
@@ -1569,7 +1565,7 @@ mod tests {
         {
             let query = QueryExpression {
                 filtered_index,
-                filtered_point_of_view: Some(ComponentColumnSelector {
+                filtered_is_not_null: Some(ComponentColumnSelector {
                     entity_path: "no/such/entity".into(),
                     component_name: MyPoint::name().to_string(),
                 }),
@@ -1598,7 +1594,7 @@ mod tests {
         {
             let query = QueryExpression {
                 filtered_index,
-                filtered_point_of_view: Some(ComponentColumnSelector {
+                filtered_is_not_null: Some(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
                     component_name: "AComponentColumnThatDoesntExist".into(),
                 }),
@@ -1627,7 +1623,7 @@ mod tests {
         {
             let query = QueryExpression {
                 filtered_index,
-                filtered_point_of_view: Some(ComponentColumnSelector {
+                filtered_is_not_null: Some(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
                     component_name: MyPoint::name().to_string(),
                 }),
@@ -1666,7 +1662,7 @@ mod tests {
         {
             let query = QueryExpression {
                 filtered_index,
-                filtered_point_of_view: Some(ComponentColumnSelector {
+                filtered_is_not_null: Some(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
                     component_name: MyColor::name().to_string(),
                 }),
@@ -2180,7 +2176,7 @@ mod tests {
         {
             let query = QueryExpression {
                 filtered_index,
-                filtered_point_of_view: Some(ComponentColumnSelector {
+                filtered_is_not_null: Some(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
                     component_name: MyPoint::name().to_string(),
                 }),
