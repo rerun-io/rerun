@@ -87,10 +87,10 @@ namespace rerun::archetypes {
     ///
     ///     // Simple gradient image
     ///     std::vector<uint8_t> image(256 * 256 * 3);
-    ///     for (int y = 0; y <256; ++y) {
-    ///         for (int x = 0; x <256; ++x) {
+    ///     for (size_t y = 0; y <256; ++y) {
+    ///         for (size_t x = 0; x <256; ++x) {
     ///             image[(y * 256 + x) * 3 + 0] = static_cast<uint8_t>(x);
-    ///             image[(y * 256 + x) * 3 + 1] = static_cast<uint8_t>(std::min(255, x + y));
+    ///             image[(y * 256 + x) * 3 + 1] = static_cast<uint8_t>(std::min<size_t>(255, x + y));
     ///             image[(y * 256 + x) * 3 + 2] = static_cast<uint8_t>(y);
     ///         }
     ///     }
