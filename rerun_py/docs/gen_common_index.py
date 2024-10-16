@@ -378,8 +378,8 @@ def is_mentioned(thing: str) -> bool:
 
 
 # Virtual folder where we will generate the md files
-root = Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
-bindings = Path(__file__).parent.parent.joinpath("rerun_bindings").resolve()
+rerun_py_root = Path(__file__).parent.parent.resolve()
+sdk_root = Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
 common_dir = Path("common")
 
 # Make sure all archetypes are included in the index:
@@ -391,12 +391,14 @@ for archetype in all_archetypes():
 # This is what mkdocstrings uses under the hood
 search_paths = [path for path in sys.path if path]  # eliminate empty path
 
-search_paths.insert(0, bindings.as_posix())
-search_paths.insert(0, root.as_posix())
+# This is where maturin puts rerun_bindings
+search_paths.insert(0, rerun_py_root.as_posix())
+# This is where the rerun package is
+search_paths.insert(0, sdk_root.as_posix())
 
-loader = griffe.GriffeLoader(search_paths=search_paths, allow_inspection=True)
+loader = griffe.GriffeLoader(search_paths=search_paths)
 
-bindings_pkg = loader.load("rerun_bindings")
+bindings_pkg = loader.load("rerun_bindings", find_stubs_package=True)
 rerun_pkg = loader.load("rerun")
 
 # Create the nav for this section

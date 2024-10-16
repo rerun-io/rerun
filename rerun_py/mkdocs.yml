@@ -22,7 +22,7 @@ plugins:
       custom_templates: docs/templates # Override the function template.
       handlers:
         python:
-          paths: ["rerun_sdk", "rerun_bindings"] # Lookup python modules relative to this path
+          paths: ["rerun_sdk", "."] # Lookup python modules relative to this path
           import: # Cross-references for python and numpy
             - https://arrow.apache.org/docs/objects.inv
             - https://docs.python.org/3/objects.inv
