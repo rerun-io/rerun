@@ -302,6 +302,25 @@ SECTION_TABLE: Final[list[Section]] = [
     ################################################################################
     # Remaining sections
     Section(
+        title="Dataframe",
+        mod_path="rerun.dataframe",
+        func_list=[
+            "load_archive",
+            "load_recording",
+        ],
+        class_list=[
+            "ComponentColumnDescriptor",
+            "ComponentColumnSelector",
+            "IndexColumnDescriptor",
+            "IndexColumnSelector",
+            "Recording",
+            "RecordingView",
+            "RRDArchive",
+            "Schema",
+        ],
+        show_tables=True,
+    ),
+    Section(
         title="Script Helpers",
         func_list=[
             "script_add_args",
@@ -360,6 +379,7 @@ def is_mentioned(thing: str) -> bool:
 
 # Virtual folder where we will generate the md files
 root = Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
+bindings = Path(__file__).parent.parent.joinpath("rerun_bindings").resolve()
 common_dir = Path("common")
 
 # Make sure all archetypes are included in the index:
@@ -370,8 +390,14 @@ for archetype in all_archetypes():
 # Lots of other potentially interesting stuff we could pull out in the future
 # This is what mkdocstrings uses under the hood
 search_paths = [path for path in sys.path if path]  # eliminate empty path
+
+search_paths.insert(0, bindings.as_posix())
 search_paths.insert(0, root.as_posix())
-rerun_pkg = griffe.load("rerun", search_paths=search_paths)
+
+loader = griffe.GriffeLoader(search_paths=search_paths, allow_inspection=True)
+
+bindings_pkg = loader.load("rerun_bindings")
+rerun_pkg = loader.load("rerun")
 
 # Create the nav for this section
 nav = mkdocs_gen_files.Nav()
@@ -446,6 +472,9 @@ overview of what's possible and how.
                 index_file.write("Function | Description\n")
                 index_file.write("-------- | -----------\n")
                 for func_name in section.func_list:
+                    if section.mod_path != "rerun":
+                        mod_tail = section.mod_path.split(".")[1:]
+                        func_name = ".".join(mod_tail + [func_name])
                     func = rerun_pkg[func_name]
                     index_file.write(f"[`rerun.{func_name}()`][rerun.{func_name}] | {func.docstring.lines[0]}\n")
             if section.class_list:
