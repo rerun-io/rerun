@@ -110,7 +110,7 @@ Let's explore an example of this hierarchy in our scene:
 
 The hierarchy of logged entity streams and their component streams is found under `Streams` in the Timeline panel. A similar list appears in the `Blueprint` panel, but the key difference is that the Blueprint panel focuses on how data is arranged and visualized in the Viewport, while the Streams panel shows when and what events were logged. In other words, an entity may be logged once but displayed in multiple views.
 
-Visualizations can also be customized per view using [Overrides](../concepts/visualizers-and-overrides.md\) in the Selection panel. In the screenshot below, the same entity `keypoints` is shown in different colors.
+Visualizations can also be customized per view using [Overrides](../concepts/visualizers-and-overrides.md) in the Selection panel. In the screenshot below, the same entity `keypoints` is shown in different colors.
 
 <picture>
   <img src="https://static.rerun.io/viewer_walkthrough_overrides/ae0bd0d0f32296d33d60830d2920f18dadd3e076/full.png" alt="">
