@@ -3,7 +3,7 @@ title = "InstantSplat"
 tags = ["2D", "3D", "HuggingFace", "Pinhole camera", "Point cloud"]
 source = "https://github.com/pablovela5620/InstantSplat"
 thumbnail = "https://static.rerun.io/final_instantsplat/e488f427179b0f439e60b6a0c29440fc836860dd/480w.png"
-thumbnail_dimensions = [480, 268]
+thumbnail_dimensions = [480, 275]
 -->
 
 
