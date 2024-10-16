@@ -8,7 +8,8 @@ In the [previous section](explore-as-dataframe.md), we explored some face tracki
 
 ## Load the recording
 
-The dataframe SDK loads data from an .RRD file. The first step is thus to save the recording the viewer as RRD, which can be done from the Rerun menu:
+The dataframe SDK loads data from an .RRD file.
+The first step is thus to save the recording as RRD, which can be done from the Rerun menu:
 
 <picture style="zoom: 0.5">
   <img src="https://static.rerun.io/save_recording/ece0f887428b1800a305a3e30faeb57fa3d77cd8/full.png" alt="">
