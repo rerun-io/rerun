@@ -50,7 +50,6 @@ None this time!
 - Update ndarray to 0.16  and ndarray-rand to 0.15 [#7358](https://github.com/rerun-io/rerun/pull/7358) (thanks [@benliepert](https://github.com/benliepert)!)
 - Replace `host_web_viewer` method with `WebViewerConfig::host_web_viewer` [#7553](https://github.com/rerun-io/rerun/pull/7553)
 - Update MSRV to Rust 1.79 [#7563](https://github.com/rerun-io/rerun/pull/7563)
-- Implement `From<ShowLabels>` for `bool` [#7686](https://github.com/rerun-io/rerun/pull/7686) (thanks [@grtlr](https://github.com/grtlr)!)
 
 #### 🪳 Bug fixes
 - Purge the query cache to prevent GC livelocks [#7370](https://github.com/rerun-io/rerun/pull/7370)
