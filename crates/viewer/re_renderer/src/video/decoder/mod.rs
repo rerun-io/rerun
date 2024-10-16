@@ -128,26 +128,26 @@ impl VideoDecoder {
 
         cfg_if::cfg_if! {
             if #[cfg(target_arch = "wasm32")] {
+                // Web
                 let decoder = web::WebVideoDecoder::new(data.clone(), hw_acceleration)?;
                 return Ok(Self::from_chunk_decoder(render_ctx, data, decoder));
             } else {
-                // Native AV1 video decoding:
-
-                if !data.config.is_av1() {
-                    return Err(DecodingError::UnsupportedCodec {
-                        codec: data.human_readable_codec_string(),
-                    });
+                // Native
+                match re_video::decode::new_decoder(debug_name.clone(), &data) {
+                    Ok(sync_decoder) => {
+                        let decoder = native_decoder::NativeDecoder::new(debug_name, sync_decoder)?;
+                        return Ok(Self::from_chunk_decoder(render_ctx, data, decoder));
+                    }
+                    Err(re_video::decode::Error::NoNativeAv1Debug) => {
+                        return Err(DecodingError::NoNativeAv1Debug);
+                    }
+                    Err(re_video::decode::Error::UnsupportedCodec(codec)) => {
+                        return Err(DecodingError::UnsupportedCodec { codec });
+                    }
+                    Err(err) => {
+                        return Err(DecodingError::DecoderSetupFailure(err.to_string()));
+                    }
                 }
-
-                if cfg!(debug_assertions) {
-                    return Err(DecodingError::NoNativeDebug); // because debug builds of rav1d are EXTREMELY slow
-                } else {
-                    let av1_decoder = re_video::decode::av1::SyncDav1dDecoder::new(debug_name.clone())
-                        .map_err(|err| DecodingError::StartDecoder(err.to_string()))?;
-
-                    let decoder = native_decoder::NativeDecoder::new(debug_name, Box::new(av1_decoder))?;
-                    return Ok(Self::from_chunk_decoder(render_ctx, data, decoder));
-                };
             }
         }
     }
