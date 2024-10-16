@@ -78,7 +78,6 @@
 //!
 
 #[cfg(with_dav1d)]
-#[cfg(not(target_arch = "wasm32"))]
 pub mod av1;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -97,12 +96,10 @@ pub enum Error {
     UnsupportedCodec(String),
 
     #[cfg(with_dav1d)]
-    #[cfg(not(target_arch = "wasm32"))]
     #[error("dav1d: {0}")]
     Dav1d(#[from] dav1d::Error),
 
     #[cfg(with_dav1d)]
-    #[cfg(not(target_arch = "wasm32"))]
     #[error("To enabled native AV1 decoding, compile Rerun with the `nasm` feature enabled.")]
     Dav1dWithoutNasm,
 

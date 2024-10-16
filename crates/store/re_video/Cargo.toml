@@ -50,7 +50,7 @@ thiserror.workspace = true
 
 # We enable re_rav1d on native, UNLESS we're on Linux Arm64
 # See https://github.com/rerun-io/rerun/issues/7755
-[target.'cfg(all(not(target_arch = "wasm32"), not(all(target_os = "linux", target_arch = "arm64"))))'.dependencies]
+[target.'cfg(all(not(target_arch = "wasm32"), not(all(target_os = "linux", target_arch = "aarch64"))))'.dependencies]
 
 
 # If this package fails to build, install `nasm` locally, or build through `pixi`.
