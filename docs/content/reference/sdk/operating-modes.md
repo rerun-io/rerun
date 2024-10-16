@@ -1,5 +1,5 @@
 ---
-title: SDK Operating Modes
+title: Operating Modes
 order: 800
 ---
 
