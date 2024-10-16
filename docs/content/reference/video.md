@@ -85,7 +85,7 @@ At the moment, we test the following codecs:
 [^7]: Only supported if hardware encoding is available. Therefore always affected by Windows stuttering issues, see above.
 
 Beyond this, for best compatibility we recommend:
-* avoid RGB (as opposed to Yuv) & greyscale formats
+* prefer YUV over RGB & monochrome formats
 * don't use more than 8bit per color channel
 * keep resolutions at 8k & lower (see also [#3782](https://github.com/rerun-io/rerun/issues/3782))
 
