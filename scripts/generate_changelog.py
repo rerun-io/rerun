@@ -28,6 +28,7 @@ INCLUDE_LABELS = False  # It adds quite a bit of visual noise
 OFFICIAL_RERUN_DEVS = [
     "abey79",
     "emilk",
+    "gavrelina",
     "jleibs",
     "jprochazk",
     "nikolausWest",
@@ -187,7 +188,7 @@ def main() -> None:
 
             labels = pr_info.labels if pr_info else []
 
-            if "exclude from changelog" in labels:
+            if "include in changelog" not in labels:
                 continue
 
             summary = f"{title} [#{pr_number}](https://github.com/{OWNER}/{REPO}/pull/{pr_number})"
@@ -212,7 +213,7 @@ def main() -> None:
             added = False
 
             # Some PRs can show up under multiple sections:
-            if "🪵 Log-API" in labels:
+            if "🪵 Log & send APIs" in labels:
                 log_api.append(summary)
                 added = True
             else:
@@ -284,7 +285,7 @@ def main() -> None:
     print_section("🌊 C++ API", cpp)
     print_section("🐍 Python API", python)
     print_section("🦀 Rust API", rust)
-    print_section("🪳 Bug Fixes", bugs)
+    print_section("🪳 Bug fixes", bugs)
     print_section("🌁 Viewer improvements", viewer)
     print_section("🚀 Performance improvements", performance)
     print_section("🧑‍🏫 Examples", examples)
