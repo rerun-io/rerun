@@ -13,10 +13,11 @@ This guide will familiarize you with the basics of using the Rerun Viewer with a
 Here is a preview of the dataset that we will be working with:
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough0_preview/d63e6774d94ff403d51355bacdfee9a3e7751dcf/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough0_preview/d63e6774d94ff403d51355bacdfee9a3e7751dcf/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough0_preview/d63e6774d94ff403d51355bacdfee9a3e7751dcf/1024w.png">
-  <img src="https://static.rerun.io/viewer_walkthrough0_preview/d63e6774d94ff403d51355bacdfee9a3e7751dcf/full.png" alt="viewer walkthrough dataset preview screenshot">
+  <img src="https://static.rerun.io/viewer_walkthrough_preview/eba55ea05deef665393cf42cc48d1236b4cc9692/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_preview/eba55ea05deef665393cf42cc48d1236b4cc9692/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_preview/eba55ea05deef665393cf42cc48d1236b4cc9692/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_preview/eba55ea05deef665393cf42cc48d1236b4cc9692/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_preview/eba55ea05deef665393cf42cc48d1236b4cc9692/1200w.png">
 </picture>
 
 The demo uses the output of the [COLMAP](https://colmap.github.io/) structure-from-motion pipeline on a small dataset.
@@ -74,21 +75,15 @@ Depending on your display size, the panels may have a different arrangements. Fu
 
 ## The Viewer panels
 
-There are 5 main parts to this window:
+This window has five main sections:
 
--   In the middle of the screen is the [Viewport](../reference/viewer/viewport.md). This is where you see the rendered
-    space views for your session.
--   On the left top is the [Recordings](../concepts/apps-and-recordings.md) panel. This is where you see the list of loaded
-    recordings, corresponding to their applications. You can also navigate back to the welcome screen from there.
--   Under recordings there is the [Blueprint](../reference/viewer/blueprint.md) panel. This is where the different space views can be
-    controlled.
--   On the right is the [Selection](../reference/viewer/selection.md) panel. This is where you see extra information
-    and configuration information for things that you have selected.
--   On the bottom is the [Timeline](../reference/viewer/timeline.md) panel. This is where you can control the current
-    point in time that is being viewed.
+-   [Viewport](../reference/viewer/viewport.md) (center): Displays the rendered space views for your session.
+-   [Recordings panel](../concepts/apps-and-recordings.md) (top left): Lists loaded recordings and their applications, and allows navigation back to the welcome screen.
+-   [Blueprint panel](../reference/viewer/blueprint.md) (below Recordings): Controls the different space views.
+-   [Selection panel](../reference/viewer/selection.md) (right): Shows detailed information and configuration for selected items.
+-   [Timeline panel](../reference/viewer/timeline.md) (bottom): Controls the current point in time being viewed.
 
-Each of the 3 sides has a corresponding button in the upper-right corner. Try clicking each of these to hide and
-show the corresponding panel.
+Each of the three sides has a button in the upper-right corner. Click these to show or hide the corresponding panels.
 
 <picture>
   <img src="https://static.rerun.io/viewer_walkthrough_car_toggle_panels/438e5e3fd70da11d15426e1d33510c60e0128dc8/full.png" alt="">
@@ -99,7 +94,7 @@ show the corresponding panel.
 </picture>
 
 There are several ways to rearrange the viewer layout to your liking: through the Viewer [user interface](configure-the-viewer/interactively.md),
-via [Blueprint API](configure-the-viewer/through-code-tutorial.md), or by [loading an .rbl file](configure-the-viewer/save-and-load.md).
+via the [Blueprint API](configure-the-viewer/through-code-tutorial.md), or by [loading an .rbl file](configure-the-viewer/save-and-load.md).
 
 ## Exploring data
 
@@ -107,18 +102,34 @@ In Rerun, data is modeled using [entities](../concepts/entity-component.md) (ess
 that change over time. Each entity is identified by an entity path, which uses a hierarchical syntax to represent relationships between entities.
 Let's explore an example of this hierarchy in our scene:
 
--   `/camera/image/keypoints` is an entity stream that contains 3 component streams. One of these components indicates that together, they form a [Points2D archetype](../reference/types/archetypes/points2d.md),
+-   `/camera/image/keypoints` is an entity stream that contains 3 component streams (`Points2DIndicator`, `Color`, `Position2D`). `Points2DIndicator` component indicates that together, they form a [Points2D archetype](../reference/types/archetypes/points2d.md),
     representing point clouds that were detected and tracked in images.
 -   The images themselves are represented by the parent entity `/camera/image`. This entity consist of 6 components: 4 form an [Image archetype](../reference/types/archetypes/image.md),
     while the remaining 2 correspond to a [pinhole projection](../reference/types/archetypes/pinhole.md). The images are captures by the camera, and a pinhole projection defines the relationship between 2D and 3D space.
 -   Both the images and pinhole projection are hierarchically dependent on the camera's position, which is described by the `/camera` entity. This entity includes a series of transforms that together form a [Transform3D archetype](../reference/types/archetypes/transform3d.md).
 
-The complete hierarchy of logged entity streams and their related component streams could be found under `Streams` in the Timeline panel. You might also notice a hierarchical list of similar entities in the Blueprint panel. The key difference between these two panels is that Blueprint panel focuses on how the stream data is arranged in the Viewport. In other words, an entity might be logged once but displayed in multiple views.
+The complete hierarchy of logged entity streams and their related component streams could be found under `Streams` in the Timeline panel. You might also notice a hierarchical list of similar entities in the Blueprint panel. The key difference between these two panels is that Blueprint panel focuses on how stream data is arranged and visualized in the Viewport, while the Streams section shows when each event was logged. In other words, an entity might be logged once but displayed in multiple views. Additionally, its visualization can be customized for each view using Overrides in the Selection panel. For example, in the screenshot below, the same entity `keypoints` is shown in different colors. For more details, see [visualizers and overrides](../concepts/visualizers-and-overrides.md).
+
+<picture>
+  <img src="https://static.rerun.io/viewer_walkthrough_overrides/ae0bd0d0f32296d33d60830d2920f18dadd3e076/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_overrides/ae0bd0d0f32296d33d60830d2920f18dadd3e076/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_overrides/ae0bd0d0f32296d33d60830d2920f18dadd3e076/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_overrides/ae0bd0d0f32296d33d60830d2920f18dadd3e076/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_overrides/ae0bd0d0f32296d33d60830d2920f18dadd3e076/1200w.png">
+</picture>
 
 ### Hover and selection
 
 You can easily identify the connections between the same entities across different panels through the visual highlights. Hovering over an entity will
 display a popup with additional information about its content. Clicking on it will reveal more details in the [Selection panel](../reference/viewer/selection.md).
+
+<picture>
+  <img src="https://static.rerun.io/viewer_walkthrough_car_relations/4a01fd9367b47fa3f1f82d27fc879ce25c3ac6fd/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_car_relations/4a01fd9367b47fa3f1f82d27fc879ce25c3ac6fd/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_car_relations/4a01fd9367b47fa3f1f82d27fc879ce25c3ac6fd/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_car_relations/4a01fd9367b47fa3f1f82d27fc879ce25c3ac6fd/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_car_relations/4a01fd9367b47fa3f1f82d27fc879ce25c3ac6fd/1200w.png">
+</picture>
 
 Try each of the following:
 
@@ -132,14 +143,6 @@ Clicking and dragging the contents of any view will move it. You can rotate 3D v
 also zoom using ctrl+scrollwheel or pinch gestures on a trackpad. Most views can be restored to their default state by
 double-clicking somewhere in the view. Every view has a "?" icon in the upper right hand corner. You can always mouse
 over this icon to find out more information about the specific view.
-
-<picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_car_question/a215bd2234a0484ca5187e34d119bacc1ff260cb/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_car_question/a215bd2234a0484ca5187e34d119bacc1ff260cb/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_car_question/a215bd2234a0484ca5187e34d119bacc1ff260cb/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_car_question/a215bd2234a0484ca5187e34d119bacc1ff260cb/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_car_question/a215bd2234a0484ca5187e34d119bacc1ff260cb/1200w.png">
-</picture>
 
 Try each of the following:
 
