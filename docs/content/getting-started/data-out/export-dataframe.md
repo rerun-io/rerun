@@ -20,6 +20,7 @@ We can then load the recording in a Python script as follows:
 
 ```python
 import rerun as rr
+import numpy as np # We'll need this later.
 
 # load the recording
 recording = rr.dataframe.load_recording("face_tracking.rrd")
