@@ -32,7 +32,7 @@ rr.init(
 rr.connect()
 ```
 
-_Note_: When automating data analysis, it is typically preferable to log the results to an distinct RRD file next to the source RRD (using `rr.save()`). In such case, it is also valid to use the same app ID and recording ID. This allows opening both the source and result RRDs in the viewer, which will display both data under the same recording.
+_Note_: When automating data analysis, it is typically preferable to log the results to an distinct RRD file next to the source RRD (using `rr.save()`). In such a situation, it is also valid to use the same app ID and recording ID. This allows opening both the source and result RRDs in the viewer, which will display data from both files under the same recording.
 
 We will log our jaw open state data in two forms:
 1. As a standalone `Scalar` component, to hold the raw data.
