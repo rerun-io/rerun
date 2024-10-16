@@ -83,7 +83,7 @@ None this time!
 - Docs: move "roadmap" down to "development" [#7775](https://github.com/rerun-io/rerun/pull/7775)
 - Add a "Getting started" guide for the dataframe API [#7643](https://github.com/rerun-io/rerun/pull/7643)
 - Docs: clean up reference menu [#7776](https://github.com/rerun-io/rerun/pull/7776)
-- Updating "Navigating the viewer" [#7757](https://github.com/rerun-io/rerun/pull/7757) (thanks [@gavrelina](https://github.com/gavrelina)!)
+- Updating "Navigating the viewer" [#7757](https://github.com/rerun-io/rerun/pull/7757)
 
 #### 🖼 UI improvements
 - Add a hook for views to add additional UI in the tab title bar [#7438](https://github.com/rerun-io/rerun/pull/7438)

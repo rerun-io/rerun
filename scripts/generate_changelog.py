@@ -28,6 +28,7 @@ INCLUDE_LABELS = False  # It adds quite a bit of visual noise
 OFFICIAL_RERUN_DEVS = [
     "abey79",
     "emilk",
+    "gavrelina",
     "jleibs",
     "jprochazk",
     "nikolausWest",
