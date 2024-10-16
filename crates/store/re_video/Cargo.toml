@@ -48,8 +48,10 @@ parking_lot.workspace = true
 re_mp4.workspace = true
 thiserror.workspace = true
 
-# Native dependencies:
-[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+# We enable re_rav1d on native, UNLESS we're on Linux Arm64
+# See https://github.com/rerun-io/rerun/issues/7755
+[target.'cfg(all(not(target_arch = "wasm32"), not(all(target_os = "linux", target_arch = "aarch64"))))'.dependencies]
+
 
 # If this package fails to build, install `nasm` locally, or build through `pixi`.
 # NOTE: we use `dav1d` as an alias for our own re_rav1d crate
@@ -62,8 +64,11 @@ dav1d = { workspace = true, optional = true, default-features = false, features 
 [dev-dependencies]
 indicatif.workspace = true
 
+
+# For build.rs:
 [build-dependencies]
 re_build_tools.workspace = true
+cfg_aliases.workspace = true
 
 
 [[example]]
