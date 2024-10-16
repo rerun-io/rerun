@@ -42,6 +42,16 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     Ok(())
 }
 
+fn py_rerun_warn(msg: &str) -> PyResult<()> {
+    Python::with_gil(|py| {
+        let warning_type = PyModule::import_bound(py, "rerun")?
+            .getattr("error_utils")?
+            .getattr("RerunWarning")?;
+        PyErr::warn_bound(py, &warning_type, msg, 0)?;
+        Ok(())
+    })
+}
+
 /// Python binding for `IndexColumnDescriptor`
 #[pyclass(frozen, name = "IndexColumnDescriptor")]
 #[derive(Clone)]
@@ -512,6 +522,37 @@ impl PyRecordingView {
         query_expression.selection = Self::select_args(args, columns)?;
 
         let query_handle = engine.query(query_expression);
+
+        // If the only contents found are static, we might need to warn the user since
+        // this means we won't naturally have any rows in the result.
+        let available_data_columns = query_handle
+            .view_contents()
+            .iter()
+            .filter(|c| matches!(c, ColumnDescriptor::Component(_)))
+            .collect::<Vec<_>>();
+
+        // We only consider all contents static if there at least some columns
+        let all_contents_are_static = !available_data_columns.is_empty()
+            && available_data_columns.iter().all(|c| c.is_static());
+
+        // Additionally, we only want to warn if the user actually tried to select some
+        // of the static columns. Otherwise the fact that there are no results shouldn't
+        // be surprising.
+        let selected_data_columns = query_handle
+            .selected_contents()
+            .iter()
+            .map(|(_, col)| col)
+            .filter(|c| matches!(c, ColumnDescriptor::Component(_)))
+            .collect::<Vec<_>>();
+
+        let any_selected_data_is_static = selected_data_columns.iter().any(|c| c.is_static());
+
+        if self.query_expression.using_index_values.is_none()
+            && all_contents_are_static
+            && any_selected_data_is_static
+        {
+            py_rerun_warn("RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
+        }
 
         let schema = query_handle.schema();
         let fields: Vec<arrow::datatypes::Field> =
