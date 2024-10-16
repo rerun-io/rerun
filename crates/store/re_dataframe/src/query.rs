@@ -912,14 +912,24 @@ impl QueryHandle<'_> {
             .collect_vec();
 
         // Static always wins, no matter what.
-        for (view_idx, streaming_state) in view_streaming_state.iter_mut().enumerate() {
-            if let static_state @ Some(_) = state
-                .selected_static_values
-                .get(view_idx)
-                .cloned()
-                .flatten()
-                .map(StreamingJoinState::Retrofilled)
+        for (selected_idx, static_state) in state.selected_static_values.iter().enumerate() {
+            if let static_state @ Some(_) =
+                static_state.clone().map(StreamingJoinState::Retrofilled)
             {
+                let Some(view_idx) = state
+                    .selected_contents
+                    .get(selected_idx)
+                    .map(|(view_idx, _)| *view_idx)
+                else {
+                    debug_assert!(false, "selected_idx out of bounds");
+                    continue;
+                };
+
+                let Some(streaming_state) = view_streaming_state.get_mut(view_idx) else {
+                    debug_assert!(false, "view_idx out of bounds");
+                    continue;
+                };
+
                 *streaming_state = static_state;
             }
         }
@@ -1934,6 +1944,86 @@ mod tests {
             similar_asserts::assert_eq!(expected, got);
         }
 
+        // static
+        {
+            let query = QueryExpression {
+                filtered_index: Some(filtered_index),
+                selection: Some(vec![
+                    // NOTE: This will force a crash if the selected indexes vs. view indexes are
+                    // improperly handled.
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    //
+                    ColumnSelector::Component(ComponentColumnSelector {
+                        entity_path: entity_path.clone(),
+                        component_name: MyLabel::name().to_string(),
+                    }),
+                ]),
+                ..Default::default()
+            };
+            eprintln!("{query:#?}:");
+
+            let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows()
+            );
+            let dataframe = concatenate_record_batches(
+                query_handle.schema().clone(),
+                &query_handle.into_batch_iter().collect_vec(),
+            );
+            eprintln!("{dataframe}");
+
+            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let expected = unindent::unindent(
+                "\
+                [
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
+                ]\
+                ",
+            );
+
+            similar_asserts::assert_eq!(expected, got);
+        }
+
         Ok(())
     }
 
@@ -2012,7 +2102,7 @@ mod tests {
                     NullArray(4),
                     NullArray(4),
                     ListArray[[2], [3], [4], [6]],
-                    ListArray[None, None, None, None],
+                    ListArray[[c], [c], [c], [c]],
                 ]\
                 ",
             );
