@@ -27,7 +27,7 @@ Maybe it turns out that a glare from the sun hit one of the sensors in the wrong
 
 But seeing the world from the point of the view of the robot is not just for debugging - it will also give you ideas on how to improve the algorithms, new test cases to set up, or datasets to collect. It will also let you explain the brains of the robot to your colleagues, boss, and customers. And so on. Seeing is believing, and an image is worth a thousand words, and multimodal temporal logging is worth a thousand images :)
 
-While seeing and understanding your data is core to making progress in robotics, there is one more thing.
+While seeing and understanding your data is core to making progress in robotics, there is one more thing:
 You can also use the data you collected for visualization to create new datasets for training and evaluating the models and algorithms that run on your robot.
 Rerun provides query APIs to make it easy to extract clean datasets from your recording for exactly that purpose.
 
