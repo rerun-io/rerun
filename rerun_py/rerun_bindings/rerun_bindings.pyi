@@ -505,7 +505,7 @@ class Recording:
         Just the Position3D components in the "points" entity:
         ```python
         recording.view(index="my_index", contents={"points": "Position3D"})
-            ```
+        ```
 
         """
         ...

@@ -63,5 +63,5 @@ IndexValuesLike: TypeAlias = Union[npt.NDArray[np.int_], pa.Int64Array]
 """
 A type alias for index values.
 
-This can be any numpy-compatible array of integers, or a PyArrow Int64Array.
+This can be any numpy-compatible array of integers, or a [`pa.Int64Array`][]
 """

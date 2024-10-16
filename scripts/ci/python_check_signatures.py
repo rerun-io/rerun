@@ -59,7 +59,12 @@ class APIDef:
         return f"{self.name}{self.signature}:\n{docstring}"
 
     def __eq__(self, other):
-        return self.name == other.name and self.signature == other.signature and self.doc == other.doc
+        if self.name in ("__init__", "__iter__"):
+            # Ignore the signature of __init__ and __new__ methods
+            # TODO(#7779): Remove this special case once we have a better way to handle these methods
+            return self.name == other.name and self.signature == other.signature
+        else:
+            return self.name == other.name and self.signature == other.signature and self.doc == other.doc
 
 
 TotalSignature = dict[str, APIDef | dict[str, APIDef]]
