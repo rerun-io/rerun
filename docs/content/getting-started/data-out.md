@@ -3,7 +3,7 @@ title: Get data out of Rerun
 order: 700
 ---
 
-At its core, Rerun is a database. The viewer includes the [dataframe view](../reference/types/views/dataframe_view) to explore data in tabular form, and the SDK includes an API to export data as dataframes from recording. These features can be used, for example, to perform analysis on the data and log back the results to the original recording.
+At its core, Rerun is a database. The viewer includes the [dataframe view](../reference/types/views/dataframe_view) to explore data in tabular form, and the SDK includes an API to export the data as dataframes from the recording. These features can be used, for example, to perform analysis on the data and log back the results to the original recording.
 
 In this three-part guide, we explore such a workflow by implementing an "open jaw detector" on top of our [face tracking example](https://rerun.io/examples/video-image/face_tracking). This process is split into three steps:
 
