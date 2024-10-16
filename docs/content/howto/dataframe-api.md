@@ -82,8 +82,6 @@ view = recording.view(index="frame_nr", contents={
 
 A view has several APIs to further filter the rows it will return.
 
-<!-- TODO(rerun-io/landing#521): change these headers to h4 when these are properly supported -->
-
 #### Filtering by time range
 
 Rows may be filtered to keep only a given range of values from its index column:
