@@ -70,7 +70,6 @@ None this time!
 - Invalidate hub-wide caches on deletions and overwrites [#7525](https://github.com/rerun-io/rerun/pull/7525)
 - Do not cache static entries in the query-time latest-at cache [#7654](https://github.com/rerun-io/rerun/pull/7654)
 - Make sure Arrow `filter` and `take` kernels early out where it makes sense [#7704](https://github.com/rerun-io/rerun/pull/7704)
-- Bump `re_rav1d` to 0.1.2 [#7730](https://github.com/rerun-io/rerun/pull/7730)
 
 #### 🧑‍🏫 Examples
 - Add drone LiDAR example [#7336](https://github.com/rerun-io/rerun/pull/7336)
