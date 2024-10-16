@@ -1,5 +1,5 @@
 import os
-from typing import Optional, Sequence
+from typing import Iterator, Optional, Sequence, Union
 
 import pyarrow as pa
 
@@ -14,6 +14,11 @@ class IndexColumnDescriptor:
 
         This property is read-only.
         """
+        ...
+
+    @property
+    def is_static(self) -> bool:
+        """ColumnDescriptor interface: always False for Index."""
         ...
 
 class IndexColumnSelector:
@@ -49,6 +54,15 @@ class ComponentColumnDescriptor:
         """
         ...
 
+    @property
+    def is_static(self) -> bool:
+        """
+        Whether the column is static.
+
+        This property is read-only.
+        """
+        ...
+
 class ComponentColumnSelector:
     """A selector for a component column."""
 
@@ -74,6 +88,7 @@ class ComponentColumnSelector:
 class Schema:
     """The schema representing all columns in a [`Recording`][]."""
 
+    def __iter__(self) -> Iterator[Union[IndexColumnDescriptor, ComponentColumnDescriptor]]: ...
     def index_columns(self) -> list[IndexColumnDescriptor]: ...
     def component_columns(self) -> list[ComponentColumnDescriptor]: ...
     def column_for(self, entity_path: str, component: ComponentLike) -> Optional[ComponentColumnDescriptor]: ...
@@ -91,6 +106,10 @@ class RecordingView:
     by the `row_id` column. This will generally be the last value logged, as row_ids are guaranteed to be monotonically
     increasing when data is sent from a single process.
     """
+
+    def schema(self) -> Schema:
+        """The schema of the view."""
+        ...
 
     def filter_range_sequence(self, start: int, end: int) -> RecordingView:
         """
@@ -157,12 +176,57 @@ class RecordingView:
         ...
 
     def select(self, *args: AnyColumn, columns: Optional[Sequence[AnyColumn]] = None) -> pa.RecordBatchReader: ...
+    def select_static(
+        self, *args: AnyColumn, columns: Optional[Sequence[AnyColumn]] = None
+    ) -> pa.RecordBatchReader: ...
 
 class Recording:
     """A single recording."""
 
     def schema(self) -> Schema: ...
-    def view(self, *, index: str, contents: ViewContentsLike) -> RecordingView: ...
+    def view(
+        self,
+        *,
+        index: str,
+        contents: ViewContentsLike,
+        include_semantically_empty_columns: bool = False,
+        include_indicator_columns: bool = False,
+        include_tombstone_columns: bool = False,
+    ) -> RecordingView:
+        """
+        Create a view of the recording according to a particular index and content specification.
+
+        Parameters
+        ----------
+        index : str
+            The index to use for the view. This is typically a timeline name.
+        contents : ViewContentsLike
+            The content specification for the view. This must specify one or more EntityPath expressions
+            as well as optionally a list of columns. If only providing a single EntityPath, use a string,
+            otherwise provide a dictionary mapping EntityPaths to a list of column names.
+        include_semantically_empty_columns : bool, optional
+            Whether to include columns that are semantically empty, by default False.
+        include_indicator_columns : bool, optional
+            Whether to include indicator columns, by default False.
+        include_tombstone_columns : bool, optional
+            Whether to include tombstone columns, by default False.
+            Tombstone columns are components used to represent clears. However, even without the clear
+            tombstone columns, the view will still apply the clear semantics when resolving row contents.
+
+        Examples
+        --------
+        All the data in the recording on the timeline "my_index":
+        ```python
+        recording.view(index="my_index", contents="/**")
+        ```
+
+        Just the Position3D components in the "points" entity:
+        ```python
+        recording.view(index="my_index", contents={"points": "Position3D"})
+        ```
+
+        """
+        ...
     def recording_id(self) -> str: ...
     def application_id(self) -> str: ...
 
