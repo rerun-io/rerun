@@ -24,7 +24,7 @@ Read more [here](https://rerun.io/docs/content/reference/types/views/dataframe_v
 Rerun now supports logging MP4 videos using the new [`AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link) archetype.
 This can greatly reduce bandwidth and storage requirements.
 
-Currently, only the AV1 codec is supported in the native viewer, but we plan to support H.264 in the near future.
+While the web viewer supports a variety of codecs, the native viewer supports only the AV1 codec for the moment, but we plan to support H.264 in the near future as well.
 Read more about our video supports (and its limits) [in our video docs](https://rerun.io/docs/reference/video).
 
 ### ⚠️ Breaking changes
