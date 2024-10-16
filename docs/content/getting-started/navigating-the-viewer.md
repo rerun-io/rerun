@@ -108,7 +108,9 @@ Let's explore an example of this hierarchy in our scene:
     while the remaining 2 correspond to a [pinhole projection](../reference/types/archetypes/pinhole.md). The images are captures by the camera, and a pinhole projection defines the relationship between 2D and 3D space.
 -   Both the images and pinhole projection are hierarchically dependent on the camera's position, which is described by the `/camera` entity. This entity includes a series of transforms that together form a [Transform3D archetype](../reference/types/archetypes/transform3d.md).
 
-The complete hierarchy of logged entity streams and their related component streams could be found under `Streams` in the Timeline panel. You might also notice a hierarchical list of similar entities in the Blueprint panel. The key difference between these two panels is that Blueprint panel focuses on how stream data is arranged and visualized in the Viewport, while the Streams section shows when each event was logged. In other words, an entity might be logged once but displayed in multiple views. Additionally, its visualization can be customized for each view using Overrides in the Selection panel. For example, in the screenshot below, the same entity `keypoints` is shown in different colors. For more details, see [visualizers and overrides](../concepts/visualizers-and-overrides.md).
+The hierarchy of logged entity streams and their component streams is found under `Streams` in the Timeline panel. A similar list appears in the `Blueprint` panel, but the key difference is that the Blueprint panel focuses on how data is arranged and visualized in the Viewport, while the Streams panel shows when and what events were logged. In other words, an entity may be logged once but displayed in multiple views.
+
+Visualizations can also be customized per view using [Overrides](../concepts/visualizers-and-overrides.md\) in the Selection panel. In the screenshot below, the same entity `keypoints` is shown in different colors.
 
 <picture>
   <img src="https://static.rerun.io/viewer_walkthrough_overrides/ae0bd0d0f32296d33d60830d2920f18dadd3e076/full.png" alt="">
@@ -181,11 +183,11 @@ and switch it to "log_time." If you zoom in on the timeline (using ctrl+scrollwh
 all logged at slightly different times.
 
 <picture>
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough7_log_time/b6a4ce41f51e338270240e394140bd4d8a68f6bf/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough7_log_time/b6a4ce41f51e338270240e394140bd4d8a68f6bf/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough7_log_time/b6a4ce41f51e338270240e394140bd4d8a68f6bf/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough7_log_time/b6a4ce41f51e338270240e394140bd4d8a68f6bf/1200w.png">
-  <img src="https://static.rerun.io/viewer_walkthrough7_log_time/b6a4ce41f51e338270240e394140bd4d8a68f6bf/full.png" alt="viewer walkthrough change timeline screenshot">
+  <img src="https://static.rerun.io/viewer_walkthrough_timelines/b5453077ce8ad6cb473ef49211ee69085df0bc46/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_timelines/b5453077ce8ad6cb473ef49211ee69085df0bc46/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_timelines/b5453077ce8ad6cb473ef49211ee69085df0bc46/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_timelines/b5453077ce8ad6cb473ef49211ee69085df0bc46/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_timelines/b5453077ce8ad6cb473ef49211ee69085df0bc46/1200w.png">
 </picture>
 
 Feel free to spend a bit of time looking at the data across the different timelines. When you are done, switch back
