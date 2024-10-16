@@ -11,7 +11,7 @@ In the previous sections, we explored our data and exported it to a Pandas dataf
 
 ## Analyze the data
 
-This is admittedly not the most complicated part of this guide. We already identified that thresholding the `jawOpen` signal at 0.15 is all we need to produce a binary "jaw open state" signal.
+We already identified that thresholding the `jawOpen` signal at 0.15 is all we need to produce a binary "jaw open state" signal.
 
 In the [previous section](export-dataframe.md#inspect-the-dataframe), we prepared a flat, floating point column with the signal of interest called `"jawOpen"`. Let's add a boolean column to our Pandas dataframe to hold our jaw open state:
 
