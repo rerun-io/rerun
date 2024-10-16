@@ -23,8 +23,8 @@ Although RRD files generally contain a single recording, they may occasionally c
 
 For such RRD, the `load_archive()` function can be used:
 
-
 <!-- NOLINT_START -->
+
 ```python
 import rerun as rr
 
@@ -35,6 +35,7 @@ print(f"The archive contains {archive.num_recordings()} recordings.")
 for recording in archive.all_recordings():
     ...
 ```
+
 <!-- NOLINT_END -->
 
 The overall content of the recording can be inspected using the `schema()` method:
@@ -44,7 +45,6 @@ schema = recording.schema()
 schema.index_columns()        # list of all index columns (timelines)
 schema.component_columns()    # list of all component columns
 ```
-
 
 ### Creating a view
 
@@ -84,7 +84,7 @@ A view has several APIs to further filter the rows it will return.
 
 <!-- TODO(rerun-io/landing#521): change these headers to h4 when these are properly supported -->
 
-**Filtering by time range**
+#### Filtering by time range
 
 Rows may be filtered to keep only a given range of values from its index column:
 
@@ -94,13 +94,14 @@ view = view.filter_range_sequence(0, 10)
 ```
 
 This API exists for both temporal and sequence timeline, and for various units:
+
 - `view.filter_range_sequence(start_frame, end_frame)` (takes `int` arguments)
 - `view.filter_range_seconds(stat_second, end_second)` (takes `float` arguments)
 - `view.filter_range_nanos(start_nano, end_nano)` (takes `int` arguments)
 
 (all ranges are including both start and end values)
 
-**Filtering by index value**
+#### Filtering by index value
 
 Rows may be filtered to keep only those whose index corresponds to a specific set of value:
 
@@ -112,8 +113,7 @@ Note that a precise match is required.
 Since Rerun internally stores times as `int64`, this method is only available for integer arguments (nanos or sequence number).
 Floating point seconds would risk false mismatch due to numerical conversion.
 
-
-**Filtering by column not null**
+##### Filtering by column not null
 
 Rows where a specific column has null values may be filtered out using the `filter_is_not_null()` method. When using this method, only rows for which a logging event exist for the provided column are returned.
 
@@ -137,7 +137,6 @@ For this reason, a floating point version of this method is not provided for thi
 
 Note that this feature is typically used in conjunction with `fill_latest_at()` (see next paragraph) to enable arbitrary resampling of the original data.
 
-
 ### Filling empty values with latest-at data
 
 By default, the rows returned by the view may be sparse and contain values only for the columns where a logging event actually occurred at the corresponding index value.
@@ -150,7 +149,6 @@ view = view.fill_latest_at()
 ### Reading the data
 
 Once the view is fully set up (possibly using the filtering features previously described), its content can be read using the `select()` method. This method optionally allows specifying which subset of columns should be produced:
-
 
 ```python
 # select all columns
@@ -169,7 +167,6 @@ The `select()` method returns a [`pyarrow.RecordBatchReader`](https://arrow.apac
 
 For the rest of this page, we explore how these `RecordBatch`es can be ingested in some of the popular data science packages.
 
-
 ## Load data to a PyArrow `Table`
 
 The `RecordBatchReader` provides a [`read_all()`](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html#pyarrow.RecordBatchReader.read_all) method which directly produces a [`pyarrow.Table`](https://arrow.apache.org/docs/python/generated/pyarrow.Table.html#pyarrow.Table):
@@ -183,11 +180,9 @@ view = recording.view(index="frame_nr", contents="/**")
 table = view.select().read_all()
 ```
 
-
 ## Load data to a Pandas dataframe
 
 The `RecordBatchReader` provides a [`read_pandas()`](https://arrow.apache.org/docs/python/generated/pyarrow.RecordBatchReader.html#pyarrow.RecordBatchReader.read_pandas) method which returns a [Pandas dataframe](https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.html):
-
 
 ```python
 import rerun as rr
@@ -211,7 +206,6 @@ view = recording.view(index="frame_nr", contents="/**")
 
 df = pl.from_arrow(view.select().read_all())
 ```
-
 
 ## Load data to a DuckDB relation
 
