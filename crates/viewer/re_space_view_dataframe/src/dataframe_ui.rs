@@ -11,7 +11,7 @@ use re_dataframe::QueryHandle;
 use re_log_types::{EntityPath, TimeInt, Timeline, TimelineName};
 use re_types_core::ComponentName;
 use re_ui::UiExt as _;
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{SystemCommandSender, ViewerContext};
 
 use crate::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache};
@@ -49,7 +49,7 @@ pub(crate) fn dataframe_ui(
     // salt.
     let table_id_salt = egui::Id::new("__dataframe__")
         .with(&selected_columns)
-        .with(&query_handle.query().filtered_point_of_view);
+        .with(&query_handle.query().filtered_is_not_null);
 
     // For the row expansion cache, we invalidate more aggressively for now.
     let row_expansion_id_salt = egui::Id::new("__dataframe_row_exp__")
@@ -250,14 +250,13 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                         // … but not so far to the right that it doesn't fit.
                         pos.x = pos.x.at_most(ui.max_rect().right() - galley.size().x);
 
+                        let item = re_viewer_context::Item::from(entity_path.clone());
+                        let is_selected = self.ctx.selection().contains_item(&item);
                         let response = ui.put(
                             egui::Rect::from_min_size(pos, galley.size()),
-                            egui::Button::new(galley),
+                            egui::SelectableLabel::new(is_selected, galley),
                         );
-                        self.ctx.select_hovered_on_click(
-                            &response,
-                            re_viewer_context::Item::from(entity_path.clone()),
-                        );
+                        self.ctx.select_hovered_on_click(&response, item);
                     }
                 } else if cell.row_nr == 1 {
                     let column = &self.selected_columns[cell.col_range.start];
@@ -284,21 +283,58 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                         }
                     };
 
+                    let header_ui = |ui: &mut egui::Ui| {
+                        let text = egui::RichText::new(column.short_name()).strong();
+
+                        let is_selected = match column {
+                            ColumnDescriptor::Time(descr) => {
+                                &descr.timeline == self.ctx.rec_cfg.time_ctrl.read().timeline()
+                            }
+                            ColumnDescriptor::Component(component_column_descriptor) => self
+                                .ctx
+                                .selection()
+                                .contains_item(&re_viewer_context::Item::ComponentPath(
+                                    component_column_descriptor.component_path(),
+                                )),
+                        };
+
+                        let response = ui.selectable_label(is_selected, text);
+
+                        match column {
+                            ColumnDescriptor::Time(descr) => {
+                                if response.clicked() {
+                                    self.ctx.command_sender.send_system(
+                                        re_viewer_context::SystemCommand::SetActiveTimeline {
+                                            rec_id: self.ctx.recording_id().clone(),
+                                            timeline: descr.timeline,
+                                        },
+                                    );
+                                }
+                            }
+                            ColumnDescriptor::Component(component_column_descriptor) => {
+                                self.ctx.select_hovered_on_click(
+                                    &response,
+                                    re_viewer_context::Item::ComponentPath(
+                                        component_column_descriptor.component_path(),
+                                    ),
+                                );
+                            }
+                        }
+                    };
+
                     if let Some(hide_action) = hide_action {
-                        let cell_clicked = cell_with_hover_button_ui(
+                        let hide_clicked = cell_with_hover_button_ui(
                             ui,
                             &re_ui::icons::VISIBLE,
                             CellStyle::Header,
-                            |ui| {
-                                ui.strong(column.short_name());
-                            },
+                            header_ui,
                         );
 
-                        if cell_clicked {
+                        if hide_clicked {
                             self.hide_column_actions.push(hide_action);
                         }
                     } else {
-                        ui.strong(column.short_name());
+                        header_ui(ui);
                     }
                 } else {
                     // this should never happen

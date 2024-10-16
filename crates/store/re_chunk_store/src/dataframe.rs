@@ -8,7 +8,7 @@ use arrow2::{
 };
 
 use re_chunk::TimelineName;
-use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
+use re_log_types::{ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_types_core::{ArchetypeName, ComponentName};
 
 use crate::{ChunkStore, ColumnMetadata};
@@ -60,6 +60,14 @@ impl ColumnDescriptor {
         match self {
             Self::Time(descr) => descr.timeline.name().to_string(),
             Self::Component(descr) => descr.component_name.short_name().to_owned(),
+        }
+    }
+
+    #[inline]
+    pub fn is_static(&self) -> bool {
+        match self {
+            Self::Time(_) => false,
+            Self::Component(descr) => descr.is_static,
         }
     }
 }
@@ -229,6 +237,13 @@ impl std::fmt::Display for ComponentColumnDescriptor {
 }
 
 impl ComponentColumnDescriptor {
+    pub fn component_path(&self) -> ComponentPath {
+        ComponentPath {
+            entity_path: self.entity_path.clone(),
+            component_name: self.component_name,
+        }
+    }
+
     #[inline]
     pub fn matches(&self, entity_path: &EntityPath, component_name: &str) -> bool {
         &self.entity_path == entity_path && self.component_name.matches(component_name)
@@ -542,7 +557,7 @@ pub struct QueryExpression {
     /// Examples: `Some(Timeline("frame"))`, `None` (only static data).
     //
     // TODO(cmc): this has to be a selector otherwise this is a horrible UX.
-    pub filtered_index: Option<Timeline>,
+    pub filtered_index: Option<Index>,
 
     /// The range of index values used to filter out _rows_ from the view contents.
     ///
@@ -589,7 +604,7 @@ pub struct QueryExpression {
     /// Example: `ComponentColumnSelector("rerun.components.Position3D")`.
     //
     // TODO(cmc): multi-pov support
-    pub filtered_point_of_view: Option<ComponentColumnSelector>,
+    pub filtered_is_not_null: Option<ComponentColumnSelector>,
 
     /// Specifies how null values should be filled in the returned dataframe.
     ///
@@ -792,7 +807,7 @@ impl ChunkStore {
             filtered_index_range: _,
             filtered_index_values: _,
             using_index_values: _,
-            filtered_point_of_view: _,
+            filtered_is_not_null: _,
             sparse_fill_strategy: _,
             selection: _,
         } = query;

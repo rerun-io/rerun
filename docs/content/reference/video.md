@@ -27,7 +27,8 @@ snippet: archetypes/video_auto_frames
 Video support is new in Rerun, and has a few limitations:
 
 * [#7354](https://github.com/rerun-io/rerun/issues/7354): Only the MP4 container format is supported
-* [#7298](https://github.com/rerun-io/rerun/issues/7298): Only the AV1 codec is supported in the native viewer
+* [#7298](https://github.com/rerun-io/rerun/issues/7298): On native, only the AV1 codec is supported
+* [#7755](https://github.com/rerun-io/rerun/issues/7755): No AV1 support on Linux ARM
 * [#5181](https://github.com/rerun-io/rerun/issues/5181): There is no audio support
 * [#7594](https://github.com/rerun-io/rerun/issues/7594): HDR video is not supported
 * There is no video encoder in the Rerun SDK, so you need to create the video file yourself

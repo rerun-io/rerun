@@ -58,8 +58,8 @@ pub enum DecodingError {
     UnsupportedCodec { codec: String },
 
     #[cfg(not(target_arch = "wasm32"))]
-    #[error("Native video decoding not supported in native debug builds.")]
-    NoNativeDebug,
+    #[error("Native AV1 video decoding not supported in debug builds.")]
+    NoNativeAv1Debug,
 
     #[error("Failed to create gpu texture from decoded video data: {0}")]
     ImageDataToTextureError(#[from] crate::resource_managers::ImageDataToTextureError),

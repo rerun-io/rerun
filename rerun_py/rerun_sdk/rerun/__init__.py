@@ -7,8 +7,8 @@ from uuid import UUID
 
 import numpy as np
 
-__version__ = "0.19.0-alpha.7"
-__version_info__ = (0, 19, 0, "alpha.7")
+__version__ = "0.19.0-alpha.12+dev"
+__version_info__ = (0, 19, 0, "alpha.12")
 
 # =====================================
 # API RE-EXPORTS

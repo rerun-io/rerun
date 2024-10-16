@@ -42,6 +42,16 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     Ok(())
 }
 
+fn py_rerun_warn(msg: &str) -> PyResult<()> {
+    Python::with_gil(|py| {
+        let warning_type = PyModule::import_bound(py, "rerun")?
+            .getattr("error_utils")?
+            .getattr("RerunWarning")?;
+        PyErr::warn_bound(py, &warning_type, msg, 0)?;
+        Ok(())
+    })
+}
+
 /// Python binding for `IndexColumnDescriptor`
 #[pyclass(frozen, name = "IndexColumnDescriptor")]
 #[derive(Clone)]
@@ -51,6 +61,17 @@ struct PyIndexColumnDescriptor(TimeColumnDescriptor);
 impl PyIndexColumnDescriptor {
     fn __repr__(&self) -> String {
         format!("Index(timeline:{})", self.0.timeline.name())
+    }
+
+    #[getter]
+    fn name(&self) -> &str {
+        self.0.timeline.name()
+    }
+
+    #[allow(clippy::unused_self)]
+    #[getter]
+    fn is_static(&self) -> bool {
+        false
     }
 }
 
@@ -78,6 +99,11 @@ impl PyIndexColumnSelector {
     fn __repr__(&self) -> String {
         format!("Index(timeline:{})", self.0.timeline)
     }
+
+    #[getter]
+    fn name(&self) -> &str {
+        &self.0.timeline
+    }
 }
 
 /// Python binding for [`ComponentColumnDescriptor`]
@@ -104,6 +130,21 @@ impl PyComponentColumnDescriptor {
 
     fn __eq__(&self, other: &Self) -> bool {
         self.0 == other.0
+    }
+
+    #[getter]
+    fn entity_path(&self) -> String {
+        self.0.entity_path.to_string()
+    }
+
+    #[getter]
+    fn component_name(&self) -> &str {
+        &self.0.component_name
+    }
+
+    #[getter]
+    fn is_static(&self) -> bool {
+        self.0.is_static
     }
 }
 
@@ -134,6 +175,16 @@ impl PyComponentColumnSelector {
             "Component({}:{})",
             self.0.entity_path, self.0.component_name
         )
+    }
+
+    #[getter]
+    fn entity_path(&self) -> String {
+        self.0.entity_path.to_string()
+    }
+
+    #[getter]
+    fn component_name(&self) -> &str {
+        &self.0.component_name
     }
 }
 
@@ -301,7 +352,22 @@ impl FromPyObject<'_> for ComponentLike {
     }
 }
 
-// TODO(jleibs): Maybe this whole thing moves to the View/Recording
+#[pyclass]
+pub struct SchemaIterator {
+    iter: std::vec::IntoIter<PyObject>,
+}
+
+#[pymethods]
+impl SchemaIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
+        slf.iter.next()
+    }
+}
+
 #[pyclass(frozen, name = "Schema")]
 #[derive(Clone)]
 pub struct PySchema {
@@ -310,6 +376,25 @@ pub struct PySchema {
 
 #[pymethods]
 impl PySchema {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<SchemaIterator>> {
+        let py = slf.py();
+        let iter = SchemaIterator {
+            iter: slf
+                .schema
+                .clone()
+                .into_iter()
+                .map(|col| match col {
+                    ColumnDescriptor::Time(col) => PyIndexColumnDescriptor(col).into_py(py),
+                    ColumnDescriptor::Component(col) => {
+                        PyComponentColumnDescriptor(col).into_py(py)
+                    }
+                })
+                .collect::<Vec<PyObject>>()
+                .into_iter(),
+        };
+        Py::new(slf.py(), iter)
+    }
+
     fn index_columns(&self) -> Vec<PyIndexColumnDescriptor> {
         self.schema
             .iter()
@@ -368,6 +453,29 @@ pub struct PyRecordingView {
     query_expression: QueryExpression,
 }
 
+impl PyRecordingView {
+    fn select_args(
+        args: &Bound<'_, PyTuple>,
+        columns: Option<Vec<AnyColumn>>,
+    ) -> PyResult<Option<Vec<ColumnSelector>>> {
+        // Coerce the arguments into a list of `ColumnSelector`s
+        let args: Vec<AnyColumn> = args
+            .iter()
+            .map(|arg| arg.extract::<AnyColumn>())
+            .collect::<PyResult<_>>()?;
+
+        if columns.is_some() && !args.is_empty() {
+            return Err(PyValueError::new_err(
+                "Cannot specify both `columns` and `args` in `select`.",
+            ));
+        }
+
+        let columns = columns.or_else(|| if !args.is_empty() { Some(args) } else { None });
+
+        Ok(columns.map(|cols| cols.into_iter().map(|col| col.into_selector()).collect()))
+    }
+}
+
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
 ///
 /// Can only be created by calling `view(...)` on a `Recording`.
@@ -380,6 +488,22 @@ pub struct PyRecordingView {
 /// increasing when data is sent from a single process.
 #[pymethods]
 impl PyRecordingView {
+    fn schema(&self, py: Python<'_>) -> PySchema {
+        let borrowed = self.recording.borrow(py);
+        let engine = borrowed.engine();
+
+        let mut query_expression = self.query_expression.clone();
+        query_expression.selection = None;
+
+        let query_handle = engine.query(query_expression);
+
+        let contents = query_handle.view_contents();
+
+        PySchema {
+            schema: contents.to_vec(),
+        }
+    }
+
     #[pyo3(signature = (
         *args,
         columns = None
@@ -395,24 +519,109 @@ impl PyRecordingView {
 
         let mut query_expression = self.query_expression.clone();
 
-        // Coerce the arguments into a list of `ColumnSelector`s
-        let args: Vec<AnyColumn> = args
-            .iter()
-            .map(|arg| arg.extract::<AnyColumn>())
-            .collect::<PyResult<_>>()?;
-
-        if columns.is_some() && !args.is_empty() {
-            return Err(PyValueError::new_err(
-                "Cannot specify both `columns` and `args` in `select`.",
-            ));
-        }
-
-        let columns = columns.or_else(|| if !args.is_empty() { Some(args) } else { None });
-
-        query_expression.selection =
-            columns.map(|cols| cols.into_iter().map(|col| col.into_selector()).collect());
+        query_expression.selection = Self::select_args(args, columns)?;
 
         let query_handle = engine.query(query_expression);
+
+        // If the only contents found are static, we might need to warn the user since
+        // this means we won't naturally have any rows in the result.
+        let available_data_columns = query_handle
+            .view_contents()
+            .iter()
+            .filter(|c| matches!(c, ColumnDescriptor::Component(_)))
+            .collect::<Vec<_>>();
+
+        // We only consider all contents static if there at least some columns
+        let all_contents_are_static = !available_data_columns.is_empty()
+            && available_data_columns.iter().all(|c| c.is_static());
+
+        // Additionally, we only want to warn if the user actually tried to select some
+        // of the static columns. Otherwise the fact that there are no results shouldn't
+        // be surprising.
+        let selected_data_columns = query_handle
+            .selected_contents()
+            .iter()
+            .map(|(_, col)| col)
+            .filter(|c| matches!(c, ColumnDescriptor::Component(_)))
+            .collect::<Vec<_>>();
+
+        let any_selected_data_is_static = selected_data_columns.iter().any(|c| c.is_static());
+
+        if self.query_expression.using_index_values.is_none()
+            && all_contents_are_static
+            && any_selected_data_is_static
+        {
+            py_rerun_warn("RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
+        }
+
+        let schema = query_handle.schema();
+        let fields: Vec<arrow::datatypes::Field> =
+            schema.fields.iter().map(|f| f.clone().into()).collect();
+        let metadata = schema.metadata.clone().into_iter().collect();
+        let schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
+
+        // TODO(jleibs): Need to keep the engine alive
+        /*
+        let reader = RecordBatchIterator::new(
+            query_handle
+                .into_batch_iter()
+                .map(|batch| batch.try_to_arrow_record_batch()),
+            std::sync::Arc::new(schema),
+        );
+        */
+        let batches = query_handle
+            .into_batch_iter()
+            .map(|batch| batch.try_to_arrow_record_batch())
+            .collect::<Vec<_>>();
+
+        let reader = RecordBatchIterator::new(batches.into_iter(), std::sync::Arc::new(schema));
+
+        Ok(PyArrowType(Box::new(reader)))
+    }
+
+    #[pyo3(signature = (
+        *args,
+        columns = None
+    ))]
+    fn select_static(
+        &self,
+        py: Python<'_>,
+        args: &Bound<'_, PyTuple>,
+        columns: Option<Vec<AnyColumn>>,
+    ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+        let borrowed = self.recording.borrow(py);
+        let engine = borrowed.engine();
+
+        let mut query_expression = self.query_expression.clone();
+
+        // This is a static selection, so we clear the filtered index
+        query_expression.filtered_index = None;
+
+        // If no columns provided, select all static columns
+        let static_columns = Self::select_args(args, columns)?.unwrap_or_else(|| {
+            self.schema(py)
+                .schema
+                .iter()
+                .filter(|col| col.is_static())
+                .map(|col| col.clone().into())
+                .collect()
+        });
+
+        query_expression.selection = Some(static_columns);
+
+        let query_handle = engine.query(query_expression);
+
+        let non_static_cols = query_handle
+            .selected_contents()
+            .iter()
+            .filter(|(_, col)| !col.is_static())
+            .collect::<Vec<_>>();
+
+        if !non_static_cols.is_empty() {
+            return Err(PyValueError::new_err(format!(
+                "Static selection resulted in non-static columns: {non_static_cols:?}",
+            )));
+        }
 
         let schema = query_handle.schema();
         let fields: Vec<arrow::datatypes::Field> =
@@ -570,7 +779,7 @@ impl PyRecordingView {
         let column = column.into_selector();
 
         let mut query_expression = self.query_expression.clone();
-        query_expression.filtered_point_of_view = Some(column);
+        query_expression.filtered_is_not_null = Some(column);
 
         Self {
             recording: self.recording.clone(),
@@ -713,15 +922,22 @@ impl PyRecording {
         }
     }
 
+    #[allow(clippy::fn_params_excessive_bools)]
     #[pyo3(signature = (
         *,
         index,
-        contents
+        contents,
+        include_semantically_empty_columns = false,
+        include_indicator_columns = false,
+        include_tombstone_columns = false,
     ))]
     fn view(
         slf: Bound<'_, Self>,
         index: &str,
         contents: Bound<'_, PyAny>,
+        include_semantically_empty_columns: bool,
+        include_indicator_columns: bool,
+        include_tombstone_columns: bool,
     ) -> PyResult<PyRecordingView> {
         let borrowed_self = slf.borrow();
 
@@ -736,14 +952,14 @@ impl PyRecording {
 
         let query = QueryExpression {
             view_contents: Some(contents),
-            include_semantically_empty_columns: false,
-            include_indicator_columns: false,
-            include_tombstone_columns: false,
+            include_semantically_empty_columns,
+            include_indicator_columns,
+            include_tombstone_columns,
             filtered_index: Some(timeline.timeline),
             filtered_index_range: None,
             filtered_index_values: None,
             using_index_values: None,
-            filtered_point_of_view: None,
+            filtered_is_not_null: None,
             sparse_fill_strategy: SparseFillStrategy::None,
             selection: None,
         };
