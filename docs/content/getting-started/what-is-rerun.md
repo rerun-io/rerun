@@ -20,24 +20,24 @@ It's built around Rerun's open source data model to make data pipelines simple t
 It gives you a single database interface to operate on data from multiple sources, including MCAP, proprietary log-formats, LeRobot Datasets,
 and multimodal table formats like Lance.
 
-Under development with select partners. [Get in touch](https://5li7zhj98k8.typeform.com/to/a5XDpBkZ) if you'd like to be one of them.
+It's under development with select partners. [Get in touch](https://5li7zhj98k8.typeform.com/to/a5XDpBkZ) if you'd like to be one of them.
 
 
 ## How do you use it?
 
 <picture>
-  <img src="https://static.rerun.io/how_to_use/fd75fa302617cd0afefc9ba6e5e1e13055fced04/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/how_to_use/fd75fa302617cd0afefc9ba6e5e1e13055fced04/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/how_to_use/fd75fa302617cd0afefc9ba6e5e1e13055fced04/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/how_to_use/fd75fa302617cd0afefc9ba6e5e1e13055fced04/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/how_to_use/fd75fa302617cd0afefc9ba6e5e1e13055fced04/1200w.png">
+  <img src="https://static.rerun.io/rerun-overview-new/1752fc259eef34f3aa8151b21b5937bc0bc2ad38/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/rerun-overview-new/1752fc259eef34f3aa8151b21b5937bc0bc2ad38/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/rerun-overview-new/1752fc259eef34f3aa8151b21b5937bc0bc2ad38/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/rerun-overview-new/1752fc259eef34f3aa8151b21b5937bc0bc2ad38/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/rerun-overview-new/1752fc259eef34f3aa8151b21b5937bc0bc2ad38/1200w.png">
 </picture>
-TODO: Update diagram
 
-1. User the Rerun SDK to Model and log multimodal data from running code or load it from stored datasets
-2. View and interact with live or recorded data, in the stand alone viewer or embedded in your app.
+1. Use the Rerun SDK to log multimodal data from your code or load it from storage
+2. View live or recorded data in the standalone viewer or embedded in your app
 3. Build layouts and customize visualizations interactively in the UI or through the SDK
-4. Extract clean dataframes and use with tools like Pandas, Polars, or DuckDB.
+4. Query recordings to get clean dataframes into tools like Pandas, Polars, or DuckDB
+5. Extend Rerun when you need to
 
 ## How does it work?
 That's a big question for a welcome page. The short answer is that
