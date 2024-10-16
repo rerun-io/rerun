@@ -2102,7 +2102,7 @@ mod tests {
                     NullArray(4),
                     NullArray(4),
                     ListArray[[2], [3], [4], [6]],
-                    ListArray[None, None, None, None],
+                    ListArray[[c], [c], [c], [c]],
                 ]\
                 ",
             );
