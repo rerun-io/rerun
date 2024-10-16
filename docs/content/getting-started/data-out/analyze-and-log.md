@@ -22,7 +22,10 @@ df["jawOpenState"] = df["jawOpen"] > 0.15
 
 ## Log the result back to the viewer
 
-The first step to log the data is to initialize the logging SDK to direct it to the exact same recording that we just analyzed. For this, both the application ID and the recording ID must match. Here is how it is done:
+The first step is to initialize the logging SDK targeting the same recording we just analyzed.
+This requires matching both the application ID and recording ID precisely.
+By using the same identifiers, we're appending new data to an existing recording.
+If the recording is currently open in the viewer (and it's listening for new connections), this approach enables us to seamlessly add the new data to the ongoing session.
 
 ```python
 rr.init(
