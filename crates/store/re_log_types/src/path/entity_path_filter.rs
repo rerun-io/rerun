@@ -192,6 +192,7 @@ fn split_whitespace_smart(path: &'_ str) -> Vec<&'_ str> {
         let mut i = 0;
         let mut is_in_escape = false;
         let mut is_include_exclude = false;
+        let mut new_token = true;
 
         // Find the next unescaped whitespace character not following a '+' or '-' character
         while i < bytes.len() {
@@ -206,9 +207,10 @@ fn split_whitespace_smart(path: &'_ str) -> Vec<&'_ str> {
             is_in_escape = bytes[i] == b'\\';
 
             if bytes[i] == b'+' || bytes[i] == b'-' {
-                is_include_exclude = true;
+                is_include_exclude = new_token;
             } else if !is_unescaped_whitespace {
                 is_include_exclude = false;
+                new_token = false;
             }
 
             i += 1;
@@ -976,6 +978,10 @@ fn test_split_whitespace_smart() {
     assert_eq!(
         split_whitespace_smart("+ a -\n b + c"),
         vec!["+ a", "-", "b", "+ c"]
+    );
+    assert_eq!(
+        split_whitespace_smart("/weird/path- +/oth- erpath"),
+        vec!["/weird/path-", "+/oth-", "erpath"]
     );
     assert_eq!(
         split_whitespace_smart(r"+world/** -/world/points"),
