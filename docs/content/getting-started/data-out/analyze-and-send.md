@@ -1,11 +1,11 @@
 ---
-title: Analyze the data and log the results
+title: Analyze the data and send back the results
 order: 3
 ---
 
 
 
-In the previous sections, we explored our data and exported it to a Pandas dataframe. In this section, we will analyze the data to extract a "jaw open state" signal and log it back to the viewer.
+In the previous sections, we explored our data and exported it to a Pandas dataframe. In this section, we will analyze the data to extract a "jaw open state" signal and send it back to the viewer.
 
 
 
@@ -20,7 +20,7 @@ df["jawOpenState"] = df["jawOpen"] > 0.15
 ```
 
 
-## Log the result back to the viewer
+## Send the result back to the viewer
 
 The first step is to initialize the logging SDK targeting the same recording we just analyzed.
 This requires matching both the application ID and recording ID precisely.
@@ -37,11 +37,11 @@ rr.connect()
 
 _Note_: When automating data analysis, it is typically preferable to log the results to an distinct RRD file next to the source RRD (using `rr.save()`). In such a situation, it is also valid to use the same app ID and recording ID. This allows opening both the source and result RRDs in the viewer, which will display data from both files under the same recording.
 
-We will log our jaw open state data in two forms:
+We will send our jaw open state data in two forms:
 1. As a standalone `Scalar` component, to hold the raw data.
 2. As a `Text` component on the existing bounding box entity, such that we obtain a textual representation of the state in the visualization.
 
-Here is how to log the data as a scalar:
+Here is how to send the data as a scalar:
 
 ```python
 rr.send_columns(
@@ -53,9 +53,9 @@ rr.send_columns(
 )
 ```
 
-With use the [`rr.send_column()`](../../howto/send_columns.md) API to efficiently send the entire column of data in a single batch.
+We use the [`rr.send_column()`](../../howto/send_columns.md) API to efficiently send the entire column of data in a single batch.
 
-Next, let's log the same data as `Text` component:
+Next, let's send the same data as `Text` component:
 
 ```python
 target_entity = "/video/detector/faces/0/bbox"
@@ -84,6 +84,6 @@ The OPEN/CLOSE label is displayed along the bounding box on the 2D view, and the
 
 ### Complete script
 
-Here is the complete script used by this guide to load data, analyze it, and log the result back:
+Here is the complete script used by this guide to load data, analyze it, and send the result back:
 
 snippet: tutorials/data_out
