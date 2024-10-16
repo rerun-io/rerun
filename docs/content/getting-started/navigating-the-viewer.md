@@ -13,11 +13,11 @@ This guide will familiarize you with the basics of using the Rerun Viewer with a
 Here is a preview of the dataset that we will be working with:
 
 <picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_preview/eba55ea05deef665393cf42cc48d1236b4cc9692/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_preview/eba55ea05deef665393cf42cc48d1236b4cc9692/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_preview/eba55ea05deef665393cf42cc48d1236b4cc9692/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_preview/eba55ea05deef665393cf42cc48d1236b4cc9692/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_preview/eba55ea05deef665393cf42cc48d1236b4cc9692/1200w.png">
+  <img src="https://static.rerun.io/viewer_walkthrough_preview/9870115ee86264b0671cbcae5eca2a405299a597/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_preview/9870115ee86264b0671cbcae5eca2a405299a597/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_preview/9870115ee86264b0671cbcae5eca2a405299a597/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_preview/9870115ee86264b0671cbcae5eca2a405299a597/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_preview/9870115ee86264b0671cbcae5eca2a405299a597/1200w.png">
 </picture>
 
 The demo uses the output of the [COLMAP](https://colmap.github.io/) structure-from-motion pipeline on a small dataset.
@@ -54,21 +54,22 @@ like._
 
 This will bring you the Rerun viewer's Welcome screen:
 
-<img src="https://static.rerun.io/welcome-screen/91f9bb2beca6c88ec3bfcdbeb0377d9164457f48/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/welcome-screen/91f9bb2beca6c88ec3bfcdbeb0377d9164457f48/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/welcome-screen/91f9bb2beca6c88ec3bfcdbeb0377d9164457f48/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/welcome-screen/91f9bb2beca6c88ec3bfcdbeb0377d9164457f48/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/welcome-screen/91f9bb2beca6c88ec3bfcdbeb0377d9164457f48/1200w.png">
+<picture>
+  <img src="https://static.rerun.io/viewer_walkthrough_welcome/65675332322e7aa14c6877974da4aabd53a4d168/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_welcome/65675332322e7aa14c6877974da4aabd53a4d168/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_welcome/65675332322e7aa14c6877974da4aabd53a4d168/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_welcome/65675332322e7aa14c6877974da4aabd53a4d168/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_welcome/65675332322e7aa14c6877974da4aabd53a4d168/1200w.png">
 </picture>
 
 From there you can chose the "Structure from Motion" example. A window that looks like this will appear:
 
 <picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_car_open/b5fa19d6bee481142b01b253ff63eef4066e1c96/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_car_open/b5fa19d6bee481142b01b253ff63eef4066e1c96/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_car_open/b5fa19d6bee481142b01b253ff63eef4066e1c96/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_car_open/b5fa19d6bee481142b01b253ff63eef4066e1c96/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_car_open/b5fa19d6bee481142b01b253ff63eef4066e1c96/1200w.png">
+  <img src="https://static.rerun.io/viewer_walkthrough_open/19a2522a27c57af67ccde8106bf80e5917766811/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_open/19a2522a27c57af67ccde8106bf80e5917766811/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_open/19a2522a27c57af67ccde8106bf80e5917766811/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_open/19a2522a27c57af67ccde8106bf80e5917766811/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_open/19a2522a27c57af67ccde8106bf80e5917766811/1200w.png">
 </picture>
 
 Depending on your display size, the panels may have a different arrangements. Further in this guide you will learn how you can change that.
@@ -86,11 +87,11 @@ This window has five main sections:
 Each of the three sides has a button in the upper-right corner. Click these to show or hide the corresponding panels.
 
 <picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_car_toggle_panels/438e5e3fd70da11d15426e1d33510c60e0128dc8/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_car_toggle_panels/438e5e3fd70da11d15426e1d33510c60e0128dc8/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_car_toggle_panels/438e5e3fd70da11d15426e1d33510c60e0128dc8/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_car_toggle_panels/438e5e3fd70da11d15426e1d33510c60e0128dc8/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_car_toggle_panels/438e5e3fd70da11d15426e1d33510c60e0128dc8/1200w.png">
+  <img src="https://static.rerun.io/viewer_walkthrough_toggle/5cba13935aa755c310fe73a82841eedd748c6565/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_toggle/5cba13935aa755c310fe73a82841eedd748c6565/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_toggle/5cba13935aa755c310fe73a82841eedd748c6565/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_toggle/5cba13935aa755c310fe73a82841eedd748c6565/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_toggle/5cba13935aa755c310fe73a82841eedd748c6565/1200w.png">
 </picture>
 
 There are several ways to rearrange the viewer layout to your liking: through the Viewer [user interface](configure-the-viewer/interactively.md),
@@ -110,27 +111,27 @@ Let's explore an example of this hierarchy in our scene:
 
 The hierarchy of logged entity streams and their component streams is found under `Streams` in the Timeline panel. A similar list appears in the `Blueprint` panel, but the key difference is that the Blueprint panel focuses on how data is arranged and visualized in the Viewport, while the Streams panel shows when and what events were logged. In other words, an entity may be logged once but displayed in multiple views.
 
-Visualizations can also be customized per view using [Overrides](../concepts/visualizers-and-overrides.md) in the Selection panel. In the screenshot below, the same entity `keypoints` is shown in different colors.
+Visualizations can also be customized per each view using [Overrides](../concepts/visualizers-and-overrides.md) in the Selection panel. In the screenshot below, the same entity `keypoints` is displayed in different colors: yellow and magenta. This is reflected in Selection > Visualizers > Points2D > Color, where yellow is an overridden value, even though the logged color value was different.
 
 <picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_overrides/ae0bd0d0f32296d33d60830d2920f18dadd3e076/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_overrides/ae0bd0d0f32296d33d60830d2920f18dadd3e076/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_overrides/ae0bd0d0f32296d33d60830d2920f18dadd3e076/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_overrides/ae0bd0d0f32296d33d60830d2920f18dadd3e076/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_overrides/ae0bd0d0f32296d33d60830d2920f18dadd3e076/1200w.png">
+  <img src="https://static.rerun.io/viewer_walkthrough_overrides/5c5f99b237cd2a1eb00cd801a53941e2646f10cb/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_overrides/5c5f99b237cd2a1eb00cd801a53941e2646f10cb/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_overrides/5c5f99b237cd2a1eb00cd801a53941e2646f10cb/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_overrides/5c5f99b237cd2a1eb00cd801a53941e2646f10cb/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_overrides/5c5f99b237cd2a1eb00cd801a53941e2646f10cb/1200w.png">
 </picture>
 
 ### Hover and selection
 
-You can easily identify the connections between the same entities across different panels through the visual highlights. Hovering over an entity will
+You can easily identify which entity mentions and visual representations refer to the same entities across different panels by seeing them simultaneously highlighted in the UI. Hovering over an entity will
 display a popup with additional information about its content. Clicking on it will reveal more details in the [Selection panel](../reference/viewer/selection.md).
 
 <picture>
-  <img src="https://static.rerun.io/viewer_walkthrough_car_relations/4a01fd9367b47fa3f1f82d27fc879ce25c3ac6fd/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_car_relations/4a01fd9367b47fa3f1f82d27fc879ce25c3ac6fd/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_car_relations/4a01fd9367b47fa3f1f82d27fc879ce25c3ac6fd/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_car_relations/4a01fd9367b47fa3f1f82d27fc879ce25c3ac6fd/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_car_relations/4a01fd9367b47fa3f1f82d27fc879ce25c3ac6fd/1200w.png">
+  <img src="https://static.rerun.io/viewer_walkthrough_relations/eeb271ebf69715fe94fe3c2590335afe527444f0/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/viewer_walkthrough_relations/eeb271ebf69715fe94fe3c2590335afe527444f0/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/viewer_walkthrough_relations/eeb271ebf69715fe94fe3c2590335afe527444f0/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/viewer_walkthrough_relations/eeb271ebf69715fe94fe3c2590335afe527444f0/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/viewer_walkthrough_relations/eeb271ebf69715fe94fe3c2590335afe527444f0/1200w.png">
 </picture>
 
 Try each of the following:
@@ -162,8 +163,8 @@ the specific thing that was logged.
 There are several ways to navigate through the timeline:
 
 -   Move the time indicator by dragging it to a different point on the timeline.
-    For certain timelines, you can also click on the frame number and manually type the desired frame.
--   Adjust the playback speed, and for some timelines, you can also modify the number of frames per second.
+    You can also click on the frame number and manually type the desired frame.
+-   Adjust the playback speed, and for index-based timelines, you can also modify the number of frames per second to specify how indices relate to time.
 -   Use the play, pause, step, and loop controls to playback Rerun data, similar to how you would with a video file.
 
 Try out the following:
