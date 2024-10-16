@@ -239,24 +239,29 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                             .painter()
                             .layout(text, font_id, text_color, f32::INFINITY);
 
+                        // Extra padding for this being a button.
+                        let size = galley.size() + 2.0 * ui.spacing().button_padding;
+
                         // Put the text leftmost in the clip rect (so it is always visible)
                         let mut pos = egui::Align2::LEFT_CENTER
                             .anchor_size(
                                 ui.clip_rect().shrink(Self::LEFT_RIGHT_MARGIN).left_center(),
-                                galley.size(),
+                                size,
                             )
                             .min;
 
                         // … but not so far to the right that it doesn't fit.
-                        pos.x = pos.x.at_most(ui.max_rect().right() - galley.size().x);
+                        pos.x = pos.x.at_most(ui.max_rect().right() - size.x);
 
                         let item = re_viewer_context::Item::from(entity_path.clone());
                         let is_selected = self.ctx.selection().contains_item(&item);
                         let response = ui.put(
-                            egui::Rect::from_min_size(pos, galley.size()),
+                            egui::Rect::from_min_size(pos, size),
                             egui::SelectableLabel::new(is_selected, galley),
                         );
                         self.ctx.select_hovered_on_click(&response, item);
+
+                        // TODO(emilk): expand column(s) to make sure the text fits
                     }
                 } else if cell.row_nr == 1 {
                     let column = &self.selected_columns[cell.col_range.start];
