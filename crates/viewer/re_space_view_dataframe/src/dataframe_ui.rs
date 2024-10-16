@@ -261,7 +261,7 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                         );
                         self.ctx.select_hovered_on_click(&response, item);
 
-                        // TODO(emilk): expand column(s) to make sure the text fits
+                        // TODO(emilk): expand column(s) to make sure the text fits (requires egui_table fix).
                     }
                 } else if cell.row_nr == 1 {
                     let column = &self.selected_columns[cell.col_range.start];
