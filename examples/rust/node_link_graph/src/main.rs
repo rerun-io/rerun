@@ -14,6 +14,7 @@ mod examples;
 enum Example {
     Simple,
     Social,
+    Disjoint,
 }
 
 impl Example {
@@ -21,6 +22,7 @@ impl Example {
         match self {
             Example::Simple => examples::simple::run(args),
             Example::Social => examples::social::run(args),
+            Example::Disjoint => examples::disjoint::run(args, 20),
         }
     }
 }
@@ -28,11 +30,11 @@ impl Example {
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
 pub struct Args {
-    #[command(flatten)]
-    rerun: rerun::clap::RerunArgs,
-
     #[arg(short, long)]
     example: Option<Example>,
+
+    #[command(flatten)]
+    rerun: rerun::clap::RerunArgs,
 }
 
 fn main() -> anyhow::Result<()> {

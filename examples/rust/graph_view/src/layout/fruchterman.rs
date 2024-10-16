@@ -1,6 +1,9 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, hash::BuildHasherDefault};
 
-use fdg::{nalgebra::Point2, Force as _};
+use fdg::{
+    nalgebra::{Point2, SVector},
+    Force,
+};
 use rand::distributions::Distribution as _;
 use re_viewer::external::egui;
 
@@ -56,4 +59,13 @@ impl FruchtermanReingoldLayout {
 
         Ok(res)
     }
+}
+
+struct Collide<T: fdg::Field, const D: usize> {
+    // TODO(grtlr): specify hash function
+    pub velocities: HashMap<NodeIndex, SVector<T, D>>,
+}
+
+impl<T: fdg::Field, const D: usize, N, E> fdg::Force<T, D, N, E> for Collide<T, D> {
+    fn apply(&mut self, graph: &mut fdg::ForceGraph<T, D, N, E>) {}
 }

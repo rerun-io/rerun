@@ -10,12 +10,15 @@ mod force_directed;
 pub(crate) use force_directed::ForceBasedLayout;
 mod fruchterman;
 pub(crate) use fruchterman::FruchtermanReingoldLayout;
+mod force;
+pub(crate) use force::Force;
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum LayoutProvider {
     Dot(DotLayout),
     ForceDirected(ForceBasedLayout),
     FruchtermanReingold(FruchtermanReingoldLayout),
+    ReForce(Force),
 }
 
 impl LayoutProvider {
@@ -29,6 +32,10 @@ impl LayoutProvider {
 
     pub(crate) fn new_fruchterman_reingold() -> Self {
         LayoutProvider::FruchtermanReingold(Default::default())
+    }
+
+    pub(crate) fn new_napkin() -> Self {
+        LayoutProvider::ReForce(Default::default())
     }
 }
 
@@ -45,12 +52,13 @@ impl LayoutProvider {
             LayoutProvider::FruchtermanReingold(layout) => {
                 layout.compute(nodes, directed, undirected)
             }
+            LayoutProvider::ReForce(layout) => layout.compute(nodes),
         }
     }
 }
 
 impl Default for LayoutProvider {
     fn default() -> Self {
-        LayoutProvider::new_fruchterman_reingold()
+        LayoutProvider::new_napkin()
     }
 }

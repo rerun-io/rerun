@@ -2776,6 +2776,7 @@ dependencies = [
  "petgraph",
  "rand",
  "re_crash_handler",
+ "re_force",
  "re_format",
  "re_log_types",
  "re_sdk_comms",
@@ -5308,6 +5309,15 @@ name = "re_error"
 version = "0.19.0-alpha.1+dev"
 dependencies = [
  "anyhow",
+]
+
+[[package]]
+name = "re_force"
+version = "0.19.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "emath",
+ "rand",
 ]
 
 [[package]]

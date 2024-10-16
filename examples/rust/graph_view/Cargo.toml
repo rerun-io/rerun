@@ -13,6 +13,7 @@ analytics = ["re_crash_handler/analytics", "re_viewer/analytics"]
 
 [dependencies]
 re_crash_handler = { path = "../../../crates/utils/re_crash_handler" }
+re_force = { path = "../../../crates/utils/re_force" }
 re_format = { path = "../../../crates/utils/re_format" }
 re_viewer = { path = "../../../crates/viewer/re_viewer", default-features = false }
 re_log_types = { path = "../../../crates/store/re_log_types" }

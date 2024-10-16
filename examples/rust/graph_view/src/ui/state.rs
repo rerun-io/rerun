@@ -57,8 +57,9 @@ impl GraphSpaceViewState {
             ui.label("Layout algorithm:");
 
             let layout_options = [
-                (LayoutProvider::new_dot(), "Dot"),
-                (LayoutProvider::new_force_directed(), "Force Directed"),
+                (LayoutProvider::new_napkin(), "ReForce"),
+                // (LayoutProvider::new_dot(), "Dot"),
+                // (LayoutProvider::new_force_directed(), "Force Directed"),
                 (
                     LayoutProvider::new_fruchterman_reingold(),
                     "Fruchterman-Reingold",

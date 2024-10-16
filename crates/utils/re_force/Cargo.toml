@@ -1,0 +1,27 @@
+[package]
+name = "re_force"
+authors.workspace = true
+description = "Force-directed graph drawing."
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[dependencies]
+emath = "0.29.1"
+rand = "0.8.5"
+
+[dev-dependencies]
+anyhow.workspace = true
