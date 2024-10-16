@@ -10,7 +10,7 @@ thumbnail_dimensions = [480, 268]
 https://vimeo.com/1019845514?loop=1&autopause=0&background=1&muted=1&ratio=2802:1790
 
 ## Background
-InstantSplat is a sparse-view, SfM-free framework for large-scale scene reconstruction method using Gaussian Splatting. It allows for extremely fast reconstruction by using Dust3r, a multiview stereo network, to initialize camera poses and dense point cloud for all training views. To enhance pose accuracy and tune scene parameters a gradient-based joint optimization framework from self-supervision is used.  By employing this simplified framework, InstantSplat achieves a substantial reduction in training time, from hours to mere seconds, and demonstrates robust performance across various numbers of views in diverse datasets
+InstantSplat is a sparse-view, SfM-free framework for large-scale scene reconstruction method using Gaussian Splatting. It allows for extremely fast reconstruction by using Dust3r, a multiview stereo network, to initialize camera poses and dense point cloud for all training views. To enhance pose accuracy and tune scene parameters a gradient-based joint optimization framework from self-supervision is used. By employing this simplified framework, InstantSplat achieves a substantial reduction in training time, from hours to mere seconds, and demonstrates robust performance across various numbers of views in diverse datasets
 
 ## Run the code
 This is an external example. Check the [repository](https://github.com/pablovela5620/InstantSplat) for more information.
