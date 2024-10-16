@@ -1,7 +1,110 @@
 # Rerun changelog
 
 
-## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
+## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD) - Dataframe & Video
+
+TODO(emilk): insert a screenshot and/or code sample here
+
+📖 Release blogpost: TODO(emilk): add link
+
+🧳 Migration guide: No breaking changes in this release!
+
+### ✨ Overview & highlights
+This release introduces two powerful features: a dataframe API (and view), as well as video support.
+
+#### ☰ Dataframe Python API
+We now have a Python API for querying the contents of an .rrd file. This integrates with popular packages such as [Pandas](https://pandas.pydata.org), [Polars](https://pola.rs), and [DuckDB](https://duckdb.org).
+
+You can read more in [the Dataframe API how-to guide](https://rerun.io/docs/content/howto/dataframe-api?speculative-link).
+
+We have also added a matching dataframe view inside the Rerun Viewer.
+Read more [here](https://rerun.io/docs/content/reference/types/views/dataframe_view?speculative-link).
+
+#### 🎬 Video
+Rerun now supports logging MP4 videos using the new [`AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link) archetype.
+This can greatly reduce bandwidth and storage requirements.
+
+Currently, only the AV1 codec is supported in the native viewer, but we plan to support H.264 in the near future.
+Read more about our video supports (and its limits) [in our video docs](https://rerun.io/docs/reference/video).
+
+### ⚠️ Breaking changes
+None this time!
+
+### 🔎 Details
+
+#### 🪵 Log API
+- Refactor `MediaType` guessing [#7326](https://github.com/rerun-io/rerun/pull/7326)
+- Tensor & depth image value ranges can now be configured, from UI & code [#7549](https://github.com/rerun-io/rerun/pull/7549)
+- New planar pixel formats: `Y_U_V24`/`Y_U_V16`/`Y_U_V12` - `_LimitedRange`/`FullRange` [#7666](https://github.com/rerun-io/rerun/pull/7666)
+
+#### 🌊 C++ API
+- Add `nullptr` check when forwarding from component to datatype [#7430](https://github.com/rerun-io/rerun/pull/7430)
+
+#### 🐍 Python API
+- Add missing `show_labels` and `draw_order` arguments in Python API [#7363](https://github.com/rerun-io/rerun/pull/7363) (thanks [@kpreid](https://github.com/kpreid)!)
+- Allow component selectors to be specified as strings with flexible matching [#7695](https://github.com/rerun-io/rerun/pull/7695)
+- Allow logging to a recording without first calling `rr.init()` [#7698](https://github.com/rerun-io/rerun/pull/7698)
+- Add support for NumPy arrays to the arrow serializer for string datatypes [#7689](https://github.com/rerun-io/rerun/pull/7689)
+- Add column property accessors for selectors and descriptors [#7752](https://github.com/rerun-io/rerun/pull/7752)
+- Include a `view.schema()` API and improved support for static data [#7754](https://github.com/rerun-io/rerun/pull/7754)
+
+#### 🦀 Rust API
+- Fix  Rust's  `TimeColumn::new_seconds/new_nanos` creating sequence timelines [#7402](https://github.com/rerun-io/rerun/pull/7402)
+- Update ndarray to 0.16  and ndarray-rand to 0.15 [#7358](https://github.com/rerun-io/rerun/pull/7358) (thanks [@benliepert](https://github.com/benliepert)!)
+- Replace `host_web_viewer` method with `WebViewerConfig::host_web_viewer` [#7553](https://github.com/rerun-io/rerun/pull/7553)
+- Update MSRV to Rust 1.79 [#7563](https://github.com/rerun-io/rerun/pull/7563)
+- Implement `From<ShowLabels>` for `bool` [#7686](https://github.com/rerun-io/rerun/pull/7686) (thanks [@grtlr](https://github.com/grtlr)!)
+
+#### 🪳 Bug Fixes
+- Purge the query cache to prevent GC livelocks [#7370](https://github.com/rerun-io/rerun/pull/7370)
+- Bug fix: always show latest data in follow-mode [#7425](https://github.com/rerun-io/rerun/pull/7425)
+- Fix encoded image being suggested for non-image blobs (like video) [#7428](https://github.com/rerun-io/rerun/pull/7428)
+- Chunk store: support for overlapped range queries [#7586](https://github.com/rerun-io/rerun/pull/7586)
+- Fix image & video cache creating new entries when selecting data without explicit media type [#7590](https://github.com/rerun-io/rerun/pull/7590)
+
+#### 🌁 Viewer improvements
+- The viewer will tail an .rrd that's is being written to [#7475](https://github.com/rerun-io/rerun/pull/7475)
+- Native video support for AV1 [#7557](https://github.com/rerun-io/rerun/pull/7557)
+
+#### 🚀 Performance improvements
+- Improve performance for scenes with many entities & transforms [#7456](https://github.com/rerun-io/rerun/pull/7456)
+- `Caches` per recording [#7513](https://github.com/rerun-io/rerun/pull/7513)
+- Automatic removal of unreachable static chunks [#7518](https://github.com/rerun-io/rerun/pull/7518)
+- Invalidate hub-wide caches on deletions and overwrites [#7525](https://github.com/rerun-io/rerun/pull/7525)
+- Do not cache static entries in the query-time latest-at cache [#7654](https://github.com/rerun-io/rerun/pull/7654)
+- Make sure Arrow `filter` and `take` kernels early out where it makes sense [#7704](https://github.com/rerun-io/rerun/pull/7704)
+- Bump `re_rav1d` to 0.1.2 [#7730](https://github.com/rerun-io/rerun/pull/7730)
+
+#### 🧑‍🏫 Examples
+- Add drone LiDAR example [#7336](https://github.com/rerun-io/rerun/pull/7336)
+- add instant_splat example [#7751](https://github.com/rerun-io/rerun/pull/7751) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
+
+#### 📚 Docs
+- Add video reference docs [#7533](https://github.com/rerun-io/rerun/pull/7533)
+- Document that Rerun does not support left-handed coords [#7690](https://github.com/rerun-io/rerun/pull/7690)
+- Add a How-to guide for the dataframe API [#7727](https://github.com/rerun-io/rerun/pull/7727)
+- Docs: move "roadmap" down to "development" [#7775](https://github.com/rerun-io/rerun/pull/7775)
+- Add a "Getting started" guide for the dataframe API [#7643](https://github.com/rerun-io/rerun/pull/7643)
+- Docs: clean up reference menu [#7776](https://github.com/rerun-io/rerun/pull/7776)
+- Updating "Navigating the viewer" [#7757](https://github.com/rerun-io/rerun/pull/7757) (thanks [@gavrelina](https://github.com/gavrelina)!)
+
+#### 🖼 UI improvements
+- Add a hook for views to add additional UI in the tab title bar [#7438](https://github.com/rerun-io/rerun/pull/7438)
+- Text fields in the selection panel now span the available width [#7487](https://github.com/rerun-io/rerun/pull/7487)
+- Do not deselect on ESC when it was used to close some other UI element [#7548](https://github.com/rerun-io/rerun/pull/7548)
+- Add UI for precisely picking an exact sequence time [#7673](https://github.com/rerun-io/rerun/pull/7673)
+- Remove the feature flag for plot query clamping [#7664](https://github.com/rerun-io/rerun/pull/7664)
+
+#### 🕸️ Web
+- Support h.264 video decoding on web [#7511](https://github.com/rerun-io/rerun/pull/7511)
+
+#### 🎨 Renderer improvements
+- Introduce image data conversion pipeline, taking over existing YUV conversions [#7640](https://github.com/rerun-io/rerun/pull/7640)
+
+#### 🧑‍💻 Dev-experience
+- Add a command palette action to reset egui's memory (debug build only) [#7446](https://github.com/rerun-io/rerun/pull/7446)
+- Add NOLINT block to `lint.py` [#7720](https://github.com/rerun-io/rerun/pull/7720)
+
 
 
 ## [0.18.2](https://github.com/rerun-io/rerun/compare/0.18.1...0.18.2) - Even more bug fixes
