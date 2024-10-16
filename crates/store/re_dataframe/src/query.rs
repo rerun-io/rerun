@@ -912,14 +912,24 @@ impl QueryHandle<'_> {
             .collect_vec();
 
         // Static always wins, no matter what.
-        for (view_idx, streaming_state) in view_streaming_state.iter_mut().enumerate() {
-            if let static_state @ Some(_) = state
-                .selected_static_values
-                .get(view_idx)
-                .cloned()
-                .flatten()
-                .map(StreamingJoinState::Retrofilled)
+        for (selected_idx, static_state) in state.selected_static_values.iter().enumerate() {
+            if let static_state @ Some(_) =
+                static_state.clone().map(StreamingJoinState::Retrofilled)
             {
+                let Some(view_idx) = state
+                    .selected_contents
+                    .get(selected_idx)
+                    .map(|(view_idx, _)| *view_idx)
+                else {
+                    debug_assert!(false, "selected_idx out of bounds");
+                    continue;
+                };
+
+                let Some(streaming_state) = view_streaming_state.get_mut(view_idx) else {
+                    debug_assert!(false, "view_idx out of bounds");
+                    continue;
+                };
+
                 *streaming_state = static_state;
             }
         }
@@ -1982,7 +1992,6 @@ mod tests {
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
-            dbg!(query_handle.view_contents());
             assert_eq!(
                 query_engine.query(query.clone()).into_iter().count() as u64,
                 query_handle.num_rows()
