@@ -67,7 +67,7 @@ class Image(ImageExt, Archetype):
     rr.init("rerun_example_image_formats", spawn=True)
 
     # Simple gradient image, logged in different formats.
-    image = np.array([[[x, min(255, x + y), y] for y in range(0, 256)] for x in range(0, 256)], dtype=np.uint8)
+    image = np.array([[[x, min(255, x + y), y] for x in range(0, 256)] for y in range(0, 256)], dtype=np.uint8)
     rr.log("image_rgb", rr.Image(image))
     rr.log("image_green_only", rr.Image(image[:, :, 1], color_model="l"))  # Luminance only
     rr.log("image_bgr", rr.Image(image[:, :, ::-1], color_model="bgr"))  # BGR
