@@ -187,7 +187,7 @@ def main() -> None:
 
             labels = pr_info.labels if pr_info else []
 
-            if "exclude from changelog" in labels:
+            if "include in changelog" not in labels:
                 continue
 
             summary = f"{title} [#{pr_number}](https://github.com/{OWNER}/{REPO}/pull/{pr_number})"
@@ -212,7 +212,7 @@ def main() -> None:
             added = False
 
             # Some PRs can show up under multiple sections:
-            if "🪵 Log-API" in labels:
+            if "🪵 Log & send APIs" in labels:
                 log_api.append(summary)
                 added = True
             else:
