@@ -105,10 +105,3 @@ impl crate::Loggable for ClearIsRecursive {
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 }
-
-impl crate::AsComponents for ClearIsRecursive {
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
-        re_tracing::profile_function!();
-        vec![(self as &dyn ComponentBatch).into()]
-    }
-}

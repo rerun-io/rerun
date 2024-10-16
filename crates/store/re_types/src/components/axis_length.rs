@@ -111,10 +111,3 @@ impl ::re_types_core::Loggable for AxisLength {
         crate::datatypes::Float32::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
     }
 }
-
-impl ::re_types_core::AsComponents for AxisLength {
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
-        re_tracing::profile_function!();
-        vec![(self as &dyn ComponentBatch).into()]
-    }
-}

@@ -113,10 +113,3 @@ impl ::re_types_core::Loggable for Scalar {
         crate::datatypes::Float64::from_arrow(arrow_data).map(bytemuck::cast_vec)
     }
 }
-
-impl ::re_types_core::AsComponents for Scalar {
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
-        re_tracing::profile_function!();
-        vec![(self as &dyn ComponentBatch).into()]
-    }
-}

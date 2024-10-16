@@ -162,10 +162,3 @@ impl ::re_types_core::Loggable for ViewFit {
             .with_context("rerun.blueprint.components.ViewFit")?)
     }
 }
-
-impl ::re_types_core::AsComponents for ViewFit {
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
-        re_tracing::profile_function!();
-        vec![(self as &dyn ComponentBatch).into()]
-    }
-}

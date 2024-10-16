@@ -164,10 +164,3 @@ impl ::re_types_core::Loggable for BackgroundKind {
             .with_context("rerun.blueprint.components.BackgroundKind")?)
     }
 }
-
-impl ::re_types_core::AsComponents for BackgroundKind {
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
-        re_tracing::profile_function!();
-        vec![(self as &dyn ComponentBatch).into()]
-    }
-}

@@ -162,10 +162,3 @@ impl ::re_types_core::Loggable for ContainerKind {
             .with_context("rerun.blueprint.components.ContainerKind")?)
     }
 }
-
-impl ::re_types_core::AsComponents for ContainerKind {
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
-        re_tracing::profile_function!();
-        vec![(self as &dyn ComponentBatch).into()]
-    }
-}

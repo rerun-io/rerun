@@ -272,10 +272,3 @@ impl ::re_types_core::Loggable for LineStrip2D {
         .with_context("rerun.components.LineStrip2D")?)
     }
 }
-
-impl ::re_types_core::AsComponents for LineStrip2D {
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
-        re_tracing::profile_function!();
-        vec![(self as &dyn ComponentBatch).into()]
-    }
-}

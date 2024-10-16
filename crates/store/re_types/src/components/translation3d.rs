@@ -111,10 +111,3 @@ impl ::re_types_core::Loggable for Translation3D {
         crate::datatypes::Vec3D::from_arrow(arrow_data).map(bytemuck::cast_vec)
     }
 }
-
-impl ::re_types_core::AsComponents for Translation3D {
-    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
-        re_tracing::profile_function!();
-        vec![(self as &dyn ComponentBatch).into()]
-    }
-}
