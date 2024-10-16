@@ -47,6 +47,9 @@ plugins:
             load_external_modules: true
             preload_modules:
               - rerun_bindings
+            annotations_path: brief
+            signature_crossrefs: true
+
   - gen-files: # https://oprypin.github.io/mkdocs-gen-files
       scripts:
         - docs/gen_common_index.py

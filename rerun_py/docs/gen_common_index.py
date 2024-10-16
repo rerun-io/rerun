@@ -317,6 +317,7 @@ SECTION_TABLE: Final[list[Section]] = [
             "RecordingView",
             "RRDArchive",
             "Schema",
+            "ViewContentsLike",
         ],
         show_tables=True,
     ),
@@ -466,6 +467,12 @@ overview of what's possible and how.
                     fd.write("      filters: []\n")
                 if section.show_submodules:
                     fd.write("      show_submodules: True\n")
+            # Helpful for debugging
+            if 0:
+                with mkdocs_gen_files.open(write_path, "r") as fd:
+                    print("FOR SECTION", section.title)
+                    print(fd.read())
+                    print()
 
         # Write out a table for the section in the index_file
         if section.show_tables:
