@@ -13,4 +13,4 @@ In this three-part guide, we explore such a workflow by implementing an "open ja
 
 Note: this guide uses [Pandas](https://pandas.pydata.org) dataframes because of how popular this package is. The same concept however applies in the same way for alternative dataframe packages such as [Polars](https://pola.rs).
 
-For the fast track, jump to the [complete script](data-out/analyze-and-log.md#complete-script) at the end of the third section.
+If you just want to see the final result, jump to the [complete script](data-out/analyze-and-log.md#complete-script) at the end of the third section.
