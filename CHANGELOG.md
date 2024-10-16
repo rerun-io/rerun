@@ -92,9 +92,6 @@ None this time!
 - Add UI for precisely picking an exact sequence time [#7673](https://github.com/rerun-io/rerun/pull/7673)
 - Remove the feature flag for plot query clamping [#7664](https://github.com/rerun-io/rerun/pull/7664)
 
-#### 🕸️ Web
-- Support h.264 video decoding on web [#7511](https://github.com/rerun-io/rerun/pull/7511)
-
 #### 🎨 Renderer improvements
 - Introduce image data conversion pipeline, taking over existing YUV conversions [#7640](https://github.com/rerun-io/rerun/pull/7640)
 
