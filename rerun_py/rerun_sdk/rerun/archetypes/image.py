@@ -59,46 +59,27 @@ class Image(ImageExt, Archetype):
     </picture>
     </center>
 
-    ### Advanced usage of `send_columns` to send multiple images at once:
+    ### `image_simple`:
     ```python
     import numpy as np
     import rerun as rr
 
-    rr.init("rerun_example_image_send_columns", spawn=True)
+    # Create an image with numpy
+    image = np.zeros((200, 300, 3), dtype=np.uint8)
+    image[:, :, 0] = 255
+    image[50:150, 50:150] = (0, 255, 0)
 
-    # Timeline on which the images are distributed.
-    times = np.arange(0, 20)
+    rr.init("rerun_example_image", spawn=True)
 
-    # Create a batch of images with a moving rectangle.
-    width, height = 300, 200
-    images = np.zeros((len(times), height, width, 3), dtype=np.uint8)
-    images[:, :, :, 2] = 255
-    for t in times:
-        images[t, 50:150, (t * 10) : (t * 10 + 100), 1] = 255
-
-    # Log the ImageFormat and indicator once, as static.
-    format_static = rr.components.ImageFormat(width=width, height=height, color_model="RGB", channel_datatype="U8")
-    rr.log("images", [format_static, rr.Image.indicator()], static=True)
-
-    # Send all images at once.
-    rr.send_columns(
-        "images",
-        times=[rr.TimeSequenceColumn("step", times)],
-        # Reshape the images so `ImageBufferBatch` can tell that this is several blobs.
-        #
-        # Note that the `ImageBufferBatch` consumes arrays of bytes,
-        # so if you have a different channel datatype than `U8`, you need to make sure
-        # that the data is converted to arrays of bytes before passing it to `ImageBufferBatch`.
-        components=[rr.components.ImageBufferBatch(images.reshape(len(times), -1))],
-    )
+    rr.log("image", rr.Image(image))
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1200w.png">
-      <img src="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/full.png" width="640">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1200w.png">
+      <img src="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png" width="640">
     </picture>
     </center>
 

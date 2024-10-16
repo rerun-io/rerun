@@ -71,57 +71,34 @@ namespace rerun::archetypes {
     /// }
     /// ```
     ///
-    /// ### Advanced usage of `send_columns` to send multiple images at once
-    /// ![image](https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/full.png)
+    /// ### image_simple:
+    /// ![image](https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png)
     ///
     /// ```cpp
-    /// #include <numeric>
     /// #include <rerun.hpp>
     ///
+    /// #include <vector>
+    ///
     /// int main() {
-    ///     auto rec = rerun::RecordingStream("rerun_example_image_send_columns");
+    ///     const auto rec = rerun::RecordingStream("rerun_example_image");
     ///     rec.spawn().exit_on_failure();
     ///
-    ///     // Timeline on which the images are distributed.
-    ///     std::vector<int64_t> times(20);
-    ///     std::iota(times.begin(), times.end(), 0);
-    ///
-    ///     // Create a batch of images with a moving rectangle.
-    ///     const size_t width = 300, height = 200;
-    ///     std::vector<uint8_t> images(times.size() * height * width * 3, 0);
-    ///     for (size_t t = 0; t <times.size(); ++t) {
-    ///         for (size_t y = 0; y <height; ++y) {
-    ///             for (size_t x = 0; x <width; ++x) {
-    ///                 size_t idx = (t * height * width + y * width + x) * 3;
-    ///                 images[idx + 2] = 255; // Blue background
-    ///                 if (y>= 50 && y <150 && x>= t * 10 && x <t * 10 + 100) {
-    ///                     images[idx + 1] = 255; // Turquoise rectangle
-    ///                 }
-    ///             }
+    ///     // Create a synthetic image.
+    ///     const int HEIGHT = 200;
+    ///     const int WIDTH = 300;
+    ///     std::vector<uint8_t> data(WIDTH * HEIGHT * 3, 0);
+    ///     for (size_t i = 0; i <data.size(); i += 3) {
+    ///         data[i] = 255;
+    ///     }
+    ///     for (size_t y = 50; y <150; ++y) {
+    ///         for (size_t x = 50; x <150; ++x) {
+    ///             data[(y * WIDTH + x) * 3 + 0] = 0;
+    ///             data[(y * WIDTH + x) * 3 + 1] = 255;
+    ///             data[(y * WIDTH + x) * 3 + 2] = 0;
     ///         }
     ///     }
     ///
-    ///     // Log the ImageFormat and indicator once, as static.
-    ///     auto format = rerun::components::ImageFormat(
-    ///         {width, height},
-    ///         rerun::ColorModel::RGB,
-    ///         rerun::ChannelDatatype::U8
-    ///     );
-    ///     rec.log_static("images", rerun::borrow(&format), rerun::Image::IndicatorComponent());
-    ///
-    ///     // Split up the image data into several components referencing the underlying data.
-    ///     const size_t image_size_in_bytes = width * height * 3;
-    ///     std::vector<rerun::components::ImageBuffer> image_data(times.size());
-    ///     for (size_t i = 0; i <times.size(); ++i) {
-    ///         image_data[i] = rerun::borrow(images.data() + i * image_size_in_bytes, image_size_in_bytes);
-    ///     }
-    ///
-    ///     // Send all images at once.
-    ///     rec.send_columns(
-    ///         "images",
-    ///         rerun::TimeColumn::from_sequence_points("step", std::move(times)),
-    ///         rerun::borrow(image_data)
-    ///     );
+    ///     rec.log("image", rerun::Image::from_rgb24(data, {WIDTH, HEIGHT}));
     /// }
     /// ```
     struct Image {
