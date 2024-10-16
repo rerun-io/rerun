@@ -3,11 +3,10 @@
 import numpy as np
 import rerun as rr
 
-# Simple gradient image.
+rr.init("rerun_example_image_formats", spawn=True)
+
+# Simple gradient image, logged in different formats.
 image = np.array([[[x, min(255, x + y), y] for y in range(0, 256)] for x in range(0, 256)], dtype=np.uint8)
-
-rr.init("rerun_example_image", spawn=True)
-
 rr.log("image_rgb", rr.Image(image))
 rr.log("image_green_only", rr.Image(image[:, :, 1], color_model="l"))  # Luminance only
 rr.log("image_bgr", rr.Image(image[:, :, ::-1], color_model="bgr"))  # BGR
