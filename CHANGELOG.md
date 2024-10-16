@@ -46,13 +46,13 @@ None this time!
 - Add support for NumPy arrays to the arrow serializer for string datatypes [#7689](https://github.com/rerun-io/rerun/pull/7689)
 
 #### 🦀 Rust API
-- Fix  Rust's  `TimeColumn::new_seconds/new_nanos` creating sequence timelines [#7402](https://github.com/rerun-io/rerun/pull/7402)
+- Fix Rust's `TimeColumn::new_seconds/new_nanos` creating sequence timelines [#7402](https://github.com/rerun-io/rerun/pull/7402)
 - Update ndarray to 0.16  and ndarray-rand to 0.15 [#7358](https://github.com/rerun-io/rerun/pull/7358) (thanks [@benliepert](https://github.com/benliepert)!)
 - Replace `host_web_viewer` method with `WebViewerConfig::host_web_viewer` [#7553](https://github.com/rerun-io/rerun/pull/7553)
 - Update MSRV to Rust 1.79 [#7563](https://github.com/rerun-io/rerun/pull/7563)
 - Implement `From<ShowLabels>` for `bool` [#7686](https://github.com/rerun-io/rerun/pull/7686) (thanks [@grtlr](https://github.com/grtlr)!)
 
-#### 🪳 Bug Fixes
+#### 🪳 Bug fixes
 - Purge the query cache to prevent GC livelocks [#7370](https://github.com/rerun-io/rerun/pull/7370)
 - Bug fix: always show latest data in follow-mode [#7425](https://github.com/rerun-io/rerun/pull/7425)
 - Fix encoded image being suggested for non-image blobs (like video) [#7428](https://github.com/rerun-io/rerun/pull/7428)
@@ -341,7 +341,7 @@ _All four tetrahedron meshes on this screen share the same vertices and are inst
 - Recommend install rerun-cli with `--locked` [#6868](https://github.com/rerun-io/rerun/pull/6868)
 - Remove `TensorBuffer::JPEG`, `DecodedTensor`, `TensorDecodeCache` [#6884](https://github.com/rerun-io/rerun/pull/6884)
 
-#### 🪳Bug Fixes
+#### 🪳 Bug fixes
 - Respect 0.0 for start and end boundaries of scalar axis [#6887](https://github.com/rerun-io/rerun/pull/6887) (thanks [@amidabucu](https://github.com/amidabucu)!)
 - Fix text log/document view icons [#6855](https://github.com/rerun-io/rerun/pull/6855)
 - Fix outdated use of view coordinates in `Spaces and Transforms` doc page [#6955](https://github.com/rerun-io/rerun/pull/6955)
