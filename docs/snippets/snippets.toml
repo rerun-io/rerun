@@ -82,7 +82,9 @@ views = [
   "rust", # Not implemented
 ]
 "tutorials/data_out" = [
-  "py",  # Requires context (an RRD file to be exported by the user)
+  "py",   # Requires context (an RRD file to be exported by the user)
+  "cpp",  # Not implemented
+  "rust", # Not implemented
 ]
 
 # These entries will run but their results won't be compared to the baseline.
