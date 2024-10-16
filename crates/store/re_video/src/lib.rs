@@ -13,7 +13,15 @@ pub use self::{
     time::{Time, Timescale},
 };
 
-/// Returns information about this crate
-pub fn build_info() -> re_build_info::BuildInfo {
-    re_build_info::build_info!()
+/// Which features was this crate compiled with?
+pub fn features() -> Vec<&'static str> {
+    // TODO(emilk): is there a helper crate for this?
+    let mut features = vec![];
+    if cfg!(feature = "av1") {
+        features.push("av1");
+    }
+    if cfg!(feature = "nasm") {
+        features.push("nasm");
+    }
+    features
 }

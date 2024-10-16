@@ -37,7 +37,6 @@ nasm = [
 
 
 [dependencies]
-re_build_info.workspace = true
 re_log.workspace = true
 re_tracing.workspace = true
 
@@ -61,9 +60,6 @@ dav1d = { workspace = true, optional = true, default-features = false, features 
 
 [dev-dependencies]
 indicatif.workspace = true
-
-[build-dependencies]
-re_build_tools.workspace = true
 
 
 [[example]]
