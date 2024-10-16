@@ -33,20 +33,17 @@ None this time!
 ### 🔎 Details
 
 #### 🪵 Log API
-- Refactor `MediaType` guessing [#7326](https://github.com/rerun-io/rerun/pull/7326)
 - Tensor & depth image value ranges can now be configured, from UI & code [#7549](https://github.com/rerun-io/rerun/pull/7549)
 - New planar pixel formats: `Y_U_V24`/`Y_U_V16`/`Y_U_V12` - `_LimitedRange`/`FullRange` [#7666](https://github.com/rerun-io/rerun/pull/7666)
+- Refactor `MediaType` guessing [#7326](https://github.com/rerun-io/rerun/pull/7326)
 
 #### 🌊 C++ API
 - Add `nullptr` check when forwarding from component to datatype [#7430](https://github.com/rerun-io/rerun/pull/7430)
 
 #### 🐍 Python API
 - Add missing `show_labels` and `draw_order` arguments in Python API [#7363](https://github.com/rerun-io/rerun/pull/7363) (thanks [@kpreid](https://github.com/kpreid)!)
-- Allow component selectors to be specified as strings with flexible matching [#7695](https://github.com/rerun-io/rerun/pull/7695)
 - Allow logging to a recording without first calling `rr.init()` [#7698](https://github.com/rerun-io/rerun/pull/7698)
 - Add support for NumPy arrays to the arrow serializer for string datatypes [#7689](https://github.com/rerun-io/rerun/pull/7689)
-- Add column property accessors for selectors and descriptors [#7752](https://github.com/rerun-io/rerun/pull/7752)
-- Include a `view.schema()` API and improved support for static data [#7754](https://github.com/rerun-io/rerun/pull/7754)
 
 #### 🦀 Rust API
 - Fix  Rust's  `TimeColumn::new_seconds/new_nanos` creating sequence timelines [#7402](https://github.com/rerun-io/rerun/pull/7402)
