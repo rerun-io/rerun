@@ -983,7 +983,7 @@ impl PyRecordingView {
     /// The index values returned will be the intersection between the provided values and the
     /// original index values.
     ///
-    /// This requires index values to be a precise match.  Index values in Rerun are
+    /// This requires index values to be a precise match. Index values in Rerun are
     /// represented as i64 sequence counts or nanoseconds. This API does not expose an interface
     /// in floating point seconds, as the numerical conversion would risk false mismatches.
     ///
@@ -1041,10 +1041,10 @@ impl PyRecordingView {
     /// Replace the index in the view with the provided values.
     ///
     /// The output view will always have the same number of rows as the provided values, even if
-    /// those rows are empty.  Use with [`.fill_latest_at()`][rerun.dataframe.RecordingView.fill_latest_at]
+    /// those rows are empty. Use with [`.fill_latest_at()`][rerun.dataframe.RecordingView.fill_latest_at]
     /// to populate these rows with the most recent data.
     ///
-    /// This requires index values to be a precise match.  Index values in Rerun are
+    /// This requires index values to be a precise match. Index values in Rerun are
     /// represented as i64 sequence counts or nanoseconds. This API does not expose an interface
     /// in floating point seconds, as the numerical conversion would risk false mismatches.
     ///
