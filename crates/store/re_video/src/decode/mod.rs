@@ -136,6 +136,7 @@ pub fn new_decoder(
     );
 
     match &video.config.stsd.contents {
+        #[cfg(feature = "av1")]
         re_mp4::StsdBoxContent::Av01(_av01_box) => {
             #[cfg(linux_arm64)]
             {
