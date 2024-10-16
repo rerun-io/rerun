@@ -169,12 +169,15 @@ impl TryFrom<&str> for EntityPathFilter {
     }
 }
 
-/// Split a string into whitespace-separated tokens with extra logic
+/// Split a string into whitespace-separated tokens with extra logic.
+///
+/// Specifically, we allow for whitespace between `+`/`-` and the following token.
 ///
 /// Additional rules:
-///  - Escaped whitespace doesn't result in a split
-///  - Otherwise always split on `\n`.
-///  - And split on whitespace that is not following a `+` or `-` character.
+///  - Escaped whitespace never results in a split.
+///  - Otherwise always split on `\n` (even if it follows a `+` or `-` character).
+///  - Only consider `+` and `-` characters as special if they are the first character of a token.
+///  - Split on whitespace does not following a relevant `+` or `-` character.
 fn split_whitespace_smart(path: &'_ str) -> Vec<&'_ str> {
     #![allow(clippy::unwrap_used)]
 
@@ -184,6 +187,7 @@ fn split_whitespace_smart(path: &'_ str) -> Vec<&'_ str> {
 
     let mut tokens = vec![];
 
+    // Start by ignoring any leading whitespace
     while !bytes.is_empty() {
         let mut i = 0;
         let mut is_in_escape = false;
@@ -209,7 +213,9 @@ fn split_whitespace_smart(path: &'_ str) -> Vec<&'_ str> {
 
             i += 1;
         }
-        tokens.push(&bytes[..i]);
+        if i > 0 {
+            tokens.push(&bytes[..i]);
+        }
 
         // Continue skipping whitespace characters
         while i < bytes.len() {
@@ -964,7 +970,7 @@ fn test_split_whitespace_smart() {
     assert_eq!(split_whitespace_smart(r"a\ b c"), vec![r"a\ b", "c"]);
 
     assert_eq!(
-        split_whitespace_smart("+ a - b + c"),
+        split_whitespace_smart(" + a - b + c"),
         vec!["+ a", "- b", "+ c"]
     );
     assert_eq!(
