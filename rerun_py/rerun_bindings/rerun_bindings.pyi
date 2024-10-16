@@ -86,7 +86,7 @@ class ComponentColumnSelector:
         ...
 
 class Schema:
-    """The schema representing all columns in a [`Recording`][]."""
+    """The schema representing all columns in a [`rerun.dataframe.Recording`][]."""
 
     def __iter__(self) -> Iterator[Union[IndexColumnDescriptor, ComponentColumnDescriptor]]: ...
     def index_columns(self) -> list[IndexColumnDescriptor]: ...
@@ -97,7 +97,7 @@ class RecordingView:
     """
     A view of a recording restricted to a given index, containing a specific set of entities and components.
 
-    Can only be created by calling `view(...)` on a `Recording`.
+    Can only be created by calling `view(...)` on a [`rerun.dataframe.Recording`][].
 
     The only type of index currently supported is the name of a timeline.
 
