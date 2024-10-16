@@ -1934,6 +1934,87 @@ mod tests {
             similar_asserts::assert_eq!(expected, got);
         }
 
+        // static
+        {
+            let query = QueryExpression {
+                filtered_index: Some(filtered_index),
+                selection: Some(vec![
+                    // NOTE: This will force a crash if the selected indexes vs. view indexes are
+                    // improperly handled.
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    //
+                    ColumnSelector::Component(ComponentColumnSelector {
+                        entity_path: entity_path.clone(),
+                        component_name: MyLabel::name().to_string(),
+                    }),
+                ]),
+                ..Default::default()
+            };
+            eprintln!("{query:#?}:");
+
+            let query_handle = query_engine.query(query.clone());
+            dbg!(query_handle.view_contents());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows()
+            );
+            let dataframe = concatenate_record_batches(
+                query_handle.schema().clone(),
+                &query_handle.into_batch_iter().collect_vec(),
+            );
+            eprintln!("{dataframe}");
+
+            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let expected = unindent::unindent(
+                "\
+                [
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
+                ]\
+                ",
+            );
+
+            similar_asserts::assert_eq!(expected, got);
+        }
+
         Ok(())
     }
 
