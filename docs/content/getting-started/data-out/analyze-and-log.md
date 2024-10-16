@@ -26,7 +26,7 @@ The first step to log the data is to initialize the logging SDK to direct it to 
 
 ```python
 rr.init(
-    recording.application_id()
+    recording.application_id(),
     recording_id=recording.recording_id(),
 )
 rr.connect()
