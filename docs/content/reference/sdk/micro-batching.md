@@ -1,5 +1,5 @@
 ---
-title: SDK Micro Batching
+title: Micro Batching
 order: 700
 ---
 

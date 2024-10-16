@@ -1,5 +1,5 @@
 ---
-title: Video in Rerun
+title: Video
 order: 400
 ---
 
