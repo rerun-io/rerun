@@ -76,7 +76,7 @@ log_time: [[2024-10-13 08:26:46.819571000],[2024-10-13 08:26:46.866358000],...,[
 Again, this is a [PyArrow](https://arrow.apache.org/docs/python/index.html) table which contains the result of our query. Further exploring Arrow structures is beyond the scope of this guide. Yet, it is a reminder that Rerun natively stores—and returns—data in arrow format. As such, it efficiently interoperates with other Arrow-native and/or compatible tools such as [Polars](https://pola.rs) or [DuckDB](https://duckdb.org).
 
 
-## Create a pandas dataframe
+## Create a Pandas dataframe
 
 Before exploring the data further, let's convert the table to a Pandas dataframe:
 
