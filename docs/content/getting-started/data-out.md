@@ -1,6 +1,6 @@
 ---
 title: Get data out of Rerun
-order: 700
+order: 450
 ---
 
 At its core, Rerun is a database. The viewer includes the [dataframe view](../reference/types/views/dataframe_view) to explore data in tabular form, and the SDK includes an API to export the data as dataframes from the recording. These features can be used, for example, to perform analysis on the data and log back the results to the original recording.
