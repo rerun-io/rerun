@@ -11,6 +11,6 @@ In this three-part guide, we explore such a workflow by implementing an "open ja
 2. [Export the dataframe](data-out/export-dataframe)
 3. [Analyze the data and log the results](data-out/analyze-and-log)
 
-Note: this guide uses [Pandas](https://pandas.pydata.org) dataframes because of how popular this package is. The same concept however applies in the same way for alternative dataframe packages such as [Polars](https://pola.rs).
+Note: this guide uses the popular [Pandas](https://pandas.pydata.org) dataframe package. The same concept however applies in the same way for alternative dataframe packages such as [Polars](https://pola.rs).
 
 If you just want to see the final result, jump to the [complete script](data-out/analyze-and-log.md#complete-script) at the end of the third section.
