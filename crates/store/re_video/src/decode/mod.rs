@@ -77,7 +77,7 @@
 //! supporting HDR content at which point more properties will be important!
 //!
 
-#[cfg(feature = "av1")]
+#[cfg(with_dav1d)]
 #[cfg(not(target_arch = "wasm32"))]
 pub mod av1;
 
@@ -96,15 +96,19 @@ pub enum Error {
     #[error("Unsupported codec: {0}")]
     UnsupportedCodec(String),
 
-    #[cfg(feature = "av1")]
+    #[cfg(with_dav1d)]
     #[cfg(not(target_arch = "wasm32"))]
     #[error("dav1d: {0}")]
     Dav1d(#[from] dav1d::Error),
 
-    #[cfg(feature = "av1")]
+    #[cfg(with_dav1d)]
     #[cfg(not(target_arch = "wasm32"))]
     #[error("To enabled native AV1 decoding, compile Rerun with the `nasm` feature enabled.")]
     Dav1dWithoutNasm,
+
+    #[error("Rerun does not yet support native AV1 decoding on Linux ARM64. See https://github.com/rerun-io/rerun/issues/7755")]
+    #[cfg(linux_arm64)]
+    NoDav1dOnLinuxArm64,
 }
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
@@ -127,7 +131,7 @@ pub fn new_decoder(
     debug_name: String,
     video: &crate::VideoData,
 ) -> Result<Box<dyn SyncDecoder + Send + 'static>> {
-    #![allow(unused_variables)] // With some feature flags
+    #![allow(unused_variables, clippy::needless_return)] // With some feature flags
 
     re_log::trace!(
         "Looking for decoder for {}",
@@ -135,10 +139,17 @@ pub fn new_decoder(
     );
 
     match &video.config.stsd.contents {
-        #[cfg(feature = "av1")]
         re_mp4::StsdBoxContent::Av01(_av01_box) => {
-            re_log::trace!("Decoding AV1…");
-            Ok(Box::new(av1::SyncDav1dDecoder::new(debug_name)?))
+            #[cfg(linux_arm64)]
+            {
+                return Err(Error::NoDav1dOnLinuxArm64);
+            }
+
+            #[cfg(with_dav1d)]
+            {
+                re_log::trace!("Decoding AV1…");
+                return Ok(Box::new(av1::SyncDav1dDecoder::new(debug_name)?));
+            }
         }
 
         _ => Err(Error::UnsupportedCodec(video.human_readable_codec_string())),
