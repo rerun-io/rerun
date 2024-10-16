@@ -538,6 +538,12 @@ impl App {
                 self.state.selection_state.set_selection(item);
             }
 
+            SystemCommand::SetActiveTimeline { rec_id, timeline } => {
+                if let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) {
+                    rec_cfg.time_ctrl.write().set_timeline(timeline);
+                }
+            }
+
             SystemCommand::SetFocus(item) => {
                 self.state.focused_item = Some(item);
             }

@@ -8,7 +8,7 @@ use arrow2::{
 };
 
 use re_chunk::TimelineName;
-use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
+use re_log_types::{ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_types_core::{ArchetypeName, ComponentName};
 
 use crate::{ChunkStore, ColumnMetadata};
@@ -237,6 +237,13 @@ impl std::fmt::Display for ComponentColumnDescriptor {
 }
 
 impl ComponentColumnDescriptor {
+    pub fn component_path(&self) -> ComponentPath {
+        ComponentPath {
+            entity_path: self.entity_path.clone(),
+            component_name: self.component_name,
+        }
+    }
+
     #[inline]
     pub fn matches(&self, entity_path: &EntityPath, component_name: &str) -> bool {
         &self.entity_path == entity_path && self.component_name.matches(component_name)
