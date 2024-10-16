@@ -64,12 +64,10 @@ dav1d = { workspace = true, optional = true, default-features = false, features 
 [dev-dependencies]
 indicatif.workspace = true
 
-[build-dependencies]
-re_build_tools.workspace = true
-
 
 # For build.rs:
 [build-dependencies]
+re_build_tools.workspace = true
 cfg_aliases.workspace = true
 
 
