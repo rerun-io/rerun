@@ -612,7 +612,11 @@ impl QueryHandle<'_> {
                         // remaining unique index values all while taking row-id ordering semantics
                         // into account.
                         debug_assert!(
-                            chunk.is_sorted(),
+                            if let Some(index) = self.query.filtered_index.as_ref() {
+                                chunk.is_timeline_sorted(index)
+                            } else {
+                                chunk.is_sorted()
+                            },
                             "the query cache should have already taken care of sorting (and densifying!) the chunk",
                         );
 
