@@ -71,34 +71,73 @@ namespace rerun::archetypes {
     /// }
     /// ```
     ///
-    /// ### image_simple:
-    /// ![image](https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png)
+    /// ### Logging images with various formats
+    /// ![image](https://static.rerun.io/image_formats/7b8a162fcfd266f303980439beea997dc8544c24/full.png)
     ///
     /// ```cpp
-    /// #include <rerun.hpp>
-    ///
+    /// #include <algorithm>
+    /// #include <cstdint>
     /// #include <vector>
     ///
+    /// #include <rerun.hpp>
+    ///
     /// int main() {
-    ///     const auto rec = rerun::RecordingStream("rerun_example_image");
+    ///     const auto rec = rerun::RecordingStream("rerun_example_image_formats");
     ///     rec.spawn().exit_on_failure();
     ///
-    ///     // Create a synthetic image.
-    ///     const int HEIGHT = 200;
-    ///     const int WIDTH = 300;
-    ///     std::vector<uint8_t> data(WIDTH * HEIGHT * 3, 0);
-    ///     for (size_t i = 0; i <data.size(); i += 3) {
-    ///         data[i] = 255;
-    ///     }
-    ///     for (size_t y = 50; y <150; ++y) {
-    ///         for (size_t x = 50; x <150; ++x) {
-    ///             data[(y * WIDTH + x) * 3 + 0] = 0;
-    ///             data[(y * WIDTH + x) * 3 + 1] = 255;
-    ///             data[(y * WIDTH + x) * 3 + 2] = 0;
+    ///     // Simple gradient image
+    ///     std::vector<uint8_t> image(256 * 256 * 3);
+    ///     for (int y = 0; y <256; ++y) {
+    ///         for (int x = 0; x <256; ++x) {
+    ///             image[(y * 256 + x) * 3 + 0] = static_cast<uint8_t>(x);
+    ///             image[(y * 256 + x) * 3 + 1] = static_cast<uint8_t>(std::min(255, x + y));
+    ///             image[(y * 256 + x) * 3 + 2] = static_cast<uint8_t>(y);
     ///         }
     ///     }
     ///
-    ///     rec.log("image", rerun::Image::from_rgb24(data, {WIDTH, HEIGHT}));
+    ///     // RGB image
+    ///     rec.log("image_rgb", rerun::Image::from_rgb24(image, {256, 256}));
+    ///
+    ///     // Green channel only (Luminance)
+    ///     std::vector<uint8_t> green_channel(256 * 256);
+    ///     for (int i = 0; i <256 * 256; ++i) {
+    ///         green_channel[i] = image[i * 3 + 1];
+    ///     }
+    ///     rec.log(
+    ///         "image_green_only",
+    ///         rerun::Image(rerun::borrow(green_channel), {256, 256}, rerun::ColorModel::L)
+    ///     );
+    ///
+    ///     // BGR image
+    ///     std::vector<uint8_t> bgr_image(256 * 256 * 3);
+    ///     for (int i = 0; i <256 * 256; ++i) {
+    ///         bgr_image[i * 3 + 0] = image[i * 3 + 2];
+    ///         bgr_image[i * 3 + 1] = image[i * 3 + 1];
+    ///         bgr_image[i * 3 + 2] = image[i * 3 + 0];
+    ///     }
+    ///     rec.log(
+    ///         "image_bgr",
+    ///         rerun::Image(rerun::borrow(bgr_image), {256, 256}, rerun::ColorModel::BGR)
+    ///     );
+    ///
+    ///     // New image with Separate Y/U/V planes with 4:2:2 chroma downsampling
+    ///     std::vector<uint8_t> yuv_bytes(256 * 256 + 128 * 256 * 2);
+    ///     std::fill_n(yuv_bytes.begin(), 256 * 256, static_cast<uint8_t>(128)); // Fixed value for Y
+    ///     auto u_plane_offset = 256 * 256;
+    ///     auto v_plane_offset = u_plane_offset + 128 * 256;
+    ///     for (int y = 0; y <256; ++y) {
+    ///         for (int x = 0; x <128; ++x) {
+    ///             auto coord = y * 128 + x;
+    ///             yuv_bytes[u_plane_offset + coord] = static_cast<uint8_t>(x * 2); // Gradient for U
+    ///             yuv_bytes[v_plane_offset + coord] = static_cast<uint8_t>(y);     // Gradient for V
+    ///         }
+    ///     }
+    ///     rec.log(
+    ///         "image_yuv422",
+    ///         rerun::Image(rerun::borrow(yuv_bytes), {256, 256}, rerun::PixelFormat::Y_U_V16_FullRange)
+    ///     );
+    ///
+    ///     return 0;
     /// }
     /// ```
     struct Image {

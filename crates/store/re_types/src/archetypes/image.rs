@@ -64,21 +64,58 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </picture>
 /// </center>
 ///
-/// ### `image_simple`:
+/// ### Logging images with various formats
 /// ```ignore
-/// use ndarray::{s, Array, ShapeBuilder};
+/// use rerun::external::ndarray;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_image").spawn()?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_image_formats").spawn()?;
 ///
-///     let mut image = Array::<u8, _>::zeros((200, 300, 3).f());
-///     image.slice_mut(s![.., .., 0]).fill(255);
-///     image.slice_mut(s![50..150, 50..150, 0]).fill(0);
-///     image.slice_mut(s![50..150, 50..150, 1]).fill(255);
+///     // Simple gradient image
+///     let image: ndarray::Array3<u8> =
+///         ndarray::Array3::from_shape_fn((256, 256, 3), |(x, y, c)| match c {
+///             0 => x as u8,
+///             1 => (x + y).min(255) as u8,
+///             2 => y as u8,
+///             _ => unreachable!(),
+///         });
 ///
+///     // RGB image
 ///     rec.log(
-///         "image",
-///         &rerun::Image::from_color_model_and_tensor(rerun::ColorModel::RGB, image)?,
+///         "image_rgb",
+///         &rerun::Image::from_color_model_and_tensor(rerun::ColorModel::RGB, image.clone())?,
+///     )?;
+///
+///     // Green channel only (Luminance)
+///     rec.log(
+///         "image_green_only",
+///         &rerun::Image::from_color_model_and_tensor(
+///             rerun::ColorModel::L,
+///             image.slice(ndarray::s![.., .., 1]).to_owned(),
+///         )?,
+///     )?;
+///
+///     // BGR image
+///     rec.log(
+///         "image_bgr",
+///         &rerun::Image::from_color_model_and_tensor(
+///             rerun::ColorModel::BGR,
+///             image.slice(ndarray::s![.., .., ..;-1]).to_owned(),
+///         )?,
+///     )?;
+///
+///     // New image with Separate Y/U/V planes with 4:2:2 chroma downsampling
+///     let mut yuv_bytes = Vec::with_capacity(256 * 256 + 128 * 256 * 2);
+///     yuv_bytes.extend(std::iter::repeat(128).take(256 * 256)); // Fixed value for Y.
+///     yuv_bytes.extend((0..256).flat_map(|_y| (0..128).map(|x| x * 2))); // Gradient for U.
+///     yuv_bytes.extend((0..256).flat_map(|y| std::iter::repeat(y as u8).take(128))); // Gradient for V.
+///     rec.log(
+///         "image_yuv422",
+///         &rerun::Image::from_pixel_format(
+///             [256, 256],
+///             rerun::PixelFormat::Y_U_V16_FullRange,
+///             yuv_bytes,
+///         ),
 ///     )?;
 ///
 ///     Ok(())
@@ -86,11 +123,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ```
 /// <center>
 /// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1200w.png">
-///   <img src="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png" width="640">
+///   <img src="https://static.rerun.io/image_formats/7b8a162fcfd266f303980439beea997dc8544c24/full.png" width="640">
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, PartialEq)]

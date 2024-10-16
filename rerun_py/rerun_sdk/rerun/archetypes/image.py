@@ -59,27 +59,28 @@ class Image(ImageExt, Archetype):
     </picture>
     </center>
 
-    ### `image_simple`:
+    ### Logging images with various formats:
     ```python
     import numpy as np
     import rerun as rr
 
-    # Create an image with numpy
-    image = np.zeros((200, 300, 3), dtype=np.uint8)
-    image[:, :, 0] = 255
-    image[50:150, 50:150] = (0, 255, 0)
+    rr.init("rerun_example_image_formats", spawn=True)
 
-    rr.init("rerun_example_image", spawn=True)
+    # Simple gradient image, logged in different formats.
+    image = np.array([[[x, min(255, x + y), y] for y in range(0, 256)] for x in range(0, 256)], dtype=np.uint8)
+    rr.log("image_rgb", rr.Image(image))
+    rr.log("image_green_only", rr.Image(image[:, :, 1], color_model="l"))  # Luminance only
+    rr.log("image_bgr", rr.Image(image[:, :, ::-1], color_model="bgr"))  # BGR
 
-    rr.log("image", rr.Image(image))
+    # New image with Separate Y/U/V planes with 4:2:2 chroma downsampling
+    y = bytes([128 for y in range(0, 256) for x in range(0, 256)])
+    u = bytes([x * 2 for y in range(0, 256) for x in range(0, 128)])  # Half horizontal resolution for chroma.
+    v = bytes([y for y in range(0, 256) for x in range(0, 128)])
+    rr.log("image_yuv422", rr.Image(bytes=y + u + v, width=256, height=256, pixel_format=rr.PixelFormat.Y_U_V16_FullRange))
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/1200w.png">
-      <img src="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png" width="640">
+      <img src="https://static.rerun.io/image_formats/7b8a162fcfd266f303980439beea997dc8544c24/full.png" width="640">
     </picture>
     </center>
 
