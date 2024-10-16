@@ -194,11 +194,6 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
             );
         }
     }
-
-    set_env(
-        "RE_BUILD_FEATURES",
-        &enabled_features_of(crate_name).unwrap().join(" "),
-    );
 }
 
 /// ISO 8601 / RFC 3339 build time.
@@ -277,26 +272,4 @@ fn rust_llvm_versions() -> anyhow::Result<(String, String)> {
 /// Returns info parsed from an invocation of the `cargo metadata` command
 pub fn cargo_metadata() -> anyhow::Result<cargo_metadata::Metadata> {
     Ok(cargo_metadata::MetadataCommand::new().exec()?)
-}
-
-/// Returns a list of all the enabled features of the given package.
-pub fn enabled_features_of(crate_name: &str) -> anyhow::Result<Vec<String>> {
-    let metadata = cargo_metadata()?;
-
-    let mut features = vec![];
-    for package in &metadata.packages {
-        if package.name == crate_name {
-            for feature in package.features.keys() {
-                println!("Checking if feature is enabled: {feature:?}");
-                let feature_in_screaming_snake_case =
-                    feature.to_ascii_uppercase().replace('-', "_");
-                if std::env::var(format!("CARGO_FEATURE_{feature_in_screaming_snake_case}")).is_ok()
-                {
-                    features.push(feature.clone());
-                }
-            }
-        }
-    }
-
-    Ok(features)
 }

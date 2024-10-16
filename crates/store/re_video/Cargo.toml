@@ -37,7 +37,6 @@ nasm = [
 
 
 [dependencies]
-re_build_info.workspace = true
 re_log.workspace = true
 re_tracing.workspace = true
 
@@ -67,7 +66,6 @@ indicatif.workspace = true
 
 # For build.rs:
 [build-dependencies]
-re_build_tools.workspace = true
 cfg_aliases.workspace = true
 
 
