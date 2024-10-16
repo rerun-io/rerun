@@ -12,7 +12,7 @@ if TYPE_CHECKING:
     from .rerun_bindings import (
         ComponentColumnDescriptor as ComponentColumnDescriptor,
         ComponentColumnSelector as ComponentColumnSelector,
-        IndexColumnSelector as IndexColumnDescriptor,
+        IndexColumnDescriptor as IndexColumnDescriptor,
         IndexColumnSelector as IndexColumnSelector,
     )
 
@@ -24,6 +24,7 @@ AnyColumn: TypeAlias = Union[
     "IndexColumnDescriptor",
     "IndexColumnSelector",
 ]
+
 
 AnyComponentColumn: TypeAlias = Union[
     "ComponentColumnDescriptor",
