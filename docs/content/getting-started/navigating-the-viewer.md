@@ -110,7 +110,7 @@ Let's explore an example of this hierarchy in our scene:
 -   `/camera/image/keypoints` is an entity stream that contains 3 component streams. One of these components indicates that together, they form a [Points2D archetype](../reference/types/archetypes/points2d.md),
     representing point clouds that were detected and tracked in images.
 -   The images themselves are represented by the parent entity `/camera/image`. This entity consist of 6 components: 4 form an [Image archetype](../reference/types/archetypes/image.md),
-    while the remaining 2 correspond to a [pinhole projection](../reference/types/archetype/pinhole.md). The images are captures by the camera, and a pinhole projection defines the relationship between 2D and 3D space.
+    while the remaining 2 correspond to a [pinhole projection](../reference/types/archetypes/pinhole.md). The images are captures by the camera, and a pinhole projection defines the relationship between 2D and 3D space.
 -   Both the images and pinhole projection are hierarchically dependent on the camera's position, which is described by the `/camera` entity. This entity includes a series of transforms that together form a [Transform3D archetype](../reference/types/archetypes/transform3d.md).
 
 The complete hierarchy of logged entity streams and their related component streams could be found under `Streams` in the Timeline panel. You might also notice a hierarchical list of similar entities in the Blueprint panel. The key difference between these two panels is that Blueprint panel focuses on how the stream data is arranged in the Viewport. In other words, an entity might be logged once but displayed in multiple views.
