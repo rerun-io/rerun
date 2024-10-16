@@ -806,6 +806,7 @@ impl PyRecordingView {
         Ok(PyArrowType(Box::new(reader)))
     }
 
+    #[allow(rustdoc::private_doc_tests)]
     /// Filter the view to only include data between the given index sequence numbers.
     ///
     /// This range is inclusive and will contain both the value at the start and the value at the end.
@@ -876,6 +877,7 @@ impl PyRecordingView {
         })
     }
 
+    #[allow(rustdoc::private_doc_tests)]
     /// Filter the view to only include data between the given index values expressed as seconds.
     ///
     /// This range is inclusive and will contain both the value at the start and the value at the end.
@@ -927,6 +929,7 @@ impl PyRecordingView {
         })
     }
 
+    #[allow(rustdoc::private_doc_tests)]
     /// Filter the view to only include data between the given index values expressed as seconds.
     ///
     /// This range is inclusive and will contain both the value at the start and the value at the end.
@@ -978,6 +981,7 @@ impl PyRecordingView {
         })
     }
 
+    #[allow(rustdoc::private_doc_tests)]
     /// Filter the view to only include data at the provided index values.
     ///
     /// The index values returned will be the intersection between the provided values and the
@@ -1010,6 +1014,7 @@ impl PyRecordingView {
         })
     }
 
+    #[allow(rustdoc::private_doc_tests)]
     /// Filter the view to only include rows where the given component column is not null.
     ///
     /// This corresponds to rows for index values where this component was provided to Rerun explicitly
@@ -1038,6 +1043,7 @@ impl PyRecordingView {
         }
     }
 
+    #[allow(rustdoc::private_doc_tests)]
     /// Replace the index in the view with the provided values.
     ///
     /// The output view will always have the same number of rows as the provided values, even if
@@ -1071,6 +1077,7 @@ impl PyRecordingView {
         })
     }
 
+    #[allow(rustdoc::private_doc_tests)]
     /// Populate any null values in a row with the latest valid data according to the index.
     ///
     /// Returns
@@ -1203,6 +1210,7 @@ impl PyRecording {
         }
     }
 
+    #[allow(rustdoc::private_doc_tests)]
     /// Create a [`RecordingView`][rerun.dataframe.RecordingView] of the recording according to a particular index and content specification.
     ///
     /// The only type of index currently supported is the name of a timeline.
