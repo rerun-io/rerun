@@ -1020,6 +1020,15 @@ impl PyRRDArchive {
     }
 }
 
+/// Load a single recording from an RRD.
+///
+/// Will raise a `ValueError` if the file does not contain exactly one recording.
+///
+/// Parameters
+/// ----------
+/// path_to_rrd : str
+///     The path to the file to load.
+///
 #[pyfunction]
 pub fn load_recording(path_to_rrd: std::path::PathBuf) -> PyResult<PyRecording> {
     let archive = load_archive(path_to_rrd)?;
