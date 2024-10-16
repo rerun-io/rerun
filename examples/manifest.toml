@@ -100,6 +100,7 @@ examples = [
   "differentiable_blocks_world",
   "stereo_vision_slam",
   "glomap",
+  "instant_splat",
   "signed_distance_fields",
   "raw_mesh",
 ]
