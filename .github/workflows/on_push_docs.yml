@@ -58,7 +58,6 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-
           pixi-version: v0.25.0
           environments: py-docs
 
