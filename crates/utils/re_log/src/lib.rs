@@ -72,6 +72,7 @@ const CRATES_AT_INFO_LEVEL: &[&str] = &[
     // These are quite spammy on debug, drowning out what we care about:
     "h2",
     "hyper",
+    "prost_build",
     "ureq",
     // only let rustls log in debug mode: https://github.com/rerun-io/rerun/issues/3104
     #[cfg(debug_assertions)]
