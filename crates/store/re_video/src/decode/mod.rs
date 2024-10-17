@@ -170,7 +170,11 @@ pub struct Chunk {
     pub is_sync: bool,
 
     pub data: Vec<u8>,
-    pub timestamp: Time,
+
+    /// Presentation/composition timestamp for the sample in this chunk.
+    /// *not* decode timestamp.
+    pub composition_timestamp: Time,
+
     pub duration: Time,
 }
 
