@@ -1,5 +1,7 @@
+use std::collections::HashSet;
+
 use re_viewer::external::{
-    egui,
+    egui::{self, Rect},
     re_entity_db::InstancePath,
     re_log::external::log,
     re_log_types::EntityPath,
@@ -93,7 +95,7 @@ impl SpaceViewClass for GraphSpaceView {
         ui.selection_grid("graph_settings_ui").show(ui, |ui| {
             state.bounding_box_ui(ui);
             state.debug_ui(ui);
-            state.layout_provider_ui(ui);
+            // state.layout_provider_ui(ui);
         });
 
         Ok(())
@@ -129,38 +131,44 @@ impl SpaceViewClass for GraphSpaceView {
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
-        let Some(layout) = &mut state.layout else {
-            let node_sizes = ui::measure_node_sizes(ui, graph.all_nodes());
+        // let Some(layout) = &mut state.layout else {
+        //     let node_sizes = ui::measure_node_sizes(ui, graph.all_nodes());
 
-            let undirected = undirected_system
-                .data
-                .iter()
-                .flat_map(|d| d.edges().map(|e| (e.source.into(), e.target.into())));
+        //     let undirected = undirected_system
+        //         .data
+        //         .iter()
+        //         .flat_map(|d| d.edges().map(|e| (e.source.into(), e.target.into())));
 
-            let directed = directed_system
-                .data
-                .iter()
-                .flat_map(|d| d.edges().map(|e| (e.source.into(), e.target.into())));
+        //     let directed = directed_system
+        //         .data
+        //         .iter()
+        //         .flat_map(|d| d.edges().map(|e| (e.source.into(), e.target.into())));
 
-            let layout =
-                state
-                    .layout_provider
-                    .compute(node_sizes.into_iter(), undirected, directed)?;
+        //     let layout =
+        //         state
+        //             .layout_provider
+        //             .compute(node_sizes.into_iter(), undirected, directed)?;
 
-            state.layout = Some(layout);
+        //     state.layout = Some(layout);
 
-            state.should_fit_to_screen = true;
+        //     state.should_fit_to_screen = true;
 
-            return Ok(());
-        };
+        //     return Ok(());
+        // };
 
-        if graph
-            .all_nodes()
-            .any(|n| !layout.contains_key(&NodeIndex::from(&n)))
-        {
-            state.layout = None;
-            return Ok(());
-        }
+        // if graph
+        //     .all_nodes()
+        //     .any(|n| !layout.contains_key(&NodeIndex::from(&n)))
+        // {
+        //     state.layout = None;
+        //     return Ok(());
+        // }
+
+        // We keep track of the nodes in the data to clean up the layout.
+        // TODO: once we settle on a design, it might make sense to create a
+        // `Layout` struct that keeps track of the layout and the nodes that
+        // get added and removed and cleans up automatically (guard pattern).
+        let mut seen: HashSet<NodeIndex> = HashSet::new();
 
         state.viewer.scene(ui, |mut scene| {
             for data in node_system.data.iter() {
@@ -170,10 +178,9 @@ impl SpaceViewClass for GraphSpaceView {
                 let mut entity_rect: Option<egui::Rect> = None;
 
                 for node in data.nodes() {
-                    let index = NodeIndex::from(&node);
-                    let current = layout
-                        .get(&index)
-                        .expect("missing layout information for node");
+                    let ix = NodeIndex::from(&node);
+                    seen.insert(ix);
+                    let current = state.layout.entry(ix).or_insert(egui::Rect::ZERO);
 
                     let response = scene.node(current.min, |ui| {
                         ui::draw_node(ui, &node, ent_highlight.index_highlight(node.instance))
@@ -185,7 +192,7 @@ impl SpaceViewClass for GraphSpaceView {
                         Item::DataResult(query.space_view_id, instance),
                     );
 
-                    layout.insert(index, response.rect);
+                    *current = response.rect;
                     entity_rect =
                         entity_rect.map_or(Some(response.rect), |e| Some(e.union(response.rect)));
                 }
@@ -199,37 +206,32 @@ impl SpaceViewClass for GraphSpaceView {
             }
 
             for dummy in graph.unknown_nodes() {
-                let index = NodeIndex::from(&dummy);
-                let current = layout
-                    .get(&index)
-                    .expect("missing layout information for dummy node");
+                let ix = NodeIndex::from(&dummy);
+                seen.insert(ix);
+                let current = state.layout.entry(ix).or_insert(Rect::ZERO);
                 let response = scene.node(current.min, |ui| ui::draw_dummy(ui, &dummy));
-                layout.insert(index, response.rect);
+                *current = response.rect;
             }
 
             for data in undirected_system.data.iter() {
                 let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
                 for edge in data.edges() {
-                    let source_ix = NodeIndex::from(edge.source);
-                    let target_ix = NodeIndex::from(edge.target);
-                    let source_pos = layout
-                        .get(&source_ix)
-                        .expect("missing layout information for edge source node");
-                    let target_pos = layout
-                        .get(&target_ix)
-                        .expect("missing layout information for edge target node");
-
-                    let _response = scene.edge(|ui| {
-                        ui::draw_edge(
-                            ui,
-                            edge.color,
-                            source_pos,
-                            target_pos,
-                            ent_highlight.index_highlight(edge.instance),
-                            false,
-                        )
-                    });
+                    if let (Some(source_pos), Some(target_pos)) = (
+                        state.layout.get(&edge.source.into()),
+                        state.layout.get(&edge.target.into()),
+                    ) {
+                        scene.edge(|ui| {
+                            ui::draw_edge(
+                                ui,
+                                edge.color,
+                                source_pos,
+                                target_pos,
+                                ent_highlight.index_highlight(edge.instance),
+                                false,
+                            )
+                        });
+                    };
                 }
             }
 
@@ -238,35 +240,56 @@ impl SpaceViewClass for GraphSpaceView {
                 let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
                 for edge in data.edges() {
-                    let source_ix = NodeIndex::from(edge.source);
-                    let target_ix = NodeIndex::from(edge.target);
-                    let source_pos = layout
-                        .get(&source_ix)
-                        .expect("missing layout information for edge source node");
-                    let target_pos = layout
-                        .get(&target_ix)
-                        .expect("missing layout information for edge target node");
-
-                    let _response = scene.edge(|ui| {
-                        ui::draw_edge(
-                            ui,
-                            edge.color,
-                            source_pos,
-                            target_pos,
-                            ent_highlight.index_highlight(edge.instance),
-                            true,
-                        )
-                    });
+                    if let (Some(source_pos), Some(target_pos)) = (
+                        state.layout.get(&edge.source.into()),
+                        state.layout.get(&edge.target.into()),
+                    ) {
+                        let _response = scene.edge(|ui| {
+                            ui::draw_edge(
+                                ui,
+                                edge.color,
+                                source_pos,
+                                target_pos,
+                                ent_highlight.index_highlight(edge.instance),
+                                true,
+                            )
+                        });
+                    }
                 }
             }
         });
 
         // TODO(grtlr): consider improving this!
-        if state.should_fit_to_screen {
-            state.viewer.fit_to_screen();
-            state.should_fit_to_screen = false;
+        // if state.should_fit_to_screen {
+        //     state.viewer.fit_to_screen();
+        //     state.should_fit_to_screen = false;
+        // }
+
+        // Clean up the layout for nodes that are no longer present.
+        state.layout.retain(|k, _| seen.contains(k));
+
+        let pos = state.layout.iter().map(|(&k, v)| (k, v.center()));
+
+        let mut sim = state
+            .simulation
+            .build(pos)
+            .add_force_collide("collide".to_string(), Default::default())
+            .add_force_x("x".to_string(), Default::default())
+            .add_force_y("y".to_string(), Default::default());
+
+        sim.tick(1);
+
+        for (ix, pos) in sim.positions() {
+            state.layout.get_mut(ix).unwrap().set_center(pos.into())
         }
 
+        state.simulation = sim.into();
+
+        // TODO(grtlr): come up with a good heuristic of when to do this.
+        state.viewer.fit_to_screen();
+
+        // TODO(grtlr): only do this while the simulation makes sense!
+        ui.ctx().request_repaint();
         Ok(())
     }
 }

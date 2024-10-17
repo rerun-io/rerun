@@ -2,13 +2,14 @@ const A: u64 = 1_664_525;
 const C: u64 = 1_013_904_223;
 const M: u64 = 4_294_967_296;
 
+#[derive(Clone, Debug)]
 pub struct LCG {
-    seed: u64,
+    state: u64,
 }
 
 impl LCG {
     pub fn new(seed: u64) -> Self {
-        LCG { seed }
+        LCG { state: seed }
     }
 }
 
@@ -22,8 +23,8 @@ impl Iterator for LCG {
     type Item = u32;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.seed = self.seed.wrapping_mul(A).wrapping_add(C) % M;
-        Some(self.seed as u32)
+        self.state = self.state.wrapping_mul(A).wrapping_add(C) % M;
+        Some(self.state as u32)
     }
 }
 

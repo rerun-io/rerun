@@ -1,8 +1,8 @@
 mod collide;
 mod jiggle;
 mod lcg;
-mod particle;
+mod node;
 mod position;
 mod simulation;
 
-pub use simulation::Simulation;
+pub use simulation::{Simulation, SimulationBuilder};

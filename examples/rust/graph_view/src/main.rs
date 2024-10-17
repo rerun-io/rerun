@@ -4,8 +4,6 @@ use re_viewer::external::{re_log, re_memory};
 
 mod error;
 mod graph;
-mod layout;
-mod select;
 mod types;
 mod ui;
 mod view;

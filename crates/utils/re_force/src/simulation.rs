@@ -1,77 +1,148 @@
-use emath::Vec2;
+use std::collections::HashMap;
+use std::hash::Hash;
 
 use crate::{
     collide::Collide,
     lcg::LCG,
-    particle::Particle,
+    node::Node,
     position::{PositionX, PositionY},
 };
 
+#[derive(Clone, Debug)]
 enum Force {
     Collide(Collide),
     PositionX(PositionX),
     PositionY(PositionY),
 }
 
-pub struct Simulation {
+#[derive(Debug)]
+pub struct SimulationBuilder {
     alpha: f32,
     alpha_min: f32,
     alpha_decay: f32,
     alpha_target: f32,
     velocity_decay: f32,
-    random: LCG,
-    forces: Vec<Force>,
-    particles: Vec<Particle>,
+    _random: LCG,
 }
 
-impl Simulation {
-    pub fn new<'a>(particles: impl IntoIterator<Item = [f32; 2]>) -> Self {
+impl Default for SimulationBuilder {
+    fn default() -> Self {
         let alpha_min = 0.001;
-        Simulation {
+        Self {
             alpha: 1.0,
             alpha_min,
             alpha_decay: 1.0 - alpha_min.powf(1.0 / 300.0),
             alpha_target: 0.0,
             velocity_decay: 0.6,
-            random: LCG::default(),
-            forces: vec![
-                Force::Collide(Collide::default()),
-                Force::PositionX(PositionX::default()),
-                Force::PositionY(PositionY::default()),
-            ],
-            particles: particles.into_iter().map(Particle::new).collect(),
+            _random: LCG::default(),
         }
     }
 }
 
-impl Simulation {
-    pub fn step(&mut self) -> &[Particle] {
+impl SimulationBuilder {
+    // TODO(grtlr): build with fixed positions!
+
+    #[inline(always)]
+    pub fn build<Ix, P>(&self, nodes: impl IntoIterator<Item = (Ix, P)>) -> Simulation<Ix>
+    where
+        P: Into<[f32; 2]>,
+        Ix: Hash + Eq,
+    {
+        let nodes = nodes.into_iter().map(|(ix, p)| {
+            let p = p.into();
+            Node::new(ix, p[0], p[1])
+        });
+
+        Simulation {
+            alpha: self.alpha,
+            alpha_min: self.alpha_min,
+            alpha_decay: self.alpha_decay,
+            alpha_target: self.alpha_target,
+            velocity_decay: self.velocity_decay,
+            nodes: nodes.collect(),
+            _random: self._random.clone(),
+            forces: Default::default(),
+        }
+    }
+}
+
+#[derive(Debug)]
+
+pub struct Simulation<Ix>
+where
+    Ix: Hash + Eq,
+{
+    alpha: f32,
+    alpha_min: f32,
+    alpha_decay: f32,
+    alpha_target: f32,
+    velocity_decay: f32,
+    _random: LCG,
+    forces: HashMap<String, Force>,
+    nodes: Vec<Node<Ix>>,
+}
+
+// TODO(grtlr): Could simulation be an iterator?
+impl<Ix: Hash + Eq> Simulation<Ix> {
+    pub fn step(&mut self) {
         while self.alpha < self.alpha_min {
             self.tick(1);
         }
-        &self.particles
     }
 
-    pub fn tick(&mut self, iterations: usize) -> &[Particle] {
+    pub fn tick(&mut self, iterations: usize) {
         for _ in 0..iterations {
             self.alpha += (self.alpha_target - self.alpha) * self.alpha_decay;
 
-            for force in &mut self.forces {
+            for force in &mut self.forces.values_mut() {
                 match force {
-                    Force::Collide(c) => c.force(&mut self.particles),
-                    Force::PositionX(p) => p.force(self.alpha, &mut self.particles),
-                    Force::PositionY(p) => p.force(self.alpha, &mut self.particles),
+                    Force::Collide(c) => c.force(&mut self.nodes),
+                    Force::PositionX(p) => p.force(self.alpha, &mut self.nodes),
+                    Force::PositionY(p) => p.force(self.alpha, &mut self.nodes),
                 }
             }
 
-            for particle in &mut self.particles {
-                particle.vel *= self.velocity_decay;
-                particle.pos += particle.vel;
-                particle.vel = Vec2::ZERO;
+            for n in &mut self.nodes {
+                n.apply_velocities(self.velocity_decay);
             }
         }
+    }
 
-        &self.particles
+    pub fn positions<'a>(&'a self) -> impl Iterator<Item = (&'a Ix, [f32; 2])> {
+        self.nodes
+            .iter()
+            .map(move |n: &'a Node<Ix>| (&n.ix, [n.x, n.y]))
+    }
+
+    #[inline(always)]
+    pub fn add_force_collide(mut self, name: String, force: Collide) -> Self {
+        self.forces.insert(name, Force::Collide(force));
+        self
+    }
+
+    #[inline(always)]
+    pub fn add_force_x(mut self, name: String, force: PositionX) -> Self {
+        self.forces.insert(name, Force::PositionX(force));
+        self
+    }
+
+    #[inline(always)]
+    pub fn add_force_y(mut self, name: String, force: PositionY) -> Self {
+        self.forces.insert(name, Force::PositionY(force));
+        self
+    }
+}
+
+impl<Ix: Hash + Eq> From<Simulation<Ix>> for SimulationBuilder {
+    fn from(value: Simulation<Ix>) -> Self {
+        Self {
+            alpha: value.alpha,
+            alpha_min: value.alpha_min,
+            alpha_decay: value.alpha_decay,
+            alpha_target: value.alpha_target,
+            velocity_decay: value.velocity_decay,
+            _random: value._random,
+        }
     }
 }
 

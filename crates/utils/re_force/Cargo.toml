@@ -20,7 +20,6 @@ all-features = true
 
 
 [dependencies]
-emath = "0.29.1"
 rand = "0.8.5"
 
 [dev-dependencies]

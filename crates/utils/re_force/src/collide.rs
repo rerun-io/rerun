@@ -1,8 +1,9 @@
-use emath::{Pos2, Rect, Vec2};
 use rand::thread_rng;
+use std::hash::Hash;
 
-use crate::{jiggle::jiggle, particle::Particle};
+use crate::{jiggle::jiggle, node::Node};
 
+#[derive(Clone, Debug)]
 pub struct Collide {
     radii: Option<Vec<f32>>,
     strength: f32,
@@ -21,7 +22,7 @@ impl Default for Collide {
 
 impl Collide {
     // TODO: speed up using quadtree
-    pub fn force(&mut self, particles: &mut [Particle]) {
+    pub fn force<Ix: Hash + Eq>(&mut self, particles: &mut [Node<Ix>]) {
         // TODO: make this configurable
         let radii: Vec<_> = (0..particles.len()).map(|_| 10.0).collect();
 
@@ -34,32 +35,37 @@ impl Collide {
                 for (i, node) in left.iter_mut().enumerate() {
                     let ri = radii[i];
                     let ri2 = ri * ri;
-                    let ni = node.pos + node.vel;
+                    let xi = node.x + node.vx;
+                    let yi = node.y + node.vy;
 
-                    for (j, other) in right.iter_mut().enumerate() {
+                    for (j, data) in right.iter_mut().enumerate() {
                         let rj = radii[s + j];
 
                         let r = ri + rj;
-                        let mut d = ni - other.pos - other.vel;
-                        let mut l = d.x * d.x + d.y * d.y;
+                        let mut x = xi - data.x - data.vx;
+                        let mut y = yi - data.y - data.vx;
+                        let mut l = x * x + y * y;
                         if l < r * r {
                             // We need to resolve points that coincide.
-                            if d.x == 0.0 {
-                                d.x = jiggle(&mut thread_rng());
-                                l += d.x * d.x;
+                            if x == 0.0 {
+                                x = jiggle(&mut thread_rng());
+                                l += x * x;
                             }
-                            if d.y == 0.0 {
-                                d.y = jiggle(&mut thread_rng());
-                                l += d.y * d.y;
+                            if y == 0.0 {
+                                y = jiggle(&mut thread_rng());
+                                l += y * y;
                             }
 
                             l = l.sqrt();
                             l = (r - l) / l * self.strength;
-                            d *= l;
+                            x *= l;
+                            y *= l;
                             let rj2 = rj * rj;
                             let frac = rj2 / (ri2 + rj2);
-                            node.vel += d * frac;
-                            other.vel -= d * (1.0 - frac);
+                            node.vx += x * frac;
+                            node.vy += y * frac;
+                            data.vx -= x * (1.0 - frac);
+                            data.vy -= y * (1.0 - frac);
                         }
                     }
                 }
@@ -74,7 +80,7 @@ mod test {
 
     #[test]
     fn resolve_all_coincide() {
-        let mut particles = std::iter::repeat(Particle {
+        let mut particles = std::iter::repeat(Node {
             pos: Pos2::ZERO,
             vel: Vec2::ZERO,
         })
