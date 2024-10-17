@@ -59,11 +59,11 @@ class DataframeView(SpaceView):
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/dataframe_view/6c2cf85f7caa94392953869567fad4818fce78e3/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/dataframe_view/6c2cf85f7caa94392953869567fad4818fce78e3/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/dataframe_view/6c2cf85f7caa94392953869567fad4818fce78e3/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/dataframe_view/6c2cf85f7caa94392953869567fad4818fce78e3/1200w.png">
-      <img src="https://static.rerun.io/dataframe_view/6c2cf85f7caa94392953869567fad4818fce78e3/full.png" width="640">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/dataframe_view/f89ae330b04baaa9b7576765dce37b5d4e7cef4e/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/dataframe_view/f89ae330b04baaa9b7576765dce37b5d4e7cef4e/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/dataframe_view/f89ae330b04baaa9b7576765dce37b5d4e7cef4e/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/dataframe_view/f89ae330b04baaa9b7576765dce37b5d4e7cef4e/1200w.png">
+      <img src="https://static.rerun.io/dataframe_view/f89ae330b04baaa9b7576765dce37b5d4e7cef4e/full.png" width="640">
     </picture>
     </center>
 
