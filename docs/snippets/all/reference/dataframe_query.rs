@@ -1,5 +1,7 @@
 //! Query and display the first 10 rows of a recording.
 
+#![allow(clippy::unwrap_used)]
+
 use rerun::{
     dataframe::{QueryCache, QueryEngine, QueryExpression, SparseFillStrategy, Timeline},
     ChunkStore, ChunkStoreConfig, VersionPolicy,

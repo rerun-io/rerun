@@ -34,7 +34,7 @@ Check out the API reference to learn more about all the ways that data can be se
 
 ### Using the blueprint API to configure a dataframe view
 
-TODO: incoming.
+TODO(cmc): incoming.
 
 Check out the blueprint API reference to learn more about all the ways that data can be searched and filtered:
 * [🐍 Python blueprint API reference](https://ref.rerun.io/docs/python/latest/common/blueprint_apis/)
@@ -42,4 +42,4 @@ Check out the blueprint API reference to learn more about all the ways that data
 
 ### Setting up dataframe view manually in the UI
 
-TODO: incoming.
+TODO(cmc): incoming.
