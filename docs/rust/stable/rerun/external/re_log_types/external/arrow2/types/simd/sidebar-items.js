@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["days_msx8","f16x32","f32x16","f64x8","i128x8","i16x32","i256x8","i32x16","i64x8","i8x64","months_days_nsx8","u16x32","u32x16","u64x8","u8x64"],"trait":["FromMaskChunk","NativeSimd","Simd"]};

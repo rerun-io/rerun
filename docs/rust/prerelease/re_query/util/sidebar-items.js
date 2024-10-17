@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["query_archetype_with_history"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["LogMsg","PathOp"],"struct":["DataCell","DataRow","DataTable","DataTableBatcher","DataTableBatcherConfig","RowId","TableId"]};

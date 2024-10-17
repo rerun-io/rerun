@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DataTextureSourceWriteError"],"fn":["max_data_texture_width","max_num_elements_per_data_texture"],"struct":["DataTextureSource"]};

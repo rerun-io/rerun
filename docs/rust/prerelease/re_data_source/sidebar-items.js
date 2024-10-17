@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["SUPPORTED_IMAGE_EXTENSIONS","SUPPORTED_MESH_EXTENSIONS"],"enum":["DataSource"],"fn":["connect_to_ws_url"],"mod":["data_source","load_file_contents","load_file_path","web_sockets"],"struct":["FileContents"]};

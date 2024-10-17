@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["DECODING_GRACE_DELAY"],"fn":["alloc_video_frame_texture","clear_texture","latest_at_idx"],"mod":["native_decoder"],"struct":["TimedDecodingError","VideoDecoder","VideoTexture"],"trait":["VideoChunkDecoder"]};

@@ -1,0 +1,1 @@
+searchState.loadedDescShard("roundtrip_tensor", 0, "Logs a <code>Tensor</code> archetype for roundtrip checks.\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.")

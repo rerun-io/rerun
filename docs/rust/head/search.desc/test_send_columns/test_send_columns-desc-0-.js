@@ -1,0 +1,1 @@
+searchState.loadedDescShard("test_send_columns", 0, "Very minimal test of using the send columns APIs.")

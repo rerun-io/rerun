@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SpaceViewSystemExecutionError"],"mod":["auto_spawn_heuristic","dyn_space_view_class","highlights","named_system","space_view_class","space_view_class_placeholder","space_view_class_registry","view_context_system","view_part_system","view_query"]};

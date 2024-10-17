@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["column_as_series","insert_ids_as_series","new_infallible_series","sort_df_columns"]};

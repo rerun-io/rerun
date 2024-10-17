@@ -1,0 +1,1 @@
+searchState.loadedDescShard("roundtrip_line_strips2d", 0, "Logs a <code>LineStrips2D</code> archetype for roundtrip checks.\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.")

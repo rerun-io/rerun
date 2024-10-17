@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ImageDataToTextureError","SourceImageDataFormat"],"fn":["copy_data_to_texture","transfer_image_data_to_texture"],"struct":["ImageDataDesc"]};
