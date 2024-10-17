@@ -1,6 +1,6 @@
 [package]
 name = "dna"
-version = "0.19.0-alpha.12+dev"
+version = "0.19.0-alpha.13"
 edition = "2021"
 rust-version = "1.79"
 license = "MIT OR Apache-2.0"
