@@ -14,11 +14,13 @@ This page lists all built-in archetypes.
 
 ## Image & tensor
 
+* [`AssetVideo`](archetypes/asset_video.md): A video binary.
 * [`DepthImage`](archetypes/depth_image.md): A depth image, i.e. as captured by a depth camera.
 * [`EncodedImage`](archetypes/encoded_image.md): An image encoded as e.g. a JPEG or PNG.
 * [`Image`](archetypes/image.md): A monochrome or color image.
 * [`SegmentationImage`](archetypes/segmentation_image.md): An image made up of integer [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id)s.
 * [`Tensor`](archetypes/tensor.md): An N-dimensional array of numbers.
+* [`VideoFrameReference`](archetypes/video_frame_reference.md): References a single video frame.
 
 ## Plotting
 
@@ -56,8 +58,6 @@ This page lists all built-in archetypes.
 ## Other
 
 * [`AnnotationContext`](archetypes/annotation_context.md): The annotation context provides additional information on how to display entities.
-* [`AssetVideo`](archetypes/asset_video.md): A video binary.
 * [`Clear`](archetypes/clear.md): Empties all the components of an entity.
 * [`DisconnectedSpace`](archetypes/disconnected_space.md): Spatially disconnect this entity from its parent.
-* [`VideoFrameReference`](archetypes/video_frame_reference.md): References a single video frame.
 

@@ -7,8 +7,7 @@ namespace rerun.blueprint.views;
 /// \example views/dataframe title="Use a blueprint to customize a DataframeView."
 //TODO(#6896): add a thumbnail when the example becomes interesting
 table DataframeView (
-    "attr.rerun.view_identifier": "Dataframe",
-    "attr.docs.unreleased"
+    "attr.rerun.view_identifier": "Dataframe"
 ) {
     /// Query of the dataframe.
     query: rerun.blueprint.archetypes.DataframeQuery (order: 1000);

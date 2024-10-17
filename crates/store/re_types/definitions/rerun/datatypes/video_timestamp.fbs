@@ -6,7 +6,6 @@ namespace rerun.datatypes;
 /// Presentation timestamps are typically measured as time since video start.
 struct VideoTimestamp (
   "attr.arrow.transparent",
-  "attr.docs.unreleased",
   "attr.python.aliases": "int",
   "attr.rust.derive": "Default, Copy, PartialEq, Eq, PartialOrd, Ord",
   "attr.rust.tuple_struct"
