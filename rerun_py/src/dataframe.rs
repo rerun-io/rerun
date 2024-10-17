@@ -2,7 +2,10 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pyfunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    str::FromStr as _,
+};
 
 use arrow::{
     array::{make_array, Array, ArrayData, Int64Array, RecordBatchIterator, RecordBatchReader},
@@ -246,10 +249,12 @@ impl PyComponentColumnSelector {
 /// A type alias for any component-column-like object.
 #[derive(FromPyObject)]
 enum AnyColumn {
-    #[pyo3(transparent, annotation = "time_descriptor")]
-    TimeDescriptor(PyIndexColumnDescriptor),
-    #[pyo3(transparent, annotation = "time_selector")]
-    TimeSelector(PyIndexColumnSelector),
+    #[pyo3(transparent, annotation = "name")]
+    Name(String),
+    #[pyo3(transparent, annotation = "index_descriptor")]
+    IndexDescriptor(PyIndexColumnDescriptor),
+    #[pyo3(transparent, annotation = "index_selector")]
+    IndexSelector(PyIndexColumnSelector),
     #[pyo3(transparent, annotation = "component_descriptor")]
     ComponentDescriptor(PyComponentColumnDescriptor),
     #[pyo3(transparent, annotation = "component_selector")]
@@ -257,12 +262,29 @@ enum AnyColumn {
 }
 
 impl AnyColumn {
-    fn into_selector(self) -> ColumnSelector {
+    fn into_selector(self) -> PyResult<ColumnSelector> {
         match self {
-            Self::TimeDescriptor(desc) => ColumnDescriptor::Time(desc.0).into(),
-            Self::TimeSelector(selector) => selector.0.into(),
-            Self::ComponentDescriptor(desc) => ColumnDescriptor::Component(desc.0).into(),
-            Self::ComponentSelector(selector) => selector.0.into(),
+            Self::Name(name) => {
+                if !name.contains(':') && !name.contains('/') {
+                    Ok(ColumnSelector::Time(TimeColumnSelector {
+                        timeline: name.into(),
+                    }))
+                } else {
+                    let component_path =
+                        re_log_types::ComponentPath::from_str(&name).map_err(|err| {
+                            PyValueError::new_err(format!("Invalid component path {name:?}: {err}"))
+                        })?;
+
+                    Ok(ColumnSelector::Component(ComponentColumnSelector {
+                        entity_path: component_path.entity_path,
+                        component_name: component_path.component_name.to_string(),
+                    }))
+                }
+            }
+            Self::IndexDescriptor(desc) => Ok(ColumnDescriptor::Time(desc.0).into()),
+            Self::IndexSelector(selector) => Ok(selector.0.into()),
+            Self::ComponentDescriptor(desc) => Ok(ColumnDescriptor::Component(desc.0).into()),
+            Self::ComponentSelector(selector) => Ok(selector.0.into()),
         }
     }
 }
@@ -270,6 +292,9 @@ impl AnyColumn {
 /// A type alias for any component-column-like object.
 #[derive(FromPyObject)]
 enum AnyComponentColumn {
+    #[pyo3(transparent, annotation = "name")]
+    Name(String),
+    #[pyo3(transparent, annotation = "component_descriptor")]
     ComponentDescriptor(PyComponentColumnDescriptor),
     #[pyo3(transparent, annotation = "component_selector")]
     ComponentSelector(PyComponentColumnSelector),
@@ -277,10 +302,21 @@ enum AnyComponentColumn {
 
 impl AnyComponentColumn {
     #[allow(dead_code)]
-    fn into_selector(self) -> ComponentColumnSelector {
+    fn into_selector(self) -> PyResult<ComponentColumnSelector> {
         match self {
-            Self::ComponentDescriptor(desc) => desc.0.into(),
-            Self::ComponentSelector(selector) => selector.0,
+            Self::Name(name) => {
+                let component_path =
+                    re_log_types::ComponentPath::from_str(&name).map_err(|err| {
+                        PyValueError::new_err(format!("Invalid component path '{name}': {err}"))
+                    })?;
+
+                Ok(ComponentColumnSelector {
+                    entity_path: component_path.entity_path,
+                    component_name: component_path.component_name.to_string(),
+                })
+            }
+            Self::ComponentDescriptor(desc) => Ok(desc.0.into()),
+            Self::ComponentSelector(selector) => Ok(selector.0),
         }
     }
 }
@@ -576,7 +612,13 @@ impl PyRecordingView {
 
         let columns = columns.or_else(|| if !args.is_empty() { Some(args) } else { None });
 
-        Ok(columns.map(|cols| cols.into_iter().map(|col| col.into_selector()).collect()))
+        columns
+            .map(|cols| {
+                cols.into_iter()
+                    .map(|col| col.into_selector())
+                    .collect::<PyResult<_>>()
+            })
+            .transpose()
     }
 }
 
@@ -1031,16 +1073,16 @@ impl PyRecordingView {
     ///     A new view containing only the data where the specified component column is not null.
     ///
     ///     The original view will not be modified.
-    fn filter_is_not_null(&self, column: AnyComponentColumn) -> Self {
+    fn filter_is_not_null(&self, column: AnyComponentColumn) -> PyResult<Self> {
         let column = column.into_selector();
 
         let mut query_expression = self.query_expression.clone();
-        query_expression.filtered_is_not_null = Some(column);
+        query_expression.filtered_is_not_null = Some(column?);
 
-        Self {
+        Ok(Self {
             recording: self.recording.clone(),
             query_expression,
-        }
+        })
     }
 
     #[allow(rustdoc::private_doc_tests)]

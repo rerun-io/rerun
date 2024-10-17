@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     )
 
 AnyColumn: TypeAlias = Union[
+    str,
     "ComponentColumnDescriptor",
     "ComponentColumnSelector",
     "IndexColumnDescriptor",
@@ -27,6 +28,7 @@ AnyColumn: TypeAlias = Union[
 
 
 AnyComponentColumn: TypeAlias = Union[
+    str,
     "ComponentColumnDescriptor",
     "ComponentColumnSelector",
 ]
