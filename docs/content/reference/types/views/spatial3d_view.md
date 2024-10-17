@@ -42,6 +42,7 @@ snippet: views/spatial3d
 * [`Arrows3D`](../archetypes/arrows3d.md)
 * [`Asset3D`](../archetypes/asset3d.md)
 * [`Boxes3D`](../archetypes/boxes3d.md)
+* [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Clear`](../archetypes/clear.md)
 * [`DisconnectedSpace`](../archetypes/disconnected_space.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)

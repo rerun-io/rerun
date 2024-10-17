@@ -59,6 +59,7 @@ from .archetypes import (
     BarChart as BarChart,
     Boxes2D as Boxes2D,
     Boxes3D as Boxes3D,
+    Capsules3D as Capsules3D,
     Clear as Clear,
     DepthImage as DepthImage,
     DisconnectedSpace as DisconnectedSpace,

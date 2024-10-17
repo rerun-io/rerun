@@ -10,6 +10,7 @@
 #include "archetypes/bar_chart.hpp"
 #include "archetypes/boxes2d.hpp"
 #include "archetypes/boxes3d.hpp"
+#include "archetypes/capsules3d.hpp"
 #include "archetypes/clear.hpp"
 #include "archetypes/depth_image.hpp"
 #include "archetypes/disconnected_space.hpp"
