@@ -175,23 +175,36 @@ class TestDataframe:
 
     def test_select_columns(self) -> None:
         view = self.recording.view(index="my_index", contents="points")
-        index_col = rr.dataframe.IndexColumnSelector("my_index")
+        index_col_selectors = [rr.dataframe.IndexColumnSelector("my_index"), "my_index"]
 
-        selectors = [rr.components.Position3D, "rerun.components.Position3D", "Position3D", "position3D"]
-        for selector in selectors:
-            pos = rr.dataframe.ComponentColumnSelector("points", selector)
+        obj_selectors = [
+            rr.dataframe.ComponentColumnSelector("points", selector)
+            for selector in [
+                rr.components.Position3D,
+                "rerun.components.Position3D",
+                "Position3D",
+                "position3D",
+            ]
+        ]
+        str_selectors = [
+            "/points:rerun.components.Position3D",
+            "/points:Position3D",
+            "/points:position3d",
+        ]
 
-            batches = view.select(index_col, pos)
+        for index_selector in index_col_selectors:
+            for col_selector in obj_selectors + str_selectors:
+                batches = view.select(index_selector, col_selector)
 
-            table = pa.Table.from_batches(batches, batches.schema)
-            # points
-            assert table.num_columns == 2
-            assert table.num_rows == 2
+                table = pa.Table.from_batches(batches, batches.schema)
+                # points
+                assert table.num_columns == 2
+                assert table.num_rows == 2
 
-            assert table.column("my_index")[0].equals(self.expected_index0[0])
-            assert table.column("my_index")[1].equals(self.expected_index1[0])
-            assert table.column("/points:Position3D")[0].values.equals(self.expected_pos0)
-            assert table.column("/points:Position3D")[1].values.equals(self.expected_pos1)
+                assert table.column("my_index")[0].equals(self.expected_index0[0])
+                assert table.column("my_index")[1].equals(self.expected_index1[0])
+                assert table.column("/points:Position3D")[0].values.equals(self.expected_pos0)
+                assert table.column("/points:Position3D")[1].values.equals(self.expected_pos1)
 
     def test_index_values(self) -> None:
         view = self.recording.view(index="my_index", contents="points")
