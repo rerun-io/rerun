@@ -52,7 +52,7 @@ namespace rerun {
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
-    /// See [SDK Micro Batching](https://www.rerun.io/docs/reference/sdk-micro-batching) for
+    /// See [SDK Micro Batching](https://www.rerun.io/docs/reference/sdk/micro-batching) for
     /// more information.
     ///
     /// The data will be timestamped automatically based on the `RecordingStream`'s
