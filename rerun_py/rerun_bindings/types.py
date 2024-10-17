@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, Union
+from typing import TYPE_CHECKING, Sequence, Type, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -34,7 +34,7 @@ AnyComponentColumn: TypeAlias = Union[
 ]
 """A type alias for any component-column-like object."""
 
-ComponentLike: TypeAlias = Union[str, type["ComponentMixin"]]
+ComponentLike: TypeAlias = Union[str, Type["ComponentMixin"]]
 """
 A type alias for a component-like object used for content-expressions and column selectors.
 
