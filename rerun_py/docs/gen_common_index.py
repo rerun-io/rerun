@@ -432,7 +432,7 @@ There are many different ways of sending data to the Rerun Viewer depending on w
 to achieve and whether the viewer is running in the same process as your code, in another process,
 or even as a separate web application.
 
-Checkout [SDK Operating Modes](https://www.rerun.io/docs/reference/sdk-operating-modes) for an
+Checkout [SDK Operating Modes](https://www.rerun.io/docs/reference/sdk/operating-modes) for an
 overview of what's possible and how.
 
 ## APIs
