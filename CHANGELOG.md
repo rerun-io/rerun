@@ -15,13 +15,13 @@ This release introduces two powerful features: a dataframe API (and view), as we
 #### ☰ Dataframe Python API
 We now have a Python API for querying the contents of an .rrd file. This integrates with popular packages such as [Pandas](https://pandas.pydata.org), [Polars](https://pola.rs), and [DuckDB](https://duckdb.org).
 
-You can read more in [the Dataframe API how-to guide](https://rerun.io/docs/content/howto/dataframe-api?speculative-link).
+You can read more in [the Dataframe API how-to guide](https://rerun.io/docs/content/howto/dataframe-api).
 
 We have also added a matching dataframe view inside the Rerun Viewer.
-Read more [here](https://rerun.io/docs/content/reference/types/views/dataframe_view?speculative-link).
+Read more [here](https://rerun.io/docs/content/reference/types/views/dataframe_view).
 
 #### 🎬 Video
-Rerun now supports logging MP4 videos using the new [`AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link) archetype.
+Rerun now supports logging MP4 videos using the new [`AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video) archetype.
 This can greatly reduce bandwidth and storage requirements.
 
 While the web viewer supports a variety of codecs, the native viewer supports only the AV1 codec for the moment, but we plan to support H.264 in the near future as well.
