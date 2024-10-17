@@ -251,7 +251,7 @@ impl VideoData {
 
             Some(Chunk {
                 data: data.to_vec(),
-                timestamp: sample.decode_timestamp,
+                composition_timestamp: sample.composition_timestamp,
                 duration: sample.duration,
                 is_sync: sample.is_sync,
             })

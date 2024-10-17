@@ -135,7 +135,9 @@ impl VideoChunkDecoder for WebVideoDecoder {
         };
         let web_chunk = EncodedVideoChunkInit::new(
             &data,
-            video_chunk.timestamp.into_micros(self.data.timescale),
+            video_chunk
+                .composition_timestamp
+                .into_micros(self.data.timescale),
             type_,
         );
         web_chunk.set_duration(video_chunk.duration.into_micros(self.data.timescale));
