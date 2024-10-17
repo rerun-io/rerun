@@ -12,5 +12,4 @@ rerun = { path = "../../../crates/top/rerun", default-features = false, features
 ] }
 
 itertools = "0.13"
-rand = "0.8"
 unindent = "0.2"
