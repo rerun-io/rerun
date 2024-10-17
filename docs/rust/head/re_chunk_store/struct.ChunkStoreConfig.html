@@ -7,7 +7,7 @@
 any way (insertion, GC), that can be subscribed to.</p>
 <p>Leaving this disabled can lead to major performance improvements on the ingestion path
 in some workloads, provided that the subscribers aren’t needed (e.g. headless mode).</p>
-</div><span id="structfield.chunk_max_bytes" class="structfield section-header"><a href="#structfield.chunk_max_bytes" class="anchor field">§</a><code>chunk_max_bytes: <a class="primitive" href="https://doc.rust-lang.org/1.79.0/std/primitive.u64.html">u64</a></code></span><div class="docblock"><p>What is the threshold, in bytes, after which a <a href="../re_chunk/chunk/struct.Chunk.html" title="struct re_chunk::chunk::Chunk"><code>Chunk</code></a> cannot be compacted any further?</p>
+</div><span id="structfield.chunk_max_bytes" class="structfield section-header"><a href="#structfield.chunk_max_bytes" class="anchor field">§</a><code>chunk_max_bytes: <a class="primitive" href="https://doc.rust-lang.org/1.79.0/std/primitive.u64.html">u64</a></code></span><div class="docblock"><p>What is the threshold, in bytes, after which a [<code>Chunk</code>] cannot be compacted any further?</p>
 <p>This is a multi-dimensional trade-off:</p>
 <ul>
 <li>Larger chunks lead to less fixed overhead introduced by metadata, indices and such. Good.</li>
@@ -20,7 +20,7 @@ in some workloads, provided that the subscribers aren’t needed (e.g. headless 
 which is the default row threshold.
 The default byte threshold is set to 8MiB, which is a reasonable unit of work when e.g.
 sending chunks over the network.</p>
-</div><span id="structfield.chunk_max_rows" class="structfield section-header"><a href="#structfield.chunk_max_rows" class="anchor field">§</a><code>chunk_max_rows: <a class="primitive" href="https://doc.rust-lang.org/1.79.0/std/primitive.u64.html">u64</a></code></span><div class="docblock"><p>What is the threshold, in rows, after which a <a href="../re_chunk/chunk/struct.Chunk.html" title="struct re_chunk::chunk::Chunk"><code>Chunk</code></a> cannot be compacted any further?</p>
+</div><span id="structfield.chunk_max_rows" class="structfield section-header"><a href="#structfield.chunk_max_rows" class="anchor field">§</a><code>chunk_max_rows: <a class="primitive" href="https://doc.rust-lang.org/1.79.0/std/primitive.u64.html">u64</a></code></span><div class="docblock"><p>What is the threshold, in rows, after which a [<code>Chunk</code>] cannot be compacted any further?</p>
 <p>This specifically applies to time-sorted chunks.
 See also <a href="store/struct.ChunkStoreConfig.html#structfield.chunk_max_rows_if_unsorted" title="field re_chunk_store::store::ChunkStoreConfig::chunk_max_rows_if_unsorted"><code>ChunkStoreConfig::chunk_max_rows_if_unsorted</code></a>.</p>
 <p>This is a multi-dimensional trade-off:</p>
@@ -35,7 +35,7 @@ See also <a href="store/struct.ChunkStoreConfig.html#structfield.chunk_max_rows_
 which is the default row threshold.
 The default byte threshold is set to 8MiB, which is a reasonable unit of work when e.g.
 sending chunks over the network.</p>
-</div><span id="structfield.chunk_max_rows_if_unsorted" class="structfield section-header"><a href="#structfield.chunk_max_rows_if_unsorted" class="anchor field">§</a><code>chunk_max_rows_if_unsorted: <a class="primitive" href="https://doc.rust-lang.org/1.79.0/std/primitive.u64.html">u64</a></code></span><div class="docblock"><p>What is the threshold, in rows, after which a <a href="../re_chunk/chunk/struct.Chunk.html" title="struct re_chunk::chunk::Chunk"><code>Chunk</code></a> cannot be compacted any further?</p>
+</div><span id="structfield.chunk_max_rows_if_unsorted" class="structfield section-header"><a href="#structfield.chunk_max_rows_if_unsorted" class="anchor field">§</a><code>chunk_max_rows_if_unsorted: <a class="primitive" href="https://doc.rust-lang.org/1.79.0/std/primitive.u64.html">u64</a></code></span><div class="docblock"><p>What is the threshold, in rows, after which a [<code>Chunk</code>] cannot be compacted any further?</p>
 <p>This specifically applies to <em>non</em> time-sorted chunks.
 See also <a href="store/struct.ChunkStoreConfig.html#structfield.chunk_max_rows" title="field re_chunk_store::store::ChunkStoreConfig::chunk_max_rows"><code>ChunkStoreConfig::chunk_max_rows</code></a>.</p>
 <p>This is a multi-dimensional trade-off:</p>

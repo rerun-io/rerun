@@ -15,7 +15,7 @@
 <ul>
 <li>
 <p>The view contents specify which subset of the database (i.e., which columns) the query runs on,
-expressed as a set of <a href="../re_log_types/path/entity_path/struct.EntityPath.html" title="struct re_log_types::path::entity_path::EntityPath"><code>EntityPath</code></a>s and their associated <a href="../re_types_core/loggable/struct.ComponentName.html" title="struct re_types_core::loggable::ComponentName"><code>ComponentName</code></a>s.</p>
+expressed as a set of [<code>EntityPath</code>]s and their associated [<code>ComponentName</code>]s.</p>
 </li>
 <li>
 <p>The filters filter out <em>rows</em> of data from the view contents.
@@ -34,8 +34,8 @@ final dataframe (null array).</p>
 </ul>
 <p>A very rough mental model, in SQL terms:</p>
 <div class="example-wrap"><pre class="language-text"><code>SELECT &lt;Self::selection&gt; FROM &lt;Self::view_contents&gt; WHERE &lt;Self::filtered_*&gt;
-</code></pre></div></div></details><h2 id="fields" class="fields section-header">Fields<a href="#fields" class="anchor">§</a></h2><span id="structfield.view_contents" class="structfield section-header"><a href="#structfield.view_contents" class="anchor field">§</a><code>view_contents: <a class="enum" href="https://doc.rust-lang.org/1.79.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="dataframe/type.ViewContentsSelector.html" title="type re_chunk_store::dataframe::ViewContentsSelector">ViewContentsSelector</a>&gt;</code></span><div class="docblock"><p>The subset of the database that the query will run on: a set of <a href="../re_log_types/path/entity_path/struct.EntityPath.html" title="struct re_log_types::path::entity_path::EntityPath"><code>EntityPath</code></a>s and their
-associated <a href="../re_types_core/loggable/struct.ComponentName.html" title="struct re_types_core::loggable::ComponentName"><code>ComponentName</code></a>s.</p>
+</code></pre></div></div></details><h2 id="fields" class="fields section-header">Fields<a href="#fields" class="anchor">§</a></h2><span id="structfield.view_contents" class="structfield section-header"><a href="#structfield.view_contents" class="anchor field">§</a><code>view_contents: <a class="enum" href="https://doc.rust-lang.org/1.79.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="dataframe/type.ViewContentsSelector.html" title="type re_chunk_store::dataframe::ViewContentsSelector">ViewContentsSelector</a>&gt;</code></span><div class="docblock"><p>The subset of the database that the query will run on: a set of [<code>EntityPath</code>]s and their
+associated [<code>ComponentName</code>]s.</p>
 <p>Defaults to <code>None</code>, which means: everything.</p>
 <p>Example (pseudo-code):</p>
 <div class="example-wrap"><pre class="language-text"><code>view_contents = {
@@ -52,7 +52,7 @@ helps keep track of the original context in which a piece of data was logged/sen
 <p><code>view_contents</code>: <a href="dataframe/struct.QueryExpression.html#structfield.view_contents" title="field re_chunk_store::dataframe::QueryExpression::view_contents"><code>QueryExpression::view_contents</code></a></p>
 </div><span id="structfield.include_tombstone_columns" class="structfield section-header"><a href="#structfield.include_tombstone_columns" class="anchor field">§</a><code>include_tombstone_columns: <a class="primitive" href="https://doc.rust-lang.org/1.79.0/std/primitive.bool.html">bool</a></code></span><div class="docblock"><p>Whether the <code>view_contents</code> should ignore columns corresponding to <code>Clear</code>-related components.</p>
 <p><code>view_contents</code>: <a href="dataframe/struct.QueryExpression.html#structfield.view_contents" title="field re_chunk_store::dataframe::QueryExpression::view_contents"><code>QueryExpression::view_contents</code></a>
-<code>Clear</code>: <a href="../re_types_core/archetypes/clear/struct.Clear.html" title="struct re_types_core::archetypes::clear::Clear"><code>re_types_core::archetypes::Clear</code></a></p>
+<code>Clear</code>: [<code>re_types_core::archetypes::Clear</code>]</p>
 </div><span id="structfield.filtered_index" class="structfield section-header"><a href="#structfield.filtered_index" class="anchor field">§</a><code>filtered_index: <a class="enum" href="https://doc.rust-lang.org/1.79.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="type" href="dataframe/type.Index.html" title="type re_chunk_store::dataframe::Index">Index</a>&gt;</code></span><div class="docblock"><p>The index used to filter out <em>rows</em> from the view contents.</p>
 <p>Only rows where at least 1 column contains non-null data at that index will be kept in the
 final dataset.</p>
@@ -72,7 +72,7 @@ in the final dataset.</p>
 <ul>
 <li>This has no effect if <code>filtered_index</code> isn’t set.</li>
 <li>This has no effect if <a href="dataframe/struct.QueryExpression.html#structfield.using_index_values" title="field re_chunk_store::dataframe::QueryExpression::using_index_values"><code>QueryExpression::using_index_values</code></a> is set.</li>
-<li>Using <a href="../re_log_types/time_point/time_int/struct.TimeInt.html#associatedconstant.STATIC" title="associated constant re_log_types::time_point::time_int::TimeInt::STATIC"><code>TimeInt::STATIC</code></a> as index value has no effect.</li>
+<li>Using [<code>TimeInt::STATIC</code>] as index value has no effect.</li>
 </ul>
 <p>Example: <code>[TimeInt(12), TimeInt(14)]</code>.</p>
 </div><span id="structfield.using_index_values" class="structfield section-header"><a href="#structfield.using_index_values" class="anchor field">§</a><code>using_index_values: <a class="enum" href="https://doc.rust-lang.org/1.79.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="https://doc.rust-lang.org/1.79.0/alloc/collections/btree/set/struct.BTreeSet.html" title="struct alloc::collections::btree::set::BTreeSet">BTreeSet</a>&lt;<a class="type" href="dataframe/type.IndexValue.html" title="type re_chunk_store::dataframe::IndexValue">IndexValue</a>&gt;&gt;</code></span><div class="docblock"><p>The specific index values used to sample <em>rows</em> from the view contents.</p>
@@ -84,7 +84,7 @@ sorted on the <code>filtered_index</code>, and only contain unique index values.
 <li>This has no effect if <code>filtered_index</code> isn’t set.</li>
 <li>If set, this overrides both <a href="dataframe/struct.QueryExpression.html#structfield.filtered_index_range" title="field re_chunk_store::dataframe::QueryExpression::filtered_index_range"><code>QueryExpression::filtered_index_range</code></a> and
 <a href="dataframe/struct.QueryExpression.html#structfield.filtered_index_values" title="field re_chunk_store::dataframe::QueryExpression::filtered_index_values"><code>QueryExpression::filtered_index_values</code></a>.</li>
-<li>Using <a href="../re_log_types/time_point/time_int/struct.TimeInt.html#associatedconstant.STATIC" title="associated constant re_log_types::time_point::time_int::TimeInt::STATIC"><code>TimeInt::STATIC</code></a> as index value has no effect.</li>
+<li>Using [<code>TimeInt::STATIC</code>] as index value has no effect.</li>
 </ul>
 <p>Example: <code>[TimeInt(12), TimeInt(14)]</code>.</p>
 </div><span id="structfield.filtered_is_not_null" class="structfield section-header"><a href="#structfield.filtered_is_not_null" class="anchor field">§</a><code>filtered_is_not_null: <a class="enum" href="https://doc.rust-lang.org/1.79.0/core/option/enum.Option.html" title="enum core::option::Option">Option</a>&lt;<a class="struct" href="dataframe/struct.ComponentColumnSelector.html" title="struct re_chunk_store::dataframe::ComponentColumnSelector">ComponentColumnSelector</a>&gt;</code></span><div class="docblock"><p>The component column used to filter out <em>rows</em> from the view contents.</p>
