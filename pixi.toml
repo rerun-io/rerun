@@ -55,7 +55,7 @@ default = ["base", "wheel-build"]
 py = ["base", "wheel-build", "python-dev", "python-tasks", "py-test-deps"]
 
 # The py-docs environment is for building docs for the python package.
-py-docs = ["base", "python-dev", "python-docs", "python-tasks"]
+py-docs = ["base", "python-docs", "python-tasks"]
 
 # The cpp environment is for building any code that depends on the C++ `rerun-sdk`.
 cpp = ["base", "cpp"]

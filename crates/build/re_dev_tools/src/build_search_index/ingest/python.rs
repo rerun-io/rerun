@@ -41,7 +41,7 @@ pub fn ingest(ctx: &Context) -> anyhow::Result<()> {
     // this dump is only used to obtain docstrings
     progress.set("griffe dump", ctx.is_tty());
     let dump: Dump = Command::new("griffe")
-        .with_args(["dump", "rerun_sdk"])
+        .with_args(["dump", "rerun_sdk", "-s", "rerun_py"])
         .parse_json()
         .context("either griffe or rerun_sdk is not installed, try running `pixi run pip install -r rerun_py/requirements-doc.txt` and building the SDK")?;
 
