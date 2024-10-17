@@ -48,7 +48,66 @@ pub fn encode_to_bytes<'a>(
 
 // ----------------------------------------------------------------------------
 
+/// An [`Encoder`] that can be dropped.
+///
+/// When dropped, it will automatically insert an end-of-stream marker, if that wasn't already done manually.
+pub struct DroppableEncoder<W: std::io::Write> {
+    encoder: Encoder<W>,
+
+    /// Tracks whether the end-of-stream marker has been written out already.
+    is_finished: bool,
+}
+
+impl<W: std::io::Write> DroppableEncoder<W> {
+    #[inline]
+    pub fn new(
+        version: CrateVersion,
+        options: EncodingOptions,
+        write: W,
+    ) -> Result<Self, EncodeError> {
+        Ok(Self {
+            encoder: Encoder::new(version, options, write)?,
+            is_finished: false,
+        })
+    }
+
+    /// Returns the size in bytes of the encoded data.
+    #[inline]
+    pub fn append(&mut self, message: &LogMsg) -> Result<u64, EncodeError> {
+        self.encoder.append(message)
+    }
+
+    #[inline]
+    pub fn finish(&mut self) -> Result<(), EncodeError> {
+        if !self.is_finished {
+            self.encoder.finish()?;
+        }
+
+        self.is_finished = true;
+
+        Ok(())
+    }
+
+    #[inline]
+    pub fn flush_blocking(&mut self) -> std::io::Result<()> {
+        self.encoder.flush_blocking()
+    }
+}
+
+impl<W: std::io::Write> std::ops::Drop for DroppableEncoder<W> {
+    fn drop(&mut self) {
+        if !self.is_finished {
+            if let Err(err) = self.finish() {
+                re_log::warn!("encoder couldn't be finished: {err}");
+            }
+        }
+    }
+}
+
 /// Encode a stream of [`LogMsg`] into an `.rrd` file.
+///
+/// Prefer [`DroppableEncoder`] if possible, make sure to call [`Encoder::finish`] when appropriate
+/// otherwise.
 pub struct Encoder<W: std::io::Write> {
     compression: Compression,
     write: W,
@@ -120,15 +179,20 @@ impl<W: std::io::Write> Encoder<W> {
         }
     }
 
+    // NOTE: This cannot be done in a `Drop` implementation because of `Self::into_inner` which
+    // does a partial move.
+    #[inline]
     pub fn finish(&mut self) -> Result<(), EncodeError> {
         MessageHeader::EndOfStream.encode(&mut self.write)?;
         Ok(())
     }
 
+    #[inline]
     pub fn flush_blocking(&mut self) -> std::io::Result<()> {
         self.write.flush()
     }
 
+    #[inline]
     pub fn into_inner(self) -> W {
         self.write
     }
