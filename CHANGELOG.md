@@ -28,7 +28,7 @@ While the web viewer supports a variety of codecs, the native viewer supports on
 Read more about our video supports (and its limits) [in our video docs](https://rerun.io/docs/reference/video).
 
 ### ⚠️ Breaking changes
-* 🌊 C++: The C++ (and C) SDKs now require glibc 2.17 or higher.
+* 🐧 Linux: Linking the SDKs now require glibc 2.17 or higher.
 * 🦀 Rust: The minimum supported Rust version is now 1.79
 
 🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-19
