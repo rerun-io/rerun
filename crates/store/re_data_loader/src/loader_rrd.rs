@@ -1,5 +1,7 @@
-use crossbeam::channel::Receiver;
 use re_log_encoding::decoder::Decoder;
+
+#[cfg(not(target_arch = "wasm32"))]
+use crossbeam::channel::Receiver;
 
 // ---
 
@@ -163,7 +165,9 @@ impl RetryableFileReader {
             .with_context(|| format!("Failed to open file {filepath:?}"))?;
         let reader = std::io::BufReader::new(file);
 
+        #[cfg(not(any(target_os = "windows", target_arch = "wasm32")))]
         re_crash_handler::sigint::track_sigint();
+
         // 50ms is just a nice tradeoff: we just need the delay to not be perceptible by a human
         // while not needlessly hammering the CPU.
         let rx_ticker = crossbeam::channel::tick(std::time::Duration::from_millis(50));

@@ -26,7 +26,6 @@ default = []
 [dependencies]
 re_build_info.workspace = true
 re_chunk.workspace = true
-re_crash_handler.workspace = true                              # for signal handling
 re_log_encoding = { workspace = true, features = ["decoder"] }
 re_log_types.workspace = true
 re_log.workspace = true
@@ -45,6 +44,9 @@ parking_lot.workspace = true
 rayon.workspace = true
 thiserror.workspace = true
 walkdir.workspace = true
+
+[target.'cfg(not(any(target_arch = "wasm32", target_os = "windows")))'.dependencies]
+re_crash_handler.workspace = true
 
 [dev-dependencies]
 re_log_encoding = { workspace = true, features = ["decoder", "encoder"] }
