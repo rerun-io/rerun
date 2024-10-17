@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence, Type, Union
+from typing import TYPE_CHECKING, Dict, Sequence, Type, Union
 
 import numpy as np
 import numpy.typing as npt
@@ -51,7 +51,7 @@ Examples:
 
 ViewContentsLike: TypeAlias = Union[
     str,
-    dict[str, Union[AnyColumn, Sequence[ComponentLike]]],
+    Dict[str, Union[AnyColumn, Sequence[ComponentLike]]],
 ]
 """
 A type alias for specifying the contents of a view.
