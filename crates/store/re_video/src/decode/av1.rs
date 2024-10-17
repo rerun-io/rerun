@@ -74,13 +74,16 @@ impl SyncDav1dDecoder {
 
     fn submit_chunk(&mut self, chunk: Chunk, on_output: &OutputCallback) {
         re_tracing::profile_function!();
-        econtext::econtext_function_data!(format!("chunk timestamp: {:?}", chunk.timestamp));
+        econtext::econtext_function_data!(format!(
+            "chunk timestamp: {:?}",
+            chunk.composition_timestamp
+        ));
 
         re_tracing::profile_scope!("send_data");
         match self.decoder.send_data(
             chunk.data,
             None,
-            Some(chunk.timestamp.0),
+            Some(chunk.composition_timestamp.0),
             Some(chunk.duration.0),
         ) {
             Ok(()) => {}
