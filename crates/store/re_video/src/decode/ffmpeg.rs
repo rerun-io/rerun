@@ -44,7 +44,8 @@ struct FrameInfo {
     /// Monotonic index, from start
     frame_num: u32,
 
-    timestamp: Time,
+    composition_timestamp: Time,
+
     duration: Time,
 }
 
@@ -254,7 +255,7 @@ fn read_ffmpeg_output(
                         height,
                         data,
                         format: crate::PixelFormat::Rgb8Unorm,
-                        timestamp: frame_info.timestamp,
+                        timestamp: frame_info.composition_timestamp,
                         duration: frame_info.duration,
                     }))
                     .is_err()
@@ -299,7 +300,7 @@ impl SyncDecoder for FfmpegCliH264Decoder {
         // If this assumption is not held, we will get weird errors, like videos playing to slowly.
         let frame_info = FrameInfo {
             frame_num: self.frame_num,
-            timestamp: chunk.timestamp,
+            composition_timestamp: chunk.composition_timestamp,
             duration: chunk.duration,
         };
 

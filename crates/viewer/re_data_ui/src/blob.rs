@@ -194,9 +194,23 @@ fn show_video_blob_info(
                     )),
                 );
                 if let Some(bit_depth) = data.config.stsd.contents.bit_depth() {
+                    let mut bit_depth = bit_depth.to_string();
+                    if data.is_monochrome() == Some(true) {
+                        bit_depth = format!("{bit_depth} (monochrome)");
+                    }
+
                     ui.list_item_flat_noninteractive(
-                        PropertyContent::new("Bit depth").value_text(bit_depth.to_string()),
+                        PropertyContent::new("Bit depth").value_text(bit_depth),
                     );
+                }
+                if let Some(subsampling_mode) = data.subsampling_mode() {
+                    // Don't show subsampling mode for monochrome, doesn't make sense usually.
+                    if data.is_monochrome() != Some(true) {
+                        ui.list_item_flat_noninteractive(
+                            PropertyContent::new("Subsampling mode")
+                                .value_text(subsampling_mode.to_string()),
+                        );
+                    }
                 }
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Duration")
@@ -251,6 +265,7 @@ fn show_video_blob_info(
                     match video.frame_at(render_ctx, decode_stream_id, timestamp_in_seconds) {
                         Ok(VideoFrameTexture {
                             texture,
+                            time_range,
                             is_pending,
                             show_spinner,
                         }) => {
@@ -274,6 +289,23 @@ fn show_video_blob_info(
                                 );
                                 egui::Spinner::new().paint_at(ui, smaller_rect);
                             }
+
+                            response.on_hover_ui(|ui| {
+                                // Prevent `Area` auto-sizing from shrinking tooltips with dynamic content.
+                                // See https://github.com/emilk/egui/issues/5167
+                                ui.set_max_width(ui.spacing().tooltip_width);
+
+                                let timescale = video.data().timescale;
+                                ui.label(format!(
+                                    "Frame at {} - {}",
+                                    re_format::format_timestamp_seconds(
+                                        time_range.start.into_secs(timescale),
+                                    ),
+                                    re_format::format_timestamp_seconds(
+                                        time_range.end.into_secs(timescale),
+                                    ),
+                                ));
+                            });
                         }
 
                         Err(err) => {

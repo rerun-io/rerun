@@ -27,13 +27,12 @@ pub fn format_timestamp_seconds(timestamp_seconds: f64) -> String {
     let n = timestamp_seconds as i32;
     let hours = n / (60 * 60);
     let mins = (n / 60) % 60;
-    let secs_int = n % 60;
-    let secs_hundredth = (timestamp_seconds.fract() * 100.0) as u32;
+    let secs = (n % 60) as f64 + timestamp_seconds.fract();
 
     if hours > 0 {
-        format!("{hours:02}:{mins:02}:{secs_int:02}.{secs_hundredth:02}")
+        format!("{hours:02}:{mins:02}:{secs:02.02}")
     } else {
-        format!("{mins:02}:{secs_int:02}.{secs_hundredth:02}")
+        format!("{mins:02}:{secs:02.02}")
     }
     // Not showing the minutes at all makes it too unclear what format this timestamp is in.
     // So let's not further strip this down.

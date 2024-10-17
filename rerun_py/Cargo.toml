@@ -66,6 +66,7 @@ infer.workspace = true
 # TODO(#5875): `mimalloc` starts leaking OS pages starting with `0.1.38`.
 # When the bug is fixed, change this back to `mimalloc = { workspace = true, …`.
 mimalloc = { version = "=0.1.37", features = ["local_dynamic_tls"] }
+numpy.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
 pyo3 = { workspace = true, features = ["abi3-py38"] }

@@ -19,10 +19,10 @@ theme:
 plugins:
   - search # https://squidfunk.github.io/mkdocs-material/setup/setting-up-site-search/
   - mkdocstrings: # https://mkdocstrings.github.io/usage/#global-options
-      custom_templates: rerun_py/docs/templates # Override the function template. NOTE: relative to working directory. (https://github.com/mkdocstrings/mkdocstrings/issues/477)
+      custom_templates: docs/templates # Override the function template.
       handlers:
         python:
-          paths: ["rerun_sdk"] # Lookup python modules relative to this path
+          paths: ["rerun_sdk", "."] # Lookup python modules relative to this path
           import: # Cross-references for python and numpy
             - https://arrow.apache.org/docs/objects.inv
             - https://docs.python.org/3/objects.inv
@@ -44,6 +44,12 @@ plugins:
             merge_init_into_class: false # Not compatible with `inherited_members`
             show_if_no_docstring: false # We intentionally hide archetype fields
             show_source: no
+            load_external_modules: true
+            preload_modules:
+              - rerun_bindings
+            annotations_path: brief
+            signature_crossrefs: true
+
   - gen-files: # https://oprypin.github.io/mkdocs-gen-files
       scripts:
         - docs/gen_common_index.py

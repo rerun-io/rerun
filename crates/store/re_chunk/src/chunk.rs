@@ -705,6 +705,26 @@ impl Chunk {
         }
     }
 
+    /// Unconditionally inserts an [`ArrowListArray`] as a component column.
+    ///
+    /// Removes and replaces the column if it already exists.
+    ///
+    /// This will fail if the end result is malformed in any way -- see [`Self::sanity_check`].
+    #[inline]
+    pub fn add_component(
+        &mut self,
+        component_name: ComponentName,
+        list_array: ArrowListArray<i32>,
+    ) -> ChunkResult<()> {
+        self.components.insert(component_name, list_array);
+        self.sanity_check()
+    }
+
+    /// Unconditionally inserts a [`TimeColumn`].
+    ///
+    /// Removes and replaces the column if it already exists.
+    ///
+    /// This will fail if the end result is malformed in any way -- see [`Self::sanity_check`].
     #[inline]
     pub fn add_timeline(&mut self, chunk_timeline: TimeColumn) -> ChunkResult<()> {
         self.timelines

@@ -48,7 +48,66 @@ pub fn encode_to_bytes<'a>(
 
 // ----------------------------------------------------------------------------
 
+/// An [`Encoder`] that properly closes the stream on drop.
+///
+/// When dropped, it will automatically insert an end-of-stream marker, if that wasn't already done manually.
+pub struct DroppableEncoder<W: std::io::Write> {
+    encoder: Encoder<W>,
+
+    /// Tracks whether the end-of-stream marker has been written out already.
+    is_finished: bool,
+}
+
+impl<W: std::io::Write> DroppableEncoder<W> {
+    #[inline]
+    pub fn new(
+        version: CrateVersion,
+        options: EncodingOptions,
+        write: W,
+    ) -> Result<Self, EncodeError> {
+        Ok(Self {
+            encoder: Encoder::new(version, options, write)?,
+            is_finished: false,
+        })
+    }
+
+    /// Returns the size in bytes of the encoded data.
+    #[inline]
+    pub fn append(&mut self, message: &LogMsg) -> Result<u64, EncodeError> {
+        self.encoder.append(message)
+    }
+
+    #[inline]
+    pub fn finish(&mut self) -> Result<(), EncodeError> {
+        if !self.is_finished {
+            self.encoder.finish()?;
+        }
+
+        self.is_finished = true;
+
+        Ok(())
+    }
+
+    #[inline]
+    pub fn flush_blocking(&mut self) -> std::io::Result<()> {
+        self.encoder.flush_blocking()
+    }
+}
+
+impl<W: std::io::Write> std::ops::Drop for DroppableEncoder<W> {
+    fn drop(&mut self) {
+        if !self.is_finished {
+            if let Err(err) = self.finish() {
+                re_log::warn!("encoder couldn't be finished: {err}");
+            }
+        }
+    }
+}
+
 /// Encode a stream of [`LogMsg`] into an `.rrd` file.
+///
+/// Prefer [`DroppableEncoder`] if possible, make sure to call [`Encoder::finish`] when appropriate
+/// otherwise.
 pub struct Encoder<W: std::io::Write> {
     compression: Compression,
     write: W,
@@ -120,15 +179,20 @@ impl<W: std::io::Write> Encoder<W> {
         }
     }
 
+    // NOTE: This cannot be done in a `Drop` implementation because of `Self::into_inner` which
+    // does a partial move.
+    #[inline]
     pub fn finish(&mut self) -> Result<(), EncodeError> {
         MessageHeader::EndOfStream.encode(&mut self.write)?;
         Ok(())
     }
 
+    #[inline]
     pub fn flush_blocking(&mut self) -> std::io::Result<()> {
         self.write.flush()
     }
 
+    #[inline]
     pub fn into_inner(self) -> W {
         self.write
     }
@@ -142,7 +206,7 @@ pub fn encode(
     write: &mut impl std::io::Write,
 ) -> Result<u64, EncodeError> {
     re_tracing::profile_function!();
-    let mut encoder = Encoder::new(version, options, write)?;
+    let mut encoder = DroppableEncoder::new(version, options, write)?;
     let mut size_bytes = 0;
     for message in messages {
         size_bytes += encoder.append(&message?)?;
@@ -158,7 +222,7 @@ pub fn encode_ref<'a>(
     write: &mut impl std::io::Write,
 ) -> Result<u64, EncodeError> {
     re_tracing::profile_function!();
-    let mut encoder = Encoder::new(version, options, write)?;
+    let mut encoder = DroppableEncoder::new(version, options, write)?;
     let mut size_bytes = 0;
     for message in messages {
         size_bytes += encoder.append(message?)?;
@@ -177,11 +241,17 @@ pub fn encode_as_bytes(
     for message in messages {
         encoder.append(&message?)?;
     }
+    encoder.finish()?;
     Ok(bytes)
 }
 
 #[inline]
-pub fn local_encoder() -> Result<Encoder<Vec<u8>>, EncodeError> {
+pub fn local_encoder() -> Result<DroppableEncoder<Vec<u8>>, EncodeError> {
+    DroppableEncoder::new(CrateVersion::LOCAL, EncodingOptions::COMPRESSED, Vec::new())
+}
+
+#[inline]
+pub fn local_raw_encoder() -> Result<Encoder<Vec<u8>>, EncodeError> {
     Encoder::new(CrateVersion::LOCAL, EncodingOptions::COMPRESSED, Vec::new())
 }
 
@@ -189,10 +259,11 @@ pub fn local_encoder() -> Result<Encoder<Vec<u8>>, EncodeError> {
 pub fn encode_as_bytes_local(
     messages: impl Iterator<Item = ChunkResult<LogMsg>>,
 ) -> Result<Vec<u8>, EncodeError> {
-    let mut encoder = local_encoder()?;
+    let mut encoder = local_raw_encoder()?;
     for message in messages {
         encoder.append(&message?)?;
     }
+    encoder.finish()?;
     Ok(encoder.into_inner())
 }
 
@@ -200,9 +271,10 @@ pub fn encode_as_bytes_local(
 pub fn encode_ref_as_bytes_local<'a>(
     messages: impl Iterator<Item = ChunkResult<&'a LogMsg>>,
 ) -> Result<Vec<u8>, EncodeError> {
-    let mut encoder = local_encoder()?;
+    let mut encoder = local_raw_encoder()?;
     for message in messages {
         encoder.append(message?)?;
     }
+    encoder.finish()?;
     Ok(encoder.into_inner())
 }

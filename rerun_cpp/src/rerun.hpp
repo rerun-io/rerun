@@ -56,6 +56,7 @@ namespace rerun {
     using datatypes::Float32;
     using datatypes::KeypointPair;
     using datatypes::Mat3x3;
+    using datatypes::PixelFormat;
     using datatypes::Quaternion;
     using datatypes::Rgba32;
     using datatypes::RotationAxisAngle;

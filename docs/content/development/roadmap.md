@@ -1,6 +1,6 @@
 ---
 title: Roadmap
-order: 200
+order: 0
 ---
 Rerun is building a data management and visualization engine for multimodal data that changes over time.
 We aim to make it fast, and easy to use, and easy to adapt and integrate into your existing workflows.

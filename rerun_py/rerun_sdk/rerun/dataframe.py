@@ -6,6 +6,7 @@ from rerun_bindings import (
     IndexColumnDescriptor as IndexColumnDescriptor,
     IndexColumnSelector as IndexColumnSelector,
     Recording as Recording,
+    RecordingView as RecordingView,
     RRDArchive as RRDArchive,
     Schema as Schema,
     load_archive as load_archive,
@@ -15,4 +16,5 @@ from rerun_bindings.types import (
     AnyColumn as AnyColumn,
     AnyComponentColumn as AnyComponentColumn,
     ComponentLike as ComponentLike,
+    ViewContentsLike as ViewContentsLike,
 )

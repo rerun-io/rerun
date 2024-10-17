@@ -1,4 +1,4 @@
-//! Decodes an mp4 with AV1 in it to a folder of images.
+//! Decodes an mp4 to a folder of images.
 
 #![allow(clippy::unwrap_used)]
 
@@ -12,8 +12,6 @@ use std::{
 
 use indicatif::ProgressBar;
 use parking_lot::Mutex;
-
-use re_video::{decode::SyncDecoder, VideoData};
 
 fn main() {
     re_log::setup_logging();
@@ -38,7 +36,8 @@ fn main() {
         video.config.coded_height
     );
 
-    let mut decoder = re_video::decode::new_decoder(&video).expect("Failed to create decoder");
+    let mut decoder = re_video::decode::new_decoder(video_path.to_string(), &video)
+        .expect("Failed to create decoder");
 
     write_video_frames(&video, decoder.as_mut(), &output_dir);
 }

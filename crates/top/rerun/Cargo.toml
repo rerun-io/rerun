@@ -26,6 +26,7 @@ targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
 default = [
   "analytics",
   "data_loaders",
+  "dataframe",
   "demo",
   "glam",
   "image",
@@ -53,6 +54,9 @@ data_loaders = ["re_sdk?/data_loaders"]
 
 ## Demo helpers for examples.
 demo = []
+
+## Access to Rerun's dataframe API and related types.
+dataframe = ["dep:re_dataframe"]
 
 ## Add support for some math operations using [`glam`](https://crates.io/crates/glam/).
 ## Only relevant if feature `sdk` is enabled.
@@ -132,6 +136,7 @@ similar-asserts.workspace = true
 re_analytics = { workspace = true, optional = true }
 re_chunk_store = { workspace = true, optional = true }
 re_data_source = { workspace = true, optional = true }
+re_dataframe = { workspace = true, optional = true }
 re_log_encoding = { workspace = true, optional = true, features = [
   "decoder",
   "encoder",
@@ -157,6 +162,7 @@ unindent = { workspace = true, optional = true }
 
 [build-dependencies]
 re_build_tools.workspace = true
+
 
 [package.metadata.cargo-machete]
 # We only depend on re_video so we can enable extra features for it

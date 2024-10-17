@@ -74,13 +74,13 @@ impl Query {
         }
     }
 
-    /// Get the point of view column for the filter-by-event feature, if active.
-    pub(crate) fn filter_by_event(
+    /// Get the filter column for the filter-is-not-null feature, if active.
+    pub(crate) fn filter_is_not_null(
         &self,
     ) -> Result<Option<ComponentColumnSelector>, SpaceViewSystemExecutionError> {
         Ok(self
-            .filter_by_event_raw()?
-            .filter(|filter_by_event| filter_by_event.active())
+            .filter_is_not_null_raw()?
+            .filter(|filter_is_not_null| filter_is_not_null.active())
             .map(|filter| {
                 ComponentColumnSelector::new_for_component_name(
                     filter.entity_path(),
@@ -89,22 +89,22 @@ impl Query {
             }))
     }
 
-    /// Get the raw [`components::FilterByEvent`] struct (for ui purposes).
-    pub(super) fn filter_by_event_raw(
+    /// Get the raw [`components::FilterIsNotNull`] struct (for ui purposes).
+    pub(super) fn filter_is_not_null_raw(
         &self,
-    ) -> Result<Option<components::FilterByEvent>, SpaceViewSystemExecutionError> {
+    ) -> Result<Option<components::FilterIsNotNull>, SpaceViewSystemExecutionError> {
         Ok(self
             .query_property
-            .component_or_empty::<components::FilterByEvent>()?)
+            .component_or_empty::<components::FilterIsNotNull>()?)
     }
 
-    pub(super) fn save_filter_by_event(
+    pub(super) fn save_filter_is_not_null(
         &self,
         ctx: &ViewerContext<'_>,
-        filter_by_event: &components::FilterByEvent,
+        filter_is_not_null: &components::FilterIsNotNull,
     ) {
         self.query_property
-            .save_blueprint_component(ctx, filter_by_event);
+            .save_blueprint_component(ctx, filter_is_not_null);
     }
 
     pub(crate) fn latest_at_enabled(&self) -> Result<bool, SpaceViewSystemExecutionError> {
@@ -133,13 +133,15 @@ impl Query {
                         .push(desc.timeline.as_str().into());
                 }
 
-                ColumnSelector::Component(desc) => {
-                    let blueprint_component_descriptor =
-                        datatypes::ComponentColumnSelector::new(&desc.entity_path, desc.component);
+                ColumnSelector::Component(selector) => {
+                    let blueprint_component_selector = datatypes::ComponentColumnSelector::new(
+                        &selector.entity_path,
+                        &selector.component_name,
+                    );
 
                     selected_columns
                         .component_columns
-                        .push(blueprint_component_descriptor);
+                        .push(blueprint_component_selector);
                 }
             }
         }
@@ -257,8 +259,9 @@ impl Query {
                     component_name,
                 } => {
                     selected_columns.retain(|column| match column {
-                        ColumnSelector::Component(desc) => {
-                            desc.entity_path != entity_path || desc.component != component_name
+                        ColumnSelector::Component(selector) => {
+                            selector.entity_path != entity_path
+                                || !component_name.matches(&selector.component_name)
                         }
                         ColumnSelector::Time(_) => true,
                     });

@@ -62,11 +62,14 @@ pub enum SystemCommand {
     #[cfg(debug_assertions)]
     EnableInspectBlueprintTimeline(bool),
 
-    /// Enable or disable the experimental dataframe space views.
-    EnableExperimentalDataframeSpaceView(bool),
-
     /// Set the item selection.
     SetSelection(crate::Item),
+
+    /// Set the active timeline for the given recording.
+    SetActiveTimeline {
+        rec_id: StoreId,
+        timeline: re_chunk::Timeline,
+    },
 
     /// Sets the focus to the given item.
     ///

@@ -169,6 +169,75 @@ impl TryFrom<&str> for EntityPathFilter {
     }
 }
 
+/// Split a string into whitespace-separated tokens with extra logic.
+///
+/// Specifically, we allow for whitespace between `+`/`-` and the following token.
+///
+/// Additional rules:
+///  - Escaped whitespace never results in a split.
+///  - Otherwise always split on `\n` (even if it follows a `+` or `-` character).
+///  - Only consider `+` and `-` characters as special if they are the first character of a token.
+///  - Split on whitespace does not following a relevant `+` or `-` character.
+fn split_whitespace_smart(path: &'_ str) -> Vec<&'_ str> {
+    #![allow(clippy::unwrap_used)]
+
+    // We parse on bytes, and take care to only split on either side of a one-byte ASCII,
+    // making the `from_utf8(…)`s below safe to unwrap.
+    let mut bytes = path.as_bytes();
+
+    let mut tokens = vec![];
+
+    // Start by ignoring any leading whitespace
+    while !bytes.is_empty() {
+        let mut i = 0;
+        let mut is_in_escape = false;
+        let mut is_include_exclude = false;
+        let mut new_token = true;
+
+        // Find the next unescaped whitespace character not following a '+' or '-' character
+        while i < bytes.len() {
+            let is_unescaped_whitespace = !is_in_escape && bytes[i].is_ascii_whitespace();
+
+            let is_unescaped_newline = !is_in_escape && bytes[i] == b'\n';
+
+            if is_unescaped_newline || (!is_include_exclude && is_unescaped_whitespace) {
+                break;
+            }
+
+            is_in_escape = bytes[i] == b'\\';
+
+            if bytes[i] == b'+' || bytes[i] == b'-' {
+                is_include_exclude = new_token;
+            } else if !is_unescaped_whitespace {
+                is_include_exclude = false;
+                new_token = false;
+            }
+
+            i += 1;
+        }
+        if i > 0 {
+            tokens.push(&bytes[..i]);
+        }
+
+        // Continue skipping whitespace characters
+        while i < bytes.len() {
+            if is_in_escape || !bytes[i].is_ascii_whitespace() {
+                break;
+            }
+            is_in_escape = bytes[i] == b'\\';
+            i += 1;
+        }
+
+        bytes = &bytes[i..];
+    }
+
+    // Safety: we split at proper character boundaries
+    tokens
+        .iter()
+        .map(|token| std::str::from_utf8(token).unwrap())
+        .collect()
+}
+
 impl EntityPathFilter {
     /// Parse an entity path filter from a string while ignore syntax errors.
     ///
@@ -187,7 +256,8 @@ impl EntityPathFilter {
     ///
     /// Conflicting rules are resolved by the last rule.
     pub fn parse_forgiving(rules: &str, subst_env: &EntityPathSubs) -> Self {
-        Self::from_query_expressions_forgiving(rules.split('\n'), subst_env)
+        let split_rules = split_whitespace_smart(rules);
+        Self::from_query_expressions_forgiving(split_rules, subst_env)
     }
 
     /// Build a filter from a list of query expressions.
@@ -243,7 +313,8 @@ impl EntityPathFilter {
         rules: &str,
         subst_env: &EntityPathSubs,
     ) -> Result<Self, EntityPathFilterParseError> {
-        Self::from_query_expressions_strict(rules.split('\n'), subst_env)
+        let split_rules = split_whitespace_smart(rules);
+        Self::from_query_expressions_strict(split_rules, subst_env)
     }
 
     /// Build a filter from a list of query expressions.
@@ -890,4 +961,33 @@ mod tests {
             }
         }
     }
+}
+
+#[test]
+fn test_split_whitespace_smart() {
+    assert_eq!(split_whitespace_smart("/world"), vec!["/world"]);
+    assert_eq!(split_whitespace_smart("a b c"), vec!["a", "b", "c"]);
+    assert_eq!(split_whitespace_smart("a\nb\tc  "), vec!["a", "b", "c"]);
+    assert_eq!(split_whitespace_smart(r"a\ b c"), vec![r"a\ b", "c"]);
+
+    assert_eq!(
+        split_whitespace_smart(" + a - b + c"),
+        vec!["+ a", "- b", "+ c"]
+    );
+    assert_eq!(
+        split_whitespace_smart("+ a -\n b + c"),
+        vec!["+ a", "-", "b", "+ c"]
+    );
+    assert_eq!(
+        split_whitespace_smart("/weird/path- +/oth- erpath"),
+        vec!["/weird/path-", "+/oth-", "erpath"]
+    );
+    assert_eq!(
+        split_whitespace_smart(r"+world/** -/world/points"),
+        vec!["+world/**", "-/world/points"]
+    );
+    assert_eq!(
+        split_whitespace_smart(r"+ world/** - /world/points"),
+        vec!["+ world/**", "- /world/points"]
+    );
 }

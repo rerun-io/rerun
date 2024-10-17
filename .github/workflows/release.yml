@@ -234,7 +234,7 @@ jobs:
     secrets: inherit
 
   publish-rerun_c:
-    name: "Build and Publish rerun_c"
+    name: "Build and Publish C/C++ SDKs"
     needs: [version]
     uses: ./.github/workflows/reusable_publish_rerun_c.yml
     with:
