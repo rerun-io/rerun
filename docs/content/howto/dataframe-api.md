@@ -1,5 +1,5 @@
 ---
-title: Get data out from Rerun with code
+title: Get data out of Rerun with code
 order: 1600
 ---
 
