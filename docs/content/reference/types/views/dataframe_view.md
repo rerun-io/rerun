@@ -27,6 +27,14 @@ Query of the dataframe.
 
 snippet: views/dataframe
 
+<picture data-inline-viewer="snippets/dataframe">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/dataframe_view/6c2cf85f7caa94392953869567fad4818fce78e3/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/dataframe_view/6c2cf85f7caa94392953869567fad4818fce78e3/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/dataframe_view/6c2cf85f7caa94392953869567fad4818fce78e3/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/dataframe_view/6c2cf85f7caa94392953869567fad4818fce78e3/1200w.png">
+  <img src="https://static.rerun.io/dataframe_view/6c2cf85f7caa94392953869567fad4818fce78e3/full.png">
+</picture>
+
 
 ## Visualized archetypes
 
