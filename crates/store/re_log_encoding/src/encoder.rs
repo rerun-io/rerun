@@ -48,7 +48,7 @@ pub fn encode_to_bytes<'a>(
 
 // ----------------------------------------------------------------------------
 
-/// An [`Encoder`] that can be dropped.
+/// An [`Encoder`] that properly closes the stream on drop.
 ///
 /// When dropped, it will automatically insert an end-of-stream marker, if that wasn't already done manually.
 pub struct DroppableEncoder<W: std::io::Write> {
