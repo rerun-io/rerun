@@ -22,6 +22,7 @@ class EncodedImage(EncodedImageExt, Archetype):
     **Archetype**: An image encoded as e.g. a JPEG or PNG.
 
     Rerun also supports uncompressed images with the [`archetypes.Image`][rerun.archetypes.Image].
+    For images that refer to video frames see [`archetypes.VideoFrameReference`][rerun.archetypes.VideoFrameReference].
 
     To compress an image, use [`rerun.Image.compress`][].
 

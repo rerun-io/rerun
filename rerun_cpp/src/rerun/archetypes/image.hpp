@@ -24,15 +24,16 @@ namespace rerun::archetypes {
     ///
     /// See also `archetypes::DepthImage` and `archetypes::SegmentationImage`.
     ///
+    /// Rerun also supports compressed images (JPEG, PNG, …), using `archetypes::EncodedImage`.
+    /// For images that refer to video frames see `archetypes::VideoFrameReference`.
+    /// Compressing images or using video data instead can save a lot of bandwidth and memory.
+    ///
     /// The raw image data is stored as a single buffer of bytes in a `components::Blob`.
     /// The meaning of these bytes is determined by the `components::ImageFormat` which specifies the resolution
     /// and the pixel format (e.g. RGB, RGBA, …).
     ///
     /// The order of dimensions in the underlying `components::Blob` follows the typical
     /// row-major, interleaved-pixel image format.
-    ///
-    /// Rerun also supports compressed images (JPEG, PNG, …), using `archetypes::EncodedImage`.
-    /// Compressing images can save a lot of bandwidth and memory.
     ///
     /// Since the underlying [rerun::components::Blob] uses `rerun::Collection` internally,
     /// data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
