@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/store/re_types/src/archetypes/../archetypes/image.rs`."><title>image.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_types" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/store/re_types/src/archetypes/../archetypes/image.rs`."><title>image.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_types" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../re_types/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -359,6 +358,7 @@
 <a href="#358" id="358">358</a>
 <a href="#359" id="359">359</a>
 <a href="#360" id="360">360</a>
+<a href="#361" id="361">361</a>
 </pre></div><pre class="rust"><code><span class="comment">// DO NOT EDIT! This file was auto-generated by crates/build/re_types_builder/src/codegen/rust/api.rs
 // Based on "crates/store/re_types/definitions/rerun/archetypes/image.fbs".
 
@@ -383,15 +383,16 @@
 ///
 /// See also [`archetypes::DepthImage`][crate::archetypes::DepthImage] and [`archetypes::SegmentationImage`][crate::archetypes::SegmentationImage].
 ///
+/// Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes::EncodedImage`][crate::archetypes::EncodedImage].
+/// For images that refer to video frames see [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference].
+/// Compressing images or using video data instead can save a lot of bandwidth and memory.
+///
 /// The raw image data is stored as a single buffer of bytes in a [`components::Blob`][crate::components::Blob].
 /// The meaning of these bytes is determined by the [`components::ImageFormat`][crate::components::ImageFormat] which specifies the resolution
 /// and the pixel format (e.g. RGB, RGBA, …).
 ///
 /// The order of dimensions in the underlying [`components::Blob`][crate::components::Blob] follows the typical
 /// row-major, interleaved-pixel image format.
-///
-/// Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes::EncodedImage`][crate::archetypes::EncodedImage].
-/// Compressing images can save a lot of bandwidth and memory.
 ///
 /// ## Examples
 ///
@@ -425,67 +426,65 @@
 /// &lt;/picture&gt;
 /// &lt;/center&gt;
 ///
-/// ### Advanced usage of `send_columns` to send multiple images at once
+/// ### Logging images with various formats
 /// ```ignore
-/// use ndarray::{s, Array, ShapeBuilder};
-/// use rerun::Archetype as _;
+/// use rerun::external::ndarray;
 ///
 /// fn main() -&gt; Result&lt;(), Box&lt;dyn std::error::Error&gt;&gt; {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_image_send_columns").spawn()?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_image_formats").spawn()?;
 ///
-///     // Timeline on which the images are distributed.
-///     let times = (0..20).collect::&lt;Vec&lt;i64&gt;&gt;();
+///     // Simple gradient image
+///     let image = ndarray::Array3::from_shape_fn((256, 256, 3), |(y, x, c)| match c {
+///         0 =&gt; x as u8,
+///         1 =&gt; (x + y).min(255) as u8,
+///         2 =&gt; y as u8,
+///         _ =&gt; unreachable!(),
+///     });
 ///
-///     // Create a batch of images with a moving rectangle.
-///     let width = 300;
-///     let height = 200;
-///     let mut images = Array::&lt;u8, _&gt;::zeros((times.len(), height, width, 3).f())
-///         .as_standard_layout() // Make sure the data is laid out as we expect it.
-///         .into_owned();
-///     images.slice_mut(s![.., .., .., 2]).fill(255);
-///     for &amp;t in &amp;times {
-///         let t = t as usize;
-///         images
-///             .slice_mut(s![t, 50..150, (t * 10)..(t * 10 + 100), 1])
-///             .fill(255);
-///     }
-///
-///     // Log the ImageFormat and indicator once, as static.
-///     let format = rerun::components::ImageFormat::rgb8([width as _, height as _]);
-///     rec.log_component_batches(
-///         "images",
-///         true,
-///         [&amp;format as _, &amp;rerun::Image::indicator() as _],
+///     // RGB image
+///     rec.log(
+///         "image_rgb",
+///         &amp;rerun::Image::from_color_model_and_tensor(rerun::ColorModel::RGB, image.clone())?,
 ///     )?;
 ///
-///     // Split up the image data into several components referencing the underlying data.
-///     let image_size_in_bytes = width * height * 3;
-///     let blob = rerun::datatypes::Blob::from(images.into_raw_vec());
-///     let image_column = times
-///         .iter()
-///         .map(|&amp;t| {
-///             let byte_offset = image_size_in_bytes * (t as usize);
-///             rerun::components::ImageBuffer::from(
-///                 blob.clone() // Clone is only a reference count increase, not a full copy.
-///                     .sliced(byte_offset..(byte_offset + image_size_in_bytes)),
-///             )
-///         })
-///         .collect::&lt;Vec&lt;_&gt;&gt;();
+///     // Green channel only (Luminance)
+///     rec.log(
+///         "image_green_only",
+///         &amp;rerun::Image::from_color_model_and_tensor(
+///             rerun::ColorModel::L,
+///             image.slice(ndarray::s![.., .., 1]).to_owned(),
+///         )?,
+///     )?;
 ///
-///     // Send all images at once.
-///     let timeline_values = rerun::TimeColumn::new_sequence("step", times);
-///     rec.send_columns("images", [timeline_values], [&amp;image_column as _])?;
+///     // BGR image
+///     rec.log(
+///         "image_bgr",
+///         &amp;rerun::Image::from_color_model_and_tensor(
+///             rerun::ColorModel::BGR,
+///             image.slice(ndarray::s![.., .., ..;-1]).to_owned(),
+///         )?,
+///     )?;
+///
+///     // New image with Separate Y/U/V planes with 4:2:2 chroma downsampling
+///     let mut yuv_bytes = Vec::with_capacity(256 * 256 + 128 * 256 * 2);
+///     yuv_bytes.extend(std::iter::repeat(128).take(256 * 256)); // Fixed value for Y.
+///     yuv_bytes.extend((0..256).flat_map(|_y| (0..128).map(|x| x * 2))); // Gradient for U.
+///     yuv_bytes.extend((0..256).flat_map(|y| std::iter::repeat(y as u8).take(128))); // Gradient for V.
+///     rec.log(
+///         "image_yuv422",
+///         &amp;rerun::Image::from_pixel_format(
+///             [256, 256],
+///             rerun::PixelFormat::Y_U_V16_FullRange,
+///             yuv_bytes,
+///         ),
+///     )?;
 ///
 ///     Ok(())
 /// }
 /// ```
 /// &lt;center&gt;
 /// &lt;picture&gt;
-///   &lt;source media="(max-width: 480px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/480w.png"&gt;
-///   &lt;source media="(max-width: 768px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/768w.png"&gt;
-///   &lt;source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1024w.png"&gt;
-///   &lt;source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1200w.png"&gt;
-///   &lt;img src="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/full.png" width="640"&gt;
+///   &lt;img src="https://static.rerun.io/image_formats/7b8a162fcfd266f303980439beea997dc8544c24/full.png" width="640"&gt;
 /// &lt;/picture&gt;
 /// &lt;/center&gt;
 </span><span class="attr">#[derive(Clone, Debug, PartialEq)]
@@ -685,6 +684,8 @@
         .collect()
     }
 }
+
+<span class="kw">impl </span>::re_types_core::ArchetypeReflectionMarker <span class="kw">for </span>Image {}
 
 <span class="kw">impl </span>Image {
     <span class="doccomment">/// Create a new `Image`.

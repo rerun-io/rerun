@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_space_view_tensor/src/space_view_class.rs`."><title>space_view_class.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_space_view_tensor" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_space_view_tensor/src/space_view_class.rs`."><title>space_view_class.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_space_view_tensor" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_space_view_tensor/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -678,11 +677,19 @@
 <a href="#677" id="677">677</a>
 <a href="#678" id="678">678</a>
 <a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>egui::{epaint::TextShape, Align2, NumExt <span class="kw">as _</span>, Vec2};
 <span class="kw">use </span>ndarray::Axis;
 <span class="kw">use </span>re_space_view::{suggest_space_view_for_each_entity, view_property_ui};
 
-<span class="kw">use </span>re_chunk_store::RowId;
 <span class="kw">use </span>re_data_ui::tensor_summary_ui_grid_contents;
 <span class="kw">use </span>re_log_types::EntityPath;
 <span class="kw">use </span>re_types::{
@@ -696,16 +703,17 @@
 };
 <span class="kw">use </span>re_ui::{list_item, ContextExt <span class="kw">as _</span>, UiExt <span class="kw">as _</span>};
 <span class="kw">use </span>re_viewer_context::{
-    gpu_bridge, ApplicableEntities, IdentifiedViewSystem <span class="kw">as _</span>, IndicatedEntities, PerVisualizer,
-    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
-    SpaceViewStateExt <span class="kw">as _</span>, SpaceViewSystemExecutionError, TensorStatsCache,
+    gpu_bridge, ApplicableEntities, ColormapWithRange, IdentifiedViewSystem <span class="kw">as _</span>,
+    IndicatedEntities, PerVisualizer, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewState, SpaceViewStateExt <span class="kw">as _</span>, SpaceViewSystemExecutionError, TensorStatsCache,
     TypedComponentFallbackProvider, ViewQuery, ViewerContext, VisualizableEntities,
 };
 <span class="kw">use </span>re_viewport_blueprint::ViewProperty;
 
 <span class="kw">use crate</span>::{
     dimension_mapping::load_tensor_slice_selection_and_make_valid,
-    tensor_dimension_mapper::dimension_mapping_ui, visualizer_system::TensorSystem,
+    tensor_dimension_mapper::dimension_mapping_ui,
+    visualizer_system::{TensorSystem, TensorView},
 };
 
 <span class="attr">#[derive(Default)]
@@ -717,7 +725,7 @@
 </span><span class="kw">pub struct </span>ViewTensorState {
     <span class="doccomment">/// Last viewed tensor, copied each frame.
     /// Used for the selection view.
-    </span>tensor: <span class="prelude-ty">Option</span>&lt;(RowId, TensorData)&gt;,
+    </span>tensor: <span class="prelude-ty">Option</span>&lt;TensorView&gt;,
 }
 
 <span class="kw">impl </span>SpaceViewState <span class="kw">for </span>ViewTensorState {
@@ -805,10 +813,15 @@ Note: select the space view to configure which dimensions are shown."
 
         <span class="comment">// TODO(andreas): Listitemify
         </span>ui.selection_grid(<span class="string">"tensor_selection_ui"</span>).show(ui, |ui| {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>((tensor_data_row_id, tensor)) = <span class="kw-2">&amp;</span>state.tensor {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(TensorView {
+                tensor,
+                tensor_row_id,
+                ..
+            }) = <span class="kw-2">&amp;</span>state.tensor
+            {
                 <span class="kw">let </span>tensor_stats = ctx
                     .cache
-                    .entry(|c: <span class="kw-2">&amp;mut </span>TensorStatsCache| c.entry(<span class="kw-2">*</span>tensor_data_row_id, tensor));
+                    .entry(|c: <span class="kw-2">&amp;mut </span>TensorStatsCache| c.entry(<span class="kw-2">*</span>tensor_row_id, tensor));
 
                 tensor_summary_ui_grid_contents(ui, tensor, <span class="kw-2">&amp;</span>tensor_stats);
             }
@@ -820,7 +833,7 @@ Note: select the space view to configure which dimensions are shown."
         });
 
         <span class="comment">// TODO(#6075): Listitemify
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, tensor)) = <span class="kw-2">&amp;</span>state.tensor {
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(TensorView { tensor, .. }) = <span class="kw-2">&amp;</span>state.tensor {
             <span class="kw">let </span>slice_property = ViewProperty::from_archetype::&lt;TensorSliceSelection&gt;(
                 ctx.blueprint_db(),
                 ctx.blueprint_query,
@@ -893,9 +906,9 @@ Note: select the space view to configure which dimensions are shown."
                     tensors.len()
                 ));
             });
-        } <span class="kw">else if let </span><span class="prelude-val">Some</span>((tensor_data_row_id, tensor)) = tensors.first() {
-            state.tensor = <span class="prelude-val">Some</span>((<span class="kw-2">*</span>tensor_data_row_id, tensor.<span class="number">0</span>.clone()));
-            <span class="self">self</span>.view_tensor(ctx, ui, state, query.space_view_id, tensor)<span class="question-mark">?</span>;
+        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(tensor_view) = tensors.first() {
+            state.tensor = <span class="prelude-val">Some</span>(tensor_view.clone());
+            <span class="self">self</span>.view_tensor(ctx, ui, state, query.space_view_id, <span class="kw-2">&amp;</span>tensor_view.tensor)<span class="question-mark">?</span>;
         } <span class="kw">else </span>{
             ui.centered_and_justified(|ui| ui.label(<span class="string">"(empty)"</span>));
         }
@@ -994,9 +1007,14 @@ Note: select the space view to configure which dimensions are shown."
     ) -&gt; anyhow::Result&lt;(egui::Response, egui::Painter, egui::Rect)&gt; {
         <span class="macro">re_tracing::profile_function!</span>();
 
-        <span class="kw">let </span><span class="prelude-val">Some</span>((tensor_data_row_id, tensor)) = state.tensor.as_ref() <span class="kw">else </span>{
+        <span class="kw">let </span><span class="prelude-val">Some</span>(tensor_view) = state.tensor.as_ref() <span class="kw">else </span>{
             <span class="macro">anyhow::bail!</span>(<span class="string">"No tensor data available."</span>);
         };
+        <span class="kw">let </span>TensorView {
+            tensor_row_id,
+            tensor,
+            data_range,
+        } = <span class="kw-2">&amp;</span>tensor_view;
 
         <span class="kw">let </span>scalar_mapping = ViewProperty::from_archetype::&lt;TensorScalarMapping&gt;(
             ctx.blueprint_db(),
@@ -1011,17 +1029,16 @@ Note: select the space view to configure which dimensions are shown."
         <span class="kw">let </span><span class="prelude-val">Some</span>(render_ctx) = ctx.render_ctx <span class="kw">else </span>{
             <span class="kw">return </span><span class="prelude-val">Err</span>(anyhow::Error::msg(<span class="string">"No render context available."</span>));
         };
-
-        <span class="kw">let </span>tensor_stats = ctx
-            .cache
-            .entry(|c: <span class="kw-2">&amp;mut </span>TensorStatsCache| c.entry(<span class="kw-2">*</span>tensor_data_row_id, tensor));
+        <span class="kw">let </span>colormap = ColormapWithRange {
+            colormap,
+            value_range: [data_range.start() <span class="kw">as </span>f32, data_range.end() <span class="kw">as </span>f32],
+        };
         <span class="kw">let </span>colormapped_texture = <span class="kw">super</span>::tensor_slice_to_gpu::colormapped_texture(
             render_ctx,
-            <span class="kw-2">*</span>tensor_data_row_id,
+            <span class="kw-2">*</span>tensor_row_id,
             tensor,
-            <span class="kw-2">&amp;</span>tensor_stats,
             slice_selection,
-            colormap,
+            <span class="kw-2">&amp;</span>colormap,
             gamma,
         )<span class="question-mark">?</span>;
         <span class="kw">let </span>[width, height] = colormapped_texture.width_height();
@@ -1054,16 +1071,16 @@ Note: select the space view to configure which dimensions are shown."
             },
             minification: egui::TextureFilter::Linear, <span class="comment">// TODO(andreas): allow for mipmapping based filter
             </span>wrap_mode: egui::TextureWrapMode::ClampToEdge,
+            mipmap_mode: <span class="prelude-val">None</span>,
         };
 
-        <span class="kw">let </span>debug_name = <span class="string">"tensor_slice"</span>;
         gpu_bridge::render_image(
             render_ctx,
             <span class="kw-2">&amp;</span>painter,
             image_rect,
             colormapped_texture,
             texture_options,
-            debug_name,
+            re_renderer::DebugLabel::from(<span class="string">"tensor_slice"</span>),
         )<span class="question-mark">?</span>;
 
         <span class="prelude-val">Ok</span>((response, painter, image_rect))
@@ -1104,7 +1121,7 @@ Note: select the space view to configure which dimensions are shown."
         // This is important for above width/height conversion to work since this assumes at least 2 dimensions.
         </span>tensor
             .view()
-            .into_shape(ndarray::IxDyn(<span class="kw-2">&amp;</span>[tensor.len(), <span class="number">1</span>]))
+            .into_shape_with_order(ndarray::IxDyn(<span class="kw-2">&amp;</span>[tensor.len(), <span class="number">1</span>]))
             .unwrap()
     } <span class="kw">else </span>{
         tensor.view()
@@ -1278,7 +1295,7 @@ Note: select the space view to configure which dimensions are shown."
     ui: <span class="kw-2">&amp;mut </span>egui::Ui,
     shape: <span class="kw-2">&amp;</span>[TensorDimension],
     slice_selection: <span class="kw-2">&amp;</span>TensorSliceSelection,
-    slice_property: <span class="kw-2">&amp;</span>ViewProperty&lt;<span class="lifetime">'_</span>&gt;,
+    slice_property: <span class="kw-2">&amp;</span>ViewProperty,
 ) {
     <span class="kw">let </span><span class="prelude-val">Some</span>(slider) = <span class="kw-2">&amp;</span>slice_selection.slider <span class="kw">else </span>{
         <span class="kw">return</span>;

@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_viewer/src/app.rs`."><title>app.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_viewer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_viewer/src/app.rs`."><title>app.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_viewer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_viewer/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1974,6 +1973,48 @@
 <a href="#1973" id="1973">1973</a>
 <a href="#1974" id="1974">1974</a>
 <a href="#1975" id="1975">1975</a>
+<a href="#1976" id="1976">1976</a>
+<a href="#1977" id="1977">1977</a>
+<a href="#1978" id="1978">1978</a>
+<a href="#1979" id="1979">1979</a>
+<a href="#1980" id="1980">1980</a>
+<a href="#1981" id="1981">1981</a>
+<a href="#1982" id="1982">1982</a>
+<a href="#1983" id="1983">1983</a>
+<a href="#1984" id="1984">1984</a>
+<a href="#1985" id="1985">1985</a>
+<a href="#1986" id="1986">1986</a>
+<a href="#1987" id="1987">1987</a>
+<a href="#1988" id="1988">1988</a>
+<a href="#1989" id="1989">1989</a>
+<a href="#1990" id="1990">1990</a>
+<a href="#1991" id="1991">1991</a>
+<a href="#1992" id="1992">1992</a>
+<a href="#1993" id="1993">1993</a>
+<a href="#1994" id="1994">1994</a>
+<a href="#1995" id="1995">1995</a>
+<a href="#1996" id="1996">1996</a>
+<a href="#1997" id="1997">1997</a>
+<a href="#1998" id="1998">1998</a>
+<a href="#1999" id="1999">1999</a>
+<a href="#2000" id="2000">2000</a>
+<a href="#2001" id="2001">2001</a>
+<a href="#2002" id="2002">2002</a>
+<a href="#2003" id="2003">2003</a>
+<a href="#2004" id="2004">2004</a>
+<a href="#2005" id="2005">2005</a>
+<a href="#2006" id="2006">2006</a>
+<a href="#2007" id="2007">2007</a>
+<a href="#2008" id="2008">2008</a>
+<a href="#2009" id="2009">2009</a>
+<a href="#2010" id="2010">2010</a>
+<a href="#2011" id="2011">2011</a>
+<a href="#2012" id="2012">2012</a>
+<a href="#2013" id="2013">2013</a>
+<a href="#2014" id="2014">2014</a>
+<a href="#2015" id="2015">2015</a>
+<a href="#2016" id="2016">2016</a>
+<a href="#2017" id="2017">2017</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>re_build_info::CrateVersion;
@@ -2046,8 +2087,14 @@
     /// This ensures that it won't blink for a few frames before switching to the recording.
     </span><span class="kw">pub </span>expect_data_soon: <span class="prelude-ty">Option</span>&lt;bool&gt;,
 
-    <span class="doccomment">/// Forces wgpu backend to use the specified graphics API.
+    <span class="doccomment">/// Forces wgpu backend to use the specified graphics API, e.g. `webgl` or `webgpu`.
     </span><span class="kw">pub </span>force_wgpu_backend: <span class="prelude-ty">Option</span>&lt;String&gt;,
+
+    <span class="doccomment">/// Overwrites hardware acceleration option for video decoding.
+    ///
+    /// By default uses the last provided setting, which is `auto` if never configured.
+    /// This also can be changed in the viewer's option menu.
+    </span><span class="kw">pub </span>video_decoder_hw_acceleration: <span class="prelude-ty">Option</span>&lt;re_renderer::video::DecodeHardwareAcceleration&gt;,
 
     <span class="doccomment">/// Fullscreen is handled by JS on web.
     ///
@@ -2096,6 +2143,7 @@
 
             expect_data_soon: <span class="prelude-val">None</span>,
             force_wgpu_backend: <span class="prelude-val">None</span>,
+            video_decoder_hw_acceleration: <span class="prelude-val">None</span>,
 
             <span class="attr">#[cfg(target_arch = <span class="string">"wasm32"</span>)]
             </span>fullscreen_options: Default::default(),
@@ -2200,7 +2248,7 @@
             </span>);
         }
 
-        <span class="kw">let </span>state: AppState = <span class="kw">if </span>startup_options.persist_state {
+        <span class="kw">let </span><span class="kw-2">mut </span>state: AppState = <span class="kw">if </span>startup_options.persist_state {
             storage
                 .and_then(|storage| {
                     <span class="comment">// This re-implements: `eframe::get_value` so we can customize the warning message.
@@ -2221,13 +2269,16 @@
             AppState::default()
         };
 
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(video_decoder_hw_acceleration) = startup_options.video_decoder_hw_acceleration {
+            state.app_options.video_decoder_hw_acceleration = video_decoder_hw_acceleration;
+        }
+
         <span class="kw">let </span><span class="kw-2">mut </span>space_view_class_registry = SpaceViewClassRegistry::default();
-        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = populate_space_view_class_registry_with_builtin(
-            <span class="kw-2">&amp;mut </span>space_view_class_registry,
-            state.app_options(),
-        ) {
+        <span class="kw">if let </span><span class="prelude-val">Err</span>(err) =
+            populate_space_view_class_registry_with_builtin(<span class="kw-2">&amp;mut </span>space_view_class_registry)
+        {
             <span class="macro">re_log::error!</span>(
-                <span class="string">"Failed to populate space view type registry with built-in space views: {}"</span>,
+                <span class="string">"Failed to populate the view type registry with built-in space views: {}"</span>,
                 err
             );
         }
@@ -2254,15 +2305,12 @@
 
         <span class="kw">let </span>panel_state_overrides = startup_options.panel_state_overrides;
 
-        <span class="kw">let </span>reflection = <span class="kw">match </span><span class="kw">crate</span>::reflection::generate_reflection() {
-            <span class="prelude-val">Ok</span>(reflection) =&gt; reflection,
-            <span class="prelude-val">Err</span>(err) =&gt; {
-                <span class="macro">re_log::error!</span>(
-                    <span class="string">"Failed to create list of serialized default values for components: {err}"
-                </span>);
-                Default::default()
-            }
-        };
+        <span class="kw">let </span>reflection = <span class="kw">crate</span>::reflection::generate_reflection().unwrap_or_else(|err| {
+            <span class="macro">re_log::error!</span>(
+                <span class="string">"Failed to create list of serialized default values for components: {err}"
+            </span>);
+            Default::default()
+        });
 
         <span class="self">Self </span>{
             build_info,
@@ -2485,7 +2533,7 @@
                     <span class="kw">let </span>blueprint_db = store_hub.entity_db_mut(<span class="kw-2">&amp;</span>blueprint_id);
                     <span class="kw">for </span>chunk <span class="kw">in </span>updates {
                         <span class="kw">match </span>blueprint_db.add_chunk(<span class="kw-2">&amp;</span>Arc::new(chunk)) {
-                            <span class="prelude-val">Ok</span>(()) =&gt; {}
+                            <span class="prelude-val">Ok</span>(_store_events) =&gt; {}
                             <span class="prelude-val">Err</span>(err) =&gt; {
                                 <span class="macro">re_log::warn_once!</span>(<span class="string">"Failed to store blueprint delta: {err}"</span>);
                             }
@@ -2502,25 +2550,15 @@
             </span>SystemCommand::EnableInspectBlueprintTimeline(show) =&gt; {
                 <span class="self">self</span>.app_options_mut().inspect_blueprint_timeline = show;
             }
-            SystemCommand::EnableExperimentalDataframeSpaceView(enabled) =&gt; {
-                <span class="kw">let </span>result = <span class="kw">if </span>enabled {
-                    <span class="self">self</span>.space_view_class_registry
-                        .add_class::&lt;re_space_view_dataframe::DataframeSpaceView&gt;()
-                } <span class="kw">else </span>{
-                    <span class="self">self</span>.space_view_class_registry
-                        .remove_class::&lt;re_space_view_dataframe::DataframeSpaceView&gt;()
-                };
-
-                <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = result {
-                    <span class="macro">re_log::warn_once!</span>(
-                        <span class="string">"Failed to {} experimental dataframe space view: {err}"</span>,
-                        <span class="kw">if </span>enabled { <span class="string">"enable" </span>} <span class="kw">else </span>{ <span class="string">"disable" </span>}
-                    );
-                }
-            }
 
             SystemCommand::SetSelection(item) =&gt; {
                 <span class="self">self</span>.state.selection_state.set_selection(item);
+            }
+
+            SystemCommand::SetActiveTimeline { rec_id, timeline } =&gt; {
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(rec_cfg) = <span class="self">self</span>.state.recording_config_mut(<span class="kw-2">&amp;</span>rec_id) {
+                    rec_cfg.time_ctrl.write().set_timeline(timeline);
+                }
             }
 
             SystemCommand::SetFocus(item) =&gt; {
@@ -2644,6 +2682,8 @@
             }
             UICommand::ToggleTimePanel =&gt; app_blueprint.toggle_time_panel(<span class="kw-2">&amp;</span><span class="self">self</span>.command_sender),
 
+            UICommand::ToggleChunkStoreBrowser =&gt; <span class="self">self</span>.state.show_datastore_ui ^= <span class="bool-val">true</span>,
+
             <span class="attr">#[cfg(debug_assertions)]
             </span>UICommand::ToggleBlueprintInspectionPanel =&gt; {
                 <span class="self">self</span>.app_options_mut().inspect_blueprint_timeline ^= <span class="bool-val">true</span>;
@@ -2738,6 +2778,14 @@
                     egui_ctx.output_mut(|o| o.copied_text = text.clone());
                     <span class="macro">println!</span>(<span class="string">"{text}"</span>);
                 }
+            }
+
+            <span class="attr">#[cfg(debug_assertions)]
+            </span>UICommand::ResetEguiMemory =&gt; {
+                egui_ctx.memory_mut(|mem| <span class="kw-2">*</span>mem = Default::default());
+
+                <span class="comment">// re-apply style, which is lost when resetting memory
+                </span>re_ui::apply_style_and_install_loaders(egui_ctx);
             }
 
             <span class="attr">#[cfg(target_arch = <span class="string">"wasm32"</span>)]
@@ -2871,6 +2919,14 @@
             .frame(DesignTokens::top_panel_frame())
             .show_animated_inside(ui, <span class="self">self</span>.egui_debug_panel_open, |ui| {
                 egui::ScrollArea::vertical().show(ui, |ui| {
+                    <span class="kw">if </span>ui
+                        .button(<span class="string">"request_discard"</span>)
+                        .on_hover_text(<span class="string">"Request a second layout pass. Just for testing."</span>)
+                        .clicked()
+                    {
+                        ui.ctx().request_discard(<span class="string">"testing"</span>);
+                    }
+
                     egui::CollapsingHeader::new(<span class="string">"egui settings"</span>)
                         .default_open(<span class="bool-val">false</span>)
                         .show(ui, |ui| {
@@ -3000,7 +3056,9 @@
         <span class="kw">let </span>start = web_time::Instant::now();
 
         <span class="kw">while let </span><span class="prelude-val">Some</span>((channel_source, msg)) = <span class="self">self</span>.rx.try_recv() {
-            <span class="kw">let </span>msg = <span class="kw">match </span>msg.payload {
+            <span class="macro">re_log::trace!</span>(<span class="string">"Received a message from {channel_source:?}"</span>); <span class="comment">// Used by `test_ui_wakeup` test app!
+
+            </span><span class="kw">let </span>msg = <span class="kw">match </span>msg.payload {
                 re_smart_channel::SmartMessagePayload::Msg(msg) =&gt; msg,
 
                 re_smart_channel::SmartMessagePayload::Flush { on_flush_done } =&gt; {
@@ -3042,15 +3100,30 @@
                 </span><span class="macro">re_log::warn_once!</span>(<span class="string">"Loading a blueprint {store_id} that is active. See https://github.com/rerun-io/rerun/issues/5514 for details."</span>);
             }
 
-            <span class="kw">let </span>entity_db = store_hub.entity_db_mut(store_id);
+            <span class="comment">// TODO(cmc): we have to keep grabbing and releasing entity_db because everything references
+            // everything and some of it is mutable and some not… it's really not pretty, but it
+            // does the job for now.
 
-            <span class="kw">if </span>entity_db.data_source.is_none() {
-                entity_db.data_source = <span class="prelude-val">Some</span>((<span class="kw-2">*</span>channel_source).clone());
+            </span>{
+                <span class="kw">let </span>entity_db = store_hub.entity_db_mut(store_id);
+                <span class="kw">if </span>entity_db.data_source.is_none() {
+                    entity_db.data_source = <span class="prelude-val">Some</span>((<span class="kw-2">*</span>channel_source).clone());
+                }
             }
 
-            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = entity_db.add(<span class="kw-2">&amp;</span>msg) {
-                <span class="macro">re_log::error_once!</span>(<span class="string">"Failed to add incoming msg: {err}"</span>);
-            };
+            <span class="kw">match </span>store_hub.entity_db_mut(store_id).add(<span class="kw-2">&amp;</span>msg) {
+                <span class="prelude-val">Ok</span>(store_events) =&gt; {
+                    <span class="kw">if let </span><span class="prelude-val">Some</span>(caches) = store_hub.active_caches() {
+                        caches.on_store_events(<span class="kw-2">&amp;</span>store_events);
+                    }
+                }
+
+                <span class="prelude-val">Err</span>(err) =&gt; {
+                    <span class="macro">re_log::error_once!</span>(<span class="string">"Failed to add incoming msg: {err}"</span>);
+                }
+            }
+
+            <span class="kw">let </span>entity_db = store_hub.entity_db_mut(store_id);
 
             <span class="kw">match </span><span class="kw-2">&amp;</span>msg {
                 LogMsg::SetStoreInfo(<span class="kw">_</span>) =&gt; {
@@ -3188,7 +3261,6 @@
                 );
             }
             store_hub.purge_fraction_of_ram(fraction_to_purge);
-            <span class="self">self</span>.state.cache.purge_memory();
 
             <span class="kw">let </span>mem_use_after = MemoryUse::capture();
 
@@ -3214,10 +3286,11 @@
 
         store_hub.clear_all_cloned_blueprints();
 
-        <span class="comment">// Reset egui, but keep the style:
-        </span><span class="kw">let </span>style = egui_ctx.style();
-        egui_ctx.memory_mut(|mem| <span class="kw-2">*</span>mem = Default::default());
-        egui_ctx.set_style((<span class="kw-2">*</span>style).clone());
+        <span class="comment">// Reset egui:
+        </span>egui_ctx.memory_mut(|mem| <span class="kw-2">*</span>mem = Default::default());
+
+        <span class="comment">// Restore style:
+        </span>re_ui::apply_style_and_install_loaders(egui_ctx);
 
         <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="kw">crate</span>::reset_viewer_persistence() {
             <span class="macro">re_log::warn!</span>(<span class="string">"Failed to reset viewer: {err}"</span>);
@@ -3542,7 +3615,21 @@
 
         <span class="self">self</span>.purge_memory_if_needed(<span class="kw-2">&amp;mut </span>store_hub);
 
-        <span class="self">self</span>.state.cache.begin_frame();
+        {
+            <span class="comment">// TODO(andreas): store the re_renderer somewhere else.
+            </span><span class="kw">let </span>egui_renderer = {
+                <span class="kw">let </span>render_state = frame.wgpu_render_state().unwrap();
+                <span class="kw-2">&amp;mut </span>render_state.renderer.read()
+            };
+            <span class="kw">let </span>render_ctx = egui_renderer
+                .callback_resources
+                .get::&lt;re_renderer::RenderContext&gt;()
+                .unwrap();
+
+            <span class="comment">// We haven't called `begin_frame` at this point, so pretend we did and add one to the active frame index.
+            </span><span class="kw">let </span>renderer_active_frame_idx = render_ctx.active_frame_idx().wrapping_add(<span class="number">1</span>);
+            store_hub.begin_frame(renderer_active_frame_idx);
+        }
 
         <span class="self">self</span>.show_text_logs_as_notifications();
         <span class="self">self</span>.receive_messages(<span class="kw-2">&amp;mut </span>store_hub, egui_ctx);
@@ -3640,7 +3727,6 @@
 <span class="doccomment">/// Add built-in space views to the registry.
 </span><span class="kw">fn </span>populate_space_view_class_registry_with_builtin(
     space_view_class_registry: <span class="kw-2">&amp;mut </span>SpaceViewClassRegistry,
-    app_options: <span class="kw-2">&amp;</span>AppOptions,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SpaceViewClassRegistryError&gt; {
     <span class="macro">re_tracing::profile_function!</span>();
     space_view_class_registry.add_class::&lt;re_space_view_bar_chart::BarChartSpaceView&gt;()<span class="question-mark">?</span>;
@@ -3650,10 +3736,7 @@
     space_view_class_registry.add_class::&lt;re_space_view_text_document::TextDocumentSpaceView&gt;()<span class="question-mark">?</span>;
     space_view_class_registry.add_class::&lt;re_space_view_text_log::TextSpaceView&gt;()<span class="question-mark">?</span>;
     space_view_class_registry.add_class::&lt;re_space_view_time_series::TimeSeriesSpaceView&gt;()<span class="question-mark">?</span>;
-
-    <span class="kw">if </span>app_options.experimental_dataframe_space_view {
-        space_view_class_registry.add_class::&lt;re_space_view_dataframe::DataframeSpaceView&gt;()<span class="question-mark">?</span>;
-    }
+    space_view_class_registry.add_class::&lt;re_space_view_dataframe::DataframeSpaceView&gt;()<span class="question-mark">?</span>;
 
     <span class="prelude-val">Ok</span>(())
 }

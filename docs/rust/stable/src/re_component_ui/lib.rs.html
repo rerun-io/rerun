@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_component_ui/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_component_ui" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_component_ui/src/lib.rs`."><title>lib.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_component_ui" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_component_ui/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -138,6 +137,13 @@
 <a href="#137" id="137">137</a>
 <a href="#138" id="138">138</a>
 <a href="#139" id="139">139</a>
+<a href="#140" id="140">140</a>
+<a href="#141" id="141">141</a>
+<a href="#142" id="142">142</a>
+<a href="#143" id="143">143</a>
+<a href="#144" id="144">144</a>
+<a href="#145" id="145">145</a>
+<a href="#146" id="146">146</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! This crate implements various component editors.
 //!
 //! The only entry point is [`create_component_ui_registry`], which registers all editors in the component UI registry.
@@ -145,34 +151,34 @@
 
 </span><span class="kw">mod </span>color;
 <span class="kw">mod </span>datatype_uis;
+<span class="kw">mod </span>entity_path;
 <span class="kw">mod </span>fallback_ui;
 <span class="kw">mod </span>image_format;
 <span class="kw">mod </span>line_strip;
 <span class="kw">mod </span>marker_shape;
 <span class="kw">mod </span>pinhole;
 <span class="kw">mod </span>radius;
-<span class="kw">mod </span>range1d;
 <span class="kw">mod </span>resolution;
 <span class="kw">mod </span>response_utils;
 <span class="kw">mod </span>timeline;
 <span class="kw">mod </span>transforms;
+<span class="kw">mod </span>video_timestamp;
 <span class="kw">mod </span>view_coordinates;
 <span class="kw">mod </span>visual_bounds2d;
 
 <span class="kw">use </span>datatype_uis::{
     display_name_ui, display_text_ui, edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max,
     edit_f32_zero_to_one, edit_multiline_string, edit_or_view_vec3d, edit_singleline_string,
-    edit_view_enum, view_view_id,
+    edit_view_enum, edit_view_range1d, view_view_id,
 };
 
 <span class="kw">use </span>re_types::{
-    blueprint::components::{
-        BackgroundKind, Corner2D, LockRangeDuringZoom, SortKey, SortOrder, ViewFit, Visible,
-    },
+    blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, ViewFit, Visible},
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
         FillRatio, GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize, Name,
-        Opacity, Scale3D, StrokeWidth, Text, TransformRelation, Translation3D,
+        Opacity, Range1D, Scale3D, ShowLabels, StrokeWidth, Text, TransformRelation, Translation3D,
+        ValueRange,
     },
     Loggable <span class="kw">as _</span>,
 };
@@ -213,6 +219,8 @@
     <span class="comment">// Bool components:
     </span>registry.add_singleline_edit_or_view::&lt;Visible&gt;(edit_bool);
     registry.add_singleline_edit_or_view::&lt;LockRangeDuringZoom&gt;(edit_bool);
+    registry.add_singleline_edit_or_view::&lt;ShowLabels&gt;(edit_bool);
+    registry.add_singleline_edit_or_view::&lt;Visible&gt;(edit_bool);
 
     <span class="comment">// Text components:
     </span>registry.add_legacy_display_ui(Text::name(), Box::new(display_text_ui)); <span class="comment">// TODO(andreas): Why is there a display ui?
@@ -229,8 +237,6 @@
     registry.add_singleline_edit_or_view::&lt;Corner2D&gt;(edit_view_enum);
     registry.add_singleline_edit_or_view::&lt;FillMode&gt;(edit_view_enum);
     registry.add_singleline_edit_or_view::&lt;MagnificationFilter&gt;(edit_view_enum);
-    registry.add_singleline_edit_or_view::&lt;SortKey&gt;(edit_view_enum);
-    registry.add_singleline_edit_or_view::&lt;SortOrder&gt;(edit_view_enum);
     registry.add_singleline_edit_or_view::&lt;TransformRelation&gt;(edit_view_enum);
     registry.add_singleline_edit_or_view::&lt;ViewFit&gt;(edit_view_enum);
 
@@ -241,6 +247,10 @@
     <span class="comment">// Components that refer to views:
     </span>registry.add_singleline_edit_or_view::&lt;IncludedSpaceView&gt;(view_view_id);
     registry.add_singleline_edit_or_view::&lt;SpaceViewMaximized&gt;(view_view_id);
+
+    <span class="comment">// Range1D components:
+    </span>registry.add_singleline_edit_or_view::&lt;Range1D&gt;(edit_view_range1d);
+    registry.add_singleline_edit_or_view::&lt;ValueRange&gt;(edit_view_range1d);
 
     <span class="comment">// --------------------------------------------------------------------------------
     // All other special components:
@@ -263,7 +273,6 @@
 
     registry.add_singleline_edit_or_view(radius::edit_radius_ui);
     registry.add_singleline_edit_or_view(marker_shape::edit_marker_shape_ui);
-    registry.add_singleline_edit_or_view(range1d::edit_range1d);
 
     registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
     registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
@@ -274,6 +283,10 @@
     registry.add_multiline_edit_or_view(pinhole::multiline_view_pinhole);
 
     line_strip::register_linestrip_component_ui(<span class="kw-2">&amp;mut </span>registry);
+
+    registry.add_singleline_edit_or_view(entity_path::edit_or_view_entity_path);
+
+    registry.add_singleline_edit_or_view(video_timestamp::edit_or_view_timestamp);
 
     registry
 }

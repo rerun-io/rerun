@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["sorted_instance_paths_for","sorted_visible_entity_path"]};

@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/build/re_types_builder/src/codegen/rust/serializer.rs`."><title>serializer.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="re_types_builder" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/build/re_types_builder/src/codegen/rust/serializer.rs`."><title>serializer.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="re_types_builder" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../re_types_builder/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -932,7 +931,7 @@
 ) -&gt; TokenStream {
     <span class="kw">let </span>datatype = <span class="kw-2">&amp;</span>arrow_registry.get(<span class="kw-2">&amp;</span>obj.fqname);
 
-    <span class="kw">let </span>quoted_datatype = <span class="macro">quote! </span>{ <span class="self">Self</span>::arrow_datatype() };
+    <span class="kw">let </span>quoted_datatype = <span class="macro">quote!</span> { <span class="self">Self</span>::arrow_datatype() };
 
     <span class="kw">let </span>is_enum = obj.is_enum();
     <span class="kw">let </span>is_arrow_transparent = obj.datatype.is_none();
@@ -949,7 +948,7 @@
     };
 
     <span class="kw">let </span>quoted_bitmap = |var| {
-        <span class="macro">quote! </span>{
+        <span class="macro">quote!</span> {
             <span class="kw">let </span>#var: <span class="prelude-ty">Option</span>&lt;arrow2::bitmap::Bitmap&gt; = {
                 <span class="comment">// NOTE: Don't compute a bitmap if there isn't at least one null element.
                 </span><span class="kw">let </span>any_nones = somes.iter().any(|some| !<span class="kw-2">*</span>some);
@@ -983,7 +982,7 @@
 
         <span class="kw">let </span>quoted_bitmap = quoted_bitmap(bitmap_dst);
 
-        <span class="macro">quote! </span>{{
+        <span class="macro">quote!</span> {{
             <span class="kw">let </span>(somes, #quoted_data_dst): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = #quoted_data_src
                 .into_iter()
                 .map(|datum| {
@@ -1040,7 +1039,7 @@
 
         <span class="kw">let </span>quoted_flatten = quoted_flatten(obj_field.is_nullable);
 
-        <span class="macro">quote! </span>{{
+        <span class="macro">quote!</span> {{
             <span class="kw">let </span>(somes, #quoted_data_dst): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = #quoted_data_src
                 .into_iter()
                 .map(|datum| {
@@ -1088,7 +1087,7 @@
 
                     <span class="kw">let </span>quoted_bitmap = quoted_bitmap(bitmap_dst);
 
-                    <span class="macro">quote! </span>{{
+                    <span class="macro">quote!</span> {{
                         <span class="kw">let </span>(somes, #data_dst): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = #data_src
                             .iter()
                             .map(|datum| {
@@ -1112,7 +1111,7 @@
 
                 <span class="kw">let </span>quoted_bitmap = quoted_bitmap(<span class="macro">format_ident!</span>(<span class="string">"bitmap"</span>));
 
-                <span class="macro">quote! </span>{{
+                <span class="macro">quote!</span> {{
                     <span class="kw">let </span>(somes, #data_src): (Vec&lt;<span class="kw">_</span>&gt;, Vec&lt;<span class="kw">_</span>&gt;) = #data_src
                         .into_iter()
                         .map(|datum| {
@@ -1135,7 +1134,7 @@
                 <span class="comment">// We use sparse unions for enums, which means only 8 bits is required for each field,
                 // and nulls are encoded with a special 0-index `_null_markers` variant.
 
-                </span><span class="kw">let </span>quoted_data_collect = <span class="macro">quote! </span>{
+                </span><span class="kw">let </span>quoted_data_collect = <span class="macro">quote!</span> {
                     <span class="kw">let </span>#data_src: Vec&lt;<span class="kw">_</span>&gt; = #data_src
                         .into_iter()
                         .map(|datum| {
@@ -1145,7 +1144,7 @@
                         .collect();
                 };
 
-                <span class="kw">let </span>quoted_types = <span class="macro">quote! </span>{
+                <span class="kw">let </span>quoted_types = <span class="macro">quote!</span> {
                     #data_src
                         .iter()
                         .map(|a| <span class="kw">match </span>a.as_deref() {
@@ -1159,7 +1158,7 @@
 
                 <span class="kw">let </span>comment = quote_comment(<span class="string">"Sparse Arrow union"</span>);
 
-                <span class="macro">quote! </span>{{
+                <span class="macro">quote!</span> {{
                     #comment
 
                     #quoted_data_collect
@@ -1186,7 +1185,7 @@
             }
 
             DataType::Union(<span class="kw">_</span>, <span class="kw">_</span>, arrow2::datatypes::UnionMode::Dense) =&gt; {
-                <span class="kw">let </span>quoted_data_collect = <span class="macro">quote! </span>{
+                <span class="kw">let </span>quoted_data_collect = <span class="macro">quote!</span> {
                     <span class="kw">let </span>#data_src: Vec&lt;<span class="kw">_</span>&gt; = #data_src
                         .into_iter()
                         .map(|datum| {
@@ -1201,7 +1200,7 @@
 
                     <span class="comment">// Short circuit for empty variants since they're trivial to solve at this level:
                     </span><span class="kw">if </span>obj_field.typ == <span class="kw">crate</span>::Type::Unit {
-                        <span class="kw">return </span><span class="macro">quote! </span>{
+                        <span class="kw">return </span><span class="macro">quote!</span> {
                             NullArray::new(
                                 DataType::Null,
                                 #data_src
@@ -1232,7 +1231,7 @@
                         InnerRepr::NativeIterable,
                     );
 
-                    <span class="macro">quote! </span>{{
+                    <span class="macro">quote!</span> {{
                         <span class="kw">let </span>#data_dst: Vec&lt;<span class="kw">_</span>&gt; = data
                             .iter()
                             .filter_map(|datum| <span class="kw">match </span>datum.as_deref() {
@@ -1246,7 +1245,7 @@
                     }}
                 });
 
-                <span class="kw">let </span>quoted_fields = <span class="macro">quote! </span>{
+                <span class="kw">let </span>quoted_fields = <span class="macro">quote!</span> {
                     <span class="macro">vec!</span>[
                         NullArray::new(
                             DataType::Null,
@@ -1274,7 +1273,7 @@
                         <span class="macro">quote!</span>(#match_case =&gt; #i)
                     });
 
-                    <span class="macro">quote! </span>{
+                    <span class="macro">quote!</span> {
                         #data_src
                             .iter()
                             .map(|a| <span class="kw">match </span>a.as_deref() {
@@ -1300,7 +1299,7 @@
 
                         <span class="kw">let </span>match_case =
                             get_match_case_for_field(<span class="kw-2">&amp;</span>obj_field.typ, quoted_obj_field_name);
-                        <span class="macro">quote! </span>{
+                        <span class="macro">quote!</span> {
                             #match_case =&gt; {
                                 <span class="kw">let </span>offset = #quoted_counter_name;
                                 #quoted_counter_name += <span class="number">1</span>;
@@ -1309,7 +1308,7 @@
                         }
                     });
 
-                    <span class="macro">quote! </span>{{
+                    <span class="macro">quote!</span> {{
                         #(#quoted_counters;)*
                         <span class="kw">let </span><span class="kw-2">mut </span>nulls_offset = <span class="number">0</span>;
 
@@ -1329,7 +1328,7 @@
 
                 <span class="kw">let </span>comment = quote_comment(<span class="string">"Dense Arrow union"</span>);
 
-                <span class="macro">quote! </span>{{
+                <span class="macro">quote!</span> {{
                     #comment
 
                     #quoted_data_collect
@@ -1391,12 +1390,12 @@
         <span class="kw">if </span>obj.is_enum() {
             <span class="kw">let </span>fqname_use = quote_fqname_as_type_path(<span class="kw-2">&amp;</span>obj.fqname);
             <span class="kw">let </span>option_wrapper = <span class="kw">if </span>elements_are_nullable {
-                <span class="macro">quote! </span>{}
+                <span class="macro">quote!</span> {}
             } <span class="kw">else </span>{
-                <span class="macro">quote! </span>{ .into_iter().map(<span class="prelude-val">Some</span>) }
+                <span class="macro">quote!</span> { .into_iter().map(<span class="prelude-val">Some</span>) }
             };
 
-            <span class="kw">return </span><span class="macro">quote! </span>{{
+            <span class="kw">return </span><span class="macro">quote!</span> {{
                 <span class="kw">_ </span>= #bitmap_src;
                 #fqname_use::to_arrow_opt(#data_src #option_wrapper)<span class="question-mark">?
             </span>}};
@@ -1432,7 +1431,7 @@
                 };
 
                 <span class="kw">if </span>elements_are_nullable {
-                    <span class="macro">quote! </span>{
+                    <span class="macro">quote!</span> {
                         .map(|datum| {
                             datum
                                 .map(|datum| {
@@ -1442,22 +1441,22 @@
                         })
                     }
                 } <span class="kw">else </span>{
-                    <span class="macro">quote! </span>{
+                    <span class="macro">quote!</span> {
                         .map(|datum| {
                             datum.#quoted_member_accessor
                         })
                     }
                 }
             } <span class="kw">else if </span>elements_are_nullable {
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     .map(|v| v.unwrap_or_default())
                 }
             } <span class="kw">else </span>{
-                <span class="macro">quote! </span>{}
+                <span class="macro">quote!</span> {}
             };
 
             <span class="kw">if </span>datatype.to_logical_type() == <span class="kw-2">&amp;</span>DataType::Boolean {
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     BooleanArray::new(
                         #quoted_datatype,
                         #data_src.into_iter() #quoted_transparent_mapping .collect(),
@@ -1468,14 +1467,14 @@
                 <span class="kw">match </span>inner_repr {
                     <span class="comment">// A primitive that's an inner element of a list will already have been mapped
                     // to a buffer type.
-                    </span>InnerRepr::ArrowBuffer =&gt; <span class="macro">quote! </span>{
+                    </span>InnerRepr::ArrowBuffer =&gt; <span class="macro">quote!</span> {
                         PrimitiveArray::new(
                             #quoted_datatype,
                             #data_src,
                             #bitmap_src,
                         ).boxed()
                     },
-                    InnerRepr::NativeIterable =&gt; <span class="macro">quote! </span>{
+                    InnerRepr::NativeIterable =&gt; <span class="macro">quote!</span> {
                         PrimitiveArray::new(
                             #quoted_datatype,
                             #data_src.into_iter() #quoted_transparent_mapping .collect(),
@@ -1512,12 +1511,12 @@
                     };
 
                     (
-                        <span class="macro">quote! </span>{
+                        <span class="macro">quote!</span> {
                             .flat_map(|datum| {
                                 datum.#quoted_member_accessor.<span class="number">0
                             </span>})
                         },
-                        <span class="macro">quote! </span>{
+                        <span class="macro">quote!</span> {
                             .map(|datum| {
                                 datum.#quoted_member_accessor.len()
                             })
@@ -1525,17 +1524,17 @@
                     )
                 } <span class="kw">else </span>{
                     (
-                        <span class="macro">quote! </span>{
+                        <span class="macro">quote!</span> {
                             .flat_map(|s| s.<span class="number">0</span>)
                         },
-                        <span class="macro">quote! </span>{
+                        <span class="macro">quote!</span> {
                             .map(|datum| datum.len())
                         },
                     )
                 };
 
             <span class="kw">let </span>inner_data_and_offsets = <span class="kw">if </span>elements_are_nullable {
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     <span class="kw">let </span>offsets = arrow2::offset::Offsets::&lt;i32&gt;::try_from_lengths(
                         #data_src.iter().map(|opt| opt.as_ref() #quoted_transparent_length .unwrap_or_default())
                     )<span class="question-mark">?
@@ -1547,7 +1546,7 @@
                         #data_src.into_iter().flatten() #quoted_transparent_mapping.collect();
                 }
             } <span class="kw">else </span>{
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     <span class="kw">let </span>offsets = arrow2::offset::Offsets::&lt;i32&gt;::try_from_lengths(
                         #data_src.iter() #quoted_transparent_length
                     )<span class="question-mark">?
@@ -1558,7 +1557,7 @@
                 }
             };
 
-            <span class="macro">quote! </span>{{
+            <span class="macro">quote!</span> {{
                 #inner_data_and_offsets
 
                 <span class="comment">// Safety: we're building this from actual native strings, so no need to do the
@@ -1620,7 +1619,7 @@
                 };
 
                 <span class="kw">if </span>elements_are_nullable {
-                    <span class="macro">quote! </span>{
+                    <span class="macro">quote!</span> {
                         #data_src
                         .into_iter()
                         .map(|datum| {
@@ -1634,7 +1633,7 @@
                         </span>.flatten()
                     }
                 } <span class="kw">else </span>{
-                    <span class="macro">quote! </span>{
+                    <span class="macro">quote!</span> {
                         #data_src
                         .into_iter()
                         .map(|datum| {
@@ -1654,7 +1653,7 @@
                 <span class="kw">match </span>inner_repr {
                     InnerRepr::ArrowBuffer =&gt; {
                         <span class="comment">// TODO(emilk): this can probably be optimized
-                        </span><span class="macro">quote! </span>{
+                        </span><span class="macro">quote!</span> {
                             #data_src
                                 .iter()
                                 #flatten_if_needed
@@ -1667,7 +1666,7 @@
                     InnerRepr::NativeIterable =&gt; {
                         <span class="kw">if let </span>DataType::FixedSizeList(<span class="kw">_</span>, count) = datatype.to_logical_type() {
                             <span class="kw">if </span>elements_are_nullable {
-                                <span class="macro">quote! </span>{
+                                <span class="macro">quote!</span> {
                                     #data_src
                                     .into_iter()
                                     .flat_map(|v| <span class="kw">match </span>v {
@@ -1678,14 +1677,14 @@
                                     })
                                 }
                             } <span class="kw">else </span>{
-                                <span class="macro">quote! </span>{
+                                <span class="macro">quote!</span> {
                                     #data_src
                                     .into_iter()
                                     .flatten()
                                 }
                             }
                         } <span class="kw">else </span>{
-                            <span class="macro">quote! </span>{
+                            <span class="macro">quote!</span> {
                                 #data_src
                                 .into_iter()
                                 #flatten_if_needed
@@ -1704,22 +1703,22 @@
 
             <span class="kw">let </span>quoted_declare_offsets = <span class="kw">if let </span>DataType::List(<span class="kw">_</span>) = datatype {
                 <span class="kw">let </span>map_to_length = <span class="kw">if </span>elements_are_nullable {
-                    <span class="macro">quote! </span>{ map(|opt| opt.as_ref().map_or(<span class="number">0</span>, |datum| datum. #quoted_num_instances)) }
+                    <span class="macro">quote!</span> { map(|opt| opt.as_ref().map_or(<span class="number">0</span>, |datum| datum. #quoted_num_instances)) }
                 } <span class="kw">else </span>{
-                    <span class="macro">quote! </span>{ map(|datum| datum. #quoted_num_instances) }
+                    <span class="macro">quote!</span> { map(|datum| datum. #quoted_num_instances) }
                 };
 
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     <span class="kw">let </span>offsets = arrow2::offset::Offsets::&lt;i32&gt;::try_from_lengths(
                         #data_src.iter(). #map_to_length
                     )<span class="question-mark">?</span>.into();
                 }
             } <span class="kw">else </span>{
-                <span class="macro">quote! </span>{}
+                <span class="macro">quote!</span> {}
             };
 
             <span class="kw">let </span>quoted_create = <span class="kw">if let </span>DataType::List(<span class="kw">_</span>) = datatype {
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     ListArray::try_new(
                         #quoted_datatype,
                         offsets,
@@ -1728,7 +1727,7 @@
                     )<span class="question-mark">?</span>.boxed()
                 }
             } <span class="kw">else </span>{
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     FixedSizeListArray::new(
                         #quoted_datatype,
                         #quoted_inner,
@@ -1751,7 +1750,7 @@
             </span><span class="kw">let </span>quoted_inner_bitmap = <span class="kw">if let </span>(<span class="bool-val">true</span>, DataType::FixedSizeList(<span class="kw">_</span>, count)) =
                 (elements_are_nullable, datatype.to_logical_type())
             {
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     <span class="kw">let </span>#inner_bitmap_ident: <span class="prelude-ty">Option</span>&lt;arrow2::bitmap::Bitmap&gt; =
                         #bitmap_src.as_ref().map(|bitmap| {
                             bitmap
@@ -1764,14 +1763,14 @@
                 }
             } <span class="kw">else </span>{
                 <span class="comment">// TODO(cmc): We don't support intra-list nullability in our IDL at the moment.
-                </span><span class="macro">quote! </span>{
+                </span><span class="macro">quote!</span> {
                     <span class="kw">let </span>#inner_bitmap_ident: <span class="prelude-ty">Option</span>&lt;arrow2::bitmap::Bitmap&gt; = <span class="prelude-val">None</span>;
                 }
             };
 
             <span class="kw">match </span>inner_repr {
                 InnerRepr::ArrowBuffer =&gt; {
-                    <span class="macro">quote! </span>{{
+                    <span class="macro">quote!</span> {{
                         <span class="kw">use </span>arrow2::{buffer::Buffer, offset::OffsetsBuffer};
 
                         #quoted_declare_offsets
@@ -1785,7 +1784,7 @@
                 }
 
                 InnerRepr::NativeIterable =&gt; {
-                    <span class="macro">quote! </span>{{
+                    <span class="macro">quote!</span> {{
                         <span class="kw">use </span>arrow2::{buffer::Buffer, offset::OffsetsBuffer};
 
                         #quoted_declare_offsets
@@ -1809,12 +1808,12 @@
             };
             <span class="kw">let </span>fqname_use = quote_fqname_as_type_path(fqname);
             <span class="kw">let </span>option_wrapper = <span class="kw">if </span>elements_are_nullable {
-                <span class="macro">quote! </span>{}
+                <span class="macro">quote!</span> {}
             } <span class="kw">else </span>{
-                <span class="macro">quote! </span>{ .into_iter().map(<span class="prelude-val">Some</span>) }
+                <span class="macro">quote!</span> { .into_iter().map(<span class="prelude-val">Some</span>) }
             };
 
-            <span class="macro">quote! </span>{{
+            <span class="macro">quote!</span> {{
                 <span class="kw">_ </span>= #bitmap_src;
                 #fqname_use::to_arrow_opt(#data_src #option_wrapper)<span class="question-mark">?
             </span>}}

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["decode_and_stream"],"struct":["RrdLoader"]};
+window.SIDEBAR_ITEMS = {"fn":["decode_and_stream"],"struct":["RetryableFileReader","RrdLoader"]};

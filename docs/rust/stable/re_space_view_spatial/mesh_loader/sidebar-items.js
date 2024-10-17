@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["LoadedMesh"]};
+window.SIDEBAR_ITEMS = {"fn":["try_get_or_create_albedo_texture"],"struct":["LoadedMesh"]};

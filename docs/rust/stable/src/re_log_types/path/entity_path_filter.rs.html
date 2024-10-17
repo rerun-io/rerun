@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/store/re_log_types/src/path/entity_path_filter.rs`."><title>entity_path_filter.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_log_types" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/store/re_log_types/src/path/entity_path_filter.rs`."><title>entity_path_filter.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_log_types" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../re_log_types/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -722,12 +721,292 @@
 <a href="#721" id="721">721</a>
 <a href="#722" id="722">722</a>
 <a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
+<a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+<a href="#846" id="846">846</a>
+<a href="#847" id="847">847</a>
+<a href="#848" id="848">848</a>
+<a href="#849" id="849">849</a>
+<a href="#850" id="850">850</a>
+<a href="#851" id="851">851</a>
+<a href="#852" id="852">852</a>
+<a href="#853" id="853">853</a>
+<a href="#854" id="854">854</a>
+<a href="#855" id="855">855</a>
+<a href="#856" id="856">856</a>
+<a href="#857" id="857">857</a>
+<a href="#858" id="858">858</a>
+<a href="#859" id="859">859</a>
+<a href="#860" id="860">860</a>
+<a href="#861" id="861">861</a>
+<a href="#862" id="862">862</a>
+<a href="#863" id="863">863</a>
+<a href="#864" id="864">864</a>
+<a href="#865" id="865">865</a>
+<a href="#866" id="866">866</a>
+<a href="#867" id="867">867</a>
+<a href="#868" id="868">868</a>
+<a href="#869" id="869">869</a>
+<a href="#870" id="870">870</a>
+<a href="#871" id="871">871</a>
+<a href="#872" id="872">872</a>
+<a href="#873" id="873">873</a>
+<a href="#874" id="874">874</a>
+<a href="#875" id="875">875</a>
+<a href="#876" id="876">876</a>
+<a href="#877" id="877">877</a>
+<a href="#878" id="878">878</a>
+<a href="#879" id="879">879</a>
+<a href="#880" id="880">880</a>
+<a href="#881" id="881">881</a>
+<a href="#882" id="882">882</a>
+<a href="#883" id="883">883</a>
+<a href="#884" id="884">884</a>
+<a href="#885" id="885">885</a>
+<a href="#886" id="886">886</a>
+<a href="#887" id="887">887</a>
+<a href="#888" id="888">888</a>
+<a href="#889" id="889">889</a>
+<a href="#890" id="890">890</a>
+<a href="#891" id="891">891</a>
+<a href="#892" id="892">892</a>
+<a href="#893" id="893">893</a>
+<a href="#894" id="894">894</a>
+<a href="#895" id="895">895</a>
+<a href="#896" id="896">896</a>
+<a href="#897" id="897">897</a>
+<a href="#898" id="898">898</a>
+<a href="#899" id="899">899</a>
+<a href="#900" id="900">900</a>
+<a href="#901" id="901">901</a>
+<a href="#902" id="902">902</a>
+<a href="#903" id="903">903</a>
+<a href="#904" id="904">904</a>
+<a href="#905" id="905">905</a>
+<a href="#906" id="906">906</a>
+<a href="#907" id="907">907</a>
+<a href="#908" id="908">908</a>
+<a href="#909" id="909">909</a>
+<a href="#910" id="910">910</a>
+<a href="#911" id="911">911</a>
+<a href="#912" id="912">912</a>
+<a href="#913" id="913">913</a>
+<a href="#914" id="914">914</a>
+<a href="#915" id="915">915</a>
+<a href="#916" id="916">916</a>
+<a href="#917" id="917">917</a>
+<a href="#918" id="918">918</a>
+<a href="#919" id="919">919</a>
+<a href="#920" id="920">920</a>
+<a href="#921" id="921">921</a>
+<a href="#922" id="922">922</a>
+<a href="#923" id="923">923</a>
+<a href="#924" id="924">924</a>
+<a href="#925" id="925">925</a>
+<a href="#926" id="926">926</a>
+<a href="#927" id="927">927</a>
+<a href="#928" id="928">928</a>
+<a href="#929" id="929">929</a>
+<a href="#930" id="930">930</a>
+<a href="#931" id="931">931</a>
+<a href="#932" id="932">932</a>
+<a href="#933" id="933">933</a>
+<a href="#934" id="934">934</a>
+<a href="#935" id="935">935</a>
+<a href="#936" id="936">936</a>
+<a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+<a href="#953" id="953">953</a>
+<a href="#954" id="954">954</a>
+<a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
+<a href="#957" id="957">957</a>
+<a href="#958" id="958">958</a>
+<a href="#959" id="959">959</a>
+<a href="#960" id="960">960</a>
+<a href="#961" id="961">961</a>
+<a href="#962" id="962">962</a>
+<a href="#963" id="963">963</a>
+<a href="#964" id="964">964</a>
+<a href="#965" id="965">965</a>
+<a href="#966" id="966">966</a>
+<a href="#967" id="967">967</a>
+<a href="#968" id="968">968</a>
+<a href="#969" id="969">969</a>
+<a href="#970" id="970">970</a>
+<a href="#971" id="971">971</a>
+<a href="#972" id="972">972</a>
+<a href="#973" id="973">973</a>
+<a href="#974" id="974">974</a>
+<a href="#975" id="975">975</a>
+<a href="#976" id="976">976</a>
+<a href="#977" id="977">977</a>
+<a href="#978" id="978">978</a>
+<a href="#979" id="979">979</a>
+<a href="#980" id="980">980</a>
+<a href="#981" id="981">981</a>
+<a href="#982" id="982">982</a>
+<a href="#983" id="983">983</a>
+<a href="#984" id="984">984</a>
+<a href="#985" id="985">985</a>
+<a href="#986" id="986">986</a>
+<a href="#987" id="987">987</a>
+<a href="#988" id="988">988</a>
+<a href="#989" id="989">989</a>
+<a href="#990" id="990">990</a>
+<a href="#991" id="991">991</a>
+<a href="#992" id="992">992</a>
+<a href="#993" id="993">993</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="kw">use </span>ahash::HashMap;
 <span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
 
 <span class="kw">use </span><span class="kw">crate</span>::EntityPath;
+
+<span class="doccomment">/// Error returned by [`EntityPathFilter::parse_strict`].
+</span><span class="attr">#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+</span><span class="kw">pub enum </span>EntityPathFilterParseError {
+    <span class="attr">#[error(<span class="string">"Path parse error: {0}"</span>)]
+    </span>PathParseError(<span class="attr">#[from] </span><span class="kw">crate</span>::PathParseError),
+
+    <span class="attr">#[error(<span class="string">"Unresolved substitution: {0}"</span>)]
+    </span>UnresolvedSubstitution(String),
+}
 
 <span class="doccomment">/// A set of substitutions for entity paths.
 </span><span class="attr">#[derive(Default)]
@@ -802,6 +1081,44 @@
     </span><span class="kw">pub </span>include_subtree: bool,
 }
 
+<span class="kw">impl </span>From&lt;EntityPath&gt; <span class="kw">for </span>EntityPathRule {
+    <span class="attr">#[inline]
+    </span><span class="kw">fn </span>from(entity_path: EntityPath) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::exact(entity_path)
+    }
+}
+
+<span class="kw">impl </span>std::hash::Hash <span class="kw">for </span>EntityPathRule {
+    <span class="attr">#[inline]
+    </span><span class="kw">fn </span>hash&lt;H: std::hash::Hasher&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, state: <span class="kw-2">&amp;mut </span>H) {
+        <span class="kw">let </span><span class="self">Self </span>{
+            raw_expression: <span class="kw">_</span>,
+            path,
+            include_subtree,
+        } = <span class="self">self</span>;
+
+        std::hash::Hash::hash(path, state);
+        std::hash::Hash::hash(include_subtree, state);
+    }
+}
+
+<span class="kw">impl </span>std::fmt::Display <span class="kw">for </span>EntityPathRule {
+    <span class="attr">#[inline]
+    </span><span class="kw">fn </span>fmt(<span class="kw-2">&amp;</span><span class="self">self</span>, f: <span class="kw-2">&amp;mut </span>std::fmt::Formatter&lt;<span class="lifetime">'_</span>&gt;) -&gt; std::fmt::Result {
+        <span class="kw">let </span><span class="self">Self </span>{
+            raw_expression: <span class="kw">_</span>,
+            path,
+            include_subtree,
+        } = <span class="self">self</span>;
+
+        f.write_fmt(<span class="macro">format_args!</span>(
+            <span class="string">"{path}{}{}"</span>,
+            <span class="kw">if </span>path.is_root() { <span class="string">"" </span>} <span class="kw">else </span>{ <span class="string">"/" </span>},
+            <span class="kw">if </span><span class="kw-2">*</span>include_subtree { <span class="string">"**" </span>} <span class="kw">else </span>{ <span class="string">"" </span>}
+        ))
+    }
+}
+
 <span class="kw">impl </span>PartialEq <span class="kw">for </span>EntityPathRule {
     <span class="kw">fn </span>eq(<span class="kw-2">&amp;</span><span class="self">self</span>, other: <span class="kw-2">&amp;</span><span class="self">Self</span>) -&gt; bool {
         <span class="self">self</span>.raw_expression == other.raw_expression
@@ -835,8 +1152,89 @@
     }
 }
 
+<span class="comment">// Note: it's not possible to implement that for `S: AsRef&lt;str&gt;` because this conflicts with some
+// blanket implementation in `core` :(
+</span><span class="kw">impl </span>TryFrom&lt;<span class="kw-2">&amp;</span>str&gt; <span class="kw">for </span>EntityPathFilter {
+    <span class="kw">type </span>Error = EntityPathFilterParseError;
+
+    <span class="kw">fn </span>try_from(value: <span class="kw-2">&amp;</span>str) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, <span class="self">Self</span>::Error&gt; {
+        <span class="self">Self</span>::parse_strict(value, <span class="kw-2">&amp;</span>EntityPathSubs::default())
+    }
+}
+
+<span class="doccomment">/// Split a string into whitespace-separated tokens with extra logic.
+///
+/// Specifically, we allow for whitespace between `+`/`-` and the following token.
+///
+/// Additional rules:
+///  - Escaped whitespace never results in a split.
+///  - Otherwise always split on `\n` (even if it follows a `+` or `-` character).
+///  - Only consider `+` and `-` characters as special if they are the first character of a token.
+///  - Split on whitespace does not following a relevant `+` or `-` character.
+</span><span class="kw">fn </span>split_whitespace_smart(path: <span class="kw-2">&amp;</span><span class="lifetime">'_ </span>str) -&gt; Vec&lt;<span class="kw-2">&amp;</span><span class="lifetime">'_ </span>str&gt; {
+    <span class="attr">#![allow(clippy::unwrap_used)]
+
+    </span><span class="comment">// We parse on bytes, and take care to only split on either side of a one-byte ASCII,
+    // making the `from_utf8(…)`s below safe to unwrap.
+    </span><span class="kw">let </span><span class="kw-2">mut </span>bytes = path.as_bytes();
+
+    <span class="kw">let </span><span class="kw-2">mut </span>tokens = <span class="macro">vec!</span>[];
+
+    <span class="comment">// Start by ignoring any leading whitespace
+    </span><span class="kw">while </span>!bytes.is_empty() {
+        <span class="kw">let </span><span class="kw-2">mut </span>i = <span class="number">0</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>is_in_escape = <span class="bool-val">false</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>is_include_exclude = <span class="bool-val">false</span>;
+        <span class="kw">let </span><span class="kw-2">mut </span>new_token = <span class="bool-val">true</span>;
+
+        <span class="comment">// Find the next unescaped whitespace character not following a '+' or '-' character
+        </span><span class="kw">while </span>i &lt; bytes.len() {
+            <span class="kw">let </span>is_unescaped_whitespace = !is_in_escape &amp;&amp; bytes[i].is_ascii_whitespace();
+
+            <span class="kw">let </span>is_unescaped_newline = !is_in_escape &amp;&amp; bytes[i] == <span class="string">b'\n'</span>;
+
+            <span class="kw">if </span>is_unescaped_newline || (!is_include_exclude &amp;&amp; is_unescaped_whitespace) {
+                <span class="kw">break</span>;
+            }
+
+            is_in_escape = bytes[i] == <span class="string">b'\\'</span>;
+
+            <span class="kw">if </span>bytes[i] == <span class="string">b'+' </span>|| bytes[i] == <span class="string">b'-' </span>{
+                is_include_exclude = new_token;
+            } <span class="kw">else if </span>!is_unescaped_whitespace {
+                is_include_exclude = <span class="bool-val">false</span>;
+                new_token = <span class="bool-val">false</span>;
+            }
+
+            i += <span class="number">1</span>;
+        }
+        <span class="kw">if </span>i &gt; <span class="number">0 </span>{
+            tokens.push(<span class="kw-2">&amp;</span>bytes[..i]);
+        }
+
+        <span class="comment">// Continue skipping whitespace characters
+        </span><span class="kw">while </span>i &lt; bytes.len() {
+            <span class="kw">if </span>is_in_escape || !bytes[i].is_ascii_whitespace() {
+                <span class="kw">break</span>;
+            }
+            is_in_escape = bytes[i] == <span class="string">b'\\'</span>;
+            i += <span class="number">1</span>;
+        }
+
+        bytes = <span class="kw-2">&amp;</span>bytes[i..];
+    }
+
+    <span class="comment">// Safety: we split at proper character boundaries
+    </span>tokens
+        .iter()
+        .map(|token| std::str::from_utf8(token).unwrap())
+        .collect()
+}
+
 <span class="kw">impl </span>EntityPathFilter {
-    <span class="doccomment">/// Example of rules:
+    <span class="doccomment">/// Parse an entity path filter from a string while ignore syntax errors.
+    ///
+    /// Example of rules:
     ///
     /// ```diff
     /// + /world/**
@@ -851,7 +1249,8 @@
     ///
     /// Conflicting rules are resolved by the last rule.
     </span><span class="kw">pub fn </span>parse_forgiving(rules: <span class="kw-2">&amp;</span>str, subst_env: <span class="kw-2">&amp;</span>EntityPathSubs) -&gt; <span class="self">Self </span>{
-        <span class="self">Self</span>::from_query_expressions(rules.split(<span class="string">'\n'</span>), subst_env)
+        <span class="kw">let </span>split_rules = split_whitespace_smart(rules);
+        <span class="self">Self</span>::from_query_expressions_forgiving(split_rules, subst_env)
     }
 
     <span class="doccomment">/// Build a filter from a list of query expressions.
@@ -862,7 +1261,7 @@
     /// The rest of the expression is trimmed and treated as an entity path.
     ///
     /// Conflicting rules are resolved by the last rule.
-    </span><span class="kw">pub fn </span>from_query_expressions&lt;<span class="lifetime">'a</span>&gt;(
+    </span><span class="kw">pub fn </span>from_query_expressions_forgiving&lt;<span class="lifetime">'a</span>&gt;(
         rules: <span class="kw">impl </span>IntoIterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;,
         subst_env: <span class="kw-2">&amp;</span>EntityPathSubs,
     ) -&gt; <span class="self">Self </span>{
@@ -885,6 +1284,71 @@
         }
 
         filter
+    }
+
+    <span class="doccomment">/// Parse an entity path filter from a string, returning an error if the syntax is invalid.
+    ///
+    /// Example of rules:
+    ///
+    /// ```diff
+    /// + /world/**
+    /// - /world/roads/**
+    /// + /world/roads/main
+    /// ```
+    ///
+    /// Each line is a rule.
+    ///
+    /// The first character should be `+` or `-`. If missing, `+` is assumed.
+    /// The rest of the line is trimmed and treated as an entity path.
+    ///
+    /// Conflicting rules are resolved by the last rule.
+    </span><span class="kw">pub fn </span>parse_strict(
+        rules: <span class="kw-2">&amp;</span>str,
+        subst_env: <span class="kw-2">&amp;</span>EntityPathSubs,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, EntityPathFilterParseError&gt; {
+        <span class="kw">let </span>split_rules = split_whitespace_smart(rules);
+        <span class="self">Self</span>::from_query_expressions_strict(split_rules, subst_env)
+    }
+
+    <span class="doccomment">/// Build a filter from a list of query expressions.
+    ///
+    /// Each item in the iterator should be a query expression.
+    ///
+    /// The first character should be `+` or `-`. If missing, `+` is assumed.
+    /// The rest of the expression is trimmed and treated as an entity path.
+    ///
+    /// Conflicting rules are resolved by the last rule.
+    </span><span class="kw">pub fn </span>from_query_expressions_strict&lt;<span class="lifetime">'a</span>&gt;(
+        rules: <span class="kw">impl </span>IntoIterator&lt;Item = <span class="kw-2">&amp;</span><span class="lifetime">'a </span>str&gt;,
+        subst_env: <span class="kw-2">&amp;</span>EntityPathSubs,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, EntityPathFilterParseError&gt; {
+        <span class="kw">let </span><span class="kw-2">mut </span>filter = <span class="self">Self</span>::default();
+
+        <span class="kw">for </span>line <span class="kw">in </span>rules
+            .into_iter()
+            .map(|line| line.trim())
+            .filter(|line| !line.is_empty())
+        {
+            <span class="kw">let </span>(effect, path_pattern) = <span class="kw">match </span>line.chars().next() {
+                <span class="prelude-val">Some</span>(<span class="string">'+'</span>) =&gt; (RuleEffect::Include, <span class="kw-2">&amp;</span>line[<span class="number">1</span>..]),
+                <span class="prelude-val">Some</span>(<span class="string">'-'</span>) =&gt; (RuleEffect::Exclude, <span class="kw-2">&amp;</span>line[<span class="number">1</span>..]),
+                <span class="kw">_ </span>=&gt; (RuleEffect::Include, line),
+            };
+
+            <span class="kw">let </span>rule = EntityPathRule::parse_strict(path_pattern, subst_env)<span class="question-mark">?</span>;
+
+            filter.add_rule(effect, rule);
+        }
+
+        <span class="prelude-val">Ok</span>(filter)
+    }
+
+    <span class="doccomment">/// Creates a filter that accepts everything.
+    </span><span class="kw">pub fn </span>all() -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            rules: std::iter::once((EntityPathRule::exact(<span class="string">"/"</span>.into()), RuleEffect::Include))
+                .collect(),
+        }
     }
 
     <span class="doccomment">/// Creates a new entity path filter that includes only a single entity.
@@ -936,7 +1400,8 @@
         <span class="prelude-val">None
     </span>}
 
-    <span class="kw">pub fn </span>is_included(<span class="kw-2">&amp;</span><span class="self">self</span>, path: <span class="kw-2">&amp;</span>EntityPath) -&gt; bool {
+    <span class="doccomment">/// Does this filter include the given entity path?
+    </span><span class="kw">pub fn </span>matches(<span class="kw-2">&amp;</span><span class="self">self</span>, path: <span class="kw-2">&amp;</span>EntityPath) -&gt; bool {
         <span class="kw">let </span>effect = <span class="self">self
             </span>.most_specific_match(path)
             .unwrap_or(RuleEffect::Exclude);
@@ -947,7 +1412,7 @@
     }
 
     <span class="doccomment">/// Is there a rule for this exact entity path (ignoring subtree)?
-    </span><span class="kw">pub fn </span>is_exact_included(<span class="kw-2">&amp;</span><span class="self">self</span>, entity_path: <span class="kw-2">&amp;</span>EntityPath) -&gt; bool {
+    </span><span class="kw">pub fn </span>matches_exactly(<span class="kw-2">&amp;</span><span class="self">self</span>, entity_path: <span class="kw-2">&amp;</span>EntityPath) -&gt; bool {
         <span class="self">self</span>.rules.iter().any(|(rule, effect)| {
             effect == <span class="kw-2">&amp;</span>RuleEffect::Include &amp;&amp; !rule.include_subtree &amp;&amp; rule.path == <span class="kw-2">*</span>entity_path
         })
@@ -1047,7 +1512,7 @@
 
     <span class="doccomment">/// Checks whether this results of this filter "fully contain" the results of another filter.
     ///
-    /// If this returns `true` there should not exist any [`EntityPath`] for which [`Self::is_included`]
+    /// If this returns `true` there should not exist any [`EntityPath`] for which [`Self::matches`]
     /// would return `true` and the other filter would return `false` for this filter.
     ///
     /// This check operates purely on the rule expressions and not the actual entity tree,
@@ -1132,6 +1597,51 @@
             raw_expression: <span class="macro">format!</span>(<span class="string">"{path}/**"</span>,),
             path,
             include_subtree: <span class="bool-val">true</span>,
+        }
+    }
+
+    <span class="kw">pub fn </span>parse_strict(
+        expression: <span class="kw-2">&amp;</span>str,
+        subst_env: <span class="kw-2">&amp;</span>EntityPathSubs,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, EntityPathFilterParseError&gt; {
+        <span class="kw">let </span>raw_expression = expression.trim().to_owned();
+
+        <span class="comment">// TODO(#5528): This is a very naive implementation of variable substitution.
+        // unclear if we want to do this here, push this down into `EntityPath::parse`,
+        // or even supported deferred evaluation on the `EntityPath` itself.
+        </span><span class="kw">let </span><span class="kw-2">mut </span>expression_sub = raw_expression.clone();
+        <span class="kw">for </span>(key, value) <span class="kw">in </span><span class="kw-2">&amp;</span>subst_env.<span class="number">0 </span>{
+            expression_sub = expression_sub.replace(<span class="macro">format!</span>(<span class="string">"${key}"</span>).as_str(), value);
+            expression_sub = expression_sub.replace(<span class="macro">format!</span>(<span class="string">"${{{key}}}"</span>).as_str(), value);
+        }
+
+        <span class="comment">// Check for unresolved substitutions.
+        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(start) = expression_sub.find(<span class="string">'$'</span>) {
+            <span class="kw">let </span>rest = <span class="kw-2">&amp;</span>expression_sub[start + <span class="number">1</span>..];
+            <span class="kw">let </span>end = rest.find(char::is_whitespace).unwrap_or(rest.len());
+            <span class="kw">return </span><span class="prelude-val">Err</span>(EntityPathFilterParseError::UnresolvedSubstitution(
+                rest[..end].to_owned(),
+            ));
+        }
+
+        <span class="kw">if </span>expression == <span class="string">"/**" </span>{
+            <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+                raw_expression,
+                path: EntityPath::root(),
+                include_subtree: <span class="bool-val">true</span>,
+            })
+        } <span class="kw">else if let </span><span class="prelude-val">Some</span>(path) = expression_sub.strip_suffix(<span class="string">"/**"</span>) {
+            <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+                raw_expression,
+                path: EntityPath::parse_strict(path)<span class="question-mark">?</span>,
+                include_subtree: <span class="bool-val">true</span>,
+            })
+        } <span class="kw">else </span>{
+            <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+                raw_expression,
+                path: EntityPath::parse_strict(<span class="kw-2">&amp;</span>expression_sub)<span class="question-mark">?</span>,
+                include_subtree: <span class="bool-val">false</span>,
+            })
         }
     }
 
@@ -1444,5 +1954,34 @@
             }
         }
     }
+}
+
+<span class="attr">#[test]
+</span><span class="kw">fn </span>test_split_whitespace_smart() {
+    <span class="macro">assert_eq!</span>(split_whitespace_smart(<span class="string">"/world"</span>), <span class="macro">vec!</span>[<span class="string">"/world"</span>]);
+    <span class="macro">assert_eq!</span>(split_whitespace_smart(<span class="string">"a b c"</span>), <span class="macro">vec!</span>[<span class="string">"a"</span>, <span class="string">"b"</span>, <span class="string">"c"</span>]);
+    <span class="macro">assert_eq!</span>(split_whitespace_smart(<span class="string">"a\nb\tc  "</span>), <span class="macro">vec!</span>[<span class="string">"a"</span>, <span class="string">"b"</span>, <span class="string">"c"</span>]);
+    <span class="macro">assert_eq!</span>(split_whitespace_smart(<span class="string">r"a\ b c"</span>), <span class="macro">vec!</span>[<span class="string">r"a\ b"</span>, <span class="string">"c"</span>]);
+
+    <span class="macro">assert_eq!</span>(
+        split_whitespace_smart(<span class="string">" + a - b + c"</span>),
+        <span class="macro">vec!</span>[<span class="string">"+ a"</span>, <span class="string">"- b"</span>, <span class="string">"+ c"</span>]
+    );
+    <span class="macro">assert_eq!</span>(
+        split_whitespace_smart(<span class="string">"+ a -\n b + c"</span>),
+        <span class="macro">vec!</span>[<span class="string">"+ a"</span>, <span class="string">"-"</span>, <span class="string">"b"</span>, <span class="string">"+ c"</span>]
+    );
+    <span class="macro">assert_eq!</span>(
+        split_whitespace_smart(<span class="string">"/weird/path- +/oth- erpath"</span>),
+        <span class="macro">vec!</span>[<span class="string">"/weird/path-"</span>, <span class="string">"+/oth-"</span>, <span class="string">"erpath"</span>]
+    );
+    <span class="macro">assert_eq!</span>(
+        split_whitespace_smart(<span class="string">r"+world/** -/world/points"</span>),
+        <span class="macro">vec!</span>[<span class="string">"+world/**"</span>, <span class="string">"-/world/points"</span>]
+    );
+    <span class="macro">assert_eq!</span>(
+        split_whitespace_smart(<span class="string">r"+ world/** - /world/points"</span>),
+        <span class="macro">vec!</span>[<span class="string">"+ world/**"</span>, <span class="string">"- /world/points"</span>]
+    );
 }
 </code></pre></div></section></main></body></html>

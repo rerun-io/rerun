@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["MeshError"],"mod":["mesh_vertices"],"struct":["Material","Mesh"]};
+window.SIDEBAR_ITEMS = {"enum":["MeshError"],"mod":["mesh_vertices"],"struct":["GpuMaterial","GpuMesh","Material","Mesh"]};

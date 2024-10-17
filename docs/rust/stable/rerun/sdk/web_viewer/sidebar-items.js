@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["WebViewerSinkError"],"fn":["host_web_viewer","new_sink"]};
+window.SIDEBAR_ITEMS = {"enum":["WebViewerSinkError"],"fn":["new_sink"],"struct":["WebViewerConfig"]};

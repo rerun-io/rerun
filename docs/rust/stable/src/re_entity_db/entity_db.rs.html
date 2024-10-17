@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/store/re_entity_db/src/entity_db.rs`."><title>entity_db.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_entity_db" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/store/re_entity_db/src/entity_db.rs`."><title>entity_db.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_entity_db" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_entity_db/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -738,6 +737,58 @@
 <a href="#737" id="737">737</a>
 <a href="#738" id="738">738</a>
 <a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
+<a href="#755" id="755">755</a>
+<a href="#756" id="756">756</a>
+<a href="#757" id="757">757</a>
+<a href="#758" id="758">758</a>
+<a href="#759" id="759">759</a>
+<a href="#760" id="760">760</a>
+<a href="#761" id="761">761</a>
+<a href="#762" id="762">762</a>
+<a href="#763" id="763">763</a>
+<a href="#764" id="764">764</a>
+<a href="#765" id="765">765</a>
+<a href="#766" id="766">766</a>
+<a href="#767" id="767">767</a>
+<a href="#768" id="768">768</a>
+<a href="#769" id="769">769</a>
+<a href="#770" id="770">770</a>
+<a href="#771" id="771">771</a>
+<a href="#772" id="772">772</a>
+<a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
 
 <span class="kw">use </span>nohash_hasher::IntMap;
@@ -859,6 +910,13 @@
     <span class="attr">#[inline]
     </span><span class="kw">pub fn </span>query_caches(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>re_query::Caches {
         <span class="kw-2">&amp;</span><span class="self">self</span>.query_caches
+    }
+
+    <span class="kw">pub fn </span>query_engine(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; re_dataframe::QueryEngine&lt;<span class="lifetime">'_</span>&gt; {
+        re_dataframe::QueryEngine {
+            store: <span class="self">self</span>.store(),
+            cache: <span class="self">self</span>.query_caches(),
+        }
     }
 
     <span class="doccomment">/// Queries for the given `component_names` using latest-at semantics.
@@ -1054,31 +1112,35 @@
         <span class="self">self</span>.entity_path_from_hash.contains_key(<span class="kw-2">&amp;</span>entity_path.hash())
     }
 
-    <span class="kw">pub fn </span>add(<span class="kw-2">&amp;mut </span><span class="self">self</span>, msg: <span class="kw-2">&amp;</span>LogMsg) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+    <span class="kw">pub fn </span>add(<span class="kw-2">&amp;mut </span><span class="self">self</span>, msg: <span class="kw-2">&amp;</span>LogMsg) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;ChunkStoreEvent&gt;, Error&gt; {
         <span class="macro">re_tracing::profile_function!</span>();
 
         <span class="macro">debug_assert_eq!</span>(msg.store_id(), <span class="self">self</span>.store_id());
 
-        <span class="kw">match </span><span class="kw-2">&amp;</span>msg {
-            LogMsg::SetStoreInfo(msg) =&gt; <span class="self">self</span>.set_store_info(msg.clone()),
+        <span class="kw">let </span>store_events = <span class="kw">match </span><span class="kw-2">&amp;</span>msg {
+            LogMsg::SetStoreInfo(msg) =&gt; {
+                <span class="self">self</span>.set_store_info(msg.clone());
+                <span class="macro">vec!</span>[]
+            }
 
             LogMsg::ArrowMsg(<span class="kw">_</span>, arrow_msg) =&gt; {
                 <span class="self">self</span>.last_modified_at = web_time::Instant::now();
 
                 <span class="kw">let </span><span class="kw-2">mut </span>chunk = re_chunk::Chunk::from_arrow_msg(arrow_msg)<span class="question-mark">?</span>;
                 chunk.sort_if_unsorted();
-                <span class="self">self</span>.add_chunk(<span class="kw-2">&amp;</span>Arc::new(chunk))<span class="question-mark">?</span>;
-            }
+                <span class="self">self</span>.add_chunk(<span class="kw-2">&amp;</span>Arc::new(chunk))<span class="question-mark">?
+            </span>}
 
             LogMsg::BlueprintActivationCommand(<span class="kw">_</span>) =&gt; {
                 <span class="comment">// Not for us to handle
-            </span>}
-        }
+                </span><span class="macro">vec!</span>[]
+            }
+        };
 
-        <span class="prelude-val">Ok</span>(())
+        <span class="prelude-val">Ok</span>(store_events)
     }
 
-    <span class="kw">pub fn </span>add_chunk(<span class="kw-2">&amp;mut </span><span class="self">self</span>, chunk: <span class="kw-2">&amp;</span>Arc&lt;Chunk&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;(), Error&gt; {
+    <span class="kw">pub fn </span>add_chunk(<span class="kw-2">&amp;mut </span><span class="self">self</span>, chunk: <span class="kw-2">&amp;</span>Arc&lt;Chunk&gt;) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;ChunkStoreEvent&gt;, Error&gt; {
         <span class="kw">let </span>store_events = <span class="self">self</span>.data_store.insert_chunk(chunk)<span class="question-mark">?</span>;
 
         <span class="self">self</span>.register_entity_path(chunk.entity_path());
@@ -1094,11 +1156,16 @@
             <span class="self">self</span>.query_caches.on_events(<span class="kw-2">&amp;</span>store_events);
             <span class="self">self</span>.tree.on_store_additions(<span class="kw-2">&amp;</span>store_events);
 
+            <span class="comment">// It is possible for writes to trigger deletions: specifically in the case of
+            // overwritten static data leading to dangling chunks.
+            </span><span class="self">self</span>.tree
+                .on_store_deletions(<span class="kw-2">&amp;</span><span class="self">self</span>.data_store, <span class="kw-2">&amp;</span>store_events);
+
             <span class="comment">// We inform the stats last, since it measures e2e latency.
             </span><span class="self">self</span>.stats.on_events(<span class="kw-2">&amp;</span>store_events);
         }
 
-        <span class="prelude-val">Ok</span>(())
+        <span class="prelude-val">Ok</span>(store_events)
     }
 
     <span class="kw">fn </span>register_entity_path(<span class="kw-2">&amp;mut </span><span class="self">self</span>, entity_path: <span class="kw-2">&amp;</span>EntityPath) {
@@ -1111,29 +1178,50 @@
         <span class="self">self</span>.set_store_info = <span class="prelude-val">Some</span>(store_info);
     }
 
-    <span class="kw">pub fn </span>gc_everything_but_the_latest_row_on_non_default_timelines(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+    <span class="kw">pub fn </span>gc_everything_but_the_latest_row_on_non_default_timelines(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+    ) -&gt; Vec&lt;ChunkStoreEvent&gt; {
         <span class="macro">re_tracing::profile_function!</span>();
 
         <span class="self">self</span>.gc(<span class="kw-2">&amp;</span>GarbageCollectionOptions {
             target: GarbageCollectionTarget::Everything,
-            protect_latest: <span class="number">1</span>, <span class="comment">// TODO(jleibs): Bump this after we have an undo buffer
-            </span>time_budget: DEFAULT_GC_TIME_BUDGET,
-        });
+            protect_latest: <span class="number">1</span>,
+            time_budget: DEFAULT_GC_TIME_BUDGET,
+            protected_time_ranges: Default::default(), <span class="comment">// TODO(#3135): Use this for undo buffer
+        </span>})
     }
 
     <span class="doccomment">/// Free up some RAM by forgetting the older parts of all timelines.
-    </span><span class="kw">pub fn </span>purge_fraction_of_ram(<span class="kw-2">&amp;mut </span><span class="self">self</span>, fraction_to_purge: f32) {
+    </span><span class="kw">pub fn </span>purge_fraction_of_ram(<span class="kw-2">&amp;mut </span><span class="self">self</span>, fraction_to_purge: f32) -&gt; Vec&lt;ChunkStoreEvent&gt; {
         <span class="macro">re_tracing::profile_function!</span>();
 
         <span class="macro">assert!</span>((<span class="number">0.0</span>..=<span class="number">1.0</span>).contains(<span class="kw-2">&amp;</span>fraction_to_purge));
-        <span class="self">self</span>.gc(<span class="kw-2">&amp;</span>GarbageCollectionOptions {
+
+        <span class="kw">let </span>store_events = <span class="self">self</span>.gc(<span class="kw-2">&amp;</span>GarbageCollectionOptions {
             target: GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge <span class="kw">as _</span>),
             protect_latest: <span class="number">1</span>,
             time_budget: DEFAULT_GC_TIME_BUDGET,
+
+            <span class="comment">// TODO(emilk): we could protect the data that is currently being viewed
+            // (e.g. when paused in the live camera example).
+            // To be perfect it would need margins (because of latest-at), i.e. we would need to know
+            // exactly how far back the latest-at is of each component at the current time…
+            // …but maybe it doesn't have to be perfect.
+            </span>protected_time_ranges: Default::default(),
         });
+
+        <span class="kw">if </span>store_events.is_empty() {
+            <span class="comment">// If we weren't able to collect any data, then we need to GC the cache itself in order
+            // to regain some space.
+            // See &lt;https://github.com/rerun-io/rerun/issues/7369#issuecomment-2335164098&gt; for the
+            // complete rationale.
+            </span><span class="self">self</span>.query_caches.purge_fraction_of_ram(fraction_to_purge);
+        }
+
+        store_events
     }
 
-    <span class="kw">pub fn </span>gc(<span class="kw-2">&amp;mut </span><span class="self">self</span>, gc_options: <span class="kw-2">&amp;</span>GarbageCollectionOptions) {
+    <span class="kw">fn </span>gc(<span class="kw-2">&amp;mut </span><span class="self">self</span>, gc_options: <span class="kw-2">&amp;</span>GarbageCollectionOptions) -&gt; Vec&lt;ChunkStoreEvent&gt; {
         <span class="macro">re_tracing::profile_function!</span>();
 
         <span class="kw">let </span>(store_events, stats_diff) = <span class="self">self</span>.data_store.gc(gc_options);
@@ -1145,6 +1233,21 @@
         </span>);
 
         <span class="self">self</span>.on_store_deletions(<span class="kw-2">&amp;</span>store_events);
+
+        store_events
+    }
+
+    <span class="doccomment">/// Drop all events in the given time range from the given timeline.
+    ///
+    /// Used to implement undo (erase the last event from the blueprint db).
+    </span><span class="kw">pub fn </span>drop_time_range(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        timeline: <span class="kw-2">&amp;</span>Timeline,
+        drop_range: ResolvedTimeRange,
+    ) -&gt; Vec&lt;ChunkStoreEvent&gt; {
+        <span class="kw">let </span>store_events = <span class="self">self</span>.data_store.drop_time_range(timeline, drop_range);
+        <span class="self">self</span>.on_store_deletions(<span class="kw-2">&amp;</span>store_events);
+        store_events
     }
 
     <span class="doccomment">/// Unconditionally drops all the data for a given [`EntityPath`] .

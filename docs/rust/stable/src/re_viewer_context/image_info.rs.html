@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_viewer_context/src/image_info.rs`."><title>image_info.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_viewer_context" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_viewer_context/src/image_info.rs`."><title>image_info.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_viewer_context" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_viewer_context/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -385,6 +384,74 @@
 <a href="#384" id="384">384</a>
 <a href="#385" id="385">385</a>
 <a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
+<a href="#439" id="439">439</a>
+<a href="#440" id="440">440</a>
+<a href="#441" id="441">441</a>
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{borrow::Cow, ops::RangeInclusive};
 
 <span class="kw">use </span>re_chunk::RowId;
@@ -395,12 +462,37 @@
     tensor_data::TensorElement,
 };
 
-<span class="doccomment">/// Represents an `Image`, `SegmentationImage` or `DepthImage`.
+<span class="doccomment">/// Colormap together with the range of image values that is mapped to the colormap's range.
 ///
-/// It has enough information to render the image on the screen.
+/// The range is used to linearly re-map the image values to a normalized range (of 0-1)
+/// to which the colormap is applied.
+</span><span class="attr">#[derive(Clone)]
+</span><span class="kw">pub struct </span>ColormapWithRange {
+    <span class="kw">pub </span>colormap: Colormap,
+    <span class="kw">pub </span>value_range: [f32; <span class="number">2</span>],
+}
+
+<span class="kw">impl </span>ColormapWithRange {
+    <span class="kw">pub const </span>DEFAULT_DEPTH_COLORMAP: Colormap = Colormap::Turbo;
+
+    <span class="kw">pub fn </span>default_range_for_depth_images(image_stats: <span class="kw-2">&amp;</span><span class="kw">crate</span>::ImageStats) -&gt; [f32; <span class="number">2</span>] {
+        <span class="comment">// Use 0.0 as default minimum depth value, even if it doesn't show up in the data.
+        // (since logically, depth usually starts at zero)
+        </span>[<span class="number">0.0</span>, image_stats.finite_range.<span class="number">1 </span><span class="kw">as _</span>]
+    }
+
+    <span class="kw">pub fn </span>default_for_depth_images(image_stats: <span class="kw-2">&amp;</span><span class="kw">crate</span>::ImageStats) -&gt; <span class="self">Self </span>{
+        <span class="self">Self </span>{
+            colormap: <span class="self">Self</span>::DEFAULT_DEPTH_COLORMAP,
+            value_range: <span class="self">Self</span>::default_range_for_depth_images(image_stats),
+        }
+    }
+}
+
+<span class="doccomment">/// Represents the contents of an `Image`, `SegmentationImage` or `DepthImage`.
 </span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>ImageInfo {
-    <span class="doccomment">/// The row id that contaoned the blob.
+    <span class="doccomment">/// The row id that contained the blob.
     ///
     /// Can be used instead of hashing [`Self::buffer`].
     </span><span class="kw">pub </span>buffer_row_id: RowId,
@@ -413,9 +505,6 @@
 
     <span class="doccomment">/// Color, Depth, or Segmentation?
     </span><span class="kw">pub </span>kind: ImageKind,
-
-    <span class="doccomment">/// Primarily for depth images atm
-    </span><span class="kw">pub </span>colormap: <span class="prelude-ty">Option</span>&lt;Colormap&gt;,
 }
 
 <span class="kw">impl </span>ImageInfo {
@@ -427,6 +516,10 @@
     <span class="attr">#[inline]
     </span><span class="kw">pub fn </span>height(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u32 {
         <span class="self">self</span>.format.height
+    }
+
+    <span class="kw">pub fn </span>width_height(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; [u32; <span class="number">2</span>] {
+        [<span class="self">self</span>.format.width, <span class="self">self</span>.format.height]
     }
 
     <span class="doccomment">/// Returns [`ColorModel::L`] for depth and segmentation images.
@@ -457,9 +550,16 @@
             <span class="kw">match </span>pixel_format.color_model() {
                 ColorModel::L =&gt; (channel == <span class="number">0</span>).then_some(TensorElement::U8(luma)),
 
-                ColorModel::RGB | ColorModel::RGBA =&gt; {
+                <span class="comment">// Shouldn't hit BGR and BGRA, but we'll handle it like RGB and RGBA here for completeness.
+                </span>ColorModel::RGB | ColorModel::RGBA | ColorModel::BGR | ColorModel::BGRA =&gt; {
                     <span class="kw">if </span>channel &lt; <span class="number">3 </span>{
-                        <span class="kw">let </span>rgb = rgb_from_yuv(luma, u, v);
+                        <span class="kw">let </span>rgb = rgb_from_yuv(
+                            luma,
+                            u,
+                            v,
+                            pixel_format.is_limited_yuv_range(),
+                            pixel_format.yuv_matrix_coefficients(),
+                        );
                         <span class="prelude-val">Some</span>(TensorElement::U8(rgb[channel <span class="kw">as </span>usize]))
                     } <span class="kw">else if </span>channel == <span class="number">4 </span>{
                         <span class="prelude-val">Some</span>(TensorElement::U8(<span class="number">255</span>))
@@ -565,26 +665,50 @@
             }
             RgbImage::from_vec(w, h, rgb).map(DynamicImage::ImageRgb8)
         } <span class="kw">else if </span><span class="self">self</span>.format.datatype() == ChannelDatatype::U8 {
-            <span class="kw">let </span>u8 = <span class="self">self</span>.buffer.to_vec();
+            <span class="kw">let </span><span class="kw-2">mut </span>u8 = <span class="self">self</span>.buffer.to_vec();
             <span class="kw">match </span><span class="self">self</span>.color_model() {
                 ColorModel::L =&gt; GrayImage::from_vec(w, h, u8).map(DynamicImage::ImageLuma8),
                 ColorModel::RGB =&gt; RgbImage::from_vec(w, h, u8).map(DynamicImage::ImageRgb8),
                 ColorModel::RGBA =&gt; RgbaImage::from_vec(w, h, u8).map(DynamicImage::ImageRgba8),
+                ColorModel::BGR =&gt; {
+                    bgr_to_rgb(<span class="kw-2">&amp;mut </span>u8);
+                    RgbImage::from_vec(w, h, u8).map(DynamicImage::ImageRgb8)
+                }
+                ColorModel::BGRA =&gt; {
+                    bgra_to_rgba(<span class="kw-2">&amp;mut </span>u8);
+                    RgbaImage::from_vec(w, h, u8).map(DynamicImage::ImageRgba8)
+                }
             }
         } <span class="kw">else if </span><span class="self">self</span>.format.datatype() == ChannelDatatype::U16 {
             <span class="comment">// Lossless conversion of u16, ignoring data_range
-            </span><span class="kw">let </span>u16 = <span class="self">self</span>.to_slice::&lt;u16&gt;().to_vec();
+            </span><span class="kw">let </span><span class="kw-2">mut </span>u16 = <span class="self">self</span>.to_slice::&lt;u16&gt;().to_vec();
             <span class="kw">match </span><span class="self">self</span>.color_model() {
                 ColorModel::L =&gt; Gray16Image::from_vec(w, h, u16).map(DynamicImage::ImageLuma16),
                 ColorModel::RGB =&gt; Rgb16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgb16),
                 ColorModel::RGBA =&gt; Rgba16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgba16),
+                ColorModel::BGR =&gt; {
+                    bgr_to_rgb(<span class="kw-2">&amp;mut </span>u16);
+                    Rgb16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgb16)
+                }
+                ColorModel::BGRA =&gt; {
+                    bgra_to_rgba(<span class="kw-2">&amp;mut </span>u16);
+                    Rgba16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgba16)
+                }
             }
         } <span class="kw">else </span>{
-            <span class="kw">let </span>u16 = <span class="self">self</span>.to_vec_u16(<span class="self">self</span>.format.datatype(), data_range);
+            <span class="kw">let </span><span class="kw-2">mut </span>u16 = <span class="self">self</span>.to_vec_u16(<span class="self">self</span>.format.datatype(), data_range);
             <span class="kw">match </span><span class="self">self</span>.color_model() {
                 ColorModel::L =&gt; Gray16Image::from_vec(w, h, u16).map(DynamicImage::ImageLuma16),
                 ColorModel::RGB =&gt; Rgb16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgb16),
                 ColorModel::RGBA =&gt; Rgba16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgba16),
+                ColorModel::BGR =&gt; {
+                    bgr_to_rgb(<span class="kw-2">&amp;mut </span>u16);
+                    Rgb16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgb16)
+                }
+                ColorModel::BGRA =&gt; {
+                    bgra_to_rgba(<span class="kw-2">&amp;mut </span>u16);
+                    Rgba16Image::from_vec(w, h, u16).map(DynamicImage::ImageRgba16)
+                }
             }
         }
     }
@@ -688,6 +812,18 @@
     }
 }
 
+<span class="kw">fn </span>bgr_to_rgb&lt;T: Clone&gt;(bgr_elements: <span class="kw-2">&amp;mut </span>[T]) {
+    <span class="kw">for </span>bgr <span class="kw">in </span>bgr_elements.chunks_exact_mut(<span class="number">3</span>) {
+        bgr.swap(<span class="number">0</span>, <span class="number">2</span>);
+    }
+}
+
+<span class="kw">fn </span>bgra_to_rgba&lt;T: Clone&gt;(bgra_elements: <span class="kw-2">&amp;mut </span>[T]) {
+    <span class="kw">for </span>bgra <span class="kw">in </span>bgra_elements.chunks_exact_mut(<span class="number">4</span>) {
+        bgra.swap(<span class="number">0</span>, <span class="number">2</span>);
+    }
+}
+
 <span class="kw">fn </span>get&lt;T: bytemuck::Pod&gt;(blob: <span class="kw-2">&amp;</span>[u8], element_offset: usize) -&gt; <span class="prelude-ty">Option</span>&lt;T&gt; {
     <span class="comment">// NOTE: `blob` is not necessary aligned to `T`,
     // hence the complexity of this function.
@@ -723,7 +859,6 @@
             </span>buffer: image.buffer.<span class="number">0</span>,
             format: image.format.<span class="number">0</span>,
             kind: re_types::image::ImageKind::Color,
-            colormap: <span class="prelude-val">None</span>,
         }
     }
 

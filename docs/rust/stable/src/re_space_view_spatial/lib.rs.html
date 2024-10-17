@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_space_view_spatial/src/lib.rs`."><title>lib.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_space_view_spatial" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_space_view_spatial/src/lib.rs`."><title>lib.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_space_view_spatial" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_space_view_spatial/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -186,6 +185,16 @@
 <a href="#185" id="185">185</a>
 <a href="#186" id="186">186</a>
 <a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+<a href="#194" id="194">194</a>
+<a href="#195" id="195">195</a>
+<a href="#196" id="196">196</a>
+<a href="#197" id="197">197</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Rerun Spatial Space Views
 //!
 //! Space Views that show entities in a 2D or 3D spatial relationship.
@@ -200,8 +209,10 @@
 <span class="kw">mod </span>max_image_dimension_subscriber;
 <span class="kw">mod </span>mesh_cache;
 <span class="kw">mod </span>mesh_loader;
-<span class="kw">mod </span>pickable_image;
+<span class="kw">mod </span>pickable_textured_rect;
 <span class="kw">mod </span>picking;
+<span class="kw">mod </span>picking_ui;
+<span class="kw">mod </span>picking_ui_pixel;
 <span class="kw">mod </span>proc_mesh;
 <span class="kw">mod </span>scene_bounding_boxes;
 <span class="kw">mod </span>space_camera_3d;
@@ -219,7 +230,7 @@
 <span class="kw">pub use </span>view_2d::SpatialSpaceView2D;
 <span class="kw">pub use </span>view_3d::SpatialSpaceView3D;
 
-<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>pickable_image::PickableImageRect;
+<span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">use </span>pickable_textured_rect::{PickableRectSourceData, PickableTexturedRect};
 
 <span class="comment">// ---
 
@@ -227,8 +238,12 @@
 <span class="kw">use </span>re_viewer_context::{ImageDecodeCache, ViewContext, ViewerContext};
 
 <span class="kw">use </span>re_renderer::RenderContext;
-<span class="kw">use </span>re_types::components::{Color, MediaType, Resolution};
-<span class="kw">use </span>re_types::{blueprint::components::BackgroundKind, components::ImageFormat};
+<span class="kw">use </span>re_types::{
+    archetypes,
+    blueprint::components::BackgroundKind,
+    components::{<span class="self">self</span>, Color, ImageFormat, MediaType, Resolution},
+    static_assert_struct_has_fields,
+};
 <span class="kw">use </span>re_viewport_blueprint::{ViewProperty, ViewPropertyQueryError};
 
 <span class="kw">mod </span>view_kind {
@@ -244,6 +259,10 @@
     query: <span class="kw-2">&amp;</span>re_chunk_store::LatestAtQuery,
     entity_path: <span class="kw-2">&amp;</span>re_log_types::EntityPath,
 ) -&gt; <span class="prelude-ty">Option</span>&lt;Resolution&gt; {
+    <span class="comment">// First check assumptions:
+    </span><span class="macro">static_assert_struct_has_fields!</span>(archetypes::Image, format: components::ImageFormat);
+    <span class="macro">static_assert_struct_has_fields!</span>(archetypes::EncodedImage, blob: components::Blob);
+
     <span class="kw">let </span>db = ctx.recording();
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, image_format)) = db.latest_at_component::&lt;ImageFormat&gt;(entity_path, query) {
@@ -261,9 +280,9 @@
             .latest_at_component::&lt;MediaType&gt;(entity_path, query)
             .map(|(<span class="kw">_</span>, c)| c);
 
-        <span class="kw">let </span>image = ctx.cache.entry(|c: <span class="kw-2">&amp;mut </span>ImageDecodeCache| {
-            c.entry(row_id, <span class="kw-2">&amp;</span>blob, media_type.as_ref().map(|mt| mt.as_str()))
-        });
+        <span class="kw">let </span>image = ctx
+            .cache
+            .entry(|c: <span class="kw-2">&amp;mut </span>ImageDecodeCache| c.entry(row_id, <span class="kw-2">&amp;</span>blob, media_type.as_ref()));
 
         <span class="kw">if let </span><span class="prelude-val">Ok</span>(image) = image {
             <span class="kw">return </span><span class="prelude-val">Some</span>(Resolution::from([
@@ -335,7 +354,7 @@
 
 <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>configure_background(
     ctx: <span class="kw-2">&amp;</span>ViewerContext&lt;<span class="lifetime">'_</span>&gt;,
-    background: <span class="kw-2">&amp;</span>ViewProperty&lt;<span class="lifetime">'_</span>&gt;,
+    background: <span class="kw-2">&amp;</span>ViewProperty,
     render_ctx: <span class="kw-2">&amp;</span>RenderContext,
     view_system: <span class="kw-2">&amp;</span><span class="kw">dyn </span>re_viewer_context::ComponentFallbackProvider,
     state: <span class="kw-2">&amp;</span><span class="kw">dyn </span>re_viewer_context::SpaceViewState,

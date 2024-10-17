@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_viewer_context/src/component_ui_registry.rs`."><title>component_ui_registry.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_viewer_context" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_viewer_context/src/component_ui_registry.rs`."><title>component_ui_registry.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_viewer_context" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_viewer_context/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -707,6 +706,21 @@
 <a href="#706" id="706">706</a>
 <a href="#707" id="707">707</a>
 <a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="kw">use </span>re_chunk::{ArrowArray, RowId, UnitChunkShared};
@@ -805,10 +819,20 @@
     </span><span class="kw">pub fn </span>label(<span class="self">self</span>, ui: <span class="kw-2">&amp;mut </span>egui::Ui, text: <span class="kw">impl </span>Into&lt;egui::WidgetText&gt;) -&gt; egui::Response {
         <span class="kw">let </span><span class="kw-2">mut </span>label = egui::Label::new(text);
 
-        <span class="kw">match </span><span class="self">self </span>{
-            <span class="self">Self</span>::List =&gt; label = label.truncate(),
-            <span class="self">Self</span>::Tooltip | <span class="self">Self</span>::SelectionPanelLimitHeight | <span class="self">Self</span>::SelectionPanelFull =&gt; {
-                label = label.wrap();
+        <span class="comment">// Respect set wrap_mode if already set
+        </span><span class="kw">if </span>ui.style().wrap_mode.is_none() {
+            <span class="kw">match </span><span class="self">self </span>{
+                <span class="self">Self</span>::List =&gt; {
+                    <span class="kw">if </span>ui.is_sizing_pass() {
+                        <span class="comment">// grow parent if needed - that's the point of a sizing pass
+                        </span>label = label.extend();
+                    } <span class="kw">else </span>{
+                        label = label.truncate();
+                    }
+                }
+                <span class="self">Self</span>::Tooltip | <span class="self">Self</span>::SelectionPanelLimitHeight | <span class="self">Self</span>::SelectionPanelFull =&gt; {
+                    label = label.wrap();
+                }
             }
         }
 
@@ -834,9 +858,14 @@
 
         <span class="kw">match </span><span class="self">self </span>{
             <span class="self">Self</span>::List =&gt; {
-                <span class="comment">// Elide
-                </span>layout_job.wrap.max_rows = <span class="number">1</span>;
-                layout_job.wrap.break_anywhere = <span class="bool-val">true</span>;
+                layout_job.wrap.max_rows = <span class="number">1</span>; <span class="comment">// We must fit on one line
+                </span><span class="kw">if </span>ui.is_sizing_pass() {
+                    <span class="comment">// grow parent if needed - that's the point of a sizing pass
+                    </span>layout_job.wrap.max_width = f32::INFINITY;
+                } <span class="kw">else </span>{
+                    <span class="comment">// Truncate
+                    </span>layout_job.wrap.break_anywhere = <span class="bool-val">true</span>;
+                }
             }
             <span class="self">Self</span>::Tooltip =&gt; {
                 layout_job.wrap.max_rows = <span class="number">3</span>;
@@ -862,7 +891,7 @@
     }
 }
 
-<span class="macro">bitflags::bitflags! </span>{
+<span class="macro">bitflags::bitflags!</span> {
     <span class="doccomment">/// Specifies which UI callbacks are available for a component.
     </span><span class="attr">#[derive(PartialEq, Eq, Debug, Copy, Clone)]
     </span><span class="kw">pub struct </span>ComponentUiTypes: u8 {

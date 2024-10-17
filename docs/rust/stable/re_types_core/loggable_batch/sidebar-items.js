@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["MaybeOwnedComponentBatch"],"trait":["ComponentBatch","DatatypeBatch","LoggableBatch"]};
+window.SIDEBAR_ITEMS = {"enum":["MaybeOwnedComponentBatch"],"trait":["ComponentBatch","LoggableBatch"]};

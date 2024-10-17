@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"fn":["time_range_table_ui"]};

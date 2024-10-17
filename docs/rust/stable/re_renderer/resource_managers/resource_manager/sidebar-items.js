@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"enum":["ResourceHandle","ResourceLifeTime","ResourceManagerError"],"struct":["ResourceManager"]};

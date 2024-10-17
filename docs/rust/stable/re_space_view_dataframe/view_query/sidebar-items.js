@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["Query","QueryKind"],"fn":["override_ui","query_ui"]};
+window.SIDEBAR_ITEMS = {"mod":["blueprint","ui"],"struct":["Query"]};

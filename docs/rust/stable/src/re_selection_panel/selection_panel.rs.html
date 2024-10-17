@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_selection_panel/src/selection_panel.rs`."><title>selection_panel.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_selection_panel" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_selection_panel/src/selection_panel.rs`."><title>selection_panel.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_selection_panel" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_selection_panel/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1219,7 +1218,27 @@
 <a href="#1218" id="1218">1218</a>
 <a href="#1219" id="1219">1219</a>
 <a href="#1220" id="1220">1220</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>egui_tiles::ContainerKind;
+<a href="#1221" id="1221">1221</a>
+<a href="#1222" id="1222">1222</a>
+<a href="#1223" id="1223">1223</a>
+<a href="#1224" id="1224">1224</a>
+<a href="#1225" id="1225">1225</a>
+<a href="#1226" id="1226">1226</a>
+<a href="#1227" id="1227">1227</a>
+<a href="#1228" id="1228">1228</a>
+<a href="#1229" id="1229">1229</a>
+<a href="#1230" id="1230">1230</a>
+<a href="#1231" id="1231">1231</a>
+<a href="#1232" id="1232">1232</a>
+<a href="#1233" id="1233">1233</a>
+<a href="#1234" id="1234">1234</a>
+<a href="#1235" id="1235">1235</a>
+<a href="#1236" id="1236">1236</a>
+<a href="#1237" id="1237">1237</a>
+<a href="#1238" id="1238">1238</a>
+<a href="#1239" id="1239">1239</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>egui::NumExt <span class="kw">as _</span>;
+<span class="kw">use </span>egui_tiles::ContainerKind;
 
 <span class="kw">use </span>re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 <span class="kw">use </span>re_data_ui::{
@@ -1763,8 +1782,11 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
             .clone()
     });
 
-    <span class="kw">let </span>response =
-        ui.add(egui::TextEdit::multiline(<span class="kw-2">&amp;mut </span>filter_string).layouter(<span class="kw-2">&amp;mut </span>text_layouter));
+    <span class="kw">let </span>response = ui.add(
+        egui::TextEdit::multiline(<span class="kw-2">&amp;mut </span>filter_string)
+            .desired_width(ui.spacing().text_edit_width.at_least(ui.available_width()))
+            .layouter(<span class="kw-2">&amp;mut </span>text_layouter),
+    );
 
     <span class="kw">if </span>response.has_focus() {
         ui.data_mut(|data| data.insert_temp::&lt;String&gt;(filter_text_id, filter_string.clone()));
@@ -2149,12 +2171,22 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     view: <span class="kw-2">&amp;</span>re_viewport_blueprint::SpaceViewBlueprint,
 ) {
     ui.list_item_flat_noninteractive(PropertyContent::new(<span class="string">"Name"</span>).value_fn(|ui, <span class="kw">_</span>| {
+        ui.spacing_mut().text_edit_width = ui
+            .spacing_mut()
+            .text_edit_width
+            .at_least(ui.available_width());
+
         <span class="kw">let </span><span class="kw-2">mut </span>name = view.display_name.clone().unwrap_or_default();
         ui.add(egui::TextEdit::singleline(<span class="kw-2">&amp;mut </span>name).hint_text(<span class="string">"(default)"</span>));
         view.set_display_name(ctx, <span class="kw">if </span>name.is_empty() { <span class="prelude-val">None </span>} <span class="kw">else </span>{ <span class="prelude-val">Some</span>(name) });
     }));
 
     ui.list_item_flat_noninteractive(PropertyContent::new(<span class="string">"Space origin"</span>).value_fn(|ui, <span class="kw">_</span>| {
+        ui.spacing_mut().text_edit_width = ui
+            .spacing_mut()
+            .text_edit_width
+            .at_least(ui.available_width());
+
         <span class="kw">super</span>::space_view_space_origin_ui::space_view_space_origin_widget_ui(ui, ctx, view);
     }))
     .on_hover_text(
@@ -2181,6 +2213,11 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     };
 
     ui.list_item_flat_noninteractive(PropertyContent::new(<span class="string">"Name"</span>).value_fn(|ui, <span class="kw">_</span>| {
+        ui.spacing_mut().text_edit_width = ui
+            .spacing_mut()
+            .text_edit_width
+            .at_least(ui.available_width());
+
         <span class="kw">let </span><span class="kw-2">mut </span>name = container.display_name.clone().unwrap_or_default();
         ui.add(egui::TextEdit::singleline(<span class="kw-2">&amp;mut </span>name));
         container.set_display_name(ctx, <span class="kw">if </span>name.is_empty() { <span class="prelude-val">None </span>} <span class="kw">else </span>{ <span class="prelude-val">Some</span>(name) });
@@ -2203,7 +2240,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 
             <span class="kw">let </span><span class="kw-2">mut </span>new_columns = container.grid_columns;
 
-            egui::ComboBox::from_id_source(<span class="string">"container_grid_columns"</span>)
+            egui::ComboBox::from_id_salt(<span class="string">"container_grid_columns"</span>)
                 .selected_text(columns_to_string(<span class="kw-2">&amp;</span>new_columns))
                 .show_ui(ui, |ui| {
                     ui.selectable_value(<span class="kw-2">&amp;mut </span>new_columns, <span class="prelude-val">None</span>, columns_to_string(<span class="kw-2">&amp;</span><span class="prelude-val">None</span>));

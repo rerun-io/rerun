@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_viewer_context/src/gpu_bridge/image_to_gpu.rs`."><title>image_to_gpu.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_viewer_context" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_viewer_context/src/gpu_bridge/image_to_gpu.rs`."><title>image_to_gpu.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_viewer_context" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../re_viewer_context/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -617,6 +616,84 @@
 <a href="#616" id="616">616</a>
 <a href="#617" id="617">617</a>
 <a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
+<a href="#633" id="633">633</a>
+<a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
+<a href="#641" id="641">641</a>
+<a href="#642" id="642">642</a>
+<a href="#643" id="643">643</a>
+<a href="#644" id="644">644</a>
+<a href="#645" id="645">645</a>
+<a href="#646" id="646">646</a>
+<a href="#647" id="647">647</a>
+<a href="#648" id="648">648</a>
+<a href="#649" id="649">649</a>
+<a href="#650" id="650">650</a>
+<a href="#651" id="651">651</a>
+<a href="#652" id="652">652</a>
+<a href="#653" id="653">653</a>
+<a href="#654" id="654">654</a>
+<a href="#655" id="655">655</a>
+<a href="#656" id="656">656</a>
+<a href="#657" id="657">657</a>
+<a href="#658" id="658">658</a>
+<a href="#659" id="659">659</a>
+<a href="#660" id="660">660</a>
+<a href="#661" id="661">661</a>
+<a href="#662" id="662">662</a>
+<a href="#663" id="663">663</a>
+<a href="#664" id="664">664</a>
+<a href="#665" id="665">665</a>
+<a href="#666" id="666">666</a>
+<a href="#667" id="667">667</a>
+<a href="#668" id="668">668</a>
+<a href="#669" id="669">669</a>
+<a href="#670" id="670">670</a>
+<a href="#671" id="671">671</a>
+<a href="#672" id="672">672</a>
+<a href="#673" id="673">673</a>
+<a href="#674" id="674">674</a>
+<a href="#675" id="675">675</a>
+<a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
+<a href="#691" id="691">691</a>
+<a href="#692" id="692">692</a>
+<a href="#693" id="693">693</a>
+<a href="#694" id="694">694</a>
+<a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Upload images to [`re_renderer`].
 
 </span><span class="kw">use </span>std::borrow::Cow;
@@ -626,18 +703,24 @@
 <span class="kw">use </span>wgpu::TextureFormat;
 
 <span class="kw">use </span>re_renderer::{
+    config::DeviceCaps,
     pad_rgb_to_rgba,
     renderer::{ColorMapper, ColormappedTexture, ShaderDecoding},
-    resource_managers::Texture2DCreationDesc,
+    resource_managers::{
+        ImageDataDesc, SourceImageDataFormat, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
+    },
     RenderContext,
 };
-<span class="kw">use </span>re_types::components::{ClassId, Colormap};
+<span class="kw">use </span>re_types::components::ClassId;
 <span class="kw">use </span>re_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
 <span class="kw">use </span>re_types::image::ImageKind;
 
-<span class="kw">use crate</span>::{gpu_bridge::colormap::colormap_to_re_renderer, Annotations, ImageInfo, ImageStats};
+<span class="kw">use crate</span>::{
+    gpu_bridge::colormap::colormap_to_re_renderer, image_info::ColormapWithRange, Annotations,
+    ImageInfo, ImageStats,
+};
 
-<span class="kw">use super</span>::{get_or_create_texture, RangeError};
+<span class="kw">use </span><span class="kw">super</span>::get_or_create_texture;
 
 <span class="comment">// ----------------------------------------------------------------------------
 
@@ -652,19 +735,19 @@
 
         </span>format,
         kind,
-
-        colormap: <span class="kw">_</span>, <span class="comment">// No need to upload new texture when this changes
-    </span>} = image;
+    } = image;
 
     hash((blob_row_id, format, kind))
 }
 
-<span class="kw">pub fn </span>image_to_gpu(
+<span class="doccomment">/// `colormap` is currently only used for depth images.
+</span><span class="kw">pub fn </span>image_to_gpu(
     render_ctx: <span class="kw-2">&amp;</span>RenderContext,
     debug_name: <span class="kw-2">&amp;</span>str,
     image: <span class="kw-2">&amp;</span>ImageInfo,
     image_stats: <span class="kw-2">&amp;</span>ImageStats,
     annotations: <span class="kw-2">&amp;</span>Annotations,
+    colormap: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ColormapWithRange&gt;,
 ) -&gt; anyhow::Result&lt;ColormappedTexture&gt; {
     <span class="macro">re_tracing::profile_function!</span>();
 
@@ -674,9 +757,14 @@
         ImageKind::Color =&gt; {
             color_image_to_gpu(render_ctx, debug_name, texture_key, image, image_stats)
         }
-        ImageKind::Depth =&gt; {
-            depth_image_to_gpu(render_ctx, debug_name, texture_key, image, image_stats)
-        }
+        ImageKind::Depth =&gt; depth_image_to_gpu(
+            render_ctx,
+            debug_name,
+            texture_key,
+            image,
+            image_stats,
+            colormap,
+        ),
         ImageKind::Segmentation =&gt; segmentation_image_to_gpu(
             render_ctx,
             debug_name,
@@ -700,42 +788,38 @@
     <span class="kw">let </span>image_format = image.format;
 
     <span class="kw">let </span>texture_handle = get_or_create_texture(render_ctx, texture_key, || {
-        texture_creation_desc_from_color_image(image, debug_name)
+        texture_creation_desc_from_color_image(render_ctx.device_caps(), image, debug_name)
     })
     .map_err(|err| <span class="macro">anyhow::anyhow!</span>(<span class="string">"{err}"</span>))<span class="question-mark">?</span>;
 
     <span class="kw">let </span>texture_format = texture_handle.format();
 
-    <span class="kw">let </span>shader_decoding = <span class="kw">match </span>image_format.pixel_format {
-        <span class="prelude-val">Some</span>(PixelFormat::NV12) =&gt; <span class="prelude-val">Some</span>(ShaderDecoding::Nv12),
-        <span class="prelude-val">Some</span>(PixelFormat::YUY2) =&gt; <span class="prelude-val">Some</span>(ShaderDecoding::Yuy2),
-        <span class="prelude-val">None </span>=&gt; <span class="prelude-val">None</span>,
-    };
+    <span class="kw">let </span>shader_decoding = required_shader_decode(render_ctx.device_caps(), <span class="kw-2">&amp;</span>image_format);
 
     <span class="comment">// TODO(emilk): let the user specify the color space.
     </span><span class="kw">let </span>decode_srgb = texture_format == TextureFormat::Rgba8Unorm
-        || image_decode_srgb_gamma_heuristic(image_stats, image_format)<span class="question-mark">?</span>;
+        || image_decode_srgb_gamma_heuristic(image_stats, image_format);
 
     <span class="comment">// Special casing for normalized textures used above:
     </span><span class="kw">let </span>range = <span class="kw">if </span><span class="macro">matches!</span>(
         texture_format,
-        TextureFormat::R8Unorm | TextureFormat::Rgba8Unorm
+        TextureFormat::R8Unorm | TextureFormat::Rgba8Unorm | TextureFormat::Bgra8Unorm
     ) {
-        [<span class="number">0.0</span>, <span class="number">1.0</span>]
+        emath::Rangef::new(<span class="number">0.0</span>, <span class="number">1.0</span>)
     } <span class="kw">else if </span>texture_format == TextureFormat::R8Snorm {
-        [-<span class="number">1.0</span>, <span class="number">1.0</span>]
+        emath::Rangef::new(-<span class="number">1.0</span>, <span class="number">1.0</span>)
     } <span class="kw">else if let </span><span class="prelude-val">Some</span>(shader_decoding) = shader_decoding {
         <span class="kw">match </span>shader_decoding {
-            ShaderDecoding::Nv12 | ShaderDecoding::Yuy2 =&gt; [<span class="number">0.0</span>, <span class="number">1.0</span>],
+            ShaderDecoding::Bgr =&gt; image_data_range_heuristic(image_stats, <span class="kw-2">&amp;</span>image_format),
         }
     } <span class="kw">else </span>{
         image_data_range_heuristic(image_stats, <span class="kw-2">&amp;</span>image_format)
-            .map(|range| [range.min, range.max])<span class="question-mark">?
-    </span>};
+    };
 
     <span class="kw">let </span>color_mapper = <span class="kw">if let </span><span class="prelude-val">Some</span>(shader_decoding) = shader_decoding {
         <span class="kw">match </span>shader_decoding {
-            ShaderDecoding::Nv12 | ShaderDecoding::Yuy2 =&gt; ColorMapper::OffRGB,
+            <span class="comment">// We only have 1D color maps, therefore BGR formats can't have color maps.
+            </span>ShaderDecoding::Bgr =&gt; ColorMapper::OffRGB,
         }
     } <span class="kw">else if </span>texture_format.components() == <span class="number">1 </span>{
         <span class="comment">// TODO(andreas): support colormap property
@@ -765,7 +849,7 @@
 
     <span class="prelude-val">Ok</span>(ColormappedTexture {
         texture: texture_handle,
-        range,
+        range: [range.min, range.max],
         decode_srgb,
         multiply_rgb_with_alpha,
         gamma,
@@ -775,12 +859,9 @@
 }
 
 <span class="doccomment">/// Get a valid, finite range for the gpu to use.
-</span><span class="comment">// TODO(#2341): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
-</span><span class="kw">pub fn </span>image_data_range_heuristic(
-    image_stats: <span class="kw-2">&amp;</span>ImageStats,
-    image_format: <span class="kw-2">&amp;</span>ImageFormat,
-) -&gt; <span class="prelude-ty">Result</span>&lt;Rangef, RangeError&gt; {
-    <span class="kw">let </span>(min, max) = image_stats.finite_range.ok_or(RangeError::MissingRange)<span class="question-mark">?</span>;
+</span><span class="comment">// TODO(#4624): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
+</span><span class="kw">pub fn </span>image_data_range_heuristic(image_stats: <span class="kw-2">&amp;</span>ImageStats, image_format: <span class="kw-2">&amp;</span>ImageFormat) -&gt; Rangef {
+    <span class="kw">let </span>(min, max) = image_stats.finite_range;
 
     <span class="kw">let </span>min = min <span class="kw">as </span>f32;
     <span class="kw">let </span>max = max <span class="kw">as </span>f32;
@@ -789,95 +870,197 @@
     // (we ignore NaN/Inf values heres, since they are usually there by accident!)
     </span><span class="kw">if </span>image_format.is_float() &amp;&amp; <span class="number">0.0 </span>&lt;= min &amp;&amp; max &lt;= <span class="number">1.0 </span>{
         <span class="comment">// Float values that are all between 0 and 1, assume that this is the range.
-        </span><span class="prelude-val">Ok</span>(Rangef::new(<span class="number">0.0</span>, <span class="number">1.0</span>))
+        </span>Rangef::new(<span class="number">0.0</span>, <span class="number">1.0</span>)
     } <span class="kw">else if </span><span class="number">0.0 </span>&lt;= min &amp;&amp; max &lt;= <span class="number">255.0 </span>{
         <span class="comment">// If all values are between 0 and 255, assume this is the range.
         // (This is very common, independent of the data type)
-        </span><span class="prelude-val">Ok</span>(Rangef::new(<span class="number">0.0</span>, <span class="number">255.0</span>))
+        </span>Rangef::new(<span class="number">0.0</span>, <span class="number">255.0</span>)
     } <span class="kw">else if </span>min == max {
         <span class="comment">// uniform range. This can explode the colormapping, so let's map all colors to the middle:
-        </span><span class="prelude-val">Ok</span>(Rangef::new(min - <span class="number">1.0</span>, max + <span class="number">1.0</span>))
+        </span>Rangef::new(min - <span class="number">1.0</span>, max + <span class="number">1.0</span>)
     } <span class="kw">else </span>{
         <span class="comment">// Use range as is if nothing matches.
-        </span><span class="prelude-val">Ok</span>(Rangef::new(min, max))
+        </span>Rangef::new(min, max)
     }
 }
 
 <span class="doccomment">/// Return whether an image should be assumed to be encoded in sRGB color space ("gamma space", no EOTF applied).
-</span><span class="kw">fn </span>image_decode_srgb_gamma_heuristic(
-    image_stats: <span class="kw-2">&amp;</span>ImageStats,
-    image_format: ImageFormat,
-) -&gt; <span class="prelude-ty">Result</span>&lt;bool, RangeError&gt; {
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(pixel_format) = image_format.pixel_format {
-        <span class="kw">match </span>pixel_format {
-            PixelFormat::NV12 | PixelFormat::YUY2 =&gt; <span class="prelude-val">Ok</span>(<span class="bool-val">true</span>),
-        }
-    } <span class="kw">else </span>{
-        <span class="kw">let </span>color_model = image_format.color_model();
-        <span class="kw">let </span>datatype = image_format.datatype();
-        <span class="kw">match </span>color_model {
-            ColorModel::L | ColorModel::RGB | ColorModel::RGBA =&gt; {
-                <span class="kw">let </span>(min, max) = image_stats.finite_range.ok_or(RangeError::MissingRange)<span class="question-mark">?</span>;
+</span><span class="kw">fn </span>image_decode_srgb_gamma_heuristic(image_stats: <span class="kw-2">&amp;</span>ImageStats, image_format: ImageFormat) -&gt; bool {
+    <span class="kw">if </span>image_format.pixel_format.is_some() {
+        <span class="comment">// Have to do the conversion because we don't use an `Srgb` texture format.
+        </span><span class="bool-val">true
+    </span>} <span class="kw">else </span>{
+        <span class="kw">let </span>(min, max) = image_stats.finite_range;
 
-                <span class="attr">#[allow(clippy::if_same_then_else)]
-                </span><span class="kw">if </span><span class="number">0.0 </span>&lt;= min &amp;&amp; max &lt;= <span class="number">255.0 </span>{
-                    <span class="comment">// If the range is suspiciously reminding us of a "regular image", assume sRGB.
-                    </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
-                } <span class="kw">else if </span>datatype.is_float() &amp;&amp; <span class="number">0.0 </span>&lt;= min &amp;&amp; max &lt;= <span class="number">1.0 </span>{
-                    <span class="comment">// Floating point images between 0 and 1 are often sRGB as well.
-                    </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
-                } <span class="kw">else </span>{
-                    <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
-                }
-            }
-        }
+        <span class="attr">#[allow(clippy::if_same_then_else)]
+        </span><span class="kw">if </span><span class="number">0.0 </span>&lt;= min &amp;&amp; max &lt;= <span class="number">255.0 </span>{
+            <span class="comment">// If the range is suspiciously reminding us of a "regular image", assume sRGB.
+            </span><span class="bool-val">true
+        </span>} <span class="kw">else if </span>image_format.datatype().is_float() &amp;&amp; <span class="number">0.0 </span>&lt;= min &amp;&amp; max &lt;= <span class="number">1.0 </span>{
+            <span class="comment">// Floating point images between 0 and 1 are often sRGB as well.
+            </span><span class="bool-val">true
+        </span>} <span class="kw">else </span>{
+            <span class="bool-val">false
+        </span>}
     }
 }
 
-<span class="kw">pub fn </span>texture_creation_desc_from_color_image&lt;<span class="lifetime">'a</span>&gt;(
+<span class="doccomment">/// Determines if and how the shader needs to decode the image.
+///
+/// Assumes creation as done by [`texture_creation_desc_from_color_image`].
+</span><span class="kw">pub fn </span>required_shader_decode(
+    device_caps: <span class="kw-2">&amp;</span>DeviceCaps,
+    image_format: <span class="kw-2">&amp;</span>ImageFormat,
+) -&gt; <span class="prelude-ty">Option</span>&lt;ShaderDecoding&gt; {
+    <span class="kw">let </span>color_model = image_format.color_model();
+
+    <span class="kw">if </span>image_format.pixel_format.is_none() &amp;&amp; color_model == ColorModel::BGR
+        || color_model == ColorModel::BGRA
+    {
+        <span class="comment">// U8 can be converted to RGBA without the shader's help since there's a format for it.
+        </span><span class="kw">if </span>image_format.datatype() == ChannelDatatype::U8 &amp;&amp; device_caps.support_bgra_textures() {
+            <span class="prelude-val">None
+        </span>} <span class="kw">else </span>{
+            <span class="prelude-val">Some</span>(ShaderDecoding::Bgr)
+        }
+    } <span class="kw">else </span>{
+        <span class="prelude-val">None
+    </span>}
+}
+
+<span class="doccomment">/// Creates a [`ImageDataDesc`] for creating a texture from an [`ImageInfo`].
+///
+/// The resulting texture has requirements as describe by [`required_shader_decode`].
+///
+/// TODO(andreas): The consumer needs to be aware of bgr conversions. Other conversions are already taken care of upon upload.
+</span><span class="kw">pub fn </span>texture_creation_desc_from_color_image&lt;<span class="lifetime">'a</span>&gt;(
+    device_caps: <span class="kw-2">&amp;</span>DeviceCaps,
     image: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ImageInfo,
     debug_name: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>str,
-) -&gt; Texture2DCreationDesc&lt;<span class="lifetime">'a</span>&gt; {
+) -&gt; ImageDataDesc&lt;<span class="lifetime">'a</span>&gt; {
     <span class="macro">re_tracing::profile_function!</span>();
 
-    <span class="kw">if let </span><span class="prelude-val">Some</span>(pixel_format) = image.format.pixel_format {
-        <span class="kw">match </span>pixel_format {
-            PixelFormat::NV12 =&gt; {
-                <span class="comment">// Decoded in the shader.
-                </span><span class="kw">return </span>Texture2DCreationDesc {
-                    label: debug_name.into(),
-                    data: cast_slice_to_cow(image.buffer.as_slice()),
-                    format: TextureFormat::R8Uint,
-                    width: image.width(),
-                    height: image.height() + image.height() / <span class="number">2</span>, <span class="comment">// !
-                </span>};
+    <span class="comment">// TODO(#7608): All image data ingestion conversions should all be handled by re_renderer!
+
+    </span><span class="kw">let </span>(data, format) = <span class="kw">if let </span><span class="prelude-val">Some</span>(pixel_format) = image.format.pixel_format {
+        <span class="kw">let </span>data = cast_slice_to_cow(image.buffer.as_slice());
+        <span class="kw">let </span>coefficients = <span class="kw">match </span>pixel_format.yuv_matrix_coefficients() {
+            re_types::image::YuvMatrixCoefficients::Bt601 =&gt; YuvMatrixCoefficients::Bt601,
+            re_types::image::YuvMatrixCoefficients::Bt709 =&gt; YuvMatrixCoefficients::Bt709,
+        };
+
+        <span class="kw">let </span>range = <span class="kw">match </span>pixel_format.is_limited_yuv_range() {
+            <span class="bool-val">true </span>=&gt; YuvRange::Limited,
+            <span class="bool-val">false </span>=&gt; YuvRange::Full,
+        };
+
+        <span class="kw">let </span>format = <span class="kw">match </span>pixel_format {
+            <span class="comment">// For historical reasons, using Bt.709 for fully planar formats and Bt.601 for others.
+            //
+            // TODO(andreas): Investigate if there's underlying expectation for some of these (for instance I suspect that NV12 is "usually" BT601).
+            // TODO(andreas): Expose coefficients. It's probably still the better default (for instance that's what jpeg still uses),
+            // but should confirm &amp; back that up!
+            //
+            </span>PixelFormat::Y_U_V24_FullRange | PixelFormat::Y_U_V24_LimitedRange =&gt; {
+                SourceImageDataFormat::Yuv {
+                    layout: YuvPixelLayout::Y_U_V444,
+                    range,
+                    coefficients,
+                }
             }
 
-            PixelFormat::YUY2 =&gt; {
-                <span class="comment">// Decoded in the shader.
-                </span><span class="kw">return </span>Texture2DCreationDesc {
-                    label: debug_name.into(),
-                    data: cast_slice_to_cow(image.buffer.as_slice()),
-                    format: TextureFormat::R8Uint,
-                    width: <span class="number">2 </span>* image.width(), <span class="comment">// !
-                    </span>height: image.height(),
-                };
+            PixelFormat::Y_U_V16_FullRange | PixelFormat::Y_U_V16_LimitedRange =&gt; {
+                SourceImageDataFormat::Yuv {
+                    layout: YuvPixelLayout::Y_U_V422,
+                    range,
+                    coefficients,
+                }
             }
-        }
+
+            PixelFormat::Y_U_V12_FullRange | PixelFormat::Y_U_V12_LimitedRange =&gt; {
+                SourceImageDataFormat::Yuv {
+                    layout: YuvPixelLayout::Y_U_V420,
+                    range,
+                    coefficients,
+                }
+            }
+
+            PixelFormat::Y8_FullRange | PixelFormat::Y8_LimitedRange =&gt; {
+                SourceImageDataFormat::Yuv {
+                    layout: YuvPixelLayout::Y400,
+                    range,
+                    coefficients,
+                }
+            }
+
+            PixelFormat::NV12 =&gt; SourceImageDataFormat::Yuv {
+                layout: YuvPixelLayout::Y_UV420,
+                range,
+                coefficients,
+            },
+
+            PixelFormat::YUY2 =&gt; SourceImageDataFormat::Yuv {
+                layout: YuvPixelLayout::YUYV422,
+                range,
+                coefficients,
+            },
+        };
+
+        (data, format)
     } <span class="kw">else </span>{
         <span class="kw">let </span>color_model = image.format.color_model();
         <span class="kw">let </span>datatype = image.format.datatype();
-        <span class="kw">let </span>(data, format) = <span class="kw">match </span>(color_model, datatype) {
-            <span class="comment">// Normalize sRGB(A) textures to 0-1 range, and let the GPU premultiply alpha.
-            // Why? Because premul must happen _before_ sRGB decode, so we can't
+
+        <span class="kw">match </span>(color_model, datatype) {
+            <span class="comment">// sRGB(A) handling is done by `ColormappedTexture`.
+            // Why not use `Rgba8UnormSrgb`? Because premul must happen _before_ sRGB decode, so we can't
             // use a "Srgb-aware" texture like `Rgba8UnormSrgb` for RGBA.
             </span>(ColorModel::RGB, ChannelDatatype::U8) =&gt; (
                 pad_rgb_to_rgba(<span class="kw-2">&amp;</span>image.buffer, u8::MAX).into(),
-                TextureFormat::Rgba8Unorm,
+                SourceImageDataFormat::WgpuCompatible(TextureFormat::Rgba8Unorm),
+            ),
+            (ColorModel::RGBA, ChannelDatatype::U8) =&gt; (
+                cast_slice_to_cow(<span class="kw-2">&amp;</span>image.buffer),
+                SourceImageDataFormat::WgpuCompatible(TextureFormat::Rgba8Unorm),
             ),
 
-            (ColorModel::RGBA, ChannelDatatype::U8) =&gt; {
-                (cast_slice_to_cow(<span class="kw-2">&amp;</span>image.buffer), TextureFormat::Rgba8Unorm)
+            <span class="comment">// Make use of wgpu's BGR(A)8 formats if possible.
+            //
+            // From the pov of our on-the-fly decoding textured rect shader this is just a strange special case
+            // given that it already has to deal with other BGR(A) formats.
+            //
+            // However, we have other places where we don't have the luxury of having a shader that can do the decoding for us.
+            // In those cases we'd like to support as many formats as possible without decoding.
+            //
+            // (in some hopefully not too far future, re_renderer will have an internal conversion pipeline
+            // that injects on-the-fly texture conversion from source formats before the consumer of a given texture is run
+            // and caches the result alongside with the source data)
+            //
+            // See also [`required_shader_decode`] which lists this case as a format that does not need to be decoded.
+            </span>(ColorModel::BGR, ChannelDatatype::U8) =&gt; {
+                <span class="kw">let </span>padded_data = pad_rgb_to_rgba(<span class="kw-2">&amp;</span>image.buffer, u8::MAX).into();
+                <span class="kw">let </span>texture_format = <span class="kw">if </span>required_shader_decode(device_caps, <span class="kw-2">&amp;</span>image.format).is_some()
+                {
+                    TextureFormat::Rgba8Unorm
+                } <span class="kw">else </span>{
+                    TextureFormat::Bgra8Unorm
+                };
+                (
+                    padded_data,
+                    SourceImageDataFormat::WgpuCompatible(texture_format),
+                )
+            }
+            (ColorModel::BGRA, ChannelDatatype::U8) =&gt; {
+                <span class="kw">let </span>texture_format = <span class="kw">if </span>required_shader_decode(device_caps, <span class="kw-2">&amp;</span>image.format).is_some()
+                {
+                    TextureFormat::Rgba8Unorm
+                } <span class="kw">else </span>{
+                    TextureFormat::Bgra8Unorm
+                };
+                (
+                    cast_slice_to_cow(<span class="kw-2">&amp;</span>image.buffer),
+                    SourceImageDataFormat::WgpuCompatible(texture_format),
+                )
             }
 
             <span class="kw">_ </span>=&gt; {
@@ -889,15 +1072,14 @@
                     datatype,
                 );
             }
-        };
-
-        Texture2DCreationDesc {
-            label: debug_name.into(),
-            data,
-            format,
-            width: image.width(),
-            height: image.height(),
         }
+    };
+
+    ImageDataDesc {
+        label: debug_name.into(),
+        data,
+        format,
+        width_height: image.width_height(),
     }
 }
 
@@ -907,6 +1089,7 @@
     texture_key: u64,
     image: <span class="kw-2">&amp;</span>ImageInfo,
     image_stats: <span class="kw-2">&amp;</span>ImageStats,
+    colormap_with_range: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>ColormapWithRange&gt;,
 ) -&gt; anyhow::Result&lt;ColormappedTexture&gt; {
     <span class="macro">re_tracing::profile_function!</span>();
 
@@ -923,7 +1106,12 @@
 
     <span class="kw">let </span>datatype = image.format.datatype();
 
-    <span class="kw">let </span>range = data_range(image_stats, datatype);
+    <span class="kw">let </span>ColormapWithRange {
+        value_range,
+        colormap,
+    } = colormap_with_range
+        .cloned()
+        .unwrap_or_else(|| ColormapWithRange::default_for_depth_images(image_stats));
 
     <span class="kw">let </span>texture = get_or_create_texture(render_ctx, texture_key, || {
         general_texture_creation_desc_from_image(debug_name, image, ColorModel::L, datatype)
@@ -932,13 +1120,11 @@
 
     <span class="prelude-val">Ok</span>(ColormappedTexture {
         texture,
-        range,
+        range: value_range,
         decode_srgb: <span class="bool-val">false</span>,
         multiply_rgb_with_alpha: <span class="bool-val">false</span>,
         gamma: <span class="number">1.0</span>,
-        color_mapper: ColorMapper::Function(colormap_to_re_renderer(
-            image.colormap.unwrap_or(Colormap::Turbo),
-        )),
+        color_mapper: ColorMapper::Function(colormap_to_re_renderer(colormap)),
         shader_decoding: <span class="prelude-val">None</span>,
     })
 }
@@ -994,12 +1180,11 @@
             </span>})
             .collect();
 
-        Texture2DCreationDesc {
+        ImageDataDesc {
             label: <span class="string">"class_id_colormap"</span>.into(),
             data: data.into(),
-            format: TextureFormat::Rgba8UnormSrgb,
-            width: colormap_width <span class="kw">as </span>u32,
-            height: colormap_height <span class="kw">as </span>u32,
+            format: SourceImageDataFormat::WgpuCompatible(TextureFormat::Rgba8UnormSrgb),
+            width_height: [colormap_width <span class="kw">as </span>u32, colormap_height <span class="kw">as </span>u32],
         }
     })
     .context(<span class="string">"Failed to create class_id_colormap."</span>)<span class="question-mark">?</span>;
@@ -1020,34 +1205,6 @@
     })
 }
 
-<span class="kw">fn </span>data_range(image_stats: <span class="kw-2">&amp;</span>ImageStats, datatype: ChannelDatatype) -&gt; [f32; <span class="number">2</span>] {
-    <span class="kw">let </span>default_min = <span class="number">0.0</span>;
-    <span class="kw">let </span>default_max = <span class="kw">if </span>datatype.is_float() {
-        <span class="number">1.0
-    </span>} <span class="kw">else </span>{
-        datatype.max_value()
-    };
-
-    <span class="kw">let </span>range = image_stats
-        .finite_range
-        .unwrap_or((default_min, default_max));
-    <span class="kw">let </span>(<span class="kw-2">mut </span>min, <span class="kw-2">mut </span>max) = range;
-
-    <span class="kw">if </span>!min.is_finite() {
-        min = default_min;
-    }
-    <span class="kw">if </span>!max.is_finite() {
-        max = default_max;
-    }
-
-    <span class="kw">if </span>max &lt;= min {
-        min = default_min;
-        max = default_max;
-    }
-
-    [min <span class="kw">as </span>f32, max <span class="kw">as </span>f32]
-}
-
 <span class="doccomment">/// Uploads the image to a texture in a format that closely resembled the input.
 /// Uses no `Unorm/Snorm` formats.
 </span><span class="kw">fn </span>general_texture_creation_desc_from_image&lt;<span class="lifetime">'a</span>&gt;(
@@ -1055,11 +1212,8 @@
     image: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ImageInfo,
     color_model: ColorModel,
     datatype: ChannelDatatype,
-) -&gt; Texture2DCreationDesc&lt;<span class="lifetime">'a</span>&gt; {
+) -&gt; ImageDataDesc&lt;<span class="lifetime">'a</span>&gt; {
     <span class="macro">re_tracing::profile_function!</span>();
-
-    <span class="kw">let </span>width = image.width();
-    <span class="kw">let </span>height = image.height();
 
     <span class="kw">let </span>buf: <span class="kw-2">&amp;</span>[u8] = image.buffer.as_ref();
 
@@ -1094,7 +1248,8 @@
             }
         }
 
-        ColorModel::RGB =&gt; {
+        <span class="comment">// BGR-&gt;RGB conversion is done in the shader.
+        </span>ColorModel::RGB | ColorModel::BGR =&gt; {
             <span class="comment">// There are no 3-channel textures in wgpu, so we need to pad to 4 channels.
             // What should we pad with? It depends on whether or not the shader interprets these as alpha.
             // To be safe, we pad with the MAX value of integers, and with 1.0 for floats.
@@ -1132,7 +1287,8 @@
             }
         }
 
-        ColorModel::RGBA =&gt; {
+        <span class="comment">// BGR-&gt;RGB conversion is done in the shader.
+        </span>ColorModel::RGBA | ColorModel::BGRA =&gt; {
             <span class="comment">// TODO(emilk): premultiply alpha, or tell the shader to assume unmultiplied alpha
 
             </span><span class="kw">match </span>datatype {
@@ -1165,12 +1321,11 @@
         }
     };
 
-    Texture2DCreationDesc {
+    ImageDataDesc {
         label: debug_name.into(),
         data,
-        format,
-        width,
-        height,
+        format: SourceImageDataFormat::WgpuCompatible(format),
+        width_height: image.width_height(),
     }
 }
 

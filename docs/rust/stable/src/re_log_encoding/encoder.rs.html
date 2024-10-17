@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/store/re_log_encoding/src/encoder.rs`."><title>encoder.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_log_encoding" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/store/re_log_encoding/src/encoder.rs`."><title>encoder.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_log_encoding" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_log_encoding/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -202,6 +201,83 @@
 <a href="#201" id="201">201</a>
 <a href="#202" id="202">202</a>
 <a href="#203" id="203">203</a>
+<a href="#204" id="204">204</a>
+<a href="#205" id="205">205</a>
+<a href="#206" id="206">206</a>
+<a href="#207" id="207">207</a>
+<a href="#208" id="208">208</a>
+<a href="#209" id="209">209</a>
+<a href="#210" id="210">210</a>
+<a href="#211" id="211">211</a>
+<a href="#212" id="212">212</a>
+<a href="#213" id="213">213</a>
+<a href="#214" id="214">214</a>
+<a href="#215" id="215">215</a>
+<a href="#216" id="216">216</a>
+<a href="#217" id="217">217</a>
+<a href="#218" id="218">218</a>
+<a href="#219" id="219">219</a>
+<a href="#220" id="220">220</a>
+<a href="#221" id="221">221</a>
+<a href="#222" id="222">222</a>
+<a href="#223" id="223">223</a>
+<a href="#224" id="224">224</a>
+<a href="#225" id="225">225</a>
+<a href="#226" id="226">226</a>
+<a href="#227" id="227">227</a>
+<a href="#228" id="228">228</a>
+<a href="#229" id="229">229</a>
+<a href="#230" id="230">230</a>
+<a href="#231" id="231">231</a>
+<a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
+<a href="#249" id="249">249</a>
+<a href="#250" id="250">250</a>
+<a href="#251" id="251">251</a>
+<a href="#252" id="252">252</a>
+<a href="#253" id="253">253</a>
+<a href="#254" id="254">254</a>
+<a href="#255" id="255">255</a>
+<a href="#256" id="256">256</a>
+<a href="#257" id="257">257</a>
+<a href="#258" id="258">258</a>
+<a href="#259" id="259">259</a>
+<a href="#260" id="260">260</a>
+<a href="#261" id="261">261</a>
+<a href="#262" id="262">262</a>
+<a href="#263" id="263">263</a>
+<a href="#264" id="264">264</a>
+<a href="#265" id="265">265</a>
+<a href="#266" id="266">266</a>
+<a href="#267" id="267">267</a>
+<a href="#268" id="268">268</a>
+<a href="#269" id="269">269</a>
+<a href="#270" id="270">270</a>
+<a href="#271" id="271">271</a>
+<a href="#272" id="272">272</a>
+<a href="#273" id="273">273</a>
+<a href="#274" id="274">274</a>
+<a href="#275" id="275">275</a>
+<a href="#276" id="276">276</a>
+<a href="#277" id="277">277</a>
+<a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Encoding of [`LogMsg`]es as a binary stream, e.g. to store in an `.rrd` file, or send over network.
 
 </span><span class="kw">use </span>re_build_info::CrateVersion;
@@ -252,7 +328,66 @@
 
 <span class="comment">// ----------------------------------------------------------------------------
 
-</span><span class="doccomment">/// Encode a stream of [`LogMsg`] into an `.rrd` file.
+</span><span class="doccomment">/// An [`Encoder`] that properly closes the stream on drop.
+///
+/// When dropped, it will automatically insert an end-of-stream marker, if that wasn't already done manually.
+</span><span class="kw">pub struct </span>DroppableEncoder&lt;W: std::io::Write&gt; {
+    encoder: Encoder&lt;W&gt;,
+
+    <span class="doccomment">/// Tracks whether the end-of-stream marker has been written out already.
+    </span>is_finished: bool,
+}
+
+<span class="kw">impl</span>&lt;W: std::io::Write&gt; DroppableEncoder&lt;W&gt; {
+    <span class="attr">#[inline]
+    </span><span class="kw">pub fn </span>new(
+        version: CrateVersion,
+        options: EncodingOptions,
+        write: W,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, EncodeError&gt; {
+        <span class="prelude-val">Ok</span>(<span class="self">Self </span>{
+            encoder: Encoder::new(version, options, write)<span class="question-mark">?</span>,
+            is_finished: <span class="bool-val">false</span>,
+        })
+    }
+
+    <span class="doccomment">/// Returns the size in bytes of the encoded data.
+    </span><span class="attr">#[inline]
+    </span><span class="kw">pub fn </span>append(<span class="kw-2">&amp;mut </span><span class="self">self</span>, message: <span class="kw-2">&amp;</span>LogMsg) -&gt; <span class="prelude-ty">Result</span>&lt;u64, EncodeError&gt; {
+        <span class="self">self</span>.encoder.append(message)
+    }
+
+    <span class="attr">#[inline]
+    </span><span class="kw">pub fn </span>finish(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), EncodeError&gt; {
+        <span class="kw">if </span>!<span class="self">self</span>.is_finished {
+            <span class="self">self</span>.encoder.finish()<span class="question-mark">?</span>;
+        }
+
+        <span class="self">self</span>.is_finished = <span class="bool-val">true</span>;
+
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="attr">#[inline]
+    </span><span class="kw">pub fn </span>flush_blocking(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; std::io::Result&lt;()&gt; {
+        <span class="self">self</span>.encoder.flush_blocking()
+    }
+}
+
+<span class="kw">impl</span>&lt;W: std::io::Write&gt; std::ops::Drop <span class="kw">for </span>DroppableEncoder&lt;W&gt; {
+    <span class="kw">fn </span>drop(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
+        <span class="kw">if </span>!<span class="self">self</span>.is_finished {
+            <span class="kw">if let </span><span class="prelude-val">Err</span>(err) = <span class="self">self</span>.finish() {
+                <span class="macro">re_log::warn!</span>(<span class="string">"encoder couldn't be finished: {err}"</span>);
+            }
+        }
+    }
+}
+
+<span class="doccomment">/// Encode a stream of [`LogMsg`] into an `.rrd` file.
+///
+/// Prefer [`DroppableEncoder`] if possible, make sure to call [`Encoder::finish`] when appropriate
+/// otherwise.
 </span><span class="kw">pub struct </span>Encoder&lt;W: std::io::Write&gt; {
     compression: Compression,
     write: W,
@@ -294,7 +429,7 @@
 
         <span class="kw">match </span><span class="self">self</span>.compression {
             Compression::Off =&gt; {
-                MessageHeader {
+                MessageHeader::Data {
                     uncompressed_len: <span class="self">self</span>.uncompressed.len() <span class="kw">as </span>u32,
                     compressed_len: <span class="self">self</span>.uncompressed.len() <span class="kw">as </span>u32,
                 }
@@ -311,7 +446,7 @@
                 <span class="kw">let </span>compressed_len =
                     lz4_flex::block::compress_into(<span class="kw-2">&amp;</span><span class="self">self</span>.uncompressed, <span class="kw-2">&amp;mut </span><span class="self">self</span>.compressed)
                         .map_err(EncodeError::Lz4)<span class="question-mark">?</span>;
-                MessageHeader {
+                MessageHeader::Data {
                     uncompressed_len: <span class="self">self</span>.uncompressed.len() <span class="kw">as </span>u32,
                     compressed_len: compressed_len <span class="kw">as </span>u32,
                 }
@@ -324,11 +459,21 @@
         }
     }
 
-    <span class="kw">pub fn </span>flush_blocking(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; std::io::Result&lt;()&gt; {
+    <span class="comment">// NOTE: This cannot be done in a `Drop` implementation because of `Self::into_inner` which
+    // does a partial move.
+    </span><span class="attr">#[inline]
+    </span><span class="kw">pub fn </span>finish(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Result</span>&lt;(), EncodeError&gt; {
+        MessageHeader::EndOfStream.encode(<span class="kw-2">&amp;mut </span><span class="self">self</span>.write)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(())
+    }
+
+    <span class="attr">#[inline]
+    </span><span class="kw">pub fn </span>flush_blocking(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; std::io::Result&lt;()&gt; {
         <span class="self">self</span>.write.flush()
     }
 
-    <span class="kw">pub fn </span>into_inner(<span class="self">self</span>) -&gt; W {
+    <span class="attr">#[inline]
+    </span><span class="kw">pub fn </span>into_inner(<span class="self">self</span>) -&gt; W {
         <span class="self">self</span>.write
     }
 }
@@ -341,7 +486,7 @@
     write: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>std::io::Write,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;u64, EncodeError&gt; {
     <span class="macro">re_tracing::profile_function!</span>();
-    <span class="kw">let </span><span class="kw-2">mut </span>encoder = Encoder::new(version, options, write)<span class="question-mark">?</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>encoder = DroppableEncoder::new(version, options, write)<span class="question-mark">?</span>;
     <span class="kw">let </span><span class="kw-2">mut </span>size_bytes = <span class="number">0</span>;
     <span class="kw">for </span>message <span class="kw">in </span>messages {
         size_bytes += encoder.append(<span class="kw-2">&amp;</span>message<span class="question-mark">?</span>)<span class="question-mark">?</span>;
@@ -357,7 +502,7 @@
     write: <span class="kw-2">&amp;mut </span><span class="kw">impl </span>std::io::Write,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;u64, EncodeError&gt; {
     <span class="macro">re_tracing::profile_function!</span>();
-    <span class="kw">let </span><span class="kw-2">mut </span>encoder = Encoder::new(version, options, write)<span class="question-mark">?</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>encoder = DroppableEncoder::new(version, options, write)<span class="question-mark">?</span>;
     <span class="kw">let </span><span class="kw-2">mut </span>size_bytes = <span class="number">0</span>;
     <span class="kw">for </span>message <span class="kw">in </span>messages {
         size_bytes += encoder.append(message<span class="question-mark">?</span>)<span class="question-mark">?</span>;
@@ -376,11 +521,17 @@
     <span class="kw">for </span>message <span class="kw">in </span>messages {
         encoder.append(<span class="kw-2">&amp;</span>message<span class="question-mark">?</span>)<span class="question-mark">?</span>;
     }
+    encoder.finish()<span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(bytes)
 }
 
 <span class="attr">#[inline]
-</span><span class="kw">pub fn </span>local_encoder() -&gt; <span class="prelude-ty">Result</span>&lt;Encoder&lt;Vec&lt;u8&gt;&gt;, EncodeError&gt; {
+</span><span class="kw">pub fn </span>local_encoder() -&gt; <span class="prelude-ty">Result</span>&lt;DroppableEncoder&lt;Vec&lt;u8&gt;&gt;, EncodeError&gt; {
+    DroppableEncoder::new(CrateVersion::LOCAL, EncodingOptions::COMPRESSED, Vec::new())
+}
+
+<span class="attr">#[inline]
+</span><span class="kw">pub fn </span>local_raw_encoder() -&gt; <span class="prelude-ty">Result</span>&lt;Encoder&lt;Vec&lt;u8&gt;&gt;, EncodeError&gt; {
     Encoder::new(CrateVersion::LOCAL, EncodingOptions::COMPRESSED, Vec::new())
 }
 
@@ -388,10 +539,11 @@
 </span><span class="kw">pub fn </span>encode_as_bytes_local(
     messages: <span class="kw">impl </span>Iterator&lt;Item = ChunkResult&lt;LogMsg&gt;&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, EncodeError&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>encoder = local_encoder()<span class="question-mark">?</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>encoder = local_raw_encoder()<span class="question-mark">?</span>;
     <span class="kw">for </span>message <span class="kw">in </span>messages {
         encoder.append(<span class="kw-2">&amp;</span>message<span class="question-mark">?</span>)<span class="question-mark">?</span>;
     }
+    encoder.finish()<span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(encoder.into_inner())
 }
 
@@ -399,10 +551,11 @@
 </span><span class="kw">pub fn </span>encode_ref_as_bytes_local&lt;<span class="lifetime">'a</span>&gt;(
     messages: <span class="kw">impl </span>Iterator&lt;Item = ChunkResult&lt;<span class="kw-2">&amp;</span><span class="lifetime">'a </span>LogMsg&gt;&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;Vec&lt;u8&gt;, EncodeError&gt; {
-    <span class="kw">let </span><span class="kw-2">mut </span>encoder = local_encoder()<span class="question-mark">?</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>encoder = local_raw_encoder()<span class="question-mark">?</span>;
     <span class="kw">for </span>message <span class="kw">in </span>messages {
         encoder.append(message<span class="question-mark">?</span>)<span class="question-mark">?</span>;
     }
+    encoder.finish()<span class="question-mark">?</span>;
     <span class="prelude-val">Ok</span>(encoder.into_inner())
 }
 </code></pre></div></section></main></body></html>

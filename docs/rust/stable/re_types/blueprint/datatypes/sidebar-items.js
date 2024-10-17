@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["latest_at_query","latest_at_query_ext","tensor_dimension_index_slider","time_range_query","time_range_query_ext"],"struct":["LatestAtQuery","TensorDimensionIndexSlider","TimeRangeQuery"]};
+window.SIDEBAR_ITEMS = {"mod":["component_column_selector","component_column_selector_ext","filter_by_range","filter_is_not_null","selected_columns","tensor_dimension_index_slider"],"struct":["ComponentColumnSelector","FilterByRange","FilterIsNotNull","SelectedColumns","TensorDimensionIndexSlider"]};

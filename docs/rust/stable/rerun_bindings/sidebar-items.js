@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["arrow","python_bridge"],"static":["GLOBAL"]};
+window.SIDEBAR_ITEMS = {"mod":["arrow","dataframe","python_bridge","video"],"static":["GLOBAL"]};

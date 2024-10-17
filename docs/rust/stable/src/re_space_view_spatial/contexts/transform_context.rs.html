@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_space_view_spatial/src/contexts/transform_context.rs`."><title>transform_context.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_space_view_spatial" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_space_view_spatial/src/contexts/transform_context.rs`."><title>transform_context.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_space_view_spatial" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../re_space_view_spatial/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -790,6 +789,20 @@
 <a href="#789" id="789">789</a>
 <a href="#790" id="790">790</a>
 <a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>itertools::Either;
 <span class="kw">use </span>nohash_hasher::IntMap;
 
@@ -927,7 +940,7 @@
     <span class="doccomment">/// All unreachable descendant paths of `reference_path`.
     </span>unreachable_descendants: Vec&lt;(EntityPath, UnreachableTransformReason)&gt;,
 
-    <span class="doccomment">/// The first parent of reference_path that is no longer reachable.
+    <span class="doccomment">/// The first parent of `reference_path` that is no longer reachable.
     </span>first_unreachable_parent: <span class="prelude-ty">Option</span>&lt;(EntityPath, UnreachableTransformReason)&gt;,
 }
 
@@ -1321,16 +1334,8 @@ But they are instead ordered like this:\n{actual_order:?}"
     entity_path: <span class="kw-2">&amp;</span>EntityPath,
     entity_db: <span class="kw-2">&amp;</span>EntityDb,
     query: <span class="kw-2">&amp;</span>LatestAtQuery,
+    transform3d_components: <span class="kw">impl </span>Iterator&lt;Item = re_types::ComponentName&gt;,
 ) -&gt; <span class="prelude-ty">Option</span>&lt;glam::Affine3A&gt; {
-    <span class="kw">let </span><span class="prelude-val">Some</span>(transform3d_components) =
-        TransformComponentTracker::access(entity_db.store_id(), |tracker| {
-            tracker.transform3d_components(entity_path).cloned()
-        })
-        .flatten()
-    <span class="kw">else </span>{
-        <span class="kw">return </span><span class="prelude-val">None</span>;
-    };
-
     <span class="comment">// TODO(#6743): Doesn't take into account overrides.
     </span><span class="kw">let </span>result = entity_db.latest_at(query, entity_path, transform3d_components);
     <span class="kw">if </span>result.components.is_empty() {
@@ -1367,16 +1372,8 @@ But they are instead ordered like this:\n{actual_order:?}"
     entity_path: <span class="kw-2">&amp;</span>EntityPath,
     entity_db: <span class="kw-2">&amp;</span>EntityDb,
     query: <span class="kw-2">&amp;</span>LatestAtQuery,
+    pose3d_components: <span class="kw">impl </span>Iterator&lt;Item = re_types::ComponentName&gt;,
 ) -&gt; Vec&lt;glam::Affine3A&gt; {
-    <span class="kw">let </span><span class="prelude-val">Some</span>(pose3d_components) =
-        TransformComponentTracker::access(entity_db.store_id(), |tracker| {
-            tracker.pose3d_components(entity_path).cloned()
-        })
-        .flatten()
-    <span class="kw">else </span>{
-        <span class="kw">return </span>Vec::new();
-    };
-
     <span class="comment">// TODO(#6743): Doesn't take into account overrides.
     </span><span class="kw">let </span>result = entity_db.latest_at(query, entity_path, pose3d_components);
 
@@ -1518,6 +1515,7 @@ But they are instead ordered like this:\n{actual_order:?}"
 }
 
 <span class="doccomment">/// Resolved transforms at an entity.
+</span><span class="attr">#[derive(Default)]
 </span><span class="kw">struct </span>TransformsAtEntity {
     parent_from_entity_tree_transform: <span class="prelude-ty">Option</span>&lt;glam::Affine3A&gt;,
     entity_from_instance_poses: Vec&lt;glam::Affine3A&gt;,
@@ -1533,23 +1531,49 @@ But they are instead ordered like this:\n{actual_order:?}"
 ) -&gt; <span class="prelude-ty">Result</span>&lt;TransformsAtEntity, UnreachableTransformReason&gt; {
     <span class="macro">re_tracing::profile_function!</span>();
 
-    <span class="kw">let </span>transforms_at_entity = TransformsAtEntity {
-        parent_from_entity_tree_transform: query_and_resolve_tree_transform_at_entity(
+    <span class="kw">let </span>potential_transform_components =
+        TransformComponentTracker::access(entity_db.store_id(), |tracker| {
+            tracker.potential_transform_components(entity_path).cloned()
+        })
+        .flatten()
+        .unwrap_or_default();
+
+    <span class="kw">let </span>parent_from_entity_tree_transform = <span class="kw">if </span>potential_transform_components.transform3d.is_empty()
+    {
+        <span class="prelude-val">None
+    </span>} <span class="kw">else </span>{
+        query_and_resolve_tree_transform_at_entity(
             entity_path,
             entity_db,
             query,
-        ),
-        entity_from_instance_poses: query_and_resolve_instance_poses_at_entity(
+            potential_transform_components.transform3d.iter().copied(),
+        )
+    };
+    <span class="kw">let </span>entity_from_instance_poses = <span class="kw">if </span>potential_transform_components.pose3d.is_empty() {
+        Vec::new()
+    } <span class="kw">else </span>{
+        query_and_resolve_instance_poses_at_entity(
             entity_path,
             entity_db,
             query,
-        ),
-        instance_from_pinhole_image_plane: query_and_resolve_obj_from_pinhole_image_plane(
+            potential_transform_components.pose3d.iter().copied(),
+        )
+    };
+    <span class="kw">let </span>instance_from_pinhole_image_plane = <span class="kw">if </span>potential_transform_components.pinhole {
+        query_and_resolve_obj_from_pinhole_image_plane(
             entity_path,
             entity_db,
             query,
             pinhole_image_plane_distance,
-        ),
+        )
+    } <span class="kw">else </span>{
+        <span class="prelude-val">None
+    </span>};
+
+    <span class="kw">let </span>transforms_at_entity = TransformsAtEntity {
+        parent_from_entity_tree_transform,
+        entity_from_instance_poses,
+        instance_from_pinhole_image_plane,
     };
 
     <span class="comment">// Handle pinhole encounters.
@@ -1565,13 +1589,16 @@ But they are instead ordered like this:\n{actual_order:?}"
     }
 
     <span class="comment">// If there is any other transform, we ignore `DisconnectedSpace`.
-    </span><span class="kw">if </span>transforms_at_entity
+    </span><span class="kw">let </span>no_other_transforms = transforms_at_entity
         .parent_from_entity_tree_transform
         .is_none()
         &amp;&amp; transforms_at_entity.entity_from_instance_poses.is_empty()
         &amp;&amp; transforms_at_entity
             .instance_from_pinhole_image_plane
-            .is_none()
+            .is_none();
+
+    <span class="kw">if </span>no_other_transforms
+        &amp;&amp; potential_transform_components.disconnected_space
         &amp;&amp; entity_db
             .latest_at_component::&lt;DisconnectedSpace&gt;(entity_path, query)
             .map_or(<span class="bool-val">false</span>, |(_index, res)| <span class="kw-2">**</span>res)

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["image_decode_cache","image_stats","image_stats_cache","tensor_stats","tensor_stats_cache"]};
+window.SIDEBAR_ITEMS = {"mod":["image_stats","tensor_stats"]};

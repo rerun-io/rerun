@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/build/re_types_builder/src/codegen/docs/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="re_types_builder" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/build/re_types_builder/src/codegen/docs/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="re_types_builder" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../re_types_builder/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -725,6 +724,28 @@
 <a href="#724" id="724">724</a>
 <a href="#725" id="725">725</a>
 <a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Generate the markdown files shown at &lt;https://rerun.io/docs/reference/types&gt;.
 
 </span><span class="kw">use </span>std::{collections::BTreeMap, fmt::Write};
@@ -739,7 +760,9 @@
     ATTR_DOCS_VIEW_TYPES,
 };
 
-<span class="macro">macro_rules! </span>putln {
+<span class="kw">pub const </span>DATAFRAME_VIEW_FQNAME: <span class="kw-2">&amp;</span>str = <span class="string">"rerun.blueprint.views.DataframeView"</span>;
+
+<span class="macro">macro_rules!</span> putln {
     (<span class="macro-nonterminal">$o</span>:ident) =&gt; ( <span class="macro">writeln!</span>(<span class="macro-nonterminal">$o</span>).ok() );
     (<span class="macro-nonterminal">$o</span>:ident, $(<span class="macro-nonterminal">$tt</span>:tt)<span class="kw-2">*</span>) =&gt; ( <span class="macro">writeln!</span>(<span class="macro-nonterminal">$o</span>, $(<span class="macro-nonterminal">$tt</span>)<span class="kw-2">*</span>).ok() );
 }
@@ -957,6 +980,7 @@ on [Entities and Components](../../concepts/entity-component.md)."</span>,
     views_per_archetype: <span class="kw-2">&amp;</span>ViewsPerArchetype,
 ) -&gt; String {
     <span class="kw">let </span>is_unreleased = object.is_attr_set(<span class="kw">crate</span>::ATTR_DOCS_UNRELEASED);
+    <span class="kw">let </span>is_experimental = object.is_experimental();
 
     <span class="kw">let </span>top_level_docs = object.docs.lines_for(objects, Target::WebDocsMarkdown);
 
@@ -980,6 +1004,15 @@ on [Entities and Components](../../concepts/entity-component.md)."</span>,
 
     write_frontmatter(<span class="kw-2">&amp;mut </span>page, <span class="kw-2">&amp;</span>title, <span class="prelude-val">None</span>);
     <span class="macro">putln!</span>(page);
+
+    <span class="kw">if </span>is_experimental {
+        <span class="macro">putln!</span>(page);
+        <span class="macro">putln!</span>(
+            page,
+            <span class="string">"⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**"
+        </span>);
+        <span class="macro">putln!</span>(page);
+    }
 
     <span class="kw">if let </span><span class="prelude-val">Some</span>(deprecation_notice) = object.deprecation_notice() {
         <span class="macro">putln!</span>(
@@ -1291,9 +1324,10 @@ on [Entities and Components](../../concepts/entity-component.md)."</span>,
         <span class="macro">putln!</span>(page, <span class="string">"**Optional**: {}"</span>, optional.join(<span class="string">", "</span>));
     }
 
+    <span class="macro">putln!</span>(page);
+    <span class="macro">putln!</span>(page, <span class="string">"## Shown in"</span>);
+
     <span class="kw">if let </span><span class="prelude-val">Some</span>(view_types) = view_per_archetype.get(<span class="kw-2">&amp;</span>object.fqname) {
-        <span class="macro">putln!</span>(page);
-        <span class="macro">putln!</span>(page, <span class="string">"## Shown in"</span>);
         <span class="kw">for </span>ViewReference {
             view_name,
             explanation,
@@ -1309,6 +1343,9 @@ on [Entities and Components](../../concepts/entity-component.md)."</span>,
             <span class="macro">putln!</span>(page);
         }
     }
+
+    <span class="comment">// Special case for dataframe view: it can display anything.
+    </span><span class="macro">putln!</span>(page, <span class="string">"* [DataframeView](../views/dataframe_view.md)"</span>);
 }
 
 <span class="kw">fn </span>write_visualized_archetypes(
@@ -1331,7 +1368,7 @@ on [Entities and Components](../../concepts/entity-component.md)."</span>,
         }
     }
 
-    <span class="kw">if </span>archetype_fqnames.is_empty() {
+    <span class="kw">if </span>archetype_fqnames.is_empty() &amp;&amp; view.fqname != DATAFRAME_VIEW_FQNAME {
         reporter.error(<span class="kw-2">&amp;</span>view.virtpath, <span class="kw-2">&amp;</span>view.fqname, <span class="string">"No archetypes use this view."</span>);
         <span class="kw">return</span>;
     }
@@ -1341,18 +1378,24 @@ on [Entities and Components](../../concepts/entity-component.md)."</span>,
 
     <span class="macro">putln!</span>(page, <span class="string">"## Visualized archetypes"</span>);
     <span class="macro">putln!</span>(page);
-    <span class="kw">for </span>(fqname, explanation) <span class="kw">in </span>archetype_fqnames {
-        <span class="kw">let </span>object = <span class="kw-2">&amp;</span>objects[<span class="kw-2">&amp;</span>fqname];
-        page.push_str(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
-            <span class="string">"* [`{}`](../{}/{}.md)"</span>,
-            object.name,
-            object.kind.plural_snake_case(),
-            object.snake_case_name()
-        ));
-        <span class="kw">if let </span><span class="prelude-val">Some</span>(explanation) = explanation {
-            page.push_str(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">" ({explanation})"</span>));
+
+    <span class="comment">// special case for dataframe view
+    </span><span class="kw">if </span>view.fqname == DATAFRAME_VIEW_FQNAME {
+        <span class="macro">putln!</span>(page, <span class="string">"Any data can be displayed by the Dataframe view."</span>);
+    } <span class="kw">else </span>{
+        <span class="kw">for </span>(fqname, explanation) <span class="kw">in </span>archetype_fqnames {
+            <span class="kw">let </span>object = <span class="kw-2">&amp;</span>objects[<span class="kw-2">&amp;</span>fqname];
+            page.push_str(<span class="kw-2">&amp;</span><span class="macro">format!</span>(
+                <span class="string">"* [`{}`](../{}/{}.md)"</span>,
+                object.name,
+                object.kind.plural_snake_case(),
+                object.snake_case_name()
+            ));
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(explanation) = explanation {
+                page.push_str(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">" ({explanation})"</span>));
+            }
+            <span class="macro">putln!</span>(page);
         }
-        <span class="macro">putln!</span>(page);
     }
     <span class="macro">putln!</span>(page);
 }

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["TensorSystem"]};
+window.SIDEBAR_ITEMS = {"fn":["tensor_data_range_heuristic"],"struct":["TensorSystem","TensorView"]};

@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_viewer_context/src/time_drag_value.rs`."><title>time_drag_value.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_viewer_context" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_viewer_context/src/time_drag_value.rs`."><title>time_drag_value.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_viewer_context" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_viewer_context/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -231,13 +230,28 @@
 <a href="#230" id="230">230</a>
 <a href="#231" id="231">231</a>
 <a href="#232" id="232">232</a>
+<a href="#233" id="233">233</a>
+<a href="#234" id="234">234</a>
+<a href="#235" id="235">235</a>
+<a href="#236" id="236">236</a>
+<a href="#237" id="237">237</a>
+<a href="#238" id="238">238</a>
+<a href="#239" id="239">239</a>
+<a href="#240" id="240">240</a>
+<a href="#241" id="241">241</a>
+<a href="#242" id="242">242</a>
+<a href="#243" id="243">243</a>
+<a href="#244" id="244">244</a>
+<a href="#245" id="245">245</a>
+<a href="#246" id="246">246</a>
+<a href="#247" id="247">247</a>
+<a href="#248" id="248">248</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::ops::RangeInclusive;
 
 <span class="kw">use </span>egui::{NumExt <span class="kw">as _</span>, Response};
 
 <span class="kw">use </span>re_entity_db::TimeHistogram;
-<span class="kw">use </span>re_log_types::{TimeType, TimeZone};
-<span class="kw">use </span>re_types_core::datatypes::TimeInt;
+<span class="kw">use </span>re_log_types::{TimeInt, TimeType, TimeZone};
 
 <span class="doccomment">/// Drag value widget for editing time values for both sequence and temporal timelines.
 ///
@@ -297,6 +311,16 @@
         }
     }
 
+    <span class="doccomment">/// Return the minimum time set for this drag value.
+    </span><span class="kw">pub fn </span>min_time(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TimeInt {
+        TimeInt::new_temporal(<span class="kw-2">*</span><span class="self">self</span>.range.start())
+    }
+
+    <span class="doccomment">/// Return the maximum time set for this drag value.
+    </span><span class="kw">pub fn </span>max_time(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; TimeInt {
+        TimeInt::new_temporal(<span class="kw-2">*</span><span class="self">self</span>.range.end())
+    }
+
     <span class="doccomment">/// Show a sequence drag value widget.
     </span><span class="kw">pub fn </span>sequence_drag_value_ui(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
@@ -316,14 +340,19 @@
         <span class="kw">let </span>speed = (span <span class="kw">as </span>f32 * <span class="number">0.005</span>).at_least(<span class="number">1.0</span>);
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(low_bound_override) = low_bound_override {
-            time_range = low_bound_override.<span class="number">0</span>.at_least(<span class="kw-2">*</span>time_range.start())..=<span class="kw-2">*</span>time_range.end();
+            time_range =
+                low_bound_override.as_i64().at_least(<span class="kw-2">*</span>time_range.start())..=<span class="kw-2">*</span>time_range.end();
         }
 
-        ui.add(
-            egui::DragValue::new(<span class="kw-2">&amp;mut </span>value.<span class="number">0</span>)
+        <span class="kw">let </span><span class="kw-2">mut </span>value_i64 = value.as_i64();
+        <span class="kw">let </span>response = ui.add(
+            egui::DragValue::new(<span class="kw-2">&amp;mut </span>value_i64)
                 .range(time_range)
                 .speed(speed),
-        )
+        );
+        <span class="kw-2">*</span>value = TimeInt::new_temporal(value_i64);
+
+        response
     }
 
     <span class="doccomment">/// Show a temporal drag value widget.
@@ -360,10 +389,11 @@
         </span><span class="kw">let </span>speed = (time_range.end() - time_range.start()) <span class="kw">as </span>f32 / factor * <span class="number">0.005</span>;
 
         <span class="kw">if let </span><span class="prelude-val">Some</span>(low_bound_override) = low_bound_override {
-            time_range = low_bound_override.<span class="number">0</span>.at_least(<span class="kw-2">*</span>time_range.start())..=<span class="kw-2">*</span>time_range.end();
+            time_range =
+                low_bound_override.as_i64().at_least(<span class="kw-2">*</span>time_range.start())..=<span class="kw-2">*</span>time_range.end();
         }
 
-        <span class="kw">let </span><span class="kw-2">mut </span>time_unit = (value.<span class="number">0</span>.saturating_sub(offset)) <span class="kw">as </span>f32 / factor;
+        <span class="kw">let </span><span class="kw-2">mut </span>time_unit = (value.as_i64().saturating_sub(offset)) <span class="kw">as </span>f32 / factor;
 
         <span class="kw">let </span>time_range = (<span class="kw-2">*</span>time_range.start() - offset) <span class="kw">as </span>f32 / factor
             ..=(<span class="kw-2">*</span>time_range.end() - offset) <span class="kw">as </span>f32 / factor;
@@ -372,7 +402,8 @@
             <span class="self">self</span>.base_time.map(|base_time| {
                 ui.label(<span class="macro">format!</span>(
                     <span class="string">"{} + "</span>,
-                    TimeType::Time.format(TimeInt(base_time), time_zone_for_timestamps)
+                    TimeType::Time
+                        .format(TimeInt::new_temporal(base_time), time_zone_for_timestamps)
                 ))
             })
         } <span class="kw">else </span>{
@@ -386,7 +417,7 @@
                 .suffix(<span class="self">self</span>.unit_symbol),
         );
 
-        <span class="kw-2">*</span>value = TimeInt((time_unit * factor).round() <span class="kw">as </span>i64 + offset);
+        <span class="kw-2">*</span>value = TimeInt::new_temporal((time_unit * factor).round() <span class="kw">as </span>i64 + offset);
 
         (drag_value_response, base_time_response)
     }

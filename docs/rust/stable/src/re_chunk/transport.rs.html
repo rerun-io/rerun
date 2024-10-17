@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/store/re_chunk/src/transport.rs`."><title>transport.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_chunk" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/store/re_chunk/src/transport.rs`."><title>transport.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_chunk" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_chunk/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -772,6 +771,28 @@
 <a href="#771" id="771">771</a>
 <a href="#772" id="772">772</a>
 <a href="#773" id="773">773</a>
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::BTreeMap;
 
 <span class="kw">use </span>arrow2::{
@@ -804,7 +825,7 @@
 /// This means we have to be very careful when checking the validity of the data: slipping corrupt
 /// data into the store could silently break all the index search logic (e.g. think of a chunk
 /// claiming to be sorted while it is in fact not).
-</span><span class="attr">#[derive(Debug)]
+</span><span class="attr">#[derive(Debug, Clone)]
 </span><span class="kw">pub struct </span>TransportChunk {
     <span class="doccomment">/// The schema of the dataframe, and all chunk-level and field-level metadata.
     ///
@@ -1020,8 +1041,7 @@
     </span><span class="kw">pub fn </span>is_sorted(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; bool {
         <span class="self">self</span>.schema
             .metadata
-            .get(<span class="self">Self</span>::CHUNK_METADATA_MARKER_IS_SORTED_BY_ROW_ID)
-            .is_some()
+            .contains_key(<span class="self">Self</span>::CHUNK_METADATA_MARKER_IS_SORTED_BY_ROW_ID)
     }
 
     <span class="doccomment">/// Iterates all columns of the specified `kind`.
@@ -1045,6 +1065,15 @@
                     .then(|| <span class="self">self</span>.data.columns().get(i).map(|column| (field, column)))
                     .flatten()
             })
+    }
+
+    <span class="attr">#[inline]
+    </span><span class="kw">pub fn </span>all_columns(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">impl </span>Iterator&lt;Item = (<span class="kw-2">&amp;</span>ArrowField, <span class="kw-2">&amp;</span>Box&lt;<span class="kw">dyn </span>ArrowArray&gt;)&gt; + <span class="lifetime">'_ </span>{
+        <span class="self">self</span>.schema
+            .fields
+            .iter()
+            .enumerate()
+            .filter_map(|(i, field)| <span class="self">self</span>.data.columns().get(i).map(|column| (field, column)))
     }
 
     <span class="doccomment">/// Iterates all control columns present in this chunk.
@@ -1296,8 +1325,7 @@
 
                 <span class="kw">let </span>is_sorted = field
                     .metadata
-                    .get(TransportChunk::FIELD_METADATA_MARKER_IS_SORTED_BY_TIME)
-                    .is_some();
+                    .contains_key(TransportChunk::FIELD_METADATA_MARKER_IS_SORTED_BY_TIME);
 
                 <span class="kw">let </span>time_column = TimeColumn::new(
                     is_sorted.then_some(<span class="bool-val">true</span>),
@@ -1485,7 +1513,15 @@
 
             <span class="kw">for _ in </span><span class="number">0</span>..<span class="number">3 </span>{
                 <span class="kw">let </span>chunk_in_transport = chunk_before.to_transport()<span class="question-mark">?</span>;
-                <span class="kw">let </span>chunk_after = Chunk::from_transport(<span class="kw-2">&amp;</span>chunk_in_transport)<span class="question-mark">?</span>;
+                <span class="attr">#[cfg(feature = <span class="string">"arrow"</span>)]
+                </span><span class="kw">let </span>chunk_after = {
+                    <span class="kw">let </span>chunk_in_record_batch = chunk_in_transport.try_to_arrow_record_batch()<span class="question-mark">?</span>;
+                    <span class="kw">let </span>chunk_roundtrip =
+                        TransportChunk::from_arrow_record_batch(<span class="kw-2">&amp;</span>chunk_in_record_batch);
+                    Chunk::from_transport(<span class="kw-2">&amp;</span>chunk_roundtrip)<span class="question-mark">?
+                </span>};
+                <span class="attr">#[cfg(not(feature = <span class="string">"arrow"</span>))]
+                </span><span class="kw">let </span>chunk_after = { Chunk::from_transport(<span class="kw-2">&amp;</span>chunk_in_transport)<span class="question-mark">? </span>};
 
                 <span class="macro">assert_eq!</span>(
                     chunk_in_transport.entity_path()<span class="question-mark">?</span>,
@@ -1536,7 +1572,14 @@
                 <span class="macro">eprintln!</span>(<span class="string">"{chunk_in_transport}"</span>);
                 <span class="macro">eprintln!</span>(<span class="string">"{chunk_after}"</span>);
 
-                <span class="macro">assert_eq!</span>(chunk_before, chunk_after);
+                <span class="attr">#[cfg(not(feature = <span class="string">"arrow"</span>))]
+                </span>{
+                    <span class="comment">// This will fail when round-tripping all the way to record-batch
+                    // the below check should always pass regardless.
+                    </span><span class="macro">assert_eq!</span>(chunk_before, chunk_after);
+                }
+
+                <span class="macro">assert!</span>(chunk_before.are_equal_ignoring_extension_types(<span class="kw-2">&amp;</span>chunk_after));
 
                 chunk_before = chunk_after;
             }

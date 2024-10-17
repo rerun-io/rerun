@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_viewer_context/src/store_hub.rs`."><title>store_hub.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_viewer_context" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_viewer_context/src/store_hub.rs`."><title>store_hub.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_viewer_context" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_viewer_context/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -772,7 +771,79 @@
 <a href="#771" id="771">771</a>
 <a href="#772" id="772">772</a>
 <a href="#773" id="773">773</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>ahash::{HashMap, HashMapExt};
+<a href="#774" id="774">774</a>
+<a href="#775" id="775">775</a>
+<a href="#776" id="776">776</a>
+<a href="#777" id="777">777</a>
+<a href="#778" id="778">778</a>
+<a href="#779" id="779">779</a>
+<a href="#780" id="780">780</a>
+<a href="#781" id="781">781</a>
+<a href="#782" id="782">782</a>
+<a href="#783" id="783">783</a>
+<a href="#784" id="784">784</a>
+<a href="#785" id="785">785</a>
+<a href="#786" id="786">786</a>
+<a href="#787" id="787">787</a>
+<a href="#788" id="788">788</a>
+<a href="#789" id="789">789</a>
+<a href="#790" id="790">790</a>
+<a href="#791" id="791">791</a>
+<a href="#792" id="792">792</a>
+<a href="#793" id="793">793</a>
+<a href="#794" id="794">794</a>
+<a href="#795" id="795">795</a>
+<a href="#796" id="796">796</a>
+<a href="#797" id="797">797</a>
+<a href="#798" id="798">798</a>
+<a href="#799" id="799">799</a>
+<a href="#800" id="800">800</a>
+<a href="#801" id="801">801</a>
+<a href="#802" id="802">802</a>
+<a href="#803" id="803">803</a>
+<a href="#804" id="804">804</a>
+<a href="#805" id="805">805</a>
+<a href="#806" id="806">806</a>
+<a href="#807" id="807">807</a>
+<a href="#808" id="808">808</a>
+<a href="#809" id="809">809</a>
+<a href="#810" id="810">810</a>
+<a href="#811" id="811">811</a>
+<a href="#812" id="812">812</a>
+<a href="#813" id="813">813</a>
+<a href="#814" id="814">814</a>
+<a href="#815" id="815">815</a>
+<a href="#816" id="816">816</a>
+<a href="#817" id="817">817</a>
+<a href="#818" id="818">818</a>
+<a href="#819" id="819">819</a>
+<a href="#820" id="820">820</a>
+<a href="#821" id="821">821</a>
+<a href="#822" id="822">822</a>
+<a href="#823" id="823">823</a>
+<a href="#824" id="824">824</a>
+<a href="#825" id="825">825</a>
+<a href="#826" id="826">826</a>
+<a href="#827" id="827">827</a>
+<a href="#828" id="828">828</a>
+<a href="#829" id="829">829</a>
+<a href="#830" id="830">830</a>
+<a href="#831" id="831">831</a>
+<a href="#832" id="832">832</a>
+<a href="#833" id="833">833</a>
+<a href="#834" id="834">834</a>
+<a href="#835" id="835">835</a>
+<a href="#836" id="836">836</a>
+<a href="#837" id="837">837</a>
+<a href="#838" id="838">838</a>
+<a href="#839" id="839">839</a>
+<a href="#840" id="840">840</a>
+<a href="#841" id="841">841</a>
+<a href="#842" id="842">842</a>
+<a href="#843" id="843">843</a>
+<a href="#844" id="844">844</a>
+<a href="#845" id="845">845</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>ahash::{HashMap, HashMapExt, HashSet};
 
 <span class="kw">use </span>anyhow::Context <span class="kw">as _</span>;
 <span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
@@ -782,7 +853,7 @@
 <span class="kw">use </span>re_log_types::{ApplicationId, StoreId, StoreKind};
 <span class="kw">use </span>re_query::CachesStats;
 
-<span class="kw">use </span><span class="kw">crate</span>::StoreContext;
+<span class="kw">use crate</span>::{Caches, StoreContext};
 
 <span class="doccomment">/// Interface for accessing all blueprints and recordings
 ///
@@ -815,6 +886,9 @@
     default_blueprint_by_app_id: HashMap&lt;ApplicationId, StoreId&gt;,
     active_blueprint_by_app_id: HashMap&lt;ApplicationId, StoreId&gt;,
     store_bundle: StoreBundle,
+
+    <span class="doccomment">/// Things that need caching.
+    </span>caches_per_recording: HashMap&lt;StoreId, Caches&gt;,
 
     <span class="doccomment">/// The [`ChunkStoreGeneration`] from when the [`EntityDb`] was last saved
     </span>blueprint_last_save: HashMap&lt;StoreId, ChunkStoreGeneration&gt;,
@@ -911,6 +985,7 @@
             active_blueprint_by_app_id: Default::default(),
             store_bundle,
 
+            caches_per_recording: Default::default(),
             blueprint_last_save: Default::default(),
             blueprint_last_gc: Default::default(),
         }
@@ -932,6 +1007,8 @@
     </span><span class="kw">pub fn </span>read_context(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;StoreContext&lt;<span class="lifetime">'_</span>&gt;&gt; {
         <span class="kw">static </span>EMPTY_ENTITY_DB: once_cell::sync::Lazy&lt;EntityDb&gt; =
             once_cell::sync::Lazy::new(|| EntityDb::new(re_log_types::StoreId::empty_recording()));
+        <span class="kw">static </span>EMPTY_CACHES: once_cell::sync::Lazy&lt;Caches&gt; =
+            once_cell::sync::Lazy::new(Default::default);
 
         <span class="comment">// If we have an app-id, then use it to look up the blueprint.
         </span><span class="kw">let </span>app_id = <span class="self">self</span>.active_application_id.clone()<span class="question-mark">?</span>;
@@ -985,12 +1062,15 @@
             <span class="self">self</span>.active_rec_id = <span class="prelude-val">None</span>;
         }
 
+        <span class="kw">let </span>caches = <span class="self">self</span>.active_caches();
+
         <span class="prelude-val">Some</span>(StoreContext {
             app_id,
             blueprint: active_blueprint,
             default_blueprint,
             recording: recording.unwrap_or(<span class="kw-2">&amp;</span>EMPTY_ENTITY_DB),
             bundle: <span class="kw-2">&amp;</span><span class="self">self</span>.store_bundle,
+            caches: caches.unwrap_or(<span class="kw-2">&amp;</span>EMPTY_CACHES),
             hub: <span class="self">self</span>,
         })
     }
@@ -1012,6 +1092,7 @@
     }
 
     <span class="kw">pub fn </span>remove(<span class="kw-2">&amp;mut </span><span class="self">self</span>, store_id: <span class="kw-2">&amp;</span>StoreId) {
+        <span class="kw">_ </span>= <span class="self">self</span>.caches_per_recording.remove(store_id);
         <span class="kw">let </span>removed_store = <span class="self">self</span>.store_bundle.remove(store_id);
 
         <span class="kw">let </span><span class="prelude-val">Some</span>(removed_store) = removed_store <span class="kw">else </span>{
@@ -1070,8 +1151,18 @@
     <span class="doccomment">/// Remove all open recordings and applications, and go to the welcome page.
     </span><span class="kw">pub fn </span>clear_recordings(<span class="kw-2">&amp;mut </span><span class="self">self</span>) {
         <span class="comment">// Keep only the welcome screen:
-        </span><span class="self">self</span>.store_bundle
-            .retain(|db| db.app_id() == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">Self</span>::welcome_screen_app_id()));
+        </span><span class="kw">let </span><span class="kw-2">mut </span>store_ids_retained = HashSet::default();
+        <span class="self">self</span>.store_bundle.retain(|db| {
+            <span class="kw">if </span>db.app_id() == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span><span class="self">Self</span>::welcome_screen_app_id()) {
+                store_ids_retained.insert(db.store_id().clone());
+                <span class="bool-val">true
+            </span>} <span class="kw">else </span>{
+                <span class="bool-val">false
+            </span>}
+        });
+        <span class="self">self</span>.caches_per_recording
+            .retain(|store_id, <span class="kw">_</span>| store_ids_retained.contains(store_id));
+
         <span class="self">self</span>.active_rec_id = <span class="prelude-val">None</span>;
         <span class="self">self</span>.active_application_id = <span class="prelude-val">Some</span>(<span class="self">Self</span>::welcome_screen_app_id());
     }
@@ -1116,7 +1207,17 @@
             <span class="macro">re_log::warn!</span>(<span class="string">"Failed to save blueprints: {err}"</span>);
         }
 
-        <span class="self">self</span>.store_bundle.retain(|db| db.app_id() != <span class="prelude-val">Some</span>(app_id));
+        <span class="kw">let </span><span class="kw-2">mut </span>store_ids_removed = HashSet::default();
+        <span class="self">self</span>.store_bundle.retain(|db| {
+            <span class="kw">if </span>db.app_id() == <span class="prelude-val">Some</span>(app_id) {
+                store_ids_removed.insert(db.store_id().clone());
+                <span class="bool-val">false
+            </span>} <span class="kw">else </span>{
+                <span class="bool-val">true
+            </span>}
+        });
+        <span class="self">self</span>.caches_per_recording
+            .retain(|store_id, <span class="kw">_</span>| !store_ids_removed.contains(store_id));
 
         <span class="kw">if </span><span class="self">self</span>.active_application_id.as_ref() == <span class="prelude-val">Some</span>(app_id) {
             <span class="self">self</span>.active_application_id = <span class="prelude-val">None</span>;
@@ -1149,6 +1250,24 @@
             .and_then(|id| <span class="self">self</span>.store_bundle.get(id))
     }
 
+    <span class="doccomment">/// Directly access the [`Caches`] for the active recording.
+    ///
+    /// This returns `None` only if there is no active recording: the cache itself is always
+    /// present if there's an active recording.
+    </span><span class="attr">#[inline]
+    </span><span class="kw">pub fn </span>active_caches(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>Caches&gt; {
+        <span class="self">self</span>.active_rec_id.as_ref().and_then(|store_id| {
+            <span class="kw">let </span>caches = <span class="self">self</span>.caches_per_recording.get(store_id);
+
+            <span class="macro">debug_assert!</span>(
+                caches.is_some(),
+                <span class="string">"active recordings should always have associated caches"</span>,
+            );
+
+            caches
+        })
+    }
+
     <span class="doccomment">/// Change the active/visible recording id.
     ///
     /// This will also change the application-id to match the newly active recording.
@@ -1166,7 +1285,10 @@
             <span class="self">self</span>.set_active_app(app_id);
         }
 
-        <span class="self">self</span>.active_rec_id = <span class="prelude-val">Some</span>(recording_id);
+        <span class="self">self</span>.active_rec_id = <span class="prelude-val">Some</span>(recording_id.clone());
+
+        <span class="comment">// Make sure the active recording has associated caches, always.
+        </span><span class="kw">_ </span>= <span class="self">self</span>.caches_per_recording.entry(recording_id).or_default();
     }
 
     <span class="doccomment">/// Activate a recording by its [`StoreId`].
@@ -1326,6 +1448,10 @@
             <span class="kw">return</span>;
         };
 
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(caches) = <span class="self">self</span>.caches_per_recording.get_mut(<span class="kw-2">&amp;</span>store_id) {
+            caches.purge_memory();
+        }
+
         <span class="kw">let </span>store_bundle = <span class="kw-2">&amp;mut </span><span class="self">self</span>.store_bundle;
 
         <span class="kw">let </span><span class="prelude-val">Some</span>(entity_db) = store_bundle.get_mut(<span class="kw-2">&amp;</span>store_id) <span class="kw">else </span>{
@@ -1336,8 +1462,12 @@
         </span>};
 
         <span class="kw">let </span>store_size_before = entity_db.store().stats().total().total_size_bytes;
-        entity_db.purge_fraction_of_ram(fraction_to_purge);
+        <span class="kw">let </span>store_events = entity_db.purge_fraction_of_ram(fraction_to_purge);
         <span class="kw">let </span>store_size_after = entity_db.store().stats().total().total_size_bytes;
+
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(caches) = <span class="self">self</span>.caches_per_recording.get_mut(<span class="kw-2">&amp;</span>store_id) {
+            caches.on_store_events(<span class="kw-2">&amp;</span>store_events);
+        }
 
         <span class="comment">// No point keeping an empty recording around.
         </span><span class="kw">if </span>entity_db.is_empty() {
@@ -1403,10 +1533,23 @@
 
                 <span class="comment">// TODO(jleibs): Decide a better tuning for this. Would like to save a
                 // reasonable amount of history, or incremental snapshots.
-                </span>blueprint.gc_everything_but_the_latest_row_on_non_default_timelines();
+                </span><span class="kw">let </span>store_events =
+                    blueprint.gc_everything_but_the_latest_row_on_non_default_timelines();
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(caches) = <span class="self">self</span>.caches_per_recording.get_mut(blueprint_id) {
+                    caches.on_store_events(<span class="kw-2">&amp;</span>store_events);
+                }
 
                 <span class="self">self</span>.blueprint_last_gc
                     .insert(blueprint_id.clone(), blueprint.generation());
+            }
+        }
+    }
+
+    <span class="doccomment">/// See `re_viewer_context::Cache::begin_frame`.
+    </span><span class="kw">pub fn </span>begin_frame(<span class="kw-2">&amp;mut </span><span class="self">self</span>, renderer_active_frame_idx: u64) {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(store_id) = <span class="self">self</span>.active_recording_id().cloned() {
+            <span class="kw">if let </span><span class="prelude-val">Some</span>(caches) = <span class="self">self</span>.caches_per_recording.get_mut(<span class="kw-2">&amp;</span>store_id) {
+                caches.begin_frame(renderer_active_frame_idx);
             }
         }
     }

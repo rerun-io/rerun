@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_space_view_spatial/src/visualizers/utilities/labels.rs`."><title>labels.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="re_space_view_spatial" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_space_view_spatial/src/visualizers/utilities/labels.rs`."><title>labels.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="re_space_view_spatial" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../re_space_view_spatial/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -151,15 +150,59 @@
 <a href="#150" id="150">150</a>
 <a href="#151" id="151">151</a>
 <a href="#152" id="152">152</a>
-</pre></div><pre class="rust"><code><span class="attr">#![allow(clippy::too_many_arguments)]
-
-</span><span class="kw">use </span>std::iter;
+<a href="#153" id="153">153</a>
+<a href="#154" id="154">154</a>
+<a href="#155" id="155">155</a>
+<a href="#156" id="156">156</a>
+<a href="#157" id="157">157</a>
+<a href="#158" id="158">158</a>
+<a href="#159" id="159">159</a>
+<a href="#160" id="160">160</a>
+<a href="#161" id="161">161</a>
+<a href="#162" id="162">162</a>
+<a href="#163" id="163">163</a>
+<a href="#164" id="164">164</a>
+<a href="#165" id="165">165</a>
+<a href="#166" id="166">166</a>
+<a href="#167" id="167">167</a>
+<a href="#168" id="168">168</a>
+<a href="#169" id="169">169</a>
+<a href="#170" id="170">170</a>
+<a href="#171" id="171">171</a>
+<a href="#172" id="172">172</a>
+<a href="#173" id="173">173</a>
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+<a href="#184" id="184">184</a>
+<a href="#185" id="185">185</a>
+<a href="#186" id="186">186</a>
+<a href="#187" id="187">187</a>
+<a href="#188" id="188">188</a>
+<a href="#189" id="189">189</a>
+<a href="#190" id="190">190</a>
+<a href="#191" id="191">191</a>
+<a href="#192" id="192">192</a>
+<a href="#193" id="193">193</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::iter;
 
 <span class="kw">use </span>itertools::{izip, Either};
 
 <span class="kw">use </span>re_entity_db::InstancePathHash;
 <span class="kw">use </span>re_log_types::{EntityPath, Instance};
+<span class="kw">use </span>re_types::components::{ShowLabels, Text};
+<span class="kw">use </span>re_types::{Component, Loggable <span class="kw">as _</span>};
 <span class="kw">use </span>re_viewer_context::ResolvedAnnotationInfos;
+
+<span class="attr">#[cfg(doc)]
+</span><span class="kw">use </span>re_viewer_context::ComponentFallbackProvider;
 
 <span class="kw">use </span><span class="kw">crate</span>::visualizers::entity_iterator::clamped_or;
 
@@ -187,87 +230,125 @@
     </span><span class="kw">pub </span>labeled_instance: InstancePathHash,
 }
 
-<span class="doccomment">/// Maximum number of labels after which we stop displaying labels for that entity all together.
+<span class="doccomment">/// Inputs for [`process_labels()`], defining the label(s) of a single [batch].
 ///
-/// TODO(#4451): Hiding of labels should be configurable. This can be the heuristic for it.
-</span><span class="kw">pub const </span>MAX_NUM_LABELS_PER_ENTITY: usize = <span class="number">30</span>;
+/// * `P` is the type of the _positions_ of the labels, which might be 3D or 2D.
+/// * `I` is the type of the iterator over positions.
+///
+/// [batch]: https://rerun.io/docs/concepts/batches
+</span><span class="kw">pub struct </span>LabeledBatch&lt;<span class="lifetime">'a</span>, P: <span class="lifetime">'a</span>, I: Iterator&lt;Item = P&gt; + <span class="lifetime">'a</span>&gt; {
+    <span class="kw">pub </span>entity_path: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>EntityPath,
+
+    <span class="doccomment">/// `num_instances` should be equal to the length of `instance_positions`.
+    </span><span class="kw">pub </span>num_instances: usize,
+
+    <span class="doccomment">/// The position where a single shared label will be displayed if it is.
+    /// This is typically the center of the bounding box of the entity.
+    </span><span class="kw">pub </span>overall_position: P,
+
+    <span class="doccomment">/// Note: If we find a reason to make this data type usable more than once,
+    /// replace this `Iterator` with `IntoIterator`.
+    </span><span class="kw">pub </span>instance_positions: I,
+
+    <span class="doccomment">/// Label data from the batch.
+    ///
+    /// Length 1 is treated as a label for the whole batch.
+    ///
+    /// The number of per-instance labels actually drawn is the minimum of the lengths of
+    /// `instance_positions` and `labels`.
+    </span><span class="kw">pub </span>labels: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[re_types::ArrowString],
+
+    <span class="doccomment">/// Colors from the batch to apply to the labels.
+    ///
+    /// Length 1 is treated as a color for the whole batch.
+    </span><span class="kw">pub </span>colors: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[egui::Color32],
+
+    <span class="doccomment">/// The [`ShowLabels`] component value.
+    ///
+    /// If no value is available from the data, use [`show_labels_fallback`] to obtain it.
+    </span><span class="kw">pub </span>show_labels: re_types::components::ShowLabels,
+
+    <span class="kw">pub </span>annotation_infos: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ResolvedAnnotationInfos,
+}
+
+<span class="doccomment">/// Maximum number of labels after which we stop displaying labels for that entity all together,
+/// unless overridden by a [`ShowLabels`] component.
+</span><span class="kw">const </span>MAX_NUM_LABELS_PER_ENTITY: usize = <span class="number">30</span>;
+
+<span class="doccomment">/// Given a visualizer’s query context, compute its [`ShowLabels`] fallback value
+/// (used when neither the logged data nor the blueprint provides a value).
+///
+/// Assumes that the visualizer reads the [`Text`] component for components.
+/// The type parameter `C` must be the component type that defines the number of instances
+/// in the batch.
+///
+</span><span class="comment">// TODO(kpreid): This component type (or the length directly) should be gotten from some kind of
+// general mechanism of "how big is this batch?" rather than requiring the caller to specify it,
+// possibly incorrectly.
+</span><span class="doccomment">///
+/// This function is normally used to implement the [`ComponentFallbackProvider`]
+/// that will be used in a [`LabeledBatch`].
+</span><span class="kw">pub fn </span>show_labels_fallback&lt;C: Component&gt;(ctx: <span class="kw-2">&amp;</span>re_viewer_context::QueryContext&lt;<span class="lifetime">'_</span>&gt;) -&gt; ShowLabels {
+    <span class="kw">let </span>results =
+        ctx.recording()
+            .latest_at(ctx.query, ctx.target_entity_path, [C::name(), Text::name()]);
+    <span class="kw">let </span>num_instances = results
+        .component_batch_raw(<span class="kw-2">&amp;</span>C::name())
+        .map_or(<span class="number">0</span>, |array| array.len());
+    <span class="kw">let </span>num_labels = results
+        .component_batch_raw(<span class="kw-2">&amp;</span>Text::name())
+        .map_or(<span class="number">0</span>, |array| array.len());
+
+    ShowLabels::from(num_labels == <span class="number">1 </span>|| num_instances &lt; MAX_NUM_LABELS_PER_ENTITY)
+}
 
 <span class="doccomment">/// Produces 3D ui labels from component data.
 ///
 /// See [`process_labels()`] for further documentation.
 </span><span class="kw">pub fn </span>process_labels_3d&lt;<span class="lifetime">'a</span>&gt;(
-    entity_path: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>EntityPath,
-    num_instances: usize,
-    overall_position: glam::Vec3,
-    instance_positions: <span class="kw">impl </span>Iterator&lt;Item = glam::Vec3&gt; + <span class="lifetime">'a</span>,
-    labels: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[re_types::ArrowString],
-    colors: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[egui::Color32],
-    annotation_infos: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ResolvedAnnotationInfos,
+    batch: LabeledBatch&lt;<span class="lifetime">'a</span>, glam::Vec3, <span class="kw">impl </span>Iterator&lt;Item = glam::Vec3&gt; + <span class="lifetime">'a</span>&gt;,
     world_from_obj: glam::Affine3A,
 ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = UiLabel&gt; + <span class="lifetime">'a </span>{
-    process_labels(
-        entity_path,
-        num_instances,
-        overall_position,
-        instance_positions,
-        labels,
-        colors,
-        annotation_infos,
-        <span class="kw">move </span>|position| UiLabelTarget::Position3D(world_from_obj.transform_point3(position)),
-    )
+    process_labels(batch, <span class="kw">move </span>|position| {
+        UiLabelTarget::Position3D(world_from_obj.transform_point3(position))
+    })
 }
 
 <span class="doccomment">/// Produces 2D ui labels from component data.
 ///
 /// See [`process_labels()`] for further documentation.
 </span><span class="kw">pub fn </span>process_labels_2d&lt;<span class="lifetime">'a</span>&gt;(
-    entity_path: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>EntityPath,
-    num_instances: usize,
-    overall_position: glam::Vec2,
-    instance_positions: <span class="kw">impl </span>Iterator&lt;Item = glam::Vec2&gt; + <span class="lifetime">'a</span>,
-    labels: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[re_types::ArrowString],
-    colors: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[egui::Color32],
-    annotation_infos: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ResolvedAnnotationInfos,
+    batch: LabeledBatch&lt;<span class="lifetime">'a</span>, glam::Vec2, <span class="kw">impl </span>Iterator&lt;Item = glam::Vec2&gt; + <span class="lifetime">'a</span>&gt;,
     world_from_obj: glam::Affine3A,
 ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = UiLabel&gt; + <span class="lifetime">'a </span>{
-    process_labels(
-        entity_path,
-        num_instances,
-        overall_position,
-        instance_positions,
-        labels,
-        colors,
-        annotation_infos,
-        <span class="kw">move </span>|position| {
-            <span class="kw">let </span>point = world_from_obj.transform_point3(position.extend(<span class="number">0.0</span>));
-            UiLabelTarget::Point2D(egui::pos2(point.x, point.y))
-        },
-    )
+    process_labels(batch, <span class="kw">move </span>|position| {
+        <span class="kw">let </span>point = world_from_obj.transform_point3(position.extend(<span class="number">0.0</span>));
+        UiLabelTarget::Point2D(egui::pos2(point.x, point.y))
+    })
 }
 
 <span class="doccomment">/// Produces ui labels from component data, allowing the caller to produce [`UiLabelTarget`]s
 /// as they see fit.
 ///
 /// Implements policy for displaying a single label vs. per-instance labels, or hiding labels.
-///
-/// * `num_instances` should be equal to the length of `instance_positions`.
-/// * `overall_position` is the position where a single shared label will be displayed if it is.
-///   This is typically the center of the bounding box of the entity.
-/// * The number of per-instance labels actually drawn is the minimum of the lengths of
-///   `instance_positions` and `labels`.
 </span><span class="kw">pub fn </span>process_labels&lt;<span class="lifetime">'a</span>, P: <span class="lifetime">'a</span>&gt;(
-    entity_path: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>EntityPath,
-    num_instances: usize,
-    overall_position: P,
-    instance_positions: <span class="kw">impl </span>Iterator&lt;Item = P&gt; + <span class="lifetime">'a</span>,
-    labels: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[re_types::ArrowString],
-    colors: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[egui::Color32],
-    annotation_infos: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>ResolvedAnnotationInfos,
+    batch: LabeledBatch&lt;<span class="lifetime">'a</span>, P, <span class="kw">impl </span>Iterator&lt;Item = P&gt; + <span class="lifetime">'a</span>&gt;,
     target_from_position: <span class="kw">impl </span>Fn(P) -&gt; UiLabelTarget + <span class="lifetime">'a</span>,
 ) -&gt; <span class="kw">impl </span>Iterator&lt;Item = UiLabel&gt; + <span class="lifetime">'a </span>{
-    <span class="kw">if </span>labels.len() &gt; <span class="number">1 </span>&amp;&amp; num_instances &gt; MAX_NUM_LABELS_PER_ENTITY {
-        <span class="comment">// Too many labels. Don't draw them.
-        </span><span class="kw">return </span>Either::Left(iter::empty());
+    <span class="kw">let </span>LabeledBatch {
+        entity_path,
+        num_instances,
+        overall_position,
+        instance_positions,
+        labels,
+        colors,
+        show_labels,
+        annotation_infos,
+    } = batch;
+    <span class="kw">let </span>show_labels = bool::from(show_labels.<span class="number">0</span>);
+
+    <span class="kw">if </span>!show_labels {
+        <span class="kw">return </span>Either::Left(iter::empty());
     }
 
     <span class="comment">// If there's many instances but only a single label, place the single label at the

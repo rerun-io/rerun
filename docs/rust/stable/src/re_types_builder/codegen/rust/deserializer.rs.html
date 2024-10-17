@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/build/re_types_builder/src/codegen/rust/deserializer.rs`."><title>deserializer.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="re_types_builder" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/build/re_types_builder/src/codegen/rust/deserializer.rs`."><title>deserializer.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="re_types_builder" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../re_types_builder/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1249,7 +1248,7 @@
     </span><span class="kw">let </span>data_src = <span class="macro">format_ident!</span>(<span class="string">"arrow_data"</span>);
 
     <span class="kw">let </span>datatype = <span class="kw-2">&amp;</span>arrow_registry.get(<span class="kw-2">&amp;</span>obj.fqname);
-    <span class="kw">let </span>quoted_self_datatype = <span class="macro">quote! </span>{ <span class="self">Self</span>::arrow_datatype() };
+    <span class="kw">let </span>quoted_self_datatype = <span class="macro">quote!</span> { <span class="self">Self</span>::arrow_datatype() };
 
     <span class="kw">let </span>obj_fqname = obj.fqname.as_str();
     <span class="kw">let </span>is_enum = obj.is_enum();
@@ -1285,13 +1284,13 @@
             </span><span class="kw">let </span>enum_value = obj_field.enum_value.unwrap();
             <span class="kw">let </span>quoted_enum_value = proc_macro2::Literal::u8_unsuffixed(enum_value);
 
-            <span class="macro">quote! </span>{
+            <span class="macro">quote!</span> {
                 <span class="prelude-val">Some</span>(#quoted_enum_value) =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="self">Self</span>::#quoted_obj_field_type))
             }
         });
 
         <span class="comment">// TODO(jleibs): We should be able to do this with try_from instead.
-        </span><span class="kw">let </span>quoted_remapping = <span class="macro">quote! </span>{
+        </span><span class="kw">let </span>quoted_remapping = <span class="macro">quote!</span> {
             .map(|typ| {
                 <span class="kw">match </span>typ {
                     <span class="comment">// The actual enum variants
@@ -1304,7 +1303,7 @@
             })
         };
 
-        <span class="macro">quote! </span>{
+        <span class="macro">quote!</span> {
             #quoted_deserializer
             #quoted_remapping
             <span class="comment">// NOTE: implicit Vec&lt;Result&gt; to Result&lt;Vec&gt;
@@ -1351,7 +1350,7 @@
             <span class="macro">quote!</span>(.map(|res| res.map(|#data_dst| <span class="prelude-val">Some</span>(<span class="self">Self </span>{ #data_dst }))))
         };
 
-        <span class="macro">quote! </span>{
+        <span class="macro">quote!</span> {
             #quoted_deserializer
             #quoted_unwrapping
             #quoted_remapping
@@ -1384,7 +1383,7 @@
                         InnerRepr::NativeIterable,
                     );
 
-                    <span class="macro">quote! </span>{
+                    <span class="macro">quote!</span> {
                         <span class="kw">let </span>#data_dst = {
                             <span class="comment">// NOTE: `arrays_by_name` is a runtime collection of all of the input's
                             // payload's struct fields, while `#field_name` is the field we're
@@ -1416,7 +1415,7 @@
                     <span class="kw">if </span>obj_field.is_nullable {
                         <span class="macro">quote!</span>(#quoted_obj_field_name)
                     } <span class="kw">else </span>{
-                        <span class="macro">quote! </span>{
+                        <span class="macro">quote!</span> {
                             #quoted_obj_field_name: #quoted_obj_field_name
                                 .ok_or_else(DeserializationError::missing_data)
                                 .with_context(#obj_field_fqname)<span class="question-mark">?
@@ -1428,7 +1427,7 @@
                     <span class="kw">let </span>cast_as = <span class="macro">quote!</span>(arrow2::array::StructArray);
                     quote_array_downcast(obj_fqname, <span class="kw-2">&amp;</span>data_src, cast_as, <span class="kw-2">&amp;</span>quoted_self_datatype)
                 };
-                <span class="macro">quote! </span>{{
+                <span class="macro">quote!</span> {{
                     <span class="kw">let </span>#data_src = #quoted_downcast<span class="question-mark">?</span>;
                     <span class="kw">if </span>#data_src.is_empty() {
                         <span class="comment">// NOTE: The outer container is empty and so we already know that the end result
@@ -1470,7 +1469,7 @@
                     <span class="kw">let </span>arrow_type_index = Literal::i8_unsuffixed(typ <span class="kw">as </span>i8 + <span class="number">1</span>); <span class="comment">// 0 is reserved for `_null_markers`
 
                     </span><span class="kw">let </span>quoted_obj_field_type = <span class="macro">format_ident!</span>(<span class="string">"{}"</span>, obj_field.name);
-                    <span class="macro">quote! </span>{
+                    <span class="macro">quote!</span> {
                         #arrow_type_index =&gt; <span class="prelude-val">Ok</span>(<span class="prelude-val">Some</span>(<span class="self">Self</span>::#quoted_obj_field_type))
                     }
                 });
@@ -1480,7 +1479,7 @@
                     quote_array_downcast(obj_fqname, <span class="kw-2">&amp;</span>data_src, <span class="kw-2">&amp;</span>cast_as, <span class="kw-2">&amp;</span>quoted_self_datatype)
                 };
 
-                <span class="macro">quote! </span>{{
+                <span class="macro">quote!</span> {{
                     <span class="kw">let </span>#data_src = #quoted_downcast<span class="question-mark">?</span>;
                     <span class="kw">let </span>#data_src_types = #data_src.types();
 
@@ -1535,7 +1534,7 @@
 
                         <span class="kw">let </span>i = i + <span class="number">1</span>; <span class="comment">// NOTE: +1 to account for `_null_markers` virtual arm
 
-                        </span><span class="macro">quote! </span>{
+                        </span><span class="macro">quote!</span> {
                             <span class="kw">let </span>#data_dst = {
                                 <span class="comment">// NOTE: `data_src_arrays` is a runtime collection of all of the
                                 // input's payload's union arms, while `#i` is our comptime union
@@ -1570,7 +1569,7 @@
 
                     <span class="kw">if </span>obj_field.typ == <span class="kw">crate</span>::Type::Unit {
                         <span class="comment">// TODO(andreas): Should we check there's enough nulls on the null array?
-                        </span><span class="kw">return </span><span class="macro">quote! </span>{
+                        </span><span class="kw">return </span><span class="macro">quote!</span> {
                             #typ =&gt; <span class="self">Self</span>::#quoted_obj_field_type
                         };
                     }
@@ -1578,13 +1577,13 @@
                     <span class="kw">let </span>quoted_unwrap = <span class="kw">if </span>obj_field.is_nullable {
                         <span class="macro">quote!</span>()
                     } <span class="kw">else </span>{
-                        <span class="macro">quote! </span>{
+                        <span class="macro">quote!</span> {
                             .ok_or_else(DeserializationError::missing_data)
                             .with_context(#obj_field_fqname)<span class="question-mark">?
                         </span>}
                     };
 
-                    <span class="macro">quote! </span>{
+                    <span class="macro">quote!</span> {
                         #typ =&gt; <span class="self">Self</span>::#quoted_obj_field_type({
                             <span class="comment">// NOTE: It is absolutely crucial we explicitly handle the
                             // boundchecks manually first, otherwise rustc completely chokes
@@ -1609,7 +1608,7 @@
                     quote_array_downcast(obj_fqname, <span class="kw-2">&amp;</span>data_src, <span class="kw-2">&amp;</span>cast_as, <span class="kw-2">&amp;</span>quoted_self_datatype)
                 };
 
-                <span class="macro">quote! </span>{{
+                <span class="macro">quote!</span> {{
                     <span class="kw">let </span>#data_src = #quoted_downcast<span class="question-mark">?</span>;
                     <span class="kw">if </span>#data_src.is_empty() {
                         <span class="comment">// NOTE: The outer container is empty and so we already know that the end result
@@ -1739,11 +1738,11 @@
             };
 
             <span class="kw">match </span>inner_repr {
-                InnerRepr::BufferT =&gt; <span class="macro">quote! </span>{
+                InnerRepr::BufferT =&gt; <span class="macro">quote!</span> {
                     #quoted_downcast<span class="question-mark">?
                     </span>.values()
                 },
-                InnerRepr::NativeIterable =&gt; <span class="macro">quote! </span>{
+                InnerRepr::NativeIterable =&gt; <span class="macro">quote!</span> {
                     #quoted_downcast<span class="question-mark">?
                         </span>.into_iter() <span class="comment">// NOTE: automatically checks the bitmap on our behalf
                         </span>#quoted_iter_transparency
@@ -1766,7 +1765,7 @@
 
             <span class="kw">let </span>data_src_buf = <span class="macro">format_ident!</span>(<span class="string">"{data_src}_buf"</span>);
 
-            <span class="macro">quote! </span>{{
+            <span class="macro">quote!</span> {{
                 <span class="kw">let </span>#data_src = #quoted_downcast<span class="question-mark">?</span>;
                 <span class="kw">let </span>#data_src_buf = #data_src.values();
 
@@ -1833,7 +1832,7 @@
             <span class="kw">let </span>comment_note_unwrap =
                 quote_comment(<span class="string">"NOTE: Unwrapping cannot fail: the length must be correct."</span>);
 
-            <span class="macro">quote! </span>{{
+            <span class="macro">quote!</span> {{
                 <span class="kw">let </span>#data_src = #quoted_downcast<span class="question-mark">?</span>;
                 <span class="kw">if </span>#data_src.is_empty() {
                     <span class="comment">// NOTE: The outer container is empty and so we already know that the end result
@@ -1943,13 +1942,13 @@
 
             <span class="kw">let </span>quoted_inner_data_range = <span class="kw">match </span>inner_repr {
                 InnerRepr::BufferT =&gt; {
-                    <span class="macro">quote! </span>{
+                    <span class="macro">quote!</span> {
                         <span class="attr">#[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                         </span><span class="kw">let </span>data = <span class="kw">unsafe </span>{ #data_src_inner.clone().sliced_unchecked(start,  end - start) };
                         <span class="kw">let </span>data = ::re_types_core::ArrowBuffer::from(data);
                     }
                 }
-                InnerRepr::NativeIterable =&gt; <span class="macro">quote! </span>{
+                InnerRepr::NativeIterable =&gt; <span class="macro">quote!</span> {
                     <span class="attr">#[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                     </span><span class="kw">let </span>data = <span class="kw">unsafe </span>{ #data_src_inner.get_unchecked(start..end) };
 
@@ -1985,7 +1984,7 @@
                 </span>},
             };
 
-            <span class="macro">quote! </span>{{
+            <span class="macro">quote!</span> {{
                 <span class="kw">let </span>#data_src = #quoted_downcast<span class="question-mark">?</span>;
                 <span class="kw">if </span>#data_src.is_empty() {
                     <span class="comment">// NOTE: The outer container is empty and so we already know that the end result
@@ -2047,7 +2046,7 @@
 <span class="kw">fn </span>quote_datatype(datatype: <span class="kw-2">&amp;</span>DataType) -&gt; TokenStream {
     <span class="kw">let </span>is_recursive = <span class="bool-val">false</span>;
     <span class="kw">let </span>expected = ArrowDataTypeTokenizer(datatype, is_recursive);
-    <span class="macro">quote! </span>{ #expected }
+    <span class="macro">quote!</span> { #expected }
 }
 
 <span class="doccomment">/// Generates tokens that downcast the runtime Arrow array identifier by `arr` as `cast_as`, making sure
@@ -2060,7 +2059,7 @@
 ) -&gt; TokenStream {
     <span class="kw">let </span>location = location.as_ref();
     <span class="kw">let </span>cast_as = cast_as.to_token_stream();
-    <span class="macro">quote! </span>{
+    <span class="macro">quote!</span> {
         #arr
             .as_any()
             .downcast_ref::&lt;#cast_as&gt;()
@@ -2234,7 +2233,7 @@
             <span class="macro">quote!</span>(.map(|#data_dst| <span class="self">Self </span>{ #data_dst }))
         };
 
-        <span class="macro">quote! </span>{{
+        <span class="macro">quote!</span> {{
             <span class="kw">let </span>slice = #deserizlized_as_slice;
 
             {
@@ -2291,7 +2290,7 @@
                 )
             };
 
-            <span class="macro">quote! </span>{
+            <span class="macro">quote!</span> {
                 #quoted_downcast<span class="question-mark">?
                 </span>.values()
                 .as_slice()
@@ -2317,7 +2316,7 @@
                 )
             };
 
-            <span class="macro">quote! </span>{{
+            <span class="macro">quote!</span> {{
                 <span class="kw">let </span>#data_src = #quoted_downcast<span class="question-mark">?</span>;
 
                 <span class="kw">let </span>#data_src_inner = <span class="kw-2">&amp;**</span>#data_src.values();

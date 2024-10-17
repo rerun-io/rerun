@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/top/rerun/src/commands/entrypoint.rs`."><title>entrypoint.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/top/rerun/src/commands/entrypoint.rs`."><title>entrypoint.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="rerun" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../rerun/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -936,6 +935,45 @@
 <a href="#935" id="935">935</a>
 <a href="#936" id="936">936</a>
 <a href="#937" id="937">937</a>
+<a href="#938" id="938">938</a>
+<a href="#939" id="939">939</a>
+<a href="#940" id="940">940</a>
+<a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
+<a href="#951" id="951">951</a>
+<a href="#952" id="952">952</a>
+<a href="#953" id="953">953</a>
+<a href="#954" id="954">954</a>
+<a href="#955" id="955">955</a>
+<a href="#956" id="956">956</a>
+<a href="#957" id="957">957</a>
+<a href="#958" id="958">958</a>
+<a href="#959" id="959">959</a>
+<a href="#960" id="960">960</a>
+<a href="#961" id="961">961</a>
+<a href="#962" id="962">962</a>
+<a href="#963" id="963">963</a>
+<a href="#964" id="964">964</a>
+<a href="#965" id="965">965</a>
+<a href="#966" id="966">966</a>
+<a href="#967" id="967">967</a>
+<a href="#968" id="968">968</a>
+<a href="#969" id="969">969</a>
+<a href="#970" id="970">970</a>
+<a href="#971" id="971">971</a>
+<a href="#972" id="972">972</a>
+<a href="#973" id="973">973</a>
+<a href="#974" id="974">974</a>
+<a href="#975" id="975">975</a>
+<a href="#976" id="976">976</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>clap::{CommandFactory, Subcommand};
 <span class="kw">use </span>itertools::Itertools;
 
@@ -946,7 +984,7 @@
 <span class="kw">use crate</span>::{commands::RrdCommands, CallSource};
 
 <span class="attr">#[cfg(feature = <span class="string">"web_viewer"</span>)]
-</span><span class="kw">use </span>re_sdk::web_viewer::host_web_viewer;
+</span><span class="kw">use </span>re_sdk::web_viewer::WebViewerConfig;
 <span class="attr">#[cfg(feature = <span class="string">"web_viewer"</span>)]
 </span><span class="kw">use </span>re_web_viewer_server::WebViewerServerPort;
 <span class="attr">#[cfg(feature = <span class="string">"server"</span>)]
@@ -1125,7 +1163,7 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
 
     <span class="doccomment">/// Start the viewer in the browser (instead of locally).
     ///
-    /// Requires Rerun to have been compiled with the 'web_viewer' feature.
+    /// Requires Rerun to have been compiled with the `web_viewer` feature.
     ///
     /// This implies `--serve`.
     </span><span class="attr">#[clap(long)]
@@ -1168,6 +1206,28 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     // GL could be enabled on MacOS via `angle` but given prior issues with ANGLE this seems to be a bad idea!
     </span><span class="attr">#[clap(long)]
     </span>renderer: <span class="prelude-ty">Option</span>&lt;String&gt;,
+
+    <span class="doccomment">/// Overwrites hardware acceleration option for video decoding.
+    ///
+    /// By default uses the last provided setting, which is `auto` if never configured.
+    ///
+    /// Depending on the decoder backend, these settings are merely hints and may be ignored.
+    /// However, they can be useful in some situations to work around issues.
+    ///
+    /// Possible values:
+    ///
+    /// * `auto`
+    /// May use hardware acceleration if available and compatible with the codec.
+    ///
+    /// * `prefer_software`
+    /// Should use a software decoder even if hardware acceleration is available.
+    /// If no software decoder is present, this may cause decoding to fail.
+    ///
+    /// * `prefer_hardware`
+    /// Should use a hardware decoder.
+    /// If no hardware decoder is present, this may cause decoding to fail.
+    </span><span class="attr">#[clap(long, verbatim_doc_comment)]
+    </span>video_decoder: <span class="prelude-ty">Option</span>&lt;String&gt;,
 
     <span class="comment">// ----------------------------------------------------------------------------
     // Debug-options:
@@ -1469,6 +1529,7 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
 
     <span class="kw">if </span>args.version {
         <span class="macro">println!</span>(<span class="string">"{build_info}"</span>);
+        <span class="macro">println!</span>(<span class="string">"Video features: {}"</span>, re_video::features().join(<span class="string">" "</span>));
         <span class="kw">return </span><span class="prelude-val">Ok</span>(<span class="number">0</span>);
     }
 
@@ -1532,6 +1593,16 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     <span class="attr">#[cfg(feature = <span class="string">"native_viewer"</span>)]
     </span><span class="kw">let </span>startup_options = {
         <span class="macro">re_tracing::profile_scope!</span>(<span class="string">"StartupOptions"</span>);
+
+        <span class="kw">let </span>video_decoder_hw_acceleration =
+            args.video_decoder.as_ref().and_then(|s| <span class="kw">match </span>s.parse() {
+                <span class="prelude-val">Err</span>(()) =&gt; {
+                    <span class="macro">re_log::warn_once!</span>(<span class="string">"Failed to parse --video-decoder value: {s}. Ignoring."</span>);
+                    <span class="prelude-val">None
+                </span>}
+                <span class="prelude-val">Ok</span>(hw_accell) =&gt; <span class="prelude-val">Some</span>(hw_accell),
+            });
+
         re_viewer::StartupOptions {
             hide_welcome_screen: args.hide_welcome_screen,
             memory_limit: re_memory::MemoryLimit::parse(<span class="kw-2">&amp;</span>args.memory_limit)
@@ -1552,7 +1623,8 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
             } <span class="kw">else </span>{
                 <span class="prelude-val">None
             </span>},
-            force_wgpu_backend: <span class="prelude-val">None</span>,
+            force_wgpu_backend: args.renderer.clone(),
+            video_decoder_hw_acceleration,
 
             panel_state_overrides: Default::default(),
         }
@@ -1585,13 +1657,16 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
             <span class="kw">if let </span>DataSource::WebSocketAddr(rerun_server_ws_url) = data_sources[<span class="number">0</span>].clone() {
                 <span class="comment">// Special case! We are connecting a web-viewer to a web-socket address.
                 // Instead of piping, just host a web-viewer that connects to the web-socket directly:
-                </span>host_web_viewer(
-                    <span class="kw-2">&amp;</span>args.bind,
-                    args.web_viewer_port,
-                    args.renderer,
-                    <span class="bool-val">true</span>,
-                    <span class="kw-2">&amp;</span>rerun_server_ws_url,
-                )<span class="question-mark">?
+
+                </span>WebViewerConfig {
+                    bind_ip: args.bind,
+                    web_port: args.web_viewer_port,
+                    source_url: <span class="prelude-val">Some</span>(rerun_server_ws_url),
+                    force_wgpu_backend: args.renderer,
+                    video_decoder: args.video_decoder,
+                    open_browser: <span class="bool-val">true</span>,
+                }
+                .host_web_viewer()<span class="question-mark">?
                 </span>.block();
 
                 <span class="kw">return </span><span class="prelude-val">Ok</span>(());
@@ -1659,13 +1734,15 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
                 </span><span class="kw">let </span>open_browser = args.web_viewer;
 
                 <span class="comment">// This is the server that serves the Wasm+HTML:
-                </span>host_web_viewer(
-                    <span class="kw-2">&amp;</span>args.bind,
-                    args.web_viewer_port,
-                    args.renderer,
+                </span>WebViewerConfig {
+                    bind_ip: args.bind,
+                    web_port: args.web_viewer_port,
+                    source_url: <span class="prelude-val">Some</span>(_ws_server.server_url()),
+                    force_wgpu_backend: args.renderer,
+                    video_decoder: args.video_decoder,
                     open_browser,
-                    <span class="kw-2">&amp;</span>_ws_server.server_url(),
-                )<span class="question-mark">?
+                }
+                .host_web_viewer()<span class="question-mark">?
                 </span>.block(); <span class="comment">// dropping should stop the server
             </span>}
 
@@ -1849,7 +1926,7 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     <span class="kw">let </span>encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
     <span class="kw">let </span>file =
         std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile(path.clone(), err))<span class="question-mark">?</span>;
-    <span class="kw">let </span><span class="kw-2">mut </span>encoder = re_log_encoding::encoder::Encoder::new(
+    <span class="kw">let </span><span class="kw-2">mut </span>encoder = re_log_encoding::encoder::DroppableEncoder::new(
         re_build_info::CrateVersion::LOCAL,
         encoding_options,
         file,

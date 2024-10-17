@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["LatestAtQuery","TensorDimensionIndexSlider","TimeRangeQuery"]};
+window.SIDEBAR_ITEMS = {"struct":["ComponentColumnSelector","FilterByRange","FilterIsNotNull","SelectedColumns","TensorDimensionIndexSlider"]};

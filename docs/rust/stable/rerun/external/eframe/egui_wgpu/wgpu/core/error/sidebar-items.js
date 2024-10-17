@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"fn":["format_pretty_any"],"struct":["ContextError","ErrorFormatter"],"trait":["PrettyError"]};
+window.SIDEBAR_ITEMS = {"struct":["ContextError","MultiError"]};

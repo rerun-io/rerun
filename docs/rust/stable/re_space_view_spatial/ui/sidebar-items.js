@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["AutoSizeUnit"],"fn":["create_labels","format_vector","hit_ui","image_hover_ui","outline_config","picked_image_from_depth_image_query","picking","screenshot_context_menu"],"struct":["PickedImageInfo","SpatialSpaceViewState"]};
+window.SIDEBAR_ITEMS = {"enum":["AutoSizeUnit"],"fn":["create_labels","format_vector","outline_config","paint_loading_spinners","screenshot_context_menu"],"struct":["SpatialSpaceViewState"]};

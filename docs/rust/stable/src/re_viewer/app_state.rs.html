@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_viewer/src/app_state.rs`."><title>app_state.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_viewer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_viewer/src/app_state.rs`."><title>app_state.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_viewer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_viewer/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -600,6 +599,22 @@
 <a href="#599" id="599">599</a>
 <a href="#600" id="600">600</a>
 <a href="#601" id="601">601</a>
+<a href="#602" id="602">602</a>
+<a href="#603" id="603">603</a>
+<a href="#604" id="604">604</a>
+<a href="#605" id="605">605</a>
+<a href="#606" id="606">606</a>
+<a href="#607" id="607">607</a>
+<a href="#608" id="608">608</a>
+<a href="#609" id="609">609</a>
+<a href="#610" id="610">610</a>
+<a href="#611" id="611">611</a>
+<a href="#612" id="612">612</a>
+<a href="#613" id="613">613</a>
+<a href="#614" id="614">614</a>
+<a href="#615" id="615">615</a>
+<a href="#616" id="616">616</a>
+<a href="#617" id="617">617</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>ahash::HashMap;
 <span class="kw">use </span>egui::NumExt <span class="kw">as _</span>;
 
@@ -610,10 +625,9 @@
 <span class="kw">use </span>re_types::blueprint::components::PanelState;
 <span class="kw">use </span>re_ui::ContextExt <span class="kw">as _</span>;
 <span class="kw">use </span>re_viewer_context::{
-    blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
-    ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassExt <span class="kw">as _</span>,
-    SpaceViewClassRegistry, StoreContext, StoreHub, SystemCommandSender <span class="kw">as _</span>, ViewStates,
-    ViewerContext,
+    blueprint_timeline, AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry,
+    PlayState, RecordingConfig, SpaceViewClassExt <span class="kw">as _</span>, SpaceViewClassRegistry, StoreContext,
+    StoreHub, SystemCommandSender <span class="kw">as _</span>, ViewStates, ViewerContext,
 };
 <span class="kw">use </span>re_viewport::Viewport;
 <span class="kw">use </span>re_viewport_blueprint::ui::add_space_view_or_container_modal_ui;
@@ -630,10 +644,6 @@
     <span class="doccomment">/// Global options for the whole viewer.
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) app_options: AppOptions,
 
-    <span class="doccomment">/// Things that need caching.
-    </span><span class="attr">#[serde(skip)]
-    </span><span class="kw">pub</span>(<span class="kw">crate</span>) cache: Caches,
-
     <span class="doccomment">/// Configuration for the current recording (found in [`EntityDb`]).
     </span>recording_configs: HashMap&lt;StoreId, RecordingConfig&gt;,
     blueprint_cfg: RecordingConfig,
@@ -646,6 +656,12 @@
 
     <span class="attr">#[serde(skip)]
     </span>welcome_screen: <span class="kw">crate</span>::ui::WelcomeScreen,
+
+    <span class="attr">#[serde(skip)]
+    </span>datastore_ui: re_chunk_store_ui::DatastoreUi,
+
+    <span class="attr">#[serde(skip)]
+    </span><span class="kw">pub</span>(<span class="kw">crate</span>) show_datastore_ui: bool,
 
     <span class="doccomment">/// Storage for the state of each `SpaceView`
     ///
@@ -669,7 +685,6 @@
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             app_options: Default::default(),
-            cache: Default::default(),
             recording_configs: Default::default(),
             blueprint_cfg: Default::default(),
             selection_panel: Default::default(),
@@ -677,6 +692,8 @@
             blueprint_panel: re_time_panel::TimePanel::new_blueprint_panel(),
             blueprint_tree: Default::default(),
             welcome_screen: Default::default(),
+            datastore_ui: Default::default(),
+            show_datastore_ui: <span class="bool-val">false</span>,
             view_states: Default::default(),
             selection_state: Default::default(),
             focused_item: Default::default(),
@@ -743,7 +760,6 @@
 
         <span class="kw">let </span><span class="self">Self </span>{
             app_options,
-            cache,
             recording_configs,
             blueprint_cfg,
             selection_panel,
@@ -751,10 +767,15 @@
             blueprint_panel,
             blueprint_tree,
             welcome_screen,
+            datastore_ui,
+            show_datastore_ui,
             view_states,
             selection_state,
             focused_item,
         } = <span class="self">self</span>;
+
+        <span class="comment">// check state early, before the UI has a chance to close these popups
+        </span><span class="kw">let </span>is_any_popup_open = ui.memory(|m| m.any_popup_open());
 
         <span class="comment">// Some of the mutations APIs of `ViewportBlueprints` are recorded as `Viewport::TreeAction`
         // and must be applied by `Viewport` at the end of the frame. We use a temporary channel for
@@ -801,10 +822,6 @@
             )),
         );
 
-        <span class="kw">if </span>ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-            selection_state.clear_selection();
-        }
-
         <span class="kw">let </span>applicable_entities_per_visualizer = space_view_class_registry
             .applicable_entities_for_visualizer_systems(recording.store_id());
         <span class="kw">let </span>indicated_entities_per_visualizer =
@@ -846,7 +863,7 @@
         <span class="kw">let </span>egui_ctx = ui.ctx().clone();
         <span class="kw">let </span>ctx = ViewerContext {
             app_options,
-            cache,
+            cache: store_context.caches,
             space_view_class_registry,
             reflection,
             component_ui_registry,
@@ -864,10 +881,12 @@
             focused_item,
         };
 
-        <span class="comment">// First update the viewport and thus all active space views.
-        // This may update their heuristics, so that all panels that are shown in this frame,
-        // have the latest information.
-        </span>viewport.on_frame_start(<span class="kw-2">&amp;</span>ctx, view_states);
+        <span class="comment">// We move the time at the very start of the frame,
+        // so that we always show the latest data when we're in "follow" mode.
+        </span>move_time(<span class="kw-2">&amp;</span>ctx, recording, rx);
+
+        <span class="comment">// Update the viewport. May spawn new views and handle queued requests (like screenshots).
+        </span>viewport.on_frame_start(<span class="kw-2">&amp;</span>ctx);
 
         {
             <span class="macro">re_tracing::profile_scope!</span>(<span class="string">"updated_query_results"</span>);
@@ -911,7 +930,7 @@
         // but it's just a bunch of refs so not really that big of a deal in practice.
         </span><span class="kw">let </span>ctx = ViewerContext {
             app_options,
-            cache,
+            cache: store_context.caches,
             space_view_class_registry,
             reflection,
             component_ui_registry,
@@ -929,118 +948,127 @@
             focused_item,
         };
 
-        <span class="comment">//
-        // Blueprint time panel
-        //
+        <span class="kw">if </span><span class="kw-2">*</span>show_datastore_ui {
+            datastore_ui.ui(<span class="kw-2">&amp;</span>ctx, ui, show_datastore_ui, app_options.time_zone);
+        } <span class="kw">else </span>{
+            <span class="comment">//
+            // Blueprint time panel
+            //
 
-        </span><span class="kw">if </span>app_options.inspect_blueprint_timeline {
-            blueprint_panel.show_panel(
+            </span><span class="kw">if </span>app_options.inspect_blueprint_timeline {
+                blueprint_panel.show_panel(
+                    <span class="kw-2">&amp;</span>ctx,
+                    <span class="kw-2">&amp;</span>viewport_blueprint,
+                    ctx.store_context.blueprint,
+                    blueprint_cfg,
+                    ui,
+                    PanelState::Expanded,
+                );
+            }
+
+            <span class="comment">//
+            // Time panel
+            //
+
+            </span>time_panel.show_panel(
                 <span class="kw-2">&amp;</span>ctx,
                 <span class="kw-2">&amp;</span>viewport_blueprint,
-                ctx.store_context.blueprint,
-                blueprint_cfg,
+                ctx.recording(),
+                ctx.rec_cfg,
                 ui,
-                PanelState::Expanded,
+                app_blueprint.time_panel_state(),
             );
-        }
 
-        <span class="comment">//
-        // Time panel
-        //
+            <span class="comment">//
+            // Selection Panel
+            //
 
-        </span>time_panel.show_panel(
-            <span class="kw-2">&amp;</span>ctx,
-            <span class="kw-2">&amp;</span>viewport_blueprint,
-            ctx.recording(),
-            ctx.rec_cfg,
-            ui,
-            app_blueprint.time_panel_state(),
-        );
+            </span>selection_panel.show_panel(
+                <span class="kw-2">&amp;</span>ctx,
+                <span class="kw-2">&amp;</span>viewport_blueprint,
+                view_states,
+                ui,
+                app_blueprint.selection_panel_state().is_expanded(),
+            );
 
-        <span class="comment">//
-        // Selection Panel
-        //
+            <span class="comment">//
+            // Left panel (recordings and blueprint)
+            //
 
-        </span>selection_panel.show_panel(
-            <span class="kw-2">&amp;</span>ctx,
-            <span class="kw-2">&amp;</span>viewport_blueprint,
-            view_states,
-            ui,
-            app_blueprint.selection_panel_state().is_expanded(),
-        );
+            </span><span class="kw">let </span>left_panel = egui::SidePanel::left(<span class="string">"blueprint_panel"</span>)
+                .resizable(<span class="bool-val">true</span>)
+                .frame(egui::Frame {
+                    fill: ui.visuals().panel_fill,
+                    ..Default::default()
+                })
+                .min_width(<span class="number">120.0</span>)
+                .default_width(default_blueprint_panel_width(
+                    ui.ctx().screen_rect().width(),
+                ));
 
-        <span class="comment">//
-        // Left panel (recordings and blueprint)
-        //
+            <span class="kw">let </span>show_welcome =
+                store_context.blueprint.app_id() == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>StoreHub::welcome_screen_app_id());
 
-        </span><span class="kw">let </span>left_panel = egui::SidePanel::left(<span class="string">"blueprint_panel"</span>)
-            .resizable(<span class="bool-val">true</span>)
-            .frame(egui::Frame {
-                fill: ui.visuals().panel_fill,
+            left_panel.show_animated_inside(
+                ui,
+                app_blueprint.blueprint_panel_state().is_expanded(),
+                |ui: <span class="kw-2">&amp;mut </span>egui::Ui| {
+                    <span class="comment">// ListItem don't need vertical spacing so we disable it, but restore it
+                    // before drawing the blueprint panel.
+                    </span>ui.spacing_mut().item_spacing.y = <span class="number">0.0</span>;
+
+                    <span class="kw">let </span>resizable = ctx.store_context.bundle.recordings().count() &gt; <span class="number">3</span>;
+
+                    <span class="kw">if </span>resizable {
+                        <span class="comment">// Don't shrink either recordings panel or blueprint panel below this height
+                        </span><span class="kw">let </span>min_height_each = <span class="number">90.0_f32</span>.at_most(ui.available_height() / <span class="number">2.0</span>);
+
+                        egui::TopBottomPanel::top(<span class="string">"recording_panel"</span>)
+                            .frame(egui::Frame::none())
+                            .resizable(resizable)
+                            .show_separator_line(<span class="bool-val">false</span>)
+                            .min_height(min_height_each)
+                            .default_height(<span class="number">210.0</span>)
+                            .max_height(ui.available_height() - min_height_each)
+                            .show_inside(ui, |ui| {
+                                recordings_panel_ui(<span class="kw-2">&amp;</span>ctx, rx, ui, welcome_screen_state);
+                            });
+                    } <span class="kw">else </span>{
+                        recordings_panel_ui(<span class="kw-2">&amp;</span>ctx, rx, ui, welcome_screen_state);
+                    }
+
+                    ui.add_space(<span class="number">4.0</span>);
+
+                    <span class="kw">if </span>!show_welcome {
+                        blueprint_tree.show(<span class="kw-2">&amp;</span>ctx, <span class="kw-2">&amp;</span>viewport_blueprint, ui);
+                    }
+                },
+            );
+
+            <span class="comment">//
+            // Viewport
+            //
+
+            </span><span class="kw">let </span>viewport_frame = egui::Frame {
+                fill: ui.style().visuals.panel_fill,
                 ..Default::default()
-            })
-            .min_width(<span class="number">120.0</span>)
-            .default_width(default_blueprint_panel_width(
-                ui.ctx().screen_rect().width(),
-            ));
+            };
 
-        <span class="kw">let </span>show_welcome =
-            store_context.blueprint.app_id() == <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>StoreHub::welcome_screen_app_id());
-
-        left_panel.show_animated_inside(
-            ui,
-            app_blueprint.blueprint_panel_state().is_expanded(),
-            |ui: <span class="kw-2">&amp;mut </span>egui::Ui| {
-                <span class="comment">// ListItem don't need vertical spacing so we disable it, but restore it
-                // before drawing the blueprint panel.
-                </span>ui.spacing_mut().item_spacing.y = <span class="number">0.0</span>;
-
-                <span class="kw">let </span>resizable = ctx.store_context.bundle.recordings().count() &gt; <span class="number">3</span>;
-
-                <span class="kw">if </span>resizable {
-                    <span class="comment">// Don't shrink either recordings panel or blueprint panel below this height
-                    </span><span class="kw">let </span>min_height_each = <span class="number">90.0_f32</span>.at_most(ui.available_height() / <span class="number">2.0</span>);
-
-                    egui::TopBottomPanel::top(<span class="string">"recording_panel"</span>)
-                        .frame(egui::Frame::none())
-                        .resizable(resizable)
-                        .show_separator_line(<span class="bool-val">false</span>)
-                        .min_height(min_height_each)
-                        .default_height(<span class="number">210.0</span>)
-                        .max_height(ui.available_height() - min_height_each)
-                        .show_inside(ui, |ui| {
-                            recordings_panel_ui(<span class="kw-2">&amp;</span>ctx, rx, ui, welcome_screen_state);
-                        });
-                } <span class="kw">else </span>{
-                    recordings_panel_ui(<span class="kw-2">&amp;</span>ctx, rx, ui, welcome_screen_state);
-                }
-
-                ui.add_space(<span class="number">4.0</span>);
-
-                <span class="kw">if </span>!show_welcome {
-                    blueprint_tree.show(<span class="kw-2">&amp;</span>ctx, <span class="kw-2">&amp;</span>viewport_blueprint, ui);
-                }
-            },
-        );
-
-        <span class="comment">//
-        // Viewport
-        //
-
-        </span><span class="kw">let </span>viewport_frame = egui::Frame {
-            fill: ui.style().visuals.panel_fill,
-            ..Default::default()
-        };
-
-        egui::CentralPanel::default()
-            .frame(viewport_frame)
-            .show_inside(ui, |ui| {
-                <span class="kw">if </span>show_welcome {
-                    welcome_screen.ui(ui, command_sender, welcome_screen_state, is_history_enabled);
-                } <span class="kw">else </span>{
-                    viewport.viewport_ui(ui, <span class="kw-2">&amp;</span>ctx, view_states);
-                }
-            });
+            egui::CentralPanel::default()
+                .frame(viewport_frame)
+                .show_inside(ui, |ui| {
+                    <span class="kw">if </span>show_welcome {
+                        welcome_screen.ui(
+                            ui,
+                            command_sender,
+                            welcome_screen_state,
+                            is_history_enabled,
+                        );
+                    } <span class="kw">else </span>{
+                        viewport.viewport_ui(ui, <span class="kw-2">&amp;</span>ctx, view_states);
+                    }
+                });
+        }
 
         <span class="comment">//
         // Other UI things
@@ -1051,47 +1079,17 @@
         <span class="comment">// Process deferred layout operations and apply updates back to blueprint
         </span>viewport.update_and_sync_tile_tree_to_blueprint(<span class="kw-2">&amp;</span>ctx);
 
-        {
-            <span class="comment">// We move the time at the very end of the frame,
-            // so we have one frame to see the first data before we move the time.
-            </span><span class="kw">let </span>dt = ui.ctx().input(|i| i.stable_dt);
-
-            <span class="comment">// Are we still connected to the data source for the current store?
-            </span><span class="kw">let </span>more_data_is_coming = <span class="kw">if let </span><span class="prelude-val">Some</span>(store_source) = <span class="kw-2">&amp;</span>recording.data_source {
-                rx.sources().iter().any(|s| s.as_ref() == store_source)
-            } <span class="kw">else </span>{
-                <span class="bool-val">false
-            </span>};
-
-            <span class="kw">let </span>recording_needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
-                recording.times_per_timeline(),
-                dt,
-                more_data_is_coming,
-            );
-
-            <span class="kw">let </span>blueprint_needs_repaint = <span class="kw">if </span>ctx.app_options.inspect_blueprint_timeline {
-                ctx.blueprint_cfg.time_ctrl.write().update(
-                    ctx.store_context.blueprint.times_per_timeline(),
-                    dt,
-                    more_data_is_coming,
-                )
-            } <span class="kw">else </span>{
-                re_viewer_context::NeedsRepaint::No
-            };
-
-            <span class="kw">if </span>recording_needs_repaint == re_viewer_context::NeedsRepaint::Yes
-                || blueprint_needs_repaint == re_viewer_context::NeedsRepaint::Yes
-            {
-                ui.ctx().request_repaint();
-            }
-        }
-
         <span class="kw">if </span>WATERMARK {
             ui.ctx().paint_watermark();
         }
 
         <span class="comment">// This must run after any ui code, or other code that tells egui to open an url:
         </span>check_for_clicked_hyperlinks(<span class="kw-2">&amp;</span>egui_ctx, ctx.selection_state);
+
+        <span class="comment">// Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
+        </span><span class="kw">if </span>ui.input(|i| i.key_pressed(egui::Key::Escape)) &amp;&amp; !is_any_popup_open {
+            selection_state.clear_selection();
+        }
 
         <span class="comment">// Reset the focused item.
         </span><span class="kw-2">*</span>focused_item = <span class="prelude-val">None</span>;
@@ -1119,6 +1117,39 @@
         } <span class="kw">else </span>{
             LatestAtQuery::latest(blueprint_timeline())
         }
+    }
+}
+
+<span class="kw">fn </span>move_time(ctx: <span class="kw-2">&amp;</span>ViewerContext&lt;<span class="lifetime">'_</span>&gt;, recording: <span class="kw-2">&amp;</span>EntityDb, rx: <span class="kw-2">&amp;</span>ReceiveSet&lt;LogMsg&gt;) {
+    <span class="kw">let </span>dt = ctx.egui_ctx.input(|i| i.stable_dt);
+
+    <span class="comment">// Are we still connected to the data source for the current store?
+    </span><span class="kw">let </span>more_data_is_coming = <span class="kw">if let </span><span class="prelude-val">Some</span>(store_source) = <span class="kw-2">&amp;</span>recording.data_source {
+        rx.sources().iter().any(|s| s.as_ref() == store_source)
+    } <span class="kw">else </span>{
+        <span class="bool-val">false
+    </span>};
+
+    <span class="kw">let </span>recording_needs_repaint = ctx.rec_cfg.time_ctrl.write().update(
+        recording.times_per_timeline(),
+        dt,
+        more_data_is_coming,
+    );
+
+    <span class="kw">let </span>blueprint_needs_repaint = <span class="kw">if </span>ctx.app_options.inspect_blueprint_timeline {
+        ctx.blueprint_cfg.time_ctrl.write().update(
+            ctx.store_context.blueprint.times_per_timeline(),
+            dt,
+            more_data_is_coming,
+        )
+    } <span class="kw">else </span>{
+        re_viewer_context::NeedsRepaint::No
+    };
+
+    <span class="kw">if </span>recording_needs_repaint == re_viewer_context::NeedsRepaint::Yes
+        || blueprint_needs_repaint == re_viewer_context::NeedsRepaint::Yes
+    {
+        ctx.egui_ctx.request_repaint();
     }
 }
 

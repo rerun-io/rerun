@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["bool_toggle","enum_combobox","float_drag","singleline_string","vec","view_id"]};
+window.SIDEBAR_ITEMS = {"mod":["bool_toggle","enum_combobox","float_drag","range1d","singleline_string","vec","view_id"]};

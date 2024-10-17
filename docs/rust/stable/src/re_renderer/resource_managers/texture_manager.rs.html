@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_renderer/src/resource_managers/texture_manager.rs`."><title>texture_manager.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_renderer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_renderer/src/resource_managers/texture_manager.rs`."><title>texture_manager.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_renderer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../re_renderer/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -343,162 +342,20 @@
 <a href="#342" id="342">342</a>
 <a href="#343" id="343">343</a>
 <a href="#344" id="344">344</a>
-<a href="#345" id="345">345</a>
-<a href="#346" id="346">346</a>
-<a href="#347" id="347">347</a>
-<a href="#348" id="348">348</a>
-<a href="#349" id="349">349</a>
-<a href="#350" id="350">350</a>
-<a href="#351" id="351">351</a>
-<a href="#352" id="352">352</a>
-<a href="#353" id="353">353</a>
-<a href="#354" id="354">354</a>
-<a href="#355" id="355">355</a>
-<a href="#356" id="356">356</a>
-<a href="#357" id="357">357</a>
-<a href="#358" id="358">358</a>
-<a href="#359" id="359">359</a>
-<a href="#360" id="360">360</a>
-<a href="#361" id="361">361</a>
-<a href="#362" id="362">362</a>
-<a href="#363" id="363">363</a>
-<a href="#364" id="364">364</a>
-<a href="#365" id="365">365</a>
-<a href="#366" id="366">366</a>
-<a href="#367" id="367">367</a>
-<a href="#368" id="368">368</a>
-<a href="#369" id="369">369</a>
-<a href="#370" id="370">370</a>
-<a href="#371" id="371">371</a>
-<a href="#372" id="372">372</a>
-<a href="#373" id="373">373</a>
-<a href="#374" id="374">374</a>
-<a href="#375" id="375">375</a>
-<a href="#376" id="376">376</a>
-<a href="#377" id="377">377</a>
-<a href="#378" id="378">378</a>
-<a href="#379" id="379">379</a>
-<a href="#380" id="380">380</a>
-<a href="#381" id="381">381</a>
-<a href="#382" id="382">382</a>
-<a href="#383" id="383">383</a>
-<a href="#384" id="384">384</a>
-<a href="#385" id="385">385</a>
-<a href="#386" id="386">386</a>
-<a href="#387" id="387">387</a>
-<a href="#388" id="388">388</a>
-<a href="#389" id="389">389</a>
-<a href="#390" id="390">390</a>
-<a href="#391" id="391">391</a>
-<a href="#392" id="392">392</a>
-<a href="#393" id="393">393</a>
-<a href="#394" id="394">394</a>
-<a href="#395" id="395">395</a>
-<a href="#396" id="396">396</a>
-<a href="#397" id="397">397</a>
-<a href="#398" id="398">398</a>
-<a href="#399" id="399">399</a>
-<a href="#400" id="400">400</a>
-<a href="#401" id="401">401</a>
-<a href="#402" id="402">402</a>
-<a href="#403" id="403">403</a>
-<a href="#404" id="404">404</a>
-<a href="#405" id="405">405</a>
-<a href="#406" id="406">406</a>
-<a href="#407" id="407">407</a>
-<a href="#408" id="408">408</a>
-<a href="#409" id="409">409</a>
-<a href="#410" id="410">410</a>
-<a href="#411" id="411">411</a>
-<a href="#412" id="412">412</a>
-<a href="#413" id="413">413</a>
-<a href="#414" id="414">414</a>
-<a href="#415" id="415">415</a>
-<a href="#416" id="416">416</a>
-<a href="#417" id="417">417</a>
-<a href="#418" id="418">418</a>
-<a href="#419" id="419">419</a>
-<a href="#420" id="420">420</a>
-<a href="#421" id="421">421</a>
-<a href="#422" id="422">422</a>
-<a href="#423" id="423">423</a>
-<a href="#424" id="424">424</a>
-<a href="#425" id="425">425</a>
-<a href="#426" id="426">426</a>
-<a href="#427" id="427">427</a>
-<a href="#428" id="428">428</a>
-<a href="#429" id="429">429</a>
-<a href="#430" id="430">430</a>
-<a href="#431" id="431">431</a>
-<a href="#432" id="432">432</a>
-<a href="#433" id="433">433</a>
-<a href="#434" id="434">434</a>
-<a href="#435" id="435">435</a>
-<a href="#436" id="436">436</a>
-<a href="#437" id="437">437</a>
-<a href="#438" id="438">438</a>
-<a href="#439" id="439">439</a>
-<a href="#440" id="440">440</a>
-<a href="#441" id="441">441</a>
-<a href="#442" id="442">442</a>
-<a href="#443" id="443">443</a>
-<a href="#444" id="444">444</a>
-<a href="#445" id="445">445</a>
-<a href="#446" id="446">446</a>
-<a href="#447" id="447">447</a>
-<a href="#448" id="448">448</a>
-<a href="#449" id="449">449</a>
-<a href="#450" id="450">450</a>
-<a href="#451" id="451">451</a>
-<a href="#452" id="452">452</a>
-<a href="#453" id="453">453</a>
-<a href="#454" id="454">454</a>
-<a href="#455" id="455">455</a>
-<a href="#456" id="456">456</a>
-<a href="#457" id="457">457</a>
-<a href="#458" id="458">458</a>
-<a href="#459" id="459">459</a>
-<a href="#460" id="460">460</a>
-<a href="#461" id="461">461</a>
-<a href="#462" id="462">462</a>
-<a href="#463" id="463">463</a>
-<a href="#464" id="464">464</a>
-<a href="#465" id="465">465</a>
-<a href="#466" id="466">466</a>
-<a href="#467" id="467">467</a>
-<a href="#468" id="468">468</a>
-<a href="#469" id="469">469</a>
-<a href="#470" id="470">470</a>
-<a href="#471" id="471">471</a>
-<a href="#472" id="472">472</a>
-<a href="#473" id="473">473</a>
-<a href="#474" id="474">474</a>
-<a href="#475" id="475">475</a>
-<a href="#476" id="476">476</a>
-<a href="#477" id="477">477</a>
-<a href="#478" id="478">478</a>
-<a href="#479" id="479">479</a>
-<a href="#480" id="480">480</a>
-<a href="#481" id="481">481</a>
-<a href="#482" id="482">482</a>
-<a href="#483" id="483">483</a>
-<a href="#484" id="484">484</a>
-<a href="#485" id="485">485</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::Arc;
-
-<span class="kw">use </span>ahash::{HashMap, HashSet};
+</pre></div><pre class="rust"><code><span class="kw">use </span>ahash::{HashMap, HashSet};
 <span class="kw">use </span>parking_lot::Mutex;
 
 <span class="kw">use crate</span>::{
+    resource_managers::ImageDataDesc,
     wgpu_resources::{GpuTexture, GpuTexturePool, TextureDesc},
-    DebugLabel,
+    RenderContext,
 };
+
+<span class="kw">use super</span>::{image_data_to_texture::transfer_image_data_to_texture, ImageDataToTextureError};
 
 <span class="doccomment">/// Handle to a 2D resource.
 ///
 /// Currently, this is solely a more strongly typed regular gpu texture handle.
-/// Since all textures have "long lived" behavior (no temp allocation, alive until unused),
-/// there is no difference as with buffer reliant data like meshes or most contents of draw-data.
 </span><span class="attr">#[derive(Clone)]
 </span><span class="kw">pub struct </span>GpuTexture2D(GpuTexture);
 
@@ -509,6 +366,15 @@
 }
 
 <span class="kw">impl </span>GpuTexture2D {
+    <span class="doccomment">/// Returns `None` if the `texture` is not 2D.
+    </span><span class="kw">pub fn </span>new(texture: GpuTexture) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="self">Self</span>&gt; {
+        <span class="kw">if </span>texture.texture.dimension() != wgpu::TextureDimension::D2 {
+            <span class="kw">return </span><span class="prelude-val">None</span>;
+        }
+
+        <span class="prelude-val">Some</span>(<span class="self">Self</span>(texture))
+    }
+
     <span class="attr">#[inline]
     </span><span class="kw">pub fn </span>handle(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw">crate</span>::wgpu_resources::GpuTextureHandle {
         <span class="self">self</span>.<span class="number">0</span>.handle
@@ -561,73 +427,21 @@
     </span>}
 }
 
-<span class="doccomment">/// Data required to create a texture 2D resource.
-///
-/// It is *not* stored along side the resulting texture resource!
-</span><span class="kw">pub struct </span>Texture2DCreationDesc&lt;<span class="lifetime">'a</span>&gt; {
-    <span class="kw">pub </span>label: DebugLabel,
-
-    <span class="doccomment">/// Data for the highest mipmap level.
-    ///
-    /// Data is expected to be tightly packed.
-    /// I.e. it is *not* padded according to wgpu buffer-&gt;texture transfer rules, padding will happen on the fly if necessary.
-    /// TODO(andreas): This should be a kind of factory function/builder instead which gets target memory passed in.
-    </span><span class="kw">pub </span>data: std::borrow::Cow&lt;<span class="lifetime">'a</span>, [u8]&gt;,
-    <span class="kw">pub </span>format: wgpu::TextureFormat,
-    <span class="kw">pub </span>width: u32,
-    <span class="kw">pub </span>height: u32,
-    <span class="comment">//generate_mip_maps: bool, // TODO(andreas): generate mipmaps!
-</span>}
-
-<span class="comment">// TODO(andreas): Move this to texture pool.
-</span><span class="attr">#[derive(thiserror::Error, Debug)]
-</span><span class="kw">pub enum </span>TextureCreationError {
-    <span class="attr">#[error(<span class="string">"Texture with debug label {0:?} has zero width or height!"</span>)]
-    </span>ZeroSize(DebugLabel),
-
-    <span class="attr">#[error(<span class="string">"Texture was {width}x{height}, larger than the max of {max_texture_dimension_2d}"</span>)]
-    </span>TooLarge {
-        width: u32,
-        height: u32,
-        max_texture_dimension_2d: u32,
-    },
-
-    <span class="attr">#[error(
-        <span class="string">"Wrong number of bytes in the texture data buffer - expected {width}x{height}x{bytes_per_texel}={expected_bytes}, got {actual_bytes}"
-    </span>)]
-    </span>WrongBufferSize {
-        width: u32,
-        height: u32,
-        bytes_per_texel: u32,
-        expected_bytes: usize, <span class="comment">// product of the avbove
-
-        </span>actual_bytes: usize,
-    },
-
-    <span class="attr">#[error(
-        <span class="string">"Texture with debug label {label:?} has a format {format:?} that data can't be transferred to!"
-    </span>)]
-    </span>UnsupportedFormatForTransfer {
-        label: DebugLabel,
-        format: wgpu::TextureFormat,
-    },
-}
-
 <span class="attr">#[derive(thiserror::Error, Debug)]
 </span><span class="kw">pub enum </span>TextureManager2DError&lt;DataCreationError&gt; {
-    <span class="doccomment">/// Something went wrong when creating the GPU texture.
+    <span class="doccomment">/// Something went wrong when creating the GPU texture &amp; uploading/converting the image data.
     </span><span class="attr">#[error(transparent)]
-    </span>TextureCreation(<span class="attr">#[from] </span>TextureCreationError),
+    </span>ImageDataToTextureError(<span class="attr">#[from] </span>ImageDataToTextureError),
 
     <span class="doccomment">/// Something went wrong in a user-callback.
     </span><span class="attr">#[error(transparent)]
     </span>DataCreation(DataCreationError),
 }
 
-<span class="kw">impl </span>From&lt;TextureManager2DError&lt;never::Never&gt;&gt; <span class="kw">for </span>TextureCreationError {
+<span class="kw">impl </span>From&lt;TextureManager2DError&lt;never::Never&gt;&gt; <span class="kw">for </span>ImageDataToTextureError {
     <span class="kw">fn </span>from(err: TextureManager2DError&lt;never::Never&gt;) -&gt; <span class="self">Self </span>{
         <span class="kw">match </span>err {
-            TextureManager2DError::TextureCreation(texture_creation) =&gt; texture_creation,
+            TextureManager2DError::ImageDataToTextureError(texture_creation) =&gt; texture_creation,
             TextureManager2DError::DataCreation(never) =&gt; <span class="kw">match </span>never {},
         }
     }
@@ -643,18 +457,10 @@
 ///
 /// Has intertior mutability.
 </span><span class="kw">pub struct </span>TextureManager2D {
-    <span class="comment">// Long lived/short lived doesn't make sense for textures since we don't yet know a way to
-    // optimize for short lived textures as we do with buffer data.
-    //manager: ResourceManager&lt;Texture2DHandleInner, GpuTextureHandleStrong&gt;,
-    </span>white_texture_unorm: GpuTexture2D,
+    white_texture_unorm: GpuTexture2D,
     zeroed_texture_float: GpuTexture2D,
-    zeroed_texture_depth: GpuTexture2D,
     zeroed_texture_sint: GpuTexture2D,
     zeroed_texture_uint: GpuTexture2D,
-
-    <span class="comment">// For convenience to reduce amount of times we need to pass them around
-    </span>device: Arc&lt;wgpu::Device&gt;,
-    queue: Arc&lt;wgpu::Queue&gt;,
 
     <span class="doccomment">/// The mutable part of the manager.
     </span>inner: Mutex&lt;Inner&gt;,
@@ -683,54 +489,74 @@
 
 <span class="kw">impl </span>TextureManager2D {
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>new(
-        device: Arc&lt;wgpu::Device&gt;,
-        queue: Arc&lt;wgpu::Queue&gt;,
+        device: <span class="kw-2">&amp;</span>wgpu::Device,
+        queue: <span class="kw-2">&amp;</span>wgpu::Queue,
         texture_pool: <span class="kw-2">&amp;</span>GpuTexturePool,
     ) -&gt; <span class="self">Self </span>{
         <span class="macro">re_tracing::profile_function!</span>();
 
-        <span class="kw">let </span>white_texture_unorm = <span class="self">Self</span>::create_and_upload_texture(
-            <span class="kw-2">&amp;</span>device,
-            <span class="kw-2">&amp;</span>queue,
-            texture_pool,
-            <span class="kw-2">&amp;</span>Texture2DCreationDesc {
+        <span class="comment">// Create the single pixel white texture ad hoc - at this point during initialization we don't have
+        // the render context yet and thus can't use the higher level `transfer_image_data_to_texture` function.
+        </span><span class="kw">let </span>white_texture_unorm = GpuTexture2D(texture_pool.alloc(
+            device,
+            <span class="kw-2">&amp;</span>TextureDesc {
                 label: <span class="string">"white pixel - unorm"</span>.into(),
-                data: <span class="macro">vec!</span>[<span class="number">255</span>, <span class="number">255</span>, <span class="number">255</span>, <span class="number">255</span>].into(),
                 format: wgpu::TextureFormat::Rgba8Unorm,
+                size: wgpu::Extent3d {
+                    width: <span class="number">1</span>,
+                    height: <span class="number">1</span>,
+                    depth_or_array_layers: <span class="number">1</span>,
+                },
+                mip_level_count: <span class="number">1</span>,
+                sample_count: <span class="number">1</span>,
+                dimension: wgpu::TextureDimension::D2,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            },
+        ));
+        queue.write_texture(
+            wgpu::ImageCopyTexture {
+                texture: <span class="kw-2">&amp;</span>white_texture_unorm.texture,
+                mip_level: <span class="number">0</span>,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            <span class="kw-2">&amp;</span>[<span class="number">255</span>, <span class="number">255</span>, <span class="number">255</span>, <span class="number">255</span>],
+            wgpu::ImageDataLayout {
+                offset: <span class="number">0</span>,
+                bytes_per_row: <span class="prelude-val">Some</span>(<span class="number">4</span>),
+                rows_per_image: <span class="prelude-val">None</span>,
+            },
+            wgpu::Extent3d {
                 width: <span class="number">1</span>,
                 height: <span class="number">1</span>,
+                depth_or_array_layers: <span class="number">1</span>,
             },
-        )
-        .expect(<span class="string">"Failed to create white pixel texture!"</span>);
+        );
 
         <span class="kw">let </span>zeroed_texture_float =
-            create_zero_texture(texture_pool, <span class="kw-2">&amp;</span>device, wgpu::TextureFormat::Rgba8Unorm);
-        <span class="kw">let </span>zeroed_texture_depth =
-            create_zero_texture(texture_pool, <span class="kw-2">&amp;</span>device, wgpu::TextureFormat::Depth16Unorm);
+            create_zero_texture(texture_pool, device, wgpu::TextureFormat::Rgba8Unorm);
         <span class="kw">let </span>zeroed_texture_sint =
-            create_zero_texture(texture_pool, <span class="kw-2">&amp;</span>device, wgpu::TextureFormat::Rgba8Sint);
+            create_zero_texture(texture_pool, device, wgpu::TextureFormat::Rgba8Sint);
         <span class="kw">let </span>zeroed_texture_uint =
-            create_zero_texture(texture_pool, <span class="kw-2">&amp;</span>device, wgpu::TextureFormat::Rgba8Uint);
+            create_zero_texture(texture_pool, device, wgpu::TextureFormat::Rgba8Uint);
 
         <span class="self">Self </span>{
             white_texture_unorm,
             zeroed_texture_float,
-            zeroed_texture_depth,
             zeroed_texture_sint,
             zeroed_texture_uint,
-            device,
-            queue,
             inner: Default::default(),
         }
     }
 
     <span class="doccomment">/// Creates a new 2D texture resource and schedules data upload to the GPU.
     /// TODO(jleibs): All usages of this should be replaced with `get_or_create`, which is strictly preferable
+    </span><span class="attr">#[allow(clippy::unused_self)]
     </span><span class="kw">pub fn </span>create(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        texture_pool: <span class="kw-2">&amp;</span>GpuTexturePool,
-        creation_desc: <span class="kw-2">&amp;</span>Texture2DCreationDesc&lt;<span class="lifetime">'_</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;GpuTexture2D, TextureCreationError&gt; {
+        render_ctx: <span class="kw-2">&amp;</span>RenderContext,
+        creation_desc: ImageDataDesc&lt;<span class="lifetime">'_</span>&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;GpuTexture2D, ImageDataToTextureError&gt; {
         <span class="comment">// TODO(andreas): Disabled the warning as we're moving towards using this texture manager for user-logged images.
         // However, it's still very much a concern especially once we add mipmapping. Something we need to keep in mind.
         //
@@ -747,7 +573,10 @@
         // Currently we don't store any data in the texture manager.
         // In the future we might handle (lazy?) mipmap generation in here or keep track of lazy upload processing.
 
-        </span><span class="self">Self</span>::create_and_upload_texture(<span class="kw-2">&amp;</span><span class="self">self</span>.device, <span class="kw-2">&amp;</span><span class="self">self</span>.queue, texture_pool, creation_desc)
+        </span><span class="kw">let </span>texture =
+            creation_desc.create_target_texture(render_ctx, wgpu::TextureUsages::TEXTURE_BINDING);
+        transfer_image_data_to_texture(render_ctx, creation_desc, <span class="kw-2">&amp;</span>texture)<span class="question-mark">?</span>;
+        <span class="prelude-val">Ok</span>(GpuTexture2D(texture))
     }
 
     <span class="doccomment">/// Creates a new 2D texture resource and schedules data upload to the GPU if a texture
@@ -755,10 +584,10 @@
     </span><span class="kw">pub fn </span>get_or_create(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         key: u64,
-        texture_pool: <span class="kw-2">&amp;</span>GpuTexturePool,
-        texture_desc: Texture2DCreationDesc&lt;<span class="lifetime">'_</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;GpuTexture2D, TextureCreationError&gt; {
-        <span class="self">self</span>.get_or_create_with(key, texture_pool, || texture_desc)
+        render_ctx: <span class="kw-2">&amp;</span>RenderContext,
+        texture_desc: ImageDataDesc&lt;<span class="lifetime">'_</span>&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;GpuTexture2D, ImageDataToTextureError&gt; {
+        <span class="self">self</span>.get_or_create_with(key, render_ctx, || texture_desc)
     }
 
     <span class="doccomment">/// Creates a new 2D texture resource and schedules data upload to the GPU if a texture
@@ -766,10 +595,10 @@
     </span><span class="kw">pub fn </span>get_or_create_with&lt;<span class="lifetime">'a</span>&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         key: u64,
-        texture_pool: <span class="kw-2">&amp;</span>GpuTexturePool,
-        create_texture_desc: <span class="kw">impl </span>FnOnce() -&gt; Texture2DCreationDesc&lt;<span class="lifetime">'a</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;GpuTexture2D, TextureCreationError&gt; {
-        <span class="self">self</span>.get_or_try_create_with(key, texture_pool, || -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, never::Never&gt; {
+        render_ctx: <span class="kw-2">&amp;</span>RenderContext,
+        create_texture_desc: <span class="kw">impl </span>FnOnce() -&gt; ImageDataDesc&lt;<span class="lifetime">'a</span>&gt;,
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;GpuTexture2D, ImageDataToTextureError&gt; {
+        <span class="self">self</span>.get_or_try_create_with(key, render_ctx, || -&gt; <span class="prelude-ty">Result</span>&lt;<span class="kw">_</span>, never::Never&gt; {
             <span class="prelude-val">Ok</span>(create_texture_desc())
         })
         .map_err(|err| err.into())
@@ -780,8 +609,8 @@
     </span><span class="kw">pub fn </span>get_or_try_create_with&lt;<span class="lifetime">'a</span>, <span class="prelude-val">Err</span>: std::fmt::Display&gt;(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         key: u64,
-        texture_pool: <span class="kw-2">&amp;</span>GpuTexturePool,
-        try_create_texture_desc: <span class="kw">impl </span>FnOnce() -&gt; <span class="prelude-ty">Result</span>&lt;Texture2DCreationDesc&lt;<span class="lifetime">'a</span>&gt;, <span class="prelude-val">Err</span>&gt;,
+        render_ctx: <span class="kw-2">&amp;</span>RenderContext,
+        try_create_texture_desc: <span class="kw">impl </span>FnOnce() -&gt; <span class="prelude-ty">Result</span>&lt;ImageDataDesc&lt;<span class="lifetime">'a</span>&gt;, <span class="prelude-val">Err</span>&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;GpuTexture2D, TextureManager2DError&lt;<span class="prelude-val">Err</span>&gt;&gt; {
         <span class="kw">let </span><span class="kw-2">mut </span>inner = <span class="self">self</span>.inner.lock();
         <span class="kw">let </span>texture_handle = <span class="kw">match </span>inner.texture_cache.entry(key) {
@@ -792,13 +621,11 @@
                 <span class="comment">// Run potentially expensive texture creation code:
                 </span><span class="kw">let </span>tex_creation_desc = try_create_texture_desc()
                     .map_err(|err| TextureManager2DError::DataCreation(err))<span class="question-mark">?</span>;
-                <span class="kw">let </span>texture = <span class="self">Self</span>::create_and_upload_texture(
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.device,
-                    <span class="kw-2">&amp;</span><span class="self">self</span>.queue,
-                    texture_pool,
-                    <span class="kw-2">&amp;</span>tex_creation_desc,
-                )<span class="question-mark">?</span>;
-                entry.insert(texture).clone()
+
+                <span class="kw">let </span>texture = tex_creation_desc
+                    .create_target_texture(render_ctx, wgpu::TextureUsages::TEXTURE_BINDING);
+                transfer_image_data_to_texture(render_ctx, tex_creation_desc, <span class="kw-2">&amp;</span>texture)<span class="question-mark">?</span>;
+                entry.insert(GpuTexture2D(texture)).clone()
             }
         };
 
@@ -821,11 +648,6 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.zeroed_texture_float.<span class="number">0
     </span>}
 
-    <span class="doccomment">/// Returns a single zero pixel with format [`wgpu::TextureFormat::Depth16Unorm`].
-    </span><span class="kw">pub fn </span>zeroed_texture_depth(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GpuTexture {
-        <span class="kw-2">&amp;</span><span class="self">self</span>.zeroed_texture_depth.<span class="number">0
-    </span>}
-
     <span class="doccomment">/// Returns a single zero pixel with format [`wgpu::TextureFormat::Rgba8Sint`].
     </span><span class="kw">pub fn </span>zeroed_texture_sint(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>GpuTexture {
         <span class="kw-2">&amp;</span><span class="self">self</span>.zeroed_texture_sint.<span class="number">0
@@ -836,111 +658,6 @@
         <span class="kw-2">&amp;</span><span class="self">self</span>.zeroed_texture_uint.<span class="number">0
     </span>}
 
-    <span class="kw">fn </span>create_and_upload_texture(
-        device: <span class="kw-2">&amp;</span>wgpu::Device,
-        queue: <span class="kw-2">&amp;</span>wgpu::Queue,
-        texture_pool: <span class="kw-2">&amp;</span>GpuTexturePool,
-        creation_desc: <span class="kw-2">&amp;</span>Texture2DCreationDesc&lt;<span class="lifetime">'_</span>&gt;,
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;GpuTexture2D, TextureCreationError&gt; {
-        <span class="macro">re_tracing::profile_function!</span>();
-
-        <span class="kw">let </span>Texture2DCreationDesc {
-            label,
-            data,
-            format,
-            width,
-            height,
-        } = creation_desc;
-        <span class="kw">let </span>(width, height, format) = (<span class="kw-2">*</span>width, <span class="kw-2">*</span>height, <span class="kw-2">*</span>format);
-
-        <span class="kw">if </span>width == <span class="number">0 </span>|| height == <span class="number">0 </span>{
-            <span class="kw">return </span><span class="prelude-val">Err</span>(TextureCreationError::ZeroSize(label.clone()));
-        }
-
-        <span class="kw">let </span>max_texture_dimension_2d = device.limits().max_texture_dimension_2d;
-        <span class="kw">if </span>width &gt; max_texture_dimension_2d || height &gt; max_texture_dimension_2d {
-            <span class="kw">return </span><span class="prelude-val">Err</span>(TextureCreationError::TooLarge {
-                width,
-                height,
-                max_texture_dimension_2d,
-            });
-        }
-
-        <span class="kw">if </span>!format.is_compressed() {
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(bytes_per_texel) = creation_desc
-                .format
-                .block_copy_size(<span class="prelude-val">Some</span>(wgpu::TextureAspect::All))
-            {
-                <span class="kw">let </span>expected_bytes = width <span class="kw">as </span>usize * height <span class="kw">as </span>usize * bytes_per_texel <span class="kw">as </span>usize;
-
-                <span class="kw">if </span>data.len() != expected_bytes {
-                    <span class="kw">return </span><span class="prelude-val">Err</span>(TextureCreationError::WrongBufferSize {
-                        width,
-                        height,
-                        bytes_per_texel,
-                        expected_bytes,
-
-                        actual_bytes: data.len(),
-                    });
-                }
-            }
-        }
-
-        <span class="kw">let </span>size = wgpu::Extent3d {
-            width,
-            height,
-            depth_or_array_layers: <span class="number">1</span>,
-        };
-        <span class="kw">let </span>texture = texture_pool.alloc(
-            device,
-            <span class="kw-2">&amp;</span>TextureDesc {
-                label: label.clone(),
-                size,
-                mip_level_count: <span class="number">1</span>, <span class="comment">// TODO(andreas)
-                </span>sample_count: <span class="number">1</span>,
-                dimension: wgpu::TextureDimension::D2,
-                format,
-                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-            },
-        );
-
-        <span class="kw">let </span>width_blocks = width / format.block_dimensions().<span class="number">0</span>;
-        <span class="kw">let </span>block_size = creation_desc
-            .format
-            .block_copy_size(<span class="prelude-val">Some</span>(wgpu::TextureAspect::All))
-            .ok_or_else(|| TextureCreationError::UnsupportedFormatForTransfer {
-                label: label.clone(),
-                format,
-            })<span class="question-mark">?</span>;
-        <span class="kw">let </span>bytes_per_row_unaligned = width_blocks * block_size;
-
-        <span class="comment">// TODO(andreas): Once we have our own temp buffer for uploading, we can do the padding inplace
-        // I.e. the only difference will be if we do one memcopy or one memcopy per row, making row padding a nuisance!
-        </span><span class="kw">let </span>data: <span class="kw-2">&amp;</span>[u8] = data.as_ref();
-
-        <span class="comment">// TODO(andreas): temp allocator for staging data?
-        </span><span class="macro">re_tracing::profile_scope!</span>(<span class="string">"write_texture"</span>);
-        queue.write_texture(
-            wgpu::ImageCopyTexture {
-                texture: <span class="kw-2">&amp;</span>texture.texture,
-                mip_level: <span class="number">0</span>,
-                origin: wgpu::Origin3d::ZERO,
-                aspect: wgpu::TextureAspect::All,
-            },
-            data,
-            wgpu::ImageDataLayout {
-                offset: <span class="number">0</span>,
-                bytes_per_row: <span class="prelude-val">Some</span>(bytes_per_row_unaligned),
-                rows_per_image: <span class="prelude-val">None</span>,
-            },
-            size,
-        );
-
-        <span class="comment">// TODO(andreas): mipmap generation
-
-        </span><span class="prelude-val">Ok</span>(GpuTexture2D(texture))
-    }
-
     <span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>begin_frame(<span class="kw-2">&amp;</span><span class="self">self</span>, _frame_index: u64) {
         <span class="self">self</span>.inner.lock().begin_frame(_frame_index);
     }
@@ -948,7 +665,7 @@
 
 <span class="kw">fn </span>create_zero_texture(
     texture_pool: <span class="kw-2">&amp;</span>GpuTexturePool,
-    device: <span class="kw-2">&amp;</span>Arc&lt;wgpu::Device&gt;,
+    device: <span class="kw-2">&amp;</span>wgpu::Device,
     format: wgpu::TextureFormat,
 ) -&gt; GpuTexture2D {
     <span class="comment">// Wgpu zeros out new textures automatically

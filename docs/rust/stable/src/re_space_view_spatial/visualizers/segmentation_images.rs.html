@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_space_view_spatial/src/visualizers/segmentation_images.rs`."><title>segmentation_images.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_space_view_spatial" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_space_view_spatial/src/visualizers/segmentation_images.rs`."><title>segmentation_images.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_space_view_spatial" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../re_space_view_spatial/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -218,24 +217,7 @@
 <a href="#217" id="217">217</a>
 <a href="#218" id="218">218</a>
 <a href="#219" id="219">219</a>
-<a href="#220" id="220">220</a>
-<a href="#221" id="221">221</a>
-<a href="#222" id="222">222</a>
-<a href="#223" id="223">223</a>
-<a href="#224" id="224">224</a>
-<a href="#225" id="225">225</a>
-<a href="#226" id="226">226</a>
-<a href="#227" id="227">227</a>
-<a href="#228" id="228">228</a>
-<a href="#229" id="229">229</a>
-<a href="#230" id="230">230</a>
-<a href="#231" id="231">231</a>
-<a href="#232" id="232">232</a>
-<a href="#233" id="233">233</a>
-<a href="#234" id="234">234</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
-
-<span class="kw">use </span>re_types::{
+</pre></div><pre class="rust"><code><span class="kw">use </span>re_types::{
     archetypes::SegmentationImage,
     components::{DrawOrder, ImageBuffer, ImageFormat, Opacity},
     image::ImageKind,
@@ -252,21 +234,19 @@
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
     visualizers::{filter_visualizable_2d_entities, textured_rect_from_image},
-    PickableImageRect,
+    PickableRectSourceData, PickableTexturedRect,
 };
 
 <span class="kw">use </span><span class="kw">super</span>::SpatialViewVisualizerData;
 
 <span class="kw">pub struct </span>SegmentationImageVisualizer {
     <span class="kw">pub </span>data: SpatialViewVisualizerData,
-    <span class="kw">pub </span>images: Vec&lt;PickableImageRect&gt;,
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>SegmentationImageVisualizer {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             data: SpatialViewVisualizerData::new(<span class="prelude-val">Some</span>(SpatialSpaceViewKind::TwoD)),
-            images: Vec::new(),
         }
     }
 }
@@ -348,7 +328,6 @@
                             buffer: buffer.clone().into(),
                             format: first_copied(formats.as_deref())<span class="question-mark">?</span>.<span class="number">0</span>,
                             kind: ImageKind::Segmentation,
-                            colormap: <span class="prelude-val">None</span>,
                         },
                         opacity: first_copied(opacity).map(Into::into),
                     })
@@ -360,21 +339,25 @@
                     <span class="kw">let </span>opacity = opacity.unwrap_or_else(|| <span class="self">self</span>.fallback_for(ctx));
                     <span class="kw">let </span>multiplicative_tint =
                         re_renderer::Rgba::from_white_alpha(opacity.<span class="number">0</span>.clamp(<span class="number">0.0</span>, <span class="number">1.0</span>));
+                    <span class="kw">let </span>colormap = <span class="prelude-val">None</span>;
 
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(textured_rect) = textured_rect_from_image(
                         ctx.viewer_ctx,
                         entity_path,
                         spatial_ctx,
                         <span class="kw-2">&amp;</span>image,
+                        colormap,
                         multiplicative_tint,
                         <span class="string">"SegmentationImage"</span>,
                         <span class="kw-2">&amp;mut </span><span class="self">self</span>.data,
                     ) {
-                        <span class="self">self</span>.images.push(PickableImageRect {
+                        <span class="self">self</span>.data.pickable_rects.push(PickableTexturedRect {
                             ent_path: entity_path.clone(),
-                            image,
                             textured_rect,
-                            depth_meter: <span class="prelude-val">None</span>,
+                            source_data: PickableRectSourceData::Image {
+                                image,
+                                depth_meter: <span class="prelude-val">None</span>,
+                            },
                         });
                     }
                 }
@@ -390,31 +373,17 @@
         // visualizers are executed in the order of their identifiers.
         // -&gt; The draw order is always DepthImage then Image then SegmentationImage,
         //    which happens to be exactly what we want 🙈
-        </span><span class="self">self</span>.images.sort_by_key(|image| {
+        </span><span class="self">self</span>.data.pickable_rects.sort_by_key(|image| {
             (
                 image.textured_rect.options.depth_offset,
                 egui::emath::OrderedFloat(image.textured_rect.options.multiplicative_tint.a()),
             )
         });
 
-        <span class="kw">let </span><span class="kw-2">mut </span>draw_data_list = Vec::new();
-
-        <span class="comment">// TODO(wumpf): Can we avoid this copy, maybe let DrawData take an iterator?
-        </span><span class="kw">let </span>rectangles = <span class="self">self
-            </span>.images
-            .iter()
-            .map(|image| image.textured_rect.clone())
-            .collect_vec();
-        <span class="kw">match </span>re_renderer::renderer::RectangleDrawData::new(render_ctx, <span class="kw-2">&amp;</span>rectangles) {
-            <span class="prelude-val">Ok</span>(draw_data) =&gt; {
-                draw_data_list.push(draw_data.into());
-            }
-            <span class="prelude-val">Err</span>(err) =&gt; {
-                <span class="macro">re_log::error_once!</span>(<span class="string">"Failed to create rectangle draw data from images: {err}"</span>);
-            }
-        }
-
-        <span class="prelude-val">Ok</span>(draw_data_list)
+        <span class="prelude-val">Ok</span>(<span class="macro">vec!</span>[PickableTexturedRect::to_draw_data(
+            render_ctx,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.data.pickable_rects,
+        )<span class="question-mark">?</span>])
     }
 
     <span class="kw">fn </span>data(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span><span class="kw">dyn </span>std::any::Any&gt; {
@@ -425,7 +394,7 @@
         <span class="self">self
     </span>}
 
-    <span class="kw">fn </span>as_fallback_provider(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="kw">dyn </span>re_viewer_context::ComponentFallbackProvider {
+    <span class="kw">fn </span>fallback_provider(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="kw">dyn </span>re_viewer_context::ComponentFallbackProvider {
         <span class="self">self
     </span>}
 }

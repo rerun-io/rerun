@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["RenderPipelineCreationError"],"fn":["sanity_check_vertex_buffers"],"struct":["GpuRenderPipelineHandle","GpuRenderPipelinePool","RenderPipelineDesc","VertexBufferLayout"],"type":["GpuRenderPipelinePoolAccessor","GpuRenderPipelinePoolMoveAccessor"]};
+window.SIDEBAR_ITEMS = {"enum":["RenderPipelineCreationError"],"fn":["sanity_check_vertex_buffers"],"struct":["GpuRenderPipelineHandle","GpuRenderPipelinePool","RenderPipelineDesc","VertexBufferLayout"],"type":["GpuRenderPipelinePoolAccessor"]};

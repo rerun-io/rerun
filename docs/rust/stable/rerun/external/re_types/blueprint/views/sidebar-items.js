@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["BarChartView","Spatial2DView","Spatial3DView","TensorView","TextDocumentView","TextLogView","TimeSeriesView"]};
+window.SIDEBAR_ITEMS = {"struct":["BarChartView","DataframeView","Spatial2DView","Spatial3DView","TensorView","TextDocumentView","TextLogView","TimeSeriesView"]};

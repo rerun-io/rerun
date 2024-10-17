@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_viewer_context/src/gpu_bridge/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_viewer_context" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_viewer_context/src/gpu_bridge/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_viewer_context" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../re_viewer_context/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -166,43 +165,6 @@
 <a href="#165" id="165">165</a>
 <a href="#166" id="166">166</a>
 <a href="#167" id="167">167</a>
-<a href="#168" id="168">168</a>
-<a href="#169" id="169">169</a>
-<a href="#170" id="170">170</a>
-<a href="#171" id="171">171</a>
-<a href="#172" id="172">172</a>
-<a href="#173" id="173">173</a>
-<a href="#174" id="174">174</a>
-<a href="#175" id="175">175</a>
-<a href="#176" id="176">176</a>
-<a href="#177" id="177">177</a>
-<a href="#178" id="178">178</a>
-<a href="#179" id="179">179</a>
-<a href="#180" id="180">180</a>
-<a href="#181" id="181">181</a>
-<a href="#182" id="182">182</a>
-<a href="#183" id="183">183</a>
-<a href="#184" id="184">184</a>
-<a href="#185" id="185">185</a>
-<a href="#186" id="186">186</a>
-<a href="#187" id="187">187</a>
-<a href="#188" id="188">188</a>
-<a href="#189" id="189">189</a>
-<a href="#190" id="190">190</a>
-<a href="#191" id="191">191</a>
-<a href="#192" id="192">192</a>
-<a href="#193" id="193">193</a>
-<a href="#194" id="194">194</a>
-<a href="#195" id="195">195</a>
-<a href="#196" id="196">196</a>
-<a href="#197" id="197">197</a>
-<a href="#198" id="198">198</a>
-<a href="#199" id="199">199</a>
-<a href="#200" id="200">200</a>
-<a href="#201" id="201">201</a>
-<a href="#202" id="202">202</a>
-<a href="#203" id="203">203</a>
-<a href="#204" id="204">204</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Bridge to `re_renderer`
 
 </span><span class="kw">mod </span>colormap;
@@ -211,7 +173,8 @@
 
 <span class="kw">pub use </span>colormap::{colormap_edit_or_view_ui, colormap_to_re_renderer};
 <span class="kw">pub use </span>image_to_gpu::{
-    image_data_range_heuristic, image_to_gpu, texture_creation_desc_from_color_image,
+    image_data_range_heuristic, image_to_gpu, required_shader_decode,
+    texture_creation_desc_from_color_image,
 };
 <span class="kw">pub use </span>re_renderer_callback::new_renderer_callback;
 
@@ -222,70 +185,34 @@
 </span><span class="kw">use </span>re_renderer::{
     renderer::{ColormappedTexture, RectangleOptions},
     resource_managers::{
-        GpuTexture2D, Texture2DCreationDesc, TextureCreationError, TextureManager2DError,
+        GpuTexture2D, ImageDataDesc, ImageDataToTextureError, TextureManager2DError,
     },
     RenderContext, ViewBuilder,
 };
 
 <span class="comment">// ----------------------------------------------------------------------------
 
-</span><span class="doccomment">/// Errors that can happen when supplying a tensor range to the GPU.
-</span><span class="attr">#[derive(thiserror::Error, Debug, PartialEq, Eq)]
-</span><span class="kw">pub enum </span>RangeError {
-    <span class="doccomment">/// This is weird. Should only happen with JPEGs, and those should have been decoded already
-    </span><span class="attr">#[error(<span class="string">"Missing a range."</span>)]
-    </span>MissingRange,
-}
-
-<span class="doccomment">/// Get a valid, finite range for the gpu to use.
-</span><span class="kw">pub fn </span>tensor_data_range_heuristic(
-    tensor_stats: <span class="kw-2">&amp;</span>TensorStats,
-    data_type: re_types::tensor_data::TensorDataType,
-) -&gt; <span class="prelude-ty">Result</span>&lt;[f32; <span class="number">2</span>], RangeError&gt; {
-    <span class="kw">let </span>(min, max) = tensor_stats.finite_range.ok_or(RangeError::MissingRange)<span class="question-mark">?</span>;
-
-    <span class="kw">let </span>min = min <span class="kw">as </span>f32;
-    <span class="kw">let </span>max = max <span class="kw">as </span>f32;
-
-    <span class="comment">// Apply heuristic for ranges that are typically expected depending on the data type and the finite (!) range.
-    // (we ignore NaN/Inf values heres, since they are usually there by accident!)
-    </span><span class="kw">if </span>data_type.is_float() &amp;&amp; <span class="number">0.0 </span>&lt;= min &amp;&amp; max &lt;= <span class="number">1.0 </span>{
-        <span class="comment">// Float values that are all between 0 and 1, assume that this is the range.
-        </span><span class="prelude-val">Ok</span>([<span class="number">0.0</span>, <span class="number">1.0</span>])
-    } <span class="kw">else if </span><span class="number">0.0 </span>&lt;= min &amp;&amp; max &lt;= <span class="number">255.0 </span>{
-        <span class="comment">// If all values are between 0 and 255, assume this is the range.
-        // (This is very common, independent of the data type)
-        </span><span class="prelude-val">Ok</span>([<span class="number">0.0</span>, <span class="number">255.0</span>])
-    } <span class="kw">else if </span>min == max {
-        <span class="comment">// uniform range. This can explode the colormapping, so let's map all colors to the middle:
-        </span><span class="prelude-val">Ok</span>([min - <span class="number">1.0</span>, max + <span class="number">1.0</span>])
-    } <span class="kw">else </span>{
-        <span class="comment">// Use range as is if nothing matches.
-        </span><span class="prelude-val">Ok</span>([min, max])
-    }
-}
-
-<span class="doccomment">/// Return whether a tensor should be assumed to be encoded in sRGB color space ("gamma space", no EOTF applied).
+</span><span class="doccomment">/// Return whether a tensor should be assumed to be encoded in sRGB color space ("gamma space", no EOTF applied).
 </span><span class="kw">pub fn </span>tensor_decode_srgb_gamma_heuristic(
     tensor_stats: <span class="kw-2">&amp;</span>TensorStats,
     data_type: re_types::tensor_data::TensorDataType,
     channels: u32,
-) -&gt; <span class="prelude-ty">Result</span>&lt;bool, RangeError&gt; {
+) -&gt; bool {
     <span class="kw">if </span><span class="macro">matches!</span>(channels, <span class="number">1 </span>| <span class="number">3 </span>| <span class="number">4</span>) {
-        <span class="kw">let </span>(min, max) = tensor_stats.finite_range.ok_or(RangeError::MissingRange)<span class="question-mark">?</span>;
+        <span class="kw">let </span>(min, max) = tensor_stats.finite_range;
         <span class="attr">#[allow(clippy::if_same_then_else)]
         </span><span class="kw">if </span><span class="number">0.0 </span>&lt;= min &amp;&amp; max &lt;= <span class="number">255.0 </span>{
             <span class="comment">// If the range is suspiciously reminding us of a "regular image", assume sRGB.
-            </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
-        } <span class="kw">else if </span>data_type.is_float() &amp;&amp; <span class="number">0.0 </span>&lt;= min &amp;&amp; max &lt;= <span class="number">1.0 </span>{
+            </span><span class="bool-val">true
+        </span>} <span class="kw">else if </span>data_type.is_float() &amp;&amp; <span class="number">0.0 </span>&lt;= min &amp;&amp; max &lt;= <span class="number">1.0 </span>{
             <span class="comment">// Floating point images between 0 and 1 are often sRGB as well.
-            </span><span class="prelude-val">Ok</span>(<span class="bool-val">true</span>)
-        } <span class="kw">else </span>{
-            <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
-        }
+            </span><span class="bool-val">true
+        </span>} <span class="kw">else </span>{
+            <span class="bool-val">false
+        </span>}
     } <span class="kw">else </span>{
-        <span class="prelude-val">Ok</span>(<span class="bool-val">false</span>)
-    }
+        <span class="bool-val">false
+    </span>}
 }
 
 <span class="comment">// ----------------------------------------------------------------------------
@@ -300,11 +227,11 @@
 <span class="kw">pub fn </span>try_get_or_create_texture&lt;<span class="lifetime">'a</span>, <span class="prelude-val">Err</span>: std::fmt::Display&gt;(
     render_ctx: <span class="kw-2">&amp;</span>RenderContext,
     texture_key: u64,
-    try_create_texture_desc: <span class="kw">impl </span>FnOnce() -&gt; <span class="prelude-ty">Result</span>&lt;Texture2DCreationDesc&lt;<span class="lifetime">'a</span>&gt;, <span class="prelude-val">Err</span>&gt;,
+    try_create_texture_desc: <span class="kw">impl </span>FnOnce() -&gt; <span class="prelude-ty">Result</span>&lt;ImageDataDesc&lt;<span class="lifetime">'a</span>&gt;, <span class="prelude-val">Err</span>&gt;,
 ) -&gt; <span class="prelude-ty">Result</span>&lt;GpuTexture2D, TextureManager2DError&lt;<span class="prelude-val">Err</span>&gt;&gt; {
     render_ctx.texture_manager_2d.get_or_try_create_with(
         texture_key,
-        <span class="kw-2">&amp;</span>render_ctx.gpu_resources.textures,
+        render_ctx,
         try_create_texture_desc,
     )
 }
@@ -312,13 +239,11 @@
 <span class="kw">pub fn </span>get_or_create_texture&lt;<span class="lifetime">'a</span>&gt;(
     render_ctx: <span class="kw-2">&amp;</span>RenderContext,
     texture_key: u64,
-    create_texture_desc: <span class="kw">impl </span>FnOnce() -&gt; Texture2DCreationDesc&lt;<span class="lifetime">'a</span>&gt;,
-) -&gt; <span class="prelude-ty">Result</span>&lt;GpuTexture2D, TextureCreationError&gt; {
-    render_ctx.texture_manager_2d.get_or_create_with(
-        texture_key,
-        <span class="kw-2">&amp;</span>render_ctx.gpu_resources.textures,
-        create_texture_desc,
-    )
+    create_texture_desc: <span class="kw">impl </span>FnOnce() -&gt; ImageDataDesc&lt;<span class="lifetime">'a</span>&gt;,
+) -&gt; <span class="prelude-ty">Result</span>&lt;GpuTexture2D, ImageDataToTextureError&gt; {
+    render_ctx
+        .texture_manager_2d
+        .get_or_create_with(texture_key, render_ctx, create_texture_desc)
 }
 
 <span class="doccomment">/// Render the given image, respecting the clip rectangle of the given painter.
@@ -328,7 +253,7 @@
     image_rect_on_screen: egui::Rect,
     colormapped_texture: ColormappedTexture,
     texture_options: egui::TextureOptions,
-    debug_name: <span class="kw-2">&amp;</span>str,
+    debug_name: re_renderer::DebugLabel,
 ) -&gt; anyhow::Result&lt;()&gt; {
     <span class="macro">re_tracing::profile_function!</span>();
 
@@ -379,7 +304,7 @@
     <span class="kw">let </span>top_left_position = glam::vec2(camera_position_space.x, camera_position_space.y);
 
     <span class="kw">let </span>target_config = re_renderer::view_builder::TargetConfiguration {
-        name: debug_name.into(),
+        name: debug_name,
         resolution_in_pixel,
         view_from_world: re_math::IsoTransform::from_translation(-top_left_position.extend(<span class="number">0.0</span>)),
         projection_from_view: re_renderer::view_builder::Projection::Orthographic {

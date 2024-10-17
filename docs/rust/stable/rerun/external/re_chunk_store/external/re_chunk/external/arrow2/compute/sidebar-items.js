@@ -1,1 +1,0 @@
-window.SIDEBAR_ITEMS = {"mod":["arity","arity_assign","concatenate","filter"]};

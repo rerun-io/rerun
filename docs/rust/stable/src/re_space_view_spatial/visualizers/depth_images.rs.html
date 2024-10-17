@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_space_view_spatial/src/visualizers/depth_images.rs`."><title>depth_images.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_space_view_spatial" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_space_view_spatial/src/visualizers/depth_images.rs`."><title>depth_images.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_space_view_spatial" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../re_space_view_spatial/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -378,25 +377,70 @@
 <a href="#377" id="377">377</a>
 <a href="#378" id="378">378</a>
 <a href="#379" id="379">379</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>itertools::Itertools <span class="kw">as _</span>;
-<span class="kw">use </span>nohash_hasher::IntSet;
+<a href="#380" id="380">380</a>
+<a href="#381" id="381">381</a>
+<a href="#382" id="382">382</a>
+<a href="#383" id="383">383</a>
+<a href="#384" id="384">384</a>
+<a href="#385" id="385">385</a>
+<a href="#386" id="386">386</a>
+<a href="#387" id="387">387</a>
+<a href="#388" id="388">388</a>
+<a href="#389" id="389">389</a>
+<a href="#390" id="390">390</a>
+<a href="#391" id="391">391</a>
+<a href="#392" id="392">392</a>
+<a href="#393" id="393">393</a>
+<a href="#394" id="394">394</a>
+<a href="#395" id="395">395</a>
+<a href="#396" id="396">396</a>
+<a href="#397" id="397">397</a>
+<a href="#398" id="398">398</a>
+<a href="#399" id="399">399</a>
+<a href="#400" id="400">400</a>
+<a href="#401" id="401">401</a>
+<a href="#402" id="402">402</a>
+<a href="#403" id="403">403</a>
+<a href="#404" id="404">404</a>
+<a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>nohash_hasher::IntMap;
 
 <span class="kw">use </span>re_entity_db::EntityPath;
 <span class="kw">use </span>re_log_types::EntityPathHash;
-<span class="kw">use </span>re_renderer::renderer::{DepthCloud, DepthClouds};
+<span class="kw">use </span>re_renderer::renderer::{ColormappedTexture, DepthCloud, DepthClouds};
 <span class="kw">use </span>re_types::{
     archetypes::DepthImage,
     components::{
-        <span class="self">self</span>, Colormap, DepthMeter, DrawOrder, FillRatio, ImageBuffer, ImageFormat, ViewCoordinates,
+        <span class="self">self</span>, Colormap, DepthMeter, DrawOrder, FillRatio, ImageBuffer, ImageFormat, ValueRange,
+        ViewCoordinates,
     },
     image::ImageKind,
     Loggable <span class="kw">as _</span>,
 };
 <span class="kw">use </span>re_viewer_context::{
-    gpu_bridge::colormap_to_re_renderer, ApplicableEntities, IdentifiedViewSystem, ImageInfo,
-    ImageStatsCache, QueryContext, SpaceViewClass, SpaceViewSystemExecutionError,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    ApplicableEntities, ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache,
+    QueryContext, SpaceViewClass, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 <span class="kw">use crate</span>::{
@@ -404,23 +448,23 @@
     query_pinhole_legacy,
     view_kind::SpatialSpaceViewKind,
     visualizers::{filter_visualizable_2d_entities, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
-    PickableImageRect, SpatialSpaceView3D,
+    PickableRectSourceData, PickableTexturedRect, SpatialSpaceView3D,
 };
 
 <span class="kw">use super</span>::{textured_rect_from_image, SpatialViewVisualizerData};
 
 <span class="kw">pub struct </span>DepthImageVisualizer {
     <span class="kw">pub </span>data: SpatialViewVisualizerData,
-    <span class="kw">pub </span>images: Vec&lt;PickableImageRect&gt;,
-    <span class="kw">pub </span>depth_cloud_entities: IntSet&lt;EntityPathHash&gt;,
+
+    <span class="doccomment">/// Expose image infos for depth clouds - we need this for picking interaction.
+    </span><span class="kw">pub </span>depth_cloud_entities: IntMap&lt;EntityPathHash, (ImageInfo, DepthMeter, ColormappedTexture)&gt;,
 }
 
 <span class="kw">impl </span>Default <span class="kw">for </span>DepthImageVisualizer {
     <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
             data: SpatialViewVisualizerData::new(<span class="prelude-val">Some</span>(SpatialSpaceViewKind::TwoD)),
-            images: Vec::new(),
-            depth_cloud_entities: IntSet::default(),
+            depth_cloud_entities: IntMap::default(),
         }
     }
 }
@@ -429,6 +473,8 @@
     image: ImageInfo,
     depth_meter: <span class="prelude-ty">Option</span>&lt;DepthMeter&gt;,
     fill_ratio: <span class="prelude-ty">Option</span>&lt;FillRatio&gt;,
+    colormap: <span class="prelude-ty">Option</span>&lt;Colormap&gt;,
+    value_range: <span class="prelude-ty">Option</span>&lt;[f64; <span class="number">2</span>]&gt;,
 }
 
 <span class="kw">impl </span>DepthImageVisualizer {
@@ -449,15 +495,48 @@
 
         <span class="kw">for </span>data <span class="kw">in </span>images {
             <span class="kw">let </span>DepthImageComponentData {
-                <span class="kw-2">mut </span>image,
+                image,
                 depth_meter,
                 fill_ratio,
+                colormap,
+                value_range,
             } = data;
 
             <span class="kw">let </span>depth_meter = depth_meter.unwrap_or_else(|| <span class="self">self</span>.fallback_for(ctx));
 
             <span class="comment">// All depth images must have a colormap:
-            </span>image.colormap = <span class="prelude-val">Some</span>(image.colormap.unwrap_or_else(|| <span class="self">self</span>.fallback_for(ctx)));
+            </span><span class="kw">let </span>colormap = colormap.unwrap_or_else(|| <span class="self">self</span>.fallback_for(ctx));
+            <span class="kw">let </span>value_range = value_range
+                .map(|r| [r[<span class="number">0</span>] <span class="kw">as </span>f32, r[<span class="number">1</span>] <span class="kw">as </span>f32])
+                .unwrap_or_else(|| {
+                    <span class="comment">// Don't use fallback provider since it has to query information we already have.
+                    </span><span class="kw">let </span>image_stats = ctx
+                        .viewer_ctx
+                        .cache
+                        .entry(|c: <span class="kw-2">&amp;mut </span>ImageStatsCache| c.entry(<span class="kw-2">&amp;</span>image));
+                    ColormapWithRange::default_range_for_depth_images(<span class="kw-2">&amp;</span>image_stats)
+                });
+            <span class="kw">let </span>colormap_with_range = ColormapWithRange {
+                colormap,
+                value_range,
+            };
+
+            <span class="comment">// First try to create a textured rect for this image.
+            // Even if we end up only showing a depth cloud,
+            // we still need most of this for ui interaction which still shows the image!
+            </span><span class="kw">let </span><span class="prelude-val">Some</span>(textured_rect) = textured_rect_from_image(
+                ctx.viewer_ctx,
+                entity_path,
+                ent_context,
+                <span class="kw-2">&amp;</span>image,
+                <span class="prelude-val">Some</span>(<span class="kw-2">&amp;</span>colormap_with_range),
+                re_renderer::Rgba::WHITE,
+                <span class="string">"DepthImage"</span>,
+                <span class="kw-2">&amp;mut </span><span class="self">self</span>.data,
+            ) <span class="kw">else </span>{
+                <span class="comment">// If we can't create a textured rect from this, we don't have to bother with clouds either.
+                </span><span class="kw">return</span>;
+            };
 
             <span class="kw">if </span>is_3d_view {
                 <span class="kw">if let </span><span class="prelude-val">Some</span>(twod_in_threed_info) = <span class="kw-2">&amp;</span>ent_context.transform_info.twod_in_threed_info {
@@ -469,11 +548,11 @@
                     </span><span class="kw">match </span><span class="self">Self</span>::process_entity_view_as_depth_cloud(
                         ctx,
                         ent_context,
-                        <span class="kw-2">&amp;</span>image,
                         entity_path,
                         twod_in_threed_info,
                         depth_meter,
                         fill_ratio,
+                        <span class="kw-2">&amp;</span>textured_rect.colormapped_texture,
                     ) {
                         <span class="prelude-val">Ok</span>(cloud) =&gt; {
                             <span class="self">self</span>.data.add_bounding_box(
@@ -481,9 +560,14 @@
                                 cloud.world_space_bbox(),
                                 glam::Affine3A::IDENTITY,
                             );
-                            <span class="self">self</span>.depth_cloud_entities.insert(entity_path.hash());
+                            <span class="self">self</span>.depth_cloud_entities.insert(
+                                entity_path.hash(),
+                                (image, depth_meter, textured_rect.colormapped_texture),
+                            );
                             depth_clouds.push(cloud);
-                            <span class="kw">return</span>;
+
+                            <span class="comment">// Skip creating a textured rect.
+                            </span><span class="kw">return</span>;
                         }
                         <span class="prelude-val">Err</span>(err) =&gt; {
                             <span class="macro">re_log::warn_once!</span>(<span class="string">"{err}"</span>);
@@ -492,33 +576,25 @@
                 };
             }
 
-            <span class="kw">if let </span><span class="prelude-val">Some</span>(textured_rect) = textured_rect_from_image(
-                ctx.viewer_ctx,
-                entity_path,
-                ent_context,
-                <span class="kw-2">&amp;</span>image,
-                re_renderer::Rgba::WHITE,
-                <span class="string">"DepthImage"</span>,
-                <span class="kw-2">&amp;mut </span><span class="self">self</span>.data,
-            ) {
-                <span class="self">self</span>.images.push(PickableImageRect {
-                    ent_path: entity_path.clone(),
+            <span class="self">self</span>.data.pickable_rects.push(PickableTexturedRect {
+                ent_path: entity_path.clone(),
+                textured_rect,
+                source_data: PickableRectSourceData::Image {
                     image,
-                    textured_rect,
                     depth_meter: <span class="prelude-val">Some</span>(depth_meter),
-                });
-            }
+                },
+            });
         }
     }
 
     <span class="kw">fn </span>process_entity_view_as_depth_cloud(
         ctx: <span class="kw-2">&amp;</span>QueryContext&lt;<span class="lifetime">'_</span>&gt;,
         ent_context: <span class="kw-2">&amp;</span>SpatialSceneEntityContext&lt;<span class="lifetime">'_</span>&gt;,
-        image: <span class="kw-2">&amp;</span>ImageInfo,
         ent_path: <span class="kw-2">&amp;</span>EntityPath,
         twod_in_threed_info: <span class="kw-2">&amp;</span>TwoDInThreeDTransformInfo,
         depth_meter: DepthMeter,
         radius_scale: FillRatio,
+        depth_texture: <span class="kw-2">&amp;</span>ColormappedTexture,
     ) -&gt; anyhow::Result&lt;DepthCloud&gt; {
         <span class="macro">re_tracing::profile_function!</span>();
 
@@ -543,45 +619,33 @@
                     </span>.from_rdf(),
             );
 
-        <span class="kw">let </span>dimensions = glam::UVec2::new(image.width(), image.height());
-
-        <span class="kw">let </span>debug_name = ent_path.to_string();
-        <span class="kw">let </span>tensor_stats = ctx
-            .viewer_ctx
-            .cache
-            .entry(|c: <span class="kw-2">&amp;mut </span>ImageStatsCache| c.entry(image));
-
-        <span class="kw">let </span><span class="prelude-val">Some</span>(render_ctx) = ctx.viewer_ctx.render_ctx <span class="kw">else </span>{
-            <span class="macro">anyhow::bail!</span>(<span class="string">"No render context available for depth cloud creation"</span>);
-        };
-
-        <span class="kw">let </span>depth_texture = re_viewer_context::gpu_bridge::image_to_gpu(
-            render_ctx,
-            <span class="kw-2">&amp;</span>debug_name,
-            image,
-            <span class="kw-2">&amp;</span>tensor_stats,
-            <span class="kw-2">&amp;</span>ent_context.annotations,
-        )<span class="question-mark">?</span>;
+        <span class="kw">let </span>dimensions = glam::UVec2::from_array(depth_texture.texture.width_height());
 
         <span class="kw">let </span>world_depth_from_texture_depth = <span class="number">1.0 </span>/ <span class="kw-2">*</span>depth_meter.<span class="number">0</span>;
 
         <span class="comment">// We want point radius to be defined in a scale where the radius of a point
         // is a factor of the diameter of a pixel projected at that distance.
         </span><span class="kw">let </span>fov_y = intrinsics.fov_y().unwrap_or(<span class="number">1.0</span>);
-        <span class="kw">let </span>pixel_width_from_depth = (<span class="number">0.5 </span>* fov_y).tan() / (<span class="number">0.5 </span>* image.height() <span class="kw">as </span>f32);
+        <span class="kw">let </span>pixel_width_from_depth = (<span class="number">0.5 </span>* fov_y).tan() / (<span class="number">0.5 </span>* dimensions.y <span class="kw">as </span>f32);
         <span class="kw">let </span>point_radius_from_world_depth = <span class="kw-2">*</span>radius_scale.<span class="number">0 </span>* pixel_width_from_depth;
+
+        <span class="kw">let </span>min_max_depth_in_world = [
+            world_depth_from_texture_depth * depth_texture.range[<span class="number">0</span>],
+            world_depth_from_texture_depth * depth_texture.range[<span class="number">1</span>],
+        ];
 
         <span class="prelude-val">Ok</span>(DepthCloud {
             world_from_rdf,
             depth_camera_intrinsics: intrinsics.image_from_camera.<span class="number">0</span>.into(),
             world_depth_from_texture_depth,
             point_radius_from_world_depth,
-            max_depth_in_world: world_depth_from_texture_depth * depth_texture.range[<span class="number">1</span>],
+            min_max_depth_in_world,
             depth_dimensions: dimensions,
-            depth_texture: depth_texture.texture,
-            colormap: colormap_to_re_renderer(
-                image.colormap.expect(<span class="string">"We should have set this earlier"</span>),
-            ),
+            depth_texture: depth_texture.texture.clone(),
+            colormap: <span class="kw">match </span>depth_texture.color_mapper {
+                re_renderer::renderer::ColorMapper::Function(colormap) =&gt; colormap,
+                <span class="kw">_ </span>=&gt; re_renderer::Colormap::Grayscale,
+            },
             outline_mask_id: ent_context.highlight.overall,
             picking_object_id: re_renderer::PickingLayerObjectId(ent_path.hash64()),
         })
@@ -646,18 +710,20 @@
                     ImageFormat::name(),
                 );
                 <span class="kw">let </span>all_colormaps = results.iter_as(timeline, Colormap::name());
+                <span class="kw">let </span>all_value_ranges = results.iter_as(timeline, ValueRange::name());
                 <span class="kw">let </span>all_depth_meters = results.iter_as(timeline, DepthMeter::name());
                 <span class="kw">let </span>all_fill_ratios = results.iter_as(timeline, FillRatio::name());
 
-                <span class="kw">let </span><span class="kw-2">mut </span>data = re_query::range_zip_1x4(
+                <span class="kw">let </span><span class="kw-2">mut </span>data = re_query::range_zip_1x5(
                     all_buffers_indexed,
                     all_formats_indexed,
                     all_colormaps.component::&lt;components::Colormap&gt;(),
+                    all_value_ranges.primitive_array::&lt;<span class="number">2</span>, f64&gt;(),
                     all_depth_meters.primitive::&lt;f32&gt;(),
                     all_fill_ratios.primitive::&lt;f32&gt;(),
                 )
                 .filter_map(
-                    |(index, buffers, format, colormap, depth_meter, fill_ratio)| {
+                    |(index, buffers, format, colormap, value_range, depth_meter, fill_ratio)| {
                         <span class="kw">let </span>buffer = buffers.first()<span class="question-mark">?</span>;
 
                         <span class="prelude-val">Some</span>(DepthImageComponentData {
@@ -666,10 +732,11 @@
                                 buffer: buffer.clone().into(),
                                 format: first_copied(format.as_deref())<span class="question-mark">?</span>.<span class="number">0</span>,
                                 kind: ImageKind::Depth,
-                                colormap: first_copied(colormap.as_deref()),
                             },
                             depth_meter: first_copied(depth_meter).map(Into::into),
                             fill_ratio: first_copied(fill_ratio).map(Into::into),
+                            colormap: first_copied(colormap.as_deref()),
+                            value_range: first_copied(value_range).map(Into::into),
                         })
                     },
                 );
@@ -698,20 +765,11 @@
                 </span>);
             }
         }
-        <span class="comment">// TODO(wumpf): Can we avoid this copy, maybe let DrawData take an iterator?
-        </span><span class="kw">let </span>rectangles = <span class="self">self
-            </span>.images
-            .iter()
-            .map(|image| image.textured_rect.clone())
-            .collect_vec();
-        <span class="kw">match </span>re_renderer::renderer::RectangleDrawData::new(render_ctx, <span class="kw-2">&amp;</span>rectangles) {
-            <span class="prelude-val">Ok</span>(draw_data) =&gt; {
-                draw_data_list.push(draw_data.into());
-            }
-            <span class="prelude-val">Err</span>(err) =&gt; {
-                <span class="macro">re_log::error_once!</span>(<span class="string">"Failed to create rectangle draw data from images: {err}"</span>);
-            }
-        }
+
+        draw_data_list.push(PickableTexturedRect::to_draw_data(
+            render_ctx,
+            <span class="kw-2">&amp;</span><span class="self">self</span>.data.pickable_rects,
+        )<span class="question-mark">?</span>);
 
         <span class="prelude-val">Ok</span>(draw_data_list)
     }
@@ -724,14 +782,51 @@
         <span class="self">self
     </span>}
 
-    <span class="kw">fn </span>as_fallback_provider(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="kw">dyn </span>re_viewer_context::ComponentFallbackProvider {
+    <span class="kw">fn </span>fallback_provider(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="kw">dyn </span>re_viewer_context::ComponentFallbackProvider {
         <span class="self">self
     </span>}
 }
 
+<span class="kw">impl </span>TypedComponentFallbackProvider&lt;DrawOrder&gt; <span class="kw">for </span>DepthImageVisualizer {
+    <span class="kw">fn </span>fallback_for(<span class="kw-2">&amp;</span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>QueryContext&lt;<span class="lifetime">'_</span>&gt;) -&gt; DrawOrder {
+        DrawOrder::DEFAULT_DEPTH_IMAGE
+    }
+}
+
+<span class="kw">impl </span>TypedComponentFallbackProvider&lt;ValueRange&gt; <span class="kw">for </span>DepthImageVisualizer {
+    <span class="kw">fn </span>fallback_for(
+        <span class="kw-2">&amp;</span><span class="self">self</span>,
+        ctx: <span class="kw-2">&amp;</span>re_viewer_context::QueryContext&lt;<span class="lifetime">'_</span>&gt;,
+    ) -&gt; re_types::components::ValueRange {
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(((_time, buffer_row_id), image_buffer)) = ctx
+            .recording()
+            .latest_at_component::&lt;ImageBuffer&gt;(ctx.target_entity_path, ctx.query)
+        {
+            <span class="comment">// TODO(andreas): What about overrides on the image format?
+            </span><span class="kw">if let </span><span class="prelude-val">Some</span>((<span class="kw">_</span>, format)) = ctx
+                .recording()
+                .latest_at_component::&lt;ImageFormat&gt;(ctx.target_entity_path, ctx.query)
+            {
+                <span class="kw">let </span>image = ImageInfo {
+                    buffer_row_id,
+                    buffer: image_buffer.<span class="number">0</span>,
+                    format: format.<span class="number">0</span>,
+                    kind: ImageKind::Depth,
+                };
+                <span class="kw">let </span>cache = ctx.viewer_ctx.cache;
+                <span class="kw">let </span>image_stats = cache.entry(|c: <span class="kw-2">&amp;mut </span>ImageStatsCache| c.entry(<span class="kw-2">&amp;</span>image));
+                <span class="kw">let </span>default_range = ColormapWithRange::default_range_for_depth_images(<span class="kw-2">&amp;</span>image_stats);
+                <span class="kw">return </span>[default_range[<span class="number">0</span>] <span class="kw">as </span>f64, default_range[<span class="number">1</span>] <span class="kw">as </span>f64].into();
+            }
+        }
+
+        [<span class="number">0.0</span>, f64::MAX].into()
+    }
+}
+
 <span class="kw">impl </span>TypedComponentFallbackProvider&lt;Colormap&gt; <span class="kw">for </span>DepthImageVisualizer {
     <span class="kw">fn </span>fallback_for(<span class="kw-2">&amp;</span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>re_viewer_context::QueryContext&lt;<span class="lifetime">'_</span>&gt;) -&gt; Colormap {
-        Colormap::Turbo
+        ColormapWithRange::DEFAULT_DEPTH_COLORMAP
     }
 }
 
@@ -746,13 +841,7 @@
     }
 }
 
-<span class="kw">impl </span>TypedComponentFallbackProvider&lt;DrawOrder&gt; <span class="kw">for </span>DepthImageVisualizer {
-    <span class="kw">fn </span>fallback_for(<span class="kw-2">&amp;</span><span class="self">self</span>, _ctx: <span class="kw-2">&amp;</span>QueryContext&lt;<span class="lifetime">'_</span>&gt;) -&gt; DrawOrder {
-        DrawOrder::DEFAULT_DEPTH_IMAGE
-    }
-}
-
-<span class="macro">re_viewer_context::impl_component_fallback_provider!</span>(DepthImageVisualizer =&gt; [Colormap, DepthMeter, DrawOrder]);
+<span class="macro">re_viewer_context::impl_component_fallback_provider!</span>(DepthImageVisualizer =&gt; [Colormap, ValueRange, DepthMeter, DrawOrder]);
 
 <span class="kw">fn </span>first_copied&lt;T: Copy&gt;(slice: <span class="prelude-ty">Option</span>&lt;<span class="kw-2">&amp;</span>[T]&gt;) -&gt; <span class="prelude-ty">Option</span>&lt;T&gt; {
     slice.and_then(|element| element.first()).copied()

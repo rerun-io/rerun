@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_space_view_spatial/src/visualizers/lines3d.rs`."><title>lines3d.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_space_view_spatial" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_space_view_spatial/src/visualizers/lines3d.rs`."><title>lines3d.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_space_view_spatial" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../re_space_view_spatial/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -277,11 +276,36 @@
 <a href="#276" id="276">276</a>
 <a href="#277" id="277">277</a>
 <a href="#278" id="278">278</a>
+<a href="#279" id="279">279</a>
+<a href="#280" id="280">280</a>
+<a href="#281" id="281">281</a>
+<a href="#282" id="282">282</a>
+<a href="#283" id="283">283</a>
+<a href="#284" id="284">284</a>
+<a href="#285" id="285">285</a>
+<a href="#286" id="286">286</a>
+<a href="#287" id="287">287</a>
+<a href="#288" id="288">288</a>
+<a href="#289" id="289">289</a>
+<a href="#290" id="290">290</a>
+<a href="#291" id="291">291</a>
+<a href="#292" id="292">292</a>
+<a href="#293" id="293">293</a>
+<a href="#294" id="294">294</a>
+<a href="#295" id="295">295</a>
+<a href="#296" id="296">296</a>
+<a href="#297" id="297">297</a>
+<a href="#298" id="298">298</a>
+<a href="#299" id="299">299</a>
+<a href="#300" id="300">300</a>
+<a href="#301" id="301">301</a>
+<a href="#302" id="302">302</a>
+<a href="#303" id="303">303</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>re_log_types::Instance;
 <span class="kw">use </span>re_renderer::PickingLayerInstanceId;
 <span class="kw">use </span>re_types::{
     archetypes::LineStrips3D,
-    components::{ClassId, Color, KeypointId, LineStrip3D, Radius, Text},
+    components::{ClassId, Color, KeypointId, LineStrip3D, Radius, ShowLabels, Text},
     ArrowString, Loggable <span class="kw">as _</span>,
 };
 <span class="kw">use </span>re_viewer_context::{
@@ -292,8 +316,9 @@
 };
 
 <span class="kw">use crate</span>::{
-    contexts::SpatialSceneEntityContext, view_kind::SpatialSpaceViewKind,
-    visualizers::process_labels_3d,
+    contexts::SpatialSceneEntityContext,
+    view_kind::SpatialSpaceViewKind,
+    visualizers::utilities::{process_labels_3d, LabeledBatch},
 };
 
 <span class="kw">use super</span>::{
@@ -393,20 +418,23 @@
                 .add_bounding_box(entity_path.hash(), obj_space_bounding_box, world_from_obj);
 
             <span class="self">self</span>.data.ui_labels.extend(process_labels_3d(
-                entity_path,
-                num_instances,
-                obj_space_bounding_box.center(),
-                data.strips.iter().map(|strip| {
-                    strip
-                        .iter()
-                        .copied()
-                        .map(glam::Vec3::from)
-                        .sum::&lt;glam::Vec3&gt;()
-                        / (strip.len() <span class="kw">as </span>f32)
-                }),
-                <span class="kw-2">&amp;</span>data.labels,
-                <span class="kw-2">&amp;</span>colors,
-                <span class="kw-2">&amp;</span>annotation_infos,
+                LabeledBatch {
+                    entity_path,
+                    num_instances,
+                    overall_position: obj_space_bounding_box.center(),
+                    instance_positions: data.strips.iter().map(|strip| {
+                        strip
+                            .iter()
+                            .copied()
+                            .map(glam::Vec3::from)
+                            .sum::&lt;glam::Vec3&gt;()
+                            / (strip.len() <span class="kw">as </span>f32)
+                    }),
+                    labels: <span class="kw-2">&amp;</span>data.labels,
+                    colors: <span class="kw-2">&amp;</span>colors,
+                    show_labels: data.show_labels.unwrap_or_else(|| <span class="self">self</span>.fallback_for(ctx)),
+                    annotation_infos: <span class="kw-2">&amp;</span>annotation_infos,
+                },
                 world_from_obj,
             ));
         }
@@ -425,6 +453,9 @@
     labels: Vec&lt;ArrowString&gt;,
     keypoint_ids: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[KeypointId],
     class_ids: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>[ClassId],
+
+    <span class="comment">// Non-repeated
+    </span>show_labels: <span class="prelude-ty">Option</span>&lt;ShowLabels&gt;,
 }
 
 <span class="kw">impl </span>IdentifiedViewSystem <span class="kw">for </span>Lines3DVisualizer {
@@ -502,17 +533,28 @@
                 <span class="kw">let </span>all_labels = results.iter_as(timeline, Text::name());
                 <span class="kw">let </span>all_class_ids = results.iter_as(timeline, ClassId::name());
                 <span class="kw">let </span>all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
+                <span class="kw">let </span>all_show_labels = results.iter_as(timeline, ShowLabels::name());
 
-                <span class="kw">let </span>data = re_query::range_zip_1x5(
+                <span class="kw">let </span>data = re_query::range_zip_1x6(
                     all_strips_indexed,
                     all_colors.primitive::&lt;u32&gt;(),
                     all_radii.primitive::&lt;f32&gt;(),
                     all_labels.string(),
                     all_class_ids.primitive::&lt;u16&gt;(),
                     all_keypoint_ids.primitive::&lt;u16&gt;(),
+                    all_show_labels.component::&lt;ShowLabels&gt;(),
                 )
                 .map(
-                    |(_index, strips, colors, radii, labels, class_ids, keypoint_ids)| {
+                    |(
+                        _index,
+                        strips,
+                        colors,
+                        radii,
+                        labels,
+                        class_ids,
+                        keypoint_ids,
+                        show_labels,
+                    )| {
                         Lines3DComponentData {
                             strips,
                             colors: colors.map_or(<span class="kw-2">&amp;</span>[], |colors| bytemuck::cast_slice(colors)),
@@ -522,6 +564,7 @@
                                 .map_or(<span class="kw-2">&amp;</span>[], |class_ids| bytemuck::cast_slice(class_ids)),
                             keypoint_ids: keypoint_ids
                                 .map_or(<span class="kw-2">&amp;</span>[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
+                            show_labels: show_labels.unwrap_or_default().first().copied(),
                         }
                     },
                 );
@@ -543,7 +586,7 @@
         <span class="self">self
     </span>}
 
-    <span class="kw">fn </span>as_fallback_provider(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="kw">dyn </span>re_viewer_context::ComponentFallbackProvider {
+    <span class="kw">fn </span>fallback_provider(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="kw">dyn </span>re_viewer_context::ComponentFallbackProvider {
         <span class="self">self
     </span>}
 }
@@ -554,5 +597,11 @@
     }
 }
 
-<span class="macro">re_viewer_context::impl_component_fallback_provider!</span>(Lines3DVisualizer =&gt; [Color]);
+<span class="kw">impl </span>TypedComponentFallbackProvider&lt;ShowLabels&gt; <span class="kw">for </span>Lines3DVisualizer {
+    <span class="kw">fn </span>fallback_for(<span class="kw-2">&amp;</span><span class="self">self</span>, ctx: <span class="kw-2">&amp;</span>QueryContext&lt;<span class="lifetime">'_</span>&gt;) -&gt; ShowLabels {
+        <span class="kw">super</span>::utilities::show_labels_fallback::&lt;LineStrip3D&gt;(ctx)
+    }
+}
+
+<span class="macro">re_viewer_context::impl_component_fallback_provider!</span>(Lines3DVisualizer =&gt; [Color, ShowLabels]);
 </code></pre></div></section></main></body></html>

@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"enum":["ResourceHandle","ResourceLifeTime","ResourceManagerError","TextureCreationError","TextureManager2DError"],"struct":["GpuTexture2D","MeshManager","Texture2DCreationDesc","TextureManager2D"],"type":["GpuMeshHandle"]};
+window.SIDEBAR_ITEMS = {"enum":["ImageDataToTextureError","SourceImageDataFormat","TextureManager2DError","YuvMatrixCoefficients","YuvPixelLayout","YuvRange"],"fn":["transfer_image_data_to_texture"],"struct":["GpuTexture2D","ImageDataDesc","TextureManager2D"]};

@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_space_view_spatial/src/ui_3d.rs`."><title>ui_3d.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_space_view_spatial" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_space_view_spatial/src/ui_3d.rs`."><title>ui_3d.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_space_view_spatial" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_space_view_spatial/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -940,6 +939,15 @@
 <a href="#939" id="939">939</a>
 <a href="#940" id="940">940</a>
 <a href="#941" id="941">941</a>
+<a href="#942" id="942">942</a>
+<a href="#943" id="943">943</a>
+<a href="#944" id="944">944</a>
+<a href="#945" id="945">945</a>
+<a href="#946" id="946">946</a>
+<a href="#947" id="947">947</a>
+<a href="#948" id="948">948</a>
+<a href="#949" id="949">949</a>
+<a href="#950" id="950">950</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>egui::{emath::RectTransform, NumExt <span class="kw">as _</span>};
 <span class="kw">use </span>glam::{Affine3A, Quat, Vec3};
 <span class="kw">use </span>web_time::Instant;
@@ -959,15 +967,14 @@
 };
 <span class="kw">use </span>re_ui::{ContextExt, ModifiersMarkdown, MouseButtonMarkdown};
 <span class="kw">use </span>re_viewer_context::{
-    gpu_bridge, Item, ItemSpaceContext, SpaceViewSystemExecutionError, SystemExecutionOutput,
-    ViewQuery, ViewerContext,
+    gpu_bridge, Item, ItemSpaceContext, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
 };
 <span class="kw">use </span>re_viewport_blueprint::ViewProperty;
 
 <span class="kw">use crate</span>::{
     scene_bounding_boxes::SceneBoundingBoxes,
     space_camera_3d::SpaceCamera3D,
-    ui::{create_labels, outline_config, picking, screenshot_context_menu, SpatialSpaceViewState},
+    ui::{create_labels, outline_config, screenshot_context_menu, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
     visualizers::{
         collect_ui_labels, image_view_coordinates, CamerasVisualizer,
@@ -993,7 +1000,7 @@
     /// If this is a camera, it takes over the camera pose, otherwise follows the entity.
     </span><span class="kw">pub </span>tracked_entity: <span class="prelude-ty">Option</span>&lt;EntityPath&gt;,
 
-    <span class="doccomment">/// Eye pose just before we started following an entity [Self::tracked_entity].
+    <span class="doccomment">/// Eye pose just before we started following an entity [`Self::tracked_entity`].
     </span>camera_before_tracked_entity: <span class="prelude-ty">Option</span>&lt;Eye&gt;,
 
     eye_interpolation: <span class="prelude-ty">Option</span>&lt;EyeInterpolation&gt;,
@@ -1370,17 +1377,11 @@ Display 3D content in the reference frame defined by the space origin.
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SpaceViewSystemExecutionError&gt; {
         <span class="macro">re_tracing::profile_function!</span>();
 
-        <span class="kw">let </span>SystemExecutionOutput {
-            view_systems: parts,
-            context_systems: view_ctx,
-            draw_data,
-        } = system_output;
-
-        <span class="comment">// Wrap view systems collection in an Arc for later use in ViewContext.
-        </span><span class="kw">let </span>parts = std::sync::Arc::new(parts);
-
         <span class="kw">let </span>highlights = <span class="kw-2">&amp;</span>query.highlights;
-        <span class="kw">let </span>space_cameras = <span class="kw-2">&amp;</span>parts.get::&lt;CamerasVisualizer&gt;()<span class="question-mark">?</span>.space_cameras;
+        <span class="kw">let </span>space_cameras = <span class="kw-2">&amp;</span>system_output
+            .view_systems
+            .get::&lt;CamerasVisualizer&gt;()<span class="question-mark">?
+            </span>.space_cameras;
         <span class="kw">let </span>scene_view_coordinates = ctx
             .recording()
             <span class="comment">// Allow logging view-coordinates to `/` and have it apply to `/world` etc.
@@ -1388,10 +1389,10 @@ Display 3D content in the reference frame defined by the space origin.
             </span>.latest_at_component_at_closest_ancestor(query.space_origin, <span class="kw-2">&amp;</span>ctx.current_query())
             .map(|(<span class="kw">_</span>, _index, c)| c);
 
-        <span class="kw">let </span>(rect, <span class="kw-2">mut </span>response) =
+        <span class="kw">let </span>(ui_rect, <span class="kw-2">mut </span>response) =
             ui.allocate_at_least(ui.available_size(), egui::Sense::click_and_drag());
 
-        <span class="kw">if </span>!rect.is_positive() {
+        <span class="kw">if </span>!ui_rect.is_positive() {
             <span class="kw">return </span><span class="prelude-val">Ok</span>(()); <span class="comment">// protect against problems with zero-sized views
         </span>}
 
@@ -1405,7 +1406,7 @@ Display 3D content in the reference frame defined by the space origin.
 
         <span class="comment">// Determine view port resolution and position.
         </span><span class="kw">let </span>resolution_in_pixel =
-            gpu_bridge::viewport_resolution_in_pixels(rect, ui.ctx().pixels_per_point());
+            gpu_bridge::viewport_resolution_in_pixels(ui_rect, ui.ctx().pixels_per_point());
         <span class="kw">if </span>resolution_in_pixel[<span class="number">0</span>] == <span class="number">0 </span>|| resolution_in_pixel[<span class="number">1</span>] == <span class="number">0 </span>{
             <span class="kw">return </span><span class="prelude-val">Ok</span>(());
         }
@@ -1463,30 +1464,38 @@ Display 3D content in the reference frame defined by the space origin.
 
         <span class="comment">// Create labels now since their shapes participate are added to scene.ui for picking.
         </span><span class="kw">let </span>(label_shapes, ui_rects) = create_labels(
-            collect_ui_labels(<span class="kw-2">&amp;</span>parts),
-            RectTransform::from_to(rect, rect),
+            collect_ui_labels(<span class="kw-2">&amp;</span>system_output.view_systems),
+            RectTransform::from_to(ui_rect, ui_rect),
             <span class="kw-2">&amp;</span>eye,
             ui,
             highlights,
             SpatialSpaceViewKind::ThreeD,
         );
 
-        <span class="kw">if </span>ui.ctx().dragged_id().is_none() {
-            response = picking(
+        <span class="kw">if let </span><span class="prelude-val">Some</span>(pointer_pos_ui) = response.hover_pos() {
+            <span class="comment">// There's no panning &amp; zooming, so this is an identity transform.
+            </span><span class="kw">let </span>ui_pan_and_zoom_from_ui = RectTransform::from_to(ui_rect, ui_rect);
+
+            <span class="kw">let </span>picking_context = <span class="kw">crate</span>::picking::PickingContext::new(
+                pointer_pos_ui,
+                ui_pan_and_zoom_from_ui,
+                ui.ctx().pixels_per_point(),
+                <span class="kw-2">&amp;</span>eye,
+            );
+            response = <span class="kw">crate</span>::picking_ui::picking(
                 ctx,
-                response,
-                RectTransform::from_to(rect, rect),
-                rect,
+                <span class="kw-2">&amp;</span>picking_context,
                 ui,
-                eye,
+                response,
                 <span class="kw-2">&amp;mut </span>view_builder,
                 state,
-                <span class="kw-2">&amp;</span>view_ctx,
-                <span class="kw-2">&amp;</span>parts,
+                <span class="kw-2">&amp;</span>system_output,
                 <span class="kw-2">&amp;</span>ui_rects,
                 query,
                 SpatialSpaceViewKind::ThreeD,
             )<span class="question-mark">?</span>;
+        } <span class="kw">else </span>{
+            state.previous_picking_result = <span class="prelude-val">None</span>;
         }
 
         <span class="comment">// Track focused entity if any.
@@ -1604,7 +1613,7 @@ Display 3D content in the reference frame defined by the space origin.
             scene_view_coordinates,
         );
 
-        <span class="kw">for </span>draw_data <span class="kw">in </span>draw_data {
+        <span class="kw">for </span>draw_data <span class="kw">in </span>system_output.draw_data {
             view_builder.queue_draw(draw_data);
         }
 
@@ -1624,11 +1633,19 @@ Display 3D content in the reference frame defined by the space origin.
 
         ui.painter().add(gpu_bridge::new_renderer_callback(
             view_builder,
-            rect,
+            ui_rect,
             clear_color,
         ));
 
-        <span class="comment">// Add egui driven labels on top of re_renderer content.
+        <span class="comment">// Add egui-rendered spinners/loaders on top of re_renderer content:
+        </span><span class="kw">crate</span>::ui::paint_loading_spinners(
+            ui,
+            RectTransform::from_to(ui_rect, ui_rect),
+            <span class="kw-2">&amp;</span>eye,
+            <span class="kw-2">&amp;</span>system_output.view_systems,
+        );
+
+        <span class="comment">// Add egui-rendered labels on top of everything else:
         </span><span class="kw">let </span>painter = ui.painter().with_clip_rect(ui.max_rect());
         painter.extend(label_shapes);
 

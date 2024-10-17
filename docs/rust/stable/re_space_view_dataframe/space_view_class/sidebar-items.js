@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["DataframeSpaceView"]};
+window.SIDEBAR_ITEMS = {"struct":["DataframeSpaceView","DataframeSpaceViewState"]};

@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_renderer/src/context.rs`."><title>context.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_renderer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_renderer/src/context.rs`."><title>context.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_renderer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_renderer/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -592,17 +591,6 @@
 <a href="#591" id="591">591</a>
 <a href="#592" id="592">592</a>
 <a href="#593" id="593">593</a>
-<a href="#594" id="594">594</a>
-<a href="#595" id="595">595</a>
-<a href="#596" id="596">596</a>
-<a href="#597" id="597">597</a>
-<a href="#598" id="598">598</a>
-<a href="#599" id="599">599</a>
-<a href="#600" id="600">600</a>
-<a href="#601" id="601">601</a>
-<a href="#602" id="602">602</a>
-<a href="#603" id="603">603</a>
-<a href="#604" id="604">604</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::{
     atomic::{AtomicU64, Ordering},
     Arc,
@@ -617,8 +605,8 @@
     error_handling::{ErrorTracker, WgpuErrorScope},
     global_bindings::GlobalBindings,
     renderer::Renderer,
-    resource_managers::{MeshManager, TextureManager2D},
-    wgpu_resources::{GpuRenderPipelinePoolMoveAccessor, WgpuResourcePools},
+    resource_managers::TextureManager2D,
+    wgpu_resources::WgpuResourcePools,
     FileServer, RecommendedFileResolver,
 };
 
@@ -676,15 +664,14 @@
     renderers: RwLock&lt;Renderers&gt;,
     <span class="kw">pub</span>(<span class="kw">crate</span>) resolver: RecommendedFileResolver,
 
-    <span class="kw">pub </span>mesh_manager: RwLock&lt;MeshManager&gt;,
     <span class="kw">pub </span>texture_manager_2d: TextureManager2D,
     <span class="kw">pub</span>(<span class="kw">crate</span>) cpu_write_gpu_read_belt: Mutex&lt;CpuWriteGpuReadBelt&gt;,
-    <span class="kw">pub</span>(<span class="kw">crate</span>) gpu_readback_belt: Mutex&lt;GpuReadbackBelt&gt;,
+    <span class="kw">pub </span>gpu_readback_belt: Mutex&lt;GpuReadbackBelt&gt;,
 
     <span class="doccomment">/// List of unfinished queue submission via this context.
     ///
     /// This is currently only about submissions we do via the global encoder in [`ActiveFrameContext`]
-    /// TODO(andreas): We rely on egui for the "primary" submissions in re_viewer. It would be nice to take full control over all submissions.
+    /// TODO(andreas): We rely on egui for the "primary" submissions in `re_viewer`. It would be nice to take full control over all submissions.
     </span>inflight_queue_submissions: Vec&lt;wgpu::SubmissionIndex&gt;,
 
     <span class="kw">pub </span>active_frame: ActiveFrameContext,
@@ -823,13 +810,10 @@
         }
 
         <span class="kw">let </span>resolver = <span class="kw">crate</span>::new_recommended_file_resolver();
-        <span class="kw">let </span>mesh_manager = RwLock::new(MeshManager::new());
-        <span class="kw">let </span>texture_manager_2d =
-            TextureManager2D::new(device.clone(), queue.clone(), <span class="kw-2">&amp;</span>gpu_resources.textures);
+        <span class="kw">let </span>texture_manager_2d = TextureManager2D::new(<span class="kw-2">&amp;</span>device, <span class="kw-2">&amp;</span>queue, <span class="kw-2">&amp;</span>gpu_resources.textures);
 
         <span class="kw">let </span>active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(<span class="kw-2">&amp;</span>device)),
-            pinned_render_pipelines: <span class="prelude-val">None</span>,
             frame_index: STARTUP_FRAME_IDX,
             top_level_error_scope,
         };
@@ -866,7 +850,6 @@
             }),
             resolver,
             top_level_error_tracker,
-            mesh_manager,
             texture_manager_2d,
             cpu_write_gpu_read_belt,
             gpu_readback_belt,
@@ -946,13 +929,6 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
         <span class="comment">// Map all read staging buffers.
         </span><span class="self">self</span>.gpu_readback_belt.get_mut().after_queue_submit();
 
-        <span class="comment">// Give back moved render pipelines to the pool if any were moved out.
-        </span><span class="kw">if let </span><span class="prelude-val">Some</span>(moved_render_pipelines) = <span class="self">self</span>.active_frame.pinned_render_pipelines.take() {
-            <span class="self">self</span>.gpu_resources
-                .render_pipelines
-                .return_resources(moved_render_pipelines);
-        }
-
         <span class="comment">// Close previous' frame error scope.
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(top_level_error_scope) = <span class="self">self</span>.active_frame.top_level_error_scope.take() {
             <span class="kw">let </span>frame_index_for_uncaptured_errors = <span class="self">self</span>.frame_index_for_uncaptured_errors.clone();
@@ -978,7 +954,6 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
         <span class="comment">// New active frame!
         </span><span class="self">self</span>.active_frame = ActiveFrameContext {
             before_view_builder_encoder: Mutex::new(FrameGlobalCommandEncoder::new(<span class="kw-2">&amp;</span><span class="self">self</span>.device)),
-            pinned_render_pipelines: <span class="prelude-val">None</span>,
             frame_index: <span class="self">self</span>.active_frame.frame_index.wrapping_add(<span class="number">1</span>),
             top_level_error_scope: <span class="prelude-val">Some</span>(WgpuErrorScope::start(<span class="kw-2">&amp;</span><span class="self">self</span>.device)),
         };
@@ -992,7 +967,6 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
             <span class="macro">re_log::debug!</span>(<span class="question-mark">?</span>modified_paths, <span class="string">"got some filesystem events"</span>);
         }
 
-        <span class="self">self</span>.mesh_manager.get_mut().begin_frame(frame_index);
         <span class="self">self</span>.texture_manager_2d.begin_frame(frame_index);
         <span class="self">self</span>.gpu_readback_belt.get_mut().begin_frame(frame_index);
 
@@ -1080,6 +1054,16 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
     </span><span class="kw">pub</span>(<span class="kw">crate</span>) <span class="kw">fn </span>read_lock_renderers(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; RwLockReadGuard&lt;<span class="lifetime">'_</span>, Renderers&gt; {
         <span class="self">self</span>.renderers.read()
     }
+
+    <span class="doccomment">/// Returns the global frame index of the active frame.
+    </span><span class="kw">pub fn </span>active_frame_idx(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
+        <span class="self">self</span>.active_frame.frame_index
+    }
+
+    <span class="doccomment">/// Returns the device's capabilities.
+    </span><span class="kw">pub fn </span>device_caps(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span>DeviceCaps {
+        <span class="kw-2">&amp;</span><span class="self">self</span>.config.device_caps
+    }
 }
 
 <span class="kw">pub struct </span>FrameGlobalCommandEncoder(<span class="prelude-ty">Option</span>&lt;wgpu::CommandEncoder&gt;);
@@ -1119,20 +1103,13 @@ This means, either a call to RenderContext::before_submit was omitted, or the pr
     /// (i.e. typically in [`crate::renderer::DrawData`] creation!)
     </span><span class="kw">pub </span>before_view_builder_encoder: Mutex&lt;FrameGlobalCommandEncoder&gt;,
 
-    <span class="doccomment">/// Render pipelines that were moved out of the resource pool.
-    ///
-    /// Will be moved back to the resource pool at the start of the frame.
-    /// This is needed for accessing the render pipelines without keeping a reference
-    /// to the resource pool lock during the lifetime of a render pass.
-    </span><span class="kw">pub </span>pinned_render_pipelines: <span class="prelude-ty">Option</span>&lt;GpuRenderPipelinePoolMoveAccessor&gt;,
-
     <span class="doccomment">/// Index of this frame. Is incremented for every render frame.
     ///
     /// Keep in mind that all operations on WebGPU are asynchronous:
     /// This counter is part of the `content timeline` and may be arbitrarily
     /// behind both of the `device timeline` and `queue timeline`.
     /// See &lt;https://www.w3.org/TR/webgpu/#programming-model-timelines&gt;
-    </span>frame_index: u64,
+    </span><span class="kw">pub </span>frame_index: u64,
 
     <span class="doccomment">/// Top level device error scope, created at startup and closed &amp; reopened on every frame.
     ///

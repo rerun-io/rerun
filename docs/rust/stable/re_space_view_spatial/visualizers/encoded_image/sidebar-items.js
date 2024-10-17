@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["EncodedImageVisualizer"]};
+window.SIDEBAR_ITEMS = {"struct":["EncodedImageVisualizer","ImageMediaTypeFilter"]};

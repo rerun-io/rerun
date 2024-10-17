@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["arrow2","crossbeam","re_log_types"]};
+window.SIDEBAR_ITEMS = {"mod":["crossbeam","re_log_types"]};

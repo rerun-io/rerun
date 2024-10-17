@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["Background","DataframeQuery","PlotLegend","ScalarAxis","SpaceViewBlueprint","SpaceViewContents","TensorScalarMapping","TensorSliceSelection","TensorViewFit","TimeRangeTableOrder","VisibleTimeRanges","VisualBounds2D"]};
+window.SIDEBAR_ITEMS = {"struct":["Background","DataframeQuery","PlotLegend","ScalarAxis","SpaceViewBlueprint","SpaceViewContents","TensorScalarMapping","TensorSliceSelection","TensorViewFit","VisibleTimeRanges","VisualBounds2D"]};

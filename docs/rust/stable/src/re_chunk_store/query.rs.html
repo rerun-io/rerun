@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/store/re_chunk_store/src/query.rs`."><title>query.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_chunk_store" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/store/re_chunk_store/src/query.rs`."><title>query.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_chunk_store" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_chunk_store/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -675,6 +674,84 @@
 <a href="#674" id="674">674</a>
 <a href="#675" id="675">675</a>
 <a href="#676" id="676">676</a>
+<a href="#677" id="677">677</a>
+<a href="#678" id="678">678</a>
+<a href="#679" id="679">679</a>
+<a href="#680" id="680">680</a>
+<a href="#681" id="681">681</a>
+<a href="#682" id="682">682</a>
+<a href="#683" id="683">683</a>
+<a href="#684" id="684">684</a>
+<a href="#685" id="685">685</a>
+<a href="#686" id="686">686</a>
+<a href="#687" id="687">687</a>
+<a href="#688" id="688">688</a>
+<a href="#689" id="689">689</a>
+<a href="#690" id="690">690</a>
+<a href="#691" id="691">691</a>
+<a href="#692" id="692">692</a>
+<a href="#693" id="693">693</a>
+<a href="#694" id="694">694</a>
+<a href="#695" id="695">695</a>
+<a href="#696" id="696">696</a>
+<a href="#697" id="697">697</a>
+<a href="#698" id="698">698</a>
+<a href="#699" id="699">699</a>
+<a href="#700" id="700">700</a>
+<a href="#701" id="701">701</a>
+<a href="#702" id="702">702</a>
+<a href="#703" id="703">703</a>
+<a href="#704" id="704">704</a>
+<a href="#705" id="705">705</a>
+<a href="#706" id="706">706</a>
+<a href="#707" id="707">707</a>
+<a href="#708" id="708">708</a>
+<a href="#709" id="709">709</a>
+<a href="#710" id="710">710</a>
+<a href="#711" id="711">711</a>
+<a href="#712" id="712">712</a>
+<a href="#713" id="713">713</a>
+<a href="#714" id="714">714</a>
+<a href="#715" id="715">715</a>
+<a href="#716" id="716">716</a>
+<a href="#717" id="717">717</a>
+<a href="#718" id="718">718</a>
+<a href="#719" id="719">719</a>
+<a href="#720" id="720">720</a>
+<a href="#721" id="721">721</a>
+<a href="#722" id="722">722</a>
+<a href="#723" id="723">723</a>
+<a href="#724" id="724">724</a>
+<a href="#725" id="725">725</a>
+<a href="#726" id="726">726</a>
+<a href="#727" id="727">727</a>
+<a href="#728" id="728">728</a>
+<a href="#729" id="729">729</a>
+<a href="#730" id="730">730</a>
+<a href="#731" id="731">731</a>
+<a href="#732" id="732">732</a>
+<a href="#733" id="733">733</a>
+<a href="#734" id="734">734</a>
+<a href="#735" id="735">735</a>
+<a href="#736" id="736">736</a>
+<a href="#737" id="737">737</a>
+<a href="#738" id="738">738</a>
+<a href="#739" id="739">739</a>
+<a href="#740" id="740">740</a>
+<a href="#741" id="741">741</a>
+<a href="#742" id="742">742</a>
+<a href="#743" id="743">743</a>
+<a href="#744" id="744">744</a>
+<a href="#745" id="745">745</a>
+<a href="#746" id="746">746</a>
+<a href="#747" id="747">747</a>
+<a href="#748" id="748">748</a>
+<a href="#749" id="749">749</a>
+<a href="#750" id="750">750</a>
+<a href="#751" id="751">751</a>
+<a href="#752" id="752">752</a>
+<a href="#753" id="753">753</a>
+<a href="#754" id="754">754</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::{
     collections::BTreeSet,
     sync::{atomic::Ordering, Arc},
@@ -700,6 +777,43 @@
 // as both static and temporal, which is probably wrong.
 
 </span><span class="kw">impl </span>ChunkStore {
+    <span class="doccomment">/// Retrieve all [`Timeline`]s in the store.
+    </span><span class="kw">pub fn </span>all_timelines(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BTreeSet&lt;Timeline&gt; {
+        <span class="self">self</span>.temporal_chunk_ids_per_entity
+            .values()
+            .flat_map(|per_timeline| per_timeline.keys().copied())
+            .collect()
+    }
+
+    <span class="doccomment">/// Retrieve all [`EntityPath`]s in the store.
+    </span><span class="kw">pub fn </span>all_entities(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BTreeSet&lt;EntityPath&gt; {
+        <span class="self">self</span>.static_chunk_ids_per_entity
+            .keys()
+            .cloned()
+            .chain(<span class="self">self</span>.temporal_chunk_ids_per_entity.keys().cloned())
+            .collect()
+    }
+
+    <span class="doccomment">/// Retrieve all [`ComponentName`]s in the store.
+    </span><span class="kw">pub fn </span>all_components(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; BTreeSet&lt;ComponentName&gt; {
+        <span class="self">self</span>.static_chunk_ids_per_entity
+            .values()
+            .flat_map(|static_chunks_per_component| static_chunks_per_component.keys())
+            .chain(
+                <span class="self">self</span>.temporal_chunk_ids_per_entity_per_component
+                    .values()
+                    .flat_map(|temporal_chunk_ids_per_timeline| {
+                        temporal_chunk_ids_per_timeline.values().flat_map(
+                            |temporal_chunk_ids_per_component| {
+                                temporal_chunk_ids_per_component.keys()
+                            },
+                        )
+                    }),
+            )
+            .copied()
+            .collect()
+    }
+
     <span class="doccomment">/// Retrieve all the [`ComponentName`]s that have been written to for a given [`EntityPath`] on
     /// the specified [`Timeline`].
     ///
@@ -749,7 +863,7 @@
     /// Static components are always included in the results.
     ///
     /// Returns `None` if the entity has never had any data logged to it.
-    </span><span class="kw">pub fn </span>all_components(<span class="kw-2">&amp;</span><span class="self">self</span>, entity_path: <span class="kw-2">&amp;</span>EntityPath) -&gt; <span class="prelude-ty">Option</span>&lt;ComponentNameSet&gt; {
+    </span><span class="kw">pub fn </span>all_components_for_entity(<span class="kw-2">&amp;</span><span class="self">self</span>, entity_path: <span class="kw-2">&amp;</span>EntityPath) -&gt; <span class="prelude-ty">Option</span>&lt;ComponentNameSet&gt; {
         <span class="macro">re_tracing::profile_function!</span>();
 
         <span class="self">self</span>.query_id.fetch_add(<span class="number">1</span>, Ordering::Relaxed);
@@ -1026,6 +1140,26 @@
 
         <span class="prelude-val">Some</span>(ResolvedTimeRange::new(<span class="kw-2">*</span>start, <span class="kw-2">*</span>end))
     }
+
+    <span class="doccomment">/// Returns the min and max times at which data was logged on a specific timeline, considering
+    /// all entities.
+    ///
+    /// This ignores static data.
+    </span><span class="kw">pub fn </span>time_range(<span class="kw-2">&amp;</span><span class="self">self</span>, timeline: <span class="kw-2">&amp;</span>Timeline) -&gt; <span class="prelude-ty">Option</span>&lt;ResolvedTimeRange&gt; {
+        <span class="macro">re_tracing::profile_function!</span>();
+
+        <span class="self">self</span>.query_id.fetch_add(<span class="number">1</span>, Ordering::Relaxed);
+
+        <span class="self">self</span>.temporal_chunk_ids_per_entity
+            .values()
+            .filter_map(|temporal_chunk_ids_per_timeline| {
+                <span class="kw">let </span>per_time = temporal_chunk_ids_per_timeline.get(timeline)<span class="question-mark">?</span>;
+                <span class="kw">let </span>start = per_time.per_start_time.first_key_value()<span class="question-mark">?</span>.<span class="number">0</span>;
+                <span class="kw">let </span>end = per_time.per_end_time.last_key_value()<span class="question-mark">?</span>.<span class="number">0</span>;
+                <span class="prelude-val">Some</span>(ResolvedTimeRange::new(<span class="kw-2">*</span>start, <span class="kw-2">*</span>end))
+            })
+            .reduce(|r1, r2| r1.union(r2))
+    }
 }
 
 <span class="comment">// LatestAt
@@ -1050,11 +1184,10 @@
         entity_path: <span class="kw-2">&amp;</span>EntityPath,
         component_name: ComponentName,
     ) -&gt; Vec&lt;Arc&lt;Chunk&gt;&gt; {
-        <span class="macro">re_tracing::profile_function!</span>(<span class="macro">format!</span>(<span class="string">"{query:?}"</span>));
+        <span class="comment">// Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
+        //re_tracing::profile_function!(format!("{query:?}"));
 
-        <span class="self">self</span>.query_id.fetch_add(<span class="number">1</span>, Ordering::Relaxed);
-
-        <span class="comment">// Reminder: if a chunk has been indexed for a given component, then it must contain at
+        // Reminder: if a chunk has been indexed for a given component, then it must contain at
         // least one non-null value for that column.
 
         </span><span class="kw">if let </span><span class="prelude-val">Some</span>(static_chunk) = <span class="self">self
@@ -1130,9 +1263,10 @@
         query: <span class="kw-2">&amp;</span>LatestAtQuery,
         temporal_chunk_ids_per_time: <span class="kw-2">&amp;</span>ChunkIdSetPerTime,
     ) -&gt; <span class="prelude-ty">Option</span>&lt;Vec&lt;Arc&lt;Chunk&gt;&gt;&gt; {
-        <span class="macro">re_tracing::profile_function!</span>();
+        <span class="comment">// Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
+        //re_tracing::profile_function!();
 
-        <span class="kw">let </span>upper_bound = temporal_chunk_ids_per_time
+        </span><span class="kw">let </span>upper_bound = temporal_chunk_ids_per_time
             .per_start_time
             .range(..=query.at())
             .next_back()
@@ -1318,6 +1452,27 @@
                 } <span class="kw">else </span>{
                     query.range.max()
                 };
+
+                <span class="comment">// Overlapped chunks
+                // =================
+                //
+                // To deal with potentially overlapping chunks, we keep track of the longest
+                // interval in the entire map, which gives us an upper bound on how much we
+                // would need to walk backwards in order to find all potential overlaps.
+                //
+                // This is a fairly simple solution that scales much better than interval-tree
+                // based alternatives, both in terms of complexity and performance, in the normal
+                // case where most chunks in a collection have similar lengths.
+                //
+                // The most degenerate case -- a single chunk overlaps everything else -- results
+                // in `O(n)` performance, which gets amortized by the query cache.
+                // If that turns out to be a problem in practice, we can experiment with more
+                // complex solutions then.
+                </span><span class="kw">let </span>query_min = TimeInt::new_temporal(
+                    query_min
+                        .as_i64()
+                        .saturating_sub(temporal_chunk_ids_per_time.max_interval_length <span class="kw">as _</span>),
+                );
 
                 <span class="kw">let </span>start_time = temporal_chunk_ids_per_time
                     .per_start_time

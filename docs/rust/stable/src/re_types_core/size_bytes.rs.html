@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/store/re_types_core/src/size_bytes.rs`."><title>size_bytes.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_types_core" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/store/re_types_core/src/size_bytes.rs`."><title>size_bytes.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_types_core" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_types_core/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1009,7 +1008,7 @@
 
 <span class="comment">// TODO(rust-lang/rust#31844): `impl&lt;T: bytemuck::Pod&gt; SizeBytesExt for T {}` would be nice but
 // violates orphan rules.
-</span><span class="macro">macro_rules! </span>impl_size_bytes_pod {
+</span><span class="macro">macro_rules!</span> impl_size_bytes_pod {
     (<span class="macro-nonterminal">$ty</span>:ty) =&gt; {
         <span class="kw">impl </span>SizeBytes <span class="kw">for </span><span class="macro-nonterminal">$ty </span>{
             <span class="attr">#[inline]
@@ -1199,49 +1198,49 @@
 <span class="kw">use </span>arrow2::bitmap::Bitmap;
 <span class="kw">use </span>arrow2::datatypes::PhysicalType;
 
-<span class="macro">macro_rules! </span>with_match_primitive_type {(
+<span class="macro">macro_rules!</span> with_match_primitive_type {(
     <span class="macro-nonterminal">$key_type</span>:expr, | <span class="macro-nonterminal">$</span><span class="kw">_</span>:<span class="macro-nonterminal">tt $T</span>:ident | $(<span class="macro-nonterminal">$body</span>:tt)*
 ) =&gt; ({
-    <span class="macro">macro_rules! </span>__with_ty__ {( <span class="macro-nonterminal">$</span><span class="kw">_ </span><span class="macro-nonterminal">$T</span>:ident ) =&gt; ( $(<span class="macro-nonterminal">$body</span>)* )}
+    <span class="macro">macro_rules!</span> __with_ty__ {( <span class="macro-nonterminal">$</span><span class="kw">_ </span><span class="macro-nonterminal">$T</span>:ident ) =&gt; ( $(<span class="macro-nonterminal">$body</span>)* )}
     <span class="kw">use </span>arrow2::datatypes::PrimitiveType::<span class="kw-2">*</span>;
     <span class="kw">use </span>arrow2::types::{days_ms, months_days_ns, f16, i256};
     <span class="kw">match </span><span class="macro-nonterminal">$key_type </span>{
-        Int8 =&gt; <span class="macro">__with_ty__! </span>{ i8 },
-        Int16 =&gt; <span class="macro">__with_ty__! </span>{ i16 },
-        Int32 =&gt; <span class="macro">__with_ty__! </span>{ i32 },
-        Int64 =&gt; <span class="macro">__with_ty__! </span>{ i64 },
-        Int128 =&gt; <span class="macro">__with_ty__! </span>{ i128 },
-        Int256 =&gt; <span class="macro">__with_ty__! </span>{ i256 },
-        DaysMs =&gt; <span class="macro">__with_ty__! </span>{ days_ms },
-        MonthDayNano =&gt; <span class="macro">__with_ty__! </span>{ months_days_ns },
-        UInt8 =&gt; <span class="macro">__with_ty__! </span>{ u8 },
-        UInt16 =&gt; <span class="macro">__with_ty__! </span>{ u16 },
-        UInt32 =&gt; <span class="macro">__with_ty__! </span>{ u32 },
-        UInt64 =&gt; <span class="macro">__with_ty__! </span>{ u64 },
-        Float16 =&gt; <span class="macro">__with_ty__! </span>{ f16 },
-        Float32 =&gt; <span class="macro">__with_ty__! </span>{ f32 },
-        Float64 =&gt; <span class="macro">__with_ty__! </span>{ f64 },
+        Int8 =&gt; <span class="macro">__with_ty__!</span> { i8 },
+        Int16 =&gt; <span class="macro">__with_ty__!</span> { i16 },
+        Int32 =&gt; <span class="macro">__with_ty__!</span> { i32 },
+        Int64 =&gt; <span class="macro">__with_ty__!</span> { i64 },
+        Int128 =&gt; <span class="macro">__with_ty__!</span> { i128 },
+        Int256 =&gt; <span class="macro">__with_ty__!</span> { i256 },
+        DaysMs =&gt; <span class="macro">__with_ty__!</span> { days_ms },
+        MonthDayNano =&gt; <span class="macro">__with_ty__!</span> { months_days_ns },
+        UInt8 =&gt; <span class="macro">__with_ty__!</span> { u8 },
+        UInt16 =&gt; <span class="macro">__with_ty__!</span> { u16 },
+        UInt32 =&gt; <span class="macro">__with_ty__!</span> { u32 },
+        UInt64 =&gt; <span class="macro">__with_ty__!</span> { u64 },
+        Float16 =&gt; <span class="macro">__with_ty__!</span> { f16 },
+        Float32 =&gt; <span class="macro">__with_ty__!</span> { f32 },
+        Float64 =&gt; <span class="macro">__with_ty__!</span> { f64 },
     }
 })}
 
-<span class="macro">macro_rules! </span>match_integer_type {(
+<span class="macro">macro_rules!</span> match_integer_type {(
     <span class="macro-nonterminal">$key_type</span>:expr, | <span class="macro-nonterminal">$</span><span class="kw">_</span>:<span class="macro-nonterminal">tt $T</span>:ident | $(<span class="macro-nonterminal">$body</span>:tt)*
 ) =&gt; ({
-    <span class="macro">macro_rules! </span>__with_ty__ {( <span class="macro-nonterminal">$</span><span class="kw">_ </span><span class="macro-nonterminal">$T</span>:ident ) =&gt; ( $(<span class="macro-nonterminal">$body</span>)* )}
+    <span class="macro">macro_rules!</span> __with_ty__ {( <span class="macro-nonterminal">$</span><span class="kw">_ </span><span class="macro-nonterminal">$T</span>:ident ) =&gt; ( $(<span class="macro-nonterminal">$body</span>)* )}
     <span class="kw">use </span>arrow2::datatypes::IntegerType::<span class="kw-2">*</span>;
     <span class="kw">match </span><span class="macro-nonterminal">$key_type </span>{
-        Int8 =&gt; <span class="macro">__with_ty__! </span>{ i8 },
-        Int16 =&gt; <span class="macro">__with_ty__! </span>{ i16 },
-        Int32 =&gt; <span class="macro">__with_ty__! </span>{ i32 },
-        Int64 =&gt; <span class="macro">__with_ty__! </span>{ i64 },
-        UInt8 =&gt; <span class="macro">__with_ty__! </span>{ u8 },
-        UInt16 =&gt; <span class="macro">__with_ty__! </span>{ u16 },
-        UInt32 =&gt; <span class="macro">__with_ty__! </span>{ u32 },
-        UInt64 =&gt; <span class="macro">__with_ty__! </span>{ u64 },
+        Int8 =&gt; <span class="macro">__with_ty__!</span> { i8 },
+        Int16 =&gt; <span class="macro">__with_ty__!</span> { i16 },
+        Int32 =&gt; <span class="macro">__with_ty__!</span> { i32 },
+        Int64 =&gt; <span class="macro">__with_ty__!</span> { i64 },
+        UInt8 =&gt; <span class="macro">__with_ty__!</span> { u8 },
+        UInt16 =&gt; <span class="macro">__with_ty__!</span> { u16 },
+        UInt32 =&gt; <span class="macro">__with_ty__!</span> { u32 },
+        UInt64 =&gt; <span class="macro">__with_ty__!</span> { u64 },
     }
 })}
 
-<span class="macro">macro_rules! </span>dyn_binary {
+<span class="macro">macro_rules!</span> dyn_binary {
     (<span class="macro-nonterminal">$array</span>:expr, <span class="macro-nonterminal">$ty</span>:ty, <span class="macro-nonterminal">$o</span>:ty) =&gt; {{
         <span class="kw">let </span>array = <span class="macro-nonterminal">$array</span>.as_any().downcast_ref::&lt;<span class="macro-nonterminal">$ty</span>&gt;().unwrap();
         <span class="kw">let </span>offsets = array.offsets().buffer();

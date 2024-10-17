@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_renderer/src/renderer/mesh_renderer.rs`."><title>mesh_renderer.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_renderer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_renderer/src/renderer/mesh_renderer.rs`."><title>mesh_renderer.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_renderer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../re_renderer/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -473,6 +472,14 @@
 <a href="#472" id="472">472</a>
 <a href="#473" id="473">473</a>
 <a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
 </pre></div><pre class="rust"><code><span class="doccomment">//! Mesh renderer.
 //!
 //! Uses instancing to render instances of the same mesh in a single draw call.
@@ -487,14 +494,13 @@
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
     mesh::{gpu_data::MaterialUniformBuffer, mesh_vertices, GpuMesh, Mesh},
-    resource_managers::{GpuMeshHandle, ResourceHandle, ResourceManagerError},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBuffer,
         GpuRenderPipelineHandle, GpuRenderPipelinePoolAccessor, PipelineLayoutDesc,
         RenderPipelineDesc,
     },
-    Color32, OutlineMaskPreference, PickingLayerId, PickingLayerProcessor,
+    Color32, CpuWriteGpuReadError, OutlineMaskPreference, PickingLayerId, PickingLayerProcessor,
 };
 
 <span class="kw">use super</span>::{DrawData, DrawError, RenderContext, Renderer};
@@ -564,7 +570,7 @@
 
 <span class="attr">#[derive(Clone)]
 </span><span class="kw">struct </span>MeshBatch {
-    mesh: GpuMesh,
+    mesh: Arc&lt;GpuMesh&gt;,
 
     count: u32,
 
@@ -587,8 +593,8 @@
 }
 
 <span class="kw">pub struct </span>MeshInstance {
-    <span class="doccomment">/// Gpu mesh this instance refers to.
-    </span><span class="kw">pub </span>gpu_mesh: GpuMeshHandle,
+    <span class="doccomment">/// Gpu mesh used by this instance
+    </span><span class="kw">pub </span>gpu_mesh: Arc&lt;GpuMesh&gt;,
 
     <span class="doccomment">/// Optional cpu representation of the mesh, not needed for rendering.
     </span><span class="kw">pub </span>mesh: <span class="prelude-ty">Option</span>&lt;Arc&lt;Mesh&gt;&gt;,
@@ -607,11 +613,17 @@
     </span><span class="kw">pub </span>picking_layer_id: PickingLayerId,
 }
 
-<span class="kw">impl </span>Default <span class="kw">for </span>MeshInstance {
-    <span class="kw">fn </span>default() -&gt; <span class="self">Self </span>{
+<span class="kw">impl </span>MeshInstance {
+    <span class="doccomment">/// Creates a new instance of a mesh with all fields set to default except for required ones.
+    </span><span class="kw">pub fn </span>new(gpu_mesh: Arc&lt;GpuMesh&gt;) -&gt; <span class="self">Self </span>{
+        <span class="self">Self</span>::new_with_cpu_mesh(gpu_mesh, <span class="prelude-val">None</span>)
+    }
+
+    <span class="doccomment">/// Creates a new instance of a mesh with gpu and optional cpu mesh.
+    </span><span class="kw">pub fn </span>new_with_cpu_mesh(gpu_mesh: Arc&lt;GpuMesh&gt;, cpu_mesh: <span class="prelude-ty">Option</span>&lt;Arc&lt;Mesh&gt;&gt;) -&gt; <span class="self">Self </span>{
         <span class="self">Self </span>{
-            gpu_mesh: GpuMeshHandle::Invalid,
-            mesh: <span class="prelude-val">None</span>,
+            gpu_mesh,
+            mesh: cpu_mesh,
             world_from_mesh: glam::Affine3A::IDENTITY,
             additive_tint: Color32::TRANSPARENT,
             outline_mask_ids: OutlineMaskPreference::NONE,
@@ -629,7 +641,7 @@
     </span><span class="kw">pub fn </span>new(
         ctx: <span class="kw-2">&amp;</span>RenderContext,
         instances: <span class="kw-2">&amp;</span>[MeshInstance],
-    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, ResourceManagerError&gt; {
+    ) -&gt; <span class="prelude-ty">Result</span>&lt;<span class="self">Self</span>, CpuWriteGpuReadError&gt; {
         <span class="macro">re_tracing::profile_function!</span>();
 
         <span class="kw">let </span>_mesh_renderer = ctx.renderer::&lt;MeshRenderer&gt;();
@@ -658,12 +670,12 @@
 
         <span class="kw">let </span><span class="kw-2">mut </span>instances_by_mesh: HashMap&lt;<span class="kw">_</span>, Vec&lt;<span class="kw">_</span>&gt;&gt; = HashMap::new();
         <span class="kw">for </span>instance <span class="kw">in </span>instances {
-            <span class="kw">if </span>!<span class="macro">matches!</span>(instance.gpu_mesh, ResourceHandle::Invalid) {
-                instances_by_mesh
-                    .entry(<span class="kw-2">&amp;</span>instance.gpu_mesh)
-                    .or_insert_with(|| Vec::with_capacity(instances.len()))
-                    .push(instance);
-            }
+            instances_by_mesh
+                <span class="comment">// Use pointer equality, this is enough to determine if two instances use the same mesh.
+                // (different mesh allocations have different gpu buffers internally, so they are by this definition not equal)
+                </span>.entry(Arc::as_ptr(<span class="kw-2">&amp;</span>instance.gpu_mesh))
+                .or_insert_with(|| Vec::with_capacity(instances.len()))
+                .push(instance);
         }
 
         <span class="kw">let </span><span class="kw-2">mut </span>batches = Vec::new();
@@ -677,9 +689,8 @@
                 instances.len(),
             )<span class="question-mark">?</span>;
 
-            <span class="kw">let </span>mesh_manager = ctx.mesh_manager.read();
             <span class="kw">let </span><span class="kw-2">mut </span>num_processed_instances = <span class="number">0</span>;
-            <span class="kw">for </span>(mesh, <span class="kw-2">mut </span>instances) <span class="kw">in </span>instances_by_mesh {
+            <span class="kw">for </span>(_mesh_ptr, <span class="kw-2">mut </span>instances) <span class="kw">in </span>instances_by_mesh {
                 <span class="kw">let </span><span class="kw-2">mut </span>count = <span class="number">0</span>;
                 <span class="kw">let </span><span class="kw-2">mut </span>count_with_outlines = <span class="number">0</span>;
 
@@ -690,7 +701,12 @@
                         .cmp(<span class="kw-2">&amp;</span>b.outline_mask_ids.is_none())
                 });
 
+                <span class="kw">let </span><span class="kw-2">mut </span>mesh = <span class="prelude-val">None</span>;
                 <span class="kw">for </span>instance <span class="kw">in </span>instances {
+                    <span class="kw">if </span>mesh.is_none() {
+                        mesh = <span class="prelude-val">Some</span>(instance.gpu_mesh.clone());
+                    }
+
                     count += <span class="number">1</span>;
                     count_with_outlines += instance.outline_mask_ids.is_some() <span class="kw">as </span>u32;
 
@@ -723,14 +739,13 @@
                 }
                 num_processed_instances += count;
 
-                <span class="comment">// We resolve the meshes here already, so the actual draw call doesn't need to
-                // know about the MeshManager.
-                </span><span class="kw">let </span>mesh = mesh_manager.get(mesh)<span class="question-mark">?</span>;
-                batches.push(MeshBatch {
-                    mesh: mesh.clone(),
-                    count: count <span class="kw">as _</span>,
-                    count_with_outlines,
-                });
+                <span class="kw">if let </span><span class="prelude-val">Some</span>(mesh) = mesh {
+                    batches.push(MeshBatch {
+                        mesh,
+                        count: count <span class="kw">as _</span>,
+                        count_with_outlines,
+                    });
+                }
             }
             <span class="macro">assert_eq!</span>(num_processed_instances, instances.len());
             instance_buffer_staging.copy_to_buffer(
@@ -870,12 +885,12 @@
         }
     }
 
-    <span class="kw">fn </span>draw&lt;<span class="lifetime">'a</span>&gt;(
+    <span class="kw">fn </span>draw(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
-        render_pipelines: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>GpuRenderPipelinePoolAccessor&lt;<span class="lifetime">'a</span>&gt;,
+        render_pipelines: <span class="kw-2">&amp;</span>GpuRenderPipelinePoolAccessor&lt;<span class="lifetime">'_</span>&gt;,
         phase: DrawPhase,
-        pass: <span class="kw-2">&amp;mut </span>wgpu::RenderPass&lt;<span class="lifetime">'a</span>&gt;,
-        draw_data: <span class="kw-2">&amp;</span><span class="lifetime">'a </span><span class="self">Self</span>::RendererDrawData,
+        pass: <span class="kw-2">&amp;mut </span>wgpu::RenderPass&lt;<span class="lifetime">'_</span>&gt;,
+        draw_data: <span class="kw-2">&amp;</span><span class="self">Self</span>::RendererDrawData,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), DrawError&gt; {
         <span class="macro">re_tracing::profile_function!</span>();
 

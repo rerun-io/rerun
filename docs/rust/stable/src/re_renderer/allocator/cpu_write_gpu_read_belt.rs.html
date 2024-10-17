@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_renderer/src/allocator/cpu_write_gpu_read_belt.rs`."><title>cpu_write_gpu_read_belt.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_renderer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_renderer/src/allocator/cpu_write_gpu_read_belt.rs`."><title>cpu_write_gpu_read_belt.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_renderer" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../re_renderer/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -616,6 +615,29 @@
 <a href="#615" id="615">615</a>
 <a href="#616" id="616">616</a>
 <a href="#617" id="617">617</a>
+<a href="#618" id="618">618</a>
+<a href="#619" id="619">619</a>
+<a href="#620" id="620">620</a>
+<a href="#621" id="621">621</a>
+<a href="#622" id="622">622</a>
+<a href="#623" id="623">623</a>
+<a href="#624" id="624">624</a>
+<a href="#625" id="625">625</a>
+<a href="#626" id="626">626</a>
+<a href="#627" id="627">627</a>
+<a href="#628" id="628">628</a>
+<a href="#629" id="629">629</a>
+<a href="#630" id="630">630</a>
+<a href="#631" id="631">631</a>
+<a href="#632" id="632">632</a>
+<a href="#633" id="633">633</a>
+<a href="#634" id="634">634</a>
+<a href="#635" id="635">635</a>
+<a href="#636" id="636">636</a>
+<a href="#637" id="637">637</a>
+<a href="#638" id="638">638</a>
+<a href="#639" id="639">639</a>
+<a href="#640" id="640">640</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::sync::mpsc;
 
 <span class="kw">use crate</span>::{
@@ -623,7 +645,7 @@
     wgpu_resources::{BufferDesc, GpuBuffer, GpuBufferPool, GpuTexture},
 };
 
-<span class="attr">#[derive(thiserror::Error, Debug, PartialEq, Eq)]
+<span class="attr">#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
 </span><span class="kw">pub enum </span>CpuWriteGpuReadError {
     <span class="attr">#[error(<span class="string">"Attempting to allocate an empty buffer."</span>)]
     </span>ZeroSizeBufferAllocation,
@@ -670,7 +692,7 @@
     /// In actuality it is tied to the lifetime of [`chunk_buffer`](#structfield.chunk_buffer)!
     </span>write_view: wgpu::BufferViewMut&lt;<span class="lifetime">'static</span>&gt;,
 
-    <span class="doccomment">/// Range in T elements in write_view that haven't been written yet.
+    <span class="doccomment">/// Range in T elements in `write_view` that haven't been written yet.
     </span>unwritten_element_range: std::ops::Range&lt;usize&gt;,
 
     chunk_buffer: GpuBuffer,
@@ -741,15 +763,36 @@
     </span><span class="attr">#[inline]
     </span><span class="kw">pub fn </span>extend(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        <span class="kw-2">mut </span>elements: <span class="kw">impl </span>Iterator&lt;Item = T&gt;,
+        <span class="kw-2">mut </span>elements: <span class="kw">impl </span>ExactSizeIterator&lt;Item = T&gt;,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;usize, CpuWriteGpuReadError&gt; {
         <span class="macro">re_tracing::profile_function!</span>();
 
         <span class="comment">// TODO(emilk): optimize the extend function.
         // Right now it is 3-4x faster to collect to a vec first, which is crazy.
-        </span><span class="kw">if </span><span class="bool-val">true </span>{
-            <span class="kw">let </span>vec = elements.collect::&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;();
-            <span class="self">self</span>.extend_from_slice(<span class="kw-2">&amp;</span>vec)<span class="question-mark">?</span>;
+        //
+        // Mimalloc can't align types larger than 64 bytes now and will silently ignore it.
+        // https://github.com/purpleprotocol/mimalloc_rust/issues/128
+        // Therefore, large alignments won't work with collect.
+        </span><span class="kw">let </span>pretend_mimalloc_aligns_correctly = <span class="bool-val">false</span>; <span class="comment">// TODO(#5875): update mimalloc
+        </span><span class="kw">if </span>std::mem::align_of::&lt;T&gt;() &lt;= <span class="number">32 </span>|| pretend_mimalloc_aligns_correctly {
+            <span class="kw">let </span>vec: Vec&lt;T&gt; = elements.collect();
+
+            <span class="attr">#[allow(clippy::dbg_macro)]
+            </span><span class="kw">if </span>pretend_mimalloc_aligns_correctly {
+                <span class="macro">dbg!</span>(std::any::type_name::&lt;T&gt;());
+                <span class="macro">dbg!</span>(std::mem::size_of::&lt;T&gt;());
+                <span class="macro">dbg!</span>(std::mem::align_of::&lt;T&gt;());
+                <span class="macro">dbg!</span>(vec.len());
+                <span class="macro">dbg!</span>(vec.as_ptr());
+                <span class="macro">dbg!</span>(vec.as_ptr() <span class="kw">as </span>usize % std::mem::align_of::&lt;T&gt;());
+            }
+            <span class="macro">debug_assert_eq!</span>(
+                vec.as_ptr() <span class="kw">as </span>usize % std::mem::align_of::&lt;T&gt;(),
+                <span class="number">0</span>,
+                <span class="string">"Vec::collect collects into unaligned memory!"
+            </span>);
+
+            <span class="self">self</span>.extend_from_slice(vec.as_slice())<span class="question-mark">?</span>;
             <span class="prelude-val">Ok</span>(vec.len())
         } <span class="kw">else </span>{
             <span class="kw">let </span>num_written_before = <span class="self">self</span>.num_written();
@@ -1040,7 +1083,7 @@
 
     <span class="doccomment">/// When closed chunks are mapped again, the map callback sends them here.
     ///
-    /// Note that we shouldn't use SyncSender since this can block the Sender if a buffer is full,
+    /// Note that we shouldn't use `SyncSender` since this can block the `Sender` if a buffer is full,
     /// which means that in a single threaded situation (Web!) we might deadlock.
     </span>sender: mpsc::Sender&lt;Chunk&gt;,
 
@@ -1104,6 +1147,8 @@
     }
 
     <span class="doccomment">/// Allocates a cpu writable buffer for `num_elements` instances of type `T`.
+    ///
+    /// The buffer will be aligned to T's alignment, but no less than [`Self::MIN_OFFSET_ALIGNMENT`].
     </span><span class="kw">pub fn </span>allocate&lt;T: bytemuck::Pod + Send + Sync&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
         device: <span class="kw-2">&amp;</span>wgpu::Device,

@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_data_ui/src/instance_path.rs`."><title>instance_path.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_data_ui" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_data_ui/src/instance_path.rs`."><title>instance_path.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_data_ui" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_data_ui/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -440,7 +439,50 @@
 <a href="#439" id="439">439</a>
 <a href="#440" id="440">440</a>
 <a href="#441" id="441">441</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>nohash_hasher::IntMap;
+<a href="#442" id="442">442</a>
+<a href="#443" id="443">443</a>
+<a href="#444" id="444">444</a>
+<a href="#445" id="445">445</a>
+<a href="#446" id="446">446</a>
+<a href="#447" id="447">447</a>
+<a href="#448" id="448">448</a>
+<a href="#449" id="449">449</a>
+<a href="#450" id="450">450</a>
+<a href="#451" id="451">451</a>
+<a href="#452" id="452">452</a>
+<a href="#453" id="453">453</a>
+<a href="#454" id="454">454</a>
+<a href="#455" id="455">455</a>
+<a href="#456" id="456">456</a>
+<a href="#457" id="457">457</a>
+<a href="#458" id="458">458</a>
+<a href="#459" id="459">459</a>
+<a href="#460" id="460">460</a>
+<a href="#461" id="461">461</a>
+<a href="#462" id="462">462</a>
+<a href="#463" id="463">463</a>
+<a href="#464" id="464">464</a>
+<a href="#465" id="465">465</a>
+<a href="#466" id="466">466</a>
+<a href="#467" id="467">467</a>
+<a href="#468" id="468">468</a>
+<a href="#469" id="469">469</a>
+<a href="#470" id="470">470</a>
+<a href="#471" id="471">471</a>
+<a href="#472" id="472">472</a>
+<a href="#473" id="473">473</a>
+<a href="#474" id="474">474</a>
+<a href="#475" id="475">475</a>
+<a href="#476" id="476">476</a>
+<a href="#477" id="477">477</a>
+<a href="#478" id="478">478</a>
+<a href="#479" id="479">479</a>
+<a href="#480" id="480">480</a>
+<a href="#481" id="481">481</a>
+<a href="#482" id="482">482</a>
+<a href="#483" id="483">483</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>egui::Rangef;
+<span class="kw">use </span>nohash_hasher::IntMap;
 
 <span class="kw">use </span>re_chunk_store::UnitChunkShared;
 <span class="kw">use </span>re_entity_db::InstancePath;
@@ -449,12 +491,12 @@
     archetypes, components,
     datatypes::{ChannelDatatype, ColorModel},
     image::ImageKind,
-    Archetype, ComponentName, Loggable,
+    static_assert_struct_has_fields, Archetype, ComponentName, Loggable,
 };
 <span class="kw">use </span>re_ui::{ContextExt <span class="kw">as _</span>, UiExt <span class="kw">as _</span>};
 <span class="kw">use </span>re_viewer_context::{
-    gpu_bridge::image_data_range_heuristic, HoverHighlight, ImageInfo, ImageStatsCache, Item,
-    UiLayout, ViewerContext,
+    gpu_bridge::image_data_range_heuristic, ColormapWithRange, HoverHighlight, ImageInfo,
+    ImageStatsCache, Item, UiLayout, ViewerContext,
 };
 
 <span class="kw">use crate</span>::{blob::blob_preview_and_save_ui, image::image_preview_ui};
@@ -693,6 +735,23 @@
     entity_path: <span class="kw-2">&amp;</span>re_log_types::EntityPath,
     component_map: <span class="kw-2">&amp;</span>IntMap&lt;ComponentName, UnitChunkShared&gt;,
 ) -&gt; <span class="prelude-ty">Option</span>&lt;()&gt; {
+    <span class="comment">// First check assumptions:
+    </span><span class="macro">static_assert_struct_has_fields!</span>(
+        archetypes::Image,
+        buffer: components::ImageBuffer,
+        format: components::ImageFormat
+    );
+    <span class="macro">static_assert_struct_has_fields!</span>(
+        archetypes::DepthImage,
+        buffer: components::ImageBuffer,
+        format: components::ImageFormat
+    );
+    <span class="macro">static_assert_struct_has_fields!</span>(
+        archetypes::SegmentationImage,
+        buffer: components::ImageBuffer,
+        format: components::ImageFormat
+    );
+
     <span class="kw">let </span>image_buffer = component_map.get(<span class="kw-2">&amp;</span>components::ImageBuffer::name())<span class="question-mark">?</span>;
     <span class="kw">let </span>buffer_row_id = image_buffer.row_id()<span class="question-mark">?</span>;
     <span class="kw">let </span>image_buffer = image_buffer
@@ -712,40 +771,58 @@
         ImageKind::Color
     };
 
-    <span class="kw">let </span>colormap = component_map
-        .get(<span class="kw-2">&amp;</span>components::Colormap::name())
-        .and_then(|colormap| {
-            colormap
-                .component_mono::&lt;components::Colormap&gt;()
-                .transpose()
-                .ok()
-                .flatten()
-        });
-
     <span class="kw">let </span>image = ImageInfo {
         buffer_row_id,
         buffer: image_buffer.<span class="number">0</span>,
         format: image_format.<span class="number">0</span>,
         kind,
-        colormap,
     };
+    <span class="kw">let </span>image_stats = ctx.cache.entry(|c: <span class="kw-2">&amp;mut </span>ImageStatsCache| c.entry(<span class="kw-2">&amp;</span>image));
 
-    image_preview_ui(ctx, ui, ui_layout, query, entity_path, <span class="kw-2">&amp;</span>image);
+    <span class="kw">let </span>colormap = component_map
+        .get(<span class="kw-2">&amp;</span>components::Colormap::name())
+        .and_then(|colormap| colormap.component_mono::&lt;components::Colormap&gt;()<span class="question-mark">?</span>.ok());
+    <span class="kw">let </span>value_range = component_map
+        .get(<span class="kw-2">&amp;</span>components::Range1D::name())
+        .and_then(|colormap| colormap.component_mono::&lt;components::ValueRange&gt;()<span class="question-mark">?</span>.ok());
+    <span class="kw">let </span>colormap_with_range = colormap.map(|colormap| ColormapWithRange {
+        colormap,
+        value_range: value_range
+            .map(|r| [r.start() <span class="kw">as _</span>, r.end() <span class="kw">as _</span>])
+            .unwrap_or_else(|| {
+                <span class="kw">if </span>kind == ImageKind::Depth {
+                    ColormapWithRange::default_range_for_depth_images(<span class="kw-2">&amp;</span>image_stats)
+                } <span class="kw">else </span>{
+                    <span class="kw">let </span>(min, max) = image_stats.finite_range;
+                    [min <span class="kw">as _</span>, max <span class="kw">as _</span>]
+                }
+            }),
+    });
+
+    image_preview_ui(
+        ctx,
+        ui,
+        ui_layout,
+        query,
+        entity_path,
+        <span class="kw-2">&amp;</span>image,
+        colormap_with_range.as_ref(),
+    );
 
     <span class="kw">if </span>ui_layout.is_single_line() || ui_layout == UiLayout::Tooltip {
         <span class="kw">return </span><span class="prelude-val">Some</span>(()); <span class="comment">// no more ui
     </span>}
 
-    <span class="kw">let </span>image_stats = ctx.cache.entry(|c: <span class="kw-2">&amp;mut </span>ImageStatsCache| c.entry(<span class="kw-2">&amp;</span>image));
+    <span class="kw">let </span>data_range = value_range.map_or_else(
+        || image_data_range_heuristic(<span class="kw-2">&amp;</span>image_stats, <span class="kw-2">&amp;</span>image.format),
+        |r| Rangef::new(r.start() <span class="kw">as _</span>, r.end() <span class="kw">as _</span>),
+    );
+    ui.horizontal(|ui| {
+        image_download_button_ui(ctx, ui, entity_path, <span class="kw-2">&amp;</span>image, data_range);
 
-    <span class="kw">if let </span><span class="prelude-val">Ok</span>(data_range) = image_data_range_heuristic(<span class="kw-2">&amp;</span>image_stats, <span class="kw-2">&amp;</span>image.format) {
-        ui.horizontal(|ui| {
-            image_download_button_ui(ctx, ui, entity_path, <span class="kw-2">&amp;</span>image, data_range);
-
-            <span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
-            </span><span class="kw">crate</span>::image::copy_image_button_ui(ui, <span class="kw-2">&amp;</span>image, data_range);
-        });
-    }
+        <span class="attr">#[cfg(not(target_arch = <span class="string">"wasm32"</span>))]
+        </span><span class="kw">crate</span>::image::copy_image_button_ui(ui, <span class="kw-2">&amp;</span>image, data_range);
+    });
 
     <span class="comment">// TODO(emilk): we should really support histograms for all types of images
     </span><span class="kw">if </span>image.format.pixel_format.is_none()
@@ -866,7 +943,12 @@
     <span class="kw">let </span>blob = blob.component_mono::&lt;components::Blob&gt;()<span class="question-mark">?</span>.ok()<span class="question-mark">?</span>;
     <span class="kw">let </span>media_type = component_map
         .get(<span class="kw-2">&amp;</span>components::MediaType::name())
-        .and_then(|unit| unit.component_mono::&lt;components::MediaType&gt;()<span class="question-mark">?</span>.ok());
+        .and_then(|unit| unit.component_mono::&lt;components::MediaType&gt;()<span class="question-mark">?</span>.ok())
+        .or_else(|| components::MediaType::guess_from_data(<span class="kw-2">&amp;</span>blob));
+
+    <span class="kw">let </span>video_timestamp = component_map
+        .get(<span class="kw-2">&amp;</span>components::VideoTimestamp::name())
+        .and_then(|unit| unit.component_mono::&lt;components::VideoTimestamp&gt;()<span class="question-mark">?</span>.ok());
 
     blob_preview_and_save_ui(
         ctx,
@@ -877,6 +959,7 @@
         blob_row_id,
         <span class="kw-2">&amp;</span>blob,
         media_type.as_ref(),
+        video_timestamp,
     );
 
     <span class="prelude-val">Some</span>(())

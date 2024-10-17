@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/store/re_types/src/archetypes/../archetypes/view_coordinates_ext.rs`."><title>view_coordinates_ext.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_types" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/store/re_types/src/archetypes/../archetypes/view_coordinates_ext.rs`."><title>view_coordinates_ext.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_types" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../re_types/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -77,11 +76,71 @@
 <a href="#76" id="76">76</a>
 <a href="#77" id="77">77</a>
 <a href="#78" id="78">78</a>
+<a href="#79" id="79">79</a>
+<a href="#80" id="80">80</a>
+<a href="#81" id="81">81</a>
+<a href="#82" id="82">82</a>
+<a href="#83" id="83">83</a>
+<a href="#84" id="84">84</a>
+<a href="#85" id="85">85</a>
+<a href="#86" id="86">86</a>
+<a href="#87" id="87">87</a>
+<a href="#88" id="88">88</a>
+<a href="#89" id="89">89</a>
+<a href="#90" id="90">90</a>
+<a href="#91" id="91">91</a>
+<a href="#92" id="92">92</a>
+<a href="#93" id="93">93</a>
+<a href="#94" id="94">94</a>
+<a href="#95" id="95">95</a>
+<a href="#96" id="96">96</a>
+<a href="#97" id="97">97</a>
+<a href="#98" id="98">98</a>
+<a href="#99" id="99">99</a>
+<a href="#100" id="100">100</a>
+<a href="#101" id="101">101</a>
+<a href="#102" id="102">102</a>
+<a href="#103" id="103">103</a>
+<a href="#104" id="104">104</a>
+<a href="#105" id="105">105</a>
+<a href="#106" id="106">106</a>
+<a href="#107" id="107">107</a>
+<a href="#108" id="108">108</a>
+<a href="#109" id="109">109</a>
+<a href="#110" id="110">110</a>
+<a href="#111" id="111">111</a>
+<a href="#112" id="112">112</a>
+<a href="#113" id="113">113</a>
+<a href="#114" id="114">114</a>
+<a href="#115" id="115">115</a>
+<a href="#116" id="116">116</a>
+<a href="#117" id="117">117</a>
+<a href="#118" id="118">118</a>
+<a href="#119" id="119">119</a>
+<a href="#120" id="120">120</a>
+<a href="#121" id="121">121</a>
+<a href="#122" id="122">122</a>
+<a href="#123" id="123">123</a>
+<a href="#124" id="124">124</a>
+<a href="#125" id="125">125</a>
+<a href="#126" id="126">126</a>
+<a href="#127" id="127">127</a>
+<a href="#128" id="128">128</a>
+<a href="#129" id="129">129</a>
+<a href="#130" id="130">130</a>
+<a href="#131" id="131">131</a>
+<a href="#132" id="132">132</a>
+<a href="#133" id="133">133</a>
+<a href="#134" id="134">134</a>
+<a href="#135" id="135">135</a>
+<a href="#136" id="136">136</a>
+<a href="#137" id="137">137</a>
+<a href="#138" id="138">138</a>
 </pre></div><pre class="rust"><code><span class="kw">use crate</span>::{components, view_coordinates::ViewDir};
 
 <span class="kw">use </span><span class="kw">super</span>::ViewCoordinates;
 
-<span class="macro">macro_rules! </span>define_coordinates {
+<span class="macro">macro_rules!</span> define_coordinates {
     (<span class="macro-nonterminal">$docstring</span>:literal, <span class="macro-nonterminal">$name</span>:ident =&gt; (<span class="macro-nonterminal">$x</span>:ident, <span class="macro-nonterminal">$y</span>:ident, <span class="macro-nonterminal">$z</span>:ident) ) =&gt; {
         <span class="attr">#[doc = <span class="macro-nonterminal">$docstring</span>]
         </span><span class="kw">pub const </span><span class="macro-nonterminal">$name</span>: <span class="self">Self </span>= <span class="self">Self </span>{
@@ -93,66 +152,126 @@
 <span class="kw">impl </span>ViewCoordinates {
     <span class="comment">// &lt;BEGIN_GENERATED:declarations&gt;
     // This section is generated by running `scripts/generate_view_coordinate_defs.py --rust`
-    </span><span class="macro">define_coordinates!</span>(<span class="string">"X=Up, Y=Left, Z=Forward"</span>, ULF =&gt; (Up, Left, Forward));
+    </span><span class="macro">define_coordinates!</span>(<span class="string">"X=Up, Y=Left, Z=Forward
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, ULF =&gt; (Up, Left, Forward));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Up, Y=Forward, Z=Left"</span>, UFL =&gt; (Up, Forward, Left));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Left, Y=Up, Z=Forward"</span>, LUF =&gt; (Left, Up, Forward));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Left, Y=Forward, Z=Up"</span>, LFU =&gt; (Left, Forward, Up));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Forward, Y=Up, Z=Left"</span>, FUL =&gt; (Forward, Up, Left));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Left, Y=Forward, Z=Up
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, LFU =&gt; (Left, Forward, Up));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Forward, Y=Up, Z=Left
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, FUL =&gt; (Forward, Up, Left));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Forward, Y=Left, Z=Up"</span>, FLU =&gt; (Forward, Left, Up));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Up, Y=Left, Z=Back"</span>, ULB =&gt; (Up, Left, Back));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Up, Y=Back, Z=Left"</span>, UBL =&gt; (Up, Back, Left));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Left, Y=Up, Z=Back"</span>, LUB =&gt; (Left, Up, Back));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Up, Y=Back, Z=Left
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, UBL =&gt; (Up, Back, Left));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Left, Y=Up, Z=Back
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, LUB =&gt; (Left, Up, Back));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Left, Y=Back, Z=Up"</span>, LBU =&gt; (Left, Back, Up));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Back, Y=Up, Z=Left"</span>, BUL =&gt; (Back, Up, Left));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Back, Y=Left, Z=Up"</span>, BLU =&gt; (Back, Left, Up));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Back, Y=Left, Z=Up
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, BLU =&gt; (Back, Left, Up));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Up, Y=Right, Z=Forward"</span>, URF =&gt; (Up, Right, Forward));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Up, Y=Forward, Z=Right"</span>, UFR =&gt; (Up, Forward, Right));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Up, Z=Forward"</span>, RUF =&gt; (Right, Up, Forward));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Up, Y=Forward, Z=Right
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, UFR =&gt; (Up, Forward, Right));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Up, Z=Forward
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, RUF =&gt; (Right, Up, Forward));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Forward, Z=Up"</span>, RFU =&gt; (Right, Forward, Up));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Forward, Y=Up, Z=Right"</span>, FUR =&gt; (Forward, Up, Right));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Forward, Y=Right, Z=Up"</span>, FRU =&gt; (Forward, Right, Up));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Up, Y=Right, Z=Back"</span>, URB =&gt; (Up, Right, Back));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Forward, Y=Right, Z=Up
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, FRU =&gt; (Forward, Right, Up));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Up, Y=Right, Z=Back
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, URB =&gt; (Up, Right, Back));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Up, Y=Back, Z=Right"</span>, UBR =&gt; (Up, Back, Right));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Up, Z=Back"</span>, RUB =&gt; (Right, Up, Back));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Back, Z=Up"</span>, RBU =&gt; (Right, Back, Up));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Back, Y=Up, Z=Right"</span>, BUR =&gt; (Back, Up, Right));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Back, Z=Up
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, RBU =&gt; (Right, Back, Up));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Back, Y=Up, Z=Right
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, BUR =&gt; (Back, Up, Right));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Back, Y=Right, Z=Up"</span>, BRU =&gt; (Back, Right, Up));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Down, Y=Left, Z=Forward"</span>, DLF =&gt; (Down, Left, Forward));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Down, Y=Forward, Z=Left"</span>, DFL =&gt; (Down, Forward, Left));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Left, Y=Down, Z=Forward"</span>, LDF =&gt; (Left, Down, Forward));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Down, Y=Forward, Z=Left
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, DFL =&gt; (Down, Forward, Left));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Left, Y=Down, Z=Forward
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, LDF =&gt; (Left, Down, Forward));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Left, Y=Forward, Z=Down"</span>, LFD =&gt; (Left, Forward, Down));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Forward, Y=Down, Z=Left"</span>, FDL =&gt; (Forward, Down, Left));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Forward, Y=Left, Z=Down"</span>, FLD =&gt; (Forward, Left, Down));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Down, Y=Left, Z=Back"</span>, DLB =&gt; (Down, Left, Back));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Forward, Y=Left, Z=Down
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, FLD =&gt; (Forward, Left, Down));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Down, Y=Left, Z=Back
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, DLB =&gt; (Down, Left, Back));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Down, Y=Back, Z=Left"</span>, DBL =&gt; (Down, Back, Left));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Left, Y=Down, Z=Back"</span>, LDB =&gt; (Left, Down, Back));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Left, Y=Back, Z=Down"</span>, LBD =&gt; (Left, Back, Down));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Back, Y=Down, Z=Left"</span>, BDL =&gt; (Back, Down, Left));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Left, Y=Back, Z=Down
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, LBD =&gt; (Left, Back, Down));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Back, Y=Down, Z=Left
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, BDL =&gt; (Back, Down, Left));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Back, Y=Left, Z=Down"</span>, BLD =&gt; (Back, Left, Down));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Down, Y=Right, Z=Forward"</span>, DRF =&gt; (Down, Right, Forward));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Down, Y=Right, Z=Forward
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, DRF =&gt; (Down, Right, Forward));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Down, Y=Forward, Z=Right"</span>, DFR =&gt; (Down, Forward, Right));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Down, Z=Forward"</span>, RDF =&gt; (Right, Down, Forward));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Forward, Z=Down"</span>, RFD =&gt; (Right, Forward, Down));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Forward, Y=Down, Z=Right"</span>, FDR =&gt; (Forward, Down, Right));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Forward, Z=Down
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, RFD =&gt; (Right, Forward, Down));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Forward, Y=Down, Z=Right
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, FDR =&gt; (Forward, Down, Right));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Forward, Y=Right, Z=Down"</span>, FRD =&gt; (Forward, Right, Down));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Down, Y=Right, Z=Back"</span>, DRB =&gt; (Down, Right, Back));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Down, Y=Back, Z=Right"</span>, DBR =&gt; (Down, Back, Right));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Down, Z=Back"</span>, RDB =&gt; (Right, Down, Back));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Down, Y=Back, Z=Right
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, DBR =&gt; (Down, Back, Right));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Down, Z=Back
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, RDB =&gt; (Right, Down, Back));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Back, Z=Down"</span>, RBD =&gt; (Right, Back, Down));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Back, Y=Down, Z=Right"</span>, BDR =&gt; (Back, Down, Right));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Back, Y=Right, Z=Down"</span>, BRD =&gt; (Back, Right, Down));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Back, Y=Right, Z=Down
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, BRD =&gt; (Back, Right, Down));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Up, Y=Right, Z=Forward"</span>, RIGHT_HAND_X_UP =&gt; (Up, Right, Forward));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Down, Y=Right, Z=Back"</span>, RIGHT_HAND_X_DOWN =&gt; (Down, Right, Back));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Up, Z=Back"</span>, RIGHT_HAND_Y_UP =&gt; (Right, Up, Back));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Down, Z=Forward"</span>, RIGHT_HAND_Y_DOWN =&gt; (Right, Down, Forward));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Forward, Z=Up"</span>, RIGHT_HAND_Z_UP =&gt; (Right, Forward, Up));
     <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Back, Z=Down"</span>, RIGHT_HAND_Z_DOWN =&gt; (Right, Back, Down));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Up, Y=Right, Z=Back"</span>, LEFT_HAND_X_UP =&gt; (Up, Right, Back));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Down, Y=Right, Z=Forward"</span>, LEFT_HAND_X_DOWN =&gt; (Down, Right, Forward));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Up, Z=Forward"</span>, LEFT_HAND_Y_UP =&gt; (Right, Up, Forward));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Down, Z=Back"</span>, LEFT_HAND_Y_DOWN =&gt; (Right, Down, Back));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Back, Z=Up"</span>, LEFT_HAND_Z_UP =&gt; (Right, Back, Up));
-    <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Forward, Z=Down"</span>, LEFT_HAND_Z_DOWN =&gt; (Right, Forward, Down));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Up, Y=Right, Z=Back
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, LEFT_HAND_X_UP =&gt; (Up, Right, Back));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Down, Y=Right, Z=Forward
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, LEFT_HAND_X_DOWN =&gt; (Down, Right, Forward));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Up, Z=Forward
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, LEFT_HAND_Y_UP =&gt; (Right, Up, Forward));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Down, Z=Back
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, LEFT_HAND_Y_DOWN =&gt; (Right, Down, Back));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Back, Z=Up
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, LEFT_HAND_Z_UP =&gt; (Right, Back, Up));
+    <span class="macro">define_coordinates!</span>(<span class="string">"X=Right, Y=Forward, Z=Down
+
+⚠️ This is a left-handed coordinate system, which is [not yet supported by Rerun](https://github.com/rerun-io/rerun/issues/5032)."</span>, LEFT_HAND_Z_DOWN =&gt; (Right, Forward, Down));
     <span class="comment">// &lt;END_GENERATED:declarations&gt;
 </span>}
 </code></pre></div></section></main></body></html>

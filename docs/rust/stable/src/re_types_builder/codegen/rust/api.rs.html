@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/build/re_types_builder/src/codegen/rust/api.rs`."><title>api.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="re_types_builder" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/build/re_types_builder/src/codegen/rust/api.rs`."><title>api.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="re_types_builder" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../re_types_builder/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1575,6 +1574,7 @@
 <a href="#1574" id="1574">1574</a>
 <a href="#1575" id="1575">1575</a>
 <a href="#1576" id="1576">1576</a>
+<a href="#1577" id="1577">1577</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::collections::{BTreeMap, HashSet};
 
 <span class="kw">use </span>anyhow::Context <span class="kw">as _</span>;
@@ -1602,8 +1602,8 @@
     ArrowRegistry, CodeGenerator, ElementType, Object, ObjectField, ObjectKind, Objects, Reporter,
     Type, ATTR_DEFAULT, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_LOG_MISSING_AS_EMPTY, ATTR_RERUN_VIEW_IDENTIFIER,
-    ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY,
-    ATTR_RUST_GENERATE_FIELD_INFO, ATTR_RUST_NEW_PUB_CRATE, ATTR_RUST_REPR,
+    ATTR_RUST_CUSTOM_CLAUSE, ATTR_RUST_DERIVE, ATTR_RUST_DERIVE_ONLY, ATTR_RUST_NEW_PUB_CRATE,
+    ATTR_RUST_REPR,
 };
 
 <span class="kw">use super</span>::{
@@ -1738,6 +1738,11 @@
         code.push_str(<span class="string">"#![allow(deprecated)]\n"</span>);
     }
 
+    <span class="kw">if </span>obj.is_enum() {
+        <span class="comment">// Needed for PixelFormat. Should we limit this via attribute to just that?
+        </span>code.push_str(<span class="string">"#![allow(non_camel_case_types)]\n"</span>);
+    }
+
     code.push_str(<span class="string">"\n\n"</span>);
 
     code.push_str(<span class="string">"use ::re_types_core::external::arrow2;\n"</span>);
@@ -1855,9 +1860,9 @@
 
     <span class="kw">let </span>is_tuple_struct = is_tuple_struct_from_obj(obj);
     <span class="kw">let </span>quoted_struct = <span class="kw">if </span>is_tuple_struct {
-        <span class="macro">quote! </span>{ <span class="kw">pub struct </span>#name(#(#quoted_fields,)<span class="kw-2">*</span>); }
+        <span class="macro">quote!</span> { <span class="kw">pub struct </span>#name(#(#quoted_fields,)<span class="kw-2">*</span>); }
     } <span class="kw">else </span>{
-        <span class="macro">quote! </span>{ <span class="kw">pub struct </span>#name { #(#quoted_fields,)* }}
+        <span class="macro">quote!</span> { <span class="kw">pub struct </span>#name { #(#quoted_fields,)* }}
     };
 
     <span class="kw">let </span>quoted_from_impl = quote_from_impl_from_obj(obj);
@@ -1889,7 +1894,7 @@
             <span class="macro">quote!</span>(#(#quoted_is_pods)&amp;&amp;<span class="kw-2">*</span>)
         };
 
-        <span class="macro">quote! </span>{
+        <span class="macro">quote!</span> {
             <span class="kw">impl </span>::re_types_core::SizeBytes <span class="kw">for </span>#name {
                 <span class="attr">#[inline]
                 </span><span class="kw">fn </span>heap_size_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
@@ -1904,7 +1909,7 @@
         }
     };
 
-    <span class="kw">let </span>tokens = <span class="macro">quote! </span>{
+    <span class="kw">let </span>tokens = <span class="macro">quote!</span> {
         #quoted_doc
         #quoted_derive_clone_debug
         #quoted_derive_clause
@@ -1959,12 +1964,12 @@
         <span class="kw">let </span>quoted_type = quote_field_type_from_object_field(obj_field);
 
         <span class="kw">if </span>obj_field.typ == Type::Unit {
-            <span class="macro">quote! </span>{
+            <span class="macro">quote!</span> {
                 #quoted_doc
                 #name
             }
         } <span class="kw">else </span>{
-            <span class="macro">quote! </span>{
+            <span class="macro">quote!</span> {
                 #quoted_doc
                 #name(#quoted_type)
             }
@@ -2001,7 +2006,7 @@
             }
         };
 
-        <span class="macro">quote! </span>{
+        <span class="macro">quote!</span> {
             <span class="kw">impl </span>::re_types_core::SizeBytes <span class="kw">for </span>#name {
                 <span class="attr">#[inline]
                 </span><span class="kw">fn </span>heap_size_bytes(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; u64 {
@@ -2019,7 +2024,7 @@
         }
     };
 
-    <span class="kw">let </span>tokens = <span class="macro">quote! </span>{
+    <span class="kw">let </span>tokens = <span class="macro">quote!</span> {
         #quoted_doc
         #quoted_derive_clone_debug
         #quoted_derive_clause
@@ -2103,7 +2108,7 @@
                 <span class="macro">quote!</span>(<span class="attr">#[allow(clippy::upper_case_acronyms)]</span>) <span class="comment">// e.g. for `ColorModel::RGBA`
             </span>};
 
-            <span class="macro">quote! </span>{
+            <span class="macro">quote!</span> {
                 #quoted_doc
                 #default_attr
                 #clippy_attrs
@@ -2115,7 +2120,7 @@
                 <span class="kw-2">&amp;</span>field.fqname,
                 <span class="string">"Enum ObjectFields must have an enum_value. This is likely a bug."</span>,
             );
-            <span class="macro">quote! </span>{}
+            <span class="macro">quote!</span> {}
         }
     });
 
@@ -2140,6 +2145,7 @@
             <span class="kw-2">&amp;</span>field.fqname,
             <span class="kw-2">&amp;</span>field.docs,
             Target::Rust,
+            <span class="bool-val">false</span>,
         )
         .join(<span class="string">"\n"</span>);
         <span class="kw">if </span>docstring_md.is_empty() {
@@ -2152,7 +2158,7 @@
         <span class="macro">quote!</span>(<span class="self">Self</span>::#quoted_name =&gt; #docstring_md)
     });
 
-    <span class="kw">let </span>tokens = <span class="macro">quote! </span>{
+    <span class="kw">let </span>tokens = <span class="macro">quote!</span> {
         #quoted_doc
         <span class="attr">#[derive( #(#derives,)* )]
         </span>#quoted_custom_clause
@@ -2216,12 +2222,12 @@
         <span class="kw">let </span>quoted_type = quote_field_type_from_object_field(obj_field);
 
         <span class="kw">if </span>is_tuple_struct_from_obj(obj) {
-            <span class="macro">quote! </span>{
+            <span class="macro">quote!</span> {
                 #quoted_docs
                 <span class="kw">pub </span>#quoted_type
             }
         } <span class="kw">else </span>{
-            <span class="macro">quote! </span>{
+            <span class="macro">quote!</span> {
                 #quoted_docs
                 <span class="kw">pub </span>#name: #quoted_type
             }
@@ -2237,6 +2243,7 @@
         <span class="kw-2">&amp;</span>field.fqname,
         <span class="kw-2">&amp;</span>field.docs,
         Target::Rust,
+        <span class="bool-val">false</span>,
     );
 
     <span class="kw">let </span>require_field_docs = <span class="bool-val">false</span>;
@@ -2255,6 +2262,7 @@
         <span class="kw-2">&amp;</span>obj.fqname,
         <span class="kw-2">&amp;</span>obj.docs,
         Target::Rust,
+        obj.is_experimental(),
     );
 
     <span class="comment">// Prefix first line with `**Datatype**: ` etc:
@@ -2425,7 +2433,7 @@
         is_forwarded_type.then(|| quote_field_type_from_typ(<span class="kw-2">&amp;</span>obj.fields[<span class="number">0</span>].typ, <span class="bool-val">true</span>).<span class="number">0</span>);
 
     <span class="kw">let </span>quoted_arrow_datatype = <span class="kw">if let </span><span class="prelude-val">Some</span>(forwarded_type) = forwarded_type.as_ref() {
-        <span class="macro">quote! </span>{
+        <span class="macro">quote!</span> {
             <span class="attr">#[inline]
             </span><span class="kw">fn </span>arrow_datatype() -&gt; arrow2::datatypes::DataType {
                 #forwarded_type::arrow_datatype()
@@ -2433,7 +2441,7 @@
         }
     } <span class="kw">else </span>{
         <span class="kw">let </span>datatype = ArrowDataTypeTokenizer(<span class="kw-2">&amp;</span>datatype, <span class="bool-val">false</span>);
-        <span class="macro">quote! </span>{
+        <span class="macro">quote!</span> {
             <span class="attr">#[inline]
             </span><span class="kw">fn </span>arrow_datatype() -&gt; arrow2::datatypes::DataType {
                 <span class="attr">#![allow(clippy::wildcard_imports)]
@@ -2452,11 +2460,11 @@
                     .try_get_attr::&lt;String&gt;(ATTR_RUST_DERIVE_ONLY)
                     .map_or(<span class="bool-val">false</span>, |d| d.contains(<span class="string">"bytemuck::Pod"</span>));
             <span class="kw">if </span>is_pod {
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     #forwarded_type::from_arrow(arrow_data).map(bytemuck::cast_vec)
                 }
             } <span class="kw">else </span>{
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     #forwarded_type::from_arrow(arrow_data).map(|v| v.into_iter().map(<span class="self">Self</span>).collect())
                 }
             }
@@ -2464,7 +2472,7 @@
             <span class="kw">let </span>quoted_deserializer =
                 quote_arrow_deserializer_buffer_slice(arrow_registry, objects, obj);
 
-            <span class="macro">quote! </span>{
+            <span class="macro">quote!</span> {
                 <span class="comment">// NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
                 // re_tracing::profile_function!();
 
@@ -2484,7 +2492,7 @@
             }
         };
 
-        <span class="macro">quote! </span>{
+        <span class="macro">quote!</span> {
             <span class="attr">#[inline]
             </span><span class="kw">fn </span>from_arrow(
                 arrow_data: <span class="kw-2">&amp;</span><span class="kw">dyn </span>arrow2::array::Array,
@@ -2501,12 +2509,12 @@
 
     <span class="comment">// Forward deserialization to existing datatype if it's transparent.
     </span><span class="kw">let </span>quoted_deserializer = <span class="kw">if let </span><span class="prelude-val">Some</span>(forwarded_type) = forwarded_type.as_ref() {
-        <span class="macro">quote! </span>{
+        <span class="macro">quote!</span> {
             #forwarded_type::from_arrow_opt(arrow_data).map(|v| v.into_iter().map(|v| v.map(<span class="self">Self</span>)).collect())
         }
     } <span class="kw">else </span>{
         <span class="kw">let </span>quoted_deserializer = quote_arrow_deserializer(arrow_registry, objects, obj);
-        <span class="macro">quote! </span>{
+        <span class="macro">quote!</span> {
             <span class="comment">// NOTE(#3850): Don't add a profile scope here: the profiler overhead is too big for this fast function.
             // re_tracing::profile_function!();
 
@@ -2518,7 +2526,7 @@
     };
 
     <span class="kw">let </span>quoted_serializer = <span class="kw">if let </span><span class="prelude-val">Some</span>(forwarded_type) = forwarded_type.as_ref() {
-        <span class="macro">quote! </span>{
+        <span class="macro">quote!</span> {
             <span class="kw">fn </span>to_arrow_opt&lt;<span class="lifetime">'a</span>&gt;(
                 data: <span class="kw">impl </span>IntoIterator&lt;Item = <span class="prelude-ty">Option</span>&lt;<span class="kw">impl </span>Into&lt;::std::borrow::Cow&lt;<span class="lifetime">'a</span>, <span class="self">Self</span>&gt;&gt;&gt;&gt;,
             ) -&gt; SerializationResult&lt;Box&lt;<span class="kw">dyn </span>arrow2::array::Array&gt;&gt;
@@ -2537,7 +2545,7 @@
         <span class="kw">let </span>quoted_serializer =
             quote_arrow_serializer(arrow_registry, objects, obj, <span class="kw-2">&amp;</span><span class="macro">format_ident!</span>(<span class="string">"data"</span>));
 
-        <span class="macro">quote! </span>{
+        <span class="macro">quote!</span> {
             <span class="comment">// NOTE: Don't inline this, this gets _huge_.
             </span><span class="kw">fn </span>to_arrow_opt&lt;<span class="lifetime">'a</span>&gt;(
                 data: <span class="kw">impl </span>IntoIterator&lt;Item = <span class="prelude-ty">Option</span>&lt;<span class="kw">impl </span>Into&lt;::std::borrow::Cow&lt;<span class="lifetime">'a</span>, <span class="self">Self</span>&gt;&gt;&gt;&gt;,
@@ -2549,6 +2557,7 @@
                 // re_tracing::profile_function!();
 
                 </span><span class="attr">#![allow(clippy::wildcard_imports)]
+                #![allow(clippy::manual_is_variant_and)]
                 </span><span class="kw">use </span>arrow2::{datatypes::<span class="kw-2">*</span>, array::<span class="kw-2">*</span>};
                 <span class="kw">use </span>::re_types_core::{Loggable <span class="kw">as _</span>, ResultExt <span class="kw">as _</span>};
 
@@ -2557,7 +2566,7 @@
         }
     };
 
-    <span class="macro">quote! </span>{
+    <span class="macro">quote!</span> {
         <span class="macro">::re_types_core::macros::impl_into_cow!</span>(#name);
 
         <span class="kw">impl </span>::re_types_core::Loggable <span class="kw">for </span>#name {
@@ -2698,14 +2707,14 @@
             </span><span class="kw">let </span>component = quote_fqname_as_type_path(obj_field.typ.fqname().unwrap());
 
             <span class="kw">let </span>quoted_collection = <span class="kw">if </span>is_plural {
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
                     .collect::&lt;DeserializationResult&lt;Vec&lt;<span class="kw">_</span>&gt;&gt;&gt;()
                     .with_context(#obj_field_fqname)<span class="question-mark">?
                 </span>}
             } <span class="kw">else </span>{
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     .into_iter()
                     .next()
                     .flatten()
@@ -2721,13 +2730,13 @@
                 <span class="comment">// For a nullable mono-component, it's valid for data to be missing
                 // after a clear.
                 </span><span class="kw">let </span>quoted_collection =
-                    <span class="macro">quote! </span>{
+                    <span class="macro">quote!</span> {
                         .into_iter()
                         .next()
                         .flatten()
                     };
 
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(array) = arrays_by_name.get(#field_typ_fqname_str) {
                         &lt;#component&gt;::from_arrow_opt(<span class="kw-2">&amp;**</span>array)
                             .with_context(#obj_field_fqname)<span class="question-mark">?
@@ -2737,7 +2746,7 @@
                     </span>}
                 }
             } <span class="kw">else if </span>is_nullable {
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     <span class="kw">if let </span><span class="prelude-val">Some</span>(array) = arrays_by_name.get(#field_typ_fqname_str) {
                         <span class="prelude-val">Some</span>({
                             &lt;#component&gt;::from_arrow_opt(<span class="kw-2">&amp;**</span>array)
@@ -2749,7 +2758,7 @@
                     </span>}
                 }
             } <span class="kw">else </span>{
-                <span class="macro">quote! </span>{{
+                <span class="macro">quote!</span> {{
                     <span class="kw">let </span>array = arrays_by_name
                         .get(#field_typ_fqname_str)
                         .ok_or_else(DeserializationError::missing_data)
@@ -2763,15 +2772,7 @@
         })
     };
 
-    <span class="kw">let </span>impl_archetype_reflection_marker = <span class="kw">if </span>obj.is_attr_set(ATTR_RUST_GENERATE_FIELD_INFO) {
-        <span class="macro">quote! </span>{
-            <span class="kw">impl </span>::re_types_core::ArchetypeReflectionMarker <span class="kw">for </span>#name { }
-        }
-    } <span class="kw">else </span>{
-        <span class="macro">quote!</span>()
-    };
-
-    <span class="macro">quote! </span>{
+    <span class="macro">quote!</span> {
         <span class="kw">static </span>REQUIRED_COMPONENTS: once_cell::sync::Lazy&lt;[ComponentName; #num_required]&gt; =
             once_cell::sync::Lazy::new(|| {[#required]});
 
@@ -2868,7 +2869,7 @@
             }
         }
 
-        #impl_archetype_reflection_marker
+        <span class="kw">impl </span>::re_types_core::ArchetypeReflectionMarker <span class="kw">for </span>#name { }
     }
 }
 
@@ -2886,7 +2887,7 @@
         <span class="kw">return </span>TokenStream::new();
     };
 
-    <span class="macro">quote! </span>{
+    <span class="macro">quote!</span> {
         <span class="kw">impl </span>::re_types_core::View <span class="kw">for </span>#name {
             <span class="attr">#[inline]
             </span><span class="kw">fn </span>identifier() -&gt; ::re_types_core::SpaceViewClassIdentifier {
@@ -2917,7 +2918,7 @@
     } <span class="kw">else </span>{
         <span class="macro">quote!</span>(<span class="self">self</span>.#quoted_obj_field_name )
     };
-    <span class="kw">let </span>deref_impl = <span class="macro">quote! </span>{
+    <span class="kw">let </span>deref_impl = <span class="macro">quote!</span> {
         <span class="kw">impl </span>std::ops::Deref <span class="kw">for </span>#quoted_obj_name {
             <span class="kw">type </span>Target = #quoted_type;
 
@@ -2944,7 +2945,7 @@
                     <span class="macro">quote!</span>(<span class="self">Self </span>{ #quoted_obj_field_name: v.map(|v| v.into_iter().map(|v| v.into()).collect()) })
                 };
 
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     <span class="kw">impl</span>&lt;I: Into&lt;#inner&gt;, T: IntoIterator&lt;Item = I&gt;&gt; From&lt;<span class="prelude-ty">Option</span>&lt;T&gt;&gt; <span class="kw">for </span>#quoted_obj_name {
                         <span class="kw">fn </span>from(v: <span class="prelude-ty">Option</span>&lt;T&gt;) -&gt; <span class="self">Self </span>{
                             #quoted_binding
@@ -2958,7 +2959,7 @@
                     <span class="macro">quote!</span>(<span class="self">Self </span>{ #quoted_obj_field_name: v.into_iter().map(|v| v.into()).collect() })
                 };
 
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     <span class="kw">impl</span>&lt;I: Into&lt;#inner&gt;, T: IntoIterator&lt;Item = I&gt;&gt; From&lt;T&gt; <span class="kw">for </span>#quoted_obj_name {
                         <span class="kw">fn </span>from(v: T) -&gt; <span class="self">Self </span>{
                             #quoted_binding
@@ -2973,7 +2974,7 @@
                 <span class="macro">quote!</span>(<span class="self">Self </span>{ #quoted_obj_field_name: v.into() })
             };
 
-            <span class="macro">quote! </span>{
+            <span class="macro">quote!</span> {
                 <span class="kw">impl</span>&lt;T: Into&lt;#quoted_type&gt;&gt; From&lt;T&gt; <span class="kw">for </span>#quoted_obj_name {
                     <span class="kw">fn </span>from(v: T) -&gt; <span class="self">Self </span>{
                         #quoted_binding
@@ -3009,7 +3010,7 @@
             <span class="macro">quote!</span>()
         };
 
-        <span class="macro">quote! </span>{
+        <span class="macro">quote!</span> {
             <span class="kw">impl </span>From&lt;#quoted_type&gt; <span class="kw">for </span>#quoted_obj_name {
                 <span class="attr">#[inline]
                 </span><span class="kw">fn </span>from(#quoted_obj_field_name: #quoted_type) -&gt; <span class="self">Self </span>{
@@ -3089,7 +3090,7 @@
                 <span class="string">"Create a new `{name}` which when logged will clear the values of all components."
             </span>));
 
-            <span class="macro">quote! </span>{
+            <span class="macro">quote!</span> {
                 #docstring
                 <span class="attr">#[inline]
                 </span>#fn_new_pub <span class="kw">fn </span>clear() -&gt; <span class="self">Self </span>{
@@ -3101,7 +3102,7 @@
         } <span class="kw">else </span>{
             <span class="kw">let </span>docstring = quote_doc_line(<span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"Create a new `{name}`."</span>));
 
-            <span class="macro">quote! </span>{
+            <span class="macro">quote!</span> {
                 #docstring
                 <span class="attr">#[inline]
                 </span>#fn_new_pub <span class="kw">fn </span>new(#(#quoted_params,)<span class="kw-2">*</span>) -&gt; <span class="self">Self </span>{
@@ -3123,7 +3124,7 @@
 
         <span class="kw">if </span>unwrapped {
             <span class="comment">// This was originally a vec/array!
-            </span><span class="macro">quote! </span>{
+            </span><span class="macro">quote!</span> {
                 #docstring
                 <span class="attr">#[inline]
                 </span><span class="kw">pub fn </span>#method_name(<span class="kw-2">mut </span><span class="self">self</span>, #field_name: <span class="kw">impl </span>IntoIterator&lt;Item = <span class="kw">impl </span>Into&lt;#typ&gt;&gt;) -&gt; <span class="self">Self </span>{
@@ -3132,7 +3133,7 @@
                 </span>}
             }
         } <span class="kw">else </span>{
-            <span class="macro">quote! </span>{
+            <span class="macro">quote!</span> {
                 #docstring
                 <span class="attr">#[inline]
                 </span><span class="kw">pub fn </span>#method_name(<span class="kw-2">mut </span><span class="self">self</span>, #field_name: <span class="kw">impl </span>Into&lt;#typ&gt;) -&gt; <span class="self">Self </span>{
@@ -3143,7 +3144,7 @@
         }
     });
 
-    <span class="macro">quote! </span>{
+    <span class="macro">quote!</span> {
         <span class="kw">impl </span>#name {
             #fn_new
 

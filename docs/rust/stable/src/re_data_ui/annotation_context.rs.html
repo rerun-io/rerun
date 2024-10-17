@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_data_ui/src/annotation_context.rs`."><title>annotation_context.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_data_ui" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_data_ui/src/annotation_context.rs`."><title>annotation_context.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_data_ui" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_data_ui/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -339,7 +338,6 @@
 <a href="#338" id="338">338</a>
 <a href="#339" id="339">339</a>
 <a href="#340" id="340">340</a>
-<a href="#341" id="341">341</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>egui::{color_picker, Vec2};
 <span class="kw">use </span>itertools::Itertools;
 
@@ -539,60 +537,59 @@
             <span class="kw-2">&amp;</span><span class="macro">format!</span>(<span class="string">"Keypoint Connections for Class {}"</span>, id.<span class="number">0</span>),
             <span class="bool-val">true</span>,
             |ui| {
-                ui.push_id(<span class="macro">format!</span>(<span class="string">"keypoints_connections_{}"</span>, id.<span class="number">0</span>), |ui| {
-                    <span class="kw">use </span>egui_extras::Column;
+                <span class="kw">use </span>egui_extras::Column;
 
-                    <span class="kw">let </span>table = ui_layout
-                        .table(ui)
-                        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-                        .column(Column::auto().clip(<span class="bool-val">true</span>).at_least(<span class="number">40.0</span>))
-                        .column(Column::auto().clip(<span class="bool-val">true</span>).at_least(<span class="number">40.0</span>));
-                    table
-                        .header(DesignTokens::table_header_height(), |<span class="kw-2">mut </span>header| {
-                            DesignTokens::setup_table_header(<span class="kw-2">&amp;mut </span>header);
-                            header.col(|ui| {
-                                ui.strong(<span class="string">"From"</span>);
-                            });
-                            header.col(|ui| {
-                                ui.strong(<span class="string">"To"</span>);
-                            });
-                        })
-                        .body(|<span class="kw-2">mut </span>body| {
-                            DesignTokens::setup_table_body(<span class="kw-2">&amp;mut </span>body);
-
-                            <span class="comment">// TODO(jleibs): Helper to do this with caching somewhere
-                            </span><span class="kw">let </span>keypoint_map: ahash::HashMap&lt;KeypointId, AnnotationInfo&gt; = {
-                                <span class="macro">re_tracing::profile_scope!</span>(<span class="string">"build_annotation_map"</span>);
-                                class
-                                    .keypoint_annotations
-                                    .iter()
-                                    .map(|kp| (kp.id.into(), kp.clone()))
-                                    .collect()
-                            };
-
-                            body.rows(row_height, class.keypoint_connections.len(), |<span class="kw-2">mut </span>row| {
-                                <span class="kw">let </span>pair = <span class="kw-2">&amp;</span>class.keypoint_connections[row.index()];
-                                <span class="kw">let </span>KeypointPair {
-                                    keypoint0,
-                                    keypoint1,
-                                } = pair;
-
-                                <span class="kw">for </span>id <span class="kw">in </span>[keypoint0, keypoint1] {
-                                    row.col(|ui| {
-                                        ui.label(
-                                            keypoint_map
-                                                .get(id)
-                                                .and_then(|info| info.label.as_ref())
-                                                .map_or_else(
-                                                    || <span class="macro">format!</span>(<span class="string">"id {}"</span>, id.<span class="number">0</span>),
-                                                    |label| label.to_string(),
-                                                ),
-                                        );
-                                    });
-                                }
-                            });
+                <span class="kw">let </span>table = ui_layout
+                    .table(ui)
+                    .id_salt((<span class="string">"keypoints_connections"</span>, id))
+                    .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+                    .column(Column::auto().clip(<span class="bool-val">true</span>).at_least(<span class="number">40.0</span>))
+                    .column(Column::auto().clip(<span class="bool-val">true</span>).at_least(<span class="number">40.0</span>));
+                table
+                    .header(DesignTokens::table_header_height(), |<span class="kw-2">mut </span>header| {
+                        DesignTokens::setup_table_header(<span class="kw-2">&amp;mut </span>header);
+                        header.col(|ui| {
+                            ui.strong(<span class="string">"From"</span>);
                         });
-                });
+                        header.col(|ui| {
+                            ui.strong(<span class="string">"To"</span>);
+                        });
+                    })
+                    .body(|<span class="kw-2">mut </span>body| {
+                        DesignTokens::setup_table_body(<span class="kw-2">&amp;mut </span>body);
+
+                        <span class="comment">// TODO(jleibs): Helper to do this with caching somewhere
+                        </span><span class="kw">let </span>keypoint_map: ahash::HashMap&lt;KeypointId, AnnotationInfo&gt; = {
+                            <span class="macro">re_tracing::profile_scope!</span>(<span class="string">"build_annotation_map"</span>);
+                            class
+                                .keypoint_annotations
+                                .iter()
+                                .map(|kp| (kp.id.into(), kp.clone()))
+                                .collect()
+                        };
+
+                        body.rows(row_height, class.keypoint_connections.len(), |<span class="kw-2">mut </span>row| {
+                            <span class="kw">let </span>pair = <span class="kw-2">&amp;</span>class.keypoint_connections[row.index()];
+                            <span class="kw">let </span>KeypointPair {
+                                keypoint0,
+                                keypoint1,
+                            } = pair;
+
+                            <span class="kw">for </span>id <span class="kw">in </span>[keypoint0, keypoint1] {
+                                row.col(|ui| {
+                                    ui.label(
+                                        keypoint_map
+                                            .get(id)
+                                            .and_then(|info| info.label.as_ref())
+                                            .map_or_else(
+                                                || <span class="macro">format!</span>(<span class="string">"id {}"</span>, id.<span class="number">0</span>),
+                                                |label| label.to_string(),
+                                            ),
+                                    );
+                                });
+                            }
+                        });
+                    });
             },
         );
     }

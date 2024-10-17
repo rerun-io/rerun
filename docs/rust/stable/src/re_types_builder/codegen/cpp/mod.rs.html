@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/build/re_types_builder/src/codegen/cpp/mod.rs`."><title>mod.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="re_types_builder" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/build/re_types_builder/src/codegen/cpp/mod.rs`."><title>mod.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="re_types_builder" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../../re_types_builder/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -2571,6 +2570,19 @@
 <a href="#2570" id="2570">2570</a>
 <a href="#2571" id="2571">2571</a>
 <a href="#2572" id="2572">2572</a>
+<a href="#2573" id="2573">2573</a>
+<a href="#2574" id="2574">2574</a>
+<a href="#2575" id="2575">2575</a>
+<a href="#2576" id="2576">2576</a>
+<a href="#2577" id="2577">2577</a>
+<a href="#2578" id="2578">2578</a>
+<a href="#2579" id="2579">2579</a>
+<a href="#2580" id="2580">2580</a>
+<a href="#2581" id="2581">2581</a>
+<a href="#2582" id="2582">2582</a>
+<a href="#2583" id="2583">2583</a>
+<a href="#2584" id="2584">2584</a>
+<a href="#2585" id="2585">2585</a>
 </pre></div><pre class="rust"><code><span class="kw">mod </span>array_builder;
 <span class="kw">mod </span>forward_decl;
 <span class="kw">mod </span>includes;
@@ -2631,16 +2643,16 @@
 <span class="kw">const </span>HEADER_EXTENSION_TOKEN: <span class="kw-2">&amp;</span>str = <span class="string">"HEADER_EXTENSION_TOKEN"</span>;
 
 <span class="kw">fn </span>quote_comment(text: <span class="kw-2">&amp;</span>str) -&gt; TokenStream {
-    <span class="macro">quote! </span>{ #NORMAL_COMMENT_PREFIX_TOKEN #text #NORMAL_COMMENT_SUFFIX_TOKEN }
+    <span class="macro">quote!</span> { #NORMAL_COMMENT_PREFIX_TOKEN #text #NORMAL_COMMENT_SUFFIX_TOKEN }
 }
 
 <span class="kw">fn </span>quote_doc_comment(text: <span class="kw-2">&amp;</span>str) -&gt; TokenStream {
-    <span class="macro">quote! </span>{ #DOC_COMMENT_PREFIX_TOKEN #text #DOC_COMMENT_SUFFIX_TOKEN }
+    <span class="macro">quote!</span> { #DOC_COMMENT_PREFIX_TOKEN #text #DOC_COMMENT_SUFFIX_TOKEN }
 }
 
 <span class="kw">fn </span>quote_hide_from_docs() -&gt; TokenStream {
     <span class="kw">let </span>comment = quote_doc_comment(<span class="string">"\\private"</span>);
-    <span class="macro">quote! </span>{
+    <span class="macro">quote!</span> {
         #NEWLINE_TOKEN
         #comment
     }
@@ -2768,7 +2780,7 @@
 
         <span class="comment">// Generate module file that includes all the headers:
         </span><span class="kw">for </span>testing <span class="kw">in </span>[<span class="bool-val">false</span>, <span class="bool-val">true</span>] {
-            <span class="kw">let </span>hash = <span class="macro">quote! </span>{ # };
+            <span class="kw">let </span>hash = <span class="macro">quote!</span> { # };
             <span class="kw">let </span>pragma_once = pragma_once();
             <span class="kw">let </span>header_file_names = objects_of_kind
                 .iter()
@@ -2778,7 +2790,7 @@
             <span class="kw">if </span>header_file_names.is_empty() {
                 <span class="kw">continue</span>;
             }
-            <span class="kw">let </span>tokens = <span class="macro">quote! </span>{
+            <span class="kw">let </span>tokens = <span class="macro">quote!</span> {
                 #pragma_once
                 #(#hash include #header_file_names <span class="string">"NEWLINE_TOKEN"</span>)*
             };
@@ -2861,7 +2873,7 @@
 ) -&gt; (TokenStream, <span class="prelude-ty">Option</span>&lt;String&gt;) {
     <span class="kw">let </span>extension_file = folder_path.join(<span class="macro">format!</span>(<span class="string">"{filename_stem}_ext.cpp"</span>));
     <span class="kw">let </span><span class="prelude-val">Ok</span>(content) = std::fs::read_to_string(extension_file.as_std_path()) <span class="kw">else </span>{
-        <span class="kw">return </span>(<span class="macro">quote! </span>{}, <span class="prelude-val">None</span>);
+        <span class="kw">return </span>(<span class="macro">quote!</span> {}, <span class="prelude-val">None</span>);
     };
 
     <span class="kw">const </span>COPY_TO_HEADER_START_MARKER: <span class="kw-2">&amp;</span>str = <span class="string">"&lt;CODEGEN_COPY_TO_HEADER&gt;"</span>;
@@ -2918,7 +2930,7 @@
         <span class="string">"END of extensions from {}, start of generated code:"</span>,
         extension_file.file_name().unwrap()
     ));
-    <span class="kw">let </span>hpp_type_extensions = <span class="macro">quote! </span>{
+    <span class="kw">let </span>hpp_type_extensions = <span class="macro">quote!</span> {
         public:  #start_comment
         #NEWLINE_TOKEN
         #HEADER_EXTENSION_TOKEN
@@ -2940,16 +2952,16 @@
     <span class="kw">let </span>QuotedObject { hpp, cpp } =
         QuotedObject::new(reporter, objects, obj, hpp_includes, hpp_type_extensions)<span class="question-mark">?</span>;
     <span class="kw">let </span>snake_case_name = obj.snake_case_name();
-    <span class="kw">let </span>hash = <span class="macro">quote! </span>{ # };
+    <span class="kw">let </span>hash = <span class="macro">quote!</span> { # };
     <span class="kw">let </span>pragma_once = pragma_once();
     <span class="kw">let </span>header_file_name = <span class="macro">format!</span>(<span class="string">"{snake_case_name}.hpp"</span>);
 
-    <span class="kw">let </span>hpp = <span class="macro">quote! </span>{
+    <span class="kw">let </span>hpp = <span class="macro">quote!</span> {
         #pragma_once
         #hpp
     };
     <span class="kw">let </span>cpp = cpp.map(|cpp| {
-        <span class="macro">quote! </span>{
+        <span class="macro">quote!</span> {
             #hash include #header_file_name #NEWLINE_TOKEN #NEWLINE_TOKEN
             #cpp
         }
@@ -2959,8 +2971,8 @@
 }
 
 <span class="kw">fn </span>pragma_once() -&gt; TokenStream {
-    <span class="kw">let </span>hash = <span class="macro">quote! </span>{ # };
-    <span class="macro">quote! </span>{
+    <span class="kw">let </span>hash = <span class="macro">quote!</span> { # };
+    <span class="macro">quote!</span> {
         #hash pragma once #NEWLINE_TOKEN #NEWLINE_TOKEN
     }
 }
@@ -3036,12 +3048,12 @@
                 <span class="kw">let </span>field_type = quote_archetype_field_type(<span class="kw-2">&amp;mut </span>hpp_includes, obj_field);
                 <span class="kw">let </span>field_type = <span class="kw">if </span>obj_field.is_nullable {
                     hpp_includes.insert_system(<span class="string">"optional"</span>);
-                    <span class="macro">quote! </span>{ std::optional&lt;#field_type&gt; }
+                    <span class="macro">quote!</span> { std::optional&lt;#field_type&gt; }
                 } <span class="kw">else </span>{
                     field_type
                 };
 
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     #NEWLINE_TOKEN
                     #docstring
                     #field_type #field_name
@@ -3067,8 +3079,8 @@
                     <span class="comment">// C++ compilers give warnings for re-using the same name as the member variable.
                     </span><span class="kw">let </span>parameter_ident = <span class="macro">format_ident!</span>(<span class="string">"_{}"</span>, obj_field.name);
                     (
-                        <span class="macro">quote! </span>{ #field_type #parameter_ident },
-                        <span class="macro">quote! </span>{ #field_ident(std::<span class="kw">move</span>(#parameter_ident)) },
+                        <span class="macro">quote!</span> { #field_type #parameter_ident },
+                        <span class="macro">quote!</span> { #field_ident(std::<span class="kw">move</span>(#parameter_ident)) },
                     )
                 })
                 .unzip();
@@ -3076,7 +3088,7 @@
             methods.push(Method {
                 <span class="comment">// Making the constructor explicit prevents all sort of strange errors.
                 // (e.g. `Points3D({{0.0f, 0.0f, 0.0f}})` would previously be ambiguous with the move constructor?!)
-                </span>declaration: MethodDeclaration::constructor(<span class="macro">quote! </span>{
+                </span>declaration: MethodDeclaration::constructor(<span class="macro">quote!</span> {
                     explicit #type_ident(#(#parameters),<span class="kw-2">*</span>) : #(#assignments),*
                 }),
                 ..Method::default()
@@ -3100,11 +3112,11 @@
                 declaration: MethodDeclaration {
                     is_static: <span class="bool-val">false</span>,
                     return_type: <span class="macro">quote!</span>(#type_ident),
-                    name_and_parameters: <span class="macro">quote! </span>{
+                    name_and_parameters: <span class="macro">quote!</span> {
                         #method_ident(#field_type #parameter_ident) &amp;&amp;
                     },
                 },
-                definition_body: <span class="macro">quote! </span>{
+                definition_body: <span class="macro">quote!</span> {
                     #field_ident = std::<span class="kw">move</span>(#parameter_ident);
                     #NEWLINE_TOKEN
                     #gcc_ignore_comment
@@ -3116,9 +3128,9 @@
 
         <span class="kw">let </span>quoted_namespace = <span class="kw">if let </span><span class="prelude-val">Some</span>(scope) = obj.scope() {
             <span class="kw">let </span>scope = <span class="macro">format_ident!</span>(<span class="string">"{}"</span>, scope);
-            <span class="macro">quote! </span>{ #scope::archetypes }
+            <span class="macro">quote!</span> { #scope::archetypes }
         } <span class="kw">else </span>{
-            <span class="macro">quote! </span>{archetypes}
+            <span class="macro">quote!</span> {archetypes}
         };
 
         <span class="kw">let </span>serialize_method = archetype_serialize(<span class="kw-2">&amp;</span>type_ident, obj, <span class="kw-2">&amp;mut </span>hpp_includes);
@@ -3140,17 +3152,17 @@
             <span class="kw">if </span>obj.deprecation_notice().is_some() {
                 hpp_includes.insert_rerun(<span class="string">"compiler_utils.hpp"</span>);
                 (
-                    <span class="macro">quote! </span>{
+                    <span class="macro">quote!</span> {
                         RR_PUSH_WARNINGS #NEWLINE_TOKEN
                         RR_DISABLE_DEPRECATION_WARNING #NEWLINE_TOKEN
                     },
-                    <span class="macro">quote! </span>{ RR_POP_WARNINGS },
+                    <span class="macro">quote!</span> { RR_POP_WARNINGS },
                 )
             } <span class="kw">else </span>{
                 (<span class="macro">quote!</span>(), <span class="macro">quote!</span>())
             };
 
-        <span class="kw">let </span>hpp = <span class="macro">quote! </span>{
+        <span class="kw">let </span>hpp = <span class="macro">quote!</span> {
             #hpp_includes
 
             namespace rerun::#quoted_namespace {
@@ -3196,7 +3208,7 @@
             }
         };
 
-        <span class="kw">let </span>cpp = <span class="macro">quote! </span>{
+        <span class="kw">let </span>cpp = <span class="macro">quote!</span> {
             #cpp_includes
 
             #deprecation_ignore_start
@@ -3230,9 +3242,9 @@
 
         <span class="kw">let </span>quoted_namespace = <span class="kw">if let </span><span class="prelude-val">Some</span>(scope) = obj.scope() {
             <span class="kw">let </span>scope = <span class="macro">format_ident!</span>(<span class="string">"{}"</span>, scope);
-            <span class="macro">quote! </span>{ #scope::#namespace_ident}
+            <span class="macro">quote!</span> { #scope::#namespace_ident}
         } <span class="kw">else </span>{
-            <span class="macro">quote! </span>{#namespace_ident}
+            <span class="macro">quote!</span> {#namespace_ident}
         };
 
         <span class="kw">let </span>type_ident = obj.ident();
@@ -3252,7 +3264,7 @@
                     obj_field,
                     <span class="kw-2">&amp;</span>field_name_identifier(obj_field),
                 );
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     #NEWLINE_TOKEN
                     #declaration
                 }
@@ -3282,11 +3294,11 @@
                 methods.push(Method {
                     docs: <span class="macro">format!</span>(<span class="string">"Cast to the underlying {type_name} datatype"</span>).into(),
                     declaration: MethodDeclaration {
-                        name_and_parameters: <span class="macro">quote! </span>{ operator #data_type() <span class="kw">const </span>},
+                        name_and_parameters: <span class="macro">quote!</span> { operator #data_type() <span class="kw">const </span>},
                         is_static: <span class="bool-val">false</span>,
-                        return_type: <span class="macro">quote! </span>{},
+                        return_type: <span class="macro">quote!</span> {},
                     },
-                    definition_body: <span class="macro">quote! </span>{
+                    definition_body: <span class="macro">quote!</span> {
                         <span class="kw">return </span>#field_name;
                     },
                     inline: <span class="bool-val">true</span>,
@@ -3304,7 +3316,7 @@
             <span class="kw-2">&amp;mut </span>hpp_declarations,
         );
 
-        <span class="kw">let </span>hpp = <span class="macro">quote! </span>{
+        <span class="kw">let </span>hpp = <span class="macro">quote!</span> {
             #hpp_includes
 
             #hpp_declarations
@@ -3332,7 +3344,7 @@
                 .iter()
                 .map(|m| m.to_cpp_tokens(<span class="kw-2">&amp;</span><span class="macro">quote!</span>(#type_ident)));
 
-            <span class="prelude-val">Some</span>(<span class="macro">quote! </span>{
+            <span class="prelude-val">Some</span>(<span class="macro">quote!</span> {
                 #cpp_includes
 
                 namespace rerun::#quoted_namespace {
@@ -3381,9 +3393,9 @@
         <span class="kw">let </span>namespace_ident = obj.namespace_ident();
         <span class="kw">let </span>quoted_namespace = <span class="kw">if let </span><span class="prelude-val">Some</span>(scope) = obj.scope() {
             <span class="kw">let </span>scope = <span class="macro">format_ident!</span>(<span class="string">"{}"</span>, scope);
-            <span class="macro">quote! </span>{ #scope::#namespace_ident}
+            <span class="macro">quote!</span> { #scope::#namespace_ident}
         } <span class="kw">else </span>{
-            <span class="macro">quote! </span>{#namespace_ident}
+            <span class="macro">quote!</span> {#namespace_ident}
         };
 
         <span class="kw">let </span>pascal_case_name = <span class="kw-2">&amp;</span>obj.name;
@@ -3399,7 +3411,7 @@
                 <span class="string">"Having a special empty state makes it possible to implement move-semantics. \
                 We need to be able to leave the object in a state which we can run the destructor on."</span>);
             <span class="kw">let </span>tag_name = <span class="macro">format_ident!</span>(<span class="string">"None"</span>);
-            <span class="macro">quote! </span>{
+            <span class="macro">quote!</span> {
                 #NEWLINE_TOKEN
                 #comment
                 #tag_name = <span class="number">0</span>,
@@ -3407,7 +3419,7 @@
         })
         .chain(obj.fields.iter().map(|obj_field| {
             <span class="kw">let </span>ident = field_name_identifier(obj_field);
-            <span class="macro">quote! </span>{
+            <span class="macro">quote!</span> {
                 #ident,
             }
         }))
@@ -3431,7 +3443,7 @@
                     obj_field,
                     <span class="kw-2">&amp;</span><span class="macro">format_ident!</span>(<span class="string">"{}"</span>, obj_field.snake_case_name()),
                 );
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     #NEWLINE_TOKEN
                     #declaration
                 }
@@ -3491,11 +3503,11 @@
                     docs: <span class="macro">format!</span>(<span class="string">"Returns true if the union is in the {snake_case_name} state."</span>)
                         .into(),
                     declaration: MethodDeclaration {
-                        name_and_parameters: <span class="macro">quote! </span>{ #method_name() <span class="kw">const </span>},
-                        return_type: <span class="macro">quote! </span>{ bool },
+                        name_and_parameters: <span class="macro">quote!</span> { #method_name() <span class="kw">const </span>},
+                        return_type: <span class="macro">quote!</span> { bool },
                         is_static: <span class="bool-val">false</span>,
                     },
-                    definition_body: <span class="macro">quote! </span>{
+                    definition_body: <span class="macro">quote!</span> {
                         <span class="kw">return </span>_tag == detail::#tag_typename::#tag_name;
                     },
                     inline: <span class="bool-val">true</span>,
@@ -3506,11 +3518,11 @@
                 Method {
                     docs: <span class="macro">format!</span>(<span class="string">"Return a pointer to {snake_case_name} if the union is in that state, otherwise `nullptr`."</span>).into(),
                     declaration: MethodDeclaration {
-                        name_and_parameters: <span class="macro">quote! </span>{ #method_name() <span class="kw">const </span>},
-                        return_type: <span class="macro">quote! </span>{ <span class="kw">const </span>#typ* },
+                        name_and_parameters: <span class="macro">quote!</span> { #method_name() <span class="kw">const </span>},
+                        return_type: <span class="macro">quote!</span> { <span class="kw">const </span>#typ* },
                         is_static: <span class="bool-val">false</span>,
                     },
-                    definition_body: <span class="macro">quote! </span>{
+                    definition_body: <span class="macro">quote!</span> {
                         <span class="kw">if </span>(_tag == detail::#tag_typename::#tag_name) {
                             <span class="kw">return </span><span class="kw-2">&amp;</span>_data.#field_name;
                         } <span class="kw">else </span>{
@@ -3525,11 +3537,11 @@
 
         <span class="kw">let </span>destructor = <span class="kw">if </span>obj.has_default_destructor(objects) {
             <span class="comment">// No destructor needed
-            </span><span class="macro">quote! </span>{}
+            </span><span class="macro">quote!</span> {}
         } <span class="kw">else </span>{
             <span class="kw">let </span>destructor_match_arms = std::iter::once({
                 <span class="kw">let </span>comment = quote_comment(<span class="string">"Nothing to destroy"</span>);
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     case detail::#tag_typename::None: {
                         #NEWLINE_TOKEN
                         #comment
@@ -3542,7 +3554,7 @@
 
                 <span class="kw">if </span>obj_field.typ.has_default_destructor(objects) {
                     <span class="kw">let </span>comment = quote_comment(<span class="string">"has a trivial destructor"</span>);
-                    <span class="macro">quote! </span>{
+                    <span class="macro">quote!</span> {
                         case detail::#tag_typename::#tag_ident: {
                             #NEWLINE_TOKEN
                             #comment
@@ -3551,7 +3563,7 @@
                 } <span class="kw">else </span>{
                     <span class="kw">let </span>typ = quote_field_type(<span class="kw-2">&amp;mut </span>hpp_includes, obj_field);
                     hpp_includes.insert_system(<span class="string">"utility"</span>); <span class="comment">// std::move
-                    </span><span class="macro">quote! </span>{
+                    </span><span class="macro">quote!</span> {
                         case detail::#tag_typename::#tag_ident: {
                             using TypeAlias = #typ;
                             _data.#field_ident.~TypeAlias();
@@ -3561,7 +3573,7 @@
             }))
             .collect_vec();
 
-            <span class="macro">quote! </span>{
+            <span class="macro">quote!</span> {
                 ~#pascal_case_ident() {
                     switch (this-&gt;_tag) {
                         #(#destructor_match_arms)*
@@ -3589,7 +3601,7 @@
                     hpp_includes.insert_system(<span class="string">"new"</span>); <span class="comment">// placement-new
 
                     </span><span class="kw">let </span>field_ident = <span class="macro">format_ident!</span>(<span class="string">"{}"</span>, obj_field.snake_case_name());
-                    placement_new_arms.push(<span class="macro">quote! </span>{
+                    placement_new_arms.push(<span class="macro">quote!</span> {
                         #case {
                             using TypeAlias = #typ;
                             new (<span class="kw-2">&amp;</span>_data.#field_ident) TypeAlias(other._data.#field_ident);
@@ -3598,7 +3610,7 @@
                 }
             }
 
-            <span class="kw">let </span>trivial_memcpy = <span class="macro">quote! </span>{
+            <span class="kw">let </span>trivial_memcpy = <span class="macro">quote!</span> {
                 <span class="kw">const </span>void* otherbytes = reinterpret_cast&lt;<span class="kw">const </span>void<span class="kw-2">*</span>&gt;(<span class="kw-2">&amp;</span>other._data);
                 void* thisbytes = reinterpret_cast&lt;void<span class="kw-2">*</span>&gt;(<span class="kw-2">&amp;</span>this-&gt;_data);
                 std::memcpy(thisbytes, otherbytes, sizeof(detail::#data_typename));
@@ -3607,7 +3619,7 @@
             <span class="kw">let </span>comment = quote_doc_comment(<span class="string">"Copy constructor"</span>);
 
             <span class="kw">if </span>placement_new_arms.is_empty() {
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     #NEWLINE_TOKEN
                     #NEWLINE_TOKEN
                     #comment
@@ -3616,7 +3628,7 @@
                     }
                 }
             } <span class="kw">else if </span>trivial_memcpy_cases.is_empty() {
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     #NEWLINE_TOKEN
                     #NEWLINE_TOKEN
                     #comment
@@ -3631,7 +3643,7 @@
                     }
                 }
             } <span class="kw">else </span>{
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     #NEWLINE_TOKEN
                     #NEWLINE_TOKEN
                     #comment
@@ -3664,7 +3676,7 @@
         );
 
         <span class="kw">let </span>methods_hpp = methods.iter().map(|m| m.to_hpp_tokens(objects));
-        <span class="kw">let </span>hpp = <span class="macro">quote! </span>{
+        <span class="kw">let </span>hpp = <span class="macro">quote!</span> {
             #hpp_includes
 
             #hpp_declarations
@@ -3758,7 +3770,7 @@
         <span class="kw">let </span>cpp_methods = methods
             .iter()
             .map(|m| m.to_cpp_tokens(<span class="kw-2">&amp;</span><span class="macro">quote!</span>(#pascal_case_ident)));
-        <span class="kw">let </span>cpp = <span class="macro">quote! </span>{
+        <span class="kw">let </span>cpp = <span class="macro">quote!</span> {
             #cpp_includes
 
             namespace rerun::#quoted_namespace {
@@ -3784,9 +3796,9 @@
 
         <span class="kw">let </span>quoted_namespace = <span class="kw">if let </span><span class="prelude-val">Some</span>(scope) = obj.scope() {
             <span class="kw">let </span>scope = <span class="macro">format_ident!</span>(<span class="string">"{}"</span>, scope);
-            <span class="macro">quote! </span>{ #scope::#namespace_ident}
+            <span class="macro">quote!</span> { #scope::#namespace_ident}
         } <span class="kw">else </span>{
-            <span class="macro">quote! </span>{#namespace_ident}
+            <span class="macro">quote!</span> {#namespace_ident}
         };
 
         <span class="kw">let </span>type_ident = obj.ident();
@@ -3807,7 +3819,7 @@
                 <span class="comment">// We assign the arrow type index to the enum fields to make encoding simpler and faster:
                 </span><span class="kw">let </span>arrow_type_index = proc_macro2::Literal::usize_unsuffixed(enum_value <span class="kw">as _</span>);
 
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     #NEWLINE_TOKEN
                     #docstring
                     #field_name = #arrow_type_index
@@ -3823,7 +3835,7 @@
             <span class="kw-2">&amp;mut </span>hpp_declarations,
         );
 
-        <span class="kw">let </span>hpp = <span class="macro">quote! </span>{
+        <span class="kw">let </span>hpp = <span class="macro">quote!</span> {
             #hpp_includes
 
             #hpp_declarations
@@ -3837,7 +3849,7 @@
 
             #hpp_loggable
         };
-        <span class="kw">let </span>cpp = <span class="macro">quote! </span>{
+        <span class="kw">let </span>cpp = <span class="macro">quote!</span> {
             #cpp_includes
 
             #cpp_loggable
@@ -3926,7 +3938,7 @@
         </span><span class="macro">quote!</span>(std::<span class="kw">move</span>(#param_ident))
     };
     methods.push(Method {
-        declaration: MethodDeclaration::constructor(<span class="macro">quote! </span>{
+        declaration: MethodDeclaration::constructor(<span class="macro">quote!</span> {
             #type_ident(#typ #param_ident) : #field_ident(#copy_or_move)
         }),
         ..Method::default()
@@ -3935,11 +3947,11 @@
         declaration: MethodDeclaration {
             is_static: <span class="bool-val">false</span>,
             return_type: <span class="macro">quote!</span>(#type_ident<span class="kw-2">&amp;</span>),
-            name_and_parameters: <span class="macro">quote! </span>{
+            name_and_parameters: <span class="macro">quote!</span> {
                 operator=(#typ #param_ident)
             },
         },
-        definition_body: <span class="macro">quote! </span>{
+        definition_body: <span class="macro">quote!</span> {
             #field_ident = #copy_or_move;
             <span class="kw">return </span><span class="kw-2">*</span>this;
         },
@@ -3973,7 +3985,7 @@
             <span class="kw">let </span>forwarded_type = quote_fqname_as_type_path(hpp_includes, forwarded_fqname);
             (
                 <span class="bool-val">true</span>,
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     <span class="kw">return </span>Loggable&lt;#forwarded_type&gt;::arrow_datatype();
                 },
             )
@@ -3990,7 +4002,7 @@
 
             (
                 <span class="bool-val">false</span>,
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     <span class="kw">static const </span>auto datatype = #quoted_datatype;
                     <span class="kw">return </span>datatype;
                 },
@@ -4001,8 +4013,8 @@
         docs: <span class="string">"Returns the arrow data type this type corresponds to."</span>.into(),
         declaration: MethodDeclaration {
             is_static: <span class="bool-val">true</span>,
-            return_type: <span class="macro">quote! </span>{ <span class="kw">const </span>std::shared_ptr&lt;arrow::DataType&gt;&amp; },
-            name_and_parameters: <span class="macro">quote! </span>{ arrow_datatype() },
+            return_type: <span class="macro">quote!</span> { <span class="kw">const </span>std::shared_ptr&lt;arrow::DataType&gt;&amp; },
+            name_and_parameters: <span class="macro">quote!</span> { arrow_datatype() },
         },
         definition_body,
         inline,
@@ -4026,22 +4038,22 @@
     <span class="kw">let </span>namespace_ident = obj.namespace_ident();
     <span class="kw">let </span>quoted_namespace = <span class="kw">if let </span><span class="prelude-val">Some</span>(scope) = obj.scope() {
         <span class="kw">let </span>scope = <span class="macro">format_ident!</span>(<span class="string">"{}"</span>, scope);
-        <span class="macro">quote! </span>{ #scope::#namespace_ident}
+        <span class="macro">quote!</span> { #scope::#namespace_ident}
     } <span class="kw">else </span>{
-        <span class="macro">quote! </span>{#namespace_ident}
+        <span class="macro">quote!</span> {#namespace_ident}
     };
 
     Method {
         docs: <span class="string">"Fills an arrow array builder with an array of this type."</span>.into(),
         declaration: MethodDeclaration {
             is_static: <span class="bool-val">true</span>,
-            return_type: <span class="macro">quote! </span>{ rerun::Error },
+            return_type: <span class="macro">quote!</span> { rerun::Error },
             <span class="comment">// TODO(andreas): Pass in validity map.
-            </span>name_and_parameters: <span class="macro">quote! </span>{
+            </span>name_and_parameters: <span class="macro">quote!</span> {
                 fill_arrow_array_builder(arrow::#arrow_builder_type* #builder, <span class="kw">const </span>#quoted_namespace::#type_ident* elements, size_t num_elements)
             },
         },
-        definition_body: <span class="macro">quote! </span>{
+        definition_body: <span class="macro">quote!</span> {
             #fill_builder
             #NEWLINE_TOKEN
             #NEWLINE_TOKEN
@@ -4064,9 +4076,9 @@
 
     <span class="kw">let </span>quoted_namespace = <span class="kw">if let </span><span class="prelude-val">Some</span>(scope) = obj.scope() {
         <span class="kw">let </span>scope = <span class="macro">format_ident!</span>(<span class="string">"{}"</span>, scope);
-        <span class="macro">quote! </span>{ #scope::#namespace_ident}
+        <span class="macro">quote!</span> { #scope::#namespace_ident}
     } <span class="kw">else </span>{
-        <span class="macro">quote! </span>{#namespace_ident}
+        <span class="macro">quote!</span> {#namespace_ident}
     };
 
     <span class="kw">let </span>(inline, definition_body) = <span class="kw">if let </span><span class="prelude-val">Some</span>(forwarded_fqname) =
@@ -4077,8 +4089,14 @@
 
         (
             <span class="bool-val">true</span>,
-            <span class="macro">quote! </span>{
-                <span class="kw">return </span>Loggable&lt;#forwarded_type&gt;::to_arrow(<span class="kw-2">&amp;</span>instances-&gt;#field_name, num_instances);
+            <span class="macro">quote!</span> {
+                <span class="kw">if </span>(num_instances == <span class="number">0</span>) {
+                    <span class="kw">return </span>Loggable&lt;#forwarded_type&gt;::to_arrow(nullptr, <span class="number">0</span>);
+                } <span class="kw">else if </span>(instances == nullptr) {
+                    <span class="kw">return </span>rerun::Error(ErrorCode::UnexpectedNullArgument, <span class="string">"Passed array instances is null when num_elements &gt; 0."</span>);
+                } <span class="kw">else </span>{
+                    <span class="kw">return </span>Loggable&lt;#forwarded_type&gt;::to_arrow(<span class="kw-2">&amp;</span>instances-&gt;#field_name, num_instances);
+                }
             },
         )
     } <span class="kw">else </span>{
@@ -4093,7 +4111,7 @@
 
         (
             <span class="bool-val">false</span>,
-            <span class="macro">quote! </span>{
+            <span class="macro">quote!</span> {
                 #NEWLINE_TOKEN
                 #todo_pool
                 arrow::MemoryPool* pool = arrow::default_memory_pool();
@@ -4122,8 +4140,8 @@
         .into(),
         declaration: MethodDeclaration {
             is_static: <span class="bool-val">true</span>,
-            return_type: <span class="macro">quote! </span>{ <span class="prelude-ty">Result</span>&lt;std::shared_ptr&lt;arrow::Array&gt;&gt; },
-            name_and_parameters: <span class="macro">quote! </span>{
+            return_type: <span class="macro">quote!</span> { <span class="prelude-ty">Result</span>&lt;std::shared_ptr&lt;arrow::Array&gt;&gt; },
+            name_and_parameters: <span class="macro">quote!</span> {
                 to_arrow(<span class="kw">const </span>#quoted_namespace::#type_ident* instances, size_t num_instances)
             },
         },
@@ -4149,21 +4167,21 @@
         <span class="kw">let </span>field_name = field_name_identifier(field);
         <span class="kw">let </span>field_accessor = <span class="macro">quote!</span>(archetype.#field_name);
 
-        <span class="kw">let </span>push_back = <span class="macro">quote! </span>{
+        <span class="kw">let </span>push_back = <span class="macro">quote!</span> {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::<span class="kw">move</span>(result.value));
         };
 
         <span class="comment">// TODO(andreas): Introducing MonoCollection will remove the need for distinguishing these two cases.
         </span><span class="kw">if </span>field.is_nullable &amp;&amp; !obj.attrs.has(ATTR_RERUN_LOG_MISSING_AS_EMPTY) {
-            <span class="macro">quote! </span>{
+            <span class="macro">quote!</span> {
                 <span class="kw">if </span>(#field_accessor.has_value()) {
                     auto result = ComponentBatch::from_loggable(#field_accessor.value());
                     #push_back
                 }
             }
         } <span class="kw">else </span>{
-            <span class="macro">quote! </span>{
+            <span class="macro">quote!</span> {
                 {
                     auto result = ComponentBatch::from_loggable(#field_accessor);
                     #push_back
@@ -4180,7 +4198,7 @@
             </span>return_type: <span class="macro">quote!</span>(<span class="prelude-ty">Result</span>&lt;std::vector&lt;ComponentBatch&gt;&gt;),
             name_and_parameters: <span class="macro">quote!</span>(serialize(<span class="kw">const </span>#quoted_scoped_archetypes::#type_ident&amp; archetype)),
         },
-        definition_body: <span class="macro">quote! </span>{
+        definition_body: <span class="macro">quote!</span> {
             using namespace #quoted_scoped_archetypes;
             #NEWLINE_TOKEN
             std::vector&lt;ComponentBatch&gt; cells;
@@ -4212,12 +4230,12 @@
     <span class="kw">let </span>namespace_ident = obj.namespace_ident();
     <span class="kw">let </span>quoted_namespace = <span class="kw">if let </span><span class="prelude-val">Some</span>(scope) = obj.scope() {
         <span class="kw">let </span>scope = <span class="macro">format_ident!</span>(<span class="string">"{}"</span>, scope);
-        <span class="macro">quote! </span>{ #scope::#namespace_ident}
+        <span class="macro">quote!</span> { #scope::#namespace_ident}
     } <span class="kw">else </span>{
-        <span class="macro">quote! </span>{#namespace_ident}
+        <span class="macro">quote!</span> {#namespace_ident}
     };
 
-    <span class="kw">let </span>parameter_check = <span class="macro">quote! </span>{
+    <span class="kw">let </span>parameter_check = <span class="macro">quote!</span> {
         <span class="kw">if </span>(builder == nullptr) {
             <span class="kw">return </span>rerun::Error(ErrorCode::UnexpectedNullArgument, <span class="string">"Passed array builder is null."</span>);
         }
@@ -4232,7 +4250,7 @@
         <span class="kw">let </span>field = <span class="kw-2">&amp;</span>obj.fields[<span class="number">0</span>];
         <span class="kw">if let </span>Type::Object(fqname) = <span class="kw-2">&amp;</span>field.typ {
             <span class="kw">if </span>field.is_nullable {
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     (void)builder;
                     (void)elements;
                     (void)num_elements;
@@ -4243,7 +4261,7 @@
             } <span class="kw">else </span>{
                 <span class="comment">// Trivial forwarding to inner type.
                 </span><span class="kw">let </span>quoted_fqname = quote_fqname_as_type_path(includes, fqname);
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     static_assert(sizeof(#quoted_fqname) == sizeof(#quoted_namespace::#type_ident));
                     RR_RETURN_NOT_OK(Loggable&lt;#quoted_fqname&gt;::fill_arrow_array_builder(
                         builder, reinterpret_cast&lt;<span class="kw">const </span>#quoted_fqname<span class="kw-2">*</span>&gt;(elements), num_elements
@@ -4253,7 +4271,7 @@
         } <span class="kw">else </span>{
             <span class="kw">let </span>append_to_builder =
                 quote_append_field_to_builder(<span class="kw-2">&amp;</span>obj.fields[<span class="number">0</span>], builder, <span class="bool-val">true</span>, includes, objects);
-            <span class="macro">quote! </span>{
+            <span class="macro">quote!</span> {
                 #parameter_check
                 #append_to_builder
             }
@@ -4267,7 +4285,7 @@
                         <span class="kw">let </span>field_builder = <span class="macro">format_ident!</span>(<span class="string">"field_builder"</span>);
                         <span class="kw">let </span>field_builder_type = arrow_array_builder_type(<span class="kw-2">&amp;</span>field.typ, objects);
                         <span class="kw">let </span>field_append = quote_append_field_to_builder(field, <span class="kw-2">&amp;</span>field_builder, <span class="bool-val">false</span>, includes, objects);
-                        <span class="macro">quote! </span>{
+                        <span class="macro">quote!</span> {
                             {
                                 auto #field_builder = static_cast&lt;arrow::#field_builder_type<span class="kw-2">*</span>&gt;(builder-&gt;field_builder(#field_index));
                                 #field_append
@@ -4276,7 +4294,7 @@
                     },
                 );
 
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     #parameter_check
                     #(#fill_fields)*
                     #NEWLINE_TOKEN
@@ -4286,7 +4304,7 @@
 
             <span class="comment">// C-style enum, encoded as a sparse arrow union
             </span>ObjectClass::Enum =&gt; {
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                 #parameter_check
                 ARROW_RETURN_NOT_OK(#builder-&gt;Reserve(static_cast&lt;int64_t&gt;(num_elements)));
                 <span class="kw">for </span>(size_t elem_idx = <span class="number">0</span>; elem_idx &lt; num_elements; elem_idx += <span class="number">1</span>) {
@@ -4309,7 +4327,7 @@
                     <span class="kw">let </span>variant_append = <span class="kw">if let </span><span class="prelude-val">Some</span>(element_type) = variant.typ.plural_inner() {
                         <span class="kw">if </span>variant.is_nullable {
                             <span class="kw">let </span>error = <span class="macro">format!</span>(<span class="string">"Failed to serialize {}::{}: nullable list types in unions not yet implemented"</span>, obj.name, variant.name);
-                            <span class="macro">quote! </span>{
+                            <span class="macro">quote!</span> {
                                 (void)#variant_builder;
                                 <span class="kw">return </span>rerun::Error(ErrorCode::NotImplemented, #error);
                             }
@@ -4318,7 +4336,7 @@
 
                             <span class="kw">if </span><span class="kw-2">*</span>element_type == ElementType::Float16 {
                                 <span class="comment">// We need an extra cast for float16:
-                                </span><span class="macro">quote! </span>{
+                                </span><span class="macro">quote!</span> {
                                     ARROW_RETURN_NOT_OK(variant_builder-&gt;Append());
                                     auto value_builder =
                                         static_cast&lt;arrow::HalfFloatBuilder <span class="kw-2">*</span>&gt;(variant_builder-&gt;value_builder());
@@ -4349,7 +4367,7 @@
                                 <span class="kw">if let </span><span class="prelude-val">Some</span>(type_builder_name) = type_builder_name {
                                     <span class="kw">let </span>typ_builder_ident = <span class="macro">format_ident!</span>(<span class="string">"{type_builder_name}"</span>);
 
-                                    <span class="macro">quote! </span>{
+                                    <span class="macro">quote!</span> {
                                         ARROW_RETURN_NOT_OK(variant_builder-&gt;Append());
 
                                         auto value_builder =
@@ -4361,7 +4379,7 @@
                                     }
                                 } <span class="kw">else </span>{
                                     <span class="kw">let </span>error = <span class="macro">format!</span>(<span class="string">"Failed to serialize {}::{}: objects ({:?}) in unions not yet implemented"</span>, obj.name, variant.name, element_type);
-                                    <span class="macro">quote! </span>{
+                                    <span class="macro">quote!</span> {
                                         (void)#variant_builder;
                                         <span class="kw">return </span>rerun::Error(ErrorCode::NotImplemented, #error);
                                     }
@@ -4369,7 +4387,7 @@
                             }
                         } <span class="kw">else </span>{
                             <span class="kw">let </span>error = <span class="macro">format!</span>(<span class="string">"Failed to serialize {}::{}: {} in unions not yet implemented"</span>, obj.name, variant.name, arrow_builder_type);
-                            <span class="macro">quote! </span>{
+                            <span class="macro">quote!</span> {
                                 (void)#variant_builder;
                                 <span class="kw">return </span>rerun::Error(ErrorCode::NotImplemented, #error);
                             }
@@ -4379,7 +4397,7 @@
                         quote_append_single_field_to_builder(variant, <span class="kw-2">&amp;</span>variant_builder, <span class="kw-2">&amp;</span>variant_accessor, includes)
                     };
 
-                    <span class="macro">quote! </span>{
+                    <span class="macro">quote!</span> {
                         case TagType::#variant_name: {
                             auto #variant_builder = static_cast&lt;arrow::#arrow_builder_type<span class="kw-2">*</span>&gt;(variant_builder_untyped);
                             #variant_append
@@ -4389,7 +4407,7 @@
 
                 <span class="kw">let </span>tag_name = <span class="macro">format_ident!</span>(<span class="string">"{}Tag"</span>, type_ident);
 
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     #parameter_check
                     ARROW_RETURN_NOT_OK(#builder-&gt;Reserve(static_cast&lt;int64_t&gt;(num_elements)));
                     <span class="kw">for </span>(size_t elem_idx = <span class="number">0</span>; elem_idx &lt; num_elements; elem_idx += <span class="number">1</span>) {
@@ -4437,7 +4455,7 @@
             <span class="comment">// Optimize common case: Trivial batch of transparent fixed size elements.
             </span><span class="kw">let </span>field_accessor = <span class="macro">quote!</span>(elements[<span class="number">0</span>].#field_name);
             <span class="kw">let </span>num_items_per_value = quote_num_items_per_value(<span class="kw-2">&amp;</span>field.typ, <span class="kw-2">&amp;</span>field_accessor);
-            <span class="macro">quote! </span>{
+            <span class="macro">quote!</span> {
                 auto #value_builder = static_cast&lt;arrow::#value_builder_type<span class="kw-2">*</span>&gt;(#builder-&gt;value_builder());
                 #NEWLINE_TOKEN #NEWLINE_TOKEN
                 ARROW_RETURN_NOT_OK(#builder-&gt;AppendValues(static_cast&lt;int64_t&gt;(num_elements)));
@@ -4461,7 +4479,7 @@
             };
             <span class="kw">let </span>value_reserve_factor = quote_integer(value_reserve_factor);
 
-            <span class="kw">let </span>setup = <span class="macro">quote! </span>{
+            <span class="kw">let </span>setup = <span class="macro">quote!</span> {
                 auto #value_builder = static_cast&lt;arrow::#value_builder_type<span class="kw-2">*</span>&gt;(#builder-&gt;value_builder());
                 ARROW_RETURN_NOT_OK(#builder-&gt;Reserve(static_cast&lt;int64_t&gt;(num_elements)));
                 ARROW_RETURN_NOT_OK(#value_builder-&gt;Reserve(static_cast&lt;int64_t&gt;(num_elements * #value_reserve_factor)));
@@ -4482,7 +4500,7 @@
             );
 
             <span class="kw">if </span>field.is_nullable {
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     #setup
                     <span class="kw">for </span>(size_t elem_idx = <span class="number">0</span>; elem_idx &lt; num_elements; elem_idx += <span class="number">1</span>) {
                         <span class="kw">const </span>auto&amp; element = elements[elem_idx];
@@ -4495,7 +4513,7 @@
                     }
                 }
             } <span class="kw">else </span>{
-                <span class="macro">quote! </span>{
+                <span class="macro">quote!</span> {
                     #setup
                     <span class="kw">for </span>(size_t elem_idx = <span class="number">0</span>; elem_idx &lt; num_elements; elem_idx += <span class="number">1</span>) {
                         <span class="kw">const </span>auto&amp; element = elements[elem_idx];
@@ -4509,7 +4527,7 @@
         <span class="comment">// Trivial optimization: If this is the only field of this type and it's a trivial field (not array/string/blob),
         // we can just pass the whole array as-is!
         </span><span class="kw">let </span>field_ptr_accessor = quote_field_ptr_access(<span class="kw-2">&amp;</span>field.typ, <span class="kw-2">&amp;</span><span class="macro">quote!</span>(elements-&gt;#field_name));
-        <span class="macro">quote! </span>{
+        <span class="macro">quote!</span> {
             static_assert(sizeof(<span class="kw-2">*</span>elements) == sizeof(elements-&gt;#field_name));
             ARROW_RETURN_NOT_OK(#builder-&gt;AppendValues(#field_ptr_accessor, static_cast&lt;int64_t&gt;(num_elements)));
         }
@@ -4517,7 +4535,7 @@
         <span class="kw">let </span>element_accessor = <span class="macro">quote!</span>(elements[elem_idx]);
         <span class="kw">let </span>single_append =
             quote_append_single_field_to_builder(field, builder, <span class="kw-2">&amp;</span>element_accessor, includes);
-        <span class="macro">quote! </span>{
+        <span class="macro">quote!</span> {
             ARROW_RETURN_NOT_OK(#builder-&gt;Reserve(static_cast&lt;int64_t&gt;(num_elements)));
             <span class="kw">for </span>(size_t elem_idx = <span class="number">0</span>; elem_idx &lt; num_elements; elem_idx += <span class="number">1</span>) {
                 #single_append
@@ -4543,7 +4561,7 @@
         quote_append_single_value_to_builder(<span class="kw-2">&amp;</span>field.typ, builder, <span class="kw-2">&amp;</span>value_access, includes);
 
     <span class="kw">if </span>field.is_nullable {
-        <span class="macro">quote! </span>{
+        <span class="macro">quote!</span> {
             <span class="kw">const </span>auto&amp; element = #element_accessor;
             <span class="kw">if </span>(element.#field_name.has_value()) {
                 #append_value
@@ -4552,7 +4570,7 @@
             }
         }
     } <span class="kw">else </span>{
-        <span class="macro">quote! </span>{
+        <span class="macro">quote!</span> {
             #append_value
         }
     }
@@ -4589,7 +4607,7 @@
         }
         Type::Float16 =&gt; {
             <span class="comment">// Cast `rerun::half` to a `uint16_t``
-            </span><span class="macro">quote! </span>{
+            </span><span class="macro">quote!</span> {
                 ARROW_RETURN_NOT_OK(#value_builder-&gt;Append(
                     <span class="kw-2">*</span>reinterpret_cast&lt;<span class="kw">const </span>uint16_t<span class="kw-2">*</span>&gt;(<span class="kw-2">&amp;</span>(#value_access))
                 ));
@@ -4611,14 +4629,14 @@
                 | ElementType::Float32
                 | ElementType::Float64 =&gt; {
                     <span class="kw">let </span>field_ptr_accessor = quote_field_ptr_access(typ, value_access);
-                    <span class="macro">quote! </span>{
+                    <span class="macro">quote!</span> {
                         ARROW_RETURN_NOT_OK(#value_builder-&gt;AppendValues(#field_ptr_accessor, static_cast&lt;int64_t&gt;(#num_items_per_element), nullptr));
                     }
                 }
                 ElementType::Float16 =&gt; {
                     <span class="comment">// We need to convert `rerun::half` to `uint16_t`:
                     </span><span class="kw">let </span>field_ptr_accessor = quote_field_ptr_access(typ, value_access);
-                    <span class="macro">quote! </span>{
+                    <span class="macro">quote!</span> {
                         ARROW_RETURN_NOT_OK(#value_builder-&gt;AppendValues(
                             reinterpret_cast&lt;<span class="kw">const </span>uint16_t<span class="kw-2">*</span>&gt;(#field_ptr_accessor),
                             static_cast&lt;int64_t&gt;(#num_items_per_element), nullptr)
@@ -4626,7 +4644,7 @@
                     }
                 }
                 ElementType::String =&gt; {
-                    <span class="macro">quote! </span>{
+                    <span class="macro">quote!</span> {
                         <span class="kw">for </span>(size_t item_idx = <span class="number">0</span>; item_idx &lt; #num_items_per_element; item_idx += <span class="number">1</span>) {
                             ARROW_RETURN_NOT_OK(#value_builder-&gt;Append(#value_access[item_idx]));
                         }
@@ -4635,7 +4653,7 @@
                 ElementType::Object(fqname) =&gt; {
                     <span class="kw">let </span>fqname = quote_fqname_as_type_path(includes, fqname);
                     <span class="kw">let </span>field_ptr_accessor = quote_field_ptr_access(typ, value_access);
-                    <span class="macro">quote! </span>{
+                    <span class="macro">quote!</span> {
                         <span class="kw">if </span>(#field_ptr_accessor) {
                             RR_RETURN_NOT_OK(Loggable&lt;#fqname&gt;::fill_arrow_array_builder(#value_builder, #field_ptr_accessor, #num_items_per_element));
                         }
@@ -4696,7 +4714,7 @@
     };
 
     <span class="kw">let </span>data_setter = <span class="kw">if </span>obj_field.typ == Type::Unit {
-        <span class="macro">quote! </span>{}
+        <span class="macro">quote!</span> {}
     } <span class="kw">else </span>{
         <span class="comment">// We need to use placement-new since the union is in an uninitialized state here:
         //
@@ -4707,13 +4725,13 @@
         // (This was identified as the cause of #3865.)
         </span>hpp_includes.insert_system(<span class="string">"new"</span>); <span class="comment">// placement-new
         </span><span class="kw">let </span>typ = quote_field_type(hpp_includes, obj_field);
-        <span class="macro">quote! </span>{ new (<span class="kw-2">&amp;</span><span class="self">self</span>._data.#snake_case_ident) #typ(std::<span class="kw">move</span>(#snake_case_ident)); }
+        <span class="macro">quote!</span> { new (<span class="kw-2">&amp;</span><span class="self">self</span>._data.#snake_case_ident) #typ(std::<span class="kw">move</span>(#snake_case_ident)); }
     };
 
     Method {
         docs,
         declaration,
-        definition_body: <span class="macro">quote! </span>{
+        definition_body: <span class="macro">quote!</span> {
             #pascal_case_ident <span class="self">self</span>;
             <span class="self">self</span>._tag = detail::#tag_typename::#tag_ident;
             #data_setter
@@ -4733,7 +4751,7 @@
         Type::Vector { elem_type } =&gt; {
             hpp_includes.insert_rerun(<span class="string">"collection.hpp"</span>);
             <span class="kw">let </span>elem_type = quote_element_type(hpp_includes, elem_type);
-            <span class="macro">quote! </span>{ Collection&lt;#elem_type&gt; }
+            <span class="macro">quote!</span> { Collection&lt;#elem_type&gt; }
         }
         <span class="comment">// TODO(andreas): This should emit `MonoCollection` which will be a constrained version of `Collection`.
         // (simply adapting `MonoCollection` breaks some existing code, so this not entirely trivial to do.
@@ -4753,7 +4771,7 @@
 
     <span class="kw">let </span>docstring = quote_field_docs(objects, obj_field);
 
-    <span class="kw">let </span>quoted = <span class="macro">quote! </span>{
+    <span class="kw">let </span>quoted = <span class="macro">quote!</span> {
         #docstring
         #quoted
     };
@@ -4766,45 +4784,45 @@
     </span><span class="kw">let </span>typ = <span class="kw">match </span><span class="kw-2">&amp;</span>obj_field.typ {
         Type::Unit =&gt; <span class="macro">panic!</span>(<span class="string">"Can't express the unit type directly"</span>),
 
-        Type::UInt8 =&gt; <span class="macro">quote! </span>{ uint8_t  },
-        Type::UInt16 =&gt; <span class="macro">quote! </span>{ uint16_t  },
-        Type::UInt32 =&gt; <span class="macro">quote! </span>{ uint32_t  },
-        Type::UInt64 =&gt; <span class="macro">quote! </span>{ uint64_t  },
-        Type::Int8 =&gt; <span class="macro">quote! </span>{ int8_t  },
-        Type::Int16 =&gt; <span class="macro">quote! </span>{ int16_t  },
-        Type::Int32 =&gt; <span class="macro">quote! </span>{ int32_t  },
-        Type::Int64 =&gt; <span class="macro">quote! </span>{ int64_t  },
-        Type::Bool =&gt; <span class="macro">quote! </span>{ bool  },
+        Type::UInt8 =&gt; <span class="macro">quote!</span> { uint8_t  },
+        Type::UInt16 =&gt; <span class="macro">quote!</span> { uint16_t  },
+        Type::UInt32 =&gt; <span class="macro">quote!</span> { uint32_t  },
+        Type::UInt64 =&gt; <span class="macro">quote!</span> { uint64_t  },
+        Type::Int8 =&gt; <span class="macro">quote!</span> { int8_t  },
+        Type::Int16 =&gt; <span class="macro">quote!</span> { int16_t  },
+        Type::Int32 =&gt; <span class="macro">quote!</span> { int32_t  },
+        Type::Int64 =&gt; <span class="macro">quote!</span> { int64_t  },
+        Type::Bool =&gt; <span class="macro">quote!</span> { bool  },
         Type::Float16 =&gt; {
             includes.insert_rerun(<span class="string">"half.hpp"</span>);
-            <span class="macro">quote! </span>{ rerun::half  }
+            <span class="macro">quote!</span> { rerun::half  }
         }
-        Type::Float32 =&gt; <span class="macro">quote! </span>{ float  },
-        Type::Float64 =&gt; <span class="macro">quote! </span>{ double  },
+        Type::Float32 =&gt; <span class="macro">quote!</span> { float  },
+        Type::Float64 =&gt; <span class="macro">quote!</span> { double  },
         Type::String =&gt; {
             includes.insert_system(<span class="string">"string"</span>);
-            <span class="macro">quote! </span>{ std::string  }
+            <span class="macro">quote!</span> { std::string  }
         }
         Type::Array { elem_type, length } =&gt; {
             includes.insert_system(<span class="string">"array"</span>);
             <span class="kw">let </span>elem_type = quote_element_type(includes, elem_type);
             <span class="kw">let </span>length = proc_macro2::Literal::usize_unsuffixed(<span class="kw-2">*</span>length);
-            <span class="macro">quote! </span>{ std::array&lt;#elem_type, #length&gt; }
+            <span class="macro">quote!</span> { std::array&lt;#elem_type, #length&gt; }
         }
         Type::Vector { elem_type } =&gt; {
             <span class="kw">let </span>elem_type = quote_element_type(includes, elem_type);
             includes.insert_rerun(<span class="string">"collection.hpp"</span>);
-            <span class="macro">quote! </span>{ rerun::Collection&lt;#elem_type&gt;  }
+            <span class="macro">quote!</span> { rerun::Collection&lt;#elem_type&gt;  }
         }
         Type::Object(fqname) =&gt; {
             <span class="kw">let </span>type_name = quote_fqname_as_type_path(includes, fqname);
-            <span class="macro">quote! </span>{ #type_name  }
+            <span class="macro">quote!</span> { #type_name  }
         }
     };
 
     <span class="kw">if </span>obj_field.is_nullable {
         includes.insert_system(<span class="string">"optional"</span>);
-        <span class="macro">quote! </span>{ std::optional&lt;#typ&gt; }
+        <span class="macro">quote!</span> { std::optional&lt;#typ&gt; }
     } <span class="kw">else </span>{
         typ
     }
@@ -4816,34 +4834,34 @@
     name: <span class="kw-2">&amp;</span>syn::Ident,
 ) -&gt; TokenStream {
     <span class="kw">if </span>obj_field.typ == Type::Unit {
-        <span class="macro">quote! </span>{}
+        <span class="macro">quote!</span> {}
     } <span class="kw">else </span>{
         <span class="kw">let </span>typ = quote_field_type(includes, obj_field);
-        <span class="macro">quote! </span>{ #typ #name }
+        <span class="macro">quote!</span> { #typ #name }
     }
 }
 
 <span class="kw">fn </span>quote_element_type(includes: <span class="kw-2">&amp;mut </span>Includes, typ: <span class="kw-2">&amp;</span>ElementType) -&gt; TokenStream {
     <span class="attr">#[allow(clippy::match_same_arms)]
     </span><span class="kw">match </span>typ {
-        ElementType::UInt8 =&gt; <span class="macro">quote! </span>{ uint8_t },
-        ElementType::UInt16 =&gt; <span class="macro">quote! </span>{ uint16_t },
-        ElementType::UInt32 =&gt; <span class="macro">quote! </span>{ uint32_t },
-        ElementType::UInt64 =&gt; <span class="macro">quote! </span>{ uint64_t },
-        ElementType::Int8 =&gt; <span class="macro">quote! </span>{ int8_t },
-        ElementType::Int16 =&gt; <span class="macro">quote! </span>{ int16_t },
-        ElementType::Int32 =&gt; <span class="macro">quote! </span>{ int32_t },
-        ElementType::Int64 =&gt; <span class="macro">quote! </span>{ int64_t },
-        ElementType::Bool =&gt; <span class="macro">quote! </span>{ bool },
+        ElementType::UInt8 =&gt; <span class="macro">quote!</span> { uint8_t },
+        ElementType::UInt16 =&gt; <span class="macro">quote!</span> { uint16_t },
+        ElementType::UInt32 =&gt; <span class="macro">quote!</span> { uint32_t },
+        ElementType::UInt64 =&gt; <span class="macro">quote!</span> { uint64_t },
+        ElementType::Int8 =&gt; <span class="macro">quote!</span> { int8_t },
+        ElementType::Int16 =&gt; <span class="macro">quote!</span> { int16_t },
+        ElementType::Int32 =&gt; <span class="macro">quote!</span> { int32_t },
+        ElementType::Int64 =&gt; <span class="macro">quote!</span> { int64_t },
+        ElementType::Bool =&gt; <span class="macro">quote!</span> { bool },
         ElementType::Float16 =&gt; {
             includes.insert_rerun(<span class="string">"half.hpp"</span>);
-            <span class="macro">quote! </span>{ rerun::half }
+            <span class="macro">quote!</span> { rerun::half }
         }
-        ElementType::Float32 =&gt; <span class="macro">quote! </span>{ float },
-        ElementType::Float64 =&gt; <span class="macro">quote! </span>{ double },
+        ElementType::Float32 =&gt; <span class="macro">quote!</span> { float },
+        ElementType::Float64 =&gt; <span class="macro">quote!</span> { double },
         ElementType::String =&gt; {
             includes.insert_system(<span class="string">"string"</span>);
-            <span class="macro">quote! </span>{ std::string }
+            <span class="macro">quote!</span> { std::string }
         }
         ElementType::Object(fqname) =&gt; quote_fqname_as_type_path(includes, fqname),
     }
@@ -4867,6 +4885,13 @@
     <span class="kw">if let </span><span class="prelude-val">Some</span>(first_line) = lines.first_mut() {
         <span class="comment">// Prefix with object kind:
         </span><span class="kw-2">*</span>first_line = <span class="macro">format!</span>(<span class="string">"**{}**: {}"</span>, obj.kind.singular_name(), first_line);
+    }
+
+    <span class="kw">if </span>obj.is_experimental() {
+        lines.push(String::new());
+        lines.push(
+            <span class="string">"⚠ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**"</span>.to_owned(),
+        );
     }
 
     quote_doc_lines(<span class="kw-2">&amp;</span>lines)
@@ -4937,7 +4962,7 @@
 
 <span class="kw">fn </span>quote_doc_lines(lines: <span class="kw-2">&amp;</span>[String]) -&gt; TokenStream {
     <span class="kw">let </span>quoted_lines = lines.iter().map(|docstring| quote_doc_comment(docstring));
-    <span class="macro">quote! </span>{
+    <span class="macro">quote!</span> {
         #NEWLINE_TOKEN
         #(#quoted_lines)*
     }
@@ -5003,12 +5028,12 @@
                         <span class="macro">quote!</span>(arrow::struct_({ #(#quoted_fields,)* }))
                     }
                     ObjectClass::Enum =&gt; {
-                        <span class="macro">quote! </span>{
+                        <span class="macro">quote!</span> {
                             arrow::uint8()
                         }
                     }
                     ObjectClass::Union =&gt; {
-                        <span class="macro">quote! </span>{
+                        <span class="macro">quote!</span> {
                             arrow::dense_union({
                                 arrow::field(<span class="string">"_null_markers"</span>, arrow::null(), <span class="bool-val">true</span>, nullptr),
                                 #(#quoted_fields,)*
@@ -5030,7 +5055,7 @@
     <span class="kw">let </span>datatype = quote_arrow_data_type(<span class="kw-2">&amp;</span>field.typ, objects, includes, <span class="bool-val">false</span>);
     <span class="kw">let </span>is_nullable = field.is_nullable || field.typ == Type::Unit; <span class="comment">// null type is always nullable
 
-    </span><span class="macro">quote! </span>{
+    </span><span class="macro">quote!</span> {
         arrow::field(#name, #datatype, #is_nullable)
     }
 }
@@ -5043,7 +5068,7 @@
     <span class="kw">let </span>typ: Type = elem_type.clone().into();
     <span class="kw">let </span>datatype = quote_arrow_data_type(<span class="kw-2">&amp;</span>typ, objects, includes, <span class="bool-val">false</span>);
     <span class="kw">let </span>is_nullable = typ == Type::Unit; <span class="comment">// null type must be nullable
-    </span><span class="macro">quote! </span>{
+    </span><span class="macro">quote!</span> {
         arrow::field(<span class="string">"item"</span>, #datatype, #is_nullable)
     }
 }
@@ -5062,13 +5087,13 @@
 
     <span class="kw">let </span>quoted_namespace = <span class="kw">if let </span><span class="prelude-val">Some</span>(scope) = obj.scope() {
         <span class="kw">let </span>scope = <span class="macro">format_ident!</span>(<span class="string">"{}"</span>, scope);
-        <span class="macro">quote! </span>{ #scope::#namespace_ident }
+        <span class="macro">quote!</span> { #scope::#namespace_ident }
     } <span class="kw">else </span>{
-        <span class="macro">quote! </span>{#namespace_ident}
+        <span class="macro">quote!</span> {#namespace_ident}
     };
 
     <span class="kw">let </span>fqname = <span class="kw-2">&amp;</span>obj.fqname;
-    <span class="kw">let </span>loggable_type_name = <span class="macro">quote! </span>{ Loggable&lt;#quoted_namespace::#type_ident&gt; };
+    <span class="kw">let </span>loggable_type_name = <span class="macro">quote!</span> { Loggable&lt;#quoted_namespace::#type_ident&gt; };
 
     <span class="kw">let </span><span class="kw-2">mut </span>methods = <span class="macro">vec!</span>[
         arrow_data_type_method(obj, objects, hpp_includes, cpp_includes, hpp_declarations),
@@ -5083,7 +5108,7 @@
         </span><span class="kw">let </span>forwarded_type = quote_fqname_as_type_path(hpp_includes, forwarded_fqname);
 
         <span class="comment">// Don't to pre-declare `Loggable` if we're forwarding to another type - it's already known in this case.
-        </span><span class="macro">quote! </span>{ static_assert(sizeof(#forwarded_type) == sizeof(#quoted_namespace::#type_ident)); }
+        </span><span class="macro">quote!</span> { static_assert(sizeof(#forwarded_type) == sizeof(#quoted_namespace::#type_ident)); }
     } <span class="kw">else </span>{
         <span class="comment">// `fill_arrow_array_builder_method` is used as a utility to implement `to_arrow`.
         // We only need it if we're not forwarding to another type.
@@ -5094,7 +5119,7 @@
             objects,
         ));
 
-        <span class="macro">quote! </span>{
+        <span class="macro">quote!</span> {
             <span class="comment">// Instead of including loggable.hpp, simply re-declare the template since it's trivial
             </span>template&lt;typename T&gt;
             <span class="kw">struct </span>Loggable;
@@ -5105,7 +5130,7 @@
     <span class="kw">let </span>methods_cpp = methods.iter().map(|m| m.to_cpp_tokens(<span class="kw-2">&amp;</span>loggable_type_name));
     <span class="kw">let </span>hide_from_docs_comment = quote_hide_from_docs();
 
-    <span class="kw">let </span>hpp = <span class="macro">quote! </span>{
+    <span class="kw">let </span>hpp = <span class="macro">quote!</span> {
         namespace rerun {
             #predeclarations_and_static_assertions
 
@@ -5121,7 +5146,7 @@
     };
 
     <span class="kw">let </span>cpp = <span class="kw">if </span>methods.iter().any(|m| !m.inline) {
-        <span class="prelude-val">Some</span>(<span class="macro">quote! </span>{
+        <span class="prelude-val">Some</span>(<span class="macro">quote!</span> {
             namespace rerun {
                 #(#methods_cpp)*
             }
@@ -5136,11 +5161,11 @@
 <span class="kw">fn </span>quote_deprecation_notice(obj: <span class="kw-2">&amp;</span>Object) -&gt; TokenStream {
     <span class="kw">if let </span><span class="prelude-val">Some</span>(deprecation_notice) = obj.deprecation_notice() {
         <span class="comment">// https://en.cppreference.com/w/cpp/language/attributes/deprecated
-        </span><span class="macro">quote! </span>{
+        </span><span class="macro">quote!</span> {
             [[deprecated(#deprecation_notice)]]
         }
     } <span class="kw">else </span>{
-        <span class="macro">quote! </span>{}
+        <span class="macro">quote!</span> {}
     }
 }
 </code></pre></div></section></main></body></html>

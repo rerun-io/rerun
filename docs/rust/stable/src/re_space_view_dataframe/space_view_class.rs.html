@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_space_view_dataframe/src/space_view_class.rs`."><title>space_view_class.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_space_view_dataframe" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_space_view_dataframe/src/space_view_class.rs`."><title>space_view_class.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_space_view_dataframe" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_space_view_dataframe/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -172,26 +171,48 @@
 <a href="#171" id="171">171</a>
 <a href="#172" id="172">172</a>
 <a href="#173" id="173">173</a>
-</pre></div><pre class="rust"><code><span class="kw">use </span>egui::Ui;
-
-<span class="kw">use </span>re_chunk_store::LatestAtQuery;
-<span class="kw">use </span>re_log_types::{EntityPath, ResolvedTimeRange};
-<span class="kw">use </span>re_space_view::view_property_ui;
-<span class="kw">use </span>re_types::blueprint::{archetypes, components};
-<span class="kw">use </span>re_types_core::SpaceViewClassIdentifier;
-<span class="kw">use </span>re_ui::list_item;
-<span class="kw">use </span>re_viewer_context::{
-    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
-    SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
-};
-<span class="kw">use </span>re_viewport_blueprint::ViewProperty;
+<a href="#174" id="174">174</a>
+<a href="#175" id="175">175</a>
+<a href="#176" id="176">176</a>
+<a href="#177" id="177">177</a>
+<a href="#178" id="178">178</a>
+<a href="#179" id="179">179</a>
+<a href="#180" id="180">180</a>
+<a href="#181" id="181">181</a>
+<a href="#182" id="182">182</a>
+<a href="#183" id="183">183</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span>std::any::Any;
 
 <span class="kw">use crate</span>::{
-    latest_at_table::latest_at_table_ui,
-    time_range_table::time_range_table_ui,
-    view_query::{Query, QueryKind},
+    dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, view_query,
     visualizer_system::EmptySystem,
 };
+<span class="kw">use </span>re_chunk_store::{ColumnDescriptor, SparseFillStrategy};
+<span class="kw">use </span>re_log_types::EntityPath;
+<span class="kw">use </span>re_types_core::SpaceViewClassIdentifier;
+<span class="kw">use </span>re_viewer_context::{
+    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt,
+    SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
+};
+
+<span class="attr">#[derive(Default)]
+</span><span class="kw">struct </span>DataframeSpaceViewState {
+    <span class="doccomment">/// Cache for the expanded rows.
+    </span>expended_rows_cache: ExpandedRowsCache,
+
+    <span class="doccomment">/// List of view columns for the current query, cached here for the column visibility UI.
+    </span>view_columns: <span class="prelude-ty">Option</span>&lt;Vec&lt;ColumnDescriptor&gt;&gt;,
+}
+
+<span class="kw">impl </span>SpaceViewState <span class="kw">for </span>DataframeSpaceViewState {
+    <span class="kw">fn </span>as_any(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;</span><span class="kw">dyn </span>Any {
+        <span class="self">self
+    </span>}
+
+    <span class="kw">fn </span>as_any_mut(<span class="kw-2">&amp;mut </span><span class="self">self</span>) -&gt; <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>Any {
+        <span class="self">self
+    </span>}
+}
 
 <span class="attr">#[derive(Default)]
 </span><span class="kw">pub struct </span>DataframeSpaceView;
@@ -239,7 +260,7 @@ mode sets the default time range to _everything_. You can override this in the s
     }
 
     <span class="kw">fn </span>new_state(<span class="kw-2">&amp;</span><span class="self">self</span>) -&gt; Box&lt;<span class="kw">dyn </span>SpaceViewState&gt; {
-        Box::&lt;()&gt;::default()
+        Box::&lt;DataframeSpaceViewState&gt;::default()
     }
 
     <span class="kw">fn </span>preferred_tile_aspect_ratio(<span class="kw-2">&amp;</span><span class="self">self</span>, _state: <span class="kw-2">&amp;</span><span class="kw">dyn </span>SpaceViewState) -&gt; <span class="prelude-ty">Option</span>&lt;f32&gt; {
@@ -261,31 +282,19 @@ mode sets the default time range to _everything_. You can override this in the s
     <span class="kw">fn </span>selection_ui(
         <span class="kw-2">&amp;</span><span class="self">self</span>,
         ctx: <span class="kw-2">&amp;</span>ViewerContext&lt;<span class="lifetime">'_</span>&gt;,
-        ui: <span class="kw-2">&amp;mut </span>Ui,
+        ui: <span class="kw-2">&amp;mut </span>egui::Ui,
         state: <span class="kw-2">&amp;mut </span><span class="kw">dyn </span>SpaceViewState,
         _space_origin: <span class="kw-2">&amp;</span>EntityPath,
         space_view_id: SpaceViewId,
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SpaceViewSystemExecutionError&gt; {
-        <span class="kw">crate</span>::view_query::query_ui(ctx, ui, state, space_view_id)<span class="question-mark">?</span>;
-
-        list_item::list_item_scope(ui, <span class="string">"dataframe_view_selection_ui"</span>, |ui| {
-            <span class="kw">let </span>view_query = Query::try_from_blueprint(ctx, space_view_id)<span class="question-mark">?</span>;
-            <span class="comment">//TODO(#7070): column order and sorting needs much love
-            </span>ui.add_enabled_ui(
-                <span class="macro">matches!</span>(view_query.kind(ctx), QueryKind::Range { .. }),
-                |ui| {
-                    view_property_ui::&lt;archetypes::TimeRangeTableOrder&gt;(
-                        ctx,
-                        ui,
-                        space_view_id,
-                        <span class="self">self</span>,
-                        state,
-                    );
-                },
-            );
-
-            <span class="prelude-val">Ok</span>(())
-        })
+        <span class="kw">let </span>state = state.downcast_mut::&lt;DataframeSpaceViewState&gt;()<span class="question-mark">?</span>;
+        <span class="kw">let </span>view_query = view_query::Query::from_blueprint(ctx, space_view_id);
+        <span class="kw">let </span><span class="prelude-val">Some</span>(view_columns) = <span class="kw-2">&amp;</span>state.view_columns <span class="kw">else </span>{
+            <span class="comment">// Shouldn't happen, except maybe on the first frame, which is too early
+            // for the user to click the menu anyway.
+            </span><span class="kw">return </span><span class="prelude-val">Ok</span>(());
+        };
+        view_query.selection_panel_ui(ctx, ui, space_view_id, view_columns)
     }
 
     <span class="kw">fn </span>ui(
@@ -298,48 +307,58 @@ mode sets the default time range to _everything_. You can override this in the s
     ) -&gt; <span class="prelude-ty">Result</span>&lt;(), SpaceViewSystemExecutionError&gt; {
         <span class="macro">re_tracing::profile_function!</span>();
 
-        <span class="kw">let </span>view_query = <span class="kw">super</span>::view_query::Query::try_from_blueprint(ctx, query.space_view_id)<span class="question-mark">?</span>;
-        <span class="kw">let </span>timeline_name = view_query.timeline_name(ctx);
-        <span class="kw">let </span>query_mode = view_query.kind(ctx);
+        <span class="kw">let </span>state = state.downcast_mut::&lt;DataframeSpaceViewState&gt;()<span class="question-mark">?</span>;
+        <span class="kw">let </span>view_query = view_query::Query::from_blueprint(ctx, query.space_view_id);
 
-        <span class="kw">let </span><span class="prelude-val">Some</span>(timeline) = ctx
-            .recording()
-            .timelines()
-            .find(|t| t.name() == <span class="kw-2">&amp;</span>timeline_name)
-        <span class="kw">else </span>{
-            <span class="macro">re_log::warn_once!</span>(<span class="string">"Could not find timeline {:?}."</span>, timeline_name.as_str());
-            <span class="comment">//TODO(ab): we should have an error for that
-            </span><span class="kw">return </span><span class="prelude-val">Ok</span>(());
+        <span class="kw">let </span>query_engine = re_dataframe::QueryEngine {
+            store: ctx.recording().store(),
+            cache: ctx.recording().query_caches(),
         };
 
-        <span class="kw">match </span>query_mode {
-            QueryKind::LatestAt { time } =&gt; {
-                latest_at_table_ui(ctx, ui, query, <span class="kw-2">&amp;</span>LatestAtQuery::new(<span class="kw-2">*</span>timeline, time));
-            }
-            QueryKind::Range { from, to } =&gt; {
-                <span class="kw">let </span>time_range_table_order =
-                    ViewProperty::from_archetype::&lt;archetypes::TimeRangeTableOrder&gt;(
-                        ctx.blueprint_db(),
-                        ctx.blueprint_query,
-                        query.space_view_id,
-                    );
-                <span class="kw">let </span>sort_key = time_range_table_order
-                    .component_or_fallback::&lt;components::SortKey&gt;(ctx, <span class="self">self</span>, state)<span class="question-mark">?</span>;
-                <span class="kw">let </span>sort_order = time_range_table_order
-                    .component_or_fallback::&lt;components::SortOrder&gt;(ctx, <span class="self">self</span>, state)<span class="question-mark">?</span>;
+        <span class="kw">let </span>view_contents = query
+            .iter_all_entities()
+            .map(|entity| (entity.clone(), <span class="prelude-val">None</span>))
+            .collect();
 
-                time_range_table_ui(
-                    ctx,
-                    ui,
-                    query,
-                    sort_key,
-                    sort_order,
-                    timeline,
-                    ResolvedTimeRange::new(from, to),
-                );
-            }
-        }
+        <span class="kw">let </span>sparse_fill_strategy = <span class="kw">if </span>view_query.latest_at_enabled()<span class="question-mark">? </span>{
+            SparseFillStrategy::LatestAtGlobal
+        } <span class="kw">else </span>{
+            SparseFillStrategy::None
+        };
 
+        <span class="kw">let </span><span class="kw-2">mut </span>dataframe_query = re_chunk_store::QueryExpression {
+            view_contents: <span class="prelude-val">Some</span>(view_contents),
+            filtered_index: <span class="prelude-val">Some</span>(view_query.timeline(ctx)<span class="question-mark">?</span>),
+            filtered_index_range: <span class="prelude-val">Some</span>(view_query.filter_by_range()<span class="question-mark">?</span>),
+            filtered_is_not_null: view_query.filter_is_not_null()<span class="question-mark">?</span>,
+            sparse_fill_strategy,
+            selection: <span class="prelude-val">None</span>,
+
+            <span class="comment">// not yet unsupported by the dataframe view
+            </span>filtered_index_values: <span class="prelude-val">None</span>,
+            using_index_values: <span class="prelude-val">None</span>,
+            include_semantically_empty_columns: <span class="bool-val">false</span>,
+            include_indicator_columns: <span class="bool-val">false</span>,
+            include_tombstone_columns: <span class="bool-val">false</span>,
+        };
+
+        <span class="kw">let </span>view_columns = query_engine.schema_for_query(<span class="kw-2">&amp;</span>dataframe_query);
+        dataframe_query.selection =
+            view_query.apply_column_visibility_to_view_columns(ctx, <span class="kw-2">&amp;</span>view_columns)<span class="question-mark">?</span>;
+
+        <span class="kw">let </span>query_handle = query_engine.query(dataframe_query);
+
+        <span class="kw">let </span>hide_column_actions = dataframe_ui(
+            ctx,
+            ui,
+            <span class="kw-2">&amp;</span>query_handle,
+            <span class="kw-2">&amp;mut </span>state.expended_rows_cache,
+            <span class="kw-2">&amp;</span>query.space_view_id,
+        );
+
+        view_query.handle_hide_column_actions(ctx, <span class="kw-2">&amp;</span>view_columns, hide_column_actions)<span class="question-mark">?</span>;
+
+        state.view_columns = <span class="prelude-val">Some</span>(view_columns);
         <span class="prelude-val">Ok</span>(())
     }
 }

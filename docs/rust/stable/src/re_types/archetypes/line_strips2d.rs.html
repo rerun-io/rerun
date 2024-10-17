@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/store/re_types/src/archetypes/../archetypes/line_strips2d.rs`."><title>line_strips2d.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_types" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/store/re_types/src/archetypes/../archetypes/line_strips2d.rs`."><title>line_strips2d.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="re_types" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../src-files.js"></script><script defer src="../../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../../re_types/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -404,6 +403,39 @@
 <a href="#403" id="403">403</a>
 <a href="#404" id="404">404</a>
 <a href="#405" id="405">405</a>
+<a href="#406" id="406">406</a>
+<a href="#407" id="407">407</a>
+<a href="#408" id="408">408</a>
+<a href="#409" id="409">409</a>
+<a href="#410" id="410">410</a>
+<a href="#411" id="411">411</a>
+<a href="#412" id="412">412</a>
+<a href="#413" id="413">413</a>
+<a href="#414" id="414">414</a>
+<a href="#415" id="415">415</a>
+<a href="#416" id="416">416</a>
+<a href="#417" id="417">417</a>
+<a href="#418" id="418">418</a>
+<a href="#419" id="419">419</a>
+<a href="#420" id="420">420</a>
+<a href="#421" id="421">421</a>
+<a href="#422" id="422">422</a>
+<a href="#423" id="423">423</a>
+<a href="#424" id="424">424</a>
+<a href="#425" id="425">425</a>
+<a href="#426" id="426">426</a>
+<a href="#427" id="427">427</a>
+<a href="#428" id="428">428</a>
+<a href="#429" id="429">429</a>
+<a href="#430" id="430">430</a>
+<a href="#431" id="431">431</a>
+<a href="#432" id="432">432</a>
+<a href="#433" id="433">433</a>
+<a href="#434" id="434">434</a>
+<a href="#435" id="435">435</a>
+<a href="#436" id="436">436</a>
+<a href="#437" id="437">437</a>
+<a href="#438" id="438">438</a>
 </pre></div><pre class="rust"><code><span class="comment">// DO NOT EDIT! This file was auto-generated by crates/build/re_types_builder/src/codegen/rust/api.rs
 // Based on "crates/store/re_types/definitions/rerun/archetypes/line_strips2d.fbs".
 
@@ -506,6 +538,9 @@
     /// Otherwise, each instance will have its own label.
     </span><span class="kw">pub </span>labels: <span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="kw">crate</span>::components::Text&gt;&gt;,
 
+    <span class="doccomment">/// Optional choice of whether the text labels should be shown by default.
+    </span><span class="kw">pub </span>show_labels: <span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::components::ShowLabels&gt;,
+
     <span class="doccomment">/// An optional floating point value that specifies the 2D drawing order of each line strip.
     ///
     /// Objects with higher values are drawn on top of those with lower values.
@@ -524,6 +559,7 @@
             + <span class="self">self</span>.radii.heap_size_bytes()
             + <span class="self">self</span>.colors.heap_size_bytes()
             + <span class="self">self</span>.labels.heap_size_bytes()
+            + <span class="self">self</span>.show_labels.heap_size_bytes()
             + <span class="self">self</span>.draw_order.heap_size_bytes()
             + <span class="self">self</span>.class_ids.heap_size_bytes()
     }
@@ -534,6 +570,7 @@
             &amp;&amp; &lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="kw">crate</span>::components::Radius&gt;&gt;&gt;::is_pod()
             &amp;&amp; &lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="kw">crate</span>::components::Color&gt;&gt;&gt;::is_pod()
             &amp;&amp; &lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="kw">crate</span>::components::Text&gt;&gt;&gt;::is_pod()
+            &amp;&amp; &lt;<span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::components::ShowLabels&gt;&gt;::is_pod()
             &amp;&amp; &lt;<span class="prelude-ty">Option</span>&lt;<span class="kw">crate</span>::components::DrawOrder&gt;&gt;::is_pod()
             &amp;&amp; &lt;<span class="prelude-ty">Option</span>&lt;Vec&lt;<span class="kw">crate</span>::components::ClassId&gt;&gt;&gt;::is_pod()
     }
@@ -551,16 +588,17 @@
         ]
     });
 
-<span class="kw">static </span>OPTIONAL_COMPONENTS: once_cell::sync::Lazy&lt;[ComponentName; <span class="number">3usize</span>]&gt; =
+<span class="kw">static </span>OPTIONAL_COMPONENTS: once_cell::sync::Lazy&lt;[ComponentName; <span class="number">4usize</span>]&gt; =
     once_cell::sync::Lazy::new(|| {
         [
             <span class="string">"rerun.components.Text"</span>.into(),
+            <span class="string">"rerun.components.ShowLabels"</span>.into(),
             <span class="string">"rerun.components.DrawOrder"</span>.into(),
             <span class="string">"rerun.components.ClassId"</span>.into(),
         ]
     });
 
-<span class="kw">static </span>ALL_COMPONENTS: once_cell::sync::Lazy&lt;[ComponentName; <span class="number">7usize</span>]&gt; =
+<span class="kw">static </span>ALL_COMPONENTS: once_cell::sync::Lazy&lt;[ComponentName; <span class="number">8usize</span>]&gt; =
     once_cell::sync::Lazy::new(|| {
         [
             <span class="string">"rerun.components.LineStrip2D"</span>.into(),
@@ -568,14 +606,15 @@
             <span class="string">"rerun.components.Color"</span>.into(),
             <span class="string">"rerun.components.LineStrips2DIndicator"</span>.into(),
             <span class="string">"rerun.components.Text"</span>.into(),
+            <span class="string">"rerun.components.ShowLabels"</span>.into(),
             <span class="string">"rerun.components.DrawOrder"</span>.into(),
             <span class="string">"rerun.components.ClassId"</span>.into(),
         ]
     });
 
 <span class="kw">impl </span>LineStrips2D {
-    <span class="doccomment">/// The total number of components in the archetype: 1 required, 3 recommended, 3 optional
-    </span><span class="kw">pub const </span>NUM_COMPONENTS: usize = <span class="number">7usize</span>;
+    <span class="doccomment">/// The total number of components in the archetype: 1 required, 3 recommended, 4 optional
+    </span><span class="kw">pub const </span>NUM_COMPONENTS: usize = <span class="number">8usize</span>;
 }
 
 <span class="doccomment">/// Indicator component for the [`LineStrips2D`] [`::re_types_core::Archetype`]
@@ -678,6 +717,15 @@
         } <span class="kw">else </span>{
             <span class="prelude-val">None
         </span>};
+        <span class="kw">let </span>show_labels = <span class="kw">if let </span><span class="prelude-val">Some</span>(array) = arrays_by_name.get(<span class="string">"rerun.components.ShowLabels"</span>) {
+            &lt;<span class="kw">crate</span>::components::ShowLabels&gt;::from_arrow_opt(<span class="kw-2">&amp;**</span>array)
+                .with_context(<span class="string">"rerun.archetypes.LineStrips2D#show_labels"</span>)<span class="question-mark">?
+                </span>.into_iter()
+                .next()
+                .flatten()
+        } <span class="kw">else </span>{
+            <span class="prelude-val">None
+        </span>};
         <span class="kw">let </span>draw_order = <span class="kw">if let </span><span class="prelude-val">Some</span>(array) = arrays_by_name.get(<span class="string">"rerun.components.DrawOrder"</span>) {
             &lt;<span class="kw">crate</span>::components::DrawOrder&gt;::from_arrow_opt(<span class="kw-2">&amp;**</span>array)
                 .with_context(<span class="string">"rerun.archetypes.LineStrips2D#draw_order"</span>)<span class="question-mark">?
@@ -704,6 +752,7 @@
             radii,
             colors,
             labels,
+            show_labels,
             draw_order,
             class_ids,
         })
@@ -726,6 +775,9 @@
             <span class="self">self</span>.labels
                 .as_ref()
                 .map(|comp_batch| (comp_batch <span class="kw">as </span><span class="kw-2">&amp;</span><span class="kw">dyn </span>ComponentBatch).into()),
+            <span class="self">self</span>.show_labels
+                .as_ref()
+                .map(|comp| (comp <span class="kw">as </span><span class="kw-2">&amp;</span><span class="kw">dyn </span>ComponentBatch).into()),
             <span class="self">self</span>.draw_order
                 .as_ref()
                 .map(|comp| (comp <span class="kw">as </span><span class="kw-2">&amp;</span><span class="kw">dyn </span>ComponentBatch).into()),
@@ -739,6 +791,8 @@
     }
 }
 
+<span class="kw">impl </span>::re_types_core::ArchetypeReflectionMarker <span class="kw">for </span>LineStrips2D {}
+
 <span class="kw">impl </span>LineStrips2D {
     <span class="doccomment">/// Create a new `LineStrips2D`.
     </span><span class="attr">#[inline]
@@ -750,6 +804,7 @@
             radii: <span class="prelude-val">None</span>,
             colors: <span class="prelude-val">None</span>,
             labels: <span class="prelude-val">None</span>,
+            show_labels: <span class="prelude-val">None</span>,
             draw_order: <span class="prelude-val">None</span>,
             class_ids: <span class="prelude-val">None</span>,
         }
@@ -785,6 +840,16 @@
         labels: <span class="kw">impl </span>IntoIterator&lt;Item = <span class="kw">impl </span>Into&lt;<span class="kw">crate</span>::components::Text&gt;&gt;,
     ) -&gt; <span class="self">Self </span>{
         <span class="self">self</span>.labels = <span class="prelude-val">Some</span>(labels.into_iter().map(Into::into).collect());
+        <span class="self">self
+    </span>}
+
+    <span class="doccomment">/// Optional choice of whether the text labels should be shown by default.
+    </span><span class="attr">#[inline]
+    </span><span class="kw">pub fn </span>with_show_labels(
+        <span class="kw-2">mut </span><span class="self">self</span>,
+        show_labels: <span class="kw">impl </span>Into&lt;<span class="kw">crate</span>::components::ShowLabels&gt;,
+    ) -&gt; <span class="self">Self </span>{
+        <span class="self">self</span>.show_labels = <span class="prelude-val">Some</span>(show_labels.into());
         <span class="self">self
     </span>}
 

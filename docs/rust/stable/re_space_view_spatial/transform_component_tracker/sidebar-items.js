@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"struct":["TransformComponentTracker","TransformComponentTrackerStoreSubscriber"]};
+window.SIDEBAR_ITEMS = {"struct":["PotentialTransformComponentSet","TransformComponentTracker","TransformComponentTrackerStoreSubscriber"]};

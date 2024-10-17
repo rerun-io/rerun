@@ -1,1 +1,1 @@
-window.SIDEBAR_ITEMS = {"mod":["re_chunk"]};
+window.SIDEBAR_ITEMS = {"mod":["arrow2","re_chunk","re_log_encoding"]};

@@ -1,5 +1,4 @@
-<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_ui/src/ui_ext.rs`."><title>ui_ext.rs - source</title><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceSerif4-Regular-46f98efaafac5295.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Regular-018c141bf0843ffd.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/FiraSans-Medium-8f9a781e4970d388.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2"><link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2"><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-ac92e1bbe349e143.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_ui" data-themes="" data-resource-suffix="" data-rustdoc-version="1.76.0 (07dca489a 2024-02-04)" data-channel="1.76.0" data-search-js="search-2b6ce74ff89ae146.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-f2adc0d6ca4d09fb.js"></script><script defer src="../../static.files/src-script-39ed315d46fb705f.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-305769736d49e732.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-feafe1bb7466e4bd.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-16x16-8b506e7a72182f1c.png"><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"></nav><div class="sidebar-resizer"></div>
-    <main><nav class="sub"><form class="search-form"><span></span><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Click or press ‘S’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings"><img width="22" height="22" alt="Change settings" src="../../static.files/wheel-7b819b6101059cd0.svg"></a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `crates/viewer/re_ui/src/ui_ext.rs`."><title>ui_ext.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-081576b923113409.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="re_ui" data-themes="" data-resource-suffix="" data-rustdoc-version="1.79.0 (129f3b996 2024-06-10)" data-channel="1.79.0" data-search-js="search-bf21c90c8c1d92b1.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-e32f0c247825364d.js"></script><script defer src="../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../src-files.js"></script><script defer src="../../static.files/main-20a3ad099b048cf2.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-09095024cf37855e.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><nav class="sub"><form class="search-form"><span></span><div id="sidebar-button" tabindex="-1"><a href="../../re_ui/all.html" title="show sidebar"></a></div><input class="search-input" name="search" aria-label="Run search in the documentation" autocomplete="off" spellcheck="false" placeholder="Type ‘S’ or ‘/’ to search, ‘?’ for more options…" type="search"><div id="help-button" tabindex="-1"><a href="../../help.html" title="help">?</a></div><div id="settings-menu" tabindex="-1"><a href="../../settings.html" title="settings">Settings</a></div></form></nav><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
 <a href="#2" id="2">2</a>
 <a href="#3" id="3">3</a>
 <a href="#4" id="4">4</a>
@@ -1051,6 +1050,45 @@
 <a href="#1050" id="1050">1050</a>
 <a href="#1051" id="1051">1051</a>
 <a href="#1052" id="1052">1052</a>
+<a href="#1053" id="1053">1053</a>
+<a href="#1054" id="1054">1054</a>
+<a href="#1055" id="1055">1055</a>
+<a href="#1056" id="1056">1056</a>
+<a href="#1057" id="1057">1057</a>
+<a href="#1058" id="1058">1058</a>
+<a href="#1059" id="1059">1059</a>
+<a href="#1060" id="1060">1060</a>
+<a href="#1061" id="1061">1061</a>
+<a href="#1062" id="1062">1062</a>
+<a href="#1063" id="1063">1063</a>
+<a href="#1064" id="1064">1064</a>
+<a href="#1065" id="1065">1065</a>
+<a href="#1066" id="1066">1066</a>
+<a href="#1067" id="1067">1067</a>
+<a href="#1068" id="1068">1068</a>
+<a href="#1069" id="1069">1069</a>
+<a href="#1070" id="1070">1070</a>
+<a href="#1071" id="1071">1071</a>
+<a href="#1072" id="1072">1072</a>
+<a href="#1073" id="1073">1073</a>
+<a href="#1074" id="1074">1074</a>
+<a href="#1075" id="1075">1075</a>
+<a href="#1076" id="1076">1076</a>
+<a href="#1077" id="1077">1077</a>
+<a href="#1078" id="1078">1078</a>
+<a href="#1079" id="1079">1079</a>
+<a href="#1080" id="1080">1080</a>
+<a href="#1081" id="1081">1081</a>
+<a href="#1082" id="1082">1082</a>
+<a href="#1083" id="1083">1083</a>
+<a href="#1084" id="1084">1084</a>
+<a href="#1085" id="1085">1085</a>
+<a href="#1086" id="1086">1086</a>
+<a href="#1087" id="1087">1087</a>
+<a href="#1088" id="1088">1088</a>
+<a href="#1089" id="1089">1089</a>
+<a href="#1090" id="1090">1090</a>
+<a href="#1091" id="1091">1091</a>
 </pre></div><pre class="rust"><code><span class="kw">use </span>std::hash::Hash;
 
 <span class="kw">use </span>egui::{
@@ -1083,18 +1121,32 @@
         response.on_hover_text(error_text)
     }
 
+    <span class="doccomment">/// Shows an error label with the entire error text and copies the text to the clipboard on click.
+    ///
+    /// Use this only if you have a lot of space to spare.
+    </span><span class="kw">fn </span>error_label_long(<span class="kw-2">&amp;mut </span><span class="self">self</span>, error_text: <span class="kw-2">&amp;</span>str) -&gt; egui::Response {
+        <span class="kw">let </span>label = egui::Label::new(<span class="self">self</span>.ui().ctx().error_text(error_text))
+            .selectable(<span class="bool-val">true</span>)
+            .sense(egui::Sense::click());
+        <span class="kw">let </span>response = <span class="self">self</span>.ui_mut().add(label).on_hover_text(<span class="string">"Click to copy."</span>);
+        <span class="kw">if </span>response.clicked() {
+            <span class="self">self</span>.ui().ctx().copy_text(error_text.to_owned());
+        }
+        response
+    }
+
     <span class="kw">fn </span>small_icon_button(<span class="kw-2">&amp;mut </span><span class="self">self</span>, icon: <span class="kw-2">&amp;</span>Icon) -&gt; egui::Response {
         <span class="kw">let </span>widget = <span class="self">self</span>.small_icon_button_widget(icon);
         <span class="self">self</span>.ui_mut().add(widget)
     }
 
-    <span class="kw">fn </span>small_icon_button_widget&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, icon: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Icon) -&gt; egui::ImageButton&lt;<span class="lifetime">'a</span>&gt; {
+    <span class="kw">fn </span>small_icon_button_widget&lt;<span class="lifetime">'a</span>&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, icon: <span class="kw-2">&amp;</span><span class="lifetime">'a </span>Icon) -&gt; egui::Button&lt;<span class="lifetime">'a</span>&gt; {
         <span class="comment">// TODO(emilk): change color and size on hover
-        </span>egui::ImageButton::new(
+        </span>egui::Button::image(
             icon.as_image()
-                .fit_to_exact_size(DesignTokens::small_icon_size()),
+                .fit_to_exact_size(DesignTokens::small_icon_size())
+                .tint(<span class="self">self</span>.ui().visuals().widgets.inactive.fg_stroke.color),
         )
-        .tint(<span class="self">self</span>.ui().visuals().widgets.inactive.fg_stroke.color)
     }
 
     <span class="kw">fn </span>medium_icon_toggle_button(<span class="kw-2">&amp;mut </span><span class="self">self</span>, icon: <span class="kw-2">&amp;</span>Icon, selected: <span class="kw-2">&amp;mut </span>bool) -&gt; egui::Response {
@@ -1629,6 +1681,29 @@
             .show_flat(<span class="self">self</span>.ui_mut(), content)
     }
 
+    <span class="doccomment">/// Convenience to create a non-interactive, collapsible [`list_item::ListItem`] with just a
+    /// label. The children UI is wrapped in a [`list_item::list_item_scope`].
+    </span><span class="kw">fn </span>list_item_collapsible_noninteractive_label&lt;R&gt;(
+        <span class="kw-2">&amp;mut </span><span class="self">self</span>,
+        label: <span class="kw">impl </span>Into&lt;egui::WidgetText&gt;,
+        default_open: bool,
+        children_ui: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span>egui::Ui) -&gt; R,
+    ) -&gt; <span class="prelude-ty">Option</span>&lt;R&gt; {
+        <span class="kw">let </span>label = label.into();
+        <span class="kw">let </span>id = <span class="self">self</span>.ui().id().with(egui::Id::new(label.text()));
+        <span class="self">self</span>.list_item()
+            .interactive(<span class="bool-val">false</span>)
+            .show_hierarchical_with_children(
+                <span class="self">self</span>.ui_mut(),
+                id,
+                default_open,
+                list_item::LabelContent::new(label),
+                |ui| list_item::list_item_scope(ui, id, children_ui),
+            )
+            .body_response
+            .map(|r| r.inner)
+    }
+
     <span class="doccomment">/// Convenience function to create a [`crate::SectionCollapsingHeader`].
     </span><span class="attr">#[allow(clippy::unused_self)]
     </span><span class="kw">fn </span>section_collapsing_header&lt;<span class="lifetime">'a</span>&gt;(
@@ -1795,7 +1870,7 @@
     /// The `add_contents` closure is executed in the context of a vertical layout.
     </span><span class="kw">fn </span>center&lt;R&gt;(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        id_source: <span class="kw">impl </span>Hash,
+        id_salt: <span class="kw">impl </span>Hash,
         add_contents: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span>egui::Ui) -&gt; R,
     ) -&gt; R {
         <span class="comment">// Strategy:
@@ -1809,7 +1884,7 @@
         </span><span class="kw">struct </span>TextSize(egui::Vec2);
 
         <span class="kw">let </span>ui = <span class="self">self</span>.ui_mut();
-        <span class="kw">let </span>id = ui.make_persistent_id(id_source);
+        <span class="kw">let </span>id = ui.make_persistent_id(id_salt);
 
         <span class="kw">let </span>text_size: <span class="prelude-ty">Option</span>&lt;TextSize&gt; = ui.data(|reader| reader.get_temp(id));
 
@@ -1964,7 +2039,7 @@
     }
 
     <span class="doccomment">/// Show some markdown
-    </span><span class="kw">fn </span>markdown_ui(<span class="kw-2">&amp;mut </span><span class="self">self</span>, id: egui::Id, markdown: <span class="kw-2">&amp;</span>str) {
+    </span><span class="kw">fn </span>markdown_ui(<span class="kw-2">&amp;mut </span><span class="self">self</span>, markdown: <span class="kw-2">&amp;</span>str) {
         <span class="kw">use </span>parking_lot::Mutex;
         <span class="kw">use </span>std::sync::Arc;
 
@@ -1976,7 +2051,7 @@
             .clone()
         });
 
-        egui_commonmark::CommonMarkViewer::new(id).show(ui, <span class="kw-2">&amp;mut </span>commonmark_cache.lock(), markdown);
+        egui_commonmark::CommonMarkViewer::new().show(ui, <span class="kw-2">&amp;mut </span>commonmark_cache.lock(), markdown);
     }
 
     <span class="doccomment">/// A drop-down menu with a list of options.
@@ -1986,12 +2061,12 @@
     /// Use this instead of using [`egui::ComboBox`] directly.
     </span><span class="kw">fn </span>drop_down_menu(
         <span class="kw-2">&amp;mut </span><span class="self">self</span>,
-        id_source: <span class="kw">impl </span>std::hash::Hash,
+        id_salt: <span class="kw">impl </span>std::hash::Hash,
         selected_text: String,
         content: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span>egui::Ui),
     ) {
         <span class="comment">// TODO(emilk): make the button itself a `ListItem2`
-        </span>egui::ComboBox::from_id_source(id_source)
+        </span>egui::ComboBox::from_id_salt(id_salt)
             .selected_text(selected_text)
             .show_ui(<span class="self">self</span>.ui_mut(), |ui| {
                 list_item::list_item_scope(ui, <span class="string">"inner_scope"</span>, |ui| {
@@ -2009,8 +2084,10 @@
         content: <span class="kw">impl </span>FnOnce(<span class="kw-2">&amp;mut </span>egui::Ui) -&gt; R,
     ) -&gt; R {
         <span class="self">self</span>.ui_mut()
-            .push_stack_info(
-                egui::UiStackInfo::default().with_tag_value(FULL_SPAN_TAG, span.into()),
+            .scope_builder(
+                egui::UiBuilder::new().ui_stack_info(
+                    egui::UiStackInfo::default().with_tag_value(FULL_SPAN_TAG, span.into()),
+                ),
                 content,
             )
             .inner
