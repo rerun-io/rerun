@@ -17,4 +17,4 @@ A path to an entity in the `ChunkStore`.
 
 ## Used by
 
-* [`EntityPath`](../components/entity_path.md?speculative-link)
+* [`EntityPath`](../components/entity_path.md)

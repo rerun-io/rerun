@@ -23,7 +23,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Only MP4 containers with AV1 are generally supported,
 /// though the web viewer supports more video codecs, depending on browser.
 ///
-/// See <https://rerun.io/docs/reference/video?speculative-link> for details of what is and isn't supported.
+/// See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
 ///
 /// In order to display a video, you also need to log a [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference] for each frame.
 ///

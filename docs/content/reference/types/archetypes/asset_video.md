@@ -8,9 +8,9 @@ A video binary.
 Only MP4 containers with AV1 are generally supported,
 though the web viewer supports more video codecs, depending on browser.
 
-See <https://rerun.io/docs/reference/video?speculative-link> for details of what is and isn't supported.
+See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
 
-In order to display a video, you also need to log a [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference?speculative-link) for each frame.
+In order to display a video, you also need to log a [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference) for each frame.
 
 ## Components
 
@@ -19,12 +19,14 @@ In order to display a video, you also need to log a [`archetypes.VideoFrameRefer
 **Recommended**: [`MediaType`](../components/media_type.md)
 
 ## Shown in
+* [Spatial2DView](../views/spatial2d_view.md)
+* [Spatial3DView](../views/spatial3d_view.md) (if logged under a projection)
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `AssetVideo`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1AssetVideo.html?speculative-link)
- * 🐍 [Python API docs for `AssetVideo`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.AssetVideo)
- * 🦀 [Rust API docs for `AssetVideo`](https://docs.rs/rerun/latest/rerun/archetypes/struct.AssetVideo.html?speculative-link)
+ * 🌊 [C++ API docs for `AssetVideo`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1AssetVideo.html)
+ * 🐍 [Python API docs for `AssetVideo`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.AssetVideo)
+ * 🦀 [Rust API docs for `AssetVideo`](https://docs.rs/rerun/latest/rerun/archetypes/struct.AssetVideo.html)
 
 ## Examples
 

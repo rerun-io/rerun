@@ -52,6 +52,7 @@ snippet: views/spatial3d
 * [`Transform3D`](../archetypes/transform3d.md)
 * [`ViewCoordinates`](../archetypes/view_coordinates.md)
 * [`Arrows2D`](../archetypes/arrows2d.md) (if logged under a projection)
+* [`AssetVideo`](../archetypes/asset_video.md) (if logged under a projection)
 * [`Boxes2D`](../archetypes/boxes2d.md) (if logged under a projection)
 * [`DepthImage`](../archetypes/depth_image.md) (if logged under a projection)
 * [`EncodedImage`](../archetypes/encoded_image.md) (if logged under a projection)
@@ -59,4 +60,5 @@ snippet: views/spatial3d
 * [`LineStrips2D`](../archetypes/line_strips2d.md) (if logged under a projection)
 * [`Points2D`](../archetypes/points2d.md) (if logged under a projection)
 * [`SegmentationImage`](../archetypes/segmentation_image.md) (if logged under a projection)
+* [`VideoFrameReference`](../archetypes/video_frame_reference.md) (if logged under a projection)
 

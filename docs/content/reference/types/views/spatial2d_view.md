@@ -45,6 +45,7 @@ snippet: views/spatial2d
 
 * [`AnnotationContext`](../archetypes/annotation_context.md)
 * [`Arrows2D`](../archetypes/arrows2d.md)
+* [`AssetVideo`](../archetypes/asset_video.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)
 * [`Clear`](../archetypes/clear.md)
 * [`DepthImage`](../archetypes/depth_image.md)
@@ -56,6 +57,7 @@ snippet: views/spatial2d
 * [`Pinhole`](../archetypes/pinhole.md)
 * [`Points2D`](../archetypes/points2d.md)
 * [`SegmentationImage`](../archetypes/segmentation_image.md)
+* [`VideoFrameReference`](../archetypes/video_frame_reference.md)
 * [`Arrows3D`](../archetypes/arrows3d.md) (if logged above active projection)
 * [`Asset3D`](../archetypes/asset3d.md) (if logged above active projection)
 * [`Boxes3D`](../archetypes/boxes3d.md) (if logged above active projection)

@@ -53,11 +53,14 @@ This page lists all built-in archetypes.
 * [`TextDocument`](archetypes/text_document.md): A text element intended to be displayed in its own text box.
 * [`TextLog`](archetypes/text_log.md): A log entry in a text log, comprised of a text body and its log level.
 
+## Video
+
+* [`AssetVideo`](archetypes/asset_video.md): A video binary.
+* [`VideoFrameReference`](archetypes/video_frame_reference.md): References a single video frame.
+
 ## Other
 
 * [`AnnotationContext`](archetypes/annotation_context.md): The annotation context provides additional information on how to display entities.
-* [`AssetVideo`](archetypes/asset_video.md): A video binary.
 * [`Clear`](archetypes/clear.md): Empties all the components of an entity.
 * [`DisconnectedSpace`](archetypes/disconnected_space.md): Spatially disconnect this entity from its parent.
-* [`VideoFrameReference`](archetypes/video_frame_reference.md): References a single video frame.
 
