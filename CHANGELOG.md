@@ -28,7 +28,7 @@ While the web viewer supports a variety of codecs, the native viewer supports on
 Read more about our video supports (and its limits) [in our video docs](https://rerun.io/docs/reference/video).
 
 ### ⚠️ Breaking changes
-* 🗾 Blueprint files (.rbl) from previous Rerun versions will no longer load
+* 🗾 Blueprint files (.rbl) from previous Rerun versions will no longer load _automatically_
 * 🐧 Linux: Rerun now require glibc 2.17+
 * 🦀 Rust: The minimum supported Rust version is now 1.79
 

@@ -3,7 +3,7 @@ title: Migrating from 0.18 to 0.19
 order: 190
 ---
 
-Blueprint files (.rbl) from previous Rerun versions will no longer load
+Blueprint files (.rbl) from previous Rerun versions will no longer load _automatically_.
 
 ### 🐧 Linux
 Rerun now require glibc 2.17 or higher.
