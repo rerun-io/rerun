@@ -1712,6 +1712,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7e962a19be5cfc3f3bf6dd8f61eb50107f356ad6270fbb3ed41476571db78be5"
 
 [[package]]
+name = "dataframe_query"
+version = "0.19.0-alpha.7"
+dependencies = [
+ "itertools 0.13.0",
+ "rand",
+ "rerun",
+ "unindent",
+]
+
+[[package]]
 name = "deranged"
 version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
