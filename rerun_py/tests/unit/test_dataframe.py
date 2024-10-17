@@ -173,6 +173,25 @@ class TestDataframe:
         assert table.num_columns == 1
         assert table.num_rows == 1
 
+    def test_content_filters(self) -> None:
+        filter_expressions = [
+            "+/** -/static_text",
+            """
+            +/**
+            -/static_text
+            """,
+            {"/** -/static_text": ["Position3D", "Color"]},
+        ]
+
+        for expr in filter_expressions:
+            view = self.recording.view(index="my_index", contents=expr)
+
+            table = view.select().read_all()
+
+            # my_index, log_time, log_tick, points, colors
+            assert table.num_columns == 5
+            assert table.num_rows == 2
+
     def test_select_columns(self) -> None:
         view = self.recording.view(index="my_index", contents="points")
         index_col_selectors = [rr.dataframe.IndexColumnSelector("my_index"), "my_index"]

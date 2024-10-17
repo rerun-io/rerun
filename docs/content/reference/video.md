@@ -1,5 +1,5 @@
 ---
-title: Video in Rerun
+title: Video
 order: 400
 ---
 
@@ -57,11 +57,11 @@ It is implemented by all modern browsers, but with varying levels of support for
 
 With that in mind, here are the browsers which we have tested and verified to generally work:
 
-|            | Linux  | macOS | Windows |
-| ---------- | ------ | ----- | ------- |
-| Firefox    | ✅[^1] | ✅    | ✅      |
-| Chrome[^2] | ✅     | ✅    | ✅[^3]  |
-| Safari     |        | ✅    |         |
+|            | Linux | macOS | Windows |
+| ---------- | ----- | ----- | ------- |
+| Firefox    | ✅[^1] | ✅     | ✅       |
+| Chrome[^2] | ✅     | ✅     | ✅[^3]   |
+| Safari     |       | ✅     |         |
 
 [^1]: Firefox on Linux has been observed to [stutter when playing back H.264 video](https://github.com/rerun-io/rerun/issues/7532).
 [^2]: Any Chromium-based browser should work, but we don't test all of them.
@@ -75,15 +75,19 @@ At the moment, we test the following codecs:
 
 |            | Linux Firefox | Linux Chrome | macOS Firefox | macOS Chrome | macOS Safari | Windows Firefox | Windows Chrome |
 | ---------- | ------------- | ------------ | ------------- | ------------ | ------------ | --------------- | -------------- |
-| AV1        | ✅            | ✅           | ✅           | ✅           | 🚧[^4]        | ✅               | ✅             |
-| H.264/avc  | ✅            | ✅           | ✅           | ✅           | ✅            | ✅               | ✅             |
-| H.265/hevc | ❌            | ❌           | ❌           | ✅           | 🚧[^6]        | ❌               | 🚧[^7]         |
+| AV1        | ✅             | ✅            | ✅             | ✅            | 🚧[^4]        | ✅               | ✅              |
+| H.264/avc  | ✅             | ✅            | ✅             | ✅            | ✅            | ✅               | ✅              |
+| H.265/hevc | ❌             | ❌            | ❌             | ✅            | 🚧[^6]        | ❌               | 🚧[^7]          |
 
 [^4]: Safari/WebKit does not support AV1 decoding except on [Apple Silicon devices with hardware support](https://webkit.org/blog/14445/webkit-features-in-safari-17-0/).
 [^5]: Firefox does not support H.265 decoding on any platform.
 [^6]: Safari/WebKit has been observed suttering when playing `hvc1` but working fine with `hevc1`. Despite support being advertised Safari 16.5 has been observed not support H.265 decoding.
-[^7]: Only supported if hardware encoding is available. Therefore always affected by Windows stuttering issues, see [^3].
+[^7]: Only supported if hardware encoding is available. Therefore always affected by Windows stuttering issues, see above.
 
+Beyond this, for best compatibility we recommend:
+* prefer YUV over RGB & monochrome formats
+* don't use more than 8bit per color channel
+* keep resolutions at 8k & lower (see also [#3782](https://github.com/rerun-io/rerun/issues/3782))
 
 ## Links
 * [Web video codec guide, by Mozilla](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs)
