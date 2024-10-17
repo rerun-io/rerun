@@ -849,14 +849,36 @@ impl QueryHandle<'_> {
                 // will not be part of the current row.
                 let mut cur_cursor_value = cur_cursor.load(Ordering::Relaxed);
 
-                // TODO(cmc): make this a tiny bit smarter so we can remove the need for
-                // deduped_latest_on_index, which would be very welcome right now given we don't
-                // have an Arrow ListView at our disposal.
-                let cur_indices = cur_chunk.iter_indices(&state.filtered_index).collect_vec();
+                let cur_index_times_empty: &[i64] = &[];
+                let cur_index_times = cur_chunk
+                    .timelines()
+                    .get(&state.filtered_index)
+                    .map_or(cur_index_times_empty, |time_column| time_column.times_raw());
+                let cur_index_row_ids = cur_chunk.row_ids_raw();
+
+                // NOTE: "Deserializing" everything into a native vec is way too much for rustc to
+                // follow and doesn't get optimized at all -- we have to work with raw arrow data
+                // all the way, so this gets a bit complicated.
+                let cur_index_row_id_at = |at: usize| {
+                    let (times, incs) = cur_index_row_ids;
+
+                    let times = times.values().as_slice();
+                    let incs = incs.values().as_slice();
+
+                    let time = *times.get(at)?;
+                    let inc = *incs.get(at)?;
+
+                    Some(RowId::from_u128(((time as u128) << 64) | (inc as u128)))
+                };
+
                 let (index_value, cur_row_id) = 'walk: loop {
-                    let Some((mut index_value, mut cur_row_id)) =
-                        cur_indices.get(cur_cursor_value as usize).copied()
-                    else {
+                    let (Some(mut index_value), Some(mut cur_row_id)) = (
+                        cur_index_times
+                            .get(cur_cursor_value as usize)
+                            .copied()
+                            .map(TimeInt::new_temporal),
+                        cur_index_row_id_at(cur_cursor_value as usize),
+                    ) else {
                         continue 'overlaps;
                     };
 
@@ -864,9 +886,13 @@ impl QueryHandle<'_> {
                         // TODO(cmc): Because of Arrow's `ListArray` limitations, we inline the
                         // "deduped_latest_on_index" logic here directly, which prevents a lot of
                         // unnecessary allocations and copies.
-                        while let Some((next_index_value, next_row_id)) =
-                            cur_indices.get(cur_cursor_value as usize + 1).copied()
-                        {
+                        while let (Some(next_index_value), Some(next_row_id)) = (
+                            cur_index_times
+                                .get(cur_cursor_value as usize + 1)
+                                .copied()
+                                .map(TimeInt::new_temporal),
+                            cur_index_row_id_at(cur_cursor_value as usize + 1),
+                        ) {
                             if next_index_value == *cur_index_value {
                                 index_value = next_index_value;
                                 cur_row_id = next_row_id;
