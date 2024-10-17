@@ -272,7 +272,7 @@ impl AnyColumn {
                 } else {
                     let component_path =
                         re_log_types::ComponentPath::from_str(&name).map_err(|err| {
-                            PyValueError::new_err(format!("Invalid component path '{name}': {err}"))
+                            PyValueError::new_err(format!("Invalid component path {name:?}: {err}"))
                         })?;
 
                     Ok(ColumnSelector::Component(ComponentColumnSelector {
