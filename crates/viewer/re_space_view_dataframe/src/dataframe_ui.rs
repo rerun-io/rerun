@@ -11,7 +11,7 @@ use re_dataframe::QueryHandle;
 use re_log_types::{EntityPath, TimeInt, Timeline, TimelineName};
 use re_types_core::ComponentName;
 use re_ui::UiExt as _;
-use re_viewer_context::{SystemCommandSender, ViewerContext};
+use re_viewer_context::{SpaceViewId, SystemCommandSender, ViewerContext};
 
 use crate::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache};
@@ -34,6 +34,7 @@ pub(crate) fn dataframe_ui(
     ui: &mut egui::Ui,
     query_handle: &re_dataframe::QueryHandle<'_>,
     expanded_rows_cache: &mut ExpandedRowsCache,
+    space_view_id: &SpaceViewId,
 ) -> Vec<HideColumnAction> {
     re_tracing::profile_function!();
 
@@ -43,16 +44,16 @@ pub(crate) fn dataframe_ui(
         .map(|(_, desc)| desc.clone())
         .collect::<Vec<_>>();
 
-    // The table id mainly drives column widths, so it should be stable across queries leading to
-    // the same set of selected columns. However, changing the PoV typically leads to large changes
-    // of actual content. Since that can affect the optimal column width, we include the PoV in the
-    // salt.
-    let table_id_salt = egui::Id::new("__dataframe__")
-        .with(&selected_columns)
-        .with(&query_handle.query().filtered_is_not_null);
+    // The table id mainly drives column widths, along with the id of each column. Empirically, the
+    // user experience is better if we have stable column width even when the query changes (which
+    // can, in turn, change the column's content).
+    let table_id_salt = egui::Id::new("__dataframe__").with(space_view_id);
 
-    // For the row expansion cache, we invalidate more aggressively for now.
+    // For the row expansion cache, we invalidate more aggressively for now, because the expanded
+    // state is stored against a row index (not unique id like columns). This means rows will more
+    // often auto-collapse when the query is modified.
     let row_expansion_id_salt = egui::Id::new("__dataframe_row_exp__")
+        .with(space_view_id)
         .with(&selected_columns)
         .with(query_handle.query());
 
