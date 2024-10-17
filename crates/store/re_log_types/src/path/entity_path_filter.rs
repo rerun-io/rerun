@@ -314,7 +314,6 @@ impl EntityPathFilter {
         subst_env: &EntityPathSubs,
     ) -> Result<Self, EntityPathFilterParseError> {
         let split_rules = split_whitespace_smart(rules);
-
         Self::from_query_expressions_strict(split_rules, subst_env)
     }
 
