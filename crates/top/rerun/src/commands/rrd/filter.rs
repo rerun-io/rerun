@@ -84,7 +84,7 @@ impl FilterCommand {
                     // TODO(cmc): encoding options & version should match the original.
                     let version = CrateVersion::LOCAL;
                     let options = re_log_encoding::EncodingOptions::COMPRESSED;
-                    re_log_encoding::encoder::Encoder::new(version, options, &mut rrd_out)
+                    re_log_encoding::encoder::DroppableEncoder::new(version, options, &mut rrd_out)
                         .context("couldn't init encoder")?
                 };
 
@@ -93,6 +93,7 @@ impl FilterCommand {
                     size_bytes += encoder.append(&msg).context("encoding failure")?;
                 }
 
+                drop(encoder);
                 rrd_out.flush().context("couldn't flush output")?;
 
                 Ok(size_bytes)
