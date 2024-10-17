@@ -22,15 +22,16 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// See also [`archetypes::DepthImage`][crate::archetypes::DepthImage] and [`archetypes::SegmentationImage`][crate::archetypes::SegmentationImage].
 ///
+/// Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes::EncodedImage`][crate::archetypes::EncodedImage].
+/// For images that refer to video frames see [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference].
+/// Compressing images or using video data instead can save a lot of bandwidth and memory.
+///
 /// The raw image data is stored as a single buffer of bytes in a [`components::Blob`][crate::components::Blob].
 /// The meaning of these bytes is determined by the [`components::ImageFormat`][crate::components::ImageFormat] which specifies the resolution
 /// and the pixel format (e.g. RGB, RGBA, …).
 ///
 /// The order of dimensions in the underlying [`components::Blob`][crate::components::Blob] follows the typical
 /// row-major, interleaved-pixel image format.
-///
-/// Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes::EncodedImage`][crate::archetypes::EncodedImage].
-/// Compressing images can save a lot of bandwidth and memory.
 ///
 /// ## Examples
 ///

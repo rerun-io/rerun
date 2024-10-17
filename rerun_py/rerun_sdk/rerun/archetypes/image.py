@@ -23,15 +23,16 @@ class Image(ImageExt, Archetype):
 
     See also [`archetypes.DepthImage`][rerun.archetypes.DepthImage] and [`archetypes.SegmentationImage`][rerun.archetypes.SegmentationImage].
 
+    Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage].
+    For images that refer to video frames see [`archetypes.VideoFrameReference`][rerun.archetypes.VideoFrameReference].
+    Compressing images or using video data instead can save a lot of bandwidth and memory.
+
     The raw image data is stored as a single buffer of bytes in a [`components.Blob`][rerun.components.Blob].
     The meaning of these bytes is determined by the [`components.ImageFormat`][rerun.components.ImageFormat] which specifies the resolution
     and the pixel format (e.g. RGB, RGBA, …).
 
     The order of dimensions in the underlying [`components.Blob`][rerun.components.Blob] follows the typical
     row-major, interleaved-pixel image format.
-
-    Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes.EncodedImage`][rerun.archetypes.EncodedImage].
-    Compressing images can save a lot of bandwidth and memory.
 
     Examples
     --------

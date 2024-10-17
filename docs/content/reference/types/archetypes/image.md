@@ -7,15 +7,16 @@ A monochrome or color image.
 
 See also [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) and [`archetypes.SegmentationImage`](https://rerun.io/docs/reference/types/archetypes/segmentation_image).
 
+Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image).
+For images that refer to video frames see [`archetypes.VideoFrameReference`](https://rerun.io/docs/reference/types/archetypes/video_frame_reference?speculative-link).
+Compressing images or using video data instead can save a lot of bandwidth and memory.
+
 The raw image data is stored as a single buffer of bytes in a [`components.Blob`](https://rerun.io/docs/reference/types/components/blob).
 The meaning of these bytes is determined by the [`components.ImageFormat`](https://rerun.io/docs/reference/types/components/image_format) which specifies the resolution
 and the pixel format (e.g. RGB, RGBA, …).
 
 The order of dimensions in the underlying [`components.Blob`](https://rerun.io/docs/reference/types/components/blob) follows the typical
 row-major, interleaved-pixel image format.
-
-Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image).
-Compressing images can save a lot of bandwidth and memory.
 
 ## Components
 
