@@ -66,16 +66,10 @@ jobs:
         with:
           python-version: "3.9"
 
-      - name: Install Python dependencies
-        shell: bash
-        run: |
-          pip install --upgrade pip
-          pip install -r rerun_py/requirements-doc.txt
-
       - name: Build via mkdocs
         shell: bash
         run: |
-          mkdocs build --strict -f rerun_py/mkdocs.yml
+          pixi run -e py-docs mkdocs build --strict -f rerun_py/mkdocs.yml
 
   no-codegen-changes:
     name: Check if running codegen would produce any changes

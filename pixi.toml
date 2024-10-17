@@ -321,12 +321,9 @@ py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
 [feature.python-docs.tasks]
 # Build the documentation search index.
 # See `pixi run search-index --help` for more information.
-# Before running this, install `rerun_py/requirements-doc.txt`.
-# TODO(#6060): Put this in an environment and remove the requirements file.
 search-index = "cargo run --locked -p re_dev_tools -- search-index"
 
 # Serve python docs locally
-# TODO(#6060): Put this in an environment and remove the requirements file.
 py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
 
 [feature.wheel-test.tasks]
