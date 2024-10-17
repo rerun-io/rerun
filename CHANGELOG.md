@@ -3,9 +3,9 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD) - Dataframe & Video
 
-TODO(emilk): insert a screenshot and/or code sample here
+<!-- TODO(emilk): insert a screenshot and/or code sample here -->
 
-📖 Release blogpost: TODO(emilk): add link
+📖 Release blogpost: Coming soon! <!-- TODO(niko): link to it! -->
 
 🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-19
 
