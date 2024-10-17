@@ -43,5 +43,9 @@ pub fn track_sigint() {}
 ///
 /// Need to call [`track_sigint`] at least once first.
 pub fn was_sigint_ever_caught() -> bool {
+    // If somebody forgot to call this, at least we will only miss the first SIGINT, but
+    // SIGINT-spamming will still work.
+    track_sigint();
+
     SIGINT_RECEIVED.load(std::sync::atomic::Ordering::Relaxed)
 }
