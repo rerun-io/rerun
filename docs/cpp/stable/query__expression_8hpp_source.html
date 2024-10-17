@@ -171,10 +171,23 @@ $(document).ready(function(){initNavTree('query__expression_8hpp_source.html',''
 <div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span><span class="comment"></span>        <span class="keyword">static</span> Result&lt;std::shared_ptr&lt;arrow::Array&gt;&gt; to_arrow(</div>
 <div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span>            <span class="keyword">const</span> blueprint::components::QueryExpression* instances, <span class="keywordtype">size_t</span> num_instances</div>
 <div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>        ) {</div>
-<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>            <span class="keywordflow">return</span> Loggable&lt;rerun::datatypes::Utf8&gt;::to_arrow(&amp;instances-&gt;filter, num_instances);</div>
-<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>        }</div>
-<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>    };</div>
-<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>} <span class="comment">// namespace rerun</span></div>
+<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>            <span class="keywordflow">if</span> (num_instances == 0) {</div>
+<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>                <span class="keywordflow">return</span> Loggable&lt;rerun::datatypes::Utf8&gt;::to_arrow(<span class="keyword">nullptr</span>, 0);</div>
+<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>            } <span class="keywordflow">else</span> <span class="keywordflow">if</span> (instances == <span class="keyword">nullptr</span>) {</div>
+<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>                <span class="keywordflow">return</span> <a class="code hl_class" href="classrerun_1_1Error.html">rerun::Error</a>(</div>
+<div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span>                    ErrorCode::UnexpectedNullArgument,</div>
+<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span>                    <span class="stringliteral">&quot;Passed array instances is null when num_elements&gt; 0.&quot;</span></div>
+<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span>                );</div>
+<div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span>            } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span>                <span class="keywordflow">return</span> Loggable&lt;rerun::datatypes::Utf8&gt;::to_arrow(</div>
+<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span>                    &amp;instances-&gt;filter,</div>
+<div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span>                    num_instances</div>
+<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>                );</div>
+<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span>            }</div>
+<div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span>        }</div>
+<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span>    };</div>
+<div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span>} <span class="comment">// namespace rerun</span></div>
+<div class="ttc" id="aclassrerun_1_1Error_html"><div class="ttname"><a href="classrerun_1_1Error.html">rerun::Error</a></div><div class="ttdoc">Status outcome object (success or error) returned for fallible operations.</div><div class="ttdef"><b>Definition</b> error.hpp:95</div></div>
 <div class="ttc" id="anamespacererun_html"><div class="ttname"><a href="namespacererun.html">rerun</a></div><div class="ttdoc">All Rerun C++ types and functions are in the rerun namespace or one of its nested namespaces.</div><div class="ttdef"><b>Definition</b> rerun.hpp:22</div></div>
 <div class="ttc" id="astructrerun_1_1Loggable_html"><div class="ttname"><a href="structrerun_1_1Loggable.html">rerun::Loggable</a></div><div class="ttdoc">The Loggable trait is used by all built-in implementation of rerun::AsComponents to serialize a colle...</div><div class="ttdef"><b>Definition</b> loggable.hpp:11</div></div>
 <div class="ttc" id="astructrerun_1_1blueprint_1_1components_1_1QueryExpression_html"><div class="ttname"><a href="structrerun_1_1blueprint_1_1components_1_1QueryExpression.html">rerun::blueprint::components::QueryExpression</a></div><div class="ttdoc">Component: An individual query expression used to filter a set of datatypes::EntityPaths.</div><div class="ttdef"><b>Definition</b> query_expression.hpp:25</div></div>

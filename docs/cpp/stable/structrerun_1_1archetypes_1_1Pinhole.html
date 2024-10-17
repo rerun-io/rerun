@@ -184,9 +184,9 @@ static constexpr const char&#160;</td><td class="memItemRight" valign="bottom"><
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p><b>Archetype</b>: Camera perspective projection (a.k.a. </p>
 <p>intrinsics).</p>
-<h2><a class="anchor" id="autotoc_md70"></a>
+<h2><a class="anchor" id="autotoc_md73"></a>
 Examples</h2>
-<h3><a class="anchor" id="autotoc_md71"></a>
+<h3><a class="anchor" id="autotoc_md74"></a>
 Simple pinhole camera</h3>
 <p><img src="https://static.rerun.io/pinhole_simple/9af9441a94bcd9fd54e1fea44fb0c59ff381a7f2/full.png" alt="image" class="inline"/></p>
 <div class="fragment"><div class="line"><span class="preprocessor">#include &lt;rerun.hpp&gt;</span></div>
@@ -209,7 +209,7 @@ Simple pinhole camera</h3>
 <div class="line">    rec.log(<span class="stringliteral">&quot;world/image&quot;</span>, rerun::Image::from_rgb24(random_data, {3, 3}));</div>
 <div class="line">}</div>
 <div class="ttc" id="aclassrerun_1_1RecordingStream_html"><div class="ttname"><a href="classrerun_1_1RecordingStream.html">rerun::RecordingStream</a></div><div class="ttdoc">A RecordingStream handles everything related to logging data into Rerun.</div><div class="ttdef"><b>Definition</b> recording_stream.hpp:60</div></div>
-</div><!-- fragment --><h3><a class="anchor" id="autotoc_md72"></a>
+</div><!-- fragment --><h3><a class="anchor" id="autotoc_md75"></a>
 Perspective pinhole camera</h3>
 <p><img src="https://static.rerun.io/pinhole_perspective/317e2de6d212b238dcdad5b67037e9e2a2afafa0/full.png" alt="image" class="inline"/></p>
 <div class="fragment"><div class="line"><span class="preprocessor">#include &lt;rerun.hpp&gt;</span></div>
@@ -235,8 +235,8 @@ Perspective pinhole camera</h3>
 <div class="line">}</div>
 <div class="ttc" id="astructrerun_1_1archetypes_1_1Pinhole_html_aab4731ab3d311a4f3283bdf65a2dbf44"><div class="ttname"><a href="structrerun_1_1archetypes_1_1Pinhole.html#aab4731ab3d311a4f3283bdf65a2dbf44">rerun::archetypes::Pinhole::with_image_plane_distance</a></div><div class="ttdeci">Pinhole with_image_plane_distance(rerun::components::ImagePlaneDistance _image_plane_distance) &amp;&amp;</div><div class="ttdoc">The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.</div><div class="ttdef"><b>Definition</b> pinhole.hpp:245</div></div>
 <div class="ttc" id="astructrerun_1_1archetypes_1_1Pinhole_html_af5c8efff45e82eaf6c231251fd612124"><div class="ttname"><a href="structrerun_1_1archetypes_1_1Pinhole.html#af5c8efff45e82eaf6c231251fd612124">rerun::archetypes::Pinhole::with_camera_xyz</a></div><div class="ttdeci">Pinhole with_camera_xyz(rerun::components::ViewCoordinates _camera_xyz) &amp;&amp;</div><div class="ttdoc">Sets the view coordinates for the camera.</div><div class="ttdef"><b>Definition</b> pinhole.hpp:236</div></div>
-<div class="ttc" id="astructrerun_1_1archetypes_1_1Points3D_html"><div class="ttname"><a href="structrerun_1_1archetypes_1_1Points3D.html">rerun::archetypes::Points3D</a></div><div class="ttdoc">Archetype: A 3D point cloud with positions and optional colors, radii, labels, etc.</div><div class="ttdef"><b>Definition</b> points3d.hpp:155</div></div>
-<div class="ttc" id="astructrerun_1_1components_1_1ViewCoordinates_html_abe1a1eef9ecca5352a2faf49cceb20e0"><div class="ttname"><a href="structrerun_1_1components_1_1ViewCoordinates.html#abe1a1eef9ecca5352a2faf49cceb20e0">rerun::components::ViewCoordinates::RUB</a></div><div class="ttdeci">static RERUN_SDK_EXPORT const rerun::components::ViewCoordinates RUB</div><div class="ttdoc">X=Right, Y=Up, Z=Back.</div><div class="ttdef"><b>Definition</b> view_coordinates.hpp:115</div></div>
+<div class="ttc" id="astructrerun_1_1archetypes_1_1Points3D_html"><div class="ttname"><a href="structrerun_1_1archetypes_1_1Points3D.html">rerun::archetypes::Points3D</a></div><div class="ttdoc">Archetype: A 3D point cloud with positions and optional colors, radii, labels, etc.</div><div class="ttdef"><b>Definition</b> points3d.hpp:156</div></div>
+<div class="ttc" id="astructrerun_1_1components_1_1ViewCoordinates_html_abe1a1eef9ecca5352a2faf49cceb20e0"><div class="ttname"><a href="structrerun_1_1components_1_1ViewCoordinates.html#abe1a1eef9ecca5352a2faf49cceb20e0">rerun::components::ViewCoordinates::RUB</a></div><div class="ttdeci">static RERUN_SDK_EXPORT const rerun::components::ViewCoordinates RUB</div><div class="ttdoc">X=Right, Y=Up, Z=Back.</div><div class="ttdef"><b>Definition</b> view_coordinates.hpp:137</div></div>
 </div><!-- fragment --> </div><h2 class="groupheader">Member Function Documentation</h2>
 <a id="aa135b448a6da6fdecb92d92710894b13" name="aa135b448a6da6fdecb92d92710894b13"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aa135b448a6da6fdecb92d92710894b13">&#9670;&#160;</a></span>from_focal_length_and_resolution() <span class="overload">[1/2]</span></h2>

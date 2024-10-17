@@ -135,9 +135,10 @@ std::array&lt; uint8_t, 3 &gt;&#160;</td><td class="memItemRight" valign="bottom
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p><b>Datatype</b>: How we interpret the coordinate system of an entity/space. </p>
-<p>For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?</p>
+<p>For instance: What is "up"? What does the Z axis mean?</p>
 <p>The three coordinates are always ordered as [x, y, z].</p>
 <p>For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points down, and the Z axis points forward.</p>
+<p>⚠ <a href="https://github.com/rerun-io/rerun/issues/5032">Rerun does not yet support left-handed coordinate systems</a>.</p>
 <p>The following constants are used to represent the different directions:</p><ul>
 <li>Up = 1</li>
 <li>Down = 2</li>

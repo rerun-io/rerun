@@ -8,5 +8,5 @@ var searchData=
   ['keypointid_5',['KeypointId',['../structrerun_1_1components_1_1KeypointId.html',1,'rerun::components::KeypointId'],['../structrerun_1_1datatypes_1_1KeypointId.html',1,'rerun::datatypes::KeypointId']]],
   ['keypointpair_6',['KeypointPair',['../structrerun_1_1datatypes_1_1KeypointPair.html',1,'rerun::datatypes']]],
   ['keyvalue_7',['KeyValue',['../classcxxopts_1_1KeyValue.html',1,'cxxopts']]],
-  ['kind_8',['kind',['../structrerun_1_1blueprint_1_1archetypes_1_1Background.html#a3302c7ffd1e7d88a1da7dc20a0f16880',1,'rerun::blueprint::archetypes::Background::kind'],['../structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html#a2f7c0b29efb06f10d533af28fbeb8d43',1,'rerun::blueprint::archetypes::DataframeQuery::kind'],['../classrerun_1_1RecordingStream.html#a72bced7e99acd1fee20e1502ee5cf2da',1,'rerun::RecordingStream::kind()']]]
+  ['kind_8',['kind',['../structrerun_1_1blueprint_1_1archetypes_1_1Background.html#a3302c7ffd1e7d88a1da7dc20a0f16880',1,'rerun::blueprint::archetypes::Background::kind'],['../classrerun_1_1RecordingStream.html#a72bced7e99acd1fee20e1502ee5cf2da',1,'rerun::RecordingStream::kind()']]]
 ];

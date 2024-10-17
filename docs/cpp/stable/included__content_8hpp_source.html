@@ -119,7 +119,7 @@ $(document).ready(function(){initNavTree('included__content_8hpp_source.html',''
 <div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span><span class="keyword">namespace </span>rerun::blueprint::components {<span class="comment"></span></div>
 <div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span><span class="comment">    /// **Component**: All the contents in the container.</span></div>
 <div class="line"><a id="l00016" name="l00016"></a><span class="lineno"><a class="line" href="structrerun_1_1blueprint_1_1components_1_1IncludedContent.html">   16</a></span><span class="comment"></span>    <span class="keyword">struct </span><a class="code hl_struct" href="structrerun_1_1blueprint_1_1components_1_1IncludedContent.html">IncludedContent</a> {<span class="comment"></span></div>
-<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span><span class="comment">        /// List of the contents by EntityPath.</span></div>
+<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span><span class="comment">        /// List of the contents by `datatypes::EntityPath`.</span></div>
 <div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span><span class="comment">        ///</span></div>
 <div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span><span class="comment">        /// This must be a path in the blueprint store.</span></div>
 <div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span><span class="comment">        /// Typically structure as `&lt;blueprint_registry&gt;/&lt;uuid&gt;`.</span></div>
@@ -168,17 +168,27 @@ $(document).ready(function(){initNavTree('included__content_8hpp_source.html',''
 <div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span><span class="comment"></span>        <span class="keyword">static</span> Result&lt;std::shared_ptr&lt;arrow::Array&gt;&gt; to_arrow(</div>
 <div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span>            <span class="keyword">const</span> blueprint::components::IncludedContent* instances, <span class="keywordtype">size_t</span> num_instances</div>
 <div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span>        ) {</div>
-<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span>            <span class="keywordflow">return</span> Loggable&lt;rerun::datatypes::EntityPath&gt;::to_arrow(</div>
-<div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span>                &amp;instances-&gt;contents,</div>
-<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>                num_instances</div>
-<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>            );</div>
-<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>        }</div>
-<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>    };</div>
-<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>} <span class="comment">// namespace rerun</span></div>
+<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span>            <span class="keywordflow">if</span> (num_instances == 0) {</div>
+<div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span>                <span class="keywordflow">return</span> Loggable&lt;rerun::datatypes::EntityPath&gt;::to_arrow(<span class="keyword">nullptr</span>, 0);</div>
+<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>            } <span class="keywordflow">else</span> <span class="keywordflow">if</span> (instances == <span class="keyword">nullptr</span>) {</div>
+<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>                <span class="keywordflow">return</span> <a class="code hl_class" href="classrerun_1_1Error.html">rerun::Error</a>(</div>
+<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>                    ErrorCode::UnexpectedNullArgument,</div>
+<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>                    <span class="stringliteral">&quot;Passed array instances is null when num_elements&gt; 0.&quot;</span></div>
+<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>                );</div>
+<div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span>            } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span>                <span class="keywordflow">return</span> Loggable&lt;rerun::datatypes::EntityPath&gt;::to_arrow(</div>
+<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span>                    &amp;instances-&gt;contents,</div>
+<div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span>                    num_instances</div>
+<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span>                );</div>
+<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span>            }</div>
+<div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span>        }</div>
+<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>    };</div>
+<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span>} <span class="comment">// namespace rerun</span></div>
+<div class="ttc" id="aclassrerun_1_1Error_html"><div class="ttname"><a href="classrerun_1_1Error.html">rerun::Error</a></div><div class="ttdoc">Status outcome object (success or error) returned for fallible operations.</div><div class="ttdef"><b>Definition</b> error.hpp:95</div></div>
 <div class="ttc" id="anamespacererun_html"><div class="ttname"><a href="namespacererun.html">rerun</a></div><div class="ttdoc">All Rerun C++ types and functions are in the rerun namespace or one of its nested namespaces.</div><div class="ttdef"><b>Definition</b> rerun.hpp:22</div></div>
 <div class="ttc" id="astructrerun_1_1Loggable_html"><div class="ttname"><a href="structrerun_1_1Loggable.html">rerun::Loggable</a></div><div class="ttdoc">The Loggable trait is used by all built-in implementation of rerun::AsComponents to serialize a colle...</div><div class="ttdef"><b>Definition</b> loggable.hpp:11</div></div>
 <div class="ttc" id="astructrerun_1_1blueprint_1_1components_1_1IncludedContent_html"><div class="ttname"><a href="structrerun_1_1blueprint_1_1components_1_1IncludedContent.html">rerun::blueprint::components::IncludedContent</a></div><div class="ttdoc">Component: All the contents in the container.</div><div class="ttdef"><b>Definition</b> included_content.hpp:16</div></div>
-<div class="ttc" id="astructrerun_1_1blueprint_1_1components_1_1IncludedContent_html_a64f2964a8ae98e0ddb1009fed77d9af7"><div class="ttname"><a href="structrerun_1_1blueprint_1_1components_1_1IncludedContent.html#a64f2964a8ae98e0ddb1009fed77d9af7">rerun::blueprint::components::IncludedContent::contents</a></div><div class="ttdeci">rerun::datatypes::EntityPath contents</div><div class="ttdoc">List of the contents by EntityPath.</div><div class="ttdef"><b>Definition</b> included_content.hpp:21</div></div>
+<div class="ttc" id="astructrerun_1_1blueprint_1_1components_1_1IncludedContent_html_a64f2964a8ae98e0ddb1009fed77d9af7"><div class="ttname"><a href="structrerun_1_1blueprint_1_1components_1_1IncludedContent.html#a64f2964a8ae98e0ddb1009fed77d9af7">rerun::blueprint::components::IncludedContent::contents</a></div><div class="ttdeci">rerun::datatypes::EntityPath contents</div><div class="ttdoc">List of the contents by datatypes::EntityPath.</div><div class="ttdef"><b>Definition</b> included_content.hpp:21</div></div>
 <div class="ttc" id="astructrerun_1_1datatypes_1_1EntityPath_html"><div class="ttname"><a href="structrerun_1_1datatypes_1_1EntityPath.html">rerun::datatypes::EntityPath</a></div><div class="ttdoc">Datatype: A path to an entity in the ChunkStore.</div><div class="ttdef"><b>Definition</b> entity_path.hpp:21</div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->

@@ -28,6 +28,7 @@ var namespacererun_1_1datatypes =
     [ "TimeInt", "structrerun_1_1datatypes_1_1TimeInt.html", null ],
     [ "TimeRange", "structrerun_1_1datatypes_1_1TimeRange.html", "structrerun_1_1datatypes_1_1TimeRange" ],
     [ "TimeRangeBoundary", "structrerun_1_1datatypes_1_1TimeRangeBoundary.html", "structrerun_1_1datatypes_1_1TimeRangeBoundary" ],
+    [ "UInt16", "structrerun_1_1datatypes_1_1UInt16.html", null ],
     [ "UInt32", "structrerun_1_1datatypes_1_1UInt32.html", null ],
     [ "UInt64", "structrerun_1_1datatypes_1_1UInt64.html", null ],
     [ "Utf8", "structrerun_1_1datatypes_1_1Utf8.html", null ],
@@ -38,6 +39,7 @@ var namespacererun_1_1datatypes =
     [ "Vec2D", "structrerun_1_1datatypes_1_1Vec2D.html", "structrerun_1_1datatypes_1_1Vec2D" ],
     [ "Vec3D", "structrerun_1_1datatypes_1_1Vec3D.html", "structrerun_1_1datatypes_1_1Vec3D" ],
     [ "Vec4D", "structrerun_1_1datatypes_1_1Vec4D.html", "structrerun_1_1datatypes_1_1Vec4D" ],
+    [ "VideoTimestamp", "structrerun_1_1datatypes_1_1VideoTimestamp.html", "structrerun_1_1datatypes_1_1VideoTimestamp" ],
     [ "ViewCoordinates", "structrerun_1_1datatypes_1_1ViewCoordinates.html", "structrerun_1_1datatypes_1_1ViewCoordinates" ],
     [ "VisibleTimeRange", "structrerun_1_1datatypes_1_1VisibleTimeRange.html", "structrerun_1_1datatypes_1_1VisibleTimeRange" ],
     [ "ChannelDatatype", "namespacererun_1_1datatypes.html#ae7ac6fe33d69afc1beeb6b4e14541e56", [
@@ -56,10 +58,20 @@ var namespacererun_1_1datatypes =
     [ "ColorModel", "namespacererun_1_1datatypes.html#a46a3f90bd22bb490b4c116b79d53c286", [
       [ "L", "namespacererun_1_1datatypes.html#a46a3f90bd22bb490b4c116b79d53c286ad20caec3b48a1eef164cb4ca81ba2587", null ],
       [ "RGB", "namespacererun_1_1datatypes.html#a46a3f90bd22bb490b4c116b79d53c286a889574aebacda6bfd3e534e2b49b8028", null ],
-      [ "RGBA", "namespacererun_1_1datatypes.html#a46a3f90bd22bb490b4c116b79d53c286aea3495a278957dc58165e48a8945469f", null ]
+      [ "RGBA", "namespacererun_1_1datatypes.html#a46a3f90bd22bb490b4c116b79d53c286aea3495a278957dc58165e48a8945469f", null ],
+      [ "BGR", "namespacererun_1_1datatypes.html#a46a3f90bd22bb490b4c116b79d53c286a2ad5640ebdec72fc79531d1778c6c2dc", null ],
+      [ "BGRA", "namespacererun_1_1datatypes.html#a46a3f90bd22bb490b4c116b79d53c286a5a1fe3c61c9e2fd6dbbc823589f6e697", null ]
     ] ],
     [ "PixelFormat", "namespacererun_1_1datatypes.html#a4501c651254eeac0fe10cbfce5021d1d", [
+      [ "Y_U_V12_LimitedRange", "namespacererun_1_1datatypes.html#a4501c651254eeac0fe10cbfce5021d1da45ed30edbc5c95834b5cc7ae241591ff", null ],
       [ "NV12", "namespacererun_1_1datatypes.html#a4501c651254eeac0fe10cbfce5021d1da202f5d8c2c70d31048154d8b8b28e755", null ],
-      [ "YUY2", "namespacererun_1_1datatypes.html#a4501c651254eeac0fe10cbfce5021d1dac4ae1e9efde614ab49c73b35107eefe1", null ]
+      [ "YUY2", "namespacererun_1_1datatypes.html#a4501c651254eeac0fe10cbfce5021d1dac4ae1e9efde614ab49c73b35107eefe1", null ],
+      [ "Y8_FullRange", "namespacererun_1_1datatypes.html#a4501c651254eeac0fe10cbfce5021d1dae86b00ae83b831e0efa46ce4340a1c7e", null ],
+      [ "Y_U_V24_LimitedRange", "namespacererun_1_1datatypes.html#a4501c651254eeac0fe10cbfce5021d1da7ac417979fecbf1bbc37516da6c650f5", null ],
+      [ "Y_U_V24_FullRange", "namespacererun_1_1datatypes.html#a4501c651254eeac0fe10cbfce5021d1da4b28b4b385aa9dfe1d12f10751e50052", null ],
+      [ "Y8_LimitedRange", "namespacererun_1_1datatypes.html#a4501c651254eeac0fe10cbfce5021d1da6ea41fe100e9d69b9338b1ca07c69e25", null ],
+      [ "Y_U_V12_FullRange", "namespacererun_1_1datatypes.html#a4501c651254eeac0fe10cbfce5021d1da11528fa59a5c900945931bfcf74a1bdc", null ],
+      [ "Y_U_V16_LimitedRange", "namespacererun_1_1datatypes.html#a4501c651254eeac0fe10cbfce5021d1da989d27272c5b6b1780d2d29393b00fbb", null ],
+      [ "Y_U_V16_FullRange", "namespacererun_1_1datatypes.html#a4501c651254eeac0fe10cbfce5021d1da7ae15d510f1a7afb2deb3bcbbba63695", null ]
     ] ]
 ];

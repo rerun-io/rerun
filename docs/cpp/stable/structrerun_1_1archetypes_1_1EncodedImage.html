@@ -147,9 +147,6 @@ static <a class="el" href="classrerun_1_1Result.html">Result</a>&lt; <a class="e
 <tr class="memitem:ac8b15f23007bfaf14f7784028fdc09b5"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="structrerun_1_1archetypes_1_1EncodedImage.html">EncodedImage</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1archetypes_1_1EncodedImage.html#ac8b15f23007bfaf14f7784028fdc09b5">from_bytes</a> (<a class="el" href="classrerun_1_1Collection.html">rerun::Collection</a>&lt; uint8_t &gt; image_contents, std::optional&lt; <a class="el" href="structrerun_1_1components_1_1MediaType.html">rerun::components::MediaType</a> &gt; <a class="el" href="structrerun_1_1archetypes_1_1EncodedImage.html#a3aee89c94dbd2ab161d8a06cd4fd19d5">media_type</a>={})</td></tr>
 <tr class="memdesc:ac8b15f23007bfaf14f7784028fdc09b5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Create a new <code><a class="el" href="structrerun_1_1archetypes_1_1EncodedImage.html" title="Archetype: An image encoded as e.g.">EncodedImage</a></code> from the contents of an image file, like a PNG or JPEG.  <br /></td></tr>
 <tr class="separator:ac8b15f23007bfaf14f7784028fdc09b5"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8bcdffa21d935ebc514b38069cfa8545"><td class="memItemLeft" align="right" valign="top"><a id="a8bcdffa21d935ebc514b38069cfa8545" name="a8bcdffa21d935ebc514b38069cfa8545"></a>
-static std::optional&lt; <a class="el" href="structrerun_1_1components_1_1MediaType.html">rerun::components::MediaType</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>guess_media_type</b> (const std::filesystem::path &amp;path)</td></tr>
-<tr class="separator:a8bcdffa21d935ebc514b38069cfa8545"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -175,10 +172,10 @@ Static Public Attributes</h2></td></tr>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p><b>Archetype</b>: An image encoded as e.g. </p>
 <p>a JPEG or PNG.</p>
-<p>Rerun also supports uncompressed images with the <code><a class="el" href="structrerun_1_1archetypes_1_1Image.html" title="Archetype: A monochrome or color image.">archetypes::Image</a></code>.</p>
-<h2><a class="anchor" id="autotoc_md54"></a>
+<p>Rerun also supports uncompressed images with the <code><a class="el" href="structrerun_1_1archetypes_1_1Image.html" title="Archetype: A monochrome or color image.">archetypes::Image</a></code>. For images that refer to video frames see <code><a class="el" href="structrerun_1_1archetypes_1_1VideoFrameReference.html" title="Archetype: References a single video frame.">archetypes::VideoFrameReference</a></code>.</p>
+<h2><a class="anchor" id="autotoc_md57"></a>
 Example</h2>
-<h3><a class="anchor" id="autotoc_md55"></a>
+<h3><a class="anchor" id="autotoc_md58"></a>
 encoded_image:</h3>
 <div class="fragment"><div class="line"><span class="preprocessor">#include &lt;rerun.hpp&gt;</span></div>
 <div class="line"> </div>

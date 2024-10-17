@@ -147,6 +147,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a202d69a2827afc46ba1b0f968b5ac47e"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structrerun_1_1archetypes_1_1DepthImage.html">DepthImage</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1archetypes_1_1DepthImage.html#a202d69a2827afc46ba1b0f968b5ac47e">with_colormap</a> (<a class="el" href="namespacererun_1_1components.html#a2386215e0114f5ede6693c7ca994ac1b">rerun::components::Colormap</a> _colormap) &amp;&amp;</td></tr>
 <tr class="memdesc:a202d69a2827afc46ba1b0f968b5ac47e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Colormap to use for rendering the depth image.  <br /></td></tr>
 <tr class="separator:a202d69a2827afc46ba1b0f968b5ac47e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab99c3723c1672c0a6e796fcd2be2be7f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structrerun_1_1archetypes_1_1DepthImage.html">DepthImage</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1archetypes_1_1DepthImage.html#ab99c3723c1672c0a6e796fcd2be2be7f">with_depth_range</a> (<a class="el" href="structrerun_1_1components_1_1ValueRange.html">rerun::components::ValueRange</a> _depth_range) &amp;&amp;</td></tr>
+<tr class="memdesc:ab99c3723c1672c0a6e796fcd2be2be7f"><td class="mdescLeft">&#160;</td><td class="mdescRight">The expected range of depth values.  <br /></td></tr>
+<tr class="separator:ab99c3723c1672c0a6e796fcd2be2be7f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3bb37c6320a50c0afab36807da38c685"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structrerun_1_1archetypes_1_1DepthImage.html">DepthImage</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1archetypes_1_1DepthImage.html#a3bb37c6320a50c0afab36807da38c685">with_point_fill_ratio</a> (<a class="el" href="structrerun_1_1components_1_1FillRatio.html">rerun::components::FillRatio</a> _point_fill_ratio) &amp;&amp;</td></tr>
 <tr class="memdesc:a3bb37c6320a50c0afab36807da38c685"><td class="mdescLeft">&#160;</td><td class="mdescRight">Scale the radii of the points in the point cloud generated from this image.  <br /></td></tr>
 <tr class="separator:a3bb37c6320a50c0afab36807da38c685"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -170,6 +173,9 @@ Public Attributes</h2></td></tr>
 <tr class="memitem:a1f31680d8c14815772a0348205e70e7c"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="namespacererun_1_1components.html#a2386215e0114f5ede6693c7ca994ac1b">rerun::components::Colormap</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1archetypes_1_1DepthImage.html#a1f31680d8c14815772a0348205e70e7c">colormap</a></td></tr>
 <tr class="memdesc:a1f31680d8c14815772a0348205e70e7c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Colormap to use for rendering the depth image.  <br /></td></tr>
 <tr class="separator:a1f31680d8c14815772a0348205e70e7c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a78cbc93974157452beeacd2dc382745e"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="structrerun_1_1components_1_1ValueRange.html">rerun::components::ValueRange</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1archetypes_1_1DepthImage.html#a78cbc93974157452beeacd2dc382745e">depth_range</a></td></tr>
+<tr class="memdesc:a78cbc93974157452beeacd2dc382745e"><td class="mdescLeft">&#160;</td><td class="mdescRight">The expected range of depth values.  <br /></td></tr>
+<tr class="separator:a78cbc93974157452beeacd2dc382745e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3f3f923facf2bcf76c744f880b78a6b9"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="structrerun_1_1components_1_1FillRatio.html">rerun::components::FillRatio</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1archetypes_1_1DepthImage.html#a3f3f923facf2bcf76c744f880b78a6b9">point_fill_ratio</a></td></tr>
 <tr class="memdesc:a3f3f923facf2bcf76c744f880b78a6b9"><td class="mdescLeft">&#160;</td><td class="mdescRight">Scale the radii of the points in the point cloud generated from this image.  <br /></td></tr>
 <tr class="separator:a3f3f923facf2bcf76c744f880b78a6b9"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -186,10 +192,10 @@ Static Public Attributes</h2></td></tr>
 <div class="textblock"><p><b>Archetype</b>: A depth image, i.e. </p>
 <p>as captured by a depth camera.</p>
 <p>Each pixel corresponds to a depth value in units specified by <code><a class="el" href="structrerun_1_1components_1_1DepthMeter.html" title="Component: The world-&gt;depth map scaling factor.">components::DepthMeter</a></code>.</p>
-<p>Since the underlying <code><a class="el" href="structrerun_1_1datatypes_1_1TensorData.html" title="Datatype: An N-dimensional array of numbers.">rerun::datatypes::TensorData</a></code> uses <code><a class="el" href="classrerun_1_1Collection.html" title="Generic collection of elements that are roughly contiguous in memory.">rerun::Collection</a></code> internally, data can be passed in without a copy from raw pointers or by reference from <code>std::vector</code>/<code>std::array</code>/c-arrays. If needed, this "borrow-behavior" can be extended by defining your own <code><a class="el" href="structrerun_1_1CollectionAdapter.html" title="The rerun::CollectionAdapter trait is responsible for mapping an input argument to a rerun::Collectio...">rerun::CollectionAdapter</a></code>.</p>
-<h2><a class="anchor" id="autotoc_md50"></a>
+<p>Since the underlying <code>rerun::datatypes::ImageBuffer</code> uses <code><a class="el" href="classrerun_1_1Collection.html" title="Generic collection of elements that are roughly contiguous in memory.">rerun::Collection</a></code> internally, data can be passed in without a copy from raw pointers or by reference from <code>std::vector</code>/<code>std::array</code>/c-arrays. If needed, this "borrow-behavior" can be extended by defining your own <code><a class="el" href="structrerun_1_1CollectionAdapter.html" title="The rerun::CollectionAdapter trait is responsible for mapping an input argument to a rerun::Collectio...">rerun::CollectionAdapter</a></code>.</p>
+<h2><a class="anchor" id="autotoc_md53"></a>
 Example</h2>
-<h3><a class="anchor" id="autotoc_md51"></a>
+<h3><a class="anchor" id="autotoc_md54"></a>
 Depth to 3D example</h3>
 <p><img src="https://static.rerun.io/depth_image_3d/924e9d4d6a39d63d4fdece82582855fdaa62d15e/full.png" alt="image" class="inline"/></p>
 <div class="fragment"><div class="line"><span class="preprocessor">#include &lt;rerun.hpp&gt;</span></div>
@@ -230,9 +236,9 @@ Depth to 3D example</h3>
 <div class="line">}</div>
 <div class="ttc" id="aclassrerun_1_1RecordingStream_html"><div class="ttname"><a href="classrerun_1_1RecordingStream.html">rerun::RecordingStream</a></div><div class="ttdoc">A RecordingStream handles everything related to logging data into Rerun.</div><div class="ttdef"><b>Definition</b> recording_stream.hpp:60</div></div>
 <div class="ttc" id="anamespacererun_1_1components_html_a2386215e0114f5ede6693c7ca994ac1ba951ee92ee5e947e1e7e1cb6376523c1a"><div class="ttname"><a href="namespacererun_1_1components.html#a2386215e0114f5ede6693c7ca994ac1ba951ee92ee5e947e1e7e1cb6376523c1a">rerun::components::Colormap::Viridis</a></div><div class="ttdeci">@ Viridis</div><div class="ttdoc">The Viridis colormap from Matplotlib.</div></div>
-<div class="ttc" id="astructrerun_1_1archetypes_1_1DepthImage_html"><div class="ttname"><a href="structrerun_1_1archetypes_1_1DepthImage.html">rerun::archetypes::DepthImage</a></div><div class="ttdoc">Archetype: A depth image, i.e.</div><div class="ttdef"><b>Definition</b> depth_image.hpp:76</div></div>
-<div class="ttc" id="astructrerun_1_1archetypes_1_1DepthImage_html_a202d69a2827afc46ba1b0f968b5ac47e"><div class="ttname"><a href="structrerun_1_1archetypes_1_1DepthImage.html#a202d69a2827afc46ba1b0f968b5ac47e">rerun::archetypes::DepthImage::with_colormap</a></div><div class="ttdeci">DepthImage with_colormap(rerun::components::Colormap _colormap) &amp;&amp;</div><div class="ttdoc">Colormap to use for rendering the depth image.</div><div class="ttdef"><b>Definition</b> depth_image.hpp:198</div></div>
-<div class="ttc" id="astructrerun_1_1archetypes_1_1DepthImage_html_a97ed72788b14efec1c4c26116a592034"><div class="ttname"><a href="structrerun_1_1archetypes_1_1DepthImage.html#a97ed72788b14efec1c4c26116a592034">rerun::archetypes::DepthImage::with_meter</a></div><div class="ttdeci">DepthImage with_meter(rerun::components::DepthMeter _meter) &amp;&amp;</div><div class="ttdoc">An optional floating point value that specifies how long a meter is in the native depth units.</div><div class="ttdef"><b>Definition</b> depth_image.hpp:189</div></div>
+<div class="ttc" id="astructrerun_1_1archetypes_1_1DepthImage_html"><div class="ttname"><a href="structrerun_1_1archetypes_1_1DepthImage.html">rerun::archetypes::DepthImage</a></div><div class="ttdoc">Archetype: A depth image, i.e.</div><div class="ttdef"><b>Definition</b> depth_image.hpp:77</div></div>
+<div class="ttc" id="astructrerun_1_1archetypes_1_1DepthImage_html_a202d69a2827afc46ba1b0f968b5ac47e"><div class="ttname"><a href="structrerun_1_1archetypes_1_1DepthImage.html#a202d69a2827afc46ba1b0f968b5ac47e">rerun::archetypes::DepthImage::with_colormap</a></div><div class="ttdeci">DepthImage with_colormap(rerun::components::Colormap _colormap) &amp;&amp;</div><div class="ttdoc">Colormap to use for rendering the depth image.</div><div class="ttdef"><b>Definition</b> depth_image.hpp:212</div></div>
+<div class="ttc" id="astructrerun_1_1archetypes_1_1DepthImage_html_a97ed72788b14efec1c4c26116a592034"><div class="ttname"><a href="structrerun_1_1archetypes_1_1DepthImage.html#a97ed72788b14efec1c4c26116a592034">rerun::archetypes::DepthImage::with_meter</a></div><div class="ttdeci">DepthImage with_meter(rerun::components::DepthMeter _meter) &amp;&amp;</div><div class="ttdoc">An optional floating point value that specifies how long a meter is in the native depth units.</div><div class="ttdef"><b>Definition</b> depth_image.hpp:203</div></div>
 </div><!-- fragment --> </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="ac1e706a7c654efb731ca7d8f9188414c" name="ac1e706a7c654efb731ca7d8f9188414c"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ac1e706a7c654efb731ca7d8f9188414c">&#9670;&#160;</a></span>DepthImage() <span class="overload">[1/4]</span></h2>
@@ -493,6 +499,36 @@ template&lt;typename TElement &gt; </div>
 
 </div>
 </div>
+<a id="ab99c3723c1672c0a6e796fcd2be2be7f" name="ab99c3723c1672c0a6e796fcd2be2be7f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab99c3723c1672c0a6e796fcd2be2be7f">&#9670;&#160;</a></span>with_depth_range()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structrerun_1_1archetypes_1_1DepthImage.html">DepthImage</a> rerun::archetypes::DepthImage::with_depth_range </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structrerun_1_1components_1_1ValueRange.html">rerun::components::ValueRange</a>&#160;</td>
+          <td class="paramname"><em>_depth_range</em></td><td>)</td>
+          <td> &amp;&amp;</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>The expected range of depth values. </p>
+<p>This is typically the expected range of valid values. Everything outside of the range is clamped to the range for the purpose of colormpaping. Note that point clouds generated from this image will still display all points, regardless of this range.</p>
+<p>If not specified, the range will be automatically estimated from the data. Note that the Viewer may try to guess a wider range than the minimum/maximum of values in the contents of the depth image. E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0, the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255. </p>
+
+</div>
+</div>
 <a id="a3bb37c6320a50c0afab36807da38c685" name="a3bb37c6320a50c0afab36807da38c685"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a3bb37c6320a50c0afab36807da38c685">&#9670;&#160;</a></span>with_point_fill_ratio()</h2>
 
@@ -585,6 +621,24 @@ template&lt;typename TElement &gt; </div>
 
 <p>Colormap to use for rendering the depth image. </p>
 <p>If not set, the depth image will be rendered using the Turbo colormap. </p>
+
+</div>
+</div>
+<a id="a78cbc93974157452beeacd2dc382745e" name="a78cbc93974157452beeacd2dc382745e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a78cbc93974157452beeacd2dc382745e">&#9670;&#160;</a></span>depth_range</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::optional&lt;<a class="el" href="structrerun_1_1components_1_1ValueRange.html">rerun::components::ValueRange</a>&gt; rerun::archetypes::DepthImage::depth_range</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>The expected range of depth values. </p>
+<p>This is typically the expected range of valid values. Everything outside of the range is clamped to the range for the purpose of colormpaping. Note that point clouds generated from this image will still display all points, regardless of this range.</p>
+<p>If not specified, the range will be automatically estimated from the data. Note that the Viewer may try to guess a wider range than the minimum/maximum of values in the contents of the depth image. E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0, the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255. </p>
 
 </div>
 </div>

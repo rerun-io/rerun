@@ -190,13 +190,13 @@ static constexpr const char&#160;</td><td class="memItemRight" valign="bottom"><
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p><b>Archetype</b>: A monochrome or color image. </p>
 <p>See also <code><a class="el" href="structrerun_1_1archetypes_1_1DepthImage.html" title="Archetype: A depth image, i.e.">archetypes::DepthImage</a></code> and <code><a class="el" href="structrerun_1_1archetypes_1_1SegmentationImage.html" title="Archetype: An image made up of integer components::ClassIds.">archetypes::SegmentationImage</a></code>.</p>
+<p>Rerun also supports compressed images (JPEG, PNG, …), using <code><a class="el" href="structrerun_1_1archetypes_1_1EncodedImage.html" title="Archetype: An image encoded as e.g.">archetypes::EncodedImage</a></code>. For images that refer to video frames see <code><a class="el" href="structrerun_1_1archetypes_1_1VideoFrameReference.html" title="Archetype: References a single video frame.">archetypes::VideoFrameReference</a></code>. Compressing images or using video data instead can save a lot of bandwidth and memory.</p>
 <p>The raw image data is stored as a single buffer of bytes in a <code><a class="el" href="structrerun_1_1components_1_1Blob.html" title="Component: A binary blob of data.">components::Blob</a></code>. The meaning of these bytes is determined by the <code><a class="el" href="structrerun_1_1components_1_1ImageFormat.html" title="Component: The metadata describing the contents of a components::ImageBuffer.">components::ImageFormat</a></code> which specifies the resolution and the pixel format (e.g. RGB, RGBA, …).</p>
 <p>The order of dimensions in the underlying <code><a class="el" href="structrerun_1_1components_1_1Blob.html" title="Component: A binary blob of data.">components::Blob</a></code> follows the typical row-major, interleaved-pixel image format.</p>
-<p>Rerun also supports compressed images (JPEG, PNG, …), using <code><a class="el" href="structrerun_1_1archetypes_1_1EncodedImage.html" title="Archetype: An image encoded as e.g.">archetypes::EncodedImage</a></code>. Compressing images can save a lot of bandwidth and memory.</p>
 <p>Since the underlying [<a class="el" href="structrerun_1_1components_1_1Blob.html" title="Component: A binary blob of data.">rerun::components::Blob</a>] uses <code><a class="el" href="classrerun_1_1Collection.html" title="Generic collection of elements that are roughly contiguous in memory.">rerun::Collection</a></code> internally, data can be passed in without a copy from raw pointers or by reference from <code>std::vector</code>/<code>std::array</code>/c-arrays. If needed, this "borrow-behavior" can be extended by defining your own <code><a class="el" href="structrerun_1_1CollectionAdapter.html" title="The rerun::CollectionAdapter trait is responsible for mapping an input argument to a rerun::Collectio...">rerun::CollectionAdapter</a></code>.</p>
-<h2><a class="anchor" id="autotoc_md56"></a>
+<h2><a class="anchor" id="autotoc_md59"></a>
 Examples</h2>
-<h3><a class="anchor" id="autotoc_md57"></a>
+<h3><a class="anchor" id="autotoc_md60"></a>
 image_simple:</h3>
 <p><img src="https://static.rerun.io/image_simple/06ba7f8582acc1ffb42a7fd0006fad7816f3e4e4/full.png" alt="image" class="inline"/></p>
 <div class="fragment"><div class="line"><span class="preprocessor">#include &lt;rerun.hpp&gt;</span></div>
@@ -225,61 +225,75 @@ image_simple:</h3>
 <div class="line">    rec.log(<span class="stringliteral">&quot;image&quot;</span>, rerun::Image::from_rgb24(data, {WIDTH, HEIGHT}));</div>
 <div class="line">}</div>
 <div class="ttc" id="aclassrerun_1_1RecordingStream_html"><div class="ttname"><a href="classrerun_1_1RecordingStream.html">rerun::RecordingStream</a></div><div class="ttdoc">A RecordingStream handles everything related to logging data into Rerun.</div><div class="ttdef"><b>Definition</b> recording_stream.hpp:60</div></div>
-</div><!-- fragment --><h3><a class="anchor" id="autotoc_md58"></a>
-Advanced usage of &lt;tt&gt;send_columns&lt;/tt&gt; to send multiple images at once</h3>
-<p><img src="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/full.png" alt="image" class="inline"/></p>
-<div class="fragment"><div class="line"><span class="preprocessor">#include &lt;numeric&gt;</span></div>
+</div><!-- fragment --><h3><a class="anchor" id="autotoc_md61"></a>
+Logging images with various formats</h3>
+<p><img src="https://static.rerun.io/image_formats/7b8a162fcfd266f303980439beea997dc8544c24/full.png" alt="image" class="inline"/></p>
+<div class="fragment"><div class="line"><span class="preprocessor">#include &lt;algorithm&gt;</span></div>
+<div class="line"><span class="preprocessor">#include &lt;cstdint&gt;</span></div>
+<div class="line"><span class="preprocessor">#include &lt;vector&gt;</span></div>
+<div class="line"> </div>
 <div class="line"><span class="preprocessor">#include &lt;rerun.hpp&gt;</span></div>
 <div class="line"> </div>
 <div class="line"><span class="keywordtype">int</span> main() {</div>
-<div class="line">    <span class="keyword">auto</span> rec = <a class="code hl_class" href="classrerun_1_1RecordingStream.html">rerun::RecordingStream</a>(<span class="stringliteral">&quot;rerun_example_image_send_columns&quot;</span>);</div>
+<div class="line">    <span class="keyword">const</span> <span class="keyword">auto</span> rec = <a class="code hl_class" href="classrerun_1_1RecordingStream.html">rerun::RecordingStream</a>(<span class="stringliteral">&quot;rerun_example_image_formats&quot;</span>);</div>
 <div class="line">    rec.spawn().exit_on_failure();</div>
 <div class="line"> </div>
-<div class="line">    <span class="comment">// Timeline on which the images are distributed.</span></div>
-<div class="line">    std::vector&lt;int64_t&gt; times(20);</div>
-<div class="line">    std::iota(times.begin(), times.end(), 0);</div>
-<div class="line"> </div>
-<div class="line">    <span class="comment">// Create a batch of images with a moving rectangle.</span></div>
-<div class="line">    <span class="keyword">const</span> <span class="keywordtype">size_t</span> width = 300, height = 200;</div>
-<div class="line">    std::vector&lt;uint8_t&gt; images(times.size() * height * width * 3, 0);</div>
-<div class="line">    <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> t = 0; t &lt;times.size(); ++t) {</div>
-<div class="line">        <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> y = 0; y &lt;height; ++y) {</div>
-<div class="line">            <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> x = 0; x &lt;width; ++x) {</div>
-<div class="line">                <span class="keywordtype">size_t</span> idx = (t * height * width + y * width + x) * 3;</div>
-<div class="line">                images[idx + 2] = 255; <span class="comment">// Blue background</span></div>
-<div class="line">                <span class="keywordflow">if</span> (y&gt;= 50 &amp;&amp; y &lt;150 &amp;&amp; x&gt;= t * 10 &amp;&amp; x &lt;t * 10 + 100) {</div>
-<div class="line">                    images[idx + 1] = 255; <span class="comment">// Turquoise rectangle</span></div>
-<div class="line">                }</div>
-<div class="line">            }</div>
+<div class="line">    <span class="comment">// Simple gradient image</span></div>
+<div class="line">    std::vector&lt;uint8_t&gt; image(256 * 256 * 3);</div>
+<div class="line">    <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> y = 0; y &lt;256; ++y) {</div>
+<div class="line">        <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> x = 0; x &lt;256; ++x) {</div>
+<div class="line">            image[(y * 256 + x) * 3 + 0] = <span class="keyword">static_cast&lt;</span>uint8_t<span class="keyword">&gt;</span>(x);</div>
+<div class="line">            image[(y * 256 + x) * 3 + 1] = <span class="keyword">static_cast&lt;</span>uint8_t<span class="keyword">&gt;</span>(std::min&lt;size_t&gt;(255, x + y));</div>
+<div class="line">            image[(y * 256 + x) * 3 + 2] = <span class="keyword">static_cast&lt;</span>uint8_t<span class="keyword">&gt;</span>(y);</div>
 <div class="line">        }</div>
 <div class="line">    }</div>
 <div class="line"> </div>
-<div class="line">    <span class="comment">// Log the ImageFormat and indicator once, as static.</span></div>
-<div class="line">    <span class="keyword">auto</span> <a class="code hl_variable" href="structrerun_1_1archetypes_1_1Image.html#a76923ff87c68ece6aaf635b629cba698">format</a> = <a class="code hl_struct" href="structrerun_1_1components_1_1ImageFormat.html">rerun::components::ImageFormat</a>(</div>
-<div class="line">        {width, height},</div>
-<div class="line">        rerun::ColorModel::RGB,</div>
-<div class="line">        rerun::ChannelDatatype::U8</div>
-<div class="line">    );</div>
-<div class="line">    rec.log_static(<span class="stringliteral">&quot;images&quot;</span>, <a class="code hl_function" href="namespacererun.html#af77da9646cb3c9ed0c9681f1b4052ffc">rerun::borrow</a>(&amp;<a class="code hl_variable" href="structrerun_1_1archetypes_1_1Image.html#a76923ff87c68ece6aaf635b629cba698">format</a>), rerun::Image::IndicatorComponent());</div>
+<div class="line">    <span class="comment">// RGB image</span></div>
+<div class="line">    rec.log(<span class="stringliteral">&quot;image_rgb&quot;</span>, rerun::Image::from_rgb24(image, {256, 256}));</div>
 <div class="line"> </div>
-<div class="line">    <span class="comment">// Split up the image data into several components referencing the underlying data.</span></div>
-<div class="line">    <span class="keyword">const</span> <span class="keywordtype">size_t</span> image_size_in_bytes = width * height * 3;</div>
-<div class="line">    std::vector&lt;rerun::components::ImageBuffer&gt; image_data(times.size());</div>
-<div class="line">    <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; i &lt;times.size(); ++i) {</div>
-<div class="line">        image_data[i] = <a class="code hl_function" href="namespacererun.html#af77da9646cb3c9ed0c9681f1b4052ffc">rerun::borrow</a>(images.data() + i * image_size_in_bytes, image_size_in_bytes);</div>
+<div class="line">    <span class="comment">// Green channel only (Luminance)</span></div>
+<div class="line">    std::vector&lt;uint8_t&gt; green_channel(256 * 256);</div>
+<div class="line">    <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; i &lt;256 * 256; ++i) {</div>
+<div class="line">        green_channel[i] = image[i * 3 + 1];</div>
 <div class="line">    }</div>
-<div class="line"> </div>
-<div class="line">    <span class="comment">// Send all images at once.</span></div>
-<div class="line">    rec.send_columns(</div>
-<div class="line">        <span class="stringliteral">&quot;images&quot;</span>,</div>
-<div class="line">        <a class="code hl_function" href="structrerun_1_1TimeColumn.html#aebf11b435fb9a115e0abf03ddbcfacad">rerun::TimeColumn::from_sequence_points</a>(<span class="stringliteral">&quot;step&quot;</span>, std::move(times)),</div>
-<div class="line">        <a class="code hl_function" href="namespacererun.html#af77da9646cb3c9ed0c9681f1b4052ffc">rerun::borrow</a>(image_data)</div>
+<div class="line">    rec.log(</div>
+<div class="line">        <span class="stringliteral">&quot;image_green_only&quot;</span>,</div>
+<div class="line">        <a class="code hl_struct" href="structrerun_1_1archetypes_1_1Image.html">rerun::Image</a>(<a class="code hl_function" href="namespacererun.html#af77da9646cb3c9ed0c9681f1b4052ffc">rerun::borrow</a>(green_channel), {256, 256}, rerun::ColorModel::L)</div>
 <div class="line">    );</div>
+<div class="line"> </div>
+<div class="line">    <span class="comment">// BGR image</span></div>
+<div class="line">    std::vector&lt;uint8_t&gt; bgr_image(256 * 256 * 3);</div>
+<div class="line">    <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> i = 0; i &lt;256 * 256; ++i) {</div>
+<div class="line">        bgr_image[i * 3 + 0] = image[i * 3 + 2];</div>
+<div class="line">        bgr_image[i * 3 + 1] = image[i * 3 + 1];</div>
+<div class="line">        bgr_image[i * 3 + 2] = image[i * 3 + 0];</div>
+<div class="line">    }</div>
+<div class="line">    rec.log(</div>
+<div class="line">        <span class="stringliteral">&quot;image_bgr&quot;</span>,</div>
+<div class="line">        <a class="code hl_struct" href="structrerun_1_1archetypes_1_1Image.html">rerun::Image</a>(<a class="code hl_function" href="namespacererun.html#af77da9646cb3c9ed0c9681f1b4052ffc">rerun::borrow</a>(bgr_image), {256, 256}, rerun::ColorModel::BGR)</div>
+<div class="line">    );</div>
+<div class="line"> </div>
+<div class="line">    <span class="comment">// New image with Separate Y/U/V planes with 4:2:2 chroma downsampling</span></div>
+<div class="line">    std::vector&lt;uint8_t&gt; yuv_bytes(256 * 256 + 128 * 256 * 2);</div>
+<div class="line">    std::fill_n(yuv_bytes.begin(), 256 * 256, <span class="keyword">static_cast&lt;</span>uint8_t<span class="keyword">&gt;</span>(128)); <span class="comment">// Fixed value for Y</span></div>
+<div class="line">    <span class="keywordtype">size_t</span> u_plane_offset = 256 * 256;</div>
+<div class="line">    <span class="keywordtype">size_t</span> v_plane_offset = u_plane_offset + 128 * 256;</div>
+<div class="line">    <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> y = 0; y &lt;256; ++y) {</div>
+<div class="line">        <span class="keywordflow">for</span> (<span class="keywordtype">size_t</span> x = 0; x &lt;128; ++x) {</div>
+<div class="line">            <span class="keyword">auto</span> coord = y * 128 + x;</div>
+<div class="line">            yuv_bytes[u_plane_offset + coord] = <span class="keyword">static_cast&lt;</span>uint8_t<span class="keyword">&gt;</span>(x * 2); <span class="comment">// Gradient for U</span></div>
+<div class="line">            yuv_bytes[v_plane_offset + coord] = <span class="keyword">static_cast&lt;</span>uint8_t<span class="keyword">&gt;</span>(y);     <span class="comment">// Gradient for V</span></div>
+<div class="line">        }</div>
+<div class="line">    }</div>
+<div class="line">    rec.log(</div>
+<div class="line">        <span class="stringliteral">&quot;image_yuv422&quot;</span>,</div>
+<div class="line">        <a class="code hl_struct" href="structrerun_1_1archetypes_1_1Image.html">rerun::Image</a>(<a class="code hl_function" href="namespacererun.html#af77da9646cb3c9ed0c9681f1b4052ffc">rerun::borrow</a>(yuv_bytes), {256, 256}, rerun::PixelFormat::Y_U_V16_FullRange)</div>
+<div class="line">    );</div>
+<div class="line"> </div>
+<div class="line">    <span class="keywordflow">return</span> 0;</div>
 <div class="line">}</div>
 <div class="ttc" id="anamespacererun_html_af77da9646cb3c9ed0c9681f1b4052ffc"><div class="ttname"><a href="namespacererun.html#af77da9646cb3c9ed0c9681f1b4052ffc">rerun::borrow</a></div><div class="ttdeci">Collection&lt; TElement &gt; borrow(const TElement *data, size_t num_instances=1)</div><div class="ttdoc">Borrows binary data into a Collection from a pointer.</div><div class="ttdef"><b>Definition</b> collection.hpp:425</div></div>
-<div class="ttc" id="astructrerun_1_1TimeColumn_html_aebf11b435fb9a115e0abf03ddbcfacad"><div class="ttname"><a href="structrerun_1_1TimeColumn.html#aebf11b435fb9a115e0abf03ddbcfacad">rerun::TimeColumn::from_sequence_points</a></div><div class="ttdeci">static TimeColumn from_sequence_points(std::string timeline_name, Collection&lt; int64_t &gt; sequence_points, SortingStatus sorting_status=SortingStatus::Unknown)</div><div class="ttdoc">Creates a time column from an array of sequence points.</div><div class="ttdef"><b>Definition</b> time_column.hpp:64</div></div>
-<div class="ttc" id="astructrerun_1_1archetypes_1_1Image_html_a76923ff87c68ece6aaf635b629cba698"><div class="ttname"><a href="structrerun_1_1archetypes_1_1Image.html#a76923ff87c68ece6aaf635b629cba698">rerun::archetypes::Image::format</a></div><div class="ttdeci">rerun::components::ImageFormat format</div><div class="ttdoc">The format of the image.</div><div class="ttdef"><b>Definition</b> image.hpp:132</div></div>
-<div class="ttc" id="astructrerun_1_1components_1_1ImageFormat_html"><div class="ttname"><a href="structrerun_1_1components_1_1ImageFormat.html">rerun::components::ImageFormat</a></div><div class="ttdoc">Component: The metadata describing the contents of a components::ImageBuffer.</div><div class="ttdef"><b>Definition</b> image_format.hpp:14</div></div>
+<div class="ttc" id="astructrerun_1_1archetypes_1_1Image_html"><div class="ttname"><a href="structrerun_1_1archetypes_1_1Image.html">rerun::archetypes::Image</a></div><div class="ttdoc">Archetype: A monochrome or color image.</div><div class="ttdef"><b>Definition</b> image.hpp:144</div></div>
 </div><!-- fragment --> </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="a48c3b890be882f2694a2fb841bde16f4" name="a48c3b890be882f2694a2fb841bde16f4"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a48c3b890be882f2694a2fb841bde16f4">&#9670;&#160;</a></span>Image() <span class="overload">[1/5]</span></h2>

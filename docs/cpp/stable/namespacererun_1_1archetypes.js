@@ -4,6 +4,7 @@ var namespacererun_1_1archetypes =
     [ "Arrows2D", "structrerun_1_1archetypes_1_1Arrows2D.html", "structrerun_1_1archetypes_1_1Arrows2D" ],
     [ "Arrows3D", "structrerun_1_1archetypes_1_1Arrows3D.html", "structrerun_1_1archetypes_1_1Arrows3D" ],
     [ "Asset3D", "structrerun_1_1archetypes_1_1Asset3D.html", "structrerun_1_1archetypes_1_1Asset3D" ],
+    [ "AssetVideo", "structrerun_1_1archetypes_1_1AssetVideo.html", "structrerun_1_1archetypes_1_1AssetVideo" ],
     [ "BarChart", "structrerun_1_1archetypes_1_1BarChart.html", "structrerun_1_1archetypes_1_1BarChart" ],
     [ "Boxes2D", "structrerun_1_1archetypes_1_1Boxes2D.html", "structrerun_1_1archetypes_1_1Boxes2D" ],
     [ "Boxes3D", "structrerun_1_1archetypes_1_1Boxes3D.html", "structrerun_1_1archetypes_1_1Boxes3D" ],
@@ -28,5 +29,6 @@ var namespacererun_1_1archetypes =
     [ "TextDocument", "structrerun_1_1archetypes_1_1TextDocument.html", "structrerun_1_1archetypes_1_1TextDocument" ],
     [ "TextLog", "structrerun_1_1archetypes_1_1TextLog.html", "structrerun_1_1archetypes_1_1TextLog" ],
     [ "Transform3D", "structrerun_1_1archetypes_1_1Transform3D.html", "structrerun_1_1archetypes_1_1Transform3D" ],
+    [ "VideoFrameReference", "structrerun_1_1archetypes_1_1VideoFrameReference.html", "structrerun_1_1archetypes_1_1VideoFrameReference" ],
     [ "ViewCoordinates", "structrerun_1_1archetypes_1_1ViewCoordinates.html", "structrerun_1_1archetypes_1_1ViewCoordinates" ]
 ];

@@ -160,14 +160,24 @@ $(document).ready(function(){initNavTree('albedo__factor_8hpp_source.html',''); 
 <div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span><span class="comment"></span>        <span class="keyword">static</span> Result&lt;std::shared_ptr&lt;arrow::Array&gt;&gt; to_arrow(</div>
 <div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span>            <span class="keyword">const</span> components::AlbedoFactor* instances, <span class="keywordtype">size_t</span> num_instances</div>
 <div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>        ) {</div>
-<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>            <span class="keywordflow">return</span> Loggable&lt;rerun::datatypes::Rgba32&gt;::to_arrow(</div>
-<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span>                &amp;instances-&gt;albedo_factor,</div>
-<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span>                num_instances</div>
-<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span>            );</div>
-<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>        }</div>
-<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span>    };</div>
-<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span>} <span class="comment">// namespace rerun</span></div>
-<div class="ttc" id="anamespacererun_1_1components_html"><div class="ttname"><a href="namespacererun_1_1components.html">rerun::components</a></div><div class="ttdoc">All built-in components. See Types in the Rerun manual.</div><div class="ttdef"><b>Definition</b> rerun.hpp:75</div></div>
+<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>            <span class="keywordflow">if</span> (num_instances == 0) {</div>
+<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span>                <span class="keywordflow">return</span> Loggable&lt;rerun::datatypes::Rgba32&gt;::to_arrow(<span class="keyword">nullptr</span>, 0);</div>
+<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span>            } <span class="keywordflow">else</span> <span class="keywordflow">if</span> (instances == <span class="keyword">nullptr</span>) {</div>
+<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span>                <span class="keywordflow">return</span> <a class="code hl_class" href="classrerun_1_1Error.html">rerun::Error</a>(</div>
+<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>                    ErrorCode::UnexpectedNullArgument,</div>
+<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span>                    <span class="stringliteral">&quot;Passed array instances is null when num_elements&gt; 0.&quot;</span></div>
+<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span>                );</div>
+<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span>            } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span>                <span class="keywordflow">return</span> Loggable&lt;rerun::datatypes::Rgba32&gt;::to_arrow(</div>
+<div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span>                    &amp;instances-&gt;albedo_factor,</div>
+<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>                    num_instances</div>
+<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>                );</div>
+<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>            }</div>
+<div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>        }</div>
+<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>    };</div>
+<div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span>} <span class="comment">// namespace rerun</span></div>
+<div class="ttc" id="aclassrerun_1_1Error_html"><div class="ttname"><a href="classrerun_1_1Error.html">rerun::Error</a></div><div class="ttdoc">Status outcome object (success or error) returned for fallible operations.</div><div class="ttdef"><b>Definition</b> error.hpp:95</div></div>
+<div class="ttc" id="anamespacererun_1_1components_html"><div class="ttname"><a href="namespacererun_1_1components.html">rerun::components</a></div><div class="ttdoc">All built-in components. See Types in the Rerun manual.</div><div class="ttdef"><b>Definition</b> rerun.hpp:76</div></div>
 <div class="ttc" id="anamespacererun_html"><div class="ttname"><a href="namespacererun.html">rerun</a></div><div class="ttdoc">All Rerun C++ types and functions are in the rerun namespace or one of its nested namespaces.</div><div class="ttdef"><b>Definition</b> rerun.hpp:22</div></div>
 <div class="ttc" id="astructrerun_1_1components_1_1AlbedoFactor_html"><div class="ttname"><a href="structrerun_1_1components_1_1AlbedoFactor.html">rerun::components::AlbedoFactor</a></div><div class="ttdoc">Component: A color multiplier, usually applied to a whole entity, e.g. a mesh.</div><div class="ttdef"><b>Definition</b> albedo_factor.hpp:14</div></div>
 <div class="ttc" id="astructrerun_1_1datatypes_1_1Rgba32_html"><div class="ttname"><a href="structrerun_1_1datatypes_1_1Rgba32.html">rerun::datatypes::Rgba32</a></div><div class="ttdoc">Datatype: An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.</div><div class="ttdef"><b>Definition</b> rgba32.hpp:27</div></div>

@@ -8,6 +8,7 @@ var structrerun_1_1archetypes_1_1Ellipsoids3D =
     [ "with_line_radii", "structrerun_1_1archetypes_1_1Ellipsoids3D.html#ae95a38d5f840d5d7eab65d356752f468", null ],
     [ "with_fill_mode", "structrerun_1_1archetypes_1_1Ellipsoids3D.html#a726f1e1f550d6641f629b959c9ea1802", null ],
     [ "with_labels", "structrerun_1_1archetypes_1_1Ellipsoids3D.html#a3e5944b1c9e88f6cd9e6cfc02ed346c8", null ],
+    [ "with_show_labels", "structrerun_1_1archetypes_1_1Ellipsoids3D.html#acd1b4e4702e77c71f6f87d84d602b150", null ],
     [ "with_class_ids", "structrerun_1_1archetypes_1_1Ellipsoids3D.html#ac8f0786658bc8a01c94c0448da90a3a6", null ],
     [ "half_sizes", "structrerun_1_1archetypes_1_1Ellipsoids3D.html#a1a2b88706532eb3aff119c340a5850b9", null ],
     [ "centers", "structrerun_1_1archetypes_1_1Ellipsoids3D.html#a1e77121bde7e478c42f432b79aca21b1", null ],
@@ -17,5 +18,6 @@ var structrerun_1_1archetypes_1_1Ellipsoids3D =
     [ "line_radii", "structrerun_1_1archetypes_1_1Ellipsoids3D.html#ad9d239453bc86c28a04d87c0bf3727e8", null ],
     [ "fill_mode", "structrerun_1_1archetypes_1_1Ellipsoids3D.html#a2f8342f2c602b53a763c378926822ecc", null ],
     [ "labels", "structrerun_1_1archetypes_1_1Ellipsoids3D.html#a252c51d454240537f700547b88a872a8", null ],
+    [ "show_labels", "structrerun_1_1archetypes_1_1Ellipsoids3D.html#acb1f7a8848e963f30b6dd0ff82c81b02", null ],
     [ "class_ids", "structrerun_1_1archetypes_1_1Ellipsoids3D.html#a1f8dcf74c7d6a66114d34594b5c9b3cd", null ]
 ];

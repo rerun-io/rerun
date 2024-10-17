@@ -143,9 +143,6 @@ Static Public Member Functions</h2></td></tr>
 <tr class="memitem:a06b238ef55bddfc29dd65b126be75f6d"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="structrerun_1_1archetypes_1_1Asset3D.html">Asset3D</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1archetypes_1_1Asset3D.html#a06b238ef55bddfc29dd65b126be75f6d">from_bytes</a> (<a class="el" href="classrerun_1_1Collection.html">rerun::Collection</a>&lt; uint8_t &gt; bytes, std::optional&lt; <a class="el" href="structrerun_1_1components_1_1MediaType.html">rerun::components::MediaType</a> &gt; <a class="el" href="structrerun_1_1archetypes_1_1Asset3D.html#a238e2feba02d8e49a5e5d5bc375c45cc">media_type</a>={})</td></tr>
 <tr class="memdesc:a06b238ef55bddfc29dd65b126be75f6d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Creates a new <code><a class="el" href="structrerun_1_1archetypes_1_1Asset3D.html" title="Archetype: A prepacked 3D asset (.gltf, .glb, .obj, .stl, etc.).">Asset3D</a></code> from the given <code>bytes</code>.  <br /></td></tr>
 <tr class="separator:a06b238ef55bddfc29dd65b126be75f6d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:abe8e0d8f3d5a51846a15849219106206"><td class="memItemLeft" align="right" valign="top"><a id="abe8e0d8f3d5a51846a15849219106206" name="abe8e0d8f3d5a51846a15849219106206"></a>
-static std::optional&lt; <a class="el" href="structrerun_1_1components_1_1MediaType.html">rerun::components::MediaType</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>guess_media_type</b> (const std::filesystem::path &amp;path)</td></tr>
-<tr class="separator:abe8e0d8f3d5a51846a15849219106206"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -174,9 +171,7 @@ Simple 3D asset</h3>
 <p><img src="https://static.rerun.io/asset3d_simple/af238578188d3fd0de3e330212120e2842a8ddb2/full.png" alt="image" class="inline"/></p>
 <div class="fragment"><div class="line"><span class="preprocessor">#include &lt;rerun.hpp&gt;</span></div>
 <div class="line"> </div>
-<div class="line"><span class="preprocessor">#include &lt;filesystem&gt;</span></div>
 <div class="line"><span class="preprocessor">#include &lt;iostream&gt;</span></div>
-<div class="line"><span class="preprocessor">#include &lt;string&gt;</span></div>
 <div class="line"> </div>
 <div class="line"><span class="keywordtype">int</span> main(<span class="keywordtype">int</span> argc, <span class="keywordtype">char</span>* argv[]) {</div>
 <div class="line">    <span class="keywordflow">if</span> (argc &lt;2) {</div>

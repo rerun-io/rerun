@@ -257,7 +257,7 @@ template&lt;typename... Ts&gt; </td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>A <code><a class="el" href="classrerun_1_1RecordingStream.html" title="A RecordingStream handles everything related to logging data into Rerun.">RecordingStream</a></code> handles everything related to logging data into Rerun. </p>
-<h2><a class="anchor" id="autotoc_md100"></a>
+<h2><a class="anchor" id="autotoc_md106"></a>
 Multithreading and ordering</h2>
 <p>A <code><a class="el" href="classrerun_1_1RecordingStream.html" title="A RecordingStream handles everything related to logging data into Rerun.">RecordingStream</a></code> is thread-safe.</p>
 <p>Internally, all operations are linearized into a pipeline:</p><ul>
@@ -265,14 +265,14 @@ Multithreading and ordering</h2>
 <li>There isn't any well defined global order across multiple threads.</li>
 </ul>
 <p>This means that e.g. flushing the pipeline (<code>flush_blocking</code>) guarantees that all previous data sent by the calling thread has been recorded; no more, no less. (e.g. it does not mean that all file caches are flushed)</p>
-<h2><a class="anchor" id="autotoc_md101"></a>
+<h2><a class="anchor" id="autotoc_md107"></a>
 Shutdown</h2>
 <p>The <code><a class="el" href="classrerun_1_1RecordingStream.html" title="A RecordingStream handles everything related to logging data into Rerun.">RecordingStream</a></code> can only be shutdown by dropping all instances of it, at which point it will automatically take care of flushing any pending data that might remain in the pipeline.</p>
 <p>TODO(andreas): The only way of having two instances of a <code><a class="el" href="classrerun_1_1RecordingStream.html" title="A RecordingStream handles everything related to logging data into Rerun.">RecordingStream</a></code> is currently to set it as a the global.</p>
 <p>Shutting down cannot ever block.</p>
-<h2><a class="anchor" id="autotoc_md102"></a>
+<h2><a class="anchor" id="autotoc_md108"></a>
 Logging</h2>
-<p>Internally, the stream will automatically micro-batch multiple log calls to optimize transport. See <a href="https://www.rerun.io/docs/reference/sdk-micro-batching">SDK Micro Batching</a> for more information.</p>
+<p>Internally, the stream will automatically micro-batch multiple log calls to optimize transport. See <a href="https://www.rerun.io/docs/reference/sdk/micro-batching">SDK Micro Batching</a> for more information.</p>
 <p>The data will be timestamped automatically based on the <code><a class="el" href="classrerun_1_1RecordingStream.html" title="A RecordingStream handles everything related to logging data into Rerun.">RecordingStream</a></code>'s internal clock. </p>
 </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="abda6202900fa439fe5c27f7aa0d1105a" name="abda6202900fa439fe5c27f7aa0d1105a"></a>
@@ -478,7 +478,7 @@ Logging</h2>
 
 <p>Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it over TCP. </p>
 <p>If a Rerun Viewer is already listening on this TCP port, the stream will be redirected to that viewer instead of starting a new one.</p>
-<h2><a class="anchor" id="autotoc_md103"></a>
+<h2><a class="anchor" id="autotoc_md109"></a>
 Parameters</h2>
 <p>options: See <code><a class="el" href="structrerun_1_1SpawnOptions.html" title="Options to control the behavior of spawn.">rerun::SpawnOptions</a></code> for more information.</p>
 <p>flush_timeout_sec: The minimum time the SDK will wait during a flush before potentially dropping data if progress is not being made. Passing a negative value indicates no timeout, and can cause a call to <code>flush</code> to block indefinitely. </p>
@@ -541,6 +541,7 @@ template&lt;typename TRep , typename TPeriod &gt; </div>
 </div><div class="memdoc">
 
 <p>Stream all log-data to a given <code>.rrd</code> file. </p>
+<p>The Rerun Viewer is able to read continuously from the resulting rrd file while it is being written. However, depending on your OS and configuration, changes may not be immediately visible due to file caching. This is a common issue on Windows and (to a lesser extent) on MacOS.</p>
 <p>This function returns immediately. </p>
 
 </div>
@@ -857,7 +858,7 @@ template&lt;typename... Ts&gt; </div>
 <p>When logging data, you must always provide an <a href="https://www.rerun.io/docs/concepts/entity-path">entity_path</a> for identifying the data. Note that the path prefix "rerun/" is considered reserved for use by the Rerun SDK itself and should not be used for logging user data. This is where Rerun will log additional information such as warnings.</p>
 <p>The most common way to log is with one of the rerun archetypes, all of which implement the <code>AsComponents</code> trait.</p>
 <p>For example, to log two 3D points: </p><div class="fragment"><div class="line">rec.log(<span class="stringliteral">&quot;my/point&quot;</span>, <a class="code hl_struct" href="structrerun_1_1archetypes_1_1Points3D.html">rerun::Points3D</a>({{0.0f, 0.0f, 0.0f}, {1.0f, 1.0f, 1.0f}}));</div>
-<div class="ttc" id="astructrerun_1_1archetypes_1_1Points3D_html"><div class="ttname"><a href="structrerun_1_1archetypes_1_1Points3D.html">rerun::archetypes::Points3D</a></div><div class="ttdoc">Archetype: A 3D point cloud with positions and optional colors, radii, labels, etc.</div><div class="ttdef"><b>Definition</b> points3d.hpp:155</div></div>
+<div class="ttc" id="astructrerun_1_1archetypes_1_1Points3D_html"><div class="ttname"><a href="structrerun_1_1archetypes_1_1Points3D.html">rerun::archetypes::Points3D</a></div><div class="ttdoc">Archetype: A 3D point cloud with positions and optional colors, radii, labels, etc.</div><div class="ttdef"><b>Definition</b> points3d.hpp:156</div></div>
 </div><!-- fragment --><p>The <code>log</code> function can flexibly accept an arbitrary number of additional objects which will be merged into the first entity so long as they don't expose conflicting components, for instance: </p><div class="fragment"><div class="line"><span class="comment">// Log three points with arrows sticking out of them:</span></div>
 <div class="line">rec.log(</div>
 <div class="line">    <span class="stringliteral">&quot;my/points&quot;</span>,</div>

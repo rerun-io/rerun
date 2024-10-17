@@ -51,6 +51,8 @@ var namespacererun =
       [ "_CategoryArrow", "namespacererun.html#ae32e052f3eecb40764a7c106d85de95fa1fcfd5b7318982cde6a87775749f37f1", null ],
       [ "ArrowFfiSchemaImportError", "namespacererun.html#ae32e052f3eecb40764a7c106d85de95fa744ed8f036170042d8939426f7ce6aa8", null ],
       [ "ArrowFfiArrayImportError", "namespacererun.html#ae32e052f3eecb40764a7c106d85de95fa323b8cfd90e8affa51f2e3d574ef3c5f", null ],
+      [ "_CategoryUtilities", "namespacererun.html#ae32e052f3eecb40764a7c106d85de95fa3407d05f6144533618a5369948d34df7", null ],
+      [ "VideoLoadError", "namespacererun.html#ae32e052f3eecb40764a7c106d85de95fa2807fb5e286255990c2346bbee23f11d", null ],
       [ "_CategoryFileIO", "namespacererun.html#ae32e052f3eecb40764a7c106d85de95fa71ad2be245f5670a112c8f97f3a583e6", null ],
       [ "FileOpenFailure", "namespacererun.html#ae32e052f3eecb40764a7c106d85de95fa09f60af57aa090e264edfe0417233dcf", null ],
       [ "_CategoryArrowCppStatus", "namespacererun.html#ae32e052f3eecb40764a7c106d85de95fa07f0b1f1dc3ae7b3b2c46c35683228f6", null ],

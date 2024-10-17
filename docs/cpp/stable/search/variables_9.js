@@ -5,5 +5,5 @@ var searchData=
   ['keypoint_5fannotations_2',['keypoint_annotations',['../structrerun_1_1datatypes_1_1ClassDescription.html#a4ca40b06e859921c949ec766bb112ebe',1,'rerun::datatypes::ClassDescription']]],
   ['keypoint_5fconnections_3',['keypoint_connections',['../structrerun_1_1datatypes_1_1ClassDescription.html#ab0d36d8c96116f6549da5c87f7abd0a2',1,'rerun::datatypes::ClassDescription']]],
   ['keypoint_5fids_4',['keypoint_ids',['../structrerun_1_1archetypes_1_1Points2D.html#a71e1f2c1d427b0ac89127d96cd9bf609',1,'rerun::archetypes::Points2D::keypoint_ids'],['../structrerun_1_1archetypes_1_1Points3D.html#abb8086a63508ea36d0c731675cec46ca',1,'rerun::archetypes::Points3D::keypoint_ids']]],
-  ['kind_5',['kind',['../structrerun_1_1blueprint_1_1archetypes_1_1Background.html#a3302c7ffd1e7d88a1da7dc20a0f16880',1,'rerun::blueprint::archetypes::Background::kind'],['../structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html#a2f7c0b29efb06f10d533af28fbeb8d43',1,'rerun::blueprint::archetypes::DataframeQuery::kind']]]
+  ['kind_5',['kind',['../structrerun_1_1blueprint_1_1archetypes_1_1Background.html#a3302c7ffd1e7d88a1da7dc20a0f16880',1,'rerun::blueprint::archetypes::Background']]]
 ];

@@ -143,6 +143,10 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ae148edc6af75e4aa4bb673dbb30e73c1"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structrerun_1_1archetypes_1_1Boxes2D.html">Boxes2D</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1archetypes_1_1Boxes2D.html#ae148edc6af75e4aa4bb673dbb30e73c1">with_labels</a> (<a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; <a class="el" href="structrerun_1_1components_1_1Text.html">rerun::components::Text</a> &gt; _labels) &amp;&amp;</td></tr>
 <tr class="memdesc:ae148edc6af75e4aa4bb673dbb30e73c1"><td class="mdescLeft">&#160;</td><td class="mdescRight">Optional text labels for the boxes.  <br /></td></tr>
 <tr class="separator:ae148edc6af75e4aa4bb673dbb30e73c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a94614e7ae05ce44978bdf6dfe152288a"><td class="memItemLeft" align="right" valign="top"><a id="a94614e7ae05ce44978bdf6dfe152288a" name="a94614e7ae05ce44978bdf6dfe152288a"></a>
+<a class="el" href="structrerun_1_1archetypes_1_1Boxes2D.html">Boxes2D</a>&#160;</td><td class="memItemRight" valign="bottom"><b>with_show_labels</b> (<a class="el" href="structrerun_1_1components_1_1ShowLabels.html">rerun::components::ShowLabels</a> _show_labels) &amp;&amp;</td></tr>
+<tr class="memdesc:a94614e7ae05ce44978bdf6dfe152288a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Optional choice of whether the text labels should be shown by default. <br /></td></tr>
+<tr class="separator:a94614e7ae05ce44978bdf6dfe152288a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa0424d86615d3e022c283a9b67bd7482"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structrerun_1_1archetypes_1_1Boxes2D.html">Boxes2D</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1archetypes_1_1Boxes2D.html#aa0424d86615d3e022c283a9b67bd7482">with_draw_order</a> (<a class="el" href="structrerun_1_1components_1_1DrawOrder.html">rerun::components::DrawOrder</a> _draw_order) &amp;&amp;</td></tr>
 <tr class="memdesc:aa0424d86615d3e022c283a9b67bd7482"><td class="mdescLeft">&#160;</td><td class="mdescRight">An optional floating point value that specifies the 2D drawing order.  <br /></td></tr>
 <tr class="separator:aa0424d86615d3e022c283a9b67bd7482"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -191,6 +195,10 @@ std::optional&lt; <a class="el" href="classrerun_1_1Collection.html">Collection<
 <tr class="memitem:a48ccfb19d3a1bea4f4898b7fb6064028"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="classrerun_1_1Collection.html">Collection</a>&lt; <a class="el" href="structrerun_1_1components_1_1Text.html">rerun::components::Text</a> &gt; &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1archetypes_1_1Boxes2D.html#a48ccfb19d3a1bea4f4898b7fb6064028">labels</a></td></tr>
 <tr class="memdesc:a48ccfb19d3a1bea4f4898b7fb6064028"><td class="mdescLeft">&#160;</td><td class="mdescRight">Optional text labels for the boxes.  <br /></td></tr>
 <tr class="separator:a48ccfb19d3a1bea4f4898b7fb6064028"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa64a173dad9d349c8985e2125385e3b6"><td class="memItemLeft" align="right" valign="top"><a id="aa64a173dad9d349c8985e2125385e3b6" name="aa64a173dad9d349c8985e2125385e3b6"></a>
+std::optional&lt; <a class="el" href="structrerun_1_1components_1_1ShowLabels.html">rerun::components::ShowLabels</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>show_labels</b></td></tr>
+<tr class="memdesc:aa64a173dad9d349c8985e2125385e3b6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Optional choice of whether the text labels should be shown by default. <br /></td></tr>
+<tr class="separator:aa64a173dad9d349c8985e2125385e3b6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aed423655e3009b3e2b64edf266f26c07"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="structrerun_1_1components_1_1DrawOrder.html">rerun::components::DrawOrder</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1archetypes_1_1Boxes2D.html#aed423655e3009b3e2b64edf266f26c07">draw_order</a></td></tr>
 <tr class="memdesc:aed423655e3009b3e2b64edf266f26c07"><td class="mdescLeft">&#160;</td><td class="mdescRight">An optional floating point value that specifies the 2D drawing order.  <br /></td></tr>
 <tr class="separator:aed423655e3009b3e2b64edf266f26c07"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -206,9 +214,9 @@ static constexpr const char&#160;</td><td class="memItemRight" valign="bottom"><
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p><b>Archetype</b>: 2D boxes with half-extents and optional center, colors etc. </p>
-<h2><a class="anchor" id="autotoc_md44"></a>
+<h2><a class="anchor" id="autotoc_md47"></a>
 Example</h2>
-<h3><a class="anchor" id="autotoc_md45"></a>
+<h3><a class="anchor" id="autotoc_md48"></a>
 Simple 2D boxes</h3>
 <p><img src="https://static.rerun.io/box2d_simple/ac4424f3cf747382867649610cbd749c45b2020b/full.png" alt="image" class="inline"/></p>
 <div class="fragment"><div class="line"><span class="preprocessor">#include &lt;rerun.hpp&gt;</span></div>

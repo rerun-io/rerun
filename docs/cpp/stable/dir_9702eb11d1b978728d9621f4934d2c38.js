@@ -31,6 +31,7 @@ var dir_9702eb11d1b978728d9621f4934d2c38 =
     [ "time_int.hpp", "time__int_8hpp_source.html", null ],
     [ "time_range.hpp", "time__range_8hpp_source.html", null ],
     [ "time_range_boundary.hpp", "time__range__boundary_8hpp_source.html", null ],
+    [ "uint16.hpp", "uint16_8hpp_source.html", null ],
     [ "uint32.hpp", "uint32_8hpp_source.html", null ],
     [ "uint64.hpp", "uint64_8hpp_source.html", null ],
     [ "utf8.hpp", "utf8_8hpp_source.html", null ],
@@ -41,6 +42,7 @@ var dir_9702eb11d1b978728d9621f4934d2c38 =
     [ "vec2d.hpp", "vec2d_8hpp_source.html", null ],
     [ "vec3d.hpp", "vec3d_8hpp_source.html", null ],
     [ "vec4d.hpp", "vec4d_8hpp_source.html", null ],
+    [ "video_timestamp.hpp", "datatypes_2video__timestamp_8hpp_source.html", null ],
     [ "view_coordinates.hpp", "datatypes_2view__coordinates_8hpp_source.html", null ],
     [ "visible_time_range.hpp", "datatypes_2visible__time__range_8hpp_source.html", null ]
 ];

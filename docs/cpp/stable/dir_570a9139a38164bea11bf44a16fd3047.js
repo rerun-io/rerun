@@ -4,6 +4,7 @@ var dir_570a9139a38164bea11bf44a16fd3047 =
     [ "arrows2d.hpp", "arrows2d_8hpp_source.html", null ],
     [ "arrows3d.hpp", "arrows3d_8hpp_source.html", null ],
     [ "asset3d.hpp", "asset3d_8hpp_source.html", null ],
+    [ "asset_video.hpp", "asset__video_8hpp_source.html", null ],
     [ "bar_chart.hpp", "bar__chart_8hpp_source.html", null ],
     [ "boxes2d.hpp", "boxes2d_8hpp_source.html", null ],
     [ "boxes3d.hpp", "boxes3d_8hpp_source.html", null ],
@@ -28,5 +29,6 @@ var dir_570a9139a38164bea11bf44a16fd3047 =
     [ "text_document.hpp", "text__document_8hpp_source.html", null ],
     [ "text_log.hpp", "text__log_8hpp_source.html", null ],
     [ "transform3d.hpp", "transform3d_8hpp_source.html", null ],
+    [ "video_frame_reference.hpp", "video__frame__reference_8hpp_source.html", null ],
     [ "view_coordinates.hpp", "archetypes_2view__coordinates_8hpp_source.html", null ]
 ];

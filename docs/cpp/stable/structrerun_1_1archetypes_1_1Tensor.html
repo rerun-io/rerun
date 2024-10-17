@@ -141,6 +141,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a19f993b5d5b77a8d11658f7c59003044"><td class="memItemLeft" align="right" valign="top"><a id="a19f993b5d5b77a8d11658f7c59003044" name="a19f993b5d5b77a8d11658f7c59003044"></a>
 &#160;</td><td class="memItemRight" valign="bottom"><b>Tensor</b> (<a class="el" href="structrerun_1_1components_1_1TensorData.html">rerun::components::TensorData</a> _data)</td></tr>
 <tr class="separator:a19f993b5d5b77a8d11658f7c59003044"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3248b0eee49bf1019ef0176ffe285aa5"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structrerun_1_1archetypes_1_1Tensor.html">Tensor</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1archetypes_1_1Tensor.html#a3248b0eee49bf1019ef0176ffe285aa5">with_value_range</a> (<a class="el" href="structrerun_1_1components_1_1ValueRange.html">rerun::components::ValueRange</a> _value_range) &amp;&amp;</td></tr>
+<tr class="memdesc:a3248b0eee49bf1019ef0176ffe285aa5"><td class="mdescLeft">&#160;</td><td class="mdescRight">The expected range of values.  <br /></td></tr>
+<tr class="separator:a3248b0eee49bf1019ef0176ffe285aa5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -148,6 +151,9 @@ Public Attributes</h2></td></tr>
 <a class="el" href="structrerun_1_1components_1_1TensorData.html">rerun::components::TensorData</a>&#160;</td><td class="memItemRight" valign="bottom"><b>data</b></td></tr>
 <tr class="memdesc:a081932ec09ddb3e3e81be744fae62d2b"><td class="mdescLeft">&#160;</td><td class="mdescRight">The tensor data. <br /></td></tr>
 <tr class="separator:a081932ec09ddb3e3e81be744fae62d2b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a901e9734d29dc7a59a2723aefb795973"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="structrerun_1_1components_1_1ValueRange.html">rerun::components::ValueRange</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1archetypes_1_1Tensor.html#a901e9734d29dc7a59a2723aefb795973">value_range</a></td></tr>
+<tr class="memdesc:a901e9734d29dc7a59a2723aefb795973"><td class="mdescLeft">&#160;</td><td class="mdescRight">The expected range of values.  <br /></td></tr>
+<tr class="separator:a901e9734d29dc7a59a2723aefb795973"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
 Static Public Attributes</h2></td></tr>
@@ -158,9 +164,9 @@ static constexpr const char&#160;</td><td class="memItemRight" valign="bottom"><
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p><b>Archetype</b>: An N-dimensional array of numbers. </p>
 <p>Since the underlying <code><a class="el" href="structrerun_1_1datatypes_1_1TensorData.html" title="Datatype: An N-dimensional array of numbers.">rerun::datatypes::TensorData</a></code> uses <code><a class="el" href="classrerun_1_1Collection.html" title="Generic collection of elements that are roughly contiguous in memory.">rerun::Collection</a></code> internally, data can be passed in without a copy from raw pointers or by reference from <code>std::vector</code>/<code>std::array</code>/c-arrays. If needed, this "borrow-behavior" can be extended by defining your own <code><a class="el" href="structrerun_1_1CollectionAdapter.html" title="The rerun::CollectionAdapter trait is responsible for mapping an input argument to a rerun::Collectio...">rerun::CollectionAdapter</a></code>.</p>
-<h2><a class="anchor" id="autotoc_md88"></a>
+<h2><a class="anchor" id="autotoc_md91"></a>
 Example</h2>
-<h3><a class="anchor" id="autotoc_md89"></a>
+<h3><a class="anchor" id="autotoc_md92"></a>
 Simple tensor</h3>
 <p><img src="https://static.rerun.io/tensor_simple/baacb07712f7b706e3c80e696f70616c6c20b367/full.png" alt="image" class="inline"/></p>
 <div class="fragment"><div class="line"><span class="preprocessor">#include &lt;rerun.hpp&gt;</span></div>
@@ -186,8 +192,8 @@ Simple tensor</h3>
 <div class="line">    );</div>
 <div class="line">}</div>
 <div class="ttc" id="aclassrerun_1_1RecordingStream_html"><div class="ttname"><a href="classrerun_1_1RecordingStream.html">rerun::RecordingStream</a></div><div class="ttdoc">A RecordingStream handles everything related to logging data into Rerun.</div><div class="ttdef"><b>Definition</b> recording_stream.hpp:60</div></div>
-<div class="ttc" id="astructrerun_1_1archetypes_1_1Tensor_html"><div class="ttname"><a href="structrerun_1_1archetypes_1_1Tensor.html">rerun::archetypes::Tensor</a></div><div class="ttdoc">Archetype: An N-dimensional array of numbers.</div><div class="ttdef"><b>Definition</b> tensor.hpp:52</div></div>
-<div class="ttc" id="astructrerun_1_1archetypes_1_1Tensor_html_a081932ec09ddb3e3e81be744fae62d2b"><div class="ttname"><a href="structrerun_1_1archetypes_1_1Tensor.html#a081932ec09ddb3e3e81be744fae62d2b">rerun::archetypes::Tensor::data</a></div><div class="ttdeci">rerun::components::TensorData data</div><div class="ttdoc">The tensor data.</div><div class="ttdef"><b>Definition</b> tensor.hpp:54</div></div>
+<div class="ttc" id="astructrerun_1_1archetypes_1_1Tensor_html"><div class="ttname"><a href="structrerun_1_1archetypes_1_1Tensor.html">rerun::archetypes::Tensor</a></div><div class="ttdoc">Archetype: An N-dimensional array of numbers.</div><div class="ttdef"><b>Definition</b> tensor.hpp:55</div></div>
+<div class="ttc" id="astructrerun_1_1archetypes_1_1Tensor_html_a081932ec09ddb3e3e81be744fae62d2b"><div class="ttname"><a href="structrerun_1_1archetypes_1_1Tensor.html#a081932ec09ddb3e3e81be744fae62d2b">rerun::archetypes::Tensor::data</a></div><div class="ttdeci">rerun::components::TensorData data</div><div class="ttdoc">The tensor data.</div><div class="ttdef"><b>Definition</b> tensor.hpp:57</div></div>
 <div class="ttc" id="astructrerun_1_1archetypes_1_1Tensor_html_a925a80d42d8d04ee8ad680afac390ce4"><div class="ttname"><a href="structrerun_1_1archetypes_1_1Tensor.html#a925a80d42d8d04ee8ad680afac390ce4">rerun::archetypes::Tensor::with_dim_names</a></div><div class="ttdeci">Tensor with_dim_names(Collection&lt; std::string &gt; names) &amp;&amp;</div><div class="ttdoc">Update the names of the contained TensorData dimensions.</div></div>
 </div><!-- fragment --> </div><h2 class="groupheader">Constructor &amp; Destructor Documentation</h2>
 <a id="aa0b80679fee8f582a545b99e8a85d174" name="aa0b80679fee8f582a545b99e8a85d174"></a>
@@ -257,6 +263,55 @@ template&lt;typename TElement &gt; </div>
 <p>Update the <code>names</code> of the contained <code>TensorData</code> dimensions. </p>
 <p>Any existing Dimension names will be overwritten.</p>
 <p>If too many, or too few names are provided, this function will call <a class="el" href="classrerun_1_1Error.html#a0419e00a9d421e449b50fb2a8dc6cd4a" title="Handle this error based on the set log handler.">Error::handle</a> and then proceed to only update the subset of names that it can. </p>
+
+</div>
+</div>
+<a id="a3248b0eee49bf1019ef0176ffe285aa5" name="a3248b0eee49bf1019ef0176ffe285aa5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3248b0eee49bf1019ef0176ffe285aa5">&#9670;&#160;</a></span>with_value_range()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structrerun_1_1archetypes_1_1Tensor.html">Tensor</a> rerun::archetypes::Tensor::with_value_range </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structrerun_1_1components_1_1ValueRange.html">rerun::components::ValueRange</a>&#160;</td>
+          <td class="paramname"><em>_value_range</em></td><td>)</td>
+          <td> &amp;&amp;</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>The expected range of values. </p>
+<p>This is typically the expected range of valid values. Everything outside of the range is clamped to the range for the purpose of colormpaping. Any colormap applied for display, will map this range.</p>
+<p>If not specified, the range will be automatically estimated from the data. Note that the Viewer may try to guess a wider range than the minimum/maximum of values in the contents of the tensor. E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0, the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255. </p>
+
+</div>
+</div>
+<h2 class="groupheader">Member Data Documentation</h2>
+<a id="a901e9734d29dc7a59a2723aefb795973" name="a901e9734d29dc7a59a2723aefb795973"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a901e9734d29dc7a59a2723aefb795973">&#9670;&#160;</a></span>value_range</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::optional&lt;<a class="el" href="structrerun_1_1components_1_1ValueRange.html">rerun::components::ValueRange</a>&gt; rerun::archetypes::Tensor::value_range</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>The expected range of values. </p>
+<p>This is typically the expected range of valid values. Everything outside of the range is clamped to the range for the purpose of colormpaping. Any colormap applied for display, will map this range.</p>
+<p>If not specified, the range will be automatically estimated from the data. Note that the Viewer may try to guess a wider range than the minimum/maximum of values in the contents of the tensor. E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0, the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255. </p>
 
 </div>
 </div>

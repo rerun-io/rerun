@@ -12,6 +12,7 @@ var dir_3e2de78a91bc064df9d9145bba520898 =
     [ "depth_meter.hpp", "depth__meter_8hpp_source.html", null ],
     [ "disconnected_space.hpp", "components_2disconnected__space_8hpp_source.html", null ],
     [ "draw_order.hpp", "draw__order_8hpp_source.html", null ],
+    [ "entity_path.hpp", "components_2entity__path_8hpp_source.html", null ],
     [ "fill_mode.hpp", "fill__mode_8hpp_source.html", null ],
     [ "fill_ratio.hpp", "fill__ratio_8hpp_source.html", null ],
     [ "gamma_correction.hpp", "gamma__correction_8hpp_source.html", null ],
@@ -44,6 +45,7 @@ var dir_3e2de78a91bc064df9d9145bba520898 =
     [ "rotation_quat.hpp", "rotation__quat_8hpp_source.html", null ],
     [ "scalar.hpp", "components_2scalar_8hpp_source.html", null ],
     [ "scale3d.hpp", "scale3d_8hpp_source.html", null ],
+    [ "show_labels.hpp", "show__labels_8hpp_source.html", null ],
     [ "stroke_width.hpp", "stroke__width_8hpp_source.html", null ],
     [ "tensor_data.hpp", "components_2tensor__data_8hpp_source.html", null ],
     [ "tensor_dimension_index_selection.hpp", "components_2tensor__dimension__index__selection_8hpp_source.html", null ],
@@ -56,7 +58,9 @@ var dir_3e2de78a91bc064df9d9145bba520898 =
     [ "transform_relation.hpp", "transform__relation_8hpp_source.html", null ],
     [ "translation3d.hpp", "translation3d_8hpp_source.html", null ],
     [ "triangle_indices.hpp", "triangle__indices_8hpp_source.html", null ],
+    [ "value_range.hpp", "value__range_8hpp_source.html", null ],
     [ "vector2d.hpp", "vector2d_8hpp_source.html", null ],
     [ "vector3d.hpp", "vector3d_8hpp_source.html", null ],
+    [ "video_timestamp.hpp", "components_2video__timestamp_8hpp_source.html", null ],
     [ "view_coordinates.hpp", "components_2view__coordinates_8hpp_source.html", null ]
 ];

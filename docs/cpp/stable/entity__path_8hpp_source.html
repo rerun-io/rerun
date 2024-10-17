@@ -105,23 +105,24 @@ $(document).ready(function(){initNavTree('entity__path_8hpp_source.html',''); in
 <div class="contents">
 <div class="fragment"><div class="line"><a id="l00001" name="l00001"></a><span class="lineno">    1</span><span class="preprocessor">#pragma once</span></div>
 <div class="line"><a id="l00002" name="l00002"></a><span class="lineno">    2</span> </div>
-<div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span><span class="preprocessor">#include &lt;string_view&gt;</span></div>
-<div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span><span class="preprocessor">#include &lt;vector&gt;</span></div>
-<div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span> </div>
-<div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span><span class="keyword">namespace </span><a class="code hl_namespace" href="namespacererun.html">rerun</a> {</div>
-<div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><span class="comment"></span> </div>
-<div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span><span class="comment">    /// Escape an individual part of an entity path.</span></div>
-<div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span><span class="comment">    ///</span></div>
-<div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span><span class="comment">    /// For instance, `escape_entity_path_path(&quot;my image!&quot;)` will return `&quot;my\ image\!&quot;`.</span></div>
-<div class="line"><a id="l00011" name="l00011"></a><span class="lineno"><a class="line" href="namespacererun.html#af8d18ffe441bb2557ccbce6f16d05415">   11</a></span><span class="comment"></span>    std::string <a class="code hl_function" href="namespacererun.html#af8d18ffe441bb2557ccbce6f16d05415">escape_entity_path_part</a>(std::string_view str);</div>
-<div class="line"><a id="l00012" name="l00012"></a><span class="lineno">   12</span><span class="comment"></span> </div>
-<div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span><span class="comment">    /// Construct an entity path by escaping each part of the path.</span></div>
-<div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span><span class="comment">    ///</span></div>
-<div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span><span class="comment">    /// For instance, `rerun::new_entity_path({&quot;world&quot;, 42, &quot;unescaped string!&quot;})` will return</span></div>
-<div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span><span class="comment">    /// `&quot;world/42/escaped\ string\!&quot;`.</span></div>
-<div class="line"><a id="l00017" name="l00017"></a><span class="lineno"><a class="line" href="namespacererun.html#a90ef01c22c05498a1ba7a9dc3a5937c0">   17</a></span><span class="comment"></span>    std::string <a class="code hl_function" href="namespacererun.html#a90ef01c22c05498a1ba7a9dc3a5937c0">new_entity_path</a>(<span class="keyword">const</span> std::vector&lt;std::string_view&gt;&amp; path);</div>
-<div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span> </div>
-<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span>} <span class="comment">// namespace rerun</span></div>
+<div class="line"><a id="l00003" name="l00003"></a><span class="lineno">    3</span><span class="preprocessor">#include &lt;string&gt;</span></div>
+<div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span><span class="preprocessor">#include &lt;string_view&gt;</span></div>
+<div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span><span class="preprocessor">#include &lt;vector&gt;</span></div>
+<div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span> </div>
+<div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><span class="keyword">namespace </span><a class="code hl_namespace" href="namespacererun.html">rerun</a> {</div>
+<div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span><span class="comment"></span> </div>
+<div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span><span class="comment">    /// Escape an individual part of an entity path.</span></div>
+<div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span><span class="comment">    ///</span></div>
+<div class="line"><a id="l00011" name="l00011"></a><span class="lineno">   11</span><span class="comment">    /// For instance, `escape_entity_path_path(&quot;my image!&quot;)` will return `&quot;my\ image\!&quot;`.</span></div>
+<div class="line"><a id="l00012" name="l00012"></a><span class="lineno"><a class="line" href="namespacererun.html#af8d18ffe441bb2557ccbce6f16d05415">   12</a></span><span class="comment"></span>    std::string <a class="code hl_function" href="namespacererun.html#af8d18ffe441bb2557ccbce6f16d05415">escape_entity_path_part</a>(std::string_view str);</div>
+<div class="line"><a id="l00013" name="l00013"></a><span class="lineno">   13</span><span class="comment"></span> </div>
+<div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span><span class="comment">    /// Construct an entity path by escaping each part of the path.</span></div>
+<div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span><span class="comment">    ///</span></div>
+<div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span><span class="comment">    /// For instance, `rerun::new_entity_path({&quot;world&quot;, 42, &quot;unescaped string!&quot;})` will return</span></div>
+<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span><span class="comment">    /// `&quot;world/42/escaped\ string\!&quot;`.</span></div>
+<div class="line"><a id="l00018" name="l00018"></a><span class="lineno"><a class="line" href="namespacererun.html#a90ef01c22c05498a1ba7a9dc3a5937c0">   18</a></span><span class="comment"></span>    std::string <a class="code hl_function" href="namespacererun.html#a90ef01c22c05498a1ba7a9dc3a5937c0">new_entity_path</a>(<span class="keyword">const</span> std::vector&lt;std::string_view&gt;&amp; path);</div>
+<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span> </div>
+<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span>} <span class="comment">// namespace rerun</span></div>
 <div class="ttc" id="anamespacererun_html"><div class="ttname"><a href="namespacererun.html">rerun</a></div><div class="ttdoc">All Rerun C++ types and functions are in the rerun namespace or one of its nested namespaces.</div><div class="ttdef"><b>Definition</b> rerun.hpp:22</div></div>
 <div class="ttc" id="anamespacererun_html_a90ef01c22c05498a1ba7a9dc3a5937c0"><div class="ttname"><a href="namespacererun.html#a90ef01c22c05498a1ba7a9dc3a5937c0">rerun::new_entity_path</a></div><div class="ttdeci">std::string new_entity_path(const std::vector&lt; std::string_view &gt; &amp;path)</div><div class="ttdoc">Construct an entity path by escaping each part of the path.</div></div>
 <div class="ttc" id="anamespacererun_html_af8d18ffe441bb2557ccbce6f16d05415"><div class="ttname"><a href="namespacererun.html#af8d18ffe441bb2557ccbce6f16d05415">rerun::escape_entity_path_part</a></div><div class="ttdeci">std::string escape_entity_path_part(std::string_view str)</div><div class="ttdoc">Escape an individual part of an entity path.</div></div>

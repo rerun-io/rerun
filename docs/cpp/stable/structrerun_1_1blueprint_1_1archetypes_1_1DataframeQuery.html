@@ -130,32 +130,42 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a077791da2ac77829b96a3ce9a1128cd0"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html">DataframeQuery</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html#a077791da2ac77829b96a3ce9a1128cd0">with_timeline</a> (<a class="el" href="structrerun_1_1blueprint_1_1components_1_1TimelineName.html">rerun::blueprint::components::TimelineName</a> _timeline) &amp;&amp;</td></tr>
 <tr class="memdesc:a077791da2ac77829b96a3ce9a1128cd0"><td class="mdescLeft">&#160;</td><td class="mdescRight">The timeline for this query.  <br /></td></tr>
 <tr class="separator:a077791da2ac77829b96a3ce9a1128cd0"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a79ac36013cdb058ad5e9f2b0919cae20"><td class="memItemLeft" align="right" valign="top"><a id="a79ac36013cdb058ad5e9f2b0919cae20" name="a79ac36013cdb058ad5e9f2b0919cae20"></a>
-<a class="el" href="structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html">DataframeQuery</a>&#160;</td><td class="memItemRight" valign="bottom"><b>with_kind</b> (rerun::blueprint::components::QueryKind _kind) &amp;&amp;</td></tr>
-<tr class="memdesc:a79ac36013cdb058ad5e9f2b0919cae20"><td class="mdescLeft">&#160;</td><td class="mdescRight">Kind of query: latest-at or range. <br /></td></tr>
-<tr class="separator:a79ac36013cdb058ad5e9f2b0919cae20"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a948f3244772cb8532c14ab95f82e232d"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html">DataframeQuery</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html#a948f3244772cb8532c14ab95f82e232d">with_latest_at_queries</a> (<a class="el" href="structrerun_1_1blueprint_1_1components_1_1LatestAtQueries.html">rerun::blueprint::components::LatestAtQueries</a> _latest_at_queries) &amp;&amp;</td></tr>
-<tr class="memdesc:a948f3244772cb8532c14ab95f82e232d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Configuration for latest-at queries.  <br /></td></tr>
-<tr class="separator:a948f3244772cb8532c14ab95f82e232d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:adde1d363c2dbf1953829ff53f1208369"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html">DataframeQuery</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html#adde1d363c2dbf1953829ff53f1208369">with_time_range_queries</a> (<a class="el" href="structrerun_1_1blueprint_1_1components_1_1TimeRangeQueries.html">rerun::blueprint::components::TimeRangeQueries</a> _time_range_queries) &amp;&amp;</td></tr>
-<tr class="memdesc:adde1d363c2dbf1953829ff53f1208369"><td class="mdescLeft">&#160;</td><td class="mdescRight">Configuration for the time range queries.  <br /></td></tr>
-<tr class="separator:adde1d363c2dbf1953829ff53f1208369"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac824696d253fb32bf7f5916a15eb74f4"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html">DataframeQuery</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html#ac824696d253fb32bf7f5916a15eb74f4">with_filter_by_range</a> (<a class="el" href="structrerun_1_1blueprint_1_1components_1_1FilterByRange.html">rerun::blueprint::components::FilterByRange</a> _filter_by_range) &amp;&amp;</td></tr>
+<tr class="memdesc:ac824696d253fb32bf7f5916a15eb74f4"><td class="mdescLeft">&#160;</td><td class="mdescRight">If provided, only rows whose timestamp is within this range will be shown.  <br /></td></tr>
+<tr class="separator:ac824696d253fb32bf7f5916a15eb74f4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adc624bd4d117f3bcb37bb23daf1801a7"><td class="memItemLeft" align="right" valign="top"><a id="adc624bd4d117f3bcb37bb23daf1801a7" name="adc624bd4d117f3bcb37bb23daf1801a7"></a>
+<a class="el" href="structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html">DataframeQuery</a>&#160;</td><td class="memItemRight" valign="bottom"><b>with_filter_is_not_null</b> (<a class="el" href="structrerun_1_1blueprint_1_1components_1_1FilterIsNotNull.html">rerun::blueprint::components::FilterIsNotNull</a> _filter_is_not_null) &amp;&amp;</td></tr>
+<tr class="memdesc:adc624bd4d117f3bcb37bb23daf1801a7"><td class="mdescLeft">&#160;</td><td class="mdescRight">If provided, only show rows which contains a logged event for the specified component. <br /></td></tr>
+<tr class="separator:adc624bd4d117f3bcb37bb23daf1801a7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa34574f3c4b7786723b699e2c9cd1284"><td class="memItemLeft" align="right" valign="top"><a id="aa34574f3c4b7786723b699e2c9cd1284" name="aa34574f3c4b7786723b699e2c9cd1284"></a>
+<a class="el" href="structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html">DataframeQuery</a>&#160;</td><td class="memItemRight" valign="bottom"><b>with_apply_latest_at</b> (<a class="el" href="structrerun_1_1blueprint_1_1components_1_1ApplyLatestAt.html">rerun::blueprint::components::ApplyLatestAt</a> _apply_latest_at) &amp;&amp;</td></tr>
+<tr class="memdesc:aa34574f3c4b7786723b699e2c9cd1284"><td class="mdescLeft">&#160;</td><td class="mdescRight">Should empty cells be filled with latest-at queries? <br /></td></tr>
+<tr class="separator:aa34574f3c4b7786723b699e2c9cd1284"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a45d997925a6255bcf32bcf6661ca503a"><td class="memItemLeft" align="right" valign="top"><a id="a45d997925a6255bcf32bcf6661ca503a" name="a45d997925a6255bcf32bcf6661ca503a"></a>
+<a class="el" href="structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html">DataframeQuery</a>&#160;</td><td class="memItemRight" valign="bottom"><b>with_select</b> (<a class="el" href="structrerun_1_1blueprint_1_1components_1_1SelectedColumns.html">rerun::blueprint::components::SelectedColumns</a> _select) &amp;&amp;</td></tr>
+<tr class="memdesc:a45d997925a6255bcf32bcf6661ca503a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Selected columns. If unset, all columns are selected. <br /></td></tr>
+<tr class="separator:a45d997925a6255bcf32bcf6661ca503a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
 <tr class="memitem:ab284d69727070616e280a2e7d048d57a"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="structrerun_1_1blueprint_1_1components_1_1TimelineName.html">rerun::blueprint::components::TimelineName</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html#ab284d69727070616e280a2e7d048d57a">timeline</a></td></tr>
 <tr class="memdesc:ab284d69727070616e280a2e7d048d57a"><td class="mdescLeft">&#160;</td><td class="mdescRight">The timeline for this query.  <br /></td></tr>
 <tr class="separator:ab284d69727070616e280a2e7d048d57a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2f7c0b29efb06f10d533af28fbeb8d43"><td class="memItemLeft" align="right" valign="top"><a id="a2f7c0b29efb06f10d533af28fbeb8d43" name="a2f7c0b29efb06f10d533af28fbeb8d43"></a>
-std::optional&lt; rerun::blueprint::components::QueryKind &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>kind</b></td></tr>
-<tr class="memdesc:a2f7c0b29efb06f10d533af28fbeb8d43"><td class="mdescLeft">&#160;</td><td class="mdescRight">Kind of query: latest-at or range. <br /></td></tr>
-<tr class="separator:a2f7c0b29efb06f10d533af28fbeb8d43"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a3daf3fb539c85e6b1c25183701f34c4b"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="structrerun_1_1blueprint_1_1components_1_1LatestAtQueries.html">rerun::blueprint::components::LatestAtQueries</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html#a3daf3fb539c85e6b1c25183701f34c4b">latest_at_queries</a></td></tr>
-<tr class="memdesc:a3daf3fb539c85e6b1c25183701f34c4b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Configuration for latest-at queries.  <br /></td></tr>
-<tr class="separator:a3daf3fb539c85e6b1c25183701f34c4b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a17bac977c848d0ffb48b2bccd7da85dc"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="structrerun_1_1blueprint_1_1components_1_1TimeRangeQueries.html">rerun::blueprint::components::TimeRangeQueries</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html#a17bac977c848d0ffb48b2bccd7da85dc">time_range_queries</a></td></tr>
-<tr class="memdesc:a17bac977c848d0ffb48b2bccd7da85dc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Configuration for the time range queries.  <br /></td></tr>
-<tr class="separator:a17bac977c848d0ffb48b2bccd7da85dc"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a9215ddb2cc8a1ddcf85262e1e5221bb2"><td class="memItemLeft" align="right" valign="top">std::optional&lt; <a class="el" href="structrerun_1_1blueprint_1_1components_1_1FilterByRange.html">rerun::blueprint::components::FilterByRange</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html#a9215ddb2cc8a1ddcf85262e1e5221bb2">filter_by_range</a></td></tr>
+<tr class="memdesc:a9215ddb2cc8a1ddcf85262e1e5221bb2"><td class="mdescLeft">&#160;</td><td class="mdescRight">If provided, only rows whose timestamp is within this range will be shown.  <br /></td></tr>
+<tr class="separator:a9215ddb2cc8a1ddcf85262e1e5221bb2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad2371e250026f0168372db78599202a4"><td class="memItemLeft" align="right" valign="top"><a id="ad2371e250026f0168372db78599202a4" name="ad2371e250026f0168372db78599202a4"></a>
+std::optional&lt; <a class="el" href="structrerun_1_1blueprint_1_1components_1_1FilterIsNotNull.html">rerun::blueprint::components::FilterIsNotNull</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>filter_is_not_null</b></td></tr>
+<tr class="memdesc:ad2371e250026f0168372db78599202a4"><td class="mdescLeft">&#160;</td><td class="mdescRight">If provided, only show rows which contains a logged event for the specified component. <br /></td></tr>
+<tr class="separator:ad2371e250026f0168372db78599202a4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a99a25a1f8e4a83c057bcddff6401cfc0"><td class="memItemLeft" align="right" valign="top"><a id="a99a25a1f8e4a83c057bcddff6401cfc0" name="a99a25a1f8e4a83c057bcddff6401cfc0"></a>
+std::optional&lt; <a class="el" href="structrerun_1_1blueprint_1_1components_1_1ApplyLatestAt.html">rerun::blueprint::components::ApplyLatestAt</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>apply_latest_at</b></td></tr>
+<tr class="memdesc:a99a25a1f8e4a83c057bcddff6401cfc0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Should empty cells be filled with latest-at queries? <br /></td></tr>
+<tr class="separator:a99a25a1f8e4a83c057bcddff6401cfc0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a287a4e38a6c1770b4562f08e63b28ccd"><td class="memItemLeft" align="right" valign="top"><a id="a287a4e38a6c1770b4562f08e63b28ccd" name="a287a4e38a6c1770b4562f08e63b28ccd"></a>
+std::optional&lt; <a class="el" href="structrerun_1_1blueprint_1_1components_1_1SelectedColumns.html">rerun::blueprint::components::SelectedColumns</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><b>select</b></td></tr>
+<tr class="memdesc:a287a4e38a6c1770b4562f08e63b28ccd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Selected columns. If unset, all columns are selected. <br /></td></tr>
+<tr class="separator:a287a4e38a6c1770b4562f08e63b28ccd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-static-attribs" name="pub-static-attribs"></a>
 Static Public Attributes</h2></td></tr>
@@ -190,12 +200,12 @@ Static Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>The timeline for this query. </p>
-<p>If unset, use the time panel's timeline and a latest-at query, ignoring all other components of this archetype. </p>
+<p>If unset, the timeline currently active on the time panel is used. </p>
 
 </div>
 </div>
-<a id="a948f3244772cb8532c14ab95f82e232d" name="a948f3244772cb8532c14ab95f82e232d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a948f3244772cb8532c14ab95f82e232d">&#9670;&#160;</a></span>with_latest_at_queries()</h2>
+<a id="ac824696d253fb32bf7f5916a15eb74f4" name="ac824696d253fb32bf7f5916a15eb74f4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac824696d253fb32bf7f5916a15eb74f4">&#9670;&#160;</a></span>with_filter_by_range()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -204,10 +214,10 @@ Static Public Attributes</h2></td></tr>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html">DataframeQuery</a> rerun::blueprint::archetypes::DataframeQuery::with_latest_at_queries </td>
+          <td class="memname"><a class="el" href="structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html">DataframeQuery</a> rerun::blueprint::archetypes::DataframeQuery::with_filter_by_range </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="structrerun_1_1blueprint_1_1components_1_1LatestAtQueries.html">rerun::blueprint::components::LatestAtQueries</a>&#160;</td>
-          <td class="paramname"><em>_latest_at_queries</em></td><td>)</td>
+          <td class="paramtype"><a class="el" href="structrerun_1_1blueprint_1_1components_1_1FilterByRange.html">rerun::blueprint::components::FilterByRange</a>&#160;</td>
+          <td class="paramname"><em>_filter_by_range</em></td><td>)</td>
           <td> &amp;&amp;</td>
         </tr>
       </table>
@@ -218,37 +228,8 @@ Static Public Attributes</h2></td></tr>
 </table>
 </div><div class="memdoc">
 
-<p>Configuration for latest-at queries. </p>
-<p>Note: configuration as saved on a per-timeline basis. </p>
-
-</div>
-</div>
-<a id="adde1d363c2dbf1953829ff53f1208369" name="adde1d363c2dbf1953829ff53f1208369"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#adde1d363c2dbf1953829ff53f1208369">&#9670;&#160;</a></span>with_time_range_queries()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname"><a class="el" href="structrerun_1_1blueprint_1_1archetypes_1_1DataframeQuery.html">DataframeQuery</a> rerun::blueprint::archetypes::DataframeQuery::with_time_range_queries </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="structrerun_1_1blueprint_1_1components_1_1TimeRangeQueries.html">rerun::blueprint::components::TimeRangeQueries</a>&#160;</td>
-          <td class="paramname"><em>_time_range_queries</em></td><td>)</td>
-          <td> &amp;&amp;</td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p>Configuration for the time range queries. </p>
-<p>Note: configuration as saved on a per-timeline basis. </p>
+<p>If provided, only rows whose timestamp is within this range will be shown. </p>
+<p>Note: will be unset as soon as <code>timeline</code> is changed. </p>
 
 </div>
 </div>
@@ -266,41 +247,24 @@ Static Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>The timeline for this query. </p>
-<p>If unset, use the time panel's timeline and a latest-at query, ignoring all other components of this archetype. </p>
+<p>If unset, the timeline currently active on the time panel is used. </p>
 
 </div>
 </div>
-<a id="a3daf3fb539c85e6b1c25183701f34c4b" name="a3daf3fb539c85e6b1c25183701f34c4b"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a3daf3fb539c85e6b1c25183701f34c4b">&#9670;&#160;</a></span>latest_at_queries</h2>
+<a id="a9215ddb2cc8a1ddcf85262e1e5221bb2" name="a9215ddb2cc8a1ddcf85262e1e5221bb2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a9215ddb2cc8a1ddcf85262e1e5221bb2">&#9670;&#160;</a></span>filter_by_range</h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname">std::optional&lt;<a class="el" href="structrerun_1_1blueprint_1_1components_1_1LatestAtQueries.html">rerun::blueprint::components::LatestAtQueries</a>&gt; rerun::blueprint::archetypes::DataframeQuery::latest_at_queries</td>
+          <td class="memname">std::optional&lt;<a class="el" href="structrerun_1_1blueprint_1_1components_1_1FilterByRange.html">rerun::blueprint::components::FilterByRange</a>&gt; rerun::blueprint::archetypes::DataframeQuery::filter_by_range</td>
         </tr>
       </table>
 </div><div class="memdoc">
 
-<p>Configuration for latest-at queries. </p>
-<p>Note: configuration as saved on a per-timeline basis. </p>
-
-</div>
-</div>
-<a id="a17bac977c848d0ffb48b2bccd7da85dc" name="a17bac977c848d0ffb48b2bccd7da85dc"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a17bac977c848d0ffb48b2bccd7da85dc">&#9670;&#160;</a></span>time_range_queries</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">std::optional&lt;<a class="el" href="structrerun_1_1blueprint_1_1components_1_1TimeRangeQueries.html">rerun::blueprint::components::TimeRangeQueries</a>&gt; rerun::blueprint::archetypes::DataframeQuery::time_range_queries</td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Configuration for the time range queries. </p>
-<p>Note: configuration as saved on a per-timeline basis. </p>
+<p>If provided, only rows whose timestamp is within this range will be shown. </p>
+<p>Note: will be unset as soon as <code>timeline</code> is changed. </p>
 
 </div>
 </div>

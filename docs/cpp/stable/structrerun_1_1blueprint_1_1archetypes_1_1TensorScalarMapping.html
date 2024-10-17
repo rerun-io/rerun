@@ -213,7 +213,8 @@ Static Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Gamma exponent applied to normalized values before mapping to color. </p>
-<p>Raises the normalized values to the power of this value before mapping to color. Acts like an inverse brightness. Defaults to 1.0. </p>
+<p>Raises the normalized values to the power of this value before mapping to color. Acts like an inverse brightness. Defaults to 1.0.</p>
+<p>The final value for display is set as: <code>colormap( ((value - data_display_range.min) / (data_display_range.max - data_display_range.min)) ** gamma )</code> </p>
 
 </div>
 </div>
@@ -248,7 +249,8 @@ Static Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Gamma exponent applied to normalized values before mapping to color. </p>
-<p>Raises the normalized values to the power of this value before mapping to color. Acts like an inverse brightness. Defaults to 1.0. </p>
+<p>Raises the normalized values to the power of this value before mapping to color. Acts like an inverse brightness. Defaults to 1.0.</p>
+<p>The final value for display is set as: <code>colormap( ((value - data_display_range.min) / (data_display_range.max - data_display_range.min)) ** gamma )</code> </p>
 
 </div>
 </div>

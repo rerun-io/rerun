@@ -8,6 +8,7 @@ var structrerun_1_1archetypes_1_1Boxes3D =
     [ "with_radii", "structrerun_1_1archetypes_1_1Boxes3D.html#aea7dd8a146ec4db823b1a15a54497ca3", null ],
     [ "with_fill_mode", "structrerun_1_1archetypes_1_1Boxes3D.html#a39a921ba516932bda647647ff42db2c6", null ],
     [ "with_labels", "structrerun_1_1archetypes_1_1Boxes3D.html#a61c823142c1be4293632473f8d7f6b83", null ],
+    [ "with_show_labels", "structrerun_1_1archetypes_1_1Boxes3D.html#a666cd4444f3ab3a3f6529ea8ab0e66b4", null ],
     [ "with_class_ids", "structrerun_1_1archetypes_1_1Boxes3D.html#ae982f480bab50c97518fc9cb71c10faf", null ],
     [ "half_sizes", "structrerun_1_1archetypes_1_1Boxes3D.html#a7461cd9db3f1e2096a465930e0fe6168", null ],
     [ "centers", "structrerun_1_1archetypes_1_1Boxes3D.html#af2eb071f7b15f08f75628b0b9bc59552", null ],
@@ -17,5 +18,6 @@ var structrerun_1_1archetypes_1_1Boxes3D =
     [ "radii", "structrerun_1_1archetypes_1_1Boxes3D.html#abf3431b3cef7e4f2bde3ac79f5cbf11e", null ],
     [ "fill_mode", "structrerun_1_1archetypes_1_1Boxes3D.html#ac5632ef1fdabf817c0683684c2acd790", null ],
     [ "labels", "structrerun_1_1archetypes_1_1Boxes3D.html#a157704b867f6be5f296b1776bead2b7e", null ],
+    [ "show_labels", "structrerun_1_1archetypes_1_1Boxes3D.html#a0864d4bc42577b702752605eb869d029", null ],
     [ "class_ids", "structrerun_1_1archetypes_1_1Boxes3D.html#a14085eeac98e0345530fc64f738a0b11", null ]
 ];
