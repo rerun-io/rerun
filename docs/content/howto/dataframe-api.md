@@ -119,7 +119,7 @@ Rows where a specific column has null values may be filtered out using the `filt
 
 ```python
 # only keep rows where a position is available for the robot
-view = view.filter_is_not_null(rr.dataframe.ComponentColumnSelector("/world/robot", "Position3D"))
+view = view.filter_is_not_null("/world/robot:Position3D")
 ```
 
 ### Specifying rows
@@ -159,8 +159,8 @@ record_batches = view.select()
 # select only the specified columns
 record_batches = view.select(
     [
-        rr.dataframe.IndexColumnSelector("frame_nr"),
-        rr.dataframe.ComponentColumnSelector("/world/robot", "Position3D"),
+        "frame_nr",
+        "/world/robot:Position3D",
     ],
 )
 ```
