@@ -22,7 +22,7 @@
 //! trying to achieve and whether the viewer is running in the same process as your code, in
 //! another process, or even as a separate web application.
 //!
-//! Checkout [SDK Operating Modes](https://www.rerun.io/docs/reference/sdk-operating-modes) for an
+//! Checkout [SDK Operating Modes](https://www.rerun.io/docs/reference/sdk/operating-modes) for an
 //! overview of what's possible and how.
 //!
 //! If you get stuck on anything, open an issue at <https://github.com/rerun-io/rerun/issues>.
