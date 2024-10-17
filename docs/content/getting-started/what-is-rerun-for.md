@@ -31,4 +31,4 @@ While seeing and understanding your data is core to making progress in robotics,
 You can also use the data you collected for visualization to create new datasets for training and evaluating the models and algorithms that run on your robot.
 Rerun provides query APIs to make it easy to extract clean datasets from your recording for exactly that purpose.
 
-Of course, Rerun is useful for much more than just robots. Any time you have any form of sensors, or 2D or 3D state evolving over time, Rerun would be a great tool.
+Of course, Rerun is useful for much more than just robots. Any time you have any form of sensors, or 2D or 3D state evolving over time, Rerun is a great tool.
