@@ -7,7 +7,7 @@ TODO(emilk): insert a screenshot and/or code sample here
 
 📖 Release blogpost: TODO(emilk): add link
 
-🧳 Migration guide: No breaking changes in this release!
+🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-19
 
 ### ✨ Overview & highlights
 This release introduces two powerful features: a dataframe API (and view), as well as video support.
@@ -28,7 +28,10 @@ While the web viewer supports a variety of codecs, the native viewer supports on
 Read more about our video supports (and its limits) [in our video docs](https://rerun.io/docs/reference/video).
 
 ### ⚠️ Breaking changes
-None this time!
+* 🌊 C++: The C++ (and C) SDKs now require glibc 2.17 or higher.
+* 🦀 Rust: The minimum supported Rust version is now 1.79
+
+🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-19
 
 ### 🔎 Details
 
@@ -46,10 +49,10 @@ None this time!
 - Add support for NumPy arrays to the arrow serializer for string datatypes [#7689](https://github.com/rerun-io/rerun/pull/7689)
 
 #### 🦀 Rust API
-- Fix Rust's `TimeColumn::new_seconds/new_nanos` creating sequence timelines [#7402](https://github.com/rerun-io/rerun/pull/7402)
-- Update ndarray to 0.16  and ndarray-rand to 0.15 [#7358](https://github.com/rerun-io/rerun/pull/7358) (thanks [@benliepert](https://github.com/benliepert)!)
-- Replace `host_web_viewer` method with `WebViewerConfig::host_web_viewer` [#7553](https://github.com/rerun-io/rerun/pull/7553)
 - Update MSRV to Rust 1.79 [#7563](https://github.com/rerun-io/rerun/pull/7563)
+- Update ndarray to 0.16 and ndarray-rand to 0.15 [#7358](https://github.com/rerun-io/rerun/pull/7358) (thanks [@benliepert](https://github.com/benliepert)!)
+- Replace `host_web_viewer` method with `WebViewerConfig::host_web_viewer` [#7553](https://github.com/rerun-io/rerun/pull/7553)
+- Fix Rust's `TimeColumn::new_seconds/new_nanos` creating sequence timelines [#7402](https://github.com/rerun-io/rerun/pull/7402)
 
 #### 🪳 Bug fixes
 - Purge the query cache to prevent GC livelocks [#7370](https://github.com/rerun-io/rerun/pull/7370)
