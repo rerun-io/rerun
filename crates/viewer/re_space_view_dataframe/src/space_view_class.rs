@@ -165,8 +165,13 @@ mode sets the default time range to _everything_. You can override this in the s
 
         let query_handle = query_engine.query(dataframe_query);
 
-        let hide_column_actions =
-            dataframe_ui(ctx, ui, &query_handle, &mut state.expended_rows_cache);
+        let hide_column_actions = dataframe_ui(
+            ctx,
+            ui,
+            &query_handle,
+            &mut state.expended_rows_cache,
+            &query.space_view_id,
+        );
 
         view_query.handle_hide_column_actions(ctx, &view_columns, hide_column_actions)?;
 
