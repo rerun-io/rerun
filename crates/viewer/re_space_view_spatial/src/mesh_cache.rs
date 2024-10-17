@@ -36,7 +36,9 @@ pub struct MeshCache(HashMap<RowId, HashMap<MeshCacheKey, Option<Arc<LoadedMesh>
 /// Either a [`re_types::archetypes::Asset3D`] or [`re_types::archetypes::Mesh3D`] to be cached.
 #[derive(Debug, Clone, Copy)]
 pub enum AnyMesh<'a> {
-    Asset(&'a re_types::archetypes::Asset3D),
+    Asset {
+        asset: &'a re_types::archetypes::Asset3D,
+    },
     Mesh {
         mesh: &'a re_types::archetypes::Mesh3D,
 

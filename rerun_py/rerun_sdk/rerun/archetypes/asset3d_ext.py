@@ -16,6 +16,7 @@ class Asset3DExt:
         path: str | pathlib.Path | None = None,
         contents: datatypes.BlobLike | None = None,
         media_type: datatypes.Utf8Like | None = None,
+        albedo_factor: datatypes.Rgba32Like | None = None,
     ):
         """
         Create a new instance of the Asset3D archetype.
@@ -43,6 +44,9 @@ class Asset3DExt:
             or the viewer will try to guess from the contents (magic header).
             If the media type cannot be guessed, the viewer won't be able to render the asset.
 
+        albedo_factor:
+            Optional color multiplier for the whole mesh
+
         """
 
         from ..components import MediaType
@@ -58,7 +62,7 @@ class Asset3DExt:
                 if media_type is None:
                     media_type = MediaType.guess_from_path(path)
 
-            self.__attrs_init__(blob=blob, media_type=media_type)
+            self.__attrs_init__(blob=blob, media_type=media_type, albedo_factor=albedo_factor)
             return
 
         self.__attrs_clear__()
