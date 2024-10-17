@@ -6,6 +6,9 @@
 //! necessary conversion code (in the form of `From` and `TryFrom` traits) in this crate.
 //!
 
+/// Codec for serializing and deserializing query response (record batch) data
+pub mod codec;
+
 /// Generated types for the remote store gRPC service API v0.
 pub mod v0 {
     // Ignoring all warnings for the auto-generated code.

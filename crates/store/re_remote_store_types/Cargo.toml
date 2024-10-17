@@ -17,6 +17,7 @@ re_dataframe.workspace = true
 prost.workspace = true
 thiserror.workspace = true
 tonic.workspace = true
+arrow2 = { workspace = true, features = ["io_ipc"] }
 
 [lints]
 workspace = true
