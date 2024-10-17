@@ -336,10 +336,27 @@ impl ContainerBlueprint {
     /// Clears the blueprint component for this container.
     // TODO(jleibs): Should this be a recursive clear?
     pub fn clear(&self, ctx: &ViewerContext<'_>) {
-        ctx.command_sender.send_system(SystemCommand::DropEntity(
-            ctx.store_context.blueprint.store_id().clone(),
-            self.entity_path(),
-        ));
+        // ctx.command_sender.send_system(SystemCommand::DropEntity(
+        //     ctx.store_context.blueprint.store_id().clone(),
+        //     self.entity_path(),
+        // ));
+
+        let timepoint = ctx.store_context.blueprint_timepoint_for_writes();
+
+        let chunk = Chunk::builder(self.entity_path())
+            .with_archetype(
+                RowId::new(),
+                timepoint.clone(),
+                &re_types::archetypes::Clear::recursive(),
+            )
+            .build()
+            .unwrap();
+
+        ctx.command_sender
+            .send_system(SystemCommand::UpdateBlueprint(
+                ctx.store_context.blueprint.store_id().clone(),
+                vec![chunk],
+            ));
     }
 
     pub fn to_tile(&self) -> egui_tiles::Tile<SpaceViewId> {
