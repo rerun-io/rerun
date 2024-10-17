@@ -82,6 +82,13 @@ pub trait AsComponents {
     }
 }
 
+impl<C: Component> AsComponents for C {
+    #[inline]
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+        vec![(self as &dyn ComponentBatch).into()]
+    }
+}
+
 // ---
 
 mod archetype;
