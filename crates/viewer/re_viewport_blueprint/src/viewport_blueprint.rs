@@ -4,12 +4,12 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use nohash_hasher::IntSet;
-use re_types::{Archetype as _, SpaceViewClassIdentifier};
 use smallvec::SmallVec;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
 use re_types::blueprint::components::ViewerRecommendationHash;
+use re_types::{Archetype as _, SpaceViewClassIdentifier};
 use re_types_blueprint::blueprint::archetypes as blueprint_archetypes;
 use re_types_blueprint::blueprint::components::{
     AutoLayout, AutoSpaceViews, IncludedSpaceView, RootContainer, SpaceViewMaximized,
@@ -91,17 +91,28 @@ impl ViewportBlueprint {
             past_viewer_recommendations: results.component_batch(),
         };
 
-        let all_space_view_ids: Vec<SpaceViewId> = blueprint_db
-            .tree()
-            .children
-            .get(SpaceViewId::registry_part())
-            .map(|tree| {
-                tree.children
-                    .values()
-                    .map(|subtree| SpaceViewId::from_entity_path(&subtree.path))
-                    .collect()
-            })
-            .unwrap_or_default();
+        let root_container = root_container.map(|id| id.0.into());
+
+        let mut containers: BTreeMap<ContainerId, ContainerBlueprint> = Default::default();
+        let mut all_space_view_ids: Vec<SpaceViewId> = Default::default();
+
+        if let Some(root_container) = root_container {
+            re_tracing::profile_scope!("visit_all_containers");
+            let mut container_ids_to_visit = vec![root_container];
+            while let Some(id) = container_ids_to_visit.pop() {
+                if let Some(container) = ContainerBlueprint::try_from_db(blueprint_db, query, id) {
+                    for &content in &container.contents {
+                        match content {
+                            Contents::Container(id) => container_ids_to_visit.push(id),
+                            Contents::SpaceView(id) => {
+                                all_space_view_ids.push(id);
+                            }
+                        }
+                    }
+                    containers.insert(id, container);
+                }
+            }
+        }
 
         let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = all_space_view_ids
             .into_iter()
@@ -110,26 +121,6 @@ impl ViewportBlueprint {
             })
             .map(|sv| (sv.id, sv))
             .collect();
-
-        let all_container_ids: Vec<ContainerId> = blueprint_db
-            .tree()
-            .children
-            .get(ContainerId::registry_part())
-            .map(|tree| {
-                tree.children
-                    .values()
-                    .map(|subtree| ContainerId::from_entity_path(&subtree.path))
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        let containers: BTreeMap<ContainerId, ContainerBlueprint> = all_container_ids
-            .into_iter()
-            .filter_map(|id| ContainerBlueprint::try_from_db(blueprint_db, query, id))
-            .map(|c| (c.id, c))
-            .collect();
-
-        let root_container = root_container.map(|id| id.0.into());
 
         // Auto layouting and auto space view are only enabled if no blueprint has been provided by the user.
         // Only enable auto-space-views if this is the app-default blueprint
@@ -204,11 +195,6 @@ impl ViewportBlueprint {
 
     pub fn remove_space_view(&self, space_view_id: &SpaceViewId, ctx: &ViewerContext<'_>) {
         self.mark_user_interaction(ctx);
-
-        // Remove the space view from the store
-        if let Some(space_view) = self.space_views.get(space_view_id) {
-            space_view.clear(ctx);
-        }
 
         // If the space-view was maximized, clean it up
         if self.maximized == Some(*space_view_id) {
@@ -870,15 +856,6 @@ impl ViewportBlueprint {
             }
         }
 
-        // Clear any existing container blueprints that aren't referenced
-        // by any tiles.
-        for (container_id, container) in &self.containers {
-            let tile_id = blueprint_id_to_tile_id(container_id);
-            if tree.tiles.get(tile_id).is_none() {
-                container.clear(ctx);
-            }
-        }
-
         // Now save any contents that are a container back to the blueprint
         for (tile_id, contents) in &contents_from_tile_id {
             if let Contents::Container(container_id) = contents {
@@ -905,8 +882,10 @@ impl ViewportBlueprint {
             .and_then(|contents| contents.as_container_id())
             .map(|container_id| RootContainer((container_id).into()))
         {
+            re_log::trace!("Saving with a root container");
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &root_container);
         } else {
+            re_log::trace!("Saving empty viewport");
             ctx.save_empty_blueprint_component::<RootContainer>(&VIEWPORT_PATH.into());
         }
     }
