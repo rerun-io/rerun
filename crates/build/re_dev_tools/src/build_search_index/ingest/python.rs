@@ -177,7 +177,7 @@ fn collect_docstrings(root: &Item) -> Docstrings {
         panic!("root must be a module");
     };
 
-    for member in &root.members {
+    for member in root.members.values() {
         member.visit(&mut visitor);
     }
 
@@ -233,7 +233,7 @@ enum Item {
 struct Module {
     name: String,
     // labels: Vec<String>,
-    members: Vec<Item>,
+    members: BTreeMap<String, Item>,
     docstring: Option<Docstring>,
 }
 
@@ -278,7 +278,7 @@ struct Docstring {
 struct Class {
     name: String,
     docstring: Option<Docstring>,
-    members: Vec<Item>,
+    members: BTreeMap<String, Item>,
 }
 
 type Dump = BTreeMap<String, Item>;
@@ -330,7 +330,7 @@ impl Visit for Item {
 impl Visit for Module {
     #[inline]
     fn visit<T: ?Sized + Visitor>(&self, visitor: &mut T) {
-        for member in &self.members {
+        for member in self.members.values() {
             member.visit(visitor);
         }
     }
@@ -354,7 +354,7 @@ impl Visit for Function {
 impl Visit for Class {
     #[inline]
     fn visit<T: ?Sized + Visitor>(&self, visitor: &mut T) {
-        for member in &self.members {
+        for member in self.members.values() {
             member.visit(visitor);
         }
     }
