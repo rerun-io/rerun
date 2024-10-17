@@ -45,7 +45,7 @@ rayon.workspace = true
 thiserror.workspace = true
 walkdir.workspace = true
 
-[target.'cfg(not(any(target_arch = "wasm32", target_os = "windows")))'.dependencies]
+[target.'cfg(not(any(target_arch = "wasm32")))'.dependencies]
 re_crash_handler.workspace = true
 
 [dev-dependencies]
