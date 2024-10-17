@@ -136,11 +136,18 @@ pub use commands::{run, CallSource};
 #[cfg(feature = "sdk")]
 pub use sdk::*;
 
+/// All the types required by the dataframe API.
+#[cfg(feature = "dataframe")]
+pub mod dataframe {
+    pub use re_dataframe::*;
+}
+
 /// Everything needed to build custom `ChunkStoreSubscriber`s.
 pub use re_entity_db::external::re_chunk_store::{
-    ChunkStore, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreGeneration,
-    ChunkStoreSubscriber,
+    ChunkStore, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent,
+    ChunkStoreGeneration, ChunkStoreSubscriber, VersionPolicy,
 };
+pub use re_log_types::StoreKind;
 
 /// To register a new external data loader, simply add an executable in your $PATH whose name
 /// starts with this prefix.
