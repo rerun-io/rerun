@@ -566,6 +566,7 @@ blueprint = { path = "examples/python/blueprint", editable = true }
 blueprint_stocks = { path = "examples/python/blueprint_stocks", editable = true }
 clock = { path = "examples/python/clock", editable = true }
 controlnet = { path = "examples/python/controlnet", editable = true }
+dataframe_query = { path = "examples/python/dataframe_query", editable = true }
 detect_and_track_objects = { path = "examples/python/detect_and_track_objects", editable = true }
 dicom_mri = { path = "examples/python/dicom_mri", editable = true }
 dna = { path = "examples/python/dna", editable = true }
