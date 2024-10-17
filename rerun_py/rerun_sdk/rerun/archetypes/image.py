@@ -60,46 +60,28 @@ class Image(ImageExt, Archetype):
     </picture>
     </center>
 
-    ### Advanced usage of `send_columns` to send multiple images at once:
+    ### Logging images with various formats:
     ```python
     import numpy as np
     import rerun as rr
 
-    rr.init("rerun_example_image_send_columns", spawn=True)
+    rr.init("rerun_example_image_formats", spawn=True)
 
-    # Timeline on which the images are distributed.
-    times = np.arange(0, 20)
+    # Simple gradient image, logged in different formats.
+    image = np.array([[[x, min(255, x + y), y] for x in range(0, 256)] for y in range(0, 256)], dtype=np.uint8)
+    rr.log("image_rgb", rr.Image(image))
+    rr.log("image_green_only", rr.Image(image[:, :, 1], color_model="l"))  # Luminance only
+    rr.log("image_bgr", rr.Image(image[:, :, ::-1], color_model="bgr"))  # BGR
 
-    # Create a batch of images with a moving rectangle.
-    width, height = 300, 200
-    images = np.zeros((len(times), height, width, 3), dtype=np.uint8)
-    images[:, :, :, 2] = 255
-    for t in times:
-        images[t, 50:150, (t * 10) : (t * 10 + 100), 1] = 255
-
-    # Log the ImageFormat and indicator once, as static.
-    format_static = rr.components.ImageFormat(width=width, height=height, color_model="RGB", channel_datatype="U8")
-    rr.log("images", [format_static, rr.Image.indicator()], static=True)
-
-    # Send all images at once.
-    rr.send_columns(
-        "images",
-        times=[rr.TimeSequenceColumn("step", times)],
-        # Reshape the images so `ImageBufferBatch` can tell that this is several blobs.
-        #
-        # Note that the `ImageBufferBatch` consumes arrays of bytes,
-        # so if you have a different channel datatype than `U8`, you need to make sure
-        # that the data is converted to arrays of bytes before passing it to `ImageBufferBatch`.
-        components=[rr.components.ImageBufferBatch(images.reshape(len(times), -1))],
-    )
+    # New image with Separate Y/U/V planes with 4:2:2 chroma downsampling
+    y = bytes([128 for y in range(0, 256) for x in range(0, 256)])
+    u = bytes([x * 2 for y in range(0, 256) for x in range(0, 128)])  # Half horizontal resolution for chroma.
+    v = bytes([y for y in range(0, 256) for x in range(0, 128)])
+    rr.log("image_yuv422", rr.Image(bytes=y + u + v, width=256, height=256, pixel_format=rr.PixelFormat.Y_U_V16_FullRange))
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1200w.png">
-      <img src="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/full.png" width="640">
+      <img src="https://static.rerun.io/image_formats/7b8a162fcfd266f303980439beea997dc8544c24/full.png" width="640">
     </picture>
     </center>
 
