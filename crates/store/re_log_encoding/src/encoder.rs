@@ -206,7 +206,7 @@ pub fn encode(
     write: &mut impl std::io::Write,
 ) -> Result<u64, EncodeError> {
     re_tracing::profile_function!();
-    let mut encoder = Encoder::new(version, options, write)?;
+    let mut encoder = DroppableEncoder::new(version, options, write)?;
     let mut size_bytes = 0;
     for message in messages {
         size_bytes += encoder.append(&message?)?;
@@ -222,7 +222,7 @@ pub fn encode_ref<'a>(
     write: &mut impl std::io::Write,
 ) -> Result<u64, EncodeError> {
     re_tracing::profile_function!();
-    let mut encoder = Encoder::new(version, options, write)?;
+    let mut encoder = DroppableEncoder::new(version, options, write)?;
     let mut size_bytes = 0;
     for message in messages {
         size_bytes += encoder.append(message?)?;
@@ -241,11 +241,17 @@ pub fn encode_as_bytes(
     for message in messages {
         encoder.append(&message?)?;
     }
+    encoder.finish()?;
     Ok(bytes)
 }
 
 #[inline]
-pub fn local_encoder() -> Result<Encoder<Vec<u8>>, EncodeError> {
+pub fn local_encoder() -> Result<DroppableEncoder<Vec<u8>>, EncodeError> {
+    DroppableEncoder::new(CrateVersion::LOCAL, EncodingOptions::COMPRESSED, Vec::new())
+}
+
+#[inline]
+pub fn local_raw_encoder() -> Result<Encoder<Vec<u8>>, EncodeError> {
     Encoder::new(CrateVersion::LOCAL, EncodingOptions::COMPRESSED, Vec::new())
 }
 
@@ -253,10 +259,11 @@ pub fn local_encoder() -> Result<Encoder<Vec<u8>>, EncodeError> {
 pub fn encode_as_bytes_local(
     messages: impl Iterator<Item = ChunkResult<LogMsg>>,
 ) -> Result<Vec<u8>, EncodeError> {
-    let mut encoder = local_encoder()?;
+    let mut encoder = local_raw_encoder()?;
     for message in messages {
         encoder.append(&message?)?;
     }
+    encoder.finish()?;
     Ok(encoder.into_inner())
 }
 
@@ -264,9 +271,10 @@ pub fn encode_as_bytes_local(
 pub fn encode_ref_as_bytes_local<'a>(
     messages: impl Iterator<Item = ChunkResult<&'a LogMsg>>,
 ) -> Result<Vec<u8>, EncodeError> {
-    let mut encoder = local_encoder()?;
+    let mut encoder = local_raw_encoder()?;
     for message in messages {
         encoder.append(message?)?;
     }
+    encoder.finish()?;
     Ok(encoder.into_inner())
 }
