@@ -49,9 +49,10 @@ class TestDataframe:
         rr.init(APP_ID, recording_id=RECORDING_ID)
 
         rr.set_time_sequence("my_index", 1)
-        rr.log("points", rr.Points3D([[1, 2, 3], [4, 5, 6], [7, 8, 9]]))
+        rr.log("points", rr.Points3D([[1, 2, 3], [4, 5, 6], [7, 8, 9]], radii=[]))
         rr.set_time_sequence("my_index", 7)
         rr.log("points", rr.Points3D([[10, 11, 12]], colors=[[255, 0, 0]]))
+        rr.log("static_text", rr.TextLog("Hello"), static=True)
 
         with tempfile.TemporaryDirectory() as tmpdir:
             rrd = tmpdir + "/tmp.rrd"
@@ -95,35 +96,134 @@ class TestDataframe:
         assert self.recording.application_id() == APP_ID
         assert self.recording.recording_id() == str(RECORDING_ID)
 
-    def test_full_view(self) -> None:
-        view = self.recording.view(index="my_index", contents="points")
+    def test_schema_recording(self) -> None:
+        schema = self.recording.schema()
 
-        batches = view.select()
-        table = pa.Table.from_batches(batches, batches.schema)
+        # log_tick, log_time, my_index
+        assert len(schema.index_columns()) == 3
+        # Color, Points3DIndicator, Position3D, Radius, Text, TextIndicator
+        assert len(schema.component_columns()) == 6
+
+        assert schema.index_columns()[0].name == "log_tick"
+        assert schema.index_columns()[1].name == "log_time"
+        assert schema.index_columns()[2].name == "my_index"
+        assert schema.component_columns()[0].entity_path == "/points"
+        assert schema.component_columns()[0].component_name == "rerun.components.Color"
+        assert schema.component_columns()[0].is_static is False
+        assert schema.component_columns()[1].entity_path == "/points"
+        assert schema.component_columns()[1].component_name == "rerun.components.Points3DIndicator"
+        assert schema.component_columns()[1].is_static is False
+        assert schema.component_columns()[2].entity_path == "/points"
+        assert schema.component_columns()[2].component_name == "rerun.components.Position3D"
+        assert schema.component_columns()[2].is_static is False
+        assert schema.component_columns()[3].entity_path == "/points"
+        assert schema.component_columns()[3].component_name == "rerun.components.Radius"
+        assert schema.component_columns()[3].is_static is False
+        assert schema.component_columns()[4].entity_path == "/static_text"
+        assert schema.component_columns()[4].component_name == "rerun.components.Text"
+        assert schema.component_columns()[4].is_static is True
+
+    def test_schema_view(self) -> None:
+        schema = self.recording.view(index="my_index", contents="points").schema()
+
+        assert len(schema.index_columns()) == 3
+        # Position3D, Color
+        assert len(schema.component_columns()) == 2
+
+        assert schema.index_columns()[0].name == "log_tick"
+        assert schema.index_columns()[1].name == "log_time"
+        assert schema.index_columns()[2].name == "my_index"
+        assert schema.component_columns()[0].entity_path == "/points"
+        assert schema.component_columns()[0].component_name == "rerun.components.Color"
+        assert schema.component_columns()[1].entity_path == "/points"
+        assert schema.component_columns()[1].component_name == "rerun.components.Position3D"
+
+        # Force radius to be included
+        schema = self.recording.view(
+            index="my_index",
+            contents="points",
+            include_semantically_empty_columns=True,
+        ).schema()
+
+        assert len(schema.index_columns()) == 3
+        # Color, Position3D, Radius
+        assert len(schema.component_columns()) == 3
+        assert schema.component_columns()[2].component_name == "rerun.components.Radius"
+
+    def test_full_view(self) -> None:
+        view = self.recording.view(index="my_index", contents="/**")
+
+        table = view.select().read_all()
+
+        # my_index, log_time, log_tick, points, colors, text
+        assert table.num_columns == 6
+        assert table.num_rows == 2
+
+        table = view.select(
+            columns=[col for col in view.schema() if not col.is_static],
+        ).read_all()
 
         # my_index, log_time, log_tick, points, colors
         assert table.num_columns == 5
         assert table.num_rows == 2
 
-    def test_select_columns(self) -> None:
-        view = self.recording.view(index="my_index", contents="points")
-        index_col = rr.dataframe.IndexColumnSelector("my_index")
+        table = view.select_static().read_all()
 
-        selectors = [rr.components.Position3D, "rerun.components.Position3D", "Position3D", "position3D"]
-        for selector in selectors:
-            pos = rr.dataframe.ComponentColumnSelector("points", selector)
+        # text
+        assert table.num_columns == 1
+        assert table.num_rows == 1
 
-            batches = view.select(index_col, pos)
+    def test_content_filters(self) -> None:
+        filter_expressions = [
+            "+/** -/static_text",
+            """
+            +/**
+            -/static_text
+            """,
+            {"/** -/static_text": ["Position3D", "Color"]},
+        ]
 
-            table = pa.Table.from_batches(batches, batches.schema)
-            # points
-            assert table.num_columns == 2
+        for expr in filter_expressions:
+            view = self.recording.view(index="my_index", contents=expr)
+
+            table = view.select().read_all()
+
+            # my_index, log_time, log_tick, points, colors
+            assert table.num_columns == 5
             assert table.num_rows == 2
 
-            assert table.column("my_index")[0].equals(self.expected_index0[0])
-            assert table.column("my_index")[1].equals(self.expected_index1[0])
-            assert table.column("/points:Position3D")[0].values.equals(self.expected_pos0)
-            assert table.column("/points:Position3D")[1].values.equals(self.expected_pos1)
+    def test_select_columns(self) -> None:
+        view = self.recording.view(index="my_index", contents="points")
+        index_col_selectors = [rr.dataframe.IndexColumnSelector("my_index"), "my_index"]
+
+        obj_selectors = [
+            rr.dataframe.ComponentColumnSelector("points", selector)
+            for selector in [
+                rr.components.Position3D,
+                "rerun.components.Position3D",
+                "Position3D",
+                "position3D",
+            ]
+        ]
+        str_selectors = [
+            "/points:rerun.components.Position3D",
+            "/points:Position3D",
+            "/points:position3d",
+        ]
+
+        for index_selector in index_col_selectors:
+            for col_selector in obj_selectors + str_selectors:
+                batches = view.select(index_selector, col_selector)
+
+                table = pa.Table.from_batches(batches, batches.schema)
+                # points
+                assert table.num_columns == 2
+                assert table.num_rows == 2
+
+                assert table.column("my_index")[0].equals(self.expected_index0[0])
+                assert table.column("my_index")[1].equals(self.expected_index1[0])
+                assert table.column("/points:Position3D")[0].values.equals(self.expected_pos0)
+                assert table.column("/points:Position3D")[1].values.equals(self.expected_pos1)
 
     def test_index_values(self) -> None:
         view = self.recording.view(index="my_index", contents="points")

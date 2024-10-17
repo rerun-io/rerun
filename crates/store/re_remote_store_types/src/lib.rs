@@ -58,8 +58,8 @@ pub mod v0 {
                 })
                 .transpose()?;
 
-            let filtered_point_of_view = value
-                .filtered_pov
+            let filtered_is_not_null = value
+                .filtered_is_not_null
                 .map(re_dataframe::ComponentColumnSelector::try_from)
                 .transpose()?;
 
@@ -79,7 +79,7 @@ pub mod v0 {
                 using_index_values: value
                     .using_index_values
                     .map(|uiv| uiv.time_points.into_iter().map(|v| v.into()).collect()),
-                filtered_point_of_view,
+                filtered_is_not_null,
                 sparse_fill_strategy: re_dataframe::SparseFillStrategy::default(), // TODO(zehiko) implement support for sparse fill strategy
                 selection,
             })
@@ -170,7 +170,6 @@ pub mod v0 {
             Ok(Self {
                 entity_path,
                 component_name,
-                join_encoding: re_dataframe::JoinEncoding::default(), // TODO(zehiko) implement
             })
         }
     }
@@ -260,14 +259,14 @@ pub mod v0 {
                         .map(|v| TimeInt { time: v.as_i64() })
                         .collect(),
                 }),
-                filtered_pov: value
-                    .filtered_point_of_view
-                    .map(|cs| ComponentColumnSelector {
+                filtered_is_not_null: value.filtered_is_not_null.map(|cs| {
+                    ComponentColumnSelector {
                         entity_path: Some(cs.entity_path.into()),
                         component: Some(Component {
                             name: cs.component_name,
                         }),
-                    }),
+                    }
+                }),
                 column_selection: value.selection.map(|cs| ColumnSelection {
                     columns: cs.into_iter().map(|c| c.into()).collect(),
                 }),
@@ -361,7 +360,7 @@ mod tests {
                     TimeInt { time: 5 },
                 ],
             }),
-            filtered_pov: Some(ComponentColumnSelector {
+            filtered_is_not_null: Some(ComponentColumnSelector {
                 entity_path: Some(EntityPath {
                     path: "/somepath/c".to_owned(),
                 }),

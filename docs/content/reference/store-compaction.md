@@ -1,6 +1,6 @@
 ---
 title: Datastore compaction
-order: 850
+order: 900
 ---
 
 

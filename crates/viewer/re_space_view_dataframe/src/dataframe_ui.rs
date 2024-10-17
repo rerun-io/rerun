@@ -11,7 +11,7 @@ use re_dataframe::QueryHandle;
 use re_log_types::{EntityPath, TimeInt, Timeline, TimelineName};
 use re_types_core::ComponentName;
 use re_ui::UiExt as _;
-use re_viewer_context::ViewerContext;
+use re_viewer_context::{SpaceViewId, SystemCommandSender, ViewerContext};
 
 use crate::display_record_batch::{DisplayRecordBatch, DisplayRecordBatchError};
 use crate::expanded_rows::{ExpandedRows, ExpandedRowsCache};
@@ -34,6 +34,7 @@ pub(crate) fn dataframe_ui(
     ui: &mut egui::Ui,
     query_handle: &re_dataframe::QueryHandle<'_>,
     expanded_rows_cache: &mut ExpandedRowsCache,
+    space_view_id: &SpaceViewId,
 ) -> Vec<HideColumnAction> {
     re_tracing::profile_function!();
 
@@ -43,16 +44,16 @@ pub(crate) fn dataframe_ui(
         .map(|(_, desc)| desc.clone())
         .collect::<Vec<_>>();
 
-    // The table id mainly drives column widths, so it should be stable across queries leading to
-    // the same set of selected columns. However, changing the PoV typically leads to large changes
-    // of actual content. Since that can affect the optimal column width, we include the PoV in the
-    // salt.
-    let table_id_salt = egui::Id::new("__dataframe__")
-        .with(&selected_columns)
-        .with(&query_handle.query().filtered_point_of_view);
+    // The table id mainly drives column widths, along with the id of each column. Empirically, the
+    // user experience is better if we have stable column width even when the query changes (which
+    // can, in turn, change the column's content).
+    let table_id_salt = egui::Id::new("__dataframe__").with(space_view_id);
 
-    // For the row expansion cache, we invalidate more aggressively for now.
+    // For the row expansion cache, we invalidate more aggressively for now, because the expanded
+    // state is stored against a row index (not unique id like columns). This means rows will more
+    // often auto-collapse when the query is modified.
     let row_expansion_id_salt = egui::Id::new("__dataframe_row_exp__")
+        .with(space_view_id)
         .with(&selected_columns)
         .with(query_handle.query());
 
@@ -239,21 +240,29 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                             .painter()
                             .layout(text, font_id, text_color, f32::INFINITY);
 
+                        // Extra padding for this being a button.
+                        let size = galley.size() + 2.0 * ui.spacing().button_padding;
+
                         // Put the text leftmost in the clip rect (so it is always visible)
                         let mut pos = egui::Align2::LEFT_CENTER
                             .anchor_size(
                                 ui.clip_rect().shrink(Self::LEFT_RIGHT_MARGIN).left_center(),
-                                galley.size(),
+                                size,
                             )
                             .min;
 
                         // … but not so far to the right that it doesn't fit.
-                        pos.x = pos.x.at_most(ui.max_rect().right() - galley.size().x);
+                        pos.x = pos.x.at_most(ui.max_rect().right() - size.x);
 
-                        ui.put(
-                            egui::Rect::from_min_size(pos, galley.size()),
-                            egui::Label::new(galley),
+                        let item = re_viewer_context::Item::from(entity_path.clone());
+                        let is_selected = self.ctx.selection().contains_item(&item);
+                        let response = ui.put(
+                            egui::Rect::from_min_size(pos, size),
+                            egui::SelectableLabel::new(is_selected, galley),
                         );
+                        self.ctx.select_hovered_on_click(&response, item);
+
+                        // TODO(emilk): expand column(s) to make sure the text fits (requires egui_table fix).
                     }
                 } else if cell.row_nr == 1 {
                     let column = &self.selected_columns[cell.col_range.start];
@@ -280,21 +289,58 @@ impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
                         }
                     };
 
+                    let header_ui = |ui: &mut egui::Ui| {
+                        let text = egui::RichText::new(column.short_name()).strong();
+
+                        let is_selected = match column {
+                            ColumnDescriptor::Time(descr) => {
+                                &descr.timeline == self.ctx.rec_cfg.time_ctrl.read().timeline()
+                            }
+                            ColumnDescriptor::Component(component_column_descriptor) => self
+                                .ctx
+                                .selection()
+                                .contains_item(&re_viewer_context::Item::ComponentPath(
+                                    component_column_descriptor.component_path(),
+                                )),
+                        };
+
+                        let response = ui.selectable_label(is_selected, text);
+
+                        match column {
+                            ColumnDescriptor::Time(descr) => {
+                                if response.clicked() {
+                                    self.ctx.command_sender.send_system(
+                                        re_viewer_context::SystemCommand::SetActiveTimeline {
+                                            rec_id: self.ctx.recording_id().clone(),
+                                            timeline: descr.timeline,
+                                        },
+                                    );
+                                }
+                            }
+                            ColumnDescriptor::Component(component_column_descriptor) => {
+                                self.ctx.select_hovered_on_click(
+                                    &response,
+                                    re_viewer_context::Item::ComponentPath(
+                                        component_column_descriptor.component_path(),
+                                    ),
+                                );
+                            }
+                        }
+                    };
+
                     if let Some(hide_action) = hide_action {
-                        let cell_clicked = cell_with_hover_button_ui(
+                        let hide_clicked = cell_with_hover_button_ui(
                             ui,
                             &re_ui::icons::VISIBLE,
                             CellStyle::Header,
-                            |ui| {
-                                ui.strong(column.short_name());
-                            },
+                            header_ui,
                         );
 
-                        if cell_clicked {
+                        if hide_clicked {
                             self.hide_column_actions.push(hide_action);
                         }
                     } else {
-                        ui.strong(column.short_name());
+                        header_ui(ui);
                     }
                 } else {
                     // this should never happen

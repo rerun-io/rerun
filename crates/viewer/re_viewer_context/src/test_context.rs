@@ -149,6 +149,11 @@ impl TestContext {
                     self.selection_state.set_selection(item);
                 }
 
+                SystemCommand::SetActiveTimeline { rec_id, timeline } => {
+                    assert_eq!(&rec_id, self.recording_store.store_id());
+                    self.active_timeline = timeline;
+                }
+
                 // not implemented
                 SystemCommand::SetFocus(_)
                 | SystemCommand::ActivateApp(_)

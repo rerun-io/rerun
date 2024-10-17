@@ -23,8 +23,7 @@ use re_chunk::{
 };
 use re_chunk_store::{
     ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector, Index,
-    IndexValue, JoinEncoding, QueryExpression, SparseFillStrategy, TimeColumnDescriptor,
-    TimeColumnSelector,
+    IndexValue, QueryExpression, SparseFillStrategy, TimeColumnDescriptor, TimeColumnSelector,
 };
 use re_log_types::ResolvedTimeRange;
 use re_types_core::components::ClearIsRecursive;
@@ -399,7 +398,6 @@ impl QueryHandle<'_> {
                         let ComponentColumnSelector {
                             entity_path: selected_entity_path,
                             component_name: selected_component_name,
-                            join_encoding: _,
                         } = selected_column;
 
                         view_contents
@@ -425,7 +423,6 @@ impl QueryHandle<'_> {
                                                 selected_component_name.clone(),
                                             ),
                                             store_datatype: arrow2::datatypes::DataType::Null,
-                                            join_encoding: JoinEncoding::default(),
                                             is_static: false,
                                             is_indicator: false,
                                             is_tombstone: false,
@@ -448,11 +445,7 @@ impl QueryHandle<'_> {
         query: &RangeQuery,
         view_contents: &[ColumnDescriptor],
     ) -> (Option<usize>, Vec<Vec<(AtomicU64, Chunk)>>) {
-        let mut view_pov_chunks_idx = self
-            .query
-            .filtered_point_of_view
-            .as_ref()
-            .map(|_| usize::MAX);
+        let mut view_pov_chunks_idx = self.query.filtered_is_not_null.as_ref().map(|_| usize::MAX);
 
         let view_chunks = view_contents
             .iter()
@@ -465,7 +458,7 @@ impl QueryHandle<'_> {
                         .fetch_chunks(query, &column.entity_path, [column.component_name])
                         .unwrap_or_default();
 
-                    if let Some(pov) = self.query.filtered_point_of_view.as_ref() {
+                    if let Some(pov) = self.query.filtered_is_not_null.as_ref() {
                         if pov.entity_path == column.entity_path
                             && column.component_name.matches(&pov.component_name)
                         {
@@ -619,7 +612,11 @@ impl QueryHandle<'_> {
                         // remaining unique index values all while taking row-id ordering semantics
                         // into account.
                         debug_assert!(
-                            chunk.is_sorted(),
+                            if let Some(index) = self.query.filtered_index.as_ref() {
+                                chunk.is_timeline_sorted(index)
+                            } else {
+                                chunk.is_sorted()
+                            },
                             "the query cache should have already taken care of sorting (and densifying!) the chunk",
                         );
 
@@ -919,14 +916,24 @@ impl QueryHandle<'_> {
             .collect_vec();
 
         // Static always wins, no matter what.
-        for (view_idx, streaming_state) in view_streaming_state.iter_mut().enumerate() {
-            if let static_state @ Some(_) = state
-                .selected_static_values
-                .get(view_idx)
-                .cloned()
-                .flatten()
-                .map(StreamingJoinState::Retrofilled)
+        for (selected_idx, static_state) in state.selected_static_values.iter().enumerate() {
+            if let static_state @ Some(_) =
+                static_state.clone().map(StreamingJoinState::Retrofilled)
             {
+                let Some(view_idx) = state
+                    .selected_contents
+                    .get(selected_idx)
+                    .map(|(view_idx, _)| *view_idx)
+                else {
+                    debug_assert!(false, "selected_idx out of bounds");
+                    continue;
+                };
+
+                let Some(streaming_state) = view_streaming_state.get_mut(view_idx) else {
+                    debug_assert!(false, "view_idx out of bounds");
+                    continue;
+                };
+
                 *streaming_state = static_state;
             }
         }
@@ -1199,7 +1206,7 @@ mod tests {
     // * [x] filtered_index_values
     // * [x] view_contents
     // * [x] selection
-    // * [x] filtered_point_of_view
+    // * [x] filtered_is_not_null
     // * [x] sparse_fill_strategy
     // * [x] using_index_values
     //
@@ -1554,7 +1561,7 @@ mod tests {
     }
 
     #[test]
-    fn filtered_point_of_view() -> anyhow::Result<()> {
+    fn filtered_is_not_null() -> anyhow::Result<()> {
         re_log::setup_logging();
 
         let store = create_nasty_store()?;
@@ -1572,10 +1579,9 @@ mod tests {
         {
             let query = QueryExpression {
                 filtered_index,
-                filtered_point_of_view: Some(ComponentColumnSelector {
+                filtered_is_not_null: Some(ComponentColumnSelector {
                     entity_path: "no/such/entity".into(),
                     component_name: MyPoint::name().to_string(),
-                    join_encoding: Default::default(),
                 }),
                 ..Default::default()
             };
@@ -1602,10 +1608,9 @@ mod tests {
         {
             let query = QueryExpression {
                 filtered_index,
-                filtered_point_of_view: Some(ComponentColumnSelector {
+                filtered_is_not_null: Some(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
                     component_name: "AComponentColumnThatDoesntExist".into(),
-                    join_encoding: Default::default(),
                 }),
                 ..Default::default()
             };
@@ -1632,10 +1637,9 @@ mod tests {
         {
             let query = QueryExpression {
                 filtered_index,
-                filtered_point_of_view: Some(ComponentColumnSelector {
+                filtered_is_not_null: Some(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
                     component_name: MyPoint::name().to_string(),
-                    join_encoding: Default::default(),
                 }),
                 ..Default::default()
             };
@@ -1672,10 +1676,9 @@ mod tests {
         {
             let query = QueryExpression {
                 filtered_index,
-                filtered_point_of_view: Some(ComponentColumnSelector {
+                filtered_is_not_null: Some(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
                     component_name: MyColor::name().to_string(),
-                    join_encoding: Default::default(),
                 }),
                 ..Default::default()
             };
@@ -1901,22 +1904,18 @@ mod tests {
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         component_name: MyColor::name().to_string(),
-                        join_encoding: Default::default(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         component_name: MyColor::name().to_string(),
-                        join_encoding: Default::default(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: "non_existing_entity".into(),
                         component_name: MyColor::name().to_string(),
-                        join_encoding: Default::default(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         component_name: "AComponentColumnThatDoesntExist".into(),
-                        join_encoding: Default::default(),
                     }),
                 ]),
                 ..Default::default()
@@ -1942,6 +1941,86 @@ mod tests {
                     ListArray[None, None, [2], [3], [4], None, [6]],
                     NullArray(7),
                     NullArray(7),
+                ]\
+                ",
+            );
+
+            similar_asserts::assert_eq!(expected, got);
+        }
+
+        // static
+        {
+            let query = QueryExpression {
+                filtered_index: Some(filtered_index),
+                selection: Some(vec![
+                    // NOTE: This will force a crash if the selected indexes vs. view indexes are
+                    // improperly handled.
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    //
+                    ColumnSelector::Component(ComponentColumnSelector {
+                        entity_path: entity_path.clone(),
+                        component_name: MyLabel::name().to_string(),
+                    }),
+                ]),
+                ..Default::default()
+            };
+            eprintln!("{query:#?}:");
+
+            let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows()
+            );
+            let dataframe = concatenate_record_batches(
+                query_handle.schema().clone(),
+                &query_handle.into_batch_iter().collect_vec(),
+            );
+            eprintln!("{dataframe}");
+
+            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let expected = unindent::unindent(
+                "\
+                [
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
                 ]\
                 ",
             );
@@ -1993,17 +2072,14 @@ mod tests {
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         component_name: MyPoint::name().to_string(),
-                        join_encoding: Default::default(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         component_name: MyColor::name().to_string(),
-                        join_encoding: Default::default(),
                     }),
                     ColumnSelector::Component(ComponentColumnSelector {
                         entity_path: entity_path.clone(),
                         component_name: MyLabel::name().to_string(),
-                        join_encoding: Default::default(),
                     }),
                 ]),
                 ..Default::default()
@@ -2030,7 +2106,7 @@ mod tests {
                     NullArray(4),
                     NullArray(4),
                     ListArray[[2], [3], [4], [6]],
-                    ListArray[None, None, None, None],
+                    ListArray[[c], [c], [c], [c]],
                 ]\
                 ",
             );
@@ -2194,10 +2270,9 @@ mod tests {
         {
             let query = QueryExpression {
                 filtered_index,
-                filtered_point_of_view: Some(ComponentColumnSelector {
+                filtered_is_not_null: Some(ComponentColumnSelector {
                     entity_path: entity_path.clone(),
                     component_name: MyPoint::name().to_string(),
-                    join_encoding: Default::default(),
                 }),
                 ..Default::default()
             };

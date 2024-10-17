@@ -187,10 +187,13 @@ pub enum YuvPixelLayout {
 /// …which means for the moment we pretty much only care about the (actually quite) different YUV conversion matrices!
 #[derive(Clone, Copy, Debug)]
 pub enum YuvMatrixCoefficients {
+    /// Identity matrix, interpret YUV as GBR.
+    Identity = 0,
+
     /// BT.601 (aka. SDTV, aka. Rec.601)
     ///
     /// Wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion/>
-    Bt601 = 0,
+    Bt601 = 1,
 
     /// BT.709 (aka. HDTV, aka. Rec.709)
     ///
@@ -203,7 +206,7 @@ pub enum YuvMatrixCoefficients {
     /// but for all other purposes they are the same.
     /// (The only reason for us to convert to optical units ("linear" instead of "gamma") is for
     /// lighting & tonemapping where we typically start out with an sRGB image!)
-    Bt709 = 1,
+    Bt709 = 2,
     //
     // Not yet supported. These vary a lot more from the other two!
     //

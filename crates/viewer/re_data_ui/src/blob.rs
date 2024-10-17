@@ -194,9 +194,23 @@ fn show_video_blob_info(
                     )),
                 );
                 if let Some(bit_depth) = data.config.stsd.contents.bit_depth() {
+                    let mut bit_depth = bit_depth.to_string();
+                    if data.is_monochrome() == Some(true) {
+                        bit_depth = format!("{bit_depth} (monochrome)");
+                    }
+
                     ui.list_item_flat_noninteractive(
-                        PropertyContent::new("Bit depth").value_text(bit_depth.to_string()),
+                        PropertyContent::new("Bit depth").value_text(bit_depth),
                     );
+                }
+                if let Some(subsampling_mode) = data.subsampling_mode() {
+                    // Don't show subsampling mode for monochrome, doesn't make sense usually.
+                    if data.is_monochrome() != Some(true) {
+                        ui.list_item_flat_noninteractive(
+                            PropertyContent::new("Subsampling mode")
+                                .value_text(subsampling_mode.to_string()),
+                        );
+                    }
                 }
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Duration")

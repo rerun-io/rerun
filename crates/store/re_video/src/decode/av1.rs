@@ -37,14 +37,22 @@ impl SyncDav1dDecoder {
     pub fn new(debug_name: String) -> Result<Self> {
         re_tracing::profile_function!();
 
-        // TODO(#7671): enable this warning again on Linux when the `nasm` feature actually does something
-        #[allow(clippy::overly_complex_bool_expr)]
-        if !cfg!(target_os = "linux") && !cfg!(feature = "nasm") {
-            re_log::warn_once!(
-                "NOTE: native AV1 video decoder is running extra slowly. \
-                Speed it up by compiling Rerun with the `nasm` feature enabled. \
-                You'll need to also install nasm: https://nasm.us/"
-            );
+        if !cfg!(feature = "nasm") {
+            // The `nasm` feature makes AV1 decoding much faster.
+            // On Linux the difference is huge (~25x).
+            // On Windows, the difference was also pretty big (unsure how big).
+            // On an M3 Mac the difference is smalelr (2-3x),
+            // and ever without `nasm` emilk can play an 8k video at 2x speed.
+
+            if cfg!(target_os = "macos") && cfg!(target_arch = "aarch64") {
+                re_log::warn_once!(
+                    "The native AV1 video decoder is unnecessarily slow. \
+                    Speed it up by compiling Rerun with the `nasm` feature enabled."
+                );
+            } else {
+                // Better to return an error than to be perceived as being slow
+                return Err(Error::Dav1dWithoutNasm);
+            }
         }
 
         // See https://videolan.videolan.me/dav1d/structDav1dSettings.html for settings docs
@@ -231,8 +239,7 @@ fn yuv_matrix_coefficients(debug_name: &str, picture: &dav1d::Picture) -> YuvMat
     // Quotes are from https://wiki.x266.mov/docs/colorimetry/matrix (if not noted otherwise)
     #[allow(clippy::match_same_arms)]
     match picture.matrix_coefficients() {
-        // TODO(andreas) This one we should probably support! Afaik this means to just interpret YUV as RGB (or is there a swizzle?).
-        dav1d::pixel::MatrixCoefficients::Identity => YuvMatrixCoefficients::Bt709,
+        dav1d::pixel::MatrixCoefficients::Identity => YuvMatrixCoefficients::Identity,
 
         dav1d::pixel::MatrixCoefficients::BT709 => YuvMatrixCoefficients::Bt709,
 

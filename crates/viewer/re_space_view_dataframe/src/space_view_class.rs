@@ -147,7 +147,7 @@ mode sets the default time range to _everything_. You can override this in the s
             view_contents: Some(view_contents),
             filtered_index: Some(view_query.timeline(ctx)?),
             filtered_index_range: Some(view_query.filter_by_range()?),
-            filtered_point_of_view: view_query.filter_by_event()?,
+            filtered_is_not_null: view_query.filter_is_not_null()?,
             sparse_fill_strategy,
             selection: None,
 
@@ -165,8 +165,13 @@ mode sets the default time range to _everything_. You can override this in the s
 
         let query_handle = query_engine.query(dataframe_query);
 
-        let hide_column_actions =
-            dataframe_ui(ctx, ui, &query_handle, &mut state.expended_rows_cache);
+        let hide_column_actions = dataframe_ui(
+            ctx,
+            ui,
+            &query_handle,
+            &mut state.expended_rows_cache,
+            &query.space_view_id,
+        );
 
         view_query.handle_hide_column_actions(ctx, &view_columns, hide_column_actions)?;
 

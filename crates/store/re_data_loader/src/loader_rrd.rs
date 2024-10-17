@@ -216,7 +216,7 @@ impl RetryableFileReader {
 mod tests {
     use re_build_info::CrateVersion;
     use re_chunk::RowId;
-    use re_log_encoding::{decoder, encoder::Encoder};
+    use re_log_encoding::{decoder, encoder::DroppableEncoder};
     use re_log_types::{
         ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
     };
@@ -247,7 +247,7 @@ mod tests {
             .open(rrd_file_path.to_str().unwrap())
             .unwrap();
 
-        let mut encoder = Encoder::new(
+        let mut encoder = DroppableEncoder::new(
             re_build_info::CrateVersion::LOCAL,
             re_log_encoding::EncodingOptions::UNCOMPRESSED,
             rrd_file,

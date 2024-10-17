@@ -26,14 +26,13 @@
 //!      * weirdly enough, DO NOT CLAMP! a lot of software may say it's limited but then use the so-called foot and head space anyways to go outside the regular colors
 //!          * reportedly (read this on some forums ;-)) some players _do_ clamp, so let's not get too concerned about this
 //!      * it's a remnant of the analog age, but it's still very common!
-//! * TODO(andreas): It may actually be non-downsampled RGB as well, so skip the entire YUV conversion step! Haven't figured out yet how to determine that.
-//!
 //!
 //! ### Given a normalized YUV triplet, how do we get color?
 //!
 //! * `picture.matrix_coefficients()` (see <https://wiki.x266.mov/docs/colorimetry/matrix>)
 //!   * this tells us what to multiply the incoming YUV data with to get SOME RGB data
 //!   * there's various standards of how to do this, but the most common is BT.709
+//!   * here's a fun special one: `identity` means it's not actually YUV, but GBR!
 //! * `picture.primaries()`
 //!   * now we have RGB but we kinda have no idea what that means!
 //!   * the color primaries tell us which space we're in
@@ -78,8 +77,7 @@
 //! supporting HDR content at which point more properties will be important!
 //!
 
-#[cfg(feature = "av1")]
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(with_dav1d)]
 pub mod av1;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -94,10 +92,24 @@ use crate::Time;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[cfg(feature = "av1")]
+    #[error("Unsupported codec: {0}")]
+    UnsupportedCodec(String),
+
     #[cfg(not(target_arch = "wasm32"))]
+    #[error("Native AV1 video decoding not supported in debug builds.")]
+    NoNativeAv1Debug,
+
+    #[cfg(with_dav1d)]
     #[error("dav1d: {0}")]
     Dav1d(#[from] dav1d::Error),
+
+    #[cfg(with_dav1d)]
+    #[error("To enabled native AV1 decoding, compile Rerun with the `nasm` feature enabled.")]
+    Dav1dWithoutNasm,
+
+    #[error("Rerun does not yet support native AV1 decoding on Linux ARM64. See https://github.com/rerun-io/rerun/issues/7755")]
+    #[cfg(linux_arm64)]
+    NoDav1dOnLinuxArm64,
 }
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
@@ -113,6 +125,41 @@ pub trait SyncDecoder {
 
     /// Clear and reset everything
     fn reset(&mut self) {}
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn new_decoder(
+    debug_name: String,
+    video: &crate::VideoData,
+) -> Result<Box<dyn SyncDecoder + Send + 'static>> {
+    #![allow(unused_variables, clippy::needless_return)] // With some feature flags
+
+    re_log::trace!(
+        "Looking for decoder for {}",
+        video.human_readable_codec_string()
+    );
+
+    match &video.config.stsd.contents {
+        #[cfg(feature = "av1")]
+        re_mp4::StsdBoxContent::Av01(_av01_box) => {
+            #[cfg(linux_arm64)]
+            {
+                return Err(Error::NoDav1dOnLinuxArm64);
+            }
+
+            #[cfg(with_dav1d)]
+            {
+                if cfg!(debug_assertions) {
+                    return Err(Error::NoNativeAv1Debug); // because debug builds of rav1d is EXTREMELY slow
+                } else {
+                    re_log::trace!("Decoding AV1…");
+                    return Ok(Box::new(av1::SyncDav1dDecoder::new(debug_name)?));
+                }
+            }
+        }
+
+        _ => Err(Error::UnsupportedCodec(video.human_readable_codec_string())),
+    }
 }
 
 /// One chunk of encoded video data; usually one frame.
@@ -178,6 +225,10 @@ pub enum YuvRange {
 /// For details see `re_renderer`'s `YuvMatrixCoefficients` type.
 #[derive(Debug)]
 pub enum YuvMatrixCoefficients {
+    /// Interpret YUV as GBR.
+    Identity,
+
     Bt601,
+
     Bt709,
 }

@@ -27,8 +27,8 @@ from .container_kind import (
     ContainerKindType,
 )
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike, Corner2DType
-from .filter_by_event import FilterByEvent, FilterByEventBatch, FilterByEventType
 from .filter_by_range import FilterByRange, FilterByRangeBatch, FilterByRangeType
+from .filter_is_not_null import FilterIsNotNull, FilterIsNotNullBatch, FilterIsNotNullType
 from .grid_columns import GridColumns, GridColumnsBatch, GridColumnsType
 from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
@@ -93,12 +93,12 @@ __all__ = [
     "Corner2DBatch",
     "Corner2DLike",
     "Corner2DType",
-    "FilterByEvent",
-    "FilterByEventBatch",
-    "FilterByEventType",
     "FilterByRange",
     "FilterByRangeBatch",
     "FilterByRangeType",
+    "FilterIsNotNull",
+    "FilterIsNotNullBatch",
+    "FilterIsNotNullType",
     "GridColumns",
     "GridColumnsBatch",
     "GridColumnsType",

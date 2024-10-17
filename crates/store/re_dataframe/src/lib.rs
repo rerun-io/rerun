@@ -10,8 +10,8 @@ pub use self::query::QueryHandle;
 pub use self::external::arrow2::chunk::Chunk as ArrowChunk;
 #[doc(no_inline)]
 pub use self::external::re_chunk_store::{
-    ColumnSelector, ComponentColumnSelector, Index, IndexRange, IndexValue, JoinEncoding,
-    QueryExpression, SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
+    ColumnSelector, ComponentColumnSelector, Index, IndexRange, IndexValue, QueryExpression,
+    SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
 };
 #[doc(no_inline)]
 pub use self::external::re_log_types::{EntityPath, TimeInt, Timeline};

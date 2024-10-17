@@ -7,18 +7,18 @@ import pyarrow as pa
 from ...blueprint import components as blueprint_components
 
 if TYPE_CHECKING:
-    from .filter_by_event import FilterByEvent, FilterByEventArrayLike, FilterByEventLike
+    from .filter_is_not_null import FilterIsNotNull, FilterIsNotNullArrayLike, FilterIsNotNullLike
 
 
 class _NotAFilterByEventLike(BaseException):
     pass
 
 
-class FilterByEventExt:
-    """Extension for [FilterByEvent][rerun.blueprint.datatypes.FilterByEvent]."""
+class FilterIsNotNullExt:
+    """Extension for [FilterIsNotNull][rerun.blueprint.datatypes.FilterIsNotNull]."""
 
     @staticmethod
-    def native_to_pa_array_override(input_data: FilterByEventArrayLike, data_type: pa.DataType) -> pa.Array:
+    def native_to_pa_array_override(input_data: FilterIsNotNullArrayLike, data_type: pa.DataType) -> pa.Array:
         from ...blueprint.datatypes import ComponentColumnSelectorBatch
         from ...datatypes import BoolBatch
 
@@ -43,14 +43,14 @@ class FilterByEventExt:
         )
 
 
-def _to_filter_by_event(input_data: FilterByEventLike) -> FilterByEvent:
-    from .filter_by_event import FilterByEvent
+def _to_filter_by_event(input_data: FilterIsNotNullLike) -> FilterIsNotNull:
+    from .filter_is_not_null import FilterIsNotNull
 
-    if isinstance(input_data, FilterByEvent):
+    if isinstance(input_data, FilterIsNotNull):
         return input_data
     elif isinstance(input_data, str):
-        return FilterByEvent(active=True, column=blueprint_components.ComponentColumnSelector(spec=input_data))
+        return FilterIsNotNull(active=True, column=blueprint_components.ComponentColumnSelector(spec=input_data))
     elif isinstance(input_data, blueprint_components.ComponentColumnSelector):
-        return FilterByEvent(active=True, column=input_data)
+        return FilterIsNotNull(active=True, column=input_data)
     else:
         raise _NotAFilterByEventLike()

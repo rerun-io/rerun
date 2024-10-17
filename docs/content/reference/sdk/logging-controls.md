@@ -1,5 +1,5 @@
 ---
-title: SDK Logging Controls
+title: Logging Controls
 order: 600
 ---
 

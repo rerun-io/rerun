@@ -52,9 +52,9 @@ pub struct Query {
     /// Optional index selector sampling
     #[prost(message, optional, tag = "8")]
     pub using_index_values: ::core::option::Option<IndexValues>,
-    /// PoV (filtering) component
+    /// Component column used to filter out _rows_ from the view contents.
     #[prost(message, optional, tag = "9")]
-    pub filtered_pov: ::core::option::Option<ComponentColumnSelector>,
+    pub filtered_is_not_null: ::core::option::Option<ComponentColumnSelector>,
     /// which columns to include in the response
     /// Note - we have one more layer of indiraction to ensure the field is optional,
     /// same as in the query expression. We can't have both 'repeated' and 'optional' field labels.

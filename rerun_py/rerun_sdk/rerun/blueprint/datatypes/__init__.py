@@ -9,19 +9,19 @@ from .component_column_selector import (
     ComponentColumnSelectorLike,
     ComponentColumnSelectorType,
 )
-from .filter_by_event import (
-    FilterByEvent,
-    FilterByEventArrayLike,
-    FilterByEventBatch,
-    FilterByEventLike,
-    FilterByEventType,
-)
 from .filter_by_range import (
     FilterByRange,
     FilterByRangeArrayLike,
     FilterByRangeBatch,
     FilterByRangeLike,
     FilterByRangeType,
+)
+from .filter_is_not_null import (
+    FilterIsNotNull,
+    FilterIsNotNullArrayLike,
+    FilterIsNotNullBatch,
+    FilterIsNotNullLike,
+    FilterIsNotNullType,
 )
 from .selected_columns import (
     SelectedColumns,
@@ -45,16 +45,16 @@ __all__ = [
     "ComponentColumnSelectorBatch",
     "ComponentColumnSelectorLike",
     "ComponentColumnSelectorType",
-    "FilterByEvent",
-    "FilterByEventArrayLike",
-    "FilterByEventBatch",
-    "FilterByEventLike",
-    "FilterByEventType",
     "FilterByRange",
     "FilterByRangeArrayLike",
     "FilterByRangeBatch",
     "FilterByRangeLike",
     "FilterByRangeType",
+    "FilterIsNotNull",
+    "FilterIsNotNullArrayLike",
+    "FilterIsNotNullBatch",
+    "FilterIsNotNullLike",
+    "FilterIsNotNullType",
     "SelectedColumns",
     "SelectedColumnsArrayLike",
     "SelectedColumnsBatch",

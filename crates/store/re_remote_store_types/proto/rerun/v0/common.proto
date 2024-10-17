@@ -41,8 +41,8 @@ message Query {
     IndexValues filtered_index_values = 7;
     // Optional index selector sampling
     IndexValues using_index_values = 8;
-    // PoV (filtering) component
-    ComponentColumnSelector filtered_pov = 9;
+    // Component column used to filter out _rows_ from the view contents.
+    ComponentColumnSelector filtered_is_not_null = 9;
     // which columns to include in the response
     // Note - we have one more layer of indiraction to ensure the field is optional,
     // same as in the query expression. We can't have both 'repeated' and 'optional' field labels.

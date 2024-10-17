@@ -7,8 +7,8 @@ pub use re_types::blueprint::components::BackgroundKind;
 pub use re_types::blueprint::components::ColumnShare;
 pub use re_types::blueprint::components::ComponentColumnSelector;
 pub use re_types::blueprint::components::Corner2D;
-pub use re_types::blueprint::components::FilterByEvent;
 pub use re_types::blueprint::components::FilterByRange;
+pub use re_types::blueprint::components::FilterIsNotNull;
 pub use re_types::blueprint::components::IncludedContent;
 pub use re_types::blueprint::components::Interactive;
 pub use re_types::blueprint::components::LockRangeDuringZoom;
@@ -47,8 +47,8 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<ComponentColumnSelector>(blueprint)
         && validate_component::<ContainerKind>(blueprint)
         && validate_component::<Corner2D>(blueprint)
-        && validate_component::<FilterByEvent>(blueprint)
         && validate_component::<FilterByRange>(blueprint)
+        && validate_component::<FilterIsNotNull>(blueprint)
         && validate_component::<GridColumns>(blueprint)
         && validate_component::<IncludedContent>(blueprint)
         && validate_component::<IncludedSpaceView>(blueprint)
