@@ -124,6 +124,7 @@ Rerun uses an open-core model. Everything in this repository will stay open sour
 
 We are also building a commercial data platform.
 Right now that is only available for a few select design partners.
+[Click here if you're interested](https://rerun.io/pricing).
 
 The Rerun open source project targets the needs of individual developers.
 The commercial product targets the needs specific to teams that build and run computer vision and robotics products.
