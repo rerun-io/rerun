@@ -6,7 +6,7 @@ use quote::{format_ident, quote};
 
 use crate::{
     codegen::{autogen_warning, Target},
-    ObjectKind, Objects, Reporter, ATTR_RERUN_COMPONENT_REQUIRED,
+    ObjectKind, Objects, Reporter, ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_NO_PLACEHOLDER,
 };
 
 use super::util::{append_tokens, doc_as_lines};
@@ -111,11 +111,22 @@ fn generate_component_reflection(
             obj.is_experimental(),
         )
         .join("\n");
+
+        let placeholder = if obj.attrs.has(ATTR_RUST_NO_PLACEHOLDER) {
+            quote! {
+                None
+            }
+        } else {
+            quote! {
+                Some(#type_name::default().to_arrow()?)
+            }
+        };
+
         let quoted_reflection = quote! {
             ComponentReflection {
                 docstring_md: #docstring_md,
 
-                placeholder: Some(#type_name::default().to_arrow()?),
+                placeholder: #placeholder,
             }
         };
         quoted_pairs.push(quote! { (#quoted_name, #quoted_reflection) });
