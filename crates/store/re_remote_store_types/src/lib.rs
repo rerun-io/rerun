@@ -250,6 +250,7 @@ pub mod v0 {
                 filtered_index_values: value.filtered_index_values.map(|iv| IndexValues {
                     time_points: iv
                         .into_iter()
+                        // TODO(zehiko) is this desired behaviour for TimeInt::STATIC?
                         .map(|v| TimeInt { time: v.as_i64() })
                         .collect(),
                 }),

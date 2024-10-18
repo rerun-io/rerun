@@ -12,7 +12,7 @@ pub struct Timeline {
     pub name: ::prost::alloc::string::String,
 }
 /// A time range between start and end time points. Each 64 bit number can represent different time point data
-/// depending on the timeline it is associated with.
+/// depending on the timeline it is associated with. Time range is inclusive for both start and end time points.
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct TimeRange {
     #[prost(int64, tag = "1")]
@@ -28,39 +28,63 @@ pub struct Schema {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Query {
-    /// database view defined by entity paths and components
+    /// The subset of the database that the query will run on: a set of EntityPath(s) and their
+    /// associated Component(s)
     #[prost(message, optional, tag = "1")]
     pub view_contents: ::core::option::Option<ViewContents>,
-    /// define whethere the view_contents should include semantically empty columns
+    /// Whether the view_contents should ignore semantically empty columns
+    /// A semantically empty column is a column that either contains no data at all, or where all
+    /// values are either nulls or empty arrays (\[\]).
     #[prost(bool, tag = "2")]
     pub include_semantically_empty_columns: bool,
-    /// define whether the view_contents should ignore columns corresponding to indicator components
+    /// Whether the view_contents should ignore columns corresponding to indicator components
+    /// Indicator components are marker components, generally automatically inserted by Rerun, that
+    /// helps keep track of the original context in which a piece of data was logged/sent.
     #[prost(bool, tag = "3")]
     pub include_indicator_columns: bool,
-    /// define whether the view_contents should ignore columns corresponding to `Clear`-related components.
+    /// Whether the view_contents should ignore columns corresponding to Clear-related components
     #[prost(bool, tag = "4")]
     pub include_tombstone_columns: bool,
-    /// filtering index (just a string i.e. a name of the timeline for starters)
+    /// The index used to filter out _rows_ from the view contents.
+    /// Only rows where at least 1 column contains non-null data at that index will be kept in the
+    /// final dataset. If left unspecified, the results will only contain static data.
     #[prost(message, optional, tag = "5")]
     pub filtered_index: ::core::option::Option<IndexColumnSelector>,
-    /// Optional specific range for the index selector
+    /// The range of index values used to filter out _rows_ from the view contents
+    /// Only rows where at least 1 of the view-contents contains non-null data within that range will be kept in
+    /// the final dataset.
+    /// This has no effect if filtered_index isn't set.
+    /// This has no effect if using_index_values is set.
     #[prost(message, optional, tag = "6")]
     pub filtered_index_range: ::core::option::Option<IndexRange>,
-    /// Optional specific values for the index selector
+    /// The specific index values used to filter out _rows_ from the view contents.
+    /// Only rows where at least 1 column contains non-null data at these specific values will be kept
+    /// in the final dataset.
+    /// This has no effect if filtered_index isn't set.
+    /// This has no effect if using_index_values is set.
     #[prost(message, optional, tag = "7")]
     pub filtered_index_values: ::core::option::Option<IndexValues>,
-    /// Optional index selector sampling
+    /// The specific index values used to sample _rows_ from the view contents.
+    /// The final dataset will contain one row per sampled index value, regardless of whether data
+    /// existed for that index value in the view contents.
+    /// The semantics of the query are consistent with all other settings: the results will be
+    /// sorted on the filtered_index, and only contain unique index values.
+    ///
+    /// This has no effect if filtered_index isn't set.
+    /// If set, this overrides both filtered_index_range and filtered_index_values.
     #[prost(message, optional, tag = "8")]
     pub using_index_values: ::core::option::Option<IndexValues>,
-    /// Component column used to filter out _rows_ from the view contents.
+    /// The component column used to filter out _rows_ from the view contents.
+    /// Only rows where this column contains non-null data be kept in the final dataset.
     #[prost(message, optional, tag = "9")]
     pub filtered_is_not_null: ::core::option::Option<ComponentColumnSelector>,
-    /// which columns to include in the response
-    /// Note - we have one more layer of indiraction to ensure the field is optional,
-    /// same as in the query expression. We can't have both 'repeated' and 'optional' field labels.
+    /// / The specific _columns_ to sample from the final view contents.
+    /// / The order of the samples will be respected in the final result.
+    /// /
+    /// / If unspecified, it means - everything.
     #[prost(message, optional, tag = "10")]
     pub column_selection: ::core::option::Option<ColumnSelection>,
-    /// how are null values filled in the response
+    /// Specifies how null values should be filled in the returned dataframe.
     #[prost(enumeration = "SparseFillStrategy", tag = "11")]
     pub sparse_fill_strategy: i32,
 }
@@ -107,6 +131,7 @@ pub struct SampledIndexValues {
     #[prost(message, repeated, tag = "1")]
     pub sample_points: ::prost::alloc::vec::Vec<TimeInt>,
 }
+/// A 64-bit number describing either nanoseconds, sequence numbers or fully static data.
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct TimeInt {
     #[prost(int64, tag = "1")]
@@ -129,22 +154,27 @@ pub struct ComponentsSet {
     #[prost(message, repeated, tag = "1")]
     pub components: ::prost::alloc::vec::Vec<Component>,
 }
+/// The unique identifier of an entity, e.g. `camera/3/points`
+/// See <<https://www.rerun.io/docs/concepts/entity-path>> for more on entity paths.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct EntityPath {
     #[prost(string, tag = "1")]
     pub path: ::prost::alloc::string::String,
 }
+/// Component describes semantic data that can be used by any number of  rerun's archetypes.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct Component {
     /// component name needs to be a string as user can define their own component
     #[prost(string, tag = "1")]
     pub name: ::prost::alloc::string::String,
 }
+/// Used to telect a time column.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TimeColumnSelector {
     #[prost(message, optional, tag = "1")]
     pub timeline: ::core::option::Option<Timeline>,
 }
+/// Used to select a component based on its EntityPath and Component name.
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ComponentColumnSelector {
     #[prost(message, optional, tag = "1")]
@@ -152,6 +182,7 @@ pub struct ComponentColumnSelector {
     #[prost(message, optional, tag = "2")]
     pub component: ::core::option::Option<Component>,
 }
+/// Specifies how null values should be filled in the returned dataframe.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
 pub enum SparseFillStrategy {
