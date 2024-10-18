@@ -260,6 +260,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "080e9890a082662b09c1ad45f567faeeb47f22b5fb23895fbe1e651e718e25ca"
 
 [[package]]
+name = "approx"
+version = "0.5.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "cab112f0a86d568ea0e627cc1d6be74a1e9cd55214684db5561995f6dad897c6"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "arboard"
 version = "3.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2329,6 +2338,30 @@ dependencies = [
 ]
 
 [[package]]
+name = "fdg"
+version = "1.0.0"
+source = "git+https://github.com/grantshandy/fdg?rev=50755f1dea20249d753600e7e7e51ca33e87b5a1#50755f1dea20249d753600e7e7e51ca33e87b5a1"
+dependencies = [
+ "nalgebra",
+ "num-traits",
+ "petgraph",
+ "rand",
+ "rustc-hash",
+]
+
+[[package]]
+name = "fdg-sim"
+version = "0.9.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2417e237094dfd115a4aa11b2a3dc6cda45e8d36572a7862ba9a48402f7441a3"
+dependencies = [
+ "glam 0.21.3",
+ "hashlink",
+ "petgraph",
+ "quad-rand",
+]
+
+[[package]]
 name = "filetime"
 version = "0.2.23"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2588,6 +2621,12 @@ dependencies = [
 
 [[package]]
 name = "glam"
+version = "0.21.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "518faa5064866338b013ff9b2350dc318e14cc4fcd6cb8206d7e7c9886c98815"
+
+[[package]]
+name = "glam"
 version = "0.28.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "779ae4bf7e8421cf91c0b3b64e7e8b40b862fba4d393f59150042de7c4965a94"
@@ -2727,6 +2766,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "graph_view"
+version = "0.0.0"
+dependencies = [
+ "bytemuck",
+ "fdg",
+ "fdg-sim",
+ "layout-rs",
+ "mimalloc",
+ "petgraph",
+ "rand",
+ "re_crash_handler",
+ "re_force",
+ "re_format",
+ "re_log_types",
+ "re_sdk_comms",
+ "re_viewer",
+ "thiserror",
+]
+
+[[package]]
 name = "half"
 version = "1.8.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2765,6 +2824,15 @@ dependencies = [
  "ahash",
  "allocator-api2",
  "serde",
+]
+
+[[package]]
+name = "hashlink"
+version = "0.8.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e8094feaf31ff591f651a2664fb9cfd92bba7a60ce3197265e9482ebe753c8f7"
+dependencies = [
+ "hashbrown 0.14.5",
 ]
 
 [[package]]
@@ -2825,7 +2893,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "344d5bf5d6b6da1020fcfd4014d44e0cc695356c603db9c774b30bd6d385ad2b"
 dependencies = [
  "constgebra",
- "glam",
+ "glam 0.28.0",
 ]
 
 [[package]]
@@ -3184,6 +3252,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "layout-rs"
+version = "0.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "84deb28a3a6c839ca42a7341664f32281416d69e2f29deb85aec5cc0243fdea8"
+
+[[package]]
 name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3361,7 +3435,7 @@ version = "0.19.0-alpha.14+dev"
 dependencies = [
  "anyhow",
  "clap",
- "glam",
+ "glam 0.28.0",
  "re_tracing",
  "rerun",
 ]
@@ -3508,7 +3582,7 @@ version = "0.19.0-alpha.14+dev"
 dependencies = [
  "anyhow",
  "clap",
- "glam",
+ "glam 0.28.0",
  "rerun",
 ]
 
@@ -3572,6 +3646,35 @@ dependencies = [
  "termcolor",
  "thiserror",
  "unicode-xid",
+]
+
+[[package]]
+name = "nalgebra"
+version = "0.32.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7b5c17de023a86f59ed79891b2e5d5a94c705dbe904a5b5c9c952ea6221b03e4"
+dependencies = [
+ "approx",
+ "matrixmultiply",
+ "nalgebra-macros",
+ "num-complex",
+ "num-rational",
+ "num-traits",
+ "rand",
+ "rand_distr",
+ "simba",
+ "typenum",
+]
+
+[[package]]
+name = "nalgebra-macros"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "254a5372af8fc138e36684761d3c0cdb758a4410e938babcff1c860ce14ddbfc"
+dependencies = [
+ "proc-macro2",
+ "quote",
+ "syn 2.0.48",
 ]
 
 [[package]]
@@ -3684,6 +3787,19 @@ dependencies = [
  "libc",
  "memoffset 0.7.1",
  "static_assertions",
+]
+
+[[package]]
+name = "node_link_graph"
+version = "0.19.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "glam 0.28.0",
+ "itertools 0.13.0",
+ "rerun",
+ "strum",
+ "strum_macros",
 ]
 
 [[package]]
@@ -4122,7 +4238,7 @@ version = "0.19.0-alpha.14+dev"
 dependencies = [
  "anyhow",
  "clap",
- "glam",
+ "glam 0.28.0",
  "prost",
  "prost-build",
  "protoc-prebuilt",
@@ -4264,12 +4380,12 @@ checksum = "478c572c3d73181ff3c2539045f6eb99e5491218eae919370993b890cdbdd98e"
 
 [[package]]
 name = "petgraph"
-version = "0.6.3"
+version = "0.6.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4dd7d28ee937e54fe3080c91faa1c3a46c06de6252988a7f4592ba2310ef22a4"
+checksum = "b4c5cc86750666a3ed20bdaf5ca2a0344f9c67674cae0515bec2da16fbaa47db"
 dependencies = [
  "fixedbitset",
- "indexmap 1.9.3",
+ "indexmap 2.1.0",
 ]
 
 [[package]]
@@ -4697,6 +4813,12 @@ dependencies = [
  "quote",
  "syn 2.0.48",
 ]
+
+[[package]]
+name = "quad-rand"
+version = "0.2.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b76f1009795ca44bb5aaae8fd3f18953e209259c33d9b059b1f53d58ab7511db"
 
 [[package]]
 name = "quick-xml"
@@ -5197,6 +5319,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_force"
+version = "0.19.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "rand",
+]
+
+[[package]]
 name = "re_format"
 version = "0.19.0-alpha.14+dev"
 dependencies = [
@@ -5308,7 +5438,7 @@ version = "0.20.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "999db5029a2879efeddb538f2e486aabf33adf7a0b3708c6df5c1cae13b3af49"
 dependencies = [
- "glam",
+ "glam 0.28.0",
  "serde",
 ]
 
@@ -5418,7 +5548,7 @@ dependencies = [
  "ecolor",
  "enumset",
  "getrandom",
- "glam",
+ "glam 0.28.0",
  "gltf",
  "half 2.3.1",
  "itertools 0.13.0",
@@ -5463,7 +5593,7 @@ dependencies = [
  "anyhow",
  "bytemuck",
  "console_error_panic_hook",
- "glam",
+ "glam 0.28.0",
  "image",
  "itertools 0.13.0",
  "pollster",
@@ -5641,7 +5771,7 @@ dependencies = [
  "bytemuck",
  "criterion",
  "egui",
- "glam",
+ "glam 0.28.0",
  "hexasphere",
  "image",
  "itertools 0.13.0",
@@ -5821,7 +5951,7 @@ dependencies = [
  "ecolor",
  "egui_plot",
  "emath",
- "glam",
+ "glam 0.28.0",
  "half 2.3.1",
  "image",
  "infer",
@@ -6040,7 +6170,7 @@ dependencies = [
  "egui_extras",
  "egui_tiles",
  "emath",
- "glam",
+ "glam 0.28.0",
  "half 2.3.1",
  "image",
  "indexmap 2.1.0",
@@ -6084,7 +6214,7 @@ dependencies = [
  "ahash",
  "egui",
  "egui_tiles",
- "glam",
+ "glam 0.28.0",
  "image",
  "itertools 0.13.0",
  "nohash-hasher",
@@ -6748,6 +6878,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3cb5ba0dc43242ce17de99c180e96db90b235b8a9fdc9543c96d2209116bd9f"
 
 [[package]]
+name = "safe_arch"
+version = "0.7.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3460605018fdc9612bce72735cba0d27efbcd9904780d44c7e3a9948f96148a"
+dependencies = [
+ "bytemuck",
+]
+
+[[package]]
 name = "same-file"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6922,6 +7061,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d8229b473baa5980ac72ef434c4415e70c4b5e71b423043adb4ba059f89c99a1"
 dependencies = [
  "libc",
+]
+
+[[package]]
+name = "simba"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "061507c94fc6ab4ba1c9a0305018408e312e17c041eb63bef8aa726fa33aceae"
+dependencies = [
+ "approx",
+ "num-complex",
+ "num-traits",
+ "paste",
+ "wide",
 ]
 
 [[package]]
@@ -7219,7 +7371,7 @@ version = "0.19.0-alpha.14+dev"
 dependencies = [
  "anyhow",
  "clap",
- "glam",
+ "glam 0.28.0",
  "itertools 0.13.0",
  "ndarray 0.16.1",
  "ndarray-rand",
@@ -8204,6 +8356,16 @@ dependencies = [
  "bitflags 2.6.0",
  "js-sys",
  "web-sys",
+]
+
+[[package]]
+name = "wide"
+version = "0.7.28"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b828f995bf1e9622031f8009f8481a85406ce1f4d4588ff746d872043e855690"
+dependencies = [
+ "bytemuck",
+ "safe_arch",
 ]
 
 [[package]]
