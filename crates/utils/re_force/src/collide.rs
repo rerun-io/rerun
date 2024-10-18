@@ -22,15 +22,15 @@ impl Default for Collide {
 
 impl Collide {
     // TODO: speed up using quadtree
-    pub fn force<Ix: Hash + Eq>(&mut self, particles: &mut [Node<Ix>]) {
+    pub fn force<Ix: Hash + Eq + Clone>(&mut self, nodes: &mut [Node<Ix>]) {
         // TODO: make this configurable
-        let radii: Vec<_> = (0..particles.len()).map(|_| 10.0).collect();
+        let radii: Vec<_> = (0..nodes.len()).map(|_| 10.0).collect();
 
-        debug_assert!(radii.len() == particles.len());
+        debug_assert!(radii.len() == nodes.len());
 
         for _ in 0..self.iterations {
-            for s in 0..particles.len() {
-                let (left, right) = particles.split_at_mut(s);
+            for s in 0..nodes.len() {
+                let (left, right) = nodes.split_at_mut(s);
 
                 for (i, node) in left.iter_mut().enumerate() {
                     let ri = radii[i];

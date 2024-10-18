@@ -4,15 +4,18 @@ use std::hash::Hash;
 use crate::{
     collide::Collide,
     lcg::LCG,
+    many_body::{ManyBody, ManyBodyBuilder},
     node::Node,
     position::{PositionX, PositionY},
+    LinkBuilder,
 };
 
-#[derive(Clone, Debug)]
-enum Force {
+enum Force<Ix: Hash + Eq + Clone> {
     Collide(Collide),
     PositionX(PositionX),
     PositionY(PositionY),
+    Link(LinkBuilder<Ix>),
+    ManyBody(ManyBody),
 }
 
 #[derive(Debug)]
@@ -46,7 +49,7 @@ impl SimulationBuilder {
     pub fn build<Ix, P>(&self, nodes: impl IntoIterator<Item = (Ix, P)>) -> Simulation<Ix>
     where
         P: Into<[f32; 2]>,
-        Ix: Hash + Eq,
+        Ix: Hash + Eq + Clone,
     {
         let nodes = nodes.into_iter().map(|(ix, p)| {
             let p = p.into();
@@ -66,11 +69,9 @@ impl SimulationBuilder {
     }
 }
 
-#[derive(Debug)]
-
 pub struct Simulation<Ix>
 where
-    Ix: Hash + Eq,
+    Ix: Hash + Eq + Clone,
 {
     alpha: f32,
     alpha_min: f32,
@@ -78,12 +79,12 @@ where
     alpha_target: f32,
     velocity_decay: f32,
     _random: LCG,
-    forces: HashMap<String, Force>,
+    forces: HashMap<String, Force<Ix>>,
     nodes: Vec<Node<Ix>>,
 }
 
 // TODO(grtlr): Could simulation be an iterator?
-impl<Ix: Hash + Eq> Simulation<Ix> {
+impl<Ix: Hash + Eq + Clone> Simulation<Ix> {
     pub fn step(&mut self) {
         while self.alpha < self.alpha_min {
             self.tick(1);
@@ -99,6 +100,14 @@ impl<Ix: Hash + Eq> Simulation<Ix> {
                     Force::Collide(c) => c.force(&mut self.nodes),
                     Force::PositionX(p) => p.force(self.alpha, &mut self.nodes),
                     Force::PositionY(p) => p.force(self.alpha, &mut self.nodes),
+                    Force::Link(l) => {
+                        // TODO(grtlr): don't rebuild the forces on every run, separate the build and run steps instead.
+                        l.initialize(&self.nodes).force(self.alpha, &mut self.nodes);
+                    }
+                    Force::ManyBody(m) => {
+                        // TODO(grtlr): don't rebuild the forces on every run, separate the build and run steps instead.
+                        m.force(self.alpha, &mut self.nodes);
+                    }
                 }
             }
 
@@ -131,9 +140,22 @@ impl<Ix: Hash + Eq> Simulation<Ix> {
         self.forces.insert(name, Force::PositionY(force));
         self
     }
+
+    #[inline(always)]
+    pub fn add_force_link(mut self, name: String, force: LinkBuilder<Ix>) -> Self {
+        self.forces.insert(name, Force::Link(force));
+        self
+    }
+
+    #[inline(always)]
+    pub fn add_force_many_body(mut self, name: String, builder: ManyBodyBuilder<Ix>) -> Self {
+        let force = builder.initialize(&self.nodes);
+        self.forces.insert(name, Force::ManyBody(force));
+        self
+    }
 }
 
-impl<Ix: Hash + Eq> From<Simulation<Ix>> for SimulationBuilder {
+impl<Ix: Hash + Eq + Clone> From<Simulation<Ix>> for SimulationBuilder {
     fn from(value: Simulation<Ix>) -> Self {
         Self {
             alpha: value.alpha,

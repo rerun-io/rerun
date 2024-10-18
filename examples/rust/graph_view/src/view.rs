@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 
+use re_force::LinkBuilder;
 use re_viewer::external::{
     egui::{self, Rect},
     re_entity_db::InstancePath,
@@ -269,13 +270,19 @@ impl SpaceViewClass for GraphSpaceView {
         state.layout.retain(|k, _| seen.contains(k));
 
         let pos = state.layout.iter().map(|(&k, v)| (k, v.center()));
+        let links = graph
+            .all_edges()
+            .map(|e| (e.source.into(), e.target.into()))
+            .collect();
 
         let mut sim = state
             .simulation
             .build(pos)
             .add_force_collide("collide".to_string(), Default::default())
             .add_force_x("x".to_string(), Default::default())
-            .add_force_y("y".to_string(), Default::default());
+            .add_force_y("y".to_string(), Default::default())
+            .add_force_link("link".to_string(), LinkBuilder::new(links))
+            .add_force_many_body("many_body".to_string(), Default::default());
 
         sim.tick(1);
 
@@ -286,7 +293,7 @@ impl SpaceViewClass for GraphSpaceView {
         state.simulation = sim.into();
 
         // TODO(grtlr): come up with a good heuristic of when to do this.
-        state.viewer.fit_to_screen();
+        // state.viewer.fit_to_screen();
 
         // TODO(grtlr): only do this while the simulation makes sense!
         ui.ctx().request_repaint();

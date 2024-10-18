@@ -109,8 +109,10 @@ impl<'a> Graph<'a> {
         self.undirected.iter()
     }
 
-    pub fn edges(&self) -> impl Iterator<Item = EdgeInstance> {
-        self.undirected.iter().flat_map(|entity| entity.edges())
+    pub fn all_edges(&self) -> impl Iterator<Item = EdgeInstance> {
+        let undirected = self.undirected.iter().flat_map(|entity| entity.edges());
+        let directed = self.directed.iter().flat_map(|entity| entity.edges());
+        undirected.chain(directed)
     }
 
     pub fn unknown_nodes(&'a self) -> impl Iterator<Item = UnknownNodeInstance<'a>> {

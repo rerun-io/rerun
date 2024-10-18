@@ -3,7 +3,7 @@ use std::hash::Hash;
 // TODO(grtlr): Control memory layout.
 
 #[derive(Debug)]
-pub(crate) struct Node<Ix: Hash + Eq> {
+pub struct Node<Ix: Hash + Eq + Clone> {
     pub x: f32,
     pub y: f32,
     pub vx: f32,
@@ -15,7 +15,7 @@ pub(crate) struct Node<Ix: Hash + Eq> {
     pub fy: Option<f32>,
 }
 
-impl<Ix: Hash + Eq> Node<Ix> {
+impl<Ix: Hash + Eq + Clone> Node<Ix> {
     pub fn new(ix: Ix, x: f32, y: f32) -> Self {
         Self {
             x,
@@ -60,13 +60,13 @@ impl<Ix: Hash + Eq> Node<Ix> {
     }
 }
 
-impl<Ix: Hash + Eq> From<Node<Ix>> for [f32; 2] {
+impl<Ix: Hash + Eq + Clone> From<Node<Ix>> for [f32; 2] {
     fn from(p: Node<Ix>) -> Self {
         [p.x, p.y]
     }
 }
 
-impl<Ix: Hash + Eq> From<(Ix, [f32; 2])> for Node<Ix> {
+impl<Ix: Hash + Eq + Clone> From<(Ix, [f32; 2])> for Node<Ix> {
     fn from((ix, p): (Ix, [f32; 2])) -> Self {
         Self::new(ix, p[0], p[1])
     }

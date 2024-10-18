@@ -17,7 +17,7 @@ impl Default for PositionX {
 }
 
 impl PositionX {
-    pub fn force<Ix: Hash + Eq>(&mut self, alpha: f32, nodes: &mut [Node<Ix>]) {
+    pub fn force<Ix: Hash + Eq + Clone>(&mut self, alpha: f32, nodes: &mut [Node<Ix>]) {
         let strengths = std::iter::repeat(self.strength);
 
         for (node, si) in nodes.iter_mut().zip(strengths) {
@@ -43,7 +43,7 @@ impl Default for PositionY {
 }
 
 impl PositionY {
-    pub fn force<Ix: Hash + Eq>(&mut self, alpha: f32, nodes: &mut [Node<Ix>]) {
+    pub fn force<Ix: Hash + Eq + Clone>(&mut self, alpha: f32, nodes: &mut [Node<Ix>]) {
         let strengths = std::iter::repeat(self.strength);
 
         for (node, si) in nodes.iter_mut().zip(strengths) {
