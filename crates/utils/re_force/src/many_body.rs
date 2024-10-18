@@ -77,7 +77,6 @@ impl ManyBody {
                         node.vx += x * w;
                         node.vy += y * w;
                     }
-
                 }
             }
         }

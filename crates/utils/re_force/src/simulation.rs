@@ -92,6 +92,10 @@ impl<Ix: Hash + Eq + Clone> Simulation<Ix> {
         }
     }
 
+    pub fn finished(&self) -> bool {
+        self.alpha < self.alpha_min
+    }
+
     pub fn tick(&mut self, iterations: usize) {
         for _ in 0..iterations {
             self.alpha += (self.alpha_target - self.alpha) * self.alpha_decay;

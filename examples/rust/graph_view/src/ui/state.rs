@@ -16,11 +16,12 @@ pub(crate) struct GraphSpaceViewState {
 
     /// Indicates if the viewer should fit to the screen the next time it is rendered.
     pub should_fit_to_screen: bool,
+    pub should_tick: bool,
 
     /// Positions of the nodes in world space.
     pub layout: HashMap<NodeIndex, egui::Rect>,
 
-    pub simulation: re_force::SimulationBuilder,
+    pub simulation: Option<re_force::Simulation<NodeIndex>>,
 }
 
 impl GraphSpaceViewState {
@@ -48,6 +49,16 @@ impl GraphSpaceViewState {
     pub fn debug_ui(&mut self, ui: &mut egui::Ui) {
         ui.re_checkbox(&mut self.viewer.show_debug, "Show debug information")
             .on_hover_text("Shows debug information for the current graph");
+        ui.end_row();
+    }
+
+    pub fn simulation_ui(&mut self, ui: &mut egui::Ui) {
+        ui.grid_left_hand_label("Simulation")
+            .on_hover_text("Control the simulation of the graph layout");
+        if ui.button("Tick").clicked() {
+            self.should_tick = true;
+        }
+
         ui.end_row();
     }
 }

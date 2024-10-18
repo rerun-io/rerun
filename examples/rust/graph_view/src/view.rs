@@ -96,7 +96,7 @@ impl SpaceViewClass for GraphSpaceView {
         ui.selection_grid("graph_settings_ui").show(ui, |ui| {
             state.bounding_box_ui(ui);
             state.debug_ui(ui);
-            // state.layout_provider_ui(ui);
+            state.simulation_ui(ui);
         });
 
         Ok(())
@@ -275,22 +275,24 @@ impl SpaceViewClass for GraphSpaceView {
             .map(|e| (e.source.into(), e.target.into()))
             .collect();
 
-        let mut sim = state
-            .simulation
-            .build(pos)
-            // .add_force_collide("collide".to_string(), Default::default())
-            // .add_force_x("x".to_string(), Default::default())
-            // .add_force_y("y".to_string(), Default::default())
-            .add_force_link("link".to_string(), LinkBuilder::new(links))
-            .add_force_many_body("many_body".to_string(), Default::default());
+        let simulation = state.simulation.get_or_insert_with(|| {
+            re_force::SimulationBuilder::default()
+                .build(pos)
+                // .add_force_collide("collide".to_string(), Default::default())
+                // .add_force_x("x".to_string(), Default::default())
+                // .add_force_y("y".to_string(), Default::default())
+                .add_force_link("link".to_string(), LinkBuilder::new(links))
+            // .add_force_many_body("many_body".to_string(), Default::default())
+        });
 
-        sim.tick(1);
+        if state.should_tick {
+            simulation.tick(1);
+            state.should_tick = false;
 
-        for (ix, pos) in sim.positions() {
-            state.layout.get_mut(ix).unwrap().set_center(pos.into())
+            for (ix, pos) in simulation.positions() {
+                state.layout.get_mut(ix).unwrap().set_center(pos.into())
+            }
         }
-
-        state.simulation = sim.into();
 
         // TODO(grtlr): come up with a good heuristic of when to do this.
         if state.should_fit_to_screen {
@@ -298,8 +300,6 @@ impl SpaceViewClass for GraphSpaceView {
             state.should_fit_to_screen = false;
         }
 
-        // TODO(grtlr): only do this while the simulation makes sense!
-        ui.ctx().request_repaint();
         Ok(())
     }
 }

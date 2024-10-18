@@ -11,7 +11,6 @@ use crate::{
 pub struct LinkBuilder<Ix: Hash + Eq + Clone> {
     links: Vec<(Ix, Ix)>,
     strength: Option<LinkFn<Ix>>,
-    strengths: Vec<f32>,
     distance: LinkFn<Ix>,
     iterations: usize,
 }
@@ -24,7 +23,6 @@ impl<Ix: Hash + Eq + Clone> LinkBuilder<Ix> {
             distance: constant(20.0),
             // TODO(grtlr): Change this back to `None` to match `d3`.
             strength: Some(constant(1.0)),
-            strengths: Vec::new(),
 
             // TODO(grtlr): Return this back to 1
             iterations: 20,
@@ -47,7 +45,7 @@ impl<Ix: Hash + Eq + Clone> LinkBuilder<Ix> {
             .map(|(arr_ix, node)| (node.ix.clone(), arr_ix))
             .collect::<HashMap<_, _>>();
 
-            // TODO(grtlr): This is in array d3.
+        // TODO(grtlr): This is in array d3.
         let mut count = HashMap::new();
         for link in &self.links {
             *count.entry(link.0.clone()).or_insert(0) += 1;
@@ -72,7 +70,7 @@ impl<Ix: Hash + Eq + Clone> LinkBuilder<Ix> {
             .enumerate()
             .map(|(i, link)| {
                 if let Some(strength) = &mut self.strength {
-                    strength.0(&link, i)
+                    strength.0(link, i)
                 } else {
                     1.0 / usize::min(count[&link.0], count[&link.1]) as f32
                 }
