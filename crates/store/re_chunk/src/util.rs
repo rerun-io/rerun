@@ -10,6 +10,8 @@ use arrow2::{
 };
 use itertools::Itertools;
 
+use crate::TransportChunk;
+
 // ---
 
 /// Returns true if the given `list_array` is semantically empty.
@@ -408,4 +410,39 @@ pub fn take_array<A: ArrowArray + Clone, O: arrow2::types::Index>(
         // Unwrap: that's initial type that we got.
         .unwrap()
         .clone()
+}
+
+// ---
+
+use arrow2::{chunk::Chunk as ArrowChunk, datatypes::Schema as ArrowSchema};
+
+/// Concatenate multiple [`TransportChunk`]s into one.
+///
+/// This is a temporary method that we use while waiting to migrate towards `arrow-rs`.
+/// * `arrow2` doesn't have a `RecordBatch` type, therefore we emulate that using our `TransportChunk`s.
+/// * `arrow-rs` does have one, and it natively supports concatenation.
+pub fn concatenate_record_batches(
+    schema: ArrowSchema,
+    batches: &[TransportChunk],
+) -> anyhow::Result<TransportChunk> {
+    assert!(batches.iter().map(|batch| &batch.schema).all_equal());
+
+    let mut arrays = Vec::new();
+
+    if !batches.is_empty() {
+        for (i, _field) in schema.fields.iter().enumerate() {
+            let array = arrow2::compute::concatenate::concatenate(
+                &batches
+                    .iter()
+                    .map(|batch| &*batch.data[i] as &dyn ArrowArray)
+                    .collect_vec(),
+            )?;
+            arrays.push(array);
+        }
+    }
+
+    Ok(TransportChunk {
+        schema,
+        data: ArrowChunk::new(arrays),
+    })
 }

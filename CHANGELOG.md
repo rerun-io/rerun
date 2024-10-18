@@ -263,7 +263,7 @@ API usage examples:
 
 The Rerun datastore now continuously compacts data as it comes in, in order find a sweet spot between ingestion speed, query performance and memory overhead.
 
-This is very similar to, and has many parallels with, the [micro-batching mechanism running on the SDK side](https://rerun.io/docs/reference/sdk-micro-batching).
+This is very similar to, and has many parallels with, the [micro-batching mechanism running on the SDK side](https://rerun.io/docs/reference/sdk/micro-batching).
 
 You can read more about this in the [dedicated documentation entry](https://rerun.io/docs/reference/store-compaction).
 
@@ -1962,7 +1962,7 @@ Other highlights:
    - This can be used as an alternative to the previous `MsgSender::with_time` APIs.
  - The Rerun SDK now defaults to 8ms long microbatches instead of 50ms. This makes the default behavior more suitable
 for use-cases like real-time video feeds. [#2220](https://github.com/rerun-io/rerun/pull/2220)
-   - Check out [the microbatching docs](https://www.rerun.io/docs/reference/sdk-micro-batching) for more information
+   - Check out [the microbatching docs](https://www.rerun.io/docs/reference/sdk/micro-batching) for more information
    on fine-tuning the micro-batching behavior.
  - The web viewer now incremental loads `.rrd` files when streaming over HTTP. [#2412](https://github.com/rerun-io/rerun/pull/2412)
 
@@ -2293,7 +2293,7 @@ here's a smaller release packed with useful improvements 🎉
 - ⚠️ BREAKING: You must now call `rr.init` if you want logging to work.
 - ⚠️ BREAKING: `set_enabled` has been removed.
   In order to disable logging at runtime, call `set_global_data_recording(None)`.
-  See also [the doc section on this topic](https://www.rerun.io/docs/reference/sdk-logging-controls#dynamically-turn-logging-onoff).
+  See also [the doc section on this topic](https://www.rerun.io/docs/reference/sdk/logging-controls#dynamically-turn-logging-onoff).
 - `log_mesh_file`: accept either path or bytes [#2098](https://github.com/rerun-io/rerun/pull/2098)
 - Add `draw_order` to 2D primitives [#2138](https://github.com/rerun-io/rerun/pull/2138)
 - Add `rr.version()` [#2084](https://github.com/rerun-io/rerun/pull/2084)
@@ -2306,7 +2306,7 @@ here's a smaller release packed with useful improvements 🎉
 #### 🦀 Rust SDK
 - ⚠️ BREAKING: `set_enabled` has been removed.
   In order to disable logging at runtime, create a no-op recording via `RecordingStream::disabled()`.
-  See also [the doc section on this topic](https://www.rerun.io/docs/reference/sdk-logging-controls#dynamically-turn-logging-onoff).
+  See also [the doc section on this topic](https://www.rerun.io/docs/reference/sdk/logging-controls#dynamically-turn-logging-onoff).
 - ⚠️ BREAKING: `Session` has been replaced by `RecordingStream` [#1983](https://github.com/rerun-io/rerun/pull/1983)
 - ⚠️ BREAKING: `native_viewer` is now an opt-in feature of the `rerun` library [#2064](https://github.com/rerun-io/rerun/pull/2064)
 - Rust SDK: bring back support for implicit splats [#2059](https://github.com/rerun-io/rerun/pull/2059)

@@ -5257,6 +5257,7 @@ version = "0.19.0-alpha.14+dev"
 dependencies = [
  "ahash",
  "anyhow",
+ "crossbeam",
  "image",
  "notify",
  "once_cell",
@@ -5266,6 +5267,7 @@ dependencies = [
  "re_build_info",
  "re_build_tools",
  "re_chunk",
+ "re_crash_handler",
  "re_log",
  "re_log_encoding",
  "re_log_types",
@@ -6488,6 +6490,7 @@ dependencies = [
  "re_chunk_store",
  "re_crash_handler",
  "re_data_source",
+ "re_dataframe",
  "re_entity_db",
  "re_error",
  "re_format",

@@ -1205,7 +1205,7 @@ impl<'a> QueryHandle<'a> {
 mod tests {
     use std::sync::Arc;
 
-    use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
+    use re_chunk::{util::concatenate_record_batches, Chunk, ChunkId, RowId, TimePoint};
     use re_chunk_store::{ChunkStore, ChunkStoreConfig, ResolvedTimeRange, TimeInt};
     use re_log_types::{
         build_frame_nr, build_log_time,
@@ -1274,7 +1274,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1309,7 +1309,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1359,7 +1359,7 @@ mod tests {
         let dataframe = concatenate_record_batches(
             query_handle.schema().clone(),
             &query_handle.into_batch_iter().collect_vec(),
-        );
+        )?;
         eprintln!("{dataframe}");
 
         let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1408,7 +1408,7 @@ mod tests {
         let dataframe = concatenate_record_batches(
             query_handle.schema().clone(),
             &query_handle.into_batch_iter().collect_vec(),
-        );
+        )?;
         eprintln!("{dataframe}");
 
         let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1463,7 +1463,7 @@ mod tests {
         let dataframe = concatenate_record_batches(
             query_handle.schema().clone(),
             &query_handle.into_batch_iter().collect_vec(),
-        );
+        )?;
         eprintln!("{dataframe}");
 
         let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1521,7 +1521,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1564,7 +1564,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1621,7 +1621,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1650,7 +1650,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1679,7 +1679,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1718,7 +1718,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1776,7 +1776,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1816,7 +1816,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1869,7 +1869,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1905,7 +1905,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1956,7 +1956,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -2029,7 +2029,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -2120,7 +2120,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -2177,7 +2177,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -2214,7 +2214,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             // TODO(#7650): Those null values for `MyColor` on 10 and 20 look completely insane, but then again
@@ -2278,11 +2278,11 @@ mod tests {
                     let expected = concatenate_record_batches(
                         query_handle.schema().clone(),
                         &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
-                    );
+                    )?;
                     let got = concatenate_record_batches(
                         query_handle.schema().clone(),
                         &query_handle.batch_iter().take(3).collect_vec(),
-                    );
+                    )?;
 
                     let expected = format!("{:#?}", expected.data.iter().collect_vec());
                     let got = format!("{:#?}", got.data.iter().collect_vec());
@@ -2319,11 +2319,11 @@ mod tests {
                     let expected = concatenate_record_batches(
                         query_handle.schema().clone(),
                         &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
-                    );
+                    )?;
                     let got = concatenate_record_batches(
                         query_handle.schema().clone(),
                         &query_handle.batch_iter().take(3).collect_vec(),
-                    );
+                    )?;
 
                     let expected = format!("{:#?}", expected.data.iter().collect_vec());
                     let got = format!("{:#?}", got.data.iter().collect_vec());
@@ -2363,11 +2363,11 @@ mod tests {
                     let expected = concatenate_record_batches(
                         query_handle.schema().clone(),
                         &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
-                    );
+                    )?;
                     let got = concatenate_record_batches(
                         query_handle.schema().clone(),
                         &query_handle.batch_iter().take(3).collect_vec(),
-                    );
+                    )?;
 
                     let expected = format!("{:#?}", expected.data.iter().collect_vec());
                     let got = format!("{:#?}", got.data.iter().collect_vec());
@@ -2401,11 +2401,11 @@ mod tests {
                     let expected = concatenate_record_batches(
                         query_handle.schema().clone(),
                         &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
-                    );
+                    )?;
                     let got = concatenate_record_batches(
                         query_handle.schema().clone(),
                         &query_handle.batch_iter().take(3).collect_vec(),
-                    );
+                    )?;
 
                     let expected = format!("{:#?}", expected.data.iter().collect_vec());
                     let got = format!("{:#?}", got.data.iter().collect_vec());
@@ -2707,29 +2707,5 @@ mod tests {
         store.insert_chunk(&chunk5)?;
 
         Ok(())
-    }
-
-    fn concatenate_record_batches(schema: ArrowSchema, batches: &[RecordBatch]) -> RecordBatch {
-        assert!(batches.iter().map(|batch| &batch.schema).all_equal());
-
-        let mut arrays = Vec::new();
-
-        if !batches.is_empty() {
-            for (i, _field) in schema.fields.iter().enumerate() {
-                let array = arrow2::compute::concatenate::concatenate(
-                    &batches
-                        .iter()
-                        .map(|batch| &*batch.data[i] as &dyn ArrowArray)
-                        .collect_vec(),
-                )
-                .unwrap();
-                arrays.push(array);
-            }
-        }
-
-        RecordBatch {
-            schema,
-            data: ArrowChunk::new(arrays),
-        }
     }
 }

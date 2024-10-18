@@ -883,7 +883,7 @@ impl RecordingStream {
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     ///
-    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
     /// [component bundle]: [`AsComponents`]
     #[inline]
     pub fn log(
@@ -966,7 +966,7 @@ impl RecordingStream {
     ///
     /// See also [`Self::log`].
     ///
-    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
     /// [component bundle]: [`AsComponents`]
     #[inline]
     pub fn log_static(
@@ -1009,7 +1009,7 @@ impl RecordingStream {
     /// transport.
     /// See [SDK Micro Batching] for more information.
     ///
-    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
     /// [component bundle]: [`AsComponents`]
     #[inline]
     pub fn log_with_static(
@@ -1051,7 +1051,7 @@ impl RecordingStream {
     /// transport.
     /// See [SDK Micro Batching] for more information.
     ///
-    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk-micro-batching
+    /// [SDK Micro Batching]: https://www.rerun.io/docs/reference/sdk/micro-batching
     pub fn log_component_batches<'a>(
         &self,
         ent_path: impl Into<EntityPath>,
