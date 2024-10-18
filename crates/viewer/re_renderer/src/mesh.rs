@@ -157,7 +157,7 @@ pub enum MeshError {
 pub struct Material {
     pub label: DebugLabel,
 
-    /// Index range within the owning [`Mesh`] that should be rendered with this material.
+    /// Index range within the owning [`CpuMesh`] that should be rendered with this material.
     pub index_range: Range<u32>,
 
     /// Base color texture, also known as albedo.
@@ -190,7 +190,7 @@ pub struct GpuMesh {
 
 #[derive(Clone)]
 pub struct GpuMaterial {
-    /// Index range within the owning [`Mesh`] that should be rendered with this material.
+    /// Index range within the owning [`CpuMesh`] that should be rendered with this material.
     pub index_range: Range<u32>,
 
     pub bind_group: GpuBindGroup,
