@@ -1,11 +1,17 @@
 use itertools::Itertools;
 use re_chunk_store::RowId;
-use re_renderer::{mesh::GpuMesh, RenderContext, Rgba32Unmul};
+use re_renderer::{
+    mesh::{self, GpuMesh, MeshError},
+    renderer::MeshInstance,
+    RenderContext, Rgba32Unmul,
+};
 use re_types::{
     archetypes::{Asset3D, Mesh3D},
     components::MediaType,
 };
 use re_viewer_context::{gpu_bridge::texture_creation_desc_from_color_image, ImageInfo};
+use smallvec::smallvec;
+use std::sync::Arc;
 
 use crate::mesh_cache::AnyMesh;
 
@@ -27,7 +33,7 @@ impl LoadedMesh {
     ) -> anyhow::Result<Self> {
         // TODO(emilk): load CpuMesh in background thread.
         match mesh {
-            AnyMesh::Asset(asset3d) => Self::load_asset3d(name, asset3d, render_ctx),
+            AnyMesh::Asset { asset } => Ok(Self::load_asset3d(name, asset, render_ctx)?),
             AnyMesh::Mesh { mesh, texture_key } => {
                 Ok(Self::load_mesh3d(name, mesh, texture_key, render_ctx)?)
             }
@@ -37,10 +43,12 @@ impl LoadedMesh {
     pub fn load_asset3d_parts(
         name: String,
         media_type: &MediaType,
-        bytes: &[u8],
+        asset3d: &Asset3D,
         render_ctx: &RenderContext,
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
+
+        let bytes = asset3d.blob.as_slice();
 
         let mesh_instances = match media_type.as_str() {
             MediaType::GLTF | MediaType::GLB => {
@@ -51,12 +59,24 @@ impl LoadedMesh {
             _ => anyhow::bail!("{media_type} files are not supported"),
         };
 
-        let bbox = re_renderer::importer::calculate_bounding_box(&mesh_instances);
+        let prev_mesh_instances = mesh_instances.clone();
+        let mesh_instances = add_albedo_factor_to_mesh(mesh_instances, asset3d, render_ctx);
+
+        if let Ok(mesh_instances) = mesh_instances {
+            let bbox = re_renderer::importer::calculate_bounding_box(&mesh_instances);
+
+            return Ok(Self {
+                name,
+                bbox,
+                mesh_instances,
+            });
+        }
+        let bbox = re_renderer::importer::calculate_bounding_box(&prev_mesh_instances);
 
         Ok(Self {
             name,
             bbox,
-            mesh_instances,
+            mesh_instances: prev_mesh_instances,
         })
     }
 
@@ -67,11 +87,10 @@ impl LoadedMesh {
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
-        let Asset3D { blob, media_type } = asset3d;
-
-        let media_type = MediaType::or_guess_from_data(media_type.clone(), blob.as_slice())
-            .ok_or_else(|| anyhow::anyhow!("couldn't guess media type"))?;
-        let slf = Self::load_asset3d_parts(name, &media_type, blob.as_slice(), render_ctx)?;
+        let media_type =
+            MediaType::or_guess_from_data(asset3d.media_type.clone(), asset3d.blob.as_slice())
+                .ok_or_else(|| anyhow::anyhow!("couldn't guess media type"))?;
+        let slf = Self::load_asset3d_parts(name, &media_type, asset3d, render_ctx)?;
 
         Ok(slf)
     }
@@ -190,6 +209,37 @@ impl LoadedMesh {
 
     pub fn bbox(&self) -> re_math::BoundingBox {
         self.bbox
+    }
+}
+
+fn add_albedo_factor_to_mesh(
+    mesh_instances: Vec<MeshInstance>,
+    asset3d: &Asset3D,
+    render_ctx: &RenderContext,
+) -> Result<Vec<MeshInstance>, MeshError> {
+    if let Some(m) = &mesh_instances[0].mesh {
+        // Create new material from mesh_instance, add Asset3D's albedo_factor
+        let material = mesh::Material {
+            albedo_factor: asset3d
+                .albedo_factor
+                .map_or(re_renderer::Rgba::WHITE, |c| c.0.into()),
+            ..m.materials[0].clone()
+        };
+
+        let mesh_inst = Arc::clone(m);
+
+        // Create new mesh with albedo_factor
+        let mesh = mesh::Mesh {
+            materials: smallvec![material],
+            ..(*mesh_inst).clone()
+        };
+
+        Ok(vec![MeshInstance::new_with_cpu_mesh(
+            Arc::new(GpuMesh::new(render_ctx, &mesh)?),
+            Some(Arc::new(mesh)),
+        )])
+    } else {
+        Ok(mesh_instances)
     }
 }
 
