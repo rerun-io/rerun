@@ -22,4 +22,4 @@ re_sdk_comms = { path = "../../../crates/store/re_sdk_comms", features = [
 ] }
 
 # mimalloc is a much faster allocator:
-mimalloc = "0.1"
+mimalloc = "0.1.43"
