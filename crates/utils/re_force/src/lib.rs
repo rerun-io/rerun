@@ -1,12 +1,12 @@
 mod collide;
+mod func;
 mod jiggle;
 mod lcg;
 mod link;
+mod many_body;
 mod node;
 mod position;
 mod simulation;
-mod many_body;
-mod func;
 
 pub use simulation::{Simulation, SimulationBuilder};
 
