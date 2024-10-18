@@ -24,7 +24,7 @@ impl Example {
             Example::Simple => examples::simple::run(args),
             Example::Social => examples::social::run(args),
             Example::Disjoint => examples::disjoint::run(args, 20),
-            Example::Lattice => examples::lattice::run(args, 20),
+            Example::Lattice => examples::lattice::run(args, 10),
         }
     }
 }
