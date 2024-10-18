@@ -12,6 +12,7 @@ use crate::arrow::array_to_rust;
 /// Python `bytes` can be done with `to_pybytes` but this requires copying the data.
 /// So instead, we pass the arrow array directly.
 #[pyfunction]
+#[pyo3(signature = (video_bytes_arrow_array, media_type=None))]
 pub fn asset_video_read_frame_timestamps_ns(
     video_bytes_arrow_array: &Bound<'_, PyAny>,
     media_type: Option<&str>,
