@@ -282,7 +282,7 @@ impl SpaceViewClass for GraphSpaceView {
                 // .add_force_x("x".to_string(), Default::default())
                 // .add_force_y("y".to_string(), Default::default())
                 .add_force_link("link".to_string(), LinkBuilder::new(links))
-            // .add_force_many_body("many_body".to_string(), Default::default())
+                .add_force_many_body("many_body".to_string(), Default::default())
         });
 
         if state.should_tick {

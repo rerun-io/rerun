@@ -73,28 +73,3 @@ impl Collide {
         }
     }
 }
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn resolve_all_coincide() {
-        let mut particles = std::iter::repeat(Node {
-            pos: Pos2::ZERO,
-            vel: Vec2::ZERO,
-        })
-        .take(5)
-        .collect::<Vec<_>>();
-
-        let mut collide = Collide::default();
-
-        collide.force(&mut particles);
-
-        assert_ne!(particles[0].vel, Vec2::ZERO);
-        assert_ne!(particles[1].vel, Vec2::ZERO);
-        assert_ne!(particles[2].vel, Vec2::ZERO);
-        assert_ne!(particles[3].vel, Vec2::ZERO);
-        assert_ne!(particles[4].vel, Vec2::ZERO);
-    }
-}

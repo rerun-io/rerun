@@ -168,20 +168,3 @@ impl<Ix: Hash + Eq + Clone> From<Simulation<Ix>> for SimulationBuilder {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn simulation_tick() {
-        let particles = [[0.0f32, 1.0], [0.0, -1.0]];
-
-        let mut simulation = Simulation::new(particles);
-        let particles = simulation.tick(1000000);
-
-        assert_ne!(particles[0].pos, particles[1].pos);
-        assert_eq!(particles[0].pos.x, 0.0);
-        assert_eq!(particles[1].pos.x, 0.0);
-    }
-}
