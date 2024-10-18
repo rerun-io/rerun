@@ -58,6 +58,7 @@ pub use colormap::{
 pub use context::{adapter_info_summary, RenderContext, RenderContextError};
 pub use debug_label::DebugLabel;
 pub use depth_offset::DepthOffset;
+pub use importer::{CpuMeshInstance, CpuModel, CpuModelMeshKey};
 pub use line_drawable_builder::{LineDrawableBuilder, LineStripBuilder};
 pub use point_cloud_builder::{PointCloudBatchBuilder, PointCloudBuilder};
 pub use queueable_draw_data::QueueableDrawData;

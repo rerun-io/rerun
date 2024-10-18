@@ -1,3 +1,5 @@
+mod cpu_model;
+
 #[cfg(feature = "import-obj")]
 pub mod obj;
 
@@ -6,6 +8,8 @@ pub mod gltf;
 
 #[cfg(feature = "import-stl")]
 pub mod stl;
+
+pub use cpu_model::{CpuMeshInstance, CpuModel, CpuModelMeshKey};
 
 use crate::renderer::MeshInstance;
 
