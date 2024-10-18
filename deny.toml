@@ -61,7 +61,6 @@ skip = [
   { name = "raw-window-handle" }, # Pretty small crate; some crates still on old version
   { name = "redox_syscall" },     # Plenty of versions in the wild
   { name = "spin" },              # Old version used by rusttls
-  { name = "webpki-roots" },      # ureq and tungstenite are on different version 😭
 ]
 skip-tree = [
   { name = "async-io" },       # Old version via rfd
@@ -72,6 +71,7 @@ skip-tree = [
   { name = "prost-derive" },   # only used in objectron example
   { name = "toml_edit" },      # Old version via egui-winit, newer used by rustdoc-json
   { name = "windows" },        # Old version used by accesskit_windows, newer version used by wgpu
+  { name = "tower" },          # tonic depends on 0.4.3, but also transitively (axum) on 0.5.1
 ]
 
 
