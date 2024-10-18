@@ -1,5 +1,8 @@
 use re_log_encoding::decoder::Decoder;
 
+#[cfg(not(target_arch = "wasm32"))]
+use crossbeam::channel::Receiver;
+
 // ---
 
 /// Loads data from any `rrd` file or in-memory contents.
@@ -145,7 +148,9 @@ fn decode_and_stream<R: std::io::Read>(
 #[cfg(not(target_arch = "wasm32"))]
 struct RetryableFileReader {
     reader: std::io::BufReader<std::fs::File>,
-    rx: std::sync::mpsc::Receiver<notify::Result<notify::Event>>,
+    rx_file_notifs: Receiver<notify::Result<notify::Event>>,
+    rx_ticker: Receiver<std::time::Instant>,
+
     #[allow(dead_code)]
     watcher: notify::RecommendedWatcher,
 }
@@ -160,8 +165,15 @@ impl RetryableFileReader {
             .with_context(|| format!("Failed to open file {filepath:?}"))?;
         let reader = std::io::BufReader::new(file);
 
-        let (tx, rx) = std::sync::mpsc::channel();
-        let mut watcher = notify::recommended_watcher(tx)
+        #[cfg(not(any(target_os = "windows", target_arch = "wasm32")))]
+        re_crash_handler::sigint::track_sigint();
+
+        // 50ms is just a nice tradeoff: we just need the delay to not be perceptible by a human
+        // while not needlessly hammering the CPU.
+        let rx_ticker = crossbeam::channel::tick(std::time::Duration::from_millis(50));
+
+        let (tx_file_notifs, rx_file_notifs) = crossbeam::channel::unbounded();
+        let mut watcher = notify::recommended_watcher(tx_file_notifs)
             .with_context(|| format!("failed to create file watcher for {filepath:?}"))?;
 
         watcher
@@ -170,7 +182,8 @@ impl RetryableFileReader {
 
         Ok(Self {
             reader,
-            rx,
+            rx_file_notifs,
+            rx_ticker,
             watcher,
         })
     }
@@ -198,16 +211,30 @@ impl std::io::Read for RetryableFileReader {
 impl RetryableFileReader {
     fn block_until_file_changes(&self) -> std::io::Result<usize> {
         #[allow(clippy::disallowed_methods)]
-        match self.rx.recv() {
-            Ok(Ok(event)) => match event.kind {
-                notify::EventKind::Remove(_) => Err(std::io::Error::new(
-                    std::io::ErrorKind::NotFound,
-                    "file removed",
-                )),
-                _ => Ok(0),
-            },
-            Ok(Err(err)) => Err(std::io::Error::new(std::io::ErrorKind::Other, err)),
-            Err(err) => Err(std::io::Error::new(std::io::ErrorKind::Other, err)),
+        loop {
+            crossbeam::select! {
+                // Periodically check for SIGINT.
+                recv(self.rx_ticker) -> _ => {
+                    if re_crash_handler::sigint::was_sigint_ever_caught() {
+                        return Err(std::io::Error::new(std::io::ErrorKind::Interrupted, "SIGINT"));
+                    }
+                }
+
+                // Otherwise check for file notifications.
+                recv(self.rx_file_notifs) -> res => {
+                    return match res {
+                        Ok(Ok(event)) => match event.kind {
+                            notify::EventKind::Remove(_) => Err(std::io::Error::new(
+                                std::io::ErrorKind::NotFound,
+                                "file removed",
+                            )),
+                            _ => Ok(0),
+                        },
+                        Ok(Err(err)) => Err(std::io::Error::new(std::io::ErrorKind::Other, err)),
+                        Err(err) => Err(std::io::Error::new(std::io::ErrorKind::Other, err)),
+                    }
+                }
+            }
         }
     }
 }

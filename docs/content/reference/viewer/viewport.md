@@ -3,8 +3,8 @@ title: Viewport
 order: 4
 ---
 
-The viewport is a flexible area where you can arrange your Space Views:
-You can grab the title of any Space View to dock it to different parts of the viewport or to form tabs.
+The viewport is a flexible area where you can arrange your Views, sometimes also referred to as Space Views.
+You can grab the title of any View to dock it to different parts of the viewport or to form tabs.
 
 View controls
 -------------
@@ -14,35 +14,21 @@ View controls
 </picture>
 
 
-Clicking on the title of a Space View has the same effect as selecting it in the [Blueprint view](blueprint.md)
+Clicking on the title of a View has the same effect as selecting it in the [Blueprint view](blueprint.md)
 and will show additional information & settings in the [Selection view](selection.md) or other means.
 
-For more information on how to navigate a specific Space View, hover its help icon at the top right corner.
+For more information on how to navigate a specific View, hover its help icon at the top right corner.
 
-The maximize button makes a single Space View fill the entire viewport.
-Only one Space view can be maximized at a time.
+The maximize button makes a single View fill the entire viewport.
+Only one view can be maximized at a time.
 
 
-Space View Classes
+View Classes
 ---------------------------
-Rerun distinguishes various Space Views classes:
+Rerun distinguishes various different built-in Views classes.
+The class of a view determines which visualizers are available and thus what data can be displayed, how it will be shown and the way they can be interacted with.
 
-* 2D
-  * General 2D content like images, lines, points, boxes, etc.
-* 3D
-  * 3D scene with cameras, meshes, points, lines etc.
-* Tensor
-  * Tensor view with support for arbitrary dimensionality.
-* Text log
-  * Text over time.
-* Text Document
-  * Shows a single markdown or raw text document.
-* Time series plot
-  * Scalars over time.
-* Bar chart
-  * Bar-chart lots made from 1D tensor data.
+There are a variety of classes to choose from, for an overview check the blueprint type documentation on [Views](../../reference/types/views.md).
+Which class a View uses is always determined upon creation.
 
-Which class is used is determined upon creation of a Space View.
-
-The Space View class determines which Entities it can display, how it displays them and the way they can be interacted with.
 To learn more about the _internals_ of how Space View classes work, check the [guide on Viewer extensions](../../howto/extend.md).

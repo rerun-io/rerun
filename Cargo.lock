@@ -5040,6 +5040,7 @@ version = "0.20.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
+ "crossbeam",
  "image",
  "notify",
  "once_cell",
@@ -5049,6 +5050,7 @@ dependencies = [
  "re_build_info",
  "re_build_tools",
  "re_chunk",
+ "re_crash_handler",
  "re_log",
  "re_log_encoding",
  "re_log_types",
