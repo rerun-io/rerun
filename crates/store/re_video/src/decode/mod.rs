@@ -86,6 +86,10 @@ pub mod async_decoder;
 #[cfg(not(target_arch = "wasm32"))]
 pub use async_decoder::AsyncDecoder;
 
+#[cfg(feature = "ffmpeg")]
+#[cfg(not(target_arch = "wasm32"))]
+pub mod ffmpeg;
+
 use std::sync::atomic::AtomicBool;
 
 use crate::Time;
@@ -95,6 +99,7 @@ pub enum Error {
     #[error("Unsupported codec: {0}")]
     UnsupportedCodec(String),
 
+    #[cfg(feature = "av1")]
     #[cfg(not(target_arch = "wasm32"))]
     #[error("Native AV1 video decoding not supported in debug builds.")]
     NoNativeAv1Debug,
@@ -110,6 +115,11 @@ pub enum Error {
     #[error("Rerun does not yet support native AV1 decoding on Linux ARM64. See https://github.com/rerun-io/rerun/issues/7755")]
     #[cfg(linux_arm64)]
     NoDav1dOnLinuxArm64,
+
+    #[cfg(feature = "ffmpeg")]
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error("ffmppeg: {0}")]
+    Ffmpeg(#[from] ffmpeg::Error),
 }
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
@@ -156,6 +166,14 @@ pub fn new_decoder(
                     return Ok(Box::new(av1::SyncDav1dDecoder::new(debug_name)?));
                 }
             }
+        }
+
+        #[cfg(feature = "ffmpeg")]
+        re_mp4::StsdBoxContent::Avc1(avc1_box) => {
+            // TODO: check if we have ffmpeg ONCE, and remember
+            Ok(Box::new(ffmpeg::FfmpegCliH264Decoder::new(
+                avc1_box.clone(),
+            )?))
         }
 
         _ => Err(Error::UnsupportedCodec(video.human_readable_codec_string())),

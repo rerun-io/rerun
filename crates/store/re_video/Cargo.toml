@@ -23,10 +23,13 @@ features = ["all"]
 
 
 [features]
-default = ["av1"]
+default = ["av1", "ffmpeg"]
 
 ## Native AV1 decoding.
 av1 = ["dep:dav1d"]
+
+## Decode H.264 using ffmpeg over CLI.
+ffmpeg = ["dep:ffmpeg-sidecar"]
 
 ## Enable faster native video decoding with assembly.
 ## You need to install [nasm](https://nasm.us/) to compile with this feature.
@@ -60,7 +63,11 @@ dav1d = { workspace = true, optional = true, default-features = false, features 
   "bitdepth_8",
 ] }
 
+ffmpeg-sidecar = { workspace = true, optional = true }
+
+
 [dev-dependencies]
+# For the `frames` example:
 indicatif.workspace = true
 
 
