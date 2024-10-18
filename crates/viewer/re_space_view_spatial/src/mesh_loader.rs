@@ -42,7 +42,7 @@ impl LoadedMesh {
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
-        let mesh_instances = match media_type.as_str() {
+        let cpu_model = match media_type.as_str() {
             MediaType::GLTF | MediaType::GLB => {
                 re_renderer::importer::gltf::load_gltf_from_buffer(&name, bytes, render_ctx)?
             }
@@ -51,7 +51,8 @@ impl LoadedMesh {
             _ => anyhow::bail!("{media_type} files are not supported"),
         };
 
-        let bbox = re_renderer::importer::calculate_bounding_box(&mesh_instances);
+        let bbox = cpu_model.calculate_bounding_box();
+        let mesh_instances = cpu_model.into_gpu_meshes(render_ctx)?;
 
         Ok(Self {
             name,
@@ -157,7 +158,7 @@ impl LoadedMesh {
                 .clone()
         });
 
-        let mesh = re_renderer::mesh::Mesh {
+        let mesh = re_renderer::mesh::CpuMesh {
             label: name.clone().into(),
             triangle_indices,
             vertex_positions: vertex_positions.into(),

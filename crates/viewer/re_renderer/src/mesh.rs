@@ -45,7 +45,7 @@ pub mod mesh_vertices {
 }
 
 #[derive(Clone)]
-pub struct Mesh {
+pub struct CpuMesh {
     pub label: DebugLabel,
 
     /// Non-empty array of vertex triangle indices.
@@ -70,7 +70,7 @@ pub struct Mesh {
     pub materials: SmallVec<[Material; 1]>,
 }
 
-impl Mesh {
+impl CpuMesh {
     pub fn sanity_check(&self) -> Result<(), MeshError> {
         re_tracing::profile_function!();
 
@@ -157,7 +157,7 @@ pub enum MeshError {
 pub struct Material {
     pub label: DebugLabel,
 
-    /// Index range within the owning [`Mesh`] that should be rendered with this material.
+    /// Index range within the owning [`CpuMesh`] that should be rendered with this material.
     pub index_range: Range<u32>,
 
     /// Base color texture, also known as albedo.
@@ -190,7 +190,7 @@ pub struct GpuMesh {
 
 #[derive(Clone)]
 pub struct GpuMaterial {
-    /// Index range within the owning [`Mesh`] that should be rendered with this material.
+    /// Index range within the owning [`CpuMesh`] that should be rendered with this material.
     pub index_range: Range<u32>,
 
     pub bind_group: GpuBindGroup,
@@ -210,7 +210,7 @@ pub(crate) mod gpu_data {
 
 impl GpuMesh {
     // TODO(andreas): Take read-only context here and make uploads happen on staging belt.
-    pub fn new(ctx: &RenderContext, data: &Mesh) -> Result<Self, MeshError> {
+    pub fn new(ctx: &RenderContext, data: &CpuMesh) -> Result<Self, MeshError> {
         re_tracing::profile_function!();
 
         data.sanity_check()?;
