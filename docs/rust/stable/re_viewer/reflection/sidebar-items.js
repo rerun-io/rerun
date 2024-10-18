@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["generate_archetype_reflection","generate_component_reflection","generate_reflection"]};

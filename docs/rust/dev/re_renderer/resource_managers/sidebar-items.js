@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ImageDataToTextureError","SourceImageDataFormat","TextureManager2DError","YuvMatrixCoefficients","YuvPixelLayout","YuvRange"],"fn":["transfer_image_data_to_texture"],"mod":["image_data_to_texture","texture_manager","yuv_converter"],"struct":["GpuTexture2D","ImageDataDesc","TextureManager2D"]};

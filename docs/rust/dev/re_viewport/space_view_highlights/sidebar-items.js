@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["highlights_for_space_view"]};

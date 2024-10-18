@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["load_and_send","load_file_path","log_msg_from_file_path","stream_rrd_file"]};

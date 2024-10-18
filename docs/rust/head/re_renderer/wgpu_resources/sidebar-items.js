@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["bind_group_layout_pool","bind_group_pool","buffer_pool","dynamic_resource_pool","pipeline_layout_pool","render_pipeline_pool","resource","sampler_pool","shader_module_pool","static_resource_pool","texture_pool"],"struct":["WgpuResourcePoolStatistics","WgpuResourcePools"]};

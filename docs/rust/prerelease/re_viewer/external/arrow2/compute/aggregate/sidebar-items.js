@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["can_max","can_min","can_sum","estimated_bytes_size","max","max_binary","max_boolean","max_primitive","max_string","min","min_binary","min_boolean","min_primitive","min_string","sum","sum_primitive"],"trait":["SimdOrd","Sum"]};

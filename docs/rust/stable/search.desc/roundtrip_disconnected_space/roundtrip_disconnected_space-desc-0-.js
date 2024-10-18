@@ -1,0 +1,1 @@
+searchState.loadedDescShard("roundtrip_disconnected_space", 0, "Logs a <code>DisconnectedSpace</code> archetype for roundtrip checks.\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.")

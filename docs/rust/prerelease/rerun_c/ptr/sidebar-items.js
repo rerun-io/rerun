@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["try_char_ptr_as_str","try_ptr_as_ref"]};

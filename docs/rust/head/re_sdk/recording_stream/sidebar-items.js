@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["ENV_FORCE_SAVE"],"enum":["Command","RecordingStreamError"],"fn":["forced_sink_path","forwarding_thread"],"struct":["RecordingStream","RecordingStreamBuilder","RecordingStreamInner","ThreadInfo"],"type":["RecordingStreamResult"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["to_human_case","to_pascal_case","to_snake_case"]};

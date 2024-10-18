@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["item_collection_to_string","item_kind_ui","item_to_string"],"struct":["SelectionHistoryUi"]};

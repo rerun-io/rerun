@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ComponentFallbackError","ComponentFallbackProviderResult"],"trait":["ComponentFallbackProvider","TypedComponentFallbackProvider"]};

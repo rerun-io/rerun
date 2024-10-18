@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"constant":["DISCLAIMER"],"enum":["AnalyticsError","ConfigError","EventKind","Property"],"fn":["load_config"],"mod":["cli","event","native"],"struct":["Analytics","Config","Event"]};

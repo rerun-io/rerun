@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["parse_unicode_escape"],"struct":["EntityPathPart"]};

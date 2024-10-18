@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["get_filesystem"],"static":["MEM_FILE_SYSTEM"],"struct":["MemFileSystem","OsFileSystem"],"trait":["FileSystem"]};

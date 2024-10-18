@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Side","TopBottomSide"],"struct":["CentralPanel","PanelState","SidePanel","TopBottomPanel"]};

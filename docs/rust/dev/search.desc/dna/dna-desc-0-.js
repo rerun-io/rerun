@@ -1,0 +1,1 @@
+searchState.loadedDescShard("dna", 0, "The example from our Getting Started page.")

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Recording"],"fn":["log_ar_camera","log_ar_frame","log_baseline_objects","log_feature_points","log_frame_annotations","log_video_frame","main","parse_duration","read_annotations","read_ar_frames","run","timepoint"],"mod":["objectron"],"struct":["AnnotationsPerFrame","ArFrame","Args","StoreInfo"]};

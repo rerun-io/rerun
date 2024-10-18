@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["BufferedSink","CallbackSink","MemorySink","MemorySinkStorage","MemorySinkStorageInner","TcpSink"],"trait":["LogSink"],"type":["LogMsgCallback"]};

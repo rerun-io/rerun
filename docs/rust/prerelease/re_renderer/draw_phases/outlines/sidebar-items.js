@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["gpu_data"],"struct":["OutlineConfig","OutlineMaskPreference","OutlineMaskProcessor"]};
