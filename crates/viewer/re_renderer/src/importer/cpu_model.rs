@@ -1,8 +1,11 @@
-use slotmap::SlotMap;
+use std::sync::Arc;
+
+use slotmap::{SecondaryMap, SlotMap};
 
 use crate::{
-    mesh::{CpuMesh, MeshError},
+    mesh::{CpuMesh, GpuMesh, MeshError},
     renderer::MeshInstance,
+    RenderContext,
 };
 
 slotmap::new_key_type! {
@@ -46,10 +49,44 @@ impl CpuModel {
         });
     }
 
+    pub fn calculate_bounding_box(&self) -> re_math::BoundingBox {
+        re_math::BoundingBox::from_points(
+            self.instances
+                .iter()
+                .filter_map(|mesh_instance| {
+                    self.meshes.get(mesh_instance.mesh).map(|mesh| {
+                        mesh.vertex_positions
+                            .iter()
+                            .map(|p| mesh_instance.world_from_mesh.transform_point3(*p))
+                    })
+                })
+                .flatten(),
+        )
+    }
+
     /// Converts the entire model into a serious of mesh instances that can be rendered.
-    // TODO(andreas): Should offer the option to discard or not discard the original mesh information
-    // since this can be a significant memory overhead.
-    pub fn to_gpu() -> Result<Vec<MeshInstance>, MeshError> {
-        todo!()
+    ///
+    /// Silently ignores:
+    /// * instances with invalid mesh keys
+    /// * unreferenced meshes
+    pub fn into_gpu_meshes(self, ctx: &RenderContext) -> Result<Vec<MeshInstance>, MeshError> {
+        let mut gpu_meshes = SecondaryMap::with_capacity(self.meshes.len());
+        for (mesh_key, mesh) in &self.meshes {
+            gpu_meshes.insert(mesh_key, Arc::new(GpuMesh::new(ctx, mesh)?));
+        }
+
+        Ok(self
+            .instances
+            .into_iter()
+            .filter_map(|instance| {
+                Some(MeshInstance {
+                    gpu_mesh: gpu_meshes.get(instance.mesh)?.clone(),
+                    world_from_mesh: instance.world_from_mesh,
+                    additive_tint: Default::default(),
+                    outline_mask_ids: Default::default(),
+                    picking_layer_id: Default::default(),
+                })
+            })
+            .collect())
     }
 }
