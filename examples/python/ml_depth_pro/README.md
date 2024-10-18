@@ -12,9 +12,12 @@ inference for each frame in the provided video, and logs the predicted depth map
 ## Background
 
 [DepthPro](https://huggingface.co/apple/DepthPro) is a fast metric depth prediction model by Apple.
+The model synthesizes high-resolution depth maps with unparalleled sharpness and high-frequency details. The predictions are metric, with absolute scale, without relying on the availability of metadata such as camera intrinsics. And the model is fast, producing a 2.25-megapixel depth map in 0.3 seconds on a standard GPU.
 
 ## Run the code
 
 This is an external example. Check the [repository](https://github.com/rerun-io/hf-example-ml-depth-pro) for more information.
 
-You can try the example on HuggingFace space [here](https://huggingface.co/spaces/oxkitsune/rerun-ml-depth-pro).
+You can try the example on a HuggingFace space [here](https://huggingface.co/spaces/oxkitsune/rerun-ml-depth-pro).
+
+
