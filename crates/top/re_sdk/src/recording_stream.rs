@@ -856,7 +856,8 @@ impl RecordingStream {
     /// Log data to Rerun.
     ///
     /// This is the main entry point for logging data to rerun. It can be used to log anything
-    /// that implements the [`AsComponents`], such as any [archetype](https://docs.rs/rerun/latest/rerun/archetypes/index.html).
+    /// that implements the [`AsComponents`], such as any [archetype](https://docs.rs/rerun/latest/rerun/archetypes/index.html)
+    /// or individual [component](https://docs.rs/rerun/latest/rerun/components/index.html).
     ///
     /// The data will be timestamped automatically based on the [`RecordingStream`]'s internal clock.
     /// See [`RecordingStream::set_time_sequence`] etc for more information.
@@ -889,9 +890,9 @@ impl RecordingStream {
     pub fn log(
         &self,
         ent_path: impl Into<EntityPath>,
-        arch: &impl AsComponents,
+        as_components: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
-        self.log_with_static(ent_path, false, arch)
+        self.log_with_static(ent_path, false, as_components)
     }
 
     /// Lower-level logging API to provide data spanning multiple timepoints.
@@ -951,7 +952,8 @@ impl RecordingStream {
     /// Log data to Rerun.
     ///
     /// It can be used to log anything
-    /// that implements the [`AsComponents`], such as any [archetype](https://docs.rs/rerun/latest/rerun/archetypes/index.html).
+    /// that implements the [`AsComponents`], such as any [archetype](https://docs.rs/rerun/latest/rerun/archetypes/index.html)
+    /// or individual [component](https://docs.rs/rerun/latest/rerun/components/index.html).
     ///
     /// Static data has no time associated with it, exists on all timelines, and unconditionally shadows
     /// any temporal data of the same type.
@@ -972,9 +974,9 @@ impl RecordingStream {
     pub fn log_static(
         &self,
         ent_path: impl Into<EntityPath>,
-        arch: &impl AsComponents,
+        as_components: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
-        self.log_with_static(ent_path, true, arch)
+        self.log_with_static(ent_path, true, as_components)
     }
 
     #[deprecated(since = "0.16.0", note = "use `log_static` instead")]
@@ -1016,14 +1018,15 @@ impl RecordingStream {
         &self,
         ent_path: impl Into<EntityPath>,
         static_: bool,
-        arch: &impl AsComponents,
+        as_components: &impl AsComponents,
     ) -> RecordingStreamResult<()> {
         let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
         self.log_component_batches_impl(
             row_id,
             ent_path,
             static_,
-            arch.as_component_batches()
+            as_components
+                .as_component_batches()
                 .iter()
                 .map(|any_comp_batch| any_comp_batch.as_ref()),
         )
@@ -2448,16 +2451,20 @@ mod tests {
                 components: [
                     (
                         MyPoint::name(),
-                        MyPoint::to_arrow([MyPoint::new(10.0, 10.0), MyPoint::new(20.0, 20.0)])
-                            .unwrap(),
+                        <MyPoint as re_types_core::Loggable>::to_arrow([
+                            MyPoint::new(10.0, 10.0),
+                            MyPoint::new(20.0, 20.0),
+                        ])
+                        .unwrap(),
                     ), //
                     (
                         MyColor::name(),
-                        MyColor::to_arrow([MyColor(0x8080_80FF)]).unwrap(),
+                        <MyColor as re_types_core::Loggable>::to_arrow([MyColor(0x8080_80FF)])
+                            .unwrap(),
                     ), //
                     (
                         MyLabel::name(),
-                        MyLabel::to_arrow([] as [MyLabel; 0]).unwrap(),
+                        <MyLabel as re_types_core::Loggable>::to_arrow([] as [MyLabel; 0]).unwrap(),
                     ), //
                 ]
                 .into_iter()
@@ -2472,15 +2479,15 @@ mod tests {
                 components: [
                     (
                         MyPoint::name(),
-                        MyPoint::to_arrow([] as [MyPoint; 0]).unwrap(),
+                        <MyPoint as re_types_core::Loggable>::to_arrow([] as [MyPoint; 0]).unwrap(),
                     ), //
                     (
                         MyColor::name(),
-                        MyColor::to_arrow([] as [MyColor; 0]).unwrap(),
+                        <MyColor as re_types_core::Loggable>::to_arrow([] as [MyColor; 0]).unwrap(),
                     ), //
                     (
                         MyLabel::name(),
-                        MyLabel::to_arrow([] as [MyLabel; 0]).unwrap(),
+                        <MyLabel as re_types_core::Loggable>::to_arrow([] as [MyLabel; 0]).unwrap(),
                     ), //
                 ]
                 .into_iter()
@@ -2495,15 +2502,17 @@ mod tests {
                 components: [
                     (
                         MyPoint::name(),
-                        MyPoint::to_arrow([] as [MyPoint; 0]).unwrap(),
+                        <MyPoint as re_types_core::Loggable>::to_arrow([] as [MyPoint; 0]).unwrap(),
                     ), //
                     (
                         MyColor::name(),
-                        MyColor::to_arrow([MyColor(0xFFFF_FFFF)]).unwrap(),
+                        <MyColor as re_types_core::Loggable>::to_arrow([MyColor(0xFFFF_FFFF)])
+                            .unwrap(),
                     ), //
                     (
                         MyLabel::name(),
-                        MyLabel::to_arrow([MyLabel("hey".into())]).unwrap(),
+                        <MyLabel as re_types_core::Loggable>::to_arrow([MyLabel("hey".into())])
+                            .unwrap(),
                     ), //
                 ]
                 .into_iter()
