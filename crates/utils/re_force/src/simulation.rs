@@ -4,6 +4,7 @@ use std::hash::Hash;
 use crate::{
     collide::Collide,
     lcg::LCG,
+    link::Link,
     many_body::{ManyBody, ManyBodyBuilder},
     node::Node,
     position::{PositionX, PositionY},
@@ -14,7 +15,7 @@ enum Force<Ix: Hash + Eq + Clone> {
     Collide(Collide),
     PositionX(PositionX),
     PositionY(PositionY),
-    Link(LinkBuilder<Ix>),
+    Link(Link<Ix>),
     ManyBody(ManyBody),
 }
 
@@ -100,14 +101,8 @@ impl<Ix: Hash + Eq + Clone> Simulation<Ix> {
                     Force::Collide(c) => c.force(&mut self.nodes),
                     Force::PositionX(p) => p.force(self.alpha, &mut self.nodes),
                     Force::PositionY(p) => p.force(self.alpha, &mut self.nodes),
-                    Force::Link(l) => {
-                        // TODO(grtlr): don't rebuild the forces on every run, separate the build and run steps instead.
-                        l.initialize(&self.nodes).force(self.alpha, &mut self.nodes);
-                    }
-                    Force::ManyBody(m) => {
-                        // TODO(grtlr): don't rebuild the forces on every run, separate the build and run steps instead.
-                        m.force(self.alpha, &mut self.nodes);
-                    }
+                    Force::Link(l) => l.force(self.alpha, &mut self.nodes),
+                    Force::ManyBody(m) => m.force(self.alpha, &mut self.nodes),
                 }
             }
 
@@ -142,8 +137,10 @@ impl<Ix: Hash + Eq + Clone> Simulation<Ix> {
     }
 
     #[inline(always)]
-    pub fn add_force_link(mut self, name: String, force: LinkBuilder<Ix>) -> Self {
-        self.forces.insert(name, Force::Link(force));
+    pub fn add_force_link(mut self, name: String, builder: LinkBuilder<Ix>) -> Self {
+        if let Some(force) = builder.initialize(&self.nodes) {
+            self.forces.insert(name, Force::Link(force));
+        }
         self
     }
 

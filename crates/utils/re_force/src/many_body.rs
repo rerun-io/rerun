@@ -1,20 +1,25 @@
 use rand::thread_rng;
 
 use crate::{
-    func::{constant, StrengthFn},
+    func::{constant, NodeFn},
     jiggle::jiggle,
     node::Node,
 };
+use core::f32;
 use std::hash::Hash;
 
 pub struct ManyBodyBuilder<Ix: Hash + Eq + Clone> {
-    strength: StrengthFn<Ix>,
+    strength: NodeFn<Ix>,
+    distance_min_2: f32,
+    distance_max_2: f32,
 }
 
 impl<Ix: Hash + Eq + Clone> Default for ManyBodyBuilder<Ix> {
     fn default() -> Self {
         Self {
             strength: constant(-30.0),
+            distance_min_2: 1.0,
+            distance_max_2: f32::INFINITY,
         }
     }
 }
@@ -29,14 +34,16 @@ impl<Ix: Hash + Eq + Clone> ManyBodyBuilder<Ix> {
 
         ManyBody {
             strengths,
-            theta_2: 0.81,
+            distance_min_2: self.distance_min_2,
+            distance_max_2: self.distance_max_2,
         }
     }
 }
 
 pub struct ManyBody {
     strengths: Vec<f32>,
-    theta_2: f32,
+    distance_min_2: f32,
+    distance_max_2: f32,
 }
 
 impl ManyBody {
@@ -50,21 +57,27 @@ impl ManyBody {
                     let mut x = node.x - data.x;
                     let mut y = node.y - data.y;
                     let mut l = x * x + y * y;
-                    if x == 0.0 {
-                        x = jiggle(&mut thread_rng());
-                        l += x * x;
+
+                    if l < self.distance_max_2 {
+                        if x == 0.0 {
+                            x = jiggle(&mut thread_rng());
+                            l += x * x;
+                        }
+
+                        if y == 0.0 {
+                            y = jiggle(&mut thread_rng());
+                            l += y * y;
+                        }
+
+                        if l < self.distance_min_2 {
+                            l = (self.distance_min_2 * l).sqrt();
+                        }
+
+                        let w = self.strengths[s + j] * alpha / l;
+                        node.vx += x * w;
+                        node.vy += y * w;
                     }
 
-                    if y == 0.0 {
-                        y = jiggle(&mut thread_rng());
-                        l += y * y;
-                    }
-
-                    let l = l.sqrt();
-                    let w = self.strengths[s + j] * alpha / l;
-
-                    node.vx += x * w;
-                    node.vy += y * w;
                 }
             }
         }

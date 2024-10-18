@@ -278,9 +278,9 @@ impl SpaceViewClass for GraphSpaceView {
         let mut sim = state
             .simulation
             .build(pos)
-            .add_force_collide("collide".to_string(), Default::default())
-            .add_force_x("x".to_string(), Default::default())
-            .add_force_y("y".to_string(), Default::default())
+            // .add_force_collide("collide".to_string(), Default::default())
+            // .add_force_x("x".to_string(), Default::default())
+            // .add_force_y("y".to_string(), Default::default())
             .add_force_link("link".to_string(), LinkBuilder::new(links))
             .add_force_many_body("many_body".to_string(), Default::default());
 
@@ -293,7 +293,10 @@ impl SpaceViewClass for GraphSpaceView {
         state.simulation = sim.into();
 
         // TODO(grtlr): come up with a good heuristic of when to do this.
-        // state.viewer.fit_to_screen();
+        if state.should_fit_to_screen {
+            state.viewer.fit_to_screen();
+            state.should_fit_to_screen = false;
+        }
 
         // TODO(grtlr): only do this while the simulation makes sense!
         ui.ctx().request_repaint();
