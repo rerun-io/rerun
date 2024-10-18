@@ -308,13 +308,6 @@ impl SpaceViewBlueprint {
         }
     }
 
-    pub fn clear(&self, ctx: &ViewerContext<'_>) {
-        ctx.command_sender.send_system(SystemCommand::DropEntity(
-            ctx.store_context.blueprint.store_id().clone(),
-            self.entity_path(),
-        ));
-    }
-
     #[inline]
     pub fn set_display_name(&self, ctx: &ViewerContext<'_>, name: Option<String>) {
         if name != self.display_name {
