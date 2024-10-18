@@ -11,7 +11,7 @@ use smallvec::smallvec;
 use crate::{
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
-    mesh::{gpu_data::MaterialUniformBuffer, mesh_vertices, CpuMesh, GpuMesh},
+    mesh::{gpu_data::MaterialUniformBuffer, mesh_vertices, GpuMesh},
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupLayoutDesc, BufferDesc, GpuBindGroupLayoutHandle, GpuBuffer,
@@ -114,9 +114,6 @@ pub struct MeshInstance {
     /// Gpu mesh used by this instance
     pub gpu_mesh: Arc<GpuMesh>,
 
-    /// Optional cpu representation of the mesh, not needed for rendering.
-    pub mesh: Option<Arc<CpuMesh>>,
-
     /// Where this instance is placed in world space and how its oriented & scaled.
     pub world_from_mesh: glam::Affine3A,
 
@@ -134,14 +131,8 @@ pub struct MeshInstance {
 impl MeshInstance {
     /// Creates a new instance of a mesh with all fields set to default except for required ones.
     pub fn new(gpu_mesh: Arc<GpuMesh>) -> Self {
-        Self::new_with_cpu_mesh(gpu_mesh, None)
-    }
-
-    /// Creates a new instance of a mesh with gpu and optional cpu mesh.
-    pub fn new_with_cpu_mesh(gpu_mesh: Arc<GpuMesh>, cpu_mesh: Option<Arc<CpuMesh>>) -> Self {
         Self {
             gpu_mesh,
-            mesh: cpu_mesh,
             world_from_mesh: glam::Affine3A::IDENTITY,
             additive_tint: Color32::TRANSPARENT,
             outline_mask_ids: OutlineMaskPreference::NONE,

@@ -223,7 +223,6 @@ where
 
                     self.solid_instances.push(MeshInstance {
                         gpu_mesh: solid_mesh.gpu_mesh,
-                        mesh: None,
                         world_from_mesh: world_from_instance,
                         outline_mask_ids: ent_context.highlight.index_outline_mask(instance),
                         picking_layer_id: picking_layer_id_from_instance_path_hash(

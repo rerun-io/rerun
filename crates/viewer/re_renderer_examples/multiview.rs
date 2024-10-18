@@ -37,7 +37,6 @@ fn build_mesh_instances(
             model_mesh_instances.iter().zip(positions_and_colors).map(
                 move |(model_mesh_instances, (p, c))| MeshInstance {
                     gpu_mesh: model_mesh_instances.gpu_mesh.clone(),
-                    mesh: None,
                     world_from_mesh: glam::Affine3A::from_scale_rotation_translation(
                         glam::vec3(
                             2.5 + (i % 3) as f32,

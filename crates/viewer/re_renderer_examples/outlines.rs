@@ -112,7 +112,6 @@ impl framework::Example for Outlines {
                     .iter()
                     .map(move |instance| MeshInstance {
                         gpu_mesh: instance.gpu_mesh.clone(),
-                        mesh: None,
                         world_from_mesh: glam::Affine3A::from_rotation_translation(
                             props.rotation,
                             props.position,

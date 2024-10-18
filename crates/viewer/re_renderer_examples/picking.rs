@@ -178,7 +178,6 @@ impl framework::Example for Picking {
             .iter()
             .map(|instance| MeshInstance {
                 gpu_mesh: instance.gpu_mesh.clone(),
-                mesh: None,
                 world_from_mesh: glam::Affine3A::from_translation(glam::vec3(0.0, 0.0, 0.0)),
                 picking_layer_id: MESH_ID,
                 additive_tint: if self.mesh_is_hovered {

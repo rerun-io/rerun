@@ -90,7 +90,6 @@ impl Asset3DVisualizer {
 
                         MeshInstance {
                             gpu_mesh: mesh_instance.gpu_mesh.clone(),
-                            mesh: None,
                             world_from_mesh,
                             outline_mask_ids,
                             picking_layer_id: picking_layer_id_from_instance_path_hash(
