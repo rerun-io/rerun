@@ -2,7 +2,6 @@ namespace rerun.components;
 
 /// A path to an entity, usually to reference some data that is part of the target entity.
 table EntityPath (
-  "attr.docs.unreleased",
   "attr.arrow.transparent",
   "attr.python.aliases": "str",
   "attr.python.array_aliases": "str, Sequence[str]",
