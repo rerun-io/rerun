@@ -184,10 +184,7 @@ impl BlueprintTree {
         blueprint: &ViewportBlueprint,
         ui: &mut egui::Ui,
     ) {
-        let Some(container_id) = blueprint.root_container else {
-            // nothing to draw if there is no root container
-            return;
-        };
+        let container_id = blueprint.root_container;
 
         let Some(container_blueprint) = blueprint.containers.get(&container_id) else {
             re_log::warn_once!("Cannot find root container {container_id}");
@@ -655,14 +652,12 @@ impl BlueprintTree {
             // root container.
             let target_container_id =
                 if let Some(Item::Container(container_id)) = ctx.selection().single_item() {
-                    Some(*container_id)
+                    *container_id
                 } else {
                     blueprint.root_container
                 };
 
-            if let Some(target_container_id) = target_container_id {
-                show_add_space_view_or_container_modal(target_container_id);
-            }
+            show_add_space_view_or_container_modal(target_container_id);
         }
     }
 
@@ -821,15 +816,11 @@ impl BlueprintTree {
         // TODO(ab): this is a rather primitive behavior. Ideally we should allow dropping in the last container based
         //           on the horizontal position of the cursor.
 
-        let Some(root_container_id) = blueprint.root_container else {
-            return;
-        };
-
         if ui.rect_contains_pointer(empty_space) {
             let drop_target = re_ui::drag_and_drop::DropTarget::new(
                 empty_space.x_range(),
                 empty_space.top(),
-                Contents::Container(root_container_id),
+                Contents::Container(blueprint.root_container),
                 usize::MAX,
             );
 
