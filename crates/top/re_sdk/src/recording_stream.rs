@@ -2451,16 +2451,20 @@ mod tests {
                 components: [
                     (
                         MyPoint::name(),
-                        MyPoint::to_arrow([MyPoint::new(10.0, 10.0), MyPoint::new(20.0, 20.0)])
-                            .unwrap(),
+                        <MyPoint as re_types_core::Loggable>::to_arrow([
+                            MyPoint::new(10.0, 10.0),
+                            MyPoint::new(20.0, 20.0),
+                        ])
+                        .unwrap(),
                     ), //
                     (
                         MyColor::name(),
-                        MyColor::to_arrow([MyColor(0x8080_80FF)]).unwrap(),
+                        <MyColor as re_types_core::Loggable>::to_arrow([MyColor(0x8080_80FF)])
+                            .unwrap(),
                     ), //
                     (
                         MyLabel::name(),
-                        MyLabel::to_arrow([] as [MyLabel; 0]).unwrap(),
+                        <MyLabel as re_types_core::Loggable>::to_arrow([] as [MyLabel; 0]).unwrap(),
                     ), //
                 ]
                 .into_iter()
@@ -2475,15 +2479,15 @@ mod tests {
                 components: [
                     (
                         MyPoint::name(),
-                        MyPoint::to_arrow([] as [MyPoint; 0]).unwrap(),
+                        <MyPoint as re_types_core::Loggable>::to_arrow([] as [MyPoint; 0]).unwrap(),
                     ), //
                     (
                         MyColor::name(),
-                        MyColor::to_arrow([] as [MyColor; 0]).unwrap(),
+                        <MyColor as re_types_core::Loggable>::to_arrow([] as [MyColor; 0]).unwrap(),
                     ), //
                     (
                         MyLabel::name(),
-                        MyLabel::to_arrow([] as [MyLabel; 0]).unwrap(),
+                        <MyLabel as re_types_core::Loggable>::to_arrow([] as [MyLabel; 0]).unwrap(),
                     ), //
                 ]
                 .into_iter()
@@ -2498,15 +2502,17 @@ mod tests {
                 components: [
                     (
                         MyPoint::name(),
-                        MyPoint::to_arrow([] as [MyPoint; 0]).unwrap(),
+                        <MyPoint as re_types_core::Loggable>::to_arrow([] as [MyPoint; 0]).unwrap(),
                     ), //
                     (
                         MyColor::name(),
-                        MyColor::to_arrow([MyColor(0xFFFF_FFFF)]).unwrap(),
+                        <MyColor as re_types_core::Loggable>::to_arrow([MyColor(0xFFFF_FFFF)])
+                            .unwrap(),
                     ), //
                     (
                         MyLabel::name(),
-                        MyLabel::to_arrow([MyLabel("hey".into())]).unwrap(),
+                        <MyLabel as re_types_core::Loggable>::to_arrow([MyLabel("hey".into())])
+                            .unwrap(),
                     ), //
                 ]
                 .into_iter()
