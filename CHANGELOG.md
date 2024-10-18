@@ -39,7 +39,7 @@ Read more about our video supports (and its limits) [in our video docs](https://
 
 ### 🔎 Details
 
-:bookmark_tabs: Raw changelog: https://github.com/rerun-io/rerun/compare/0.18.2...0.19.0
+ 📑 Raw changelog: https://github.com/rerun-io/rerun/compare/0.18.2...0.19.0
 
 #### 🪵 Log API
 - Tensor & depth image value ranges can now be configured, from UI & code [#7549](https://github.com/rerun-io/rerun/pull/7549)
