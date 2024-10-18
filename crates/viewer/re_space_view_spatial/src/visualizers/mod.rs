@@ -6,6 +6,7 @@ mod assets3d;
 mod boxes2d;
 mod boxes3d;
 mod cameras;
+mod capsules3d;
 mod depth_images;
 mod ellipsoids;
 mod encoded_image;
@@ -109,6 +110,7 @@ pub fn register_3d_spatial_visualizers(
     system_registry.register_visualizer::<assets3d::Asset3DVisualizer>()?;
     system_registry.register_visualizer::<boxes2d::Boxes2DVisualizer>()?;
     system_registry.register_visualizer::<boxes3d::Boxes3DVisualizer>()?;
+    system_registry.register_visualizer::<capsules3d::Capsules3DVisualizer>()?;
     system_registry.register_visualizer::<cameras::CamerasVisualizer>()?;
     system_registry.register_visualizer::<depth_images::DepthImageVisualizer>()?;
     system_registry.register_visualizer::<encoded_image::EncodedImageVisualizer>()?;
