@@ -8,7 +8,7 @@ curl 'https://app.rerun.io/version/latest/examples/dna.rrd' -o - > /tmp/dna.rrd
 
 The results can be filtered further by specifying an entity filter expression:
 ```bash
-python dataframe_query.py my_recording.rrd /skeleton/left_shoulder/**\
+python dataframe_query.py my_recording.rrd /helix/structure/**\
 ```
 
 ```bash

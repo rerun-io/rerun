@@ -12,6 +12,6 @@ curl 'https://app.rerun.io/version/latest/examples/dna.rrd' -o - > /tmp/dna.rrd
 
 The results can be filtered further by specifying an entity filter expression:
 ```bash
-cargo run --release -- my_recording.rrd /skeleton/left_shoulder/**\
+cargo run --release -- my_recording.rrd /helix/structure/**\
 ```
 

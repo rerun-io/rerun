@@ -29,7 +29,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     curl 'https://app.rerun.io/version/latest/examples/dna.rrd' -o - > /tmp/dna.rrd
 
                     The results can be filtered further by specifying an entity filter expression:
-                    {bin_name} my_recording.rrd /skeleton/left_shoulder/**\
+                    {bin_name} my_recording.rrd /helix/structure/**\
                     ",
                 )),
             );
