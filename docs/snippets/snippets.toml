@@ -43,6 +43,7 @@ views = [
   "py",
 ]
 "reference/dataframe_query" = [ # Requires RRD files, which are unstable
+  "cpp",
   "rust",
   "py",
 ]
