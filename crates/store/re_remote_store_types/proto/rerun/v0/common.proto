@@ -28,32 +28,39 @@ message Query {
     // The subset of the database that the query will run on: a set of EntityPath(s) and their
     // associated Component(s)
     ViewContents view_contents = 1;
+
     // Whether the view_contents should ignore semantically empty columns
     // A semantically empty column is a column that either contains no data at all, or where all
     // values are either nulls or empty arrays ([]).
     bool include_semantically_empty_columns = 2;
+
     // Whether the view_contents should ignore columns corresponding to indicator components
     // Indicator components are marker components, generally automatically inserted by Rerun, that
     // helps keep track of the original context in which a piece of data was logged/sent.
     bool include_indicator_columns = 3;
+
     // Whether the view_contents should ignore columns corresponding to Clear-related components
     bool include_tombstone_columns = 4;
+
     // The index used to filter out _rows_ from the view contents.
     // Only rows where at least 1 column contains non-null data at that index will be kept in the
     // final dataset. If left unspecified, the results will only contain static data.
     IndexColumnSelector filtered_index = 5;
+
     // The range of index values used to filter out _rows_ from the view contents
     // Only rows where at least 1 of the view-contents contains non-null data within that range will be kept in
     // the final dataset.
     // This has no effect if filtered_index isn't set.
     // This has no effect if using_index_values is set.
     IndexRange filtered_index_range = 6;
+
     // The specific index values used to filter out _rows_ from the view contents.
     // Only rows where at least 1 column contains non-null data at these specific values will be kept
     // in the final dataset.
     // This has no effect if filtered_index isn't set.
     // This has no effect if using_index_values is set.
     IndexValues filtered_index_values = 7;
+
     // The specific index values used to sample _rows_ from the view contents.
     // The final dataset will contain one row per sampled index value, regardless of whether data
     // existed for that index value in the view contents.
@@ -63,14 +70,17 @@ message Query {
     // This has no effect if filtered_index isn't set.
     // If set, this overrides both filtered_index_range and filtered_index_values.
     IndexValues using_index_values = 8;
+
     // The component column used to filter out _rows_ from the view contents.
     // Only rows where this column contains non-null data be kept in the final dataset.
     ComponentColumnSelector filtered_is_not_null = 9;
+
     /// The specific _columns_ to sample from the final view contents.
     /// The order of the samples will be respected in the final result.
     ///
     /// If unspecified, it means - everything.
     ColumnSelection column_selection = 10;
+
     // Specifies how null values should be filled in the returned dataframe.
     SparseFillStrategy sparse_fill_strategy = 11;
 }
