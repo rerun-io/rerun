@@ -9,12 +9,12 @@
 /// Generated types for the remote store gRPC service API v0.
 pub mod v0 {
     // Ignoring all warnings for the auto-generated code.
-    #![allow(clippy::doc_markdown)]
-    #![allow(clippy::derive_partial_eq_without_eq)]
-    #![allow(clippy::enum_variant_names)]
-    #![allow(clippy::unwrap_used)]
-    #![allow(clippy::wildcard_imports)]
-    #![allow(clippy::manual_is_variant_and)]
+    #[allow(clippy::doc_markdown)]
+    #[allow(clippy::derive_partial_eq_without_eq)]
+    #[allow(clippy::enum_variant_names)]
+    #[allow(clippy::unwrap_used)]
+    #[allow(clippy::wildcard_imports)]
+    #[allow(clippy::manual_is_variant_and)]
     #[path = "../v0/rerun.remote_store.v0.rs"]
     mod _v0;
 
