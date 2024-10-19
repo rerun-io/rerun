@@ -198,11 +198,8 @@ log = "0.4"
 log-once = "0.4"
 lz4_flex = "0.11"
 memory-stats = "1.1"
-# TODO(#5875): `mimalloc` starts leaking OS pages starting with `0.1.38`.
-# This version is not pinned to avoid creating version requirement conflicts,
-# but other packages pin it to exactly "=0.1.37"
-mimalloc = "0.1.37"
-mime_guess2 = "2.0"                                         # infer MIME type by file extension, and map mime to file extension
+mimalloc = "0.1.43"
+mime_guess2 = "2.0"                                                # infer MIME type by file extension, and map mime to file extension
 mint = "0.5.9"
 re_mp4 = "0.1.0"
 natord = "1.0.9"
