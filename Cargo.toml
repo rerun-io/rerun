@@ -564,4 +564,4 @@ missing_errors_doc = "allow"
 # https://github.com/rerun-io/re_arrow2/commit/e4717d6debc6d4474ec10db8f629f823f57bad07
 re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2", rev = "e4717d6debc6d4474ec10db8f629f823f57bad07" }
 
-dav1d = { git = "https://github.com/rerun-io/re_rav1d", package = "re_rav1d", branch = "cmc/no_simd_patch" }
+# dav1d = { git = "https://github.com/rerun-io/re_rav1d", package = "re_rav1d", branch = "cmc/no_simd_patch" }
