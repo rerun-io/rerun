@@ -588,7 +588,7 @@ pub struct PyRecording {
 #[pyclass(name = "RecordingView")]
 #[derive(Clone)]
 pub struct PyRecordingView {
-    recording: Py<PyRecording>,
+    recording: std::sync::Arc<Py<PyRecording>>,
 
     query_expression: QueryExpression,
 }
@@ -1351,7 +1351,7 @@ impl PyRecording {
         let recording = slf.unbind();
 
         Ok(PyRecordingView {
-            recording,
+            recording: std::sync::Arc::new(recording),
             query_expression: query,
         })
     }
