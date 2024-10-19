@@ -92,7 +92,7 @@ pub mod v0 {
                 .contents
                 .into_iter()
                 .map(|part| {
-                    // TODO(zehiko) option unwrap
+                    #[allow(clippy::unwrap_used)] // TODO(zehiko)
                     let entity_path = Into::<re_log_types::EntityPath>::into(part.path.unwrap());
                     let column_selector = part.components.map(|cs| {
                         cs.components
