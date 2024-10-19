@@ -750,7 +750,7 @@ checksum = "c7c24de15d275a1ecfd47a380fb4d5ec9bfe0933f309ed5e705b775596a3574d"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.48",
+ "syn 2.0.79",
 ]
 
 [[package]]
@@ -4723,7 +4723,7 @@ dependencies = [
  "prost 0.12.6",
  "prost-types 0.12.6",
  "regex",
- "syn 2.0.48",
+ "syn 2.0.79",
  "tempfile",
 ]
 
@@ -4771,7 +4771,7 @@ dependencies = [
  "itertools 0.13.0",
  "proc-macro2",
  "quote",
- "syn 2.0.48",
+ "syn 2.0.79",
 ]
 
 [[package]]
@@ -5623,7 +5623,7 @@ dependencies = [
 
 [[package]]
 name = "re_remote_store_types"
-version = "0.19.0-alpha.14+dev"
+version = "0.20.0-alpha.1+dev"
 dependencies = [
  "prost 0.13.3",
  "re_dataframe",
@@ -5634,7 +5634,7 @@ dependencies = [
 
 [[package]]
 name = "re_remote_store_types_builder"
-version = "0.19.0-alpha.14+dev"
+version = "0.20.0-alpha.1+dev"
 dependencies = [
  "camino",
  "re_log",
@@ -7713,7 +7713,7 @@ checksum = "5f5ae998a069d4b5aba8ee9dad856af7d520c3699e6159b185c2acd48155d39a"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.48",
+ "syn 2.0.79",
 ]
 
 [[package]]
@@ -7827,7 +7827,7 @@ dependencies = [
  "prost-build 0.13.3",
  "prost-types 0.13.3",
  "quote",
- "syn 2.0.48",
+ "syn 2.0.79",
 ]
 
 [[package]]

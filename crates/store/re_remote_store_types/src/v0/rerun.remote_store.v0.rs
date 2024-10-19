@@ -187,7 +187,7 @@ pub struct ComponentColumnSelector {
 #[repr(i32)]
 pub enum SparseFillStrategy {
     None = 0,
-    LatestAlGlobal = 1,
+    LatestAtGlobal = 1,
 }
 impl SparseFillStrategy {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -197,14 +197,14 @@ impl SparseFillStrategy {
     pub fn as_str_name(&self) -> &'static str {
         match self {
             Self::None => "NONE",
-            Self::LatestAlGlobal => "LATEST_AL_GLOBAL",
+            Self::LatestAtGlobal => "LATEST_AT_GLOBAL",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
             "NONE" => Some(Self::None),
-            "LATEST_AL_GLOBAL" => Some(Self::LatestAlGlobal),
+            "LATEST_AT_GLOBAL" => Some(Self::LatestAtGlobal),
             _ => None,
         }
     }

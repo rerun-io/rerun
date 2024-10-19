@@ -149,5 +149,5 @@ message ComponentColumnSelector {
 // Specifies how null values should be filled in the returned dataframe.
 enum SparseFillStrategy {
     NONE = 0;
-    LATEST_AL_GLOBAL = 1;
+    LATEST_AT_GLOBAL = 1;
 }
