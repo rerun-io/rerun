@@ -55,7 +55,6 @@ skip = [
   { name = "hashbrown" },         # Old version used by polar-rs
   { name = "libloading" },        # Old version used by ash (vulkan binding), newer version used by khronos-egl
   { name = "memoffset" },         # Small crate
-  { name = "ndarray" },           # Needed by `numpy<0.22` in `rerun_py`
   { name = "prettyplease" },      # Old version being used by prost
   { name = "pulldown-cmark" },    # Build-dependency via `ply-rs` (!). TODO(emilk): use a better crate for .ply parsing
   { name = "raw-window-handle" }, # Pretty small crate; some crates still on old version

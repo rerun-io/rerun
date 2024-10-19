@@ -54,6 +54,9 @@ default = ["base", "wheel-build"]
 # The py environment is for running any code with a dependency on the python `rerun-sdk`.
 py = ["base", "wheel-build", "python-dev", "python-tasks", "py-test-deps"]
 
+# The py-docs environment is for building docs for the python package.
+py-docs = ["base", "python-docs"]
+
 # The cpp environment is for building any code that depends on the C++ `rerun-sdk`.
 cpp = ["base", "cpp"]
 
@@ -248,15 +251,6 @@ check-large-files = "python scripts/ci/check_large_files.py"
 # Requires that gcloud authentication has already been set up in your shell.
 fetch-artifact = "python scripts/ci/fetch_artifact.py"
 
-# Build the documentation search index.
-# See `pixi run search-index --help` for more information.
-# Before running this, install `rerun_py/requirements-doc.txt`.
-# TODO(#6060): Put this in an environment and remove the requirements file.
-search-index = "cargo run --locked -p re_dev_tools -- search-index"
-
-# Serve python docs locally
-# TODO(#6060): Put this in an environment and remove the requirements file.
-py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
 
 # Lint markdown
 mdlint = "python scripts/ci/mdlint.py"
@@ -326,6 +320,14 @@ py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py",
 py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
   "py-build",
 ] }
+
+[feature.python-docs.tasks]
+# Build the documentation search index.
+# See `pixi run search-index --help` for more information.
+search-index = "cargo run --locked -p re_dev_tools -- search-index"
+
+# Serve python docs locally
+py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
 
 [feature.wheel-test.tasks]
 # In the wheel-test environment we want to confirm the`rerun` binary on the path executes as expected.
@@ -519,6 +521,20 @@ scripts = ["pixi/maturin_config.bat"]
 rerun-sdk = { path = "rerun_py", editable = true }
 rerun-notebook = { path = "rerun_notebook", editable = true }
 
+[feature.python-docs.pypi-dependencies]
+griffe = "==1.4.1"
+mkdocs = "==1.6.1"
+mkdocs-gen-files = "==0.5.0"
+mkdocs-literate-nav = "==0.6.1"
+mkdocs-material = "==9.4.7"
+mkdocs-material-extensions = "==1.3"
+mkdocs-redirects = { git = "https://github.com/rerun-io/mkdocs-redirects.git", rev = "fb6b074554975ba7729d68d04957ce7c7dfd5003" } # forked mkdocs-redirects with https://github.com/rerun-io/mkdocs-redirects/commit/d367a0847928438b66f73508e49852be1190409b
+mkdocstrings = "==0.26.2"
+mkdocstrings-python = "==1.12.1"
+mike = "==1.1.2"
+setuptools = ">75"
+sphobjinv = "==2.3.1"
+
 [feature.py-test-deps.pypi-dependencies]
 # Torch is needed to run the rerun unit tests.
 # This dependency is here to get torch into the pixi cache because it's large and installing it
@@ -569,6 +585,7 @@ blueprint = { path = "examples/python/blueprint", editable = true }
 blueprint_stocks = { path = "examples/python/blueprint_stocks", editable = true }
 clock = { path = "examples/python/clock", editable = true }
 controlnet = { path = "examples/python/controlnet", editable = true }
+dataframe_query = { path = "examples/python/dataframe_query", editable = true }
 detect_and_track_objects = { path = "examples/python/detect_and_track_objects", editable = true }
 dicom_mri = { path = "examples/python/dicom_mri", editable = true }
 dna = { path = "examples/python/dna", editable = true }

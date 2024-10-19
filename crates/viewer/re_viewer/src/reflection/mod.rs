@@ -688,7 +688,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <VideoTimestamp as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).",
+                docstring_md: "Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).",
                 placeholder: Some(VideoTimestamp::default().to_arrow()?),
             },
         ),
@@ -1485,7 +1485,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.EntityPath".into(), display_name :
                     "Video reference", docstring_md :
-                    "Optional reference to an entity with a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).\n\nIf none is specified, the video is assumed to be at the same entity.\nNote that blueprint overrides on the referenced video will be ignored regardless,\nas this is always interpreted as a reference to the data store.\n\nFor a series of video frame references, it is recommended to specify this path only once\nat the beginning of the series and then rely on latest-at query semantics to\nkeep the video reference active.",
+                    "Optional reference to an entity with a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).\n\nIf none is specified, the video is assumed to be at the same entity.\nNote that blueprint overrides on the referenced video will be ignored regardless,\nas this is always interpreted as a reference to the data store.\n\nFor a series of video frame references, it is recommended to specify this path only once\nat the beginning of the series and then rely on latest-at query semantics to\nkeep the video reference active.",
                     is_required : false, },
                 ],
             },
