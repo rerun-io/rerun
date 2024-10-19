@@ -118,7 +118,7 @@ examples-pypi = ["examples-common", "python-pypi"]
 codegen = "cargo --quiet run --package re_types_builder -- "
 
 # Run the codegen for remote store types.
-codegen-rstore = "cargo --quiet run --package re_remote_store_types_builder -- "
+codegen-rstore = "cargo --quiet run --package re_remote_store_types_builder && pixi run -e cpp format"
 
 # Generate the Rerun CLI manual.
 
