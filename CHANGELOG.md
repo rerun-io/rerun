@@ -6,6 +6,7 @@
 
 ## [0.19.0](https://github.com/rerun-io/rerun/compare/0.18.2...0.19.0) - Dataframes & Video support
 
+
 <!-- TODO(emilk): insert a screenshot and/or code sample here -->
 
 📖 Release blogpost: Coming soon! <!-- TODO(niko): link to it! -->

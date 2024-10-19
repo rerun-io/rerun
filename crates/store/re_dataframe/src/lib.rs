@@ -16,7 +16,9 @@ pub use self::external::re_chunk_store::{
     SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
 };
 #[doc(no_inline)]
-pub use self::external::re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeInt, Timeline};
+pub use self::external::re_log_types::{
+    EntityPath, EntityPathFilter, ResolvedTimeRange, TimeInt, Timeline,
+};
 #[doc(no_inline)]
 pub use self::external::re_query::Caches as QueryCache;
 
