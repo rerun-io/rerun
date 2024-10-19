@@ -42,6 +42,10 @@ views = [
   "rust",
   "py",
 ]
+"reference/dataframe_query" = [ # Requires RRD files, which are unstable
+  "rust",
+  "py",
+]
 "tutorials/annotation-context" = [ # Not a complete example
   "cpp",
   "rust",
