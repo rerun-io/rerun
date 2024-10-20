@@ -12,9 +12,11 @@ pub use re_types::blueprint::components::FilterIsNotNull;
 pub use re_types::blueprint::components::IncludedContent;
 pub use re_types::blueprint::components::Interactive;
 pub use re_types::blueprint::components::LockRangeDuringZoom;
+pub use re_types::blueprint::components::MapProvider;
 pub use re_types::blueprint::components::PanelState;
 pub use re_types::blueprint::components::QueryExpression;
 pub use re_types::blueprint::components::RowShare;
+pub use re_types::blueprint::components::Secret;
 pub use re_types::blueprint::components::SelectedColumns;
 pub use re_types::blueprint::components::SpaceViewClass;
 pub use re_types::blueprint::components::SpaceViewOrigin;
@@ -25,6 +27,7 @@ pub use re_types::blueprint::components::ViewerRecommendationHash;
 pub use re_types::blueprint::components::Visible;
 pub use re_types::blueprint::components::VisibleTimeRange;
 pub use re_types::blueprint::components::VisualBounds2D;
+pub use re_types::blueprint::components::ZoomLevel;
 pub use re_types_blueprint::blueprint::components::AutoLayout;
 pub use re_types_blueprint::blueprint::components::AutoSpaceViews;
 pub use re_types_blueprint::blueprint::components::ContainerKind;
@@ -54,10 +57,12 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<IncludedSpaceView>(blueprint)
         && validate_component::<Interactive>(blueprint)
         && validate_component::<LockRangeDuringZoom>(blueprint)
+        && validate_component::<MapProvider>(blueprint)
         && validate_component::<PanelState>(blueprint)
         && validate_component::<QueryExpression>(blueprint)
         && validate_component::<RootContainer>(blueprint)
         && validate_component::<RowShare>(blueprint)
+        && validate_component::<Secret>(blueprint)
         && validate_component::<SelectedColumns>(blueprint)
         && validate_component::<SpaceViewClass>(blueprint)
         && validate_component::<SpaceViewMaximized>(blueprint)
@@ -70,4 +75,5 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<VisibleTimeRange>(blueprint)
         && validate_component::<VisualBounds2D>(blueprint)
         && validate_component::<VisualizerOverrides>(blueprint)
+        && validate_component::<ZoomLevel>(blueprint)
 }

@@ -34,10 +34,12 @@ from .included_content import IncludedContent, IncludedContentBatch, IncludedCon
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
 from .interactive import Interactive, InteractiveBatch, InteractiveType
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch, LockRangeDuringZoomType
+from .map_provider import MapProvider, MapProviderArrayLike, MapProviderBatch, MapProviderLike, MapProviderType
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike, PanelStateType
 from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .row_share import RowShare, RowShareBatch, RowShareType
+from .secret import Secret, SecretBatch, SecretType
 from .selected_columns import SelectedColumns, SelectedColumnsBatch, SelectedColumnsType
 from .space_view_class import SpaceViewClass, SpaceViewClassBatch, SpaceViewClassType
 from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch, SpaceViewMaximizedType
@@ -58,6 +60,7 @@ from .visible import Visible, VisibleBatch, VisibleType
 from .visible_time_range import VisibleTimeRange, VisibleTimeRangeBatch, VisibleTimeRangeType
 from .visual_bounds2d import VisualBounds2D, VisualBounds2DBatch, VisualBounds2DType
 from .visualizer_overrides import VisualizerOverrides, VisualizerOverridesBatch, VisualizerOverridesType
+from .zoom_level import ZoomLevel, ZoomLevelBatch, ZoomLevelType
 
 __all__ = [
     "ActiveTab",
@@ -114,6 +117,11 @@ __all__ = [
     "LockRangeDuringZoom",
     "LockRangeDuringZoomBatch",
     "LockRangeDuringZoomType",
+    "MapProvider",
+    "MapProviderArrayLike",
+    "MapProviderBatch",
+    "MapProviderLike",
+    "MapProviderType",
     "PanelState",
     "PanelStateArrayLike",
     "PanelStateBatch",
@@ -128,6 +136,9 @@ __all__ = [
     "RowShare",
     "RowShareBatch",
     "RowShareType",
+    "Secret",
+    "SecretBatch",
+    "SecretType",
     "SelectedColumns",
     "SelectedColumnsBatch",
     "SelectedColumnsType",
@@ -166,4 +177,7 @@ __all__ = [
     "VisualizerOverrides",
     "VisualizerOverridesBatch",
     "VisualizerOverridesType",
+    "ZoomLevel",
+    "ZoomLevelBatch",
+    "ZoomLevelType",
 ]
