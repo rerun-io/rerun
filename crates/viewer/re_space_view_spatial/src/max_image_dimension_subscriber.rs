@@ -1,14 +1,14 @@
 use ahash::HashMap;
+use arrow2::array::Array;
 use nohash_hasher::IntMap;
 use once_cell::sync::OnceCell;
 
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriber, ChunkStoreSubscriberHandle};
 use re_log_types::{EntityPath, StoreId};
 use re_types::{
-    archetypes::EncodedImage,
     components::{Blob, ImageFormat, MediaType},
     external::image,
-    Archetype, Loggable,
+    Loggable,
 };
 
 #[derive(Debug, Clone, Default)]
@@ -76,6 +76,7 @@ impl ChunkStoreSubscriber for MaxImageDimensionSubscriber {
                 continue;
             }
 
+            // Handle `Image`, `DepthImage`, `SegmentationImage`…
             if let Some(all_dimensions) = event.diff.chunk.components().get(&ImageFormat::name()) {
                 for new_dim in all_dimensions.iter().filter_map(|array| {
                     array
@@ -89,62 +90,57 @@ impl ChunkStoreSubscriber for MaxImageDimensionSubscriber {
                         .entry(event.diff.chunk.entity_path().clone())
                         .or_default();
 
-                    max_dim.height = max_dim.height.max(new_dim.height);
                     max_dim.width = max_dim.width.max(new_dim.width);
+                    max_dim.height = max_dim.height.max(new_dim.height);
                 }
             }
 
-            // TODO(jleibs): Image blob/mediatypes should have their own component
-            // Is there a more canonical way to check the indicators for a chunk?
-            if event
-                .diff
-                .chunk
-                .components()
-                .get(&EncodedImage::indicator().name())
-                .is_some()
-            {
-                let media_types = event.diff.chunk.iter_component_arrays(&MediaType::name());
-                let blobs = event.diff.chunk.iter_component_arrays(&Blob::name());
-                for (media, blob) in media_types.zip(blobs) {
-                    let Ok(media) = MediaType::from_arrow_opt(media.as_ref()) else {
-                        continue;
-                    };
-                    let Ok(blob) = Blob::from_arrow_opt(blob.as_ref()) else {
-                        continue;
-                    };
-                    if let (media, Some(Some(blob))) = (media.first(), blob.first()) {
-                        let image_bytes = blob.0.as_slice();
-
-                        let mut reader = image::io::Reader::new(std::io::Cursor::new(image_bytes));
-
-                        if let Some(Some(media)) = media {
-                            if let Some(format) = image::ImageFormat::from_mime_type(&media.0) {
-                                reader.set_format(format);
-                            }
-                        }
-
-                        if reader.format().is_none() {
-                            if let Ok(format) = image::guess_format(image_bytes) {
-                                // Weirdly enough, `reader.decode` doesn't do this for us.
-                                reader.set_format(format);
-                            }
-                        }
-
-                        if let Ok((width, height)) = reader.into_dimensions() {
-                            let max_dim = self
-                                .max_dimensions
-                                .entry(event.store_id.clone())
-                                .or_default()
-                                .0
-                                .entry(event.diff.chunk.entity_path().clone())
-                                .or_default();
-
-                            max_dim.height = max_dim.height.max(height);
-                            max_dim.width = max_dim.width.max(width);
-                        }
-                    }
+            // Handle `ImageEncoded`…
+            let blobs = event.diff.chunk.iter_component_arrays(&Blob::name());
+            let media_types = event.diff.chunk.iter_component_arrays(&MediaType::name());
+            for (blob, media_type) in itertools::izip!(blobs, media_types) {
+                if let Some([width, height]) = size_from_blob(blob.as_ref(), media_type.as_ref()) {
+                    let max_dim = self
+                        .max_dimensions
+                        .entry(event.store_id.clone())
+                        .or_default()
+                        .0
+                        .entry(event.diff.chunk.entity_path().clone())
+                        .or_default();
+                    max_dim.width = max_dim.width.max(width);
+                    max_dim.height = max_dim.height.max(height);
                 }
             }
         }
+    }
+}
+
+fn size_from_blob(blob: &dyn Array, media_type: &dyn Array) -> Option<[u32; 2]> {
+    let blob = Blob::from_arrow_opt(blob).ok()?.first()?.clone()?;
+    let media: Option<MediaType> = MediaType::from_arrow_opt(media_type)
+        .ok()
+        .and_then(|list| list.first().cloned())
+        .flatten();
+    let media = MediaType::or_guess_from_data(media, &blob)?;
+
+    if media.is_image() {
+        let image_bytes = blob.0.as_slice();
+
+        let mut reader = image::io::Reader::new(std::io::Cursor::new(image_bytes));
+
+        if let Some(format) = image::ImageFormat::from_mime_type(&media.0) {
+            reader.set_format(format);
+        }
+
+        if reader.format().is_none() {
+            if let Ok(format) = image::guess_format(image_bytes) {
+                // Weirdly enough, `reader.decode` doesn't do this for us.
+                reader.set_format(format);
+            }
+        }
+
+        reader.into_dimensions().ok().map(|size| size.into())
+    } else {
+        None // TODO(emilk): handle video files
     }
 }
