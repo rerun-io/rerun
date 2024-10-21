@@ -39,7 +39,7 @@ def get_coordinate(ref_lat: float, ref_lon: float, bearing: float, dist: float) 
     return math.degrees(target_lat), math.degrees(target_lon)
 
 
-def derive_latlon(location: str, pose: dict[str, float]) -> tuple[float, float]:
+def derive_latlon(location: str, pose: dict[str, list[float]]) -> tuple[float, float]:
     """
     Extract lat/lon coordinate from pose.
 

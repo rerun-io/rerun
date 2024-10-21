@@ -23,7 +23,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 #[repr(u8)]
 pub enum MapProvider {
-    /// OpenStreetMap is the default map provider.
+    /// `OpenStreetMap` is the default map provider.
     #[default]
     OpenStreetMap = 1,
 
