@@ -53,3 +53,5 @@ This is useful for data that isn't part of normal data capture, but sets the sce
 For instance, if you are logging cars on a street, perhaps you want to always show a street mesh as part of the scenery, and for that it makes sense for that data to be static.
 
 Similarly, [coordinate systems](spaces-and-transforms.md) or [annotation context](annotation-context.md) are typically static.
+
+You can read more about static data in 
