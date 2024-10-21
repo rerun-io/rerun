@@ -43,6 +43,7 @@ Read more about our video supports (and its limits) [in our video docs](https://
 - BGR(A) image format support [#7238](https://github.com/rerun-io/rerun/pull/7238)
 - Tensor & depth image value ranges can now be configured, from UI & code [#7549](https://github.com/rerun-io/rerun/pull/7549)
 - New planar pixel formats: `Y_U_V24`/`Y_U_V16`/`Y_U_V12` - `_LimitedRange`/`FullRange` [#7666](https://github.com/rerun-io/rerun/pull/7666)
+- Add `ShowLabels` component, which controls whether instances’ labels are shown [#7249](https://github.com/rerun-io/rerun/pull/7249) (thanks [@kpreid](https://github.com/kpreid)!)
 - Refactor `MediaType` guessing [#7326](https://github.com/rerun-io/rerun/pull/7326)
 
 #### 🌊 C++ API
@@ -69,6 +70,7 @@ Read more about our video supports (and its limits) [in our video docs](https://
 #### 🌁 Viewer improvements
 - The viewer will tail an .rrd that's is being written to [#7475](https://github.com/rerun-io/rerun/pull/7475)
 - Native video support for AV1 [#7557](https://github.com/rerun-io/rerun/pull/7557)
+- Allow splitting entity path expressions with whitespace [#7782](https://github.com/rerun-io/rerun/pull/7782)
 
 #### 🚀 Performance improvements
 - Improve performance for scenes with many entities & transforms [#7456](https://github.com/rerun-io/rerun/pull/7456)
@@ -80,7 +82,7 @@ Read more about our video supports (and its limits) [in our video docs](https://
 
 #### 🧑‍🏫 Examples
 - Add drone LiDAR example [#7336](https://github.com/rerun-io/rerun/pull/7336)
-- add instant_splat example [#7751](https://github.com/rerun-io/rerun/pull/7751) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
+- Add `instant_splat` example [#7751](https://github.com/rerun-io/rerun/pull/7751) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
 
 #### 📚 Docs
 - Add video reference docs [#7533](https://github.com/rerun-io/rerun/pull/7533)
