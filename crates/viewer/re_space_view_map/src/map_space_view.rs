@@ -228,7 +228,7 @@ Displays a Position3D on a map.
             .to_string();
 
         if state.map_memory.set_zoom(*zoom_level).is_err() {
-            re_log::warn!(
+            re_log::warn_once!(
                 "Failed to set zoom level for map. Zoom level should be between zero and 22"
             );
         };

@@ -34,5 +34,5 @@ snippet: views/map
 
 ## Visualized archetypes
 
-* [`Points3D`](../archetypes/points3d.md)
+* [`Points3D`](../archetypes/points3d.md) (must be longitude/latitude)
 
