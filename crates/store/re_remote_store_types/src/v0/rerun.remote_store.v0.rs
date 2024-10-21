@@ -267,14 +267,19 @@ pub struct QueryRequest {
     #[prost(message, optional, tag = "1")]
     pub recording_id: ::core::option::Option<RecordingId>,
     /// query to execute
-    #[prost(message, optional, tag = "2")]
+    #[prost(message, optional, tag = "3")]
     pub query: ::core::option::Option<Query>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryResponse {
-    /// single record batch (encoding TBD - TODO).
-    #[prost(bytes = "vec", tag = "1")]
-    pub record_batch: ::prost::alloc::vec::Vec<u8>,
+    /// TODO(zehiko) we need to expand this to become something like 'encoder options'
+    /// as we will need to specify additional options like compression, including schema
+    /// in payload, etc.
+    #[prost(enumeration = "EncoderVersion", tag = "1")]
+    pub encoder_version: i32,
+    /// payload is raw bytes that the relevant codec can interpret
+    #[prost(bytes = "vec", tag = "2")]
+    pub payload: ::prost::alloc::vec::Vec<u8>,
 }
 #[derive(Clone, Copy, PartialEq, ::prost::Message)]
 pub struct ListRecordingsRequest {}
@@ -295,6 +300,29 @@ pub struct RecordingInfo {
     pub size_bytes: u64,
     #[prost(enumeration = "RecordingType", tag = "5")]
     pub typ: i32,
+}
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum EncoderVersion {
+    V0 = 0,
+}
+impl EncoderVersion {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::V0 => "V0",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "V0" => Some(Self::V0),
+            _ => None,
+        }
+    }
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
