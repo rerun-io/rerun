@@ -1,13 +1,10 @@
-use std::sync::Arc;
-
 use itertools::Itertools;
 use smallvec::smallvec;
 use tinystl::StlData;
 
 use crate::{
-    mesh::{self, GpuMesh},
-    renderer::MeshInstance,
-    RenderContext,
+    mesh::{self},
+    CpuModel, RenderContext,
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -23,7 +20,7 @@ pub enum StlImportError {
 pub fn load_stl_from_buffer(
     buffer: &[u8],
     ctx: &RenderContext,
-) -> Result<Vec<MeshInstance>, StlImportError> {
+) -> Result<CpuModel, StlImportError> {
     re_tracing::profile_function!();
 
     let cursor = std::io::Cursor::new(buffer);
@@ -43,7 +40,7 @@ pub fn load_stl_from_buffer(
         albedo_factor: crate::Rgba::WHITE,
     };
 
-    let mesh = mesh::Mesh {
+    let mesh = mesh::CpuMesh {
         label: name.into(),
         triangle_indices: (0..num_vertices as u32)
             .tuples::<(_, _, _)>()
@@ -70,8 +67,5 @@ pub fn load_stl_from_buffer(
 
     mesh.sanity_check()?;
 
-    Ok(vec![MeshInstance::new_with_cpu_mesh(
-        Arc::new(GpuMesh::new(ctx, &mesh)?),
-        Some(Arc::new(mesh)),
-    )])
+    Ok(CpuModel::from_single_mesh(mesh))
 }
