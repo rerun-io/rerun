@@ -84,6 +84,7 @@ examples = [
   "live_camera_edge_detection",
   "segment_anything_model",
   "tapir",
+  "ml_depth_pro",
 ]
 
 [categories.3d-reconstruction] # NOLINT
