@@ -75,6 +75,7 @@ impl VideoData {
     /// TODO(andreas, jan): This should not copy the data, but instead store slices into a shared buffer.
     /// at the very least the should be a way to extract only metadata.
     pub fn load_from_bytes(data: &[u8], media_type: &str) -> Result<Self, VideoLoadError> {
+        re_tracing::profile_function!();
         match media_type {
             "video/mp4" => Self::load_mp4(data),
 
@@ -96,6 +97,12 @@ impl VideoData {
     #[inline]
     pub fn duration(&self) -> std::time::Duration {
         std::time::Duration::from_nanos(self.duration.into_nanos(self.timescale) as _)
+    }
+
+    /// Natural width and height of the video
+    #[inline]
+    pub fn dimensions(&self) -> [u32; 2] {
+        [self.width(), self.height()]
     }
 
     /// Natural width of the video.

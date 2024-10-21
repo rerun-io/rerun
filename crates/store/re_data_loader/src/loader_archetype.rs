@@ -39,8 +39,10 @@ impl DataLoader for ArchetypeLoader {
 
         re_tracing::profile_function!(filepath.display().to_string());
 
-        let contents = std::fs::read(&filepath)
-            .with_context(|| format!("Failed to read file {filepath:?}"))?;
+        let contents = {
+            re_tracing::profile_scope!("fs::read");
+            std::fs::read(&filepath).with_context(|| format!("Failed to read file {filepath:?}"))?
+        };
         let contents = std::borrow::Cow::Owned(contents);
 
         self.load_from_file_contents(settings, filepath, contents, tx)
