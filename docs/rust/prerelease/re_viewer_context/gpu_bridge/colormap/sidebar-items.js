@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["colormap_dropdown_button_ui","colormap_preview_ui"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["connection_status_ui","e2e_latency_ui","frame_time_label_ui","input_queue_latency_ui","latency_text","latency_ui","memory_use_label_ui","panel_buttons_r2l","top_bar_ui","top_panel","website_link_ui"]};

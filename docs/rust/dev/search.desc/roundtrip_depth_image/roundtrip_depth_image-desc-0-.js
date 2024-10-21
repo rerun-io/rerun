@@ -1,0 +1,1 @@
+searchState.loadedDescShard("roundtrip_depth_image", 0, "Logs a <code>DepthImage</code> archetype for roundtrip checks.\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.")

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["component_ui","entity_db_ui","entity_ui","format_arrow","main"],"static":["GLOBAL"],"struct":["MyApp"]};

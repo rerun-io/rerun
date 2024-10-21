@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ChunkError"],"struct":["Chunk","TimeColumn"],"type":["ChunkResult"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["clamped_or","clamped_or_nothing","clamped_vec_or_empty","iter_buffer","iter_component","iter_primitive","iter_primitive_array","iter_primitive_array_list","iter_string","process_archetype","query_archetype_with_history"]};

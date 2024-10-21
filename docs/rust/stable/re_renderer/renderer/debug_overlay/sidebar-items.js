@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["DebugOverlayError"],"mod":["gpu_data"],"struct":["DebugOverlayDrawData","DebugOverlayRenderer"]};

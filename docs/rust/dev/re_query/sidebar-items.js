@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["QueryError"],"mod":["cache","cache_stats","clamped_zip","external","latest_at","range","range_zip"],"struct":["CacheKey","CacheStats","Caches","CachesStats","ComponentNotFoundError","LatestAtResults","RangeResults"],"type":["Result"]};

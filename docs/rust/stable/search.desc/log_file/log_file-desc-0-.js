@@ -1,0 +1,1 @@
+searchState.loadedDescShard("log_file", 0, "Demonstrates how to log any file from the SDK using the …\nThe filepaths to be loaded and logged.\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.")

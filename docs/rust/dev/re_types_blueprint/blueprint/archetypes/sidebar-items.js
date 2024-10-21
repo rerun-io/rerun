@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["container_blueprint","panel_blueprint","viewport_blueprint"],"struct":["ContainerBlueprint","PanelBlueprint","ViewportBlueprint"]};

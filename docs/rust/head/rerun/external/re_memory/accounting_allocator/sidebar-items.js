@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["global_allocs","is_tracking_callstacks","set_tracking_callstacks","tracking_stats","turn_on_tracking_if_env_var"],"struct":["AccountingAllocator","TrackingStatistics"]};

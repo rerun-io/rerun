@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["edit_or_view_view_coordinates"]};

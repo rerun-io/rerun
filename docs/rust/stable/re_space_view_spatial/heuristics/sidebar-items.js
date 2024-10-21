@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["default_visualized_entities_for_visualizer_kind"]};

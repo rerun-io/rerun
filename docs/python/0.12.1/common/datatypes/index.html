@@ -1,0 +1,3924 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+        <link rel="canonical" href="https://ref.rerun.io/docs/python/0.12.1/common/datatypes/">
+      
+      
+        <link rel="prev" href="../components/">
+      
+      
+        <link rel="next" href="../custom_data/">
+      
+      
+      <link rel="icon" href="../../assets/images/favicon.png">
+      <meta name="generator" content="mkdocs-1.5.3, mkdocs-material-9.4.7">
+    
+    
+      
+        <title>Datatypes - Rerun Python APIs</title>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/stylesheets/main.4b4a2bd9.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../../css/mkdocstrings.css">
+    
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce((e,_)=>(e<<5)-e+_.charCodeAt(0),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    <body dir="ltr">
+  
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&"object"==typeof palette.color)for(var key of Object.keys(palette.color))document.body.setAttribute("data-md-color-"+key,palette.color[key])</script>
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#rerun.datatypes" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+      <div data-md-color-scheme="default" data-md-component="outdated" hidden>
+        
+      </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href="../.." title="Rerun Python APIs" class="md-header__button md-logo" aria-label="Rerun Python APIs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6m0 5h18v2H3v-2m0 5h18v2H3v-2Z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            Rerun Python APIs
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Datatypes
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+    
+    
+      <label class="md-header__button md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+      </label>
+      <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.516 6.516 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5Z"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11h12Z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41Z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/rerun-io/rerun/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+    
+      
+<nav class="md-tabs" aria-label="Tabs" data-md-component="tabs">
+  <div class="md-grid">
+    <ul class="md-tabs__list">
+      
+        
+  
+  
+    
+  
+  
+    
+    
+      <li class="md-tabs__item md-tabs__item--active">
+        <a href="../" class="md-tabs__link">
+          
+  
+    
+  
+  Common APIs
+
+        </a>
+      </li>
+    
+  
+
+      
+        
+  
+  
+  
+    <li class="md-tabs__item">
+      <a href="../../writing_docs/" class="md-tabs__link">
+        
+  
+    
+  
+  Writing Docs
+
+      </a>
+    </li>
+  
+
+      
+    </ul>
+  </div>
+</nav>
+    
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+  
+
+
+<nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href="../.." title="Rerun Python APIs" class="md-nav__button md-logo" aria-label="Rerun Python APIs" data-md-component="logo">
+      
+  
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a3 3 0 0 0 3-3 3 3 0 0 0-3-3 3 3 0 0 0-3 3 3 3 0 0 0 3 3m0 3.54C9.64 9.35 6.5 8 3 8v11c3.5 0 6.64 1.35 9 3.54 2.36-2.19 5.5-3.54 9-3.54V8c-3.5 0-6.64 1.35-9 3.54Z"/></svg>
+
+    </a>
+    Rerun Python APIs
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/rerun-io/rerun/" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.4.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2023 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81z"/></svg>
+  </div>
+  <div class="md-source__repository">
+    GitHub
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+    
+    
+      
+        
+          
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+        
+      
+    
+    
+    
+    
+      
+      
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+      
+        
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
+        
+          
+          
+          <div class="md-nav__link md-nav__container">
+            <a href="../" class="md-nav__link ">
+              
+  
+  <span class="md-ellipsis">
+    Common APIs
+  </span>
+  
+
+            </a>
+            
+              
+              <label class="md-nav__link " for="__nav_1" id="__nav_1_label" tabindex="">
+                <span class="md-nav__icon md-icon"></span>
+              </label>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Common APIs
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../initialization_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Initialization functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../logging_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Logging functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../archetypes/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Archetypes
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../components/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Components
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  <span class="md-ellipsis">
+    Datatypes
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  <span class="md-ellipsis">
+    Datatypes
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#rerun.datatypes" class="md-nav__link">
+    datatypes
+  </a>
+  
+    <nav class="md-nav" aria-label="datatypes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Angle" class="md-nav__link">
+    Angle
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.AnnotationInfo" class="md-nav__link">
+    AnnotationInfo
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.ClassDescription" class="md-nav__link">
+    ClassDescription
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.ClassDescriptionMapElem" class="md-nav__link">
+    ClassDescriptionMapElem
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.ClassId" class="md-nav__link">
+    ClassId
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.EntityPath" class="md-nav__link">
+    EntityPath
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Float32" class="md-nav__link">
+    Float32
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.KeypointId" class="md-nav__link">
+    KeypointId
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.KeypointPair" class="md-nav__link">
+    KeypointPair
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Mat3x3" class="md-nav__link">
+    Mat3x3
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Mat4x4" class="md-nav__link">
+    Mat4x4
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Material" class="md-nav__link">
+    Material
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.MeshProperties" class="md-nav__link">
+    MeshProperties
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Quaternion" class="md-nav__link">
+    Quaternion
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Rgba32" class="md-nav__link">
+    Rgba32
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Rotation3D" class="md-nav__link">
+    Rotation3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.RotationAxisAngle" class="md-nav__link">
+    RotationAxisAngle
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Scale3D" class="md-nav__link">
+    Scale3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.TensorBuffer" class="md-nav__link">
+    TensorBuffer
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.TensorData" class="md-nav__link">
+    TensorData
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.TensorDimension" class="md-nav__link">
+    TensorDimension
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Transform3D" class="md-nav__link">
+    Transform3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.TranslationAndMat3x3" class="md-nav__link">
+    TranslationAndMat3x3
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.TranslationRotationScale3D" class="md-nav__link">
+    TranslationRotationScale3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.UInt32" class="md-nav__link">
+    UInt32
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.UVec2D" class="md-nav__link">
+    UVec2D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.UVec3D" class="md-nav__link">
+    UVec3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.UVec4D" class="md-nav__link">
+    UVec4D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Utf8" class="md-nav__link">
+    Utf8
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Uuid" class="md-nav__link">
+    Uuid
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Vec2D" class="md-nav__link">
+    Vec2D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Vec3D" class="md-nav__link">
+    Vec3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Vec4D" class="md-nav__link">
+    Vec4D
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../custom_data/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Custom Data
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../image_helpers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Image Helpers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../enums/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Enums
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../interfaces/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Interfaces
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../script_helpers/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Script Helpers
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../other_classes_and_functions/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Other classes and functions
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../utilities/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Utilities
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../experimental/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Experimental
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../../writing_docs/" class="md-nav__link">
+        
+  
+  <span class="md-ellipsis">
+    Writing Docs
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#rerun.datatypes" class="md-nav__link">
+    datatypes
+  </a>
+  
+    <nav class="md-nav" aria-label="datatypes">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Angle" class="md-nav__link">
+    Angle
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.AnnotationInfo" class="md-nav__link">
+    AnnotationInfo
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.ClassDescription" class="md-nav__link">
+    ClassDescription
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.ClassDescriptionMapElem" class="md-nav__link">
+    ClassDescriptionMapElem
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.ClassId" class="md-nav__link">
+    ClassId
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.EntityPath" class="md-nav__link">
+    EntityPath
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Float32" class="md-nav__link">
+    Float32
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.KeypointId" class="md-nav__link">
+    KeypointId
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.KeypointPair" class="md-nav__link">
+    KeypointPair
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Mat3x3" class="md-nav__link">
+    Mat3x3
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Mat4x4" class="md-nav__link">
+    Mat4x4
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Material" class="md-nav__link">
+    Material
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.MeshProperties" class="md-nav__link">
+    MeshProperties
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Quaternion" class="md-nav__link">
+    Quaternion
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Rgba32" class="md-nav__link">
+    Rgba32
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Rotation3D" class="md-nav__link">
+    Rotation3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.RotationAxisAngle" class="md-nav__link">
+    RotationAxisAngle
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Scale3D" class="md-nav__link">
+    Scale3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.TensorBuffer" class="md-nav__link">
+    TensorBuffer
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.TensorData" class="md-nav__link">
+    TensorData
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.TensorDimension" class="md-nav__link">
+    TensorDimension
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Transform3D" class="md-nav__link">
+    Transform3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.TranslationAndMat3x3" class="md-nav__link">
+    TranslationAndMat3x3
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.TranslationRotationScale3D" class="md-nav__link">
+    TranslationRotationScale3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.UInt32" class="md-nav__link">
+    UInt32
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.UVec2D" class="md-nav__link">
+    UVec2D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.UVec3D" class="md-nav__link">
+    UVec3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.UVec4D" class="md-nav__link">
+    UVec4D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Utf8" class="md-nav__link">
+    Utf8
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Uuid" class="md-nav__link">
+    Uuid
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Vec2D" class="md-nav__link">
+    Vec2D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Vec3D" class="md-nav__link">
+    Vec3D
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#rerun.datatypes.Vec4D" class="md-nav__link">
+    Vec4D
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  <h1>Datatypes</h1>
+
+<div class="doc doc-object doc-module">
+
+
+
+
+<h3 id="rerun.datatypes" class="doc doc-heading">
+          <code>rerun.datatypes</code>
+
+
+</h3>
+
+  <div class="doc doc-contents first">
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.Angle" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Angle</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.angle_ext.AngleExt">AngleExt</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: Angle in either radians or degrees.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+
+<h5 id="rerun.datatypes.Angle.inner" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">inner</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">converter</span><span class="o">=</span><span class="nb">float</span><span class="p">)</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h5>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Radians (float):
+    3D rotation angle in radians. Only one of <code>degrees</code> or <code>radians</code> should be set.</p>
+<p>Degrees (float):
+    3D rotation angle in degrees. Only one of <code>degrees</code> or <code>radians</code> should be set.</p>
+  </div>
+
+</div>
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.Angle.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">rad</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">deg</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the Angle datatype.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>rad</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Angle in radians, specify either <code>rad</code> or <code>deg</code>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>deg</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Angle in degrees, specify either <code>rad</code> or <code>deg</code>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.AnnotationInfo" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">AnnotationInfo</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.annotation_info_ext.AnnotationInfoExt">AnnotationInfoExt</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: Annotation info annotating a class id or key-point id.</p>
+<p>Color and label will be used to annotate entities/keypoints which reference the id.
+The id refers either to a class or key-point id</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.AnnotationInfo.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="nb">id</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the AnnotationInfo datatype.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>id</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p><code>ClassId</code> or <code>KeypointId</code> to which this annotation info belongs.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>label</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The label that will be shown in the UI.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Utf8Like">Utf8Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>color</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The color that will be applied to the annotated entity.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Rgba32Like">Rgba32Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.ClassDescription" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">ClassDescription</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.class_description_ext.ClassDescriptionExt">ClassDescriptionExt</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: The description of a semantic Class.</p>
+<p>If an entity is annotated with a corresponding <code>ClassId</code>, rerun will use
+the attached <code>AnnotationInfo</code> to derive labels and colors.</p>
+<p>Keypoints within an annotation class can similarly be annotated with a
+<code>KeypointId</code> in which case we should defer to the label and color for the
+<code>AnnotationInfo</code> specifically associated with the Keypoint.</p>
+<p>Keypoints within the class can also be decorated with skeletal edges.
+Keypoint-connections are pairs of <code>KeypointId</code>s. If an edge is
+defined, and both keypoints exist within the instance of the class, then the
+keypoints should be connected with an edge. The edge should be labeled and
+colored as described by the class's <code>AnnotationInfo</code>.</p>
+<p>Note that a <code>ClassDescription</code> can be directly logged using <code>rerun.log</code>.
+This is equivalent to logging a <code>rerun.AnnotationContext</code> containing
+a single <code>ClassDescription</code>.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.ClassDescription.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">info</span><span class="p">,</span> <span class="n">keypoint_annotations</span><span class="o">=</span><span class="p">[],</span> <span class="n">keypoint_connections</span><span class="o">=</span><span class="p">[])</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the ClassDescription datatype.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>info</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The <code>AnnotationInfo</code> for the class.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.AnnotationInfoLike">AnnotationInfoLike</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>keypoint_annotations</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The <code>AnnotationInfo</code> for all the keypoints.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Sequence" href="https://docs.python.org/3/library/typing.html#typing.Sequence">Sequence</a>[<span title="rerun.datatypes.AnnotationInfoLike">AnnotationInfoLike</span>] | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>[]</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>keypoint_connections</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The connections between keypoints.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Sequence" href="https://docs.python.org/3/library/typing.html#typing.Sequence">Sequence</a>[<span title="rerun.datatypes.KeypointPairLike">KeypointPairLike</span>] | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>[]</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.ClassDescriptionMapElem" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">ClassDescriptionMapElem</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.class_description_map_elem_ext.ClassDescriptionMapElemExt">ClassDescriptionMapElemExt</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: A helper type for mapping class IDs to class descriptions.</p>
+<p>This is internal to the <code>AnnotationContext</code> structure.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.ClassDescriptionMapElem.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">class_id</span><span class="p">,</span> <span class="n">class_description</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the ClassDescriptionMapElem datatype.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>class_id</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The key: the class ID.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.ClassIdLike">ClassIdLike</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>class_description</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The value: class name, color, etc.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.ClassDescriptionLike">ClassDescriptionLike</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.ClassId" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">ClassId</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.class_id_ext.ClassIdExt">ClassIdExt</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: A 16-bit ID representing a type of semantic class.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.ClassId.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the ClassId datatype.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.EntityPath" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">EntityPath</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+
+  
+      <p><strong>Datatype</strong>: A path to an entity in the <code>DataStore</code>.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.EntityPath.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">path</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the EntityPath datatype.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.Float32" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Float32</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+
+  
+      <p><strong>Datatype</strong>: A single-precision 32-bit IEEE 754 floating point number.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.Float32.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the Float32 datatype.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.KeypointId" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">KeypointId</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.keypoint_id_ext.KeypointIdExt">KeypointIdExt</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: A 16-bit ID representing a type of semantic keypoint within a class.</p>
+<p><code>KeypointId</code>s are only meaningful within the context of a [<code>rerun.datatypes.ClassDescription</code>].</p>
+<p>Used to look up an [<code>rerun.datatypes.AnnotationInfo</code>] for a Keypoint within the
+[<code>rerun.components.AnnotationContext</code>].</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.KeypointId.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="nb">id</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the KeypointId datatype.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.KeypointPair" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">KeypointPair</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.keypoint_pair_ext.KeypointPairExt">KeypointPairExt</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: A connection between two <code>Keypoints</code>.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.KeypointPair.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">keypoint0</span><span class="p">,</span> <span class="n">keypoint1</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the KeypointPair datatype.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>keypoint0</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The first point of the pair.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.KeypointIdLike">KeypointIdLike</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>keypoint1</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The second point of the pair.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.KeypointIdLike">KeypointIdLike</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.Mat3x3" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Mat3x3</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.mat3x3_ext.Mat3x3Ext">Mat3x3Ext</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: A 3x3 Matrix.</p>
+<p>Matrices in Rerun are stored as flat list of coefficients in column-major order:
+<div class="highlight"><pre><span></span><code>            column 0       column 1       column 2
+       -------------------------------------------------
+row 0 | flat_columns[0] flat_columns[3] flat_columns[6]
+row 1 | flat_columns[1] flat_columns[4] flat_columns[7]
+row 2 | flat_columns[2] flat_columns[5] flat_columns[8]
+</code></pre></div></p>
+<p>However, construction is done from a list of rows, which follows NumPy's convention:
+<div class="highlight"><pre><span></span><code><span class="n">np</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">assert_array_equal</span><span class="p">(</span>
+    <span class="n">rr</span><span class="o">.</span><span class="n">datatypes</span><span class="o">.</span><span class="n">Mat3x3</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">])</span><span class="o">.</span><span class="n">flat_columns</span><span class="p">,</span> <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">9</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="p">)</span>
+<span class="n">np</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">assert_array_equal</span><span class="p">(</span>
+    <span class="n">rr</span><span class="o">.</span><span class="n">datatypes</span><span class="o">.</span><span class="n">Mat3x3</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">]])</span><span class="o">.</span><span class="n">flat_columns</span><span class="p">,</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">9</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+<span class="p">)</span>
+</code></pre></div>
+If you want to construct a matrix from a list of columns instead, use the named <code>columns</code> parameter:
+<div class="highlight"><pre><span></span><code><span class="n">np</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">assert_array_equal</span><span class="p">(</span>
+    <span class="n">rr</span><span class="o">.</span><span class="n">datatypes</span><span class="o">.</span><span class="n">Mat3x3</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">])</span><span class="o">.</span><span class="n">flat_columns</span><span class="p">,</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+<span class="p">)</span>
+<span class="n">np</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">assert_array_equal</span><span class="p">(</span>
+    <span class="n">rr</span><span class="o">.</span><span class="n">datatypes</span><span class="o">.</span><span class="n">Mat3x3</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">],</span> <span class="p">[</span><span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">],</span> <span class="p">[</span><span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">]])</span><span class="o">.</span><span class="n">flat_columns</span><span class="p">,</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+<span class="p">)</span>
+</code></pre></div></p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.Mat3x3.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">rows</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.Mat4x4" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Mat4x4</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.mat4x4_ext.Mat4x4Ext">Mat4x4Ext</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: A 4x4 Matrix.</p>
+<p>Matrices in Rerun are stored as flat list of coefficients in column-major order:
+<div class="highlight"><pre><span></span><code>           column 0         column 1         column 2         column 3
+       --------------------------------------------------------------------
+row 0 | flat_columns[0]  flat_columns[4]  flat_columns[8]  flat_columns[12]
+row 1 | flat_columns[1]  flat_columns[5]  flat_columns[9]  flat_columns[13]
+row 2 | flat_columns[2]  flat_columns[6]  flat_columns[10] flat_columns[14]
+row 3 | flat_columns[3]  flat_columns[7]  flat_columns[11] flat_columns[15]
+</code></pre></div></p>
+<p>However, construction is done from a list of rows, which follows NumPy's convention:
+<div class="highlight"><pre><span></span><code><span class="n">np</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">assert_array_equal</span><span class="p">(</span>
+    <span class="n">rr</span><span class="o">.</span><span class="n">datatypes</span><span class="o">.</span><span class="n">Mat4x4</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">16</span><span class="p">])</span><span class="o">.</span><span class="n">flat_columns</span><span class="p">,</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">16</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+<span class="p">)</span>
+<span class="n">np</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">assert_array_equal</span><span class="p">(</span>
+    <span class="n">rr</span><span class="o">.</span><span class="n">datatypes</span><span class="o">.</span><span class="n">Mat4x4</span><span class="p">([[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span> <span class="p">[</span><span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">12</span><span class="p">],</span> <span class="p">[</span><span class="mi">13</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">16</span><span class="p">]])</span><span class="o">.</span><span class="n">flat_columns</span><span class="p">,</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">16</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+<span class="p">)</span>
+</code></pre></div>
+If you want to construct a matrix from a list of columns instead, use the named <code>columns</code> parameter:
+<div class="highlight"><pre><span></span><code><span class="n">np</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">assert_array_equal</span><span class="p">(</span>
+    <span class="n">rr</span><span class="o">.</span><span class="n">datatypes</span><span class="o">.</span><span class="n">Mat4x4</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">16</span><span class="p">])</span><span class="o">.</span><span class="n">flat_columns</span><span class="p">,</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">16</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+<span class="p">)</span>
+<span class="n">np</span><span class="o">.</span><span class="n">testing</span><span class="o">.</span><span class="n">assert_array_equal</span><span class="p">(</span>
+    <span class="n">rr</span><span class="o">.</span><span class="n">datatypes</span><span class="o">.</span><span class="n">Mat4x4</span><span class="p">(</span><span class="n">columns</span><span class="o">=</span><span class="p">[[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">],</span> <span class="p">[</span><span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">],</span> <span class="p">[</span><span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">12</span><span class="p">],</span> <span class="p">[</span><span class="mi">13</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">16</span><span class="p">]])</span><span class="o">.</span><span class="n">flat_columns</span><span class="p">,</span>
+    <span class="n">np</span><span class="o">.</span><span class="n">array</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">,</span> <span class="mi">4</span><span class="p">,</span> <span class="mi">5</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">7</span><span class="p">,</span> <span class="mi">8</span><span class="p">,</span> <span class="mi">9</span><span class="p">,</span> <span class="mi">10</span><span class="p">,</span> <span class="mi">11</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">13</span><span class="p">,</span> <span class="mi">14</span><span class="p">,</span> <span class="mi">15</span><span class="p">,</span> <span class="mi">16</span><span class="p">],</span> <span class="n">dtype</span><span class="o">=</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">),</span>
+<span class="p">)</span>
+</code></pre></div></p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.Mat4x4.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">rows</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.Material" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Material</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.material_ext.MaterialExt">MaterialExt</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: Material properties of a mesh.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.Material.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">albedo_factor</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the Material datatype.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>albedo_factor</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Optional color multiplier.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Rgba32Like">Rgba32Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.MeshProperties" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">MeshProperties</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.mesh_properties_ext.MeshPropertiesExt">MeshPropertiesExt</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: Optional triangle indices for a mesh.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.MeshProperties.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">indices</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the MeshProperties datatype.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>indices</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>A flattened array of vertex indices that describe the mesh's triangles.</p>
+<p>Its length must be divisible by 3.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="numpy.ArrayLike">ArrayLike</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.Quaternion" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Quaternion</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.quaternion_ext.QuaternionExt">QuaternionExt</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: A Quaternion represented by 4 real numbers.</p>
+<p>Note: although the x,y,z,w components of the quaternion will be passed through to the
+datastore as provided, when used in the viewer Quaternions will always be normalized.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.Rgba32" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Rgba32</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.rgba32_ext.Rgba32Ext">Rgba32Ext</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.</p>
+<p>The color is stored as a 32-bit integer, where the most significant
+byte is <code>R</code> and the least significant byte is <code>A</code>.</p>
+<p>Float colors are assumed to be in 0-1 gamma sRGB space.
+All other colors are assumed to be in 0-255 gamma sRGB space.
+If there is an alpha, we assume it is in linear space, and separate (NOT pre-multiplied).</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.Rgba32.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">rgba</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the Rgba32 datatype.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.Rotation3D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Rotation3D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.rotation3d_ext.Rotation3DExt">Rotation3DExt</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: A 3D rotation.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+
+<h5 id="rerun.datatypes.Rotation3D.inner" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">inner</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">datatypes</span><span class="o">.</span><span class="n">Quaternion</span><span class="p">,</span> <span class="n">datatypes</span><span class="o">.</span><span class="n">RotationAxisAngle</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">converter</span><span class="o">=</span><span class="n">Rotation3DExt</span><span class="o">.</span><span class="n">inner__field_converter_override</span><span class="p">)</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h5>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>Quaternion (datatypes.Quaternion):
+    Rotation defined by a quaternion.</p>
+<p>AxisAngle (datatypes.RotationAxisAngle):
+    Rotation defined with an axis and an angle.</p>
+  </div>
+
+</div>
+
+
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.RotationAxisAngle" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">RotationAxisAngle</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.rotation_axis_angle_ext.RotationAxisAngleExt">RotationAxisAngleExt</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: 3D rotation represented by a rotation around a given axis.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.RotationAxisAngle.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">axis</span><span class="p">,</span> <span class="n">angle</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">radians</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">degrees</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the RotationAxisAngle datatype.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>axis</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>Axis to rotate around.</p>
+<p>This is not required to be normalized.
+ If normalization fails (typically because the vector is length zero), the rotation is silently
+ ignored.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Vec3DLike">Vec3DLike</span></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>angle</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>How much to rotate around the axis.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.AngleLike">AngleLike</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>radians</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>How much to rotate around the axis, in radians. Specify this instead of <code>degrees</code> or <code>angle</code>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>degrees</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>How much to rotate around the axis, in radians. Specify this instead of <code>radians</code> or <code>angle</code>.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#float">float</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.Scale3D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Scale3D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.scale3d_ext.Scale3DExt">Scale3DExt</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: 3D scaling factor, part of a transform representation.</p>
+
+<details class="example" open>
+  <summary>Example</summary>
+  <div class="highlight"><pre><span></span><code><span class="c1"># uniform scaling</span>
+<span class="n">scale</span> <span class="o">=</span> <span class="n">rr</span><span class="o">.</span><span class="n">datatypes</span><span class="o">.</span><span class="n">Scale3D</span><span class="p">(</span><span class="mf">3.</span><span class="p">)</span>
+
+<span class="c1"># non-uniform scaling</span>
+<span class="n">scale</span> <span class="o">=</span> <span class="n">rr</span><span class="o">.</span><span class="n">datatypes</span><span class="o">.</span><span class="n">Scale3D</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">])</span>
+<span class="n">scale</span> <span class="o">=</span> <span class="n">rr</span><span class="o">.</span><span class="n">datatypes</span><span class="o">.</span><span class="n">Scale3D</span><span class="p">(</span><span class="n">rr</span><span class="o">.</span><span class="n">datatypes</span><span class="o">.</span><span class="n">Vec3D</span><span class="p">([</span><span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+</code></pre></div>
+</details>
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+
+<h5 id="rerun.datatypes.Scale3D.inner" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">inner</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">datatypes</span><span class="o">.</span><span class="n">Vec3D</span><span class="p">,</span> <span class="nb">float</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">converter</span><span class="o">=</span><span class="n">Scale3DExt</span><span class="o">.</span><span class="n">inner__field_converter_override</span><span class="p">)</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h5>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>ThreeD (datatypes.Vec3D):
+    Individual scaling factors for each axis, distorting the original object.</p>
+<p>Uniform (float):
+    Uniform scaling factor along all axis.</p>
+  </div>
+
+</div>
+
+
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.TensorBuffer" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">TensorBuffer</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.tensor_buffer_ext.TensorBufferExt">TensorBufferExt</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: The underlying storage for a <code>Tensor</code>.</p>
+<p>Tensor elements are stored in a contiguous buffer of a single type.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+
+<h5 id="rerun.datatypes.TensorBuffer.inner" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">inner</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float16</span><span class="p">],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float32</span><span class="p">],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">float64</span><span class="p">],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">int16</span><span class="p">],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">int32</span><span class="p">],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">int64</span><span class="p">],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">int8</span><span class="p">],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">uint16</span><span class="p">],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">uint32</span><span class="p">],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">uint64</span><span class="p">],</span> <span class="n">npt</span><span class="o">.</span><span class="n">NDArray</span><span class="p">[</span><span class="n">np</span><span class="o">.</span><span class="n">uint8</span><span class="p">]]</span> <span class="o">=</span> <span class="n">field</span><span class="p">(</span><span class="n">converter</span><span class="o">=</span><span class="n">TensorBufferExt</span><span class="o">.</span><span class="n">inner__field_converter_override</span><span class="p">)</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h5>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>U8 (npt.NDArray[np.uint8]):</p>
+<p>U16 (npt.NDArray[np.uint16]):</p>
+<p>U32 (npt.NDArray[np.uint32]):</p>
+<p>U64 (npt.NDArray[np.uint64]):</p>
+<p>I8 (npt.NDArray[np.int8]):</p>
+<p>I16 (npt.NDArray[np.int16]):</p>
+<p>I32 (npt.NDArray[np.int32]):</p>
+<p>I64 (npt.NDArray[np.int64]):</p>
+<p>F16 (npt.NDArray[np.float16]):</p>
+<p>F32 (npt.NDArray[np.float32]):</p>
+<p>F64 (npt.NDArray[np.float64]):</p>
+<p>JPEG (npt.NDArray[np.uint8]):</p>
+<p>NV12 (npt.NDArray[np.uint8]):</p>
+  </div>
+
+</div>
+
+
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.TensorData" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">TensorData</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.tensor_data_ext.TensorDataExt">TensorDataExt</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: A multi-dimensional <code>Tensor</code> of data.</p>
+<p>The number of dimensions and their respective lengths is specified by the <code>shape</code> field.
+The dimensions are ordered from outermost to innermost. For example, in the common case of
+a 2D RGB Image, the shape would be <code>[height, width, channel]</code>.</p>
+<p>These dimensions are combined with an index to look up values from the <code>buffer</code> field,
+which stores a contiguous array of typed values.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.TensorData.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="o">*</span><span class="p">,</span> <span class="n">shape</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">buffer</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">array</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">dim_names</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Construct a <code>TensorData</code> object.</p>
+<p>The <code>TensorData</code> object is internally represented by three fields: <code>shape</code> and <code>buffer</code>.</p>
+<p>This constructor provides additional arguments 'array', and 'dim_names'. When passing in a
+multi-dimensional array such as a <code>np.ndarray</code>, the <code>shape</code> and <code>buffer</code> fields will be
+populated automagically.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>self</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The TensorData object to construct.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Any" href="https://docs.python.org/3/library/typing.html#typing.Any">Any</a></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>shape</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The shape of the tensor. If None, and an array is proviced, the shape will be inferred
+from the shape of the array.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Sequence" href="https://docs.python.org/3/library/typing.html#typing.Sequence">Sequence</a>[<span title="rerun.datatypes.TensorDimensionLike">TensorDimensionLike</span>] | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>buffer</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The buffer of the tensor. If None, and an array is provided, the buffer will be generated
+from the array.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.TensorBufferLike">TensorBufferLike</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>array</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>A numpy array (or The array of the tensor. If None, the array will be inferred from the buffer.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.tensor_data_ext.TensorLike">TensorLike</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>dim_names</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The names of the tensor dimensions when generating the shape from an array.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" title="typing.Sequence" href="https://docs.python.org/3/library/typing.html#typing.Sequence">Sequence</a>[<a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | None] | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.TensorDimension" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">TensorDimension</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+
+  
+      <p><strong>Datatype</strong>: A single dimension within a multi-dimensional tensor.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.TensorDimension.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">size</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="kc">None</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the TensorDimension datatype.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>size</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The length of this dimension.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#int">int</a></code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>name</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>The name of this dimension, e.g. "width", "height", "channel", "batch', ….</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/stdtypes.html#str">str</a> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.Transform3D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Transform3D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.transform3d_ext.Transform3DExt">Transform3DExt</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: Representation of a 3D affine transform.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+<div class="doc doc-object doc-attribute">
+
+
+
+
+<h5 id="rerun.datatypes.Transform3D.inner" class="doc doc-heading">
+          <code class="highlight language-python"><span class="n">inner</span><span class="p">:</span> <span class="n">Union</span><span class="p">[</span><span class="n">datatypes</span><span class="o">.</span><span class="n">TranslationAndMat3x3</span><span class="p">,</span> <span class="n">datatypes</span><span class="o">.</span><span class="n">TranslationRotationScale3D</span><span class="p">]</span> <span class="o">=</span> <span class="n">field</span><span class="p">()</span></code>
+  
+  <span class="doc doc-labels">
+      <small class="doc doc-label doc-label-class-attribute"><code>class-attribute</code></small>
+      <small class="doc doc-label doc-label-instance-attribute"><code>instance-attribute</code></small>
+  </span>
+
+</h5>
+
+
+  <div class="doc doc-contents ">
+  
+      <p>TranslationAndMat3x3 (datatypes.TranslationAndMat3x3):</p>
+<p>TranslationRotationScale (datatypes.TranslationRotationScale3D):</p>
+  </div>
+
+</div>
+
+
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.TranslationAndMat3x3" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">TranslationAndMat3x3</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.translation_and_mat3x3_ext.TranslationAndMat3x3Ext">TranslationAndMat3x3Ext</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: Representation of an affine transform via a 3x3 affine matrix paired with a translation.</p>
+<p>First applies the matrix, then the translation.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.TranslationAndMat3x3.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">translation</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">mat3x3</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="o">*</span><span class="p">,</span> <span class="n">from_parent</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the TranslationAndMat3x3 datatype.</p>
+
+
+
+  <table>
+    <thead>
+      <tr>
+        <th><b>PARAMETER</b></th>
+        <th><b> DESCRIPTION</b></th>
+      </tr>
+    </thead>
+    <tbody>
+        <tr>
+          <td><code>translation</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>3D translation, applied after the matrix.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Vec3DLike">Vec3DLike</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>mat3x3</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>3x3 matrix for scale, rotation &amp; shear.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><span title="rerun.datatypes.Mat3x3Like">Mat3x3Like</span> | None</code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>None</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+        <tr>
+          <td><code>from_parent</code></td>
+          <td class="doc-param-details">
+            <div class="doc-md-description">
+              <p>If true, the transform maps from the parent space to the space where the transform was logged.
+ Otherwise, the transform maps from the space to its parent.</p>
+            </div>
+            <p>
+                <span class="doc-param-annotation">
+                  <b>TYPE:</b>
+                    <code><a class="autorefs autorefs-external" href="https://docs.python.org/3/library/functions.html#bool">bool</a></code>
+                </span>
+                <span class="doc-param-default">
+                  <b>DEFAULT:</b> 
+                    <code>False</code>
+                </span>
+            </p>
+          </td>
+        </tr>
+    </tbody>
+  </table>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.TranslationRotationScale3D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">TranslationRotationScale3D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.translation_rotation_scale3d_ext.TranslationRotationScale3DExt">TranslationRotationScale3DExt</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: Representation of an affine transform via separate translation, rotation &amp; scale.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.UInt32" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">UInt32</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+
+  
+      <p><strong>Datatype</strong>: A 32bit unsigned integer.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.UInt32.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the UInt32 datatype.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.UVec2D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">UVec2D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+
+  
+      <p><strong>Datatype</strong>: A uint32 vector in 2D space.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.UVec2D.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">xy</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the UVec2D datatype.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.UVec3D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">UVec3D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+
+  
+      <p><strong>Datatype</strong>: A uint32 vector in 3D space.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.UVec3D.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">xyz</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the UVec3D datatype.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.UVec4D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">UVec4D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+
+  
+      <p><strong>Datatype</strong>: A uint vector in 4D space.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.UVec4D.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">xyzw</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the UVec4D datatype.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.Utf8" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Utf8</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.utf8_ext.Utf8Ext">Utf8Ext</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: A string of text, encoded as UTF-8.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.Utf8.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">value</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the Utf8 datatype.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.Uuid" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Uuid</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+
+  
+      <p><strong>Datatype</strong>: A 16-byte uuid.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.Uuid.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="nb">bytes</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the Uuid datatype.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.Vec2D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Vec2D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.vec2d_ext.Vec2DExt">Vec2DExt</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: A vector in 2D space.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.Vec2D.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">xy</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the Vec2D datatype.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.Vec3D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Vec3D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.vec3d_ext.Vec3DExt">Vec3DExt</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: A vector in 3D space.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.Vec3D.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">xyz</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the Vec3D datatype.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+<div class="doc doc-object doc-class">
+
+
+
+<h4 id="rerun.datatypes.Vec4D" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">class</span> <span class="nc">Vec4D</span></code>
+
+</h4>
+
+
+  <div class="doc doc-contents">
+      <p class="doc doc-class-bases">
+        Bases: <code><span title="rerun.datatypes.vec4d_ext.Vec4DExt">Vec4DExt</span></code></p>
+
+  
+      <p><strong>Datatype</strong>: A vector in 4D space.</p>
+
+
+
+  
+
+  <div class="doc doc-children">
+
+
+
+
+
+
+
+
+
+<div class="doc doc-object doc-function">
+
+
+
+<h5 id="rerun.datatypes.Vec4D.__init__" class="doc doc-heading">
+<code class="highlight language-python"><span class="k">def</span> <span class="fm">__init__</span><span class="p">(</span><span class="n">xyzw</span><span class="p">)</span></code>
+
+</h5>
+
+
+  <div class="doc doc-contents">
+  
+      <p>Create a new instance of the Vec4D datatype.</p>
+
+  </div>
+
+</div>
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+
+
+  </div>
+
+  </div>
+
+</div>
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    <script id="__config" type="application/json">{"base": "../..", "features": ["navigation.indexes", "navigation.instant", "navigation.tabs", "navigation.tabs.sticky", "navigation.tracking"], "search": "../../assets/javascripts/workers/search.f886a092.min.js", "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"default": "latest", "provider": "mike"}}</script>
+    
+    
+      <script src="../../assets/javascripts/bundle.aecac24b.min.js"></script>
+      
+    
+  </body>
+</html>

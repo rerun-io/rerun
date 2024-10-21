@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["edit_marker_shape_ui","paint_marker"]};

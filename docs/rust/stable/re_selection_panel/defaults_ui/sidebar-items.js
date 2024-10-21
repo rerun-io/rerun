@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["active_default_ui","active_defaults","add_popup_ui","component_to_vis","components_to_show_in_add_menu","view_components_defaults_section_ui"]};
