@@ -1,0 +1,11 @@
+namespace rerun.blueprint.views;
+
+/// A map view.
+///
+/// \example views/map title="Use a blueprint to create a MapView." image="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/1200w.png"
+table MapView (
+    "attr.rerun.view_identifier": "Map"
+) {
+    /// Configures the look and feel of the map.
+    map_options: rerun.blueprint.archetypes.MapOptions (order: 1000);
+}

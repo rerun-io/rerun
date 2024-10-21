@@ -147,6 +147,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <MapProvider as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Name of the map provider to be used in Map views.",
+                placeholder: Some(MapProvider::default().to_arrow()?),
+            },
+        ),
+        (
             <PanelState as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Tri-state for panel controls.",
@@ -172,6 +179,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "The layout share of a row in the container.",
                 placeholder: Some(RowShare::default().to_arrow()?),
+            },
+        ),
+        (
+            <Secret as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "String type to hold a secret value.",
+                placeholder: Some(Secret::default().to_arrow()?),
             },
         ),
         (
@@ -256,6 +270,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Override the visualizers for an entity.\n\nThis component is a stop-gap mechanism based on the current implementation details\nof the visualizer system. It is not intended to be a long-term solution, but provides\nenough utility to be useful in the short term.\n\nThe long-term solution is likely to be based off: <https://github.com/rerun-io/rerun/issues/6626>\n\nThis can only be used as part of blueprints. It will have no effect if used\nin a regular entity.",
                 placeholder: Some(VisualizerOverrides::default().to_arrow()?),
+            },
+        ),
+        (
+            <ZoomLevel as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A zoom level determines how much of the world is visible on a map.",
+                placeholder: Some(ZoomLevel::default().to_arrow()?),
             },
         ),
         (
@@ -1582,6 +1603,25 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Select", docstring_md :
                     "Selected columns. If unset, all columns are selected.", is_required
                     : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.MapOptions"),
+            ArchetypeReflection {
+                display_name: "Map options",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.MapProvider".into(), display_name :
+                    "Provider", docstring_md : "Map provider and style to use.",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ZoomLevel".into(), display_name : "Zoom",
+                    docstring_md : "Zoom level for the map. The default is 16.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.Secret".into(), display_name :
+                    "Access token", docstring_md :
+                    "Optional access token to access the map tiles.", is_required :
+                    false, },
                 ],
             },
         ),

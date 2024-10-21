@@ -3,6 +3,7 @@
 .gitattributes linguist-generated=true
 bar_chart_view.rs linguist-generated=true
 dataframe_view.rs linguist-generated=true
+map_view.rs linguist-generated=true
 mod.rs linguist-generated=true
 spatial2d_view.rs linguist-generated=true
 spatial3d_view.rs linguist-generated=true
