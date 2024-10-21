@@ -99,8 +99,11 @@ impl ChunkStoreSubscriber for MaxImageDimensionSubscriber {
             // Handle `ImageEncoded`, `AssetVideo`…
             let blobs = event.diff.chunk.iter_component_arrays(&Blob::name());
             let media_types = event.diff.chunk.iter_component_arrays(&MediaType::name());
-            for (blob, media_type) in itertools::izip!(blobs, media_types) {
-                if let Some([width, height]) = size_from_blob(blob.as_ref(), media_type.as_ref()) {
+            for (blob, media_type) in
+                itertools::izip!(blobs, media_types.map(Some).chain(std::iter::repeat(None)))
+            {
+                if let Some([width, height]) = size_from_blob(blob.as_ref(), media_type.as_deref())
+                {
                     let max_dim = self
                         .max_dimensions
                         .entry(event.store_id.clone())
@@ -116,14 +119,16 @@ impl ChunkStoreSubscriber for MaxImageDimensionSubscriber {
     }
 }
 
-fn size_from_blob(blob: &dyn Array, media_type: &dyn Array) -> Option<[u32; 2]> {
+fn size_from_blob(blob: &dyn Array, media_type: Option<&dyn Array>) -> Option<[u32; 2]> {
     re_tracing::profile_function!();
 
     let blob = Blob::from_arrow_opt(blob).ok()?.first()?.clone()?;
-    let media_type: Option<MediaType> = MediaType::from_arrow_opt(media_type)
-        .ok()
+
+    let media_type: Option<MediaType> = media_type
+        .and_then(|media_type| MediaType::from_arrow_opt(media_type).ok())
         .and_then(|list| list.first().cloned())
         .flatten();
+
     let media_type = MediaType::or_guess_from_data(media_type, &blob)?;
 
     if media_type.is_image() {
