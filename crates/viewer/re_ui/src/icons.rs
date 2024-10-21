@@ -93,6 +93,7 @@ pub const SPACE_VIEW_DATAFRAME: Icon = icon_from_path!("../data/icons/spaceview_
 pub const SPACE_VIEW_GENERIC: Icon = icon_from_path!("../data/icons/spaceview_generic.png");
 pub const SPACE_VIEW_HISTOGRAM: Icon = icon_from_path!("../data/icons/spaceview_histogram.png");
 pub const SPACE_VIEW_LOG: Icon = icon_from_path!("../data/icons/spaceview_log.png");
+pub const SPACE_VIEW_MAP: Icon = icon_from_path!("../data/icons/spaceview_map.png");
 pub const SPACE_VIEW_TENSOR: Icon = icon_from_path!("../data/icons/spaceview_tensor.png");
 pub const SPACE_VIEW_TEXT: Icon = icon_from_path!("../data/icons/spaceview_text.png");
 pub const SPACE_VIEW_TIMESERIES: Icon = icon_from_path!("../data/icons/spaceview_timeseries.png");
