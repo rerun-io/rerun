@@ -40,7 +40,7 @@ int main() {
 
     rec.send_columns(
         "points",
-        time_column,
+        {},
         {
             indicator_batch.value_or_throw(),
             position_batch.value_or_throw(),
