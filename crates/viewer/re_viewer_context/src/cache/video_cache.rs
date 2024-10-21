@@ -43,7 +43,7 @@ impl VideoCache {
         media_type: Option<&MediaType>,
         hw_acceleration: DecodeHardwareAcceleration,
     ) -> Arc<Result<Video, VideoLoadError>> {
-        re_tracing::profile_function!();
+        re_tracing::profile_function!(&debug_name);
 
         // In order to avoid loading the same video multiple times with
         // known and unknown media type, we have to resolve the media type before
