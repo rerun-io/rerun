@@ -29,8 +29,8 @@ pub enum CodecError {
 pub struct MessageHader(pub u8);
 
 impl MessageHader {
-    pub const NO_DATA: Self = Self(0);
-    pub const RECORD_BATCH: Self = Self(1);
+    pub const NO_DATA: Self = Self(1);
+    pub const RECORD_BATCH: Self = Self(2);
 
     pub const SIZE_BYTES: usize = 1;
 }
@@ -215,7 +215,7 @@ mod tests {
 
     #[test]
     fn test_invalid_batch_data() {
-        let data = vec![1, 2, 3];
+        let data = vec![2, 3, 4]; // '1' is NO_DATA message header
         let decoded = TransportMessageV0::from_bytes(&data);
 
         assert!(matches!(
@@ -226,7 +226,7 @@ mod tests {
 
     #[test]
     fn test_unknown_header() {
-        let data = vec![2];
+        let data = vec![3];
         let decoded = TransportMessageV0::from_bytes(&data);
         assert!(decoded.is_err());
 
