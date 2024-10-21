@@ -141,6 +141,16 @@ rerun-build-release = "cargo build --package rerun-cli --release --no-default-fe
 # You can also give an argument for what to view (e.g. an .rrd file).
 rerun-release = "cargo run --package rerun-cli --no-default-features --features native_viewer,nasm --release --"
 
+# Compile `rerun-cli` with the same feature set as we build for releases.
+rerun-build-native-and-web = { cmd = "cargo build --package rerun-cli --no-default-features --features release --", depends_on = [
+  "rerun-build-web",
+] }
+
+# Compile `rerun-cli` with the same feature set as we build for releases.
+rerun-build-native-and-web-release = { cmd = "cargo build --package rerun-cli --no-default-features --features release --release --", depends_on = [
+  "rerun-build-web-release",
+] }
+
 # Compile and run the web-viewer via rerun-cli.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
@@ -283,8 +293,19 @@ js-build-all = { cmd = "yarn --cwd rerun_js workspaces run build", depends_on = 
 py-build-common = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests", depends_on = [
   "rerun-build", # We need to build rerun-cli since it is bundled in the python package.
 ] }
+
 py-build-common-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --extras=tests", depends_on = [
   "rerun-build-release", # We need to build rerun-cli since it is bundled in the python package.
+] }
+
+# Build and install the `rerun-sdk` package with the `web_viewer` feature.
+py-build-common-web-viewer = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm --extras=tests", depends_on = [
+  "rerun-build-native-and-web", # We need to build rerun-cli since it is bundled in the python package.
+] }
+
+# Build and install the `rerun-sdk` package with the `web_viewer` feature.
+py-build-common-web-viewer-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm --extras=tests", depends_on = [
+  "rerun-build-native-and-web-release", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
 
