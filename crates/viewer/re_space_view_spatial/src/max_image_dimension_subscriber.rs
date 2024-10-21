@@ -17,11 +17,12 @@ pub struct MaxDimensions {
     pub height: u32,
 }
 
+/// The size of the largest image and/or video at a given entity path.
 #[derive(Default, Debug, Clone)]
 pub struct MaxImageDimensions(IntMap<EntityPath, MaxDimensions>);
 
 impl MaxImageDimensions {
-    /// Accesses the image dimension information for a given store
+    /// Accesses the image/video dimension information for a given store
     pub fn access<T>(
         store_id: &StoreId,
         f: impl FnOnce(&IntMap<EntityPath, MaxDimensions>) -> T,
@@ -95,7 +96,7 @@ impl ChunkStoreSubscriber for MaxImageDimensionSubscriber {
                 }
             }
 
-            // Handle `ImageEncoded`…
+            // Handle `ImageEncoded`, `AssetVideo`…
             let blobs = event.diff.chunk.iter_component_arrays(&Blob::name());
             let media_types = event.diff.chunk.iter_component_arrays(&MediaType::name());
             for (blob, media_type) in itertools::izip!(blobs, media_types) {
@@ -116,19 +117,23 @@ impl ChunkStoreSubscriber for MaxImageDimensionSubscriber {
 }
 
 fn size_from_blob(blob: &dyn Array, media_type: &dyn Array) -> Option<[u32; 2]> {
+    re_tracing::profile_function!();
+
     let blob = Blob::from_arrow_opt(blob).ok()?.first()?.clone()?;
-    let media: Option<MediaType> = MediaType::from_arrow_opt(media_type)
+    let media_type: Option<MediaType> = MediaType::from_arrow_opt(media_type)
         .ok()
         .and_then(|list| list.first().cloned())
         .flatten();
-    let media = MediaType::or_guess_from_data(media, &blob)?;
+    let media_type = MediaType::or_guess_from_data(media_type, &blob)?;
 
-    if media.is_image() {
+    if media_type.is_image() {
+        re_tracing::profile_scope!("image");
+
         let image_bytes = blob.0.as_slice();
 
         let mut reader = image::io::Reader::new(std::io::Cursor::new(image_bytes));
 
-        if let Some(format) = image::ImageFormat::from_mime_type(&media.0) {
+        if let Some(format) = image::ImageFormat::from_mime_type(&media_type.0) {
             reader.set_format(format);
         }
 
@@ -140,7 +145,12 @@ fn size_from_blob(blob: &dyn Array, media_type: &dyn Array) -> Option<[u32; 2]> 
         }
 
         reader.into_dimensions().ok().map(|size| size.into())
+    } else if media_type.is_video() {
+        re_tracing::profile_scope!("video");
+        re_video::VideoData::load_from_bytes(&blob, &media_type)
+            .ok()
+            .map(|video| video.dimensions())
     } else {
-        None // TODO(emilk): handle video files
+        None
     }
 }

@@ -5903,6 +5903,7 @@ dependencies = [
  "re_tracing",
  "re_types",
  "re_ui",
+ "re_video",
  "re_viewer_context",
  "re_viewport_blueprint",
  "serde",
