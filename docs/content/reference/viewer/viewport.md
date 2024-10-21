@@ -41,6 +41,8 @@ Rerun distinguishes various Space Views classes:
   * Scalars over time.
 * Bar chart
   * Bar-chart lots made from 1D tensor data.
+* Dataframe
+  * Displays any data in a tabular form.
 
 Which class is used is determined upon creation of a Space View.
 
