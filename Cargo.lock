@@ -6307,6 +6307,7 @@ dependencies = [
  "re_types",
  "re_types_core",
  "re_ui",
+ "re_video",
  "rfd",
  "serde",
  "slotmap",

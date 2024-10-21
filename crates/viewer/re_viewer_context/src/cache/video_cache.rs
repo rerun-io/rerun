@@ -63,8 +63,8 @@ impl VideoCache {
             .or_default()
             .entry(inner_key)
             .or_insert_with(|| {
-                let video =
-                    Video::load(debug_name, video_data, media_type.as_str(), hw_acceleration);
+                let video = re_video::VideoData::load_from_bytes(video_data, &media_type)
+                    .map(|data| Video::load(debug_name, Arc::new(data), hw_acceleration));
                 Entry {
                     used_this_frame: AtomicBool::new(true),
                     video: Arc::new(video),
