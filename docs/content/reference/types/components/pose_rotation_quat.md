@@ -21,5 +21,6 @@ datastore as provided, when used in the Viewer, quaternions will always be norma
 ## Used by
 
 * [`Boxes3D`](../archetypes/boxes3d.md)
+* [`Capsules3D`](../archetypes/capsules3d.md?speculative-link)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
 * [`InstancePoses3D`](../archetypes/instance_poses3d.md)
