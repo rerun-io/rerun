@@ -110,6 +110,7 @@ impl DrawData for MeshDrawData {
     type Renderer = MeshRenderer;
 }
 
+#[derive(Clone)]
 pub struct MeshInstance {
     /// Gpu mesh used by this instance
     pub gpu_mesh: Arc<GpuMesh>,

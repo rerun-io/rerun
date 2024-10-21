@@ -17,4 +17,5 @@ A color multiplier, usually applied to a whole entity, e.g. a mesh.
 
 ## Used by
 
+* [`Asset3D`](../archetypes/asset3d.md)
 * [`Mesh3D`](../archetypes/mesh3d.md)
