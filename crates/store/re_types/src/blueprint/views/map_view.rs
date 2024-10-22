@@ -22,13 +22,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug)]
 pub struct MapView {
     /// Configures the look and feel of the map.
-    pub map_options: crate::blueprint::archetypes::MapOptions,
+    pub options: crate::blueprint::archetypes::MapOptions,
 }
 
 impl ::re_types_core::SizeBytes for MapView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.map_options.heap_size_bytes()
+        self.options.heap_size_bytes()
     }
 
     #[inline]
@@ -39,16 +39,14 @@ impl ::re_types_core::SizeBytes for MapView {
 
 impl<T: Into<crate::blueprint::archetypes::MapOptions>> From<T> for MapView {
     fn from(v: T) -> Self {
-        Self {
-            map_options: v.into(),
-        }
+        Self { options: v.into() }
     }
 }
 
 impl std::borrow::Borrow<crate::blueprint::archetypes::MapOptions> for MapView {
     #[inline]
     fn borrow(&self) -> &crate::blueprint::archetypes::MapOptions {
-        &self.map_options
+        &self.options
     }
 }
 
@@ -57,14 +55,14 @@ impl std::ops::Deref for MapView {
 
     #[inline]
     fn deref(&self) -> &crate::blueprint::archetypes::MapOptions {
-        &self.map_options
+        &self.options
     }
 }
 
 impl std::ops::DerefMut for MapView {
     #[inline]
     fn deref_mut(&mut self) -> &mut crate::blueprint::archetypes::MapOptions {
-        &mut self.map_options
+        &mut self.options
     }
 }
 

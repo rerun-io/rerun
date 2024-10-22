@@ -7,5 +7,5 @@ table MapView (
     "attr.rerun.view_identifier": "Map"
 ) {
     /// Configures the look and feel of the map.
-    map_options: rerun.blueprint.archetypes.MapOptions (order: 1000);
+    options: rerun.blueprint.archetypes.MapOptions (order: 1000);
 }

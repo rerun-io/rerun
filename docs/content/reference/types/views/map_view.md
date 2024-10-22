@@ -7,7 +7,7 @@ A map view.
 
 ## Properties
 
-### `map_options`
+### `options`
 Configures the look and feel of the map.
 
 * `provider`: Map provider and style to use.

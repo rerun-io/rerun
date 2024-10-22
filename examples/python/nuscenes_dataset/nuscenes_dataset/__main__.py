@@ -317,7 +317,7 @@ def main() -> None:
                 rrb.MapView(
                     origin="world/ego_vehicle/gps",
                     name="MapView",
-                    map_options=rrb.archetypes.MapOptions(provider=rrb.components.MapProvider.OpenStreetMap, zoom=18),
+                    options=rrb.archetypes.MapOptions(provider=rrb.components.MapProvider.OpenStreetMap, zoom=18),
                 ),
                 row_shares=[1, 1],
             ),

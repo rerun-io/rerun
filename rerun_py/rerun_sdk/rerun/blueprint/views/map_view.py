@@ -63,7 +63,7 @@ class MapView(SpaceView):
         visible: datatypes.BoolLike | None = None,
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
-        map_options: blueprint_archetypes.MapOptions | None = None,
+        options: blueprint_archetypes.MapOptions | None = None,
     ) -> None:
         """
         Construct a blueprint for a new MapView view.
@@ -94,16 +94,16 @@ class MapView(SpaceView):
             Important note: the path must be a fully qualified entity path starting at the root. The override paths
             do not yet support `$origin` relative paths or glob expressions.
             This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
-        map_options:
+        options:
             Configures the look and feel of the map.
 
         """
 
         properties: dict[str, AsComponents] = {}
-        if map_options is not None:
-            if not isinstance(map_options, blueprint_archetypes.MapOptions):
-                map_options = blueprint_archetypes.MapOptions(map_options)
-            properties["MapOptions"] = map_options
+        if options is not None:
+            if not isinstance(options, blueprint_archetypes.MapOptions):
+                options = blueprint_archetypes.MapOptions(options)
+            properties["MapOptions"] = options
 
         super().__init__(
             class_identifier="Map",
