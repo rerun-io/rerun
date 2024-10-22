@@ -12,6 +12,7 @@
 #include "../components/fill_ratio.hpp"
 #include "../components/image_buffer.hpp"
 #include "../components/image_format.hpp"
+#include "../components/value_range.hpp"
 #include "../image_utils.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -26,7 +27,7 @@ namespace rerun::archetypes {
     ///
     /// Each pixel corresponds to a depth value in units specified by `components::DepthMeter`.
     ///
-    /// Since the underlying `rerun::datatypes::TensorData` uses `rerun::Collection` internally,
+    /// Since the underlying `rerun::datatypes::ImageBuffer` uses `rerun::Collection` internally,
     /// data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
     /// If needed, this "borrow-behavior" can be extended by defining your own `rerun::CollectionAdapter`.
     ///
@@ -93,6 +94,19 @@ namespace rerun::archetypes {
         ///
         /// If not set, the depth image will be rendered using the Turbo colormap.
         std::optional<rerun::components::Colormap> colormap;
+
+        /// The expected range of depth values.
+        ///
+        /// This is typically the expected range of valid values.
+        /// Everything outside of the range is clamped to the range for the purpose of colormpaping.
+        /// Note that point clouds generated from this image will still display all points, regardless of this range.
+        ///
+        /// If not specified, the range will be automatically estimated from the data.
+        /// Note that the Viewer may try to guess a wider range than the minimum/maximum of values
+        /// in the contents of the depth image.
+        /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
+        /// the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
+        std::optional<rerun::components::ValueRange> depth_range;
 
         /// Scale the radii of the points in the point cloud generated from this image.
         ///
@@ -197,6 +211,23 @@ namespace rerun::archetypes {
         /// If not set, the depth image will be rendered using the Turbo colormap.
         DepthImage with_colormap(rerun::components::Colormap _colormap) && {
             colormap = std::move(_colormap);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// The expected range of depth values.
+        ///
+        /// This is typically the expected range of valid values.
+        /// Everything outside of the range is clamped to the range for the purpose of colormpaping.
+        /// Note that point clouds generated from this image will still display all points, regardless of this range.
+        ///
+        /// If not specified, the range will be automatically estimated from the data.
+        /// Note that the Viewer may try to guess a wider range than the minimum/maximum of values
+        /// in the contents of the depth image.
+        /// E.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,
+        /// the Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.
+        DepthImage with_depth_range(rerun::components::ValueRange _depth_range) && {
+            depth_range = std::move(_depth_range);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

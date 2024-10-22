@@ -59,6 +59,10 @@ pub enum ImageLoadError {
     /// The encountered MIME type is not supported for decoding images.
     #[error("MIME type '{0}' is not supported for images")]
     UnsupportedMimeType(String),
+
+    /// Failed to read the MIME type from inspecting the image data blob.
+    #[error("Could not detect MIME type from the image contents")]
+    UnrecognizedMimeType,
 }
 
 #[cfg(feature = "image")]
@@ -262,28 +266,96 @@ fn test_find_non_empty_dim_indices() {
 
 // ----------------------------------------------------------------------------
 
+// TODO(andreas): Expose this in the API?
+/// Yuv matrix coefficients that determine how a YUV image is meant to be converted to RGB.
+///
+/// A rigorious definition of the yuv conversion matrix would still require to define
+/// the transfer characteristics & color primaries of the resulting RGB space.
+/// See [`re_video::decode`]'s documentation.
+///
+/// However, at this point we generally assume that no further processing is needed after the transform.
+/// This is acceptable for most non-HDR content because of the following properties of `Bt709`/`Bt601`/ sRGB:
+/// * Bt709 & sRGB primaries are practically identical
+/// * Bt601 PAL & Bt709 color primaries are the same (with some slight differences for Bt709 NTSC)
+/// * Bt709 & sRGB transfer function are almost identical (and the difference is widely ignored)
+/// (sources: <https://en.wikipedia.org/wiki/Rec._709>, <https://en.wikipedia.org/wiki/Rec._601>)
+/// …which means for the moment we pretty much only care about the (actually quite) different YUV conversion matrices!
+#[derive(Clone, Copy, Debug)]
+pub enum YuvMatrixCoefficients {
+    /// BT.601 (aka. SDTV, aka. Rec.601)
+    ///
+    /// Wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion/>
+    Bt601,
+
+    /// BT.709 (aka. HDTV, aka. Rec.709)
+    ///
+    /// Wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion/>
+    ///
+    /// These are the same primaries we usually assume and use for all of Rerun's rendering
+    /// since they are the same primaries used by sRGB.
+    /// <https://en.wikipedia.org/wiki/Rec._709#Relationship_to_sRGB/>
+    /// The OETF/EOTF function (<https://en.wikipedia.org/wiki/Transfer_functions_in_imaging>) is different,
+    /// but for all other purposes they are the same.
+    /// (The only reason for us to convert to optical units ("linear" instead of "gamma") is for
+    /// lighting computation & tonemapping where we typically start out with sRGB anyways!)
+    Bt709,
+    //
+    // Not yet supported. These vary a lot more from the other two!
+    //
+    // /// BT.2020 (aka. PQ, aka. Rec.2020)
+    // ///
+    // /// Wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.2020_conversion/>
+    // BT2020_ConstantLuminance,
+    // BT2020_NonConstantLuminance,
+}
+
 /// Returns sRGB from YUV color.
 ///
-/// This conversion mirrors the function of the same name in `crates/viewer/re_renderer/shader/decodings.wgsl`
+/// This conversion mirrors the function of the same name in `yuv_converter.wgsl`
 ///
 /// Specifying the color standard should be exposed in the future [#3541](https://github.com/rerun-io/rerun/pull/3541)
-pub fn rgb_from_yuv(y: u8, u: u8, v: u8) -> [u8; 3] {
-    let (y, u, v) = (y as f32, u as f32, v as f32);
+pub fn rgb_from_yuv(
+    y: u8,
+    u: u8,
+    v: u8,
+    limited_range: bool,
+    coefficients: YuvMatrixCoefficients,
+) -> [u8; 3] {
+    let (mut y, mut u, mut v) = (y as f32, u as f32, v as f32);
 
     // rescale YUV values
-    let y = (y - 16.0) / 219.0;
-    let u = (u - 128.0) / 224.0;
-    let v = (v - 128.0) / 224.0;
+    if limited_range {
+        // Via https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion:
+        // "The resultant signals range from 16 to 235 for Y′ (Cb and Cr range from 16 to 240);
+        // the values from 0 to 15 are called footroom, while the values from 236 to 255 are called headroom."
+        y = (y - 16.0) / 219.0;
+        u = (u - 128.0) / 224.0;
+        v = (v - 128.0) / 224.0;
+    } else {
+        y /= 255.0;
+        u = (u - 128.0) / 255.0;
+        v = (v - 128.0) / 255.0;
+    }
 
-    // BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
-    let r = y + 1.402 * v;
-    let g = y - 0.344 * u - 0.714 * v;
-    let b = y + 1.772 * u;
+    let r;
+    let g;
+    let b;
 
-    // BT.709 (aka. HDTV, aka. Rec.709). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion
-    // let r = y + 1.575 * v;
-    // let g = y - 0.187 * u - 0.468 * v;
-    // let b = y + 1.856 * u;
+    match coefficients {
+        YuvMatrixCoefficients::Bt601 => {
+            // BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
+            r = y + 1.402 * v;
+            g = y - 0.344 * u - 0.714 * v;
+            b = y + 1.772 * u;
+        }
+
+        YuvMatrixCoefficients::Bt709 => {
+            // BT.709 (aka. HDTV, aka. Rec.709). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion
+            r = y + 1.575 * v;
+            g = y - 0.187 * u - 0.468 * v;
+            b = y + 1.856 * u;
+        }
+    }
 
     [(255.0 * r) as u8, (255.0 * g) as u8, (255.0 * b) as u8]
 }

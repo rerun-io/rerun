@@ -33,8 +33,6 @@ class VideoTimestamp:
 
     Specified in nanoseconds.
     Presentation timestamps are typically measured as time since video start.
-
-    ⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
     """
 
     def __init__(self: Any, timestamp_ns: VideoTimestampLike):

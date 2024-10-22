@@ -20,6 +20,7 @@ See also [`datatypes.ClassDescription`](https://rerun.io/docs/reference/types/da
 ## Shown in
 * [Spatial2DView](../views/spatial2d_view.md)
 * [Spatial3DView](../views/spatial3d_view.md)
+* [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `AnnotationContext`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1AnnotationContext.html)

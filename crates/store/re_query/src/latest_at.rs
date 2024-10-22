@@ -683,7 +683,9 @@ impl LatestAtCache {
             })
             .clone();
 
-        if query.at() != data_time {
+        // NOTE: Queries that return static data are much cheaper to run, and polluting the query-time cache
+        // just to point to the static tables again and again is very wasteful.
+        if query.at() != data_time && !data_time.is_static() {
             per_query_time
                 .entry(query.at())
                 .or_insert_with(|| LatestAtCachedChunk {

@@ -42,7 +42,7 @@ anyhow.workspace = true
 arrow2 = { workspace = true, features = ["compute_concatenate"] }
 document-features.workspace = true
 indent.workspace = true
-itertools = { workspace = true }
+itertools.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true

@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence, Union
 
+import numpy as np
+import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
@@ -42,7 +44,7 @@ if TYPE_CHECKING:
 else:
     Utf8Like = Any
 
-Utf8ArrayLike = Union[Utf8, Sequence[Utf8Like], str, Sequence[str]]
+Utf8ArrayLike = Union[Utf8, Sequence[Utf8Like], str, Sequence[str], npt.ArrayLike]
 
 
 class Utf8Type(BaseExtensionType):
@@ -58,9 +60,11 @@ class Utf8Batch(BaseBatch[Utf8ArrayLike]):
     @staticmethod
     def _native_to_pa_array(data: Utf8ArrayLike, data_type: pa.DataType) -> pa.Array:
         if isinstance(data, str):
-            array = [data]
+            array: Union[list[str], npt.ArrayLike] = [data]
         elif isinstance(data, Sequence):
             array = [str(datum) for datum in data]
+        elif isinstance(data, np.ndarray):
+            array = data
         else:
             array = [str(data)]
 

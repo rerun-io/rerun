@@ -40,7 +40,7 @@ pub struct ViewerContext<'a> {
 
     /// Mapping from class and system to entities for the store
     ///
-    /// TODO(andreas): This should have a generation id, allowing to update heuristics(?)/visualizable_entities etc.
+    /// TODO(andreas): This should have a generation id, allowing to update heuristics(?)/visualizable entities etc.
     pub applicable_entities_per_visualizer: &'a PerVisualizer<ApplicableEntities>,
 
     /// For each visualizer, the set of entities that have at least one matching indicator component.

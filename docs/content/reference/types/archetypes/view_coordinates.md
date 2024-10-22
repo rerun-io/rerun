@@ -5,7 +5,7 @@ title: "ViewCoordinates"
 
 How we interpret the coordinate system of an entity/space.
 
-For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
+For instance: What is "up"? What does the Z axis mean?
 
 The three coordinates are always ordered as [x, y, z].
 
@@ -14,12 +14,15 @@ down, and the Z axis points forward.
 
 Make sure that this archetype is logged at or above the origin entity path of your 3D views.
 
+⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
+
 ## Components
 
 **Required**: [`ViewCoordinates`](../components/view_coordinates.md)
 
 ## Shown in
 * [Spatial3DView](../views/spatial3d_view.md)
+* [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `ViewCoordinates`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1ViewCoordinates.html)

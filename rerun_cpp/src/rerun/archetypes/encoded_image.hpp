@@ -23,6 +23,7 @@ namespace rerun::archetypes {
     /// **Archetype**: An image encoded as e.g. a JPEG or PNG.
     ///
     /// Rerun also supports uncompressed images with the `archetypes::Image`.
+    /// For images that refer to video frames see `archetypes::VideoFrameReference`.
     ///
     /// ## Example
     ///

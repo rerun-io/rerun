@@ -136,6 +136,8 @@ impl ComponentName {
             short_name
         } else if let Some(short_name) = full_name.strip_prefix("rerun.components.") {
             short_name
+        } else if let Some(short_name) = full_name.strip_prefix("rerun.controls.") {
+            short_name
         } else if let Some(short_name) = full_name.strip_prefix("rerun.") {
             short_name
         } else {
@@ -181,6 +183,15 @@ impl ComponentName {
         } else {
             None // A user component
         }
+    }
+
+    /// Determine if component matches a string
+    ///
+    /// Valid matches are case invariant matches of either the full name or the short name.
+    pub fn matches(&self, other: &str) -> bool {
+        self.0.as_str() == other
+            || self.full_name().to_lowercase() == other.to_lowercase()
+            || self.short_name().to_lowercase() == other.to_lowercase()
     }
 }
 

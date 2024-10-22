@@ -42,6 +42,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ApplyLatestAt as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Whether empty cells in a dataframe should be filled with a latest-at query.",
+                placeholder: Some(ApplyLatestAt::default().to_arrow()?),
+            },
+        ),
+        (
             <AutoLayout as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Whether the viewport layout is determined automatically.",
@@ -60,13 +67,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "The type of the background in a view.",
                 placeholder: Some(BackgroundKind::default().to_arrow()?),
-            },
-        ),
-        (
-            <ColumnSelectionMode as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "How are columns selected in the dataframe view?",
-                placeholder: Some(ColumnSelectionMode::default().to_arrow()?),
             },
         ),
         (
@@ -98,6 +98,20 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <FilterByRange as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Configuration for a filter-by-range feature of the dataframe view.",
+                placeholder: Some(FilterByRange::default().to_arrow()?),
+            },
+        ),
+        (
+            <FilterIsNotNull as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Configuration for the filter is not null feature of the dataframe view.",
+                placeholder: Some(FilterIsNotNull::default().to_arrow()?),
+            },
+        ),
+        (
             <GridColumns as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "How many columns a grid container should have.",
@@ -126,13 +140,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <LatestAtQueries as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "Configuration for latest-at queries.\n\nNote: configuration as saved on a per-timeline basis.",
-                placeholder: Some(LatestAtQueries::default().to_arrow()?),
-            },
-        ),
-        (
             <LockRangeDuringZoom as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Indicate whether the range should be locked when zooming in on the data.\n\nDefault is `false`, i.e. zoom will change the visualized range.",
@@ -154,13 +161,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <QueryKind as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "The kind of query displayed by the dataframe view",
-                placeholder: Some(QueryKind::default().to_arrow()?),
-            },
-        ),
-        (
             <RootContainer as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The container that sits at the root of a viewport.",
@@ -172,6 +172,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "The layout share of a row in the container.",
                 placeholder: Some(RowShare::default().to_arrow()?),
+            },
+        ),
+        (
+            <SelectedColumns as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Describe a component column to be selected in the dataframe view.",
+                placeholder: Some(SelectedColumns::default().to_arrow()?),
             },
         ),
         (
@@ -200,13 +207,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Show a slider for the index of some dimension of a slider.",
                 placeholder: Some(TensorDimensionIndexSlider::default().to_arrow()?),
-            },
-        ),
-        (
-            <TimeRangeQueries as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "Configuration for time range queries.\n\nNote: configuration as saved on a per-timeline basis.",
-                placeholder: Some(TimeRangeQueries::default().to_arrow()?),
             },
         ),
         (
@@ -665,6 +665,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ValueRange as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Range of expected or valid values, specifying a lower and upper bound.",
+                placeholder: Some(ValueRange::default().to_arrow()?),
+            },
+        ),
+        (
             <Vector2D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A vector in 2D space.",
@@ -681,14 +688,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <VideoTimestamp as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                docstring_md: "Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).",
                 placeholder: Some(VideoTimestamp::default().to_arrow()?),
             },
         ),
         (
             <ViewCoordinates as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "How we interpret the coordinate system of an entity/space.\n\nFor instance: What is \"up\"? What does the Z axis mean? Is this right-handed or left-handed?\n\nThe three coordinates are always ordered as [x, y, z].\n\nFor example [Right, Down, Forward] means that the X axis points to the right, the Y axis points\ndown, and the Z axis points forward.\n\nThe following constants are used to represent the different directions:\n * Up = 1\n * Down = 2\n * Right = 3\n * Left = 4\n * Forward = 5\n * Back = 6",
+                docstring_md: "How we interpret the coordinate system of an entity/space.\n\nFor instance: What is \"up\"? What does the Z axis mean?\n\nThe three coordinates are always ordered as [x, y, z].\n\nFor example [Right, Down, Forward] means that the X axis points to the right, the Y axis points\ndown, and the Z axis points forward.\n\n⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).\n\nThe following constants are used to represent the different directions:\n * Up = 1\n * Down = 2\n * Right = 3\n * Left = 4\n * Forward = 5\n * Back = 6",
                 placeholder: Some(ViewCoordinates::default().to_arrow()?),
             },
         ),
@@ -815,12 +822,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 display_name: "Asset video",
                 fields: vec![
                     ArchetypeFieldReflection { component_name : "rerun.components.Blob"
-                    .into(), display_name : "Blob", docstring_md :
-                    "The asset's bytes.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    .into(), display_name : "Blob", docstring_md : "The asset's bytes.",
                     is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.MediaType".into(), display_name : "Media type",
                     docstring_md :
-                    "The Media Type of the asset.\n\nSupported values:\n* `video/mp4`\n\nIf omitted, the viewer will try to guess from the data blob.\nIf it cannot guess, it won't be able to render the asset.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    "The Media Type of the asset.\n\nSupported values:\n* `video/mp4`\n\nIf omitted, the viewer will try to guess from the data blob.\nIf it cannot guess, it won't be able to render the asset.",
                     is_required : false, },
                 ],
             },
@@ -955,6 +961,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.Colormap".into(), display_name : "Colormap",
                     docstring_md :
                     "Colormap to use for rendering the depth image.\n\nIf not set, the depth image will be rendered using the Turbo colormap.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ValueRange".into(), display_name : "Depth range",
+                    docstring_md :
+                    "The expected range of depth values.\n\nThis is typically the expected range of valid values.\nEverything outside of the range is clamped to the range for the purpose of colormpaping.\nNote that point clouds generated from this image will still display all points, regardless of this range.\n\nIf not specified, the range will be automatically estimated from the data.\nNote that the Viewer may try to guess a wider range than the minimum/maximum of values\nin the contents of the depth image.\nE.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,\nthe Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.FillRatio".into(), display_name :
                     "Point fill ratio", docstring_md :
@@ -1392,6 +1402,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.TensorData".into(), display_name : "Data",
                     docstring_md : "The tensor data", is_required : true, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.ValueRange".into(), display_name : "Value range",
+                    docstring_md :
+                    "The expected range of values.\n\nThis is typically the expected range of valid values.\nEverything outside of the range is clamped to the range for the purpose of colormpaping.\nAny colormap applied for display, will map this range.\n\nIf not specified, the range will be automatically estimated from the data.\nNote that the Viewer may try to guess a wider range than the minimum/maximum of values\nin the contents of the tensor.\nE.g. if all values are positive, some bigger than 1.0 and all smaller than 255.0,\nthe Viewer will guess that the data likely came from an 8bit image, thus assuming a range of 0-255.",
+                    is_required : false, },
                 ],
             },
         ),
@@ -1470,11 +1485,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.VideoTimestamp".into(), display_name : "Timestamp",
                     docstring_md :
-                    "References the closest video frame to this timestamp.\n\nNote that this uses the closest video frame instead of the latest at this timestamp\nin order to be more forgiving of rounding errors for inprecise timestamp types.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    "References the closest video frame to this timestamp.\n\nNote that this uses the closest video frame instead of the latest at this timestamp\nin order to be more forgiving of rounding errors for inprecise timestamp types.",
                     is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.EntityPath".into(), display_name :
                     "Video reference", docstring_md :
-                    "Optional reference to an entity with a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).\n\nIf none is specified, the video is assumed to be at the same entity.\nNote that blueprint overrides on the referenced video will be ignored regardless,\nas this is always interpreted as a reference to the data store.\n\nFor a series of video frame references, it is recommended to specify this path only once\nat the beginning of the series and then rely on latest-at query semantics to\nkeep the video reference active.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    "Optional reference to an entity with a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).\n\nIf none is specified, the video is assumed to be at the same entity.\nNote that blueprint overrides on the referenced video will be ignored regardless,\nas this is always interpreted as a reference to the data store.\n\nFor a series of video frame references, it is recommended to specify this path only once\nat the beginning of the series and then rely on latest-at query semantics to\nkeep the video reference active.",
                     is_required : false, },
                 ],
             },
@@ -1553,40 +1568,24 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.TimelineName".into(), display_name :
                     "Timeline", docstring_md :
-                    "The timeline for this query.\n\nIf unset, use the time panel's timeline and a latest-at query, ignoring all other components of this archetype.",
+                    "The timeline for this query.\n\nIf unset, the timeline currently active on the time panel is used.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.QueryKind".into(), display_name : "Kind",
-                    docstring_md : "Kind of query: latest-at or range.", is_required :
+                    "rerun.blueprint.components.FilterByRange".into(), display_name :
+                    "Filter by range", docstring_md :
+                    "If provided, only rows whose timestamp is within this range will be shown.\n\nNote: will be unset as soon as `timeline` is changed.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.FilterIsNotNull".into(), display_name :
+                    "Filter is not null", docstring_md :
+                    "If provided, only show rows which contains a logged event for the specified component.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ApplyLatestAt".into(), display_name :
+                    "Apply latest at", docstring_md :
+                    "Should empty cells be filled with latest-at queries?", is_required :
                     false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.LatestAtQueries".into(), display_name :
-                    "Latest at queries", docstring_md :
-                    "Configuration for latest-at queries.\n\nNote: configuration as saved on a per-timeline basis.",
-                    is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.TimeRangeQueries".into(), display_name :
-                    "Time range queries", docstring_md :
-                    "Configuration for the time range queries.\n\nNote: configuration as saved on a per-timeline basis.",
-                    is_required : false, },
-                ],
-            },
-        ),
-        (
-            ArchetypeName::new("rerun.blueprint.archetypes.DataframeVisibleColumns"),
-            ArchetypeReflection {
-                display_name: "Dataframe visible columns",
-                fields: vec![
-                    ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.ColumnSelectionMode".into(), display_name
-                    : "Selection mode", docstring_md :
-                    "Are all column selected, or only those specified by the user?",
-                    is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.TimelineName".into(), display_name :
-                    "Time columns", docstring_md :
-                    "The time columns to include (if mode is set to \"Selected\").",
-                    is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.ComponentColumnSelector".into(),
-                    display_name : "Component columns", docstring_md :
-                    "The component columns to include (if mode is set to \"Selected\").",
-                    is_required : false, },
+                    "rerun.blueprint.components.SelectedColumns".into(), display_name :
+                    "Select", docstring_md :
+                    "Selected columns. If unset, all columns are selected.", is_required
+                    : false, },
                 ],
             },
         ),
@@ -1686,7 +1685,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.GammaCorrection".into(), display_name : "Gamma",
                     docstring_md :
-                    "Gamma exponent applied to normalized values before mapping to color.\n\nRaises the normalized values to the power of this value before mapping to color.\nActs like an inverse brightness. Defaults to 1.0.",
+                    "Gamma exponent applied to normalized values before mapping to color.\n\nRaises the normalized values to the power of this value before mapping to color.\nActs like an inverse brightness. Defaults to 1.0.\n\nThe final value for display is set as:\n`colormap( ((value - data_display_range.min) / (data_display_range.max - data_display_range.min)) ** gamma )`",
                     is_required : false, },
                 ],
             },

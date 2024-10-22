@@ -62,8 +62,10 @@ impl ProcMeshKey {
 /// which is to be drawn as lines rather than triangles.
 #[derive(Debug)]
 pub struct WireframeMesh {
+    #[allow(unused)]
     pub bbox: re_math::BoundingBox,
 
+    #[allow(unused)]
     pub vertex_count: usize,
 
     /// Collection of line strips making up the wireframe.
@@ -80,6 +82,7 @@ pub struct WireframeMesh {
 /// This type is cheap to clone.
 #[derive(Clone)]
 pub struct SolidMesh {
+    #[allow(unused)]
     pub bbox: re_math::BoundingBox,
 
     /// Mesh to render. Note that its colors are set to black, so that the
@@ -262,7 +265,7 @@ impl Cache for SolidCache {
 fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<SolidMesh, MeshError> {
     re_tracing::profile_function!();
 
-    let mesh: mesh::Mesh = match *key {
+    let mesh: mesh::CpuMesh = match *key {
         ProcMeshKey::Cube => {
             let mut mg = re_math::MeshGen::new();
             mg.push_cube(Vec3::splat(0.5), re_math::IsoTransform::IDENTITY);
@@ -277,7 +280,7 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
                 .collect();
             let materials = materials_for_uncolored_mesh(render_ctx, triangle_indices.len());
 
-            mesh::Mesh {
+            mesh::CpuMesh {
                 label: format!("{key:?}").into(),
                 materials,
                 triangle_indices,
@@ -310,7 +313,7 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
 
             let materials = materials_for_uncolored_mesh(render_ctx, triangle_indices.len());
 
-            mesh::Mesh {
+            mesh::CpuMesh {
                 label: format!("{key:?}").into(),
 
                 // bytemuck is re-grouping the indices into triples without realloc

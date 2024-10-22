@@ -62,6 +62,7 @@ impl PickingResult {
 /// Picking context in which picking is performed.
 pub struct PickingContext {
     /// Cursor position in the UI coordinate system.
+    #[allow(unused)]
     pub pointer_in_ui: glam::Vec2,
 
     /// Cursor position on the renderer canvas in pixels.
@@ -69,7 +70,7 @@ pub struct PickingContext {
 
     /// Cursor position in the UI coordinates after panning & zooming.
     ///
-    /// As of writing, for 3D spaces this is equal to [Self::pointer_in_ui],
+    /// As of writing, for 3D spaces this is equal to [`Self::pointer_in_ui`],
     /// since we don't allow panning & zooming after perspective projection.
     pub pointer_in_camera_plane: glam::Vec2,
 

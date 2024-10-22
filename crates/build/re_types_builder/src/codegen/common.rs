@@ -17,7 +17,7 @@ pub struct ExampleInfo<'a> {
     /// Path to the snippet relative to the snippet directory.
     pub path: &'a str,
 
-    /// The snake_case name of the example.
+    /// The `snake_case` name of the example.
     pub name: String,
 
     /// The human-readable name of the example.

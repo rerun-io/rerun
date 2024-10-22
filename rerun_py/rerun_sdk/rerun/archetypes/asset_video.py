@@ -21,13 +21,12 @@ class AssetVideo(AssetVideoExt, Archetype):
     """
     **Archetype**: A video binary.
 
-    NOTE: Videos can only be viewed in the Rerun web viewer.
-    Only MP4 containers with a limited number of codecs are currently supported, and not in all browsers.
-    Follow <https://github.com/rerun-io/rerun/issues/7298> for updates on the native support.
+    Only MP4 containers with AV1 are generally supported,
+    though the web viewer supports more video codecs, depending on browser.
 
-    In order to display a video, you need to log a [`archetypes.VideoFrameReference`][rerun.archetypes.VideoFrameReference] for each frame.
+    See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
 
-    ⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
+    In order to display a video, you also need to log a [`archetypes.VideoFrameReference`][rerun.archetypes.VideoFrameReference] for each frame.
 
     Examples
     --------
@@ -91,17 +90,11 @@ class AssetVideo(AssetVideoExt, Archetype):
     # Create two entities, showing the same video frozen at different times.
     rr.log(
         "frame_1s",
-        rr.VideoFrameReference(
-            timestamp=rr.components.VideoTimestamp(seconds=1.0),
-            video_reference="video_asset",
-        ),
+        rr.VideoFrameReference(seconds=1.0, video_reference="video_asset"),
     )
     rr.log(
         "frame_2s",
-        rr.VideoFrameReference(
-            timestamp=rr.components.VideoTimestamp(seconds=2.0),
-            video_reference="video_asset",
-        ),
+        rr.VideoFrameReference(seconds=2.0, video_reference="video_asset"),
     )
 
     # Send blueprint that shows two 2D views next to each other.

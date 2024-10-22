@@ -6,7 +6,7 @@ use re_renderer::{
     renderer::{
         ColormappedTexture, RectangleOptions, TextureFilterMag, TextureFilterMin, TexturedRect,
     },
-    resource_managers::Texture2DCreationDesc,
+    resource_managers::ImageDataDesc,
     video::{Video, VideoFrameTexture},
 };
 use re_types::{
@@ -25,7 +25,7 @@ use crate::{
     contexts::SpatialSceneEntityContext,
     ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{entity_iterator, filter_visualizable_2d_entities},
+    visualizers::{entity_iterator, filter_visualizable_2d_entities, LoadingSpinner},
     PickableRectSourceData, PickableTexturedRect, SpatialSpaceView2D,
 };
 
@@ -153,6 +153,8 @@ impl VideoFrameReferenceVisualizer {
         entity_path: &EntityPath,
         view_id: SpaceViewId,
     ) {
+        re_tracing::profile_function!();
+
         let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
             return;
         };
@@ -193,7 +195,12 @@ impl VideoFrameReferenceVisualizer {
                 video_resolution = glam::vec2(video.width() as _, video.height() as _);
 
                 match video.frame_at(render_ctx, decode_stream_id, video_timestamp.as_seconds()) {
-                    Ok(frame) => {
+                    Ok(VideoFrameTexture {
+                        texture,
+                        time_range: _, // TODO(emilk): maybe add to `PickableTexturedRect` and `PickingHitType::TexturedRect` so we can show on hover?
+                        is_pending,
+                        show_spinner,
+                    }) => {
                         // Make sure to use the video instead of texture size here,
                         // since the texture may be a placeholder which doesn't have the full size yet.
                         let top_left_corner_position =
@@ -203,25 +210,19 @@ impl VideoFrameReferenceVisualizer {
                         let extent_v =
                             world_from_entity.transform_vector3(glam::Vec3::Y * video_resolution.y);
 
-                        let texture = match frame {
-                            VideoFrameTexture::Ready(texture) => texture,
-                            VideoFrameTexture::Pending(placeholder) => {
-                                // Show loading rectangle:
-                                let min = top_left_corner_position;
-                                let max = top_left_corner_position + extent_u + extent_v;
-                                let center = 0.5 * (min + max);
-                                let diameter = (max - min).truncate().abs().min_element();
-                                self.data.loading_rects.push(egui::Rect::from_center_size(
-                                    egui::pos2(center.x, center.y),
-                                    egui::Vec2::splat(diameter),
-                                ));
+                        if is_pending {
+                            // Keep polling for a fresh texture
+                            ctx.viewer_ctx.egui_ctx.request_repaint();
+                        }
 
-                                // Keep polling for the decoded result:
-                                ctx.viewer_ctx.egui_ctx.request_repaint();
-
-                                placeholder
-                            }
-                        };
+                        if show_spinner {
+                            // Show loading rectangle:
+                            self.data.loading_spinners.push(LoadingSpinner {
+                                center: top_left_corner_position + 0.5 * (extent_u + extent_v),
+                                half_extent_u: 0.5 * extent_u,
+                                half_extent_v: 0.5 * extent_v,
+                            });
+                        }
 
                         let textured_rect = TexturedRect {
                             top_left_corner_position,
@@ -293,7 +294,7 @@ impl VideoFrameReferenceVisualizer {
             .texture_manager_2d
             .get_or_try_create_with::<image::ImageError>(
                 Hash64::hash("video_error").hash64(),
-                &render_ctx.gpu_resources.textures,
+                render_ctx,
                 || {
                     let mut reader = image::io::Reader::new(std::io::Cursor::new(
                         re_ui::icons::VIDEO_ERROR.png_bytes,
@@ -301,12 +302,11 @@ impl VideoFrameReferenceVisualizer {
                     reader.set_format(image::ImageFormat::Png);
                     let dynamic_image = reader.decode()?;
 
-                    Ok(Texture2DCreationDesc {
+                    Ok(ImageDataDesc {
                         label: "video_error".into(),
                         data: std::borrow::Cow::Owned(dynamic_image.to_rgba8().to_vec()),
-                        format: re_renderer::external::wgpu::TextureFormat::Rgba8UnormSrgb,
-                        width: dynamic_image.width(),
-                        height: dynamic_image.height(),
+                        format: re_renderer::external::wgpu::TextureFormat::Rgba8UnormSrgb.into(),
+                        width_height: [dynamic_image.width(), dynamic_image.height()],
                     })
                 },
             );
@@ -409,7 +409,14 @@ fn latest_at_query_video_from_datastore(
     let media_type = results.component_instance::<MediaType>(0);
 
     Some(ctx.cache.entry(|c: &mut VideoCache| {
-        c.entry(blob_row_id, &blob, media_type.as_ref().map(|m| m.as_str()))
+        let debug_name = entity_path.to_string();
+        c.entry(
+            debug_name,
+            blob_row_id,
+            &blob,
+            media_type.as_ref(),
+            ctx.app_options.video_decoder_hw_acceleration,
+        )
     }))
 }
 

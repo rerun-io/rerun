@@ -34,12 +34,11 @@ fn colormap_preview_ui(
             })
             .collect();
 
-        re_renderer::resource_managers::Texture2DCreationDesc {
+        re_renderer::resource_managers::ImageDataDesc {
             label: "horizontal_gradient".into(),
             data: data.into(),
-            format: wgpu::TextureFormat::R16Float,
-            width,
-            height,
+            format: wgpu::TextureFormat::R16Float.into(),
+            width_height: [width, height],
         }
     })
     .map_err(|err| anyhow::anyhow!("Failed to create horizontal gradient texture: {err}"))?;

@@ -6,6 +6,7 @@ use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_types::{
     archetypes::Image,
+    components::MediaType,
     image::{ImageKind, ImageLoadError},
     Loggable as _,
 };
@@ -42,11 +43,21 @@ impl ImageDecodeCache {
         &mut self,
         blob_row_id: RowId,
         image_bytes: &[u8],
-        media_type: Option<&str>,
+        media_type: Option<&MediaType>,
     ) -> Result<ImageInfo, ImageLoadError> {
         re_tracing::profile_function!();
 
-        let inner_key = Hash64::hash(media_type);
+        // In order to avoid loading the same video multiple times with
+        // known and unknown media type, we have to resolve the media type before
+        // loading & building the cache key.
+        let Some(media_type) = media_type
+            .cloned()
+            .or_else(|| MediaType::guess_from_data(image_bytes))
+        else {
+            return Err(ImageLoadError::UnrecognizedMimeType);
+        };
+
+        let inner_key = Hash64::hash(&media_type);
 
         let lookup = self
             .cache
@@ -54,7 +65,7 @@ impl ImageDecodeCache {
             .or_default()
             .entry(inner_key)
             .or_insert_with(|| {
-                let result = decode_image(blob_row_id, image_bytes, media_type);
+                let result = decode_image(blob_row_id, image_bytes, media_type.as_str());
                 let memory_used = result.as_ref().map_or(0, |image| image.buffer.len() as u64);
                 self.memory_used += memory_used;
                 DecodedImageResult {
@@ -71,25 +82,16 @@ impl ImageDecodeCache {
 fn decode_image(
     blob_row_id: RowId,
     image_bytes: &[u8],
-    media_type: Option<&str>,
+    media_type: &str,
 ) -> Result<ImageInfo, ImageLoadError> {
     re_tracing::profile_function!();
 
     let mut reader = image::io::Reader::new(std::io::Cursor::new(image_bytes));
 
-    if let Some(media_type) = media_type {
-        if let Some(format) = image::ImageFormat::from_mime_type(media_type) {
-            reader.set_format(format);
-        } else {
-            return Err(ImageLoadError::UnsupportedMimeType(media_type.to_owned()));
-        }
-    }
-
-    if reader.format().is_none() {
-        if let Ok(format) = image::guess_format(image_bytes) {
-            // Weirdly enough, `reader.decode` doesn't do this for us.
-            reader.set_format(format);
-        }
+    if let Some(format) = image::ImageFormat::from_mime_type(media_type) {
+        reader.set_format(format);
+    } else {
+        return Err(ImageLoadError::UnsupportedMimeType(media_type.to_owned()));
     }
 
     let dynamic_image = reader.decode()?;
@@ -103,7 +105,6 @@ fn decode_image(
         buffer: buffer.0,
         format: format.0,
         kind: ImageKind::Color,
-        colormap: None,
     })
 }
 

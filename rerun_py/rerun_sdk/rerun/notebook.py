@@ -92,9 +92,6 @@ class Viewer:
 
         self._recording = recording
 
-        if blueprint is not None:
-            self._recording.send_blueprint(blueprint)  # type: ignore[attr-defined]
-
         self._viewer = _Viewer(
             width=width if width is not None else _default_width,
             height=height if height is not None else _default_height,
@@ -104,6 +101,9 @@ class Viewer:
             recording=RecordingStream.to_native(self._recording),
             callback=self._flush_hook,
         )
+
+        if blueprint is not None:
+            self._recording.send_blueprint(blueprint)  # type: ignore[attr-defined]
 
     def display(self, block_until_ready: bool = True) -> None:
         """

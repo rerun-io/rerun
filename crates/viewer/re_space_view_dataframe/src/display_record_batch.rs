@@ -1,29 +1,25 @@
-//! Intermediate data structures to make `re_datastore`'s schemas and [`RecordBatch`]s more amenable
-//! to displaying in a table.
+//! Intermediate data structures to make `re_datastore`'s row data more amenable to displaying in a
+//! table.
 
 use thiserror::Error;
 
 use re_chunk_store::external::arrow2::{
     array::{
         Array as ArrowArray, DictionaryArray as ArrowDictionaryArray, ListArray as ArrowListArray,
-        PrimitiveArray as ArrowPrimitiveArray, StructArray as ArrowStructArray,
+        PrimitiveArray as ArrowPrimitiveArray,
     },
     datatypes::DataType,
     datatypes::DataType as ArrowDataType,
 };
-use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, LatestAtQuery, RowId};
-use re_dataframe::RecordBatch;
-use re_log_types::{EntityPath, TimeInt, TimeType, Timeline};
+use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, LatestAtQuery};
+use re_log_types::{EntityPath, TimeInt, Timeline};
 use re_types::external::arrow2::datatypes::IntegerType;
-use re_types_core::{ComponentName, Loggable as _};
+use re_types_core::ComponentName;
 use re_ui::UiExt;
 use re_viewer_context::{UiLayout, ViewerContext};
 
 #[derive(Error, Debug)]
 pub(crate) enum DisplayRecordBatchError {
-    #[error("Unknown control column: {0}")]
-    UnknownControlColumn(String),
-
     #[error("Unexpected column data type for timeline '{0}': {1:?}")]
     UnexpectedTimeColumnDataType(String, ArrowDataType),
 
@@ -118,7 +114,6 @@ impl ComponentData {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        row_id: RowId,
         latest_at_query: &LatestAtQuery,
         entity_path: &EntityPath,
         component_name: ComponentName,
@@ -158,7 +153,7 @@ impl ComponentData {
                 ctx.recording(),
                 entity_path,
                 component_name,
-                Some(row_id),
+                None,
                 &*data_to_display,
             );
         } else {
@@ -170,10 +165,6 @@ impl ComponentData {
 /// A single column of data in a record batch.
 #[derive(Debug)]
 pub(crate) enum DisplayColumn {
-    RowId {
-        row_id_times: ArrowPrimitiveArray<u64>,
-        row_id_counters: ArrowPrimitiveArray<u64>,
-    },
     Timeline {
         timeline: Timeline,
         time_data: ArrowPrimitiveArray<i64>,
@@ -188,45 +179,10 @@ pub(crate) enum DisplayColumn {
 impl DisplayColumn {
     #[allow(clippy::borrowed_box)] // https://github.com/rust-lang/rust-clippy/issues/11940
     fn try_new(
-        column_schema: &ColumnDescriptor,
+        column_descriptor: &ColumnDescriptor,
         column_data: &Box<dyn ArrowArray>,
     ) -> Result<Self, DisplayRecordBatchError> {
-        match column_schema {
-            ColumnDescriptor::Control(desc) => {
-                if desc.component_name == RowId::name() {
-                    let row_ids = column_data
-                        .as_any()
-                        .downcast_ref::<ArrowStructArray>()
-                        .expect("expected format for RowId, failure is a bug in re_dataframe");
-                    let [times, counters] = row_ids.values() else {
-                        panic!("RowIds are corrupt -- this should be impossible (sanity checked)");
-                    };
-
-                    #[allow(clippy::unwrap_used)]
-                    let row_id_times = times
-                        .as_any()
-                        .downcast_ref::<ArrowPrimitiveArray<u64>>()
-                        .expect("expected format for RowId, failure is a bug in re_dataframe")
-                        .clone();
-
-                    #[allow(clippy::unwrap_used)]
-                    let row_id_counters = counters
-                        .as_any()
-                        .downcast_ref::<ArrowPrimitiveArray<u64>>()
-                        .expect("expected format for RowId, failure is a bug in re_dataframe")
-                        .clone();
-
-                    Ok(Self::RowId {
-                        //descriptor: desc,
-                        row_id_times,
-                        row_id_counters,
-                    })
-                } else {
-                    Err(DisplayRecordBatchError::UnknownControlColumn(
-                        desc.component_name.to_string(),
-                    ))
-                }
-            }
+        match column_descriptor {
             ColumnDescriptor::Time(desc) => {
                 let time_data = column_data
                     .as_any()
@@ -244,6 +200,7 @@ impl DisplayColumn {
                     time_data,
                 })
             }
+
             ColumnDescriptor::Component(desc) => Ok(Self::Component {
                 entity_path: desc.entity_path.clone(),
                 component_name: desc.component_name,
@@ -254,7 +211,7 @@ impl DisplayColumn {
 
     pub(crate) fn instance_count(&self, row_index: usize) -> u64 {
         match self {
-            Self::RowId { .. } | Self::Timeline { .. } => 1,
+            Self::Timeline { .. } => 1,
             Self::Component { component_data, .. } => component_data.instance_count(row_index),
         }
     }
@@ -269,7 +226,6 @@ impl DisplayColumn {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        row_id: RowId,
         latest_at_query: &LatestAtQuery,
         row_index: usize,
         instance_index: Option<u64>,
@@ -282,22 +238,6 @@ impl DisplayColumn {
         }
 
         match self {
-            Self::RowId {
-                row_id_times,
-                row_id_counters,
-                ..
-            } => {
-                if instance_index.is_some() {
-                    // we only ever display the row id on the summary line
-                    return;
-                }
-
-                let row_id = RowId::from_u128(
-                    (row_id_times.value(row_index) as u128) << 64
-                        | (row_id_counters.value(row_index) as u128),
-                );
-                row_id_ui(ctx, ui, &row_id);
-            }
             Self::Timeline {
                 timeline,
                 time_data,
@@ -307,14 +247,18 @@ impl DisplayColumn {
                     return;
                 }
 
-                let timestamp = TimeInt::try_from(time_data.value(row_index));
-                match timestamp {
-                    Ok(timestamp) => {
-                        ui.label(timeline.typ().format(timestamp, ctx.app_options.time_zone));
+                if time_data.is_valid(row_index) {
+                    let timestamp = TimeInt::try_from(time_data.value(row_index));
+                    match timestamp {
+                        Ok(timestamp) => {
+                            ui.label(timeline.typ().format(timestamp, ctx.app_options.time_zone));
+                        }
+                        Err(err) => {
+                            ui.error_label(&format!("{err}"));
+                        }
                     }
-                    Err(err) => {
-                        ui.error_label(&format!("{err}"));
-                    }
+                } else {
+                    ui.label("-");
                 }
             }
             Self::Component {
@@ -325,7 +269,6 @@ impl DisplayColumn {
                 component_data.data_ui(
                     ctx,
                     ui,
-                    row_id,
                     latest_at_query,
                     entity_path,
                     *component_name,
@@ -333,23 +276,6 @@ impl DisplayColumn {
                     instance_index,
                 );
             }
-        }
-    }
-
-    /// Try to decode the row ID from the given row index.
-    ///
-    /// Succeeds only if the column is a `RowId` column.
-    pub(crate) fn try_decode_row_id(&self, row_index: usize) -> Option<RowId> {
-        match self {
-            Self::RowId {
-                row_id_times,
-                row_id_counters,
-            } => {
-                let time = row_id_times.value(row_index);
-                let counter = row_id_counters.value(row_index);
-                Some(RowId::from_u128((time as u128) << 64 | (counter as u128)))
-            }
-            _ => None,
         }
     }
 
@@ -362,7 +288,7 @@ impl DisplayColumn {
                 let timestamp = time_data.value(row_index);
                 TimeInt::try_from(timestamp).ok()
             }
-            _ => None,
+            Self::Component { .. } => None,
         }
     }
 }
@@ -374,23 +300,26 @@ pub(crate) struct DisplayRecordBatch {
 }
 
 impl DisplayRecordBatch {
-    /// Create a new `DisplayRecordBatch` from a `RecordBatch` and its schema.
+    /// Create a new `DisplayRecordBatch` from a `RecordBatch` and its list of selected columns.
     ///
-    /// The columns in the record batch must match the schema. This is guaranteed by `re_datastore`.
+    /// The columns in the record batch must match the selected columns. This is guaranteed by
+    /// `re_datastore`.
     pub(crate) fn try_new(
-        record_batch: &RecordBatch,
-        schema: &[ColumnDescriptor],
+        row_data: &Vec<Box<dyn ArrowArray>>,
+        selected_columns: &[ColumnDescriptor],
     ) -> Result<Self, DisplayRecordBatchError> {
-        let columns: Result<Vec<_>, _> = schema
+        let num_rows = row_data.first().map(|arr| arr.len()).unwrap_or(0);
+
+        let columns: Result<Vec<_>, _> = selected_columns
             .iter()
-            .zip(record_batch.all_columns())
-            .map(|(column_schema, (_, column_data))| {
-                DisplayColumn::try_new(column_schema, column_data)
+            .zip(row_data)
+            .map(|(column_descriptor, column_data)| {
+                DisplayColumn::try_new(column_descriptor, column_data)
             })
             .collect();
 
         Ok(Self {
-            num_rows: record_batch.num_rows(),
+            num_rows,
             columns: columns?,
         })
     }
@@ -402,27 +331,4 @@ impl DisplayRecordBatch {
     pub(crate) fn columns(&self) -> &[DisplayColumn] {
         &self.columns
     }
-}
-
-fn row_id_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, row_id: &RowId) {
-    let s = row_id.to_string();
-    let split_pos = s.char_indices().nth_back(5);
-
-    ui.label(match split_pos {
-        Some((pos, _)) => &s[pos..],
-        None => &s,
-    })
-    .on_hover_ui(|ui| {
-        let text = format!(
-            "{}\n\nTimestamp: {}\nIncrement: {}",
-            s,
-            (row_id.nanoseconds_since_epoch() as i64)
-                .try_into()
-                .map(|t| TimeType::Time.format(TimeInt::from_nanos(t), ctx.app_options.time_zone))
-                .unwrap_or("error decoding timestamp".to_owned()),
-            row_id.inc()
-        );
-
-        ui.label(text);
-    });
 }

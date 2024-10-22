@@ -14,7 +14,7 @@ struct ExampleThumbnail {
 
 #[derive(Debug, serde::Deserialize)]
 struct ExampleDesc {
-    /// snake_case version of the example name
+    /// `snake_case` version of the example name
     name: String,
 
     /// human-readable version of the example name

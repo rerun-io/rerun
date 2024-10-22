@@ -21,11 +21,12 @@
 namespace rerun::archetypes {
     /// **Archetype**: A video binary.
     ///
-    /// NOTE: Videos can only be viewed in the Rerun web viewer.
-    /// Only MP4 containers with a limited number of codecs are currently supported, and not in all browsers.
-    /// Follow <https://github.com/rerun-io/rerun/issues/7298> for updates on the native support.
+    /// Only MP4 containers with AV1 are generally supported,
+    /// though the web viewer supports more video codecs, depending on browser.
     ///
-    /// In order to display a video, you need to log a `archetypes::VideoFrameReference` for each frame.
+    /// See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
+    ///
+    /// In order to display a video, you also need to log a `archetypes::VideoFrameReference` for each frame.
     ///
     /// ## Examples
     ///
@@ -114,8 +115,6 @@ namespace rerun::archetypes {
     ///     // TODO(#5520): log blueprint once supported
     /// }
     /// ```
-    ///
-    /// ⚠ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
     struct AssetVideo {
         /// The asset's bytes.
         rerun::components::Blob blob;

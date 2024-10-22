@@ -61,3 +61,7 @@ code {
 .md-typeset a {
   --md-typeset-a-color: #526cfe;
 }
+
+.md-typeset h5 {
+  text-transform: revert;
+}

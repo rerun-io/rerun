@@ -116,6 +116,18 @@ impl PartialEq for Chunk {
 }
 
 impl Chunk {
+    /// Returns a version of us with a new [`ChunkId`].
+    ///
+    /// Reminder:
+    /// * The returned [`Chunk`] will re-use the exact same [`RowId`]s as `self`.
+    /// * Duplicated [`RowId`]s in the `ChunkStore` is undefined behavior.
+    #[must_use]
+    #[inline]
+    pub fn with_id(mut self, id: ChunkId) -> Self {
+        self.id = id;
+        self
+    }
+
     /// Returns `true` is two [`Chunk`]s are similar, although not byte-for-byte equal.
     ///
     /// In particular, this ignores chunks and row IDs, as well as temporal timestamps.
@@ -693,6 +705,26 @@ impl Chunk {
         }
     }
 
+    /// Unconditionally inserts an [`ArrowListArray`] as a component column.
+    ///
+    /// Removes and replaces the column if it already exists.
+    ///
+    /// This will fail if the end result is malformed in any way -- see [`Self::sanity_check`].
+    #[inline]
+    pub fn add_component(
+        &mut self,
+        component_name: ComponentName,
+        list_array: ArrowListArray<i32>,
+    ) -> ChunkResult<()> {
+        self.components.insert(component_name, list_array);
+        self.sanity_check()
+    }
+
+    /// Unconditionally inserts a [`TimeColumn`].
+    ///
+    /// Removes and replaces the column if it already exists.
+    ///
+    /// This will fail if the end result is malformed in any way -- see [`Self::sanity_check`].
     #[inline]
     pub fn add_timeline(&mut self, chunk_timeline: TimeColumn) -> ChunkResult<()> {
         self.timelines

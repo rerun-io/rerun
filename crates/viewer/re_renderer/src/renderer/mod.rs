@@ -23,7 +23,7 @@ pub use rectangles::{
 
 mod mesh_renderer;
 pub(crate) use mesh_renderer::MeshRenderer;
-pub use mesh_renderer::{MeshDrawData, MeshInstance};
+pub use mesh_renderer::{GpuMeshInstance, MeshDrawData};
 
 mod compositor;
 pub(crate) use compositor::CompositorDrawData;
@@ -50,7 +50,7 @@ pub trait DrawData {
     type Renderer: Renderer<RendererDrawData = Self> + Send + Sync;
 }
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
 pub enum DrawError {
     #[error(transparent)]
     Pool(#[from] PoolError),
@@ -82,6 +82,8 @@ pub trait Renderer {
 }
 
 /// Gets or creates a vertex shader module for drawing a screen filling triangle.
+///
+/// The entry point of this shader is `main`.
 pub fn screen_triangle_vertex_shader(
     ctx: &RenderContext,
 ) -> crate::wgpu_resources::GpuShaderModuleHandle {

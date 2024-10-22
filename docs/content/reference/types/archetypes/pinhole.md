@@ -16,6 +16,7 @@ Camera perspective projection (a.k.a. intrinsics).
 ## Shown in
 * [Spatial2DView](../views/spatial2d_view.md)
 * [Spatial2DView](../views/spatial2d_view.md)
+* [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `Pinhole`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Pinhole.html)

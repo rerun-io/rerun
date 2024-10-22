@@ -8,9 +8,34 @@ use re_types::{
     tensor_data::TensorElement,
 };
 
-/// Represents an `Image`, `SegmentationImage` or `DepthImage`.
+/// Colormap together with the range of image values that is mapped to the colormap's range.
 ///
-/// It has enough information to render the image on the screen.
+/// The range is used to linearly re-map the image values to a normalized range (of 0-1)
+/// to which the colormap is applied.
+#[derive(Clone)]
+pub struct ColormapWithRange {
+    pub colormap: Colormap,
+    pub value_range: [f32; 2],
+}
+
+impl ColormapWithRange {
+    pub const DEFAULT_DEPTH_COLORMAP: Colormap = Colormap::Turbo;
+
+    pub fn default_range_for_depth_images(image_stats: &crate::ImageStats) -> [f32; 2] {
+        // Use 0.0 as default minimum depth value, even if it doesn't show up in the data.
+        // (since logically, depth usually starts at zero)
+        [0.0, image_stats.finite_range.1 as _]
+    }
+
+    pub fn default_for_depth_images(image_stats: &crate::ImageStats) -> Self {
+        Self {
+            colormap: Self::DEFAULT_DEPTH_COLORMAP,
+            value_range: Self::default_range_for_depth_images(image_stats),
+        }
+    }
+}
+
+/// Represents the contents of an `Image`, `SegmentationImage` or `DepthImage`.
 #[derive(Clone)]
 pub struct ImageInfo {
     /// The row id that contained the blob.
@@ -26,9 +51,6 @@ pub struct ImageInfo {
 
     /// Color, Depth, or Segmentation?
     pub kind: ImageKind,
-
-    /// Primarily for depth images atm
-    pub colormap: Option<Colormap>,
 }
 
 impl ImageInfo {
@@ -40,6 +62,10 @@ impl ImageInfo {
     #[inline]
     pub fn height(&self) -> u32 {
         self.format.height
+    }
+
+    pub fn width_height(&self) -> [u32; 2] {
+        [self.format.width, self.format.height]
     }
 
     /// Returns [`ColorModel::L`] for depth and segmentation images.
@@ -73,7 +99,13 @@ impl ImageInfo {
                 // Shouldn't hit BGR and BGRA, but we'll handle it like RGB and RGBA here for completeness.
                 ColorModel::RGB | ColorModel::RGBA | ColorModel::BGR | ColorModel::BGRA => {
                     if channel < 3 {
-                        let rgb = rgb_from_yuv(luma, u, v);
+                        let rgb = rgb_from_yuv(
+                            luma,
+                            u,
+                            v,
+                            pixel_format.is_limited_yuv_range(),
+                            pixel_format.yuv_matrix_coefficients(),
+                        );
                         Some(TensorElement::U8(rgb[channel as usize]))
                     } else if channel == 4 {
                         Some(TensorElement::U8(255))
@@ -373,7 +405,6 @@ mod tests {
             buffer: image.buffer.0,
             format: image.format.0,
             kind: re_types::image::ImageKind::Color,
-            colormap: None,
         }
     }
 

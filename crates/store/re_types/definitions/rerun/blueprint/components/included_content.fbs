@@ -8,7 +8,7 @@ table IncludedContent (
     "attr.rerun.scope": "blueprint",
     "attr.rust.derive": "Default"
 ) {
-    /// List of the contents by EntityPath.
+    /// List of the contents by [datatypes.EntityPath].
     ///
     /// This must be a path in the blueprint store.
     /// Typically structure as `<blueprint_registry>/<uuid>`.

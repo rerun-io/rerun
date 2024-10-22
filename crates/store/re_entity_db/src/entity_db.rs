@@ -394,8 +394,9 @@ impl EntityDb {
 
         self.gc(&GarbageCollectionOptions {
             target: GarbageCollectionTarget::Everything,
-            protect_latest: 1, // TODO(jleibs): Bump this after we have an undo buffer
+            protect_latest: 1,
             time_budget: DEFAULT_GC_TIME_BUDGET,
+            protected_time_ranges: Default::default(), // TODO(#3135): Use this for undo buffer
         })
     }
 
@@ -409,6 +410,13 @@ impl EntityDb {
             target: GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _),
             protect_latest: 1,
             time_budget: DEFAULT_GC_TIME_BUDGET,
+
+            // TODO(emilk): we could protect the data that is currently being viewed
+            // (e.g. when paused in the live camera example).
+            // To be perfect it would need margins (because of latest-at), i.e. we would need to know
+            // exactly how far back the latest-at is of each component at the current time…
+            // …but maybe it doesn't have to be perfect.
+            protected_time_ranges: Default::default(),
         });
 
         if store_events.is_empty() {
@@ -435,6 +443,19 @@ impl EntityDb {
 
         self.on_store_deletions(&store_events);
 
+        store_events
+    }
+
+    /// Drop all events in the given time range from the given timeline.
+    ///
+    /// Used to implement undo (erase the last event from the blueprint db).
+    pub fn drop_time_range(
+        &mut self,
+        timeline: &Timeline,
+        drop_range: ResolvedTimeRange,
+    ) -> Vec<ChunkStoreEvent> {
+        let store_events = self.data_store.drop_time_range(timeline, drop_range);
+        self.on_store_deletions(&store_events);
         store_events
     }
 

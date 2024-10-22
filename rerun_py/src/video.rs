@@ -1,6 +1,7 @@
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use pyo3::{exceptions::PyRuntimeError, pyfunction, Bound, PyAny, PyResult};
+use re_video::VideoLoadError;
 
 use crate::arrow::array_to_rust;
 
@@ -11,6 +12,7 @@ use crate::arrow::array_to_rust;
 /// Python `bytes` can be done with `to_pybytes` but this requires copying the data.
 /// So instead, we pass the arrow array directly.
 #[pyfunction]
+#[pyo3(signature = (video_bytes_arrow_array, media_type=None))]
 pub fn asset_video_read_frame_timestamps_ns(
     video_bytes_arrow_array: &Bound<'_, PyAny>,
     media_type: Option<&str>,
@@ -29,11 +31,20 @@ pub fn asset_video_read_frame_timestamps_ns(
             ))
         })?;
 
-    Ok(re_video::VideoData::load_from_bytes(
-        video_bytes_arrow_uint8_array.values().as_slice(),
-        media_type,
+    let video_bytes = video_bytes_arrow_uint8_array.values().as_slice();
+
+    let Some(media_type) =
+        media_type.or_else(|| infer::Infer::new().get(video_bytes).map(|v| v.mime_type()))
+    else {
+        return Err(PyRuntimeError::new_err(
+            VideoLoadError::UnrecognizedMimeType.to_string(),
+        ));
+    };
+
+    Ok(
+        re_video::VideoData::load_from_bytes(video_bytes, media_type)
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+            .frame_timestamps_ns()
+            .collect(),
     )
-    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
-    .frame_timestamps_ns()
-    .collect())
 }

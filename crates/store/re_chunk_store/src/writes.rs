@@ -9,7 +9,7 @@ use re_types_core::SizeBytes;
 
 use crate::{
     store::ChunkIdSetPerTime, ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiff,
-    ChunkStoreError, ChunkStoreEvent, ChunkStoreResult,
+    ChunkStoreError, ChunkStoreEvent, ChunkStoreResult, ColumnMetadataState,
 };
 
 // Used all over in docstrings.
@@ -321,6 +321,21 @@ impl ChunkStore {
                 component_name,
                 ArrowListArray::<i32>::get_child_type(list_array.data_type()).clone(),
             );
+
+            let column_metadata_state = self
+                .per_column_metadata
+                .entry(chunk.entity_path().clone())
+                .or_default()
+                .entry(component_name)
+                .or_insert(ColumnMetadataState {
+                    is_semantically_empty: true,
+                });
+            {
+                let is_semantically_empty =
+                    re_chunk::util::is_list_array_semantically_empty(list_array);
+
+                column_metadata_state.is_semantically_empty &= is_semantically_empty;
+            }
         }
 
         let events = if self.config.enable_changelog {
@@ -482,8 +497,10 @@ impl ChunkStore {
 
         let Self {
             id,
+            info: _,
             config: _,
             type_registry: _,
+            per_column_metadata,
             chunks_per_chunk_id,
             chunk_ids_per_min_row_id,
             temporal_chunk_ids_per_entity_per_component,
@@ -496,6 +513,8 @@ impl ChunkStore {
             gc_id: _,
             event_id,
         } = self;
+
+        per_column_metadata.remove(entity_path);
 
         let dropped_static_chunks = {
             let dropped_static_chunk_ids: BTreeSet<_> = static_chunk_ids_per_entity

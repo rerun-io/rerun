@@ -8,6 +8,7 @@ use re_ui::{UICommand, UICommandSender};
 
 /// Commands used by internal system components
 // TODO(jleibs): Is there a better crate for this?
+#[derive(strum_macros::IntoStaticStr)]
 pub enum SystemCommand {
     /// Make this the active application.
     ActivateApp(re_log_types::ApplicationId),
@@ -61,11 +62,14 @@ pub enum SystemCommand {
     #[cfg(debug_assertions)]
     EnableInspectBlueprintTimeline(bool),
 
-    /// Enable or disable the experimental dataframe space views.
-    EnableExperimentalDataframeSpaceView(bool),
-
     /// Set the item selection.
     SetSelection(crate::Item),
+
+    /// Set the active timeline for the given recording.
+    SetActiveTimeline {
+        rec_id: StoreId,
+        timeline: re_chunk::Timeline,
+    },
 
     /// Sets the focus to the given item.
     ///
@@ -84,6 +88,13 @@ pub enum SystemCommand {
     /// Add a task, run on a background thread, that saves something to disk.
     #[cfg(not(target_arch = "wasm32"))]
     FileSaver(Box<dyn FnOnce() -> anyhow::Result<std::path::PathBuf> + Send + 'static>),
+}
+
+impl std::fmt::Debug for SystemCommand {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // not all variant contents can be made `Debug`, so we only output the variant name
+        f.write_str(self.into())
+    }
 }
 
 /// Interface for sending [`SystemCommand`] messages.

@@ -185,10 +185,10 @@ struct ExtensionClass {
     /// a default implementation.
     has_array: bool,
 
-    /// Whether the `ObjectExt` contains __native_to_pa_array__()
+    /// Whether the `ObjectExt` contains `__native_to_pa_array__()`
     has_native_to_pa_array: bool,
 
-    /// Whether the `ObjectExt` contains a deferred_patch_class() method
+    /// Whether the `ObjectExt` contains a `deferred_patch_class()` method
     has_deferred_patch_class: bool,
 }
 
@@ -1509,11 +1509,7 @@ fn quote_union_aliases_from_object<'a>(
     let name = &obj.name;
 
     let union_fields = field_types.join(",");
-    let aliases = if let Some(aliases) = aliases {
-        aliases
-    } else {
-        String::new()
-    };
+    let aliases = aliases.unwrap_or_default();
 
     unindent(&format!(
         r#"
@@ -1999,9 +1995,11 @@ fn quote_arrow_serialization(
                     return Ok(unindent(
                         r##"
                             if isinstance(data, str):
-                                array = [data]
+                                array: Union[list[str], npt.ArrayLike] = [data]
                             elif isinstance(data, Sequence):
                                 array = [str(datum) for datum in data]
+                            elif isinstance(data, np.ndarray):
+                                array = data
                             else:
                                 array = [str(data)]
 

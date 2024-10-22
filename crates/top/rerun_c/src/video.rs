@@ -24,6 +24,17 @@ pub extern "C" fn rr_video_asset_read_frame_timestamps_ns(
     let video_bytes = unsafe { std::slice::from_raw_parts(video_bytes, video_bytes_len as usize) };
     let media_type_str = media_type.as_str("media_type").ok();
 
+    let Some(media_type_str) =
+        media_type_str.or_else(|| infer::Infer::new().get(video_bytes).map(|v| v.mime_type()))
+    else {
+        CError::new(
+            CErrorCode::VideoLoadError,
+            &re_video::VideoLoadError::UnrecognizedMimeType.to_string(),
+        )
+        .write_error(error);
+        return std::ptr::null_mut();
+    };
+
     let video = match re_video::VideoData::load_from_bytes(video_bytes, media_type_str) {
         Ok(video) => video,
         Err(err) => {

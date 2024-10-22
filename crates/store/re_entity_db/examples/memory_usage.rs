@@ -4,7 +4,7 @@
 use std::sync::atomic::{AtomicUsize, Ordering::Relaxed};
 
 thread_local! {
-    static LIVE_BYTES_IN_THREAD: AtomicUsize = AtomicUsize::new(0);
+    static LIVE_BYTES_IN_THREAD: AtomicUsize = const { AtomicUsize::new(0) };
 }
 
 struct TrackingAllocator {

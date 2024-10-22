@@ -7,8 +7,8 @@ from uuid import UUID
 
 import numpy as np
 
-__version__ = "0.19.0-alpha.1+dev"
-__version_info__ = (0, 19, 0, "alpha.1")
+__version__ = "0.20.0-alpha.1+dev"
+__version_info__ = (0, 20, 0, "alpha.1")
 
 # =====================================
 # API RE-EXPORTS
@@ -19,6 +19,7 @@ import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 from . import (
     blueprint as blueprint,
+    dataframe as dataframe,
     experimental as experimental,
     notebook as notebook,
 )

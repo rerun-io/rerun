@@ -11,11 +11,12 @@ Each pixel corresponds to a depth value in units specified by [`components.Depth
 
 **Required**: [`ImageBuffer`](../components/image_buffer.md), [`ImageFormat`](../components/image_format.md)
 
-**Optional**: [`DepthMeter`](../components/depth_meter.md), [`Colormap`](../components/colormap.md), [`FillRatio`](../components/fill_ratio.md), [`DrawOrder`](../components/draw_order.md)
+**Optional**: [`DepthMeter`](../components/depth_meter.md), [`Colormap`](../components/colormap.md), [`ValueRange`](../components/value_range.md), [`FillRatio`](../components/fill_ratio.md), [`DrawOrder`](../components/draw_order.md)
 
 ## Shown in
 * [Spatial2DView](../views/spatial2d_view.md)
 * [Spatial3DView](../views/spatial3d_view.md) (if logged under a projection)
+* [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `DepthImage`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1DepthImage.html)

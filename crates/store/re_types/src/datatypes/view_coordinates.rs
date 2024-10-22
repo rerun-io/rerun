@@ -20,12 +20,14 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: How we interpret the coordinate system of an entity/space.
 ///
-/// For instance: What is "up"? What does the Z axis mean? Is this right-handed or left-handed?
+/// For instance: What is "up"? What does the Z axis mean?
 ///
 /// The three coordinates are always ordered as [x, y, z].
 ///
 /// For example [Right, Down, Forward] means that the X axis points to the right, the Y axis points
 /// down, and the Z axis points forward.
+///
+/// ⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).
 ///
 /// The following constants are used to represent the different directions:
 ///  * Up = 1
@@ -94,6 +96,7 @@ impl ::re_types_core::Loggable for ViewCoordinates {
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
+        #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({

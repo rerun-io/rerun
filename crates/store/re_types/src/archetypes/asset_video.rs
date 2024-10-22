@@ -20,13 +20,12 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A video binary.
 ///
-/// NOTE: Videos can only be viewed in the Rerun web viewer.
-/// Only MP4 containers with a limited number of codecs are currently supported, and not in all browsers.
-/// Follow <https://github.com/rerun-io/rerun/issues/7298> for updates on the native support.
+/// Only MP4 containers with AV1 are generally supported,
+/// though the web viewer supports more video codecs, depending on browser.
 ///
-/// In order to display a video, you need to log a [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference] for each frame.
+/// See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
 ///
-/// ⚠️ **This type is experimental and may be removed in future versions**
+/// In order to display a video, you also need to log a [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference] for each frame.
 ///
 /// ## Examples
 ///

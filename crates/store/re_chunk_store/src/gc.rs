@@ -8,7 +8,7 @@ use nohash_hasher::IntMap;
 use web_time::Instant;
 
 use re_chunk::{Chunk, ChunkId};
-use re_log_types::{EntityPath, TimeInt, Timeline};
+use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_types_core::{ComponentName, SizeBytes};
 
 use crate::{
@@ -51,6 +51,9 @@ pub struct GarbageCollectionOptions {
 
     /// How many component revisions to preserve on each timeline.
     pub protect_latest: usize,
+
+    /// Do not remove any data within these time ranges.
+    pub protected_time_ranges: HashMap<Timeline, ResolvedTimeRange>,
 }
 
 impl GarbageCollectionOptions {
@@ -59,7 +62,20 @@ impl GarbageCollectionOptions {
             target: GarbageCollectionTarget::Everything,
             time_budget: std::time::Duration::MAX,
             protect_latest: 0,
+            protected_time_ranges: Default::default(),
         }
+    }
+
+    /// If true, we cannot remove this chunk.
+    pub fn is_chunk_protected(&self, chunk: &Chunk) -> bool {
+        for (timeline, protected_time_range) in &self.protected_time_ranges {
+            if let Some(time_column) = chunk.timelines().get(timeline) {
+                if time_column.time_range().intersects(*protected_time_range) {
+                    return true;
+                }
+            }
+        }
+        false
     }
 }
 
@@ -269,6 +285,10 @@ impl ChunkStore {
                 .filter(|chunk_id| !protected_chunk_ids.contains(chunk_id))
             {
                 if let Some(chunk) = self.chunks_per_chunk_id.get(chunk_id) {
+                    if options.is_chunk_protected(chunk) {
+                        continue;
+                    }
+
                     // NOTE: Do _NOT_ use `chunk.total_size_bytes` as it is sitting behind an Arc
                     // and would count as amortized (i.e. 0 bytes).
                     num_bytes_to_drop -= <Chunk as SizeBytes>::total_size_bytes(chunk) as f64;
@@ -317,8 +337,10 @@ impl ChunkStore {
 
             let Self {
                 id: _,
+                info: _,
                 config: _,
                 type_registry: _,
+                per_column_metadata: _, // column metadata is additive only
                 chunks_per_chunk_id,
                 chunk_ids_per_min_row_id,
                 temporal_chunk_ids_per_entity_per_component,

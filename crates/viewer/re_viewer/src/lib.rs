@@ -93,7 +93,7 @@ pub enum AppEnvironment {
     /// We are a web-viewer running in a browser as Wasm.
     Web { url: String },
 
-    /// Some custom application wrapping re_viewer
+    /// Some custom application wrapping `re_viewer`.
     Custom(String),
 }
 
