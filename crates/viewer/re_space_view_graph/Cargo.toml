@@ -38,5 +38,3 @@ egui.workspace = true
 #TODO(grtlr): check if all of these are still needed
 bytemuck = "1.18"
 thiserror = "1.0"
-
-rand = "0.8"
