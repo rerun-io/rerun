@@ -1,6 +1,6 @@
 ---
-title: Efficiently log time series data using `send_columns`
-order: 800
+title: Log entire timeseries at once
+order: 0
 description: How to use the Rerun SDK to log big chunks of data in one call
 ---
 

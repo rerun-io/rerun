@@ -1,6 +1,6 @@
 ---
-title: Create a fixed-window plot
-order: 150
+title: Visualize fixed-window plots
+order: 200
 ---
 
 As of Rerun 0.16, the [TimeSeriesView](../reference/types/views/time_series_view.md) now supports direct

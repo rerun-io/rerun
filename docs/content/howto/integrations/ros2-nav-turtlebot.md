@@ -1,6 +1,6 @@
 ---
 title: Use Rerun with ROS 2
-order: 500
+order: 300
 ogImageUrl: /docs-media/og-howto-ros.jpg
 description: Rerun does not yet have native ROS support, but many of the concepts in ROS and Rerun line up fairly well. In this guide, you will learn how to write a simple ROS 2 Python node that subscribes to some common ROS topics and logs them to Rerun.
 ---
