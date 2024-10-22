@@ -11,7 +11,10 @@
 // X.h (of X11) has a macro called `Unsorted`
 // See <https://codebrowser.dev/kde/include/X11/X.h.html#_M/Unsorted>
 // and <https://github.com/rerun-io/rerun/issues/7846>.
-#undef Unsorted
+#ifdef Unsorted
+#error \
+    "Found a macro 'Unsorted' (probably from X11), conflicting with `rerun::SortingStatus::Unsorted`. Add '#undef Unsorted' before '#include <rerun.hpp>' to work around this."
+#endif
 
 struct rr_time_column;
 
