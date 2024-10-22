@@ -27,7 +27,6 @@ panel_state.hpp linguist-generated=true
 query_expression.hpp linguist-generated=true
 root_container.hpp linguist-generated=true
 row_share.hpp linguist-generated=true
-secret.hpp linguist-generated=true
 selected_columns.hpp linguist-generated=true
 space_view_class.hpp linguist-generated=true
 space_view_maximized.hpp linguist-generated=true

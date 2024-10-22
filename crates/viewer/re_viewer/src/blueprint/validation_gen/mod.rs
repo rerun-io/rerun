@@ -16,7 +16,6 @@ pub use re_types::blueprint::components::MapProvider;
 pub use re_types::blueprint::components::PanelState;
 pub use re_types::blueprint::components::QueryExpression;
 pub use re_types::blueprint::components::RowShare;
-pub use re_types::blueprint::components::Secret;
 pub use re_types::blueprint::components::SelectedColumns;
 pub use re_types::blueprint::components::SpaceViewClass;
 pub use re_types::blueprint::components::SpaceViewOrigin;
@@ -62,7 +61,6 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<QueryExpression>(blueprint)
         && validate_component::<RootContainer>(blueprint)
         && validate_component::<RowShare>(blueprint)
-        && validate_component::<Secret>(blueprint)
         && validate_component::<SelectedColumns>(blueprint)
         && validate_component::<SpaceViewClass>(blueprint)
         && validate_component::<SpaceViewMaximized>(blueprint)

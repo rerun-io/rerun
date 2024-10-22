@@ -23,7 +23,6 @@
 #include "blueprint/components/query_expression.hpp"
 #include "blueprint/components/root_container.hpp"
 #include "blueprint/components/row_share.hpp"
-#include "blueprint/components/secret.hpp"
 #include "blueprint/components/selected_columns.hpp"
 #include "blueprint/components/space_view_class.hpp"
 #include "blueprint/components/space_view_maximized.hpp"

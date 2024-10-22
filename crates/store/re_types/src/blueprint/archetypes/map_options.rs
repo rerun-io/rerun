@@ -26,24 +26,18 @@ pub struct MapOptions {
 
     /// Zoom level for the map. The default is 16.
     pub zoom: crate::blueprint::components::ZoomLevel,
-
-    /// Optional access token to access the map tiles.
-    pub access_token: crate::blueprint::components::Secret,
 }
 
 impl ::re_types_core::SizeBytes for MapOptions {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.provider.heap_size_bytes()
-            + self.zoom.heap_size_bytes()
-            + self.access_token.heap_size_bytes()
+        self.provider.heap_size_bytes() + self.zoom.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <crate::blueprint::components::MapProvider>::is_pod()
             && <crate::blueprint::components::ZoomLevel>::is_pod()
-            && <crate::blueprint::components::Secret>::is_pod()
     }
 }
 
@@ -53,27 +47,21 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.MapOptionsIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
-            "rerun.blueprint.components.ZoomLevel".into(),
-            "rerun.blueprint.components.Secret".into(),
-        ]
-    });
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.ZoomLevel".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.MapProvider".into(),
             "rerun.blueprint.components.MapOptionsIndicator".into(),
             "rerun.blueprint.components.ZoomLevel".into(),
-            "rerun.blueprint.components.Secret".into(),
         ]
     });
 
 impl MapOptions {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 2 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`MapOptions`] [`::re_types_core::Archetype`]
@@ -154,24 +142,7 @@ impl ::re_types_core::Archetype for MapOptions {
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.MapOptions#zoom")?
         };
-        let access_token = {
-            let array = arrays_by_name
-                .get("rerun.blueprint.components.Secret")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.MapOptions#access_token")?;
-            <crate::blueprint::components::Secret>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.MapOptions#access_token")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.MapOptions#access_token")?
-        };
-        Ok(Self {
-            provider,
-            zoom,
-            access_token,
-        })
+        Ok(Self { provider, zoom })
     }
 }
 
@@ -183,7 +154,6 @@ impl ::re_types_core::AsComponents for MapOptions {
             Some(Self::indicator()),
             Some((&self.provider as &dyn ComponentBatch).into()),
             Some((&self.zoom as &dyn ComponentBatch).into()),
-            Some((&self.access_token as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -199,12 +169,10 @@ impl MapOptions {
     pub fn new(
         provider: impl Into<crate::blueprint::components::MapProvider>,
         zoom: impl Into<crate::blueprint::components::ZoomLevel>,
-        access_token: impl Into<crate::blueprint::components::Secret>,
     ) -> Self {
         Self {
             provider: provider.into(),
             zoom: zoom.into(),
-            access_token: access_token.into(),
         }
     }
 }

@@ -23,7 +23,6 @@ panel_state.py linguist-generated=true
 query_expression.py linguist-generated=true
 root_container.py linguist-generated=true
 row_share.py linguist-generated=true
-secret.py linguist-generated=true
 selected_columns.py linguist-generated=true
 space_view_class.py linguist-generated=true
 space_view_maximized.py linguist-generated=true

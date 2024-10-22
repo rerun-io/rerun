@@ -15,7 +15,4 @@ table MapOptions (
 
     /// Zoom level for the map. The default is 16.
     zoom: rerun.blueprint.components.ZoomLevel ("attr.rerun.component_optional", order: 2000);
-
-    /// Optional access token to access the map tiles.
-    access_token: rerun.blueprint.components.Secret ("attr.rerun.component_optional", order: 3000);
 }

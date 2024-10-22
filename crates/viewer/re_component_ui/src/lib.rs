@@ -22,14 +22,13 @@ mod visual_bounds2d;
 
 use datatype_uis::{
     display_name_ui, display_text_ui, edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max,
-    edit_f32_zero_to_one, edit_multiline_string, edit_or_view_vec3d, edit_singleline_secret_string,
-    edit_singleline_string, edit_view_enum, edit_view_range1d, view_view_id,
+    edit_f32_zero_to_one, edit_multiline_string, edit_or_view_vec3d, edit_singleline_string,
+    edit_view_enum, edit_view_range1d, view_view_id,
 };
 
 use re_types::{
     blueprint::components::{
-        BackgroundKind, Corner2D, LockRangeDuringZoom, MapProvider, Secret, ViewFit, Visible,
-        ZoomLevel,
+        BackgroundKind, Corner2D, LockRangeDuringZoom, MapProvider, ViewFit, Visible, ZoomLevel,
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
@@ -87,7 +86,6 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_legacy_display_ui(Name::name(), Box::new(display_name_ui)); // TODO(andreas): Why is there a display ui?
     registry.add_singleline_edit_or_view::<Name>(edit_singleline_string);
     registry.add_multiline_edit_or_view::<Name>(edit_multiline_string);
-    registry.add_singleline_edit_or_view::<Secret>(edit_singleline_secret_string);
 
     // Enums:
     // TODO(#6974): Enums editors trivial and always the same, provide them automatically!

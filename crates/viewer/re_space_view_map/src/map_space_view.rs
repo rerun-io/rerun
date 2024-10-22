@@ -2,10 +2,7 @@ use re_space_view::controls::{
     ASPECT_SCROLL_MODIFIER, HORIZONTAL_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON,
     ZOOM_SCROLL_MODIFIER,
 };
-use re_types::blueprint::{
-    archetypes::MapOptions,
-    components::{Secret, ZoomLevel},
-};
+use re_types::blueprint::{archetypes::MapOptions, components::ZoomLevel};
 use re_ui::{ModifiersMarkdown, MouseButtonMarkdown};
 use re_viewer_context::TypedComponentFallbackProvider;
 use re_viewport_blueprint::ViewProperty;
@@ -70,7 +67,6 @@ pub struct MapSpaceViewState {
     tiles: Option<HttpTiles>,
     map_memory: MapMemory,
     selected_provider: MapProvider,
-    access_token: String,
 }
 
 impl MapSpaceViewState {
@@ -80,7 +76,7 @@ impl MapSpaceViewState {
         ctx: &egui::Context,
     ) -> Result<(&mut HttpTiles, &mut MapMemory), SpaceViewSystemExecutionError> {
         if self.tiles.is_none() {
-            let tiles = get_tile_manager(self.selected_provider, &self.access_token, ctx);
+            let tiles = get_tile_manager(self.selected_provider, ctx);
             self.tiles = Some(tiles);
         }
 
@@ -153,7 +149,6 @@ Displays a Position3D on a map.
             tiles: None,
             map_memory: MapMemory::default(),
             selected_provider: MapProvider::default(),
-            access_token: std::env::var("MAPBOX_ACCESS_TOKEN").unwrap_or_default(),
         })
     }
 
@@ -222,22 +217,17 @@ Displays a Position3D on a map.
         let zoom_level = map_options
             .component_or_fallback::<ZoomLevel>(ctx, self, state)?
             .0;
-        let access_token = map_options
-            .component_or_fallback::<Secret>(ctx, self, state)?
-            .0
-            .to_string();
 
         if state.map_memory.set_zoom(*zoom_level).is_err() {
-            re_log::warn_once!(
+            re_log::warn!(
                 "Failed to set zoom level for map. Zoom level should be between zero and 22"
             );
         };
 
         // if state changed let's update it from the blueprint
-        if state.selected_provider != map_provider || access_token != state.access_token {
+        if state.selected_provider != map_provider {
             state.tiles = None;
             state.selected_provider = map_provider;
-            state.access_token = access_token;
         }
 
         let (tiles, map_memory) = match state.ensure_and_get_mut_refs(ui.ctx()) {
@@ -283,7 +273,9 @@ Displays a Position3D on a map.
     }
 }
 
-fn get_tile_manager(provider: MapProvider, access_token: &str, egui_ctx: &Context) -> HttpTiles {
+fn get_tile_manager(provider: MapProvider, egui_ctx: &Context) -> HttpTiles {
+    let mapbox_access_token = std::env::var("RERUN_MAPBOX_ACCESS_TOKEN").unwrap_or_default();
+
     match provider {
         MapProvider::OpenStreetMap => {
             HttpTiles::new(walkers::sources::OpenStreetMap, egui_ctx.clone())
@@ -291,7 +283,7 @@ fn get_tile_manager(provider: MapProvider, access_token: &str, egui_ctx: &Contex
         MapProvider::MapboxStreets => HttpTiles::new(
             walkers::sources::Mapbox {
                 style: walkers::sources::MapboxStyle::Streets,
-                access_token: access_token.to_owned(),
+                access_token: mapbox_access_token.to_owned(),
                 high_resolution: false,
             },
             egui_ctx.clone(),
@@ -299,7 +291,7 @@ fn get_tile_manager(provider: MapProvider, access_token: &str, egui_ctx: &Contex
         MapProvider::MapboxDark => HttpTiles::new(
             walkers::sources::Mapbox {
                 style: walkers::sources::MapboxStyle::Dark,
-                access_token: access_token.to_owned(),
+                access_token: mapbox_access_token.to_owned(),
                 high_resolution: false,
             },
             egui_ctx.clone(),
@@ -307,7 +299,7 @@ fn get_tile_manager(provider: MapProvider, access_token: &str, egui_ctx: &Contex
         MapProvider::MapboxSatellite => HttpTiles::new(
             walkers::sources::Mapbox {
                 style: walkers::sources::MapboxStyle::Satellite,
-                access_token: access_token.to_owned(),
+                access_token: mapbox_access_token.to_owned(),
                 high_resolution: true,
             },
             egui_ctx.clone(),
@@ -322,13 +314,4 @@ impl TypedComponentFallbackProvider<ZoomLevel> for MapSpaceView {
     }
 }
 
-impl TypedComponentFallbackProvider<Secret> for MapSpaceView {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Secret {
-        // default zoom level is 16.
-        std::env::var("MAPBOX_ACCESS_TOKEN")
-            .unwrap_or_default()
-            .into()
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(MapSpaceView => [ZoomLevel, Secret]);
+re_viewer_context::impl_component_fallback_provider!(MapSpaceView => [ZoomLevel]);

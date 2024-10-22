@@ -21,7 +21,6 @@ include "./components/panel_state.fbs";
 include "./components/query_expression.fbs";
 include "./components/root_container.fbs";
 include "./components/row_share.fbs";
-include "./components/secrets.fbs";
 include "./components/selected_columns.fbs";
 include "./components/space_view_class.fbs";
 include "./components/space_view_maximized.fbs";

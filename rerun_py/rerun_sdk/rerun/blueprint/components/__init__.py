@@ -39,7 +39,6 @@ from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, Panel
 from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .row_share import RowShare, RowShareBatch, RowShareType
-from .secret import Secret, SecretBatch, SecretType
 from .selected_columns import SelectedColumns, SelectedColumnsBatch, SelectedColumnsType
 from .space_view_class import SpaceViewClass, SpaceViewClassBatch, SpaceViewClassType
 from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch, SpaceViewMaximizedType
@@ -136,9 +135,6 @@ __all__ = [
     "RowShare",
     "RowShareBatch",
     "RowShareType",
-    "Secret",
-    "SecretBatch",
-    "SecretType",
     "SelectedColumns",
     "SelectedColumnsBatch",
     "SelectedColumnsType",

@@ -27,19 +27,6 @@ pub fn edit_singleline_string(
     edit_singleline_string_impl(ui, &mut value, false)
 }
 
-/// Generic singleline secret editor.
-pub fn edit_singleline_secret_string(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = Utf8>>,
-) -> egui::Response {
-    let mut value: MaybeMutRef<'_, Utf8> = match value {
-        MaybeMutRef::Ref(value) => MaybeMutRef::Ref(value),
-        MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(value),
-    };
-    edit_singleline_string_impl(ui, &mut value, true)
-}
-
 /// Non monomorphized implementation of [`edit_singleline_string`].
 fn edit_singleline_string_impl(
     ui: &mut egui::Ui,

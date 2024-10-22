@@ -12,7 +12,6 @@ Configures the look and feel of the map.
 
 * `provider`: Map provider and style to use.
 * `zoom`: Zoom level for the map. The default is 16.
-* `access_token`: Optional access token to access the map tiles.
 
 ## API reference links
  * 🐍 [Python API docs for `MapView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.MapView)

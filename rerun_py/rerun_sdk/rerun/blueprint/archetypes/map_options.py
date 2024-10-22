@@ -23,12 +23,7 @@ __all__ = ["MapOptions"]
 class MapOptions(Archetype):
     """**Archetype**: Configuration for the background of a view."""
 
-    def __init__(
-        self: Any,
-        provider: blueprint_components.MapProviderLike,
-        zoom: datatypes.Float32Like,
-        access_token: datatypes.Utf8Like,
-    ):
+    def __init__(self: Any, provider: blueprint_components.MapProviderLike, zoom: datatypes.Float32Like):
         """
         Create a new instance of the MapOptions archetype.
 
@@ -38,14 +33,12 @@ class MapOptions(Archetype):
             Map provider and style to use.
         zoom:
             Zoom level for the map. The default is 16.
-        access_token:
-            Optional access token to access the map tiles.
 
         """
 
         # You can define your own __init__ function as a member of MapOptionsExt in map_options_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(provider=provider, zoom=zoom, access_token=access_token)
+            self.__attrs_init__(provider=provider, zoom=zoom)
             return
         self.__attrs_clear__()
 
@@ -54,7 +47,6 @@ class MapOptions(Archetype):
         self.__attrs_init__(
             provider=None,  # type: ignore[arg-type]
             zoom=None,  # type: ignore[arg-type]
-            access_token=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -77,14 +69,6 @@ class MapOptions(Archetype):
         converter=blueprint_components.ZoomLevelBatch._required,  # type: ignore[misc]
     )
     # Zoom level for the map. The default is 16.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    access_token: blueprint_components.SecretBatch = field(
-        metadata={"component": "required"},
-        converter=blueprint_components.SecretBatch._required,  # type: ignore[misc]
-    )
-    # Optional access token to access the map tiles.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

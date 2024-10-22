@@ -182,13 +182,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Secret as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "String type to hold a secret value.",
-                placeholder: Some(Secret::default().to_arrow()?),
-            },
-        ),
-        (
             <SelectedColumns as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Describe a component column to be selected in the dataframe view.",
@@ -1617,11 +1610,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ZoomLevel".into(), display_name : "Zoom",
                     docstring_md : "Zoom level for the map. The default is 16.",
-                    is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.Secret".into(), display_name :
-                    "Access token", docstring_md :
-                    "Optional access token to access the map tiles.", is_required :
-                    false, },
+                    is_required : false, },
                 ],
             },
         ),

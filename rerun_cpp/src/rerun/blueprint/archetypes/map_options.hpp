@@ -4,7 +4,6 @@
 #pragma once
 
 #include "../../blueprint/components/map_provider.hpp"
-#include "../../blueprint/components/secret.hpp"
 #include "../../blueprint/components/zoom_level.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
@@ -24,9 +23,6 @@ namespace rerun::blueprint::archetypes {
         /// Zoom level for the map. The default is 16.
         rerun::blueprint::components::ZoomLevel zoom;
 
-        /// Optional access token to access the map tiles.
-        rerun::blueprint::components::Secret access_token;
-
       public:
         static constexpr const char IndicatorComponentName[] =
             "rerun.blueprint.components.MapOptionsIndicator";
@@ -40,12 +36,9 @@ namespace rerun::blueprint::archetypes {
 
         explicit MapOptions(
             rerun::blueprint::components::MapProvider _provider,
-            rerun::blueprint::components::ZoomLevel _zoom,
-            rerun::blueprint::components::Secret _access_token
+            rerun::blueprint::components::ZoomLevel _zoom
         )
-            : provider(std::move(_provider)),
-              zoom(std::move(_zoom)),
-              access_token(std::move(_access_token)) {}
+            : provider(std::move(_provider)), zoom(std::move(_zoom)) {}
     };
 
 } // namespace rerun::blueprint::archetypes
