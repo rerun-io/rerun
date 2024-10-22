@@ -4,7 +4,7 @@ use slotmap::{SecondaryMap, SlotMap};
 
 use crate::{
     mesh::{CpuMesh, GpuMesh, MeshError},
-    renderer::MeshInstance,
+    renderer::GpuMeshInstance,
     RenderContext,
 };
 
@@ -13,17 +13,20 @@ slotmap::new_key_type! {
     pub struct CpuModelMeshKey;
 }
 
-/// Like [`MeshInstance`], but for CPU sided usage in a [`CpuModel`] only.
+/// Like [`GpuMeshInstance`], but for CPU sided usage in a [`CpuModel`] only.
 pub struct CpuMeshInstance {
     pub mesh: CpuModelMeshKey,
     pub world_from_mesh: glam::Affine3A,
-    // TODO(andreas): Expose other properties we have on [`MeshInstance`].
+    // TODO(andreas): Expose other properties we have on [`GpuMeshInstance`].
 }
 
-/// A model as stored on the CPU.
+/// A collection of meshes & mesh instances on the CPU.
+///
+/// Note that there is currently no `GpuModel` equivalent, since
+/// [`GpuMeshInstance`]es use shared ownership of [`GpuMesh`]es.
 ///
 /// This is the output of a model loader and is ready to be converted into
-/// a series of [`MeshInstance`]s that can be rendered.
+/// a series of [`GpuMeshInstance`]s that can be rendered.
 ///
 /// This is meant as a useful intermediate structure for doing post-processing steps on the model prior to gpu upload.
 #[derive(Default)]
@@ -69,7 +72,7 @@ impl CpuModel {
     /// Silently ignores:
     /// * instances with invalid mesh keys
     /// * unreferenced meshes
-    pub fn into_gpu_meshes(self, ctx: &RenderContext) -> Result<Vec<MeshInstance>, MeshError> {
+    pub fn into_gpu_meshes(self, ctx: &RenderContext) -> Result<Vec<GpuMeshInstance>, MeshError> {
         let mut gpu_meshes = SecondaryMap::with_capacity(self.meshes.len());
         for (mesh_key, mesh) in &self.meshes {
             gpu_meshes.insert(mesh_key, Arc::new(GpuMesh::new(ctx, mesh)?));
@@ -79,7 +82,7 @@ impl CpuModel {
             .instances
             .into_iter()
             .filter_map(|instance| {
-                Some(MeshInstance {
+                Some(GpuMeshInstance {
                     gpu_mesh: gpu_meshes.get(instance.mesh)?.clone(),
                     world_from_mesh: instance.world_from_mesh,
                     additive_tint: Default::default(),

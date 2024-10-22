@@ -6,7 +6,7 @@
 use itertools::Itertools as _;
 use rand::Rng;
 use re_renderer::{
-    renderer::MeshInstance,
+    renderer::GpuMeshInstance,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
     Color32, GpuReadbackIdentifier, PickingLayerId, PickingLayerInstanceId, PickingLayerProcessor,
     PointCloudBuilder, RectInt, Size,
@@ -24,7 +24,7 @@ struct PointSet {
 struct Picking {
     point_sets: Vec<PointSet>,
     picking_position: glam::UVec2,
-    model_mesh_instances: Vec<MeshInstance>,
+    model_mesh_instances: Vec<GpuMeshInstance>,
     mesh_is_hovered: bool,
 }
 
@@ -176,7 +176,7 @@ impl framework::Example for Picking {
         let instances = self
             .model_mesh_instances
             .iter()
-            .map(|instance| MeshInstance {
+            .map(|instance| GpuMeshInstance {
                 gpu_mesh: instance.gpu_mesh.clone(),
                 world_from_mesh: glam::Affine3A::from_translation(glam::vec3(0.0, 0.0, 0.0)),
                 picking_layer_id: MESH_ID,

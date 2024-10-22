@@ -1,6 +1,6 @@
 use re_chunk_store::RowId;
 use re_log_types::{hash::Hash64, Instance, TimeInt};
-use re_renderer::renderer::MeshInstance;
+use re_renderer::renderer::GpuMeshInstance;
 use re_renderer::RenderContext;
 use re_types::{
     archetypes::Asset3D,
@@ -46,7 +46,7 @@ impl Asset3DVisualizer {
         &mut self,
         ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
-        instances: &mut Vec<MeshInstance>,
+        instances: &mut Vec<GpuMeshInstance>,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = Asset3DComponentData>,
     ) {
@@ -88,7 +88,7 @@ impl Asset3DVisualizer {
                         let pose_from_mesh = mesh_instance.world_from_mesh;
                         let world_from_mesh = world_from_pose * pose_from_mesh;
 
-                        MeshInstance {
+                        GpuMeshInstance {
                             gpu_mesh: mesh_instance.gpu_mesh.clone(),
                             world_from_mesh,
                             outline_mask_ids,

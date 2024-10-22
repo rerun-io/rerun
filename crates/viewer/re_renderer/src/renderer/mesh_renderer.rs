@@ -110,7 +110,7 @@ impl DrawData for MeshDrawData {
     type Renderer = MeshRenderer;
 }
 
-pub struct MeshInstance {
+pub struct GpuMeshInstance {
     /// Gpu mesh used by this instance
     pub gpu_mesh: Arc<GpuMesh>,
 
@@ -128,7 +128,7 @@ pub struct MeshInstance {
     pub picking_layer_id: PickingLayerId,
 }
 
-impl MeshInstance {
+impl GpuMeshInstance {
     /// Creates a new instance of a mesh with all fields set to default except for required ones.
     pub fn new(gpu_mesh: Arc<GpuMesh>) -> Self {
         Self {
@@ -149,7 +149,7 @@ impl MeshDrawData {
     /// Mesh data itself is gpu uploaded if not already present.
     pub fn new(
         ctx: &RenderContext,
-        instances: &[MeshInstance],
+        instances: &[GpuMeshInstance],
     ) -> Result<Self, CpuWriteGpuReadError> {
         re_tracing::profile_function!();
 
