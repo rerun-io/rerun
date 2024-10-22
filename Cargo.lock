@@ -6181,6 +6181,7 @@ name = "re_video"
 version = "0.20.0-alpha.1+dev"
 dependencies = [
  "cfg_aliases 0.2.1",
+ "criterion",
  "crossbeam",
  "econtext",
  "indicatif",
