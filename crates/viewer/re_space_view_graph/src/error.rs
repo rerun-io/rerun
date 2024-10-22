@@ -1,5 +1,5 @@
 use re_log_types::EntityPath;
-use re_types::{datatypes, };
+use re_types::datatypes;
 use re_viewer_context::SpaceViewSystemExecutionError;
 
 #[derive(thiserror::Error, Debug)]
