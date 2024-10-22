@@ -1,29 +1,24 @@
+use egui::{self, Context};
+use walkers::{HttpTiles, Map, MapMemory, Tiles};
+
+use re_log_types::EntityPath;
 use re_space_view::controls::{
     ASPECT_SCROLL_MODIFIER, HORIZONTAL_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON,
     ZOOM_SCROLL_MODIFIER,
 };
-use re_types::blueprint::{archetypes::MapOptions, components::ZoomLevel};
-use re_ui::{ModifiersMarkdown, MouseButtonMarkdown};
-use re_viewer_context::TypedComponentFallbackProvider;
-use re_viewport_blueprint::ViewProperty;
-
-use {
-    egui::{self, Color32, Context},
-    re_log_types::EntityPath,
-    re_space_view::suggest_space_view_for_each_entity,
-    re_types::blueprint::components::MapProvider,
-    re_types::{
-        components::{Color, Radius},
-        SpaceViewClassIdentifier, View,
-    },
-    re_viewer_context::{
-        SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
-        SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-        SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput,
-        ViewQuery, ViewerContext,
-    },
-    walkers::{HttpTiles, Map, MapMemory, Plugin, Tiles},
+use re_space_view::suggest_space_view_for_each_entity;
+use re_types::{
+    blueprint::{archetypes::MapOptions, components::MapProvider, components::ZoomLevel},
+    SpaceViewClassIdentifier, View,
 };
+use re_ui::{ModifiersMarkdown, MouseButtonMarkdown};
+use re_viewer_context::{
+    SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput,
+    TypedComponentFallbackProvider, ViewQuery, ViewerContext,
+};
+use re_viewport_blueprint::ViewProperty;
 
 use crate::map_windows;
 use crate::visualizers::geo_points::{GeoPointEntry, GeoPointsVisualizer};
@@ -211,6 +206,7 @@ Displays a Position3D on a map.
                     geo_points_visualizer
                         .map_entries
                         .first()
+                        //TODO: not the best way to specify a default position
                         .unwrap_or(&GeoPointEntry::default())
                         .position,
                 )
