@@ -25,42 +25,8 @@ use {
     walkers::{HttpTiles, Map, MapMemory, Plugin, Tiles},
 };
 
-use crate::map_visualizer_system::{MapEntry, MapVisualizerSystem};
 use crate::map_windows;
-
-// walkers plugin to visualize points on a Map
-pub struct PositionsOnMap {
-    positions: Vec<MapEntry>,
-}
-
-impl Plugin for PositionsOnMap {
-    fn run(
-        &mut self,
-        _response: &egui::Response,
-        painter: egui::Painter,
-        projector: &walkers::Projector,
-    ) {
-        for entry in &self.positions {
-            // Position of the point we want to put our shapes.
-            let position = entry.position;
-
-            // Project it into the position on the screen.
-            let position = projector.project(position).to_pos2();
-
-            // Radius of the circle
-            let radius = f32::from(
-                *entry
-                    .radii
-                    .unwrap_or(Radius(re_types::datatypes::Float32(10.))),
-            );
-
-            // Color of the circle
-            let color = entry.color.unwrap_or(Color::new(Color32::RED));
-
-            painter.circle_filled(position, radius, color);
-        }
-    }
-}
+use crate::visualizers::geo_points::{GeoPointEntry, GeoPointsVisualizer};
 
 #[derive(Default)]
 pub struct MapSpaceViewState {
@@ -141,7 +107,7 @@ Displays a Position3D on a map.
         &self,
         system_registry: &mut SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        system_registry.register_visualizer::<MapVisualizerSystem>()
+        system_registry.register_visualizer::<GeoPointsVisualizer>()
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
@@ -162,7 +128,7 @@ Displays a Position3D on a map.
     }
 
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
-        suggest_space_view_for_each_entity::<MapVisualizerSystem>(ctx, self)
+        suggest_space_view_for_each_entity::<GeoPointsVisualizer>(ctx, self)
     }
 
     fn selection_ui(
@@ -207,7 +173,6 @@ Displays a Position3D on a map.
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<MapSpaceViewState>()?;
-        let map_viz_system = system_output.view_systems.get::<MapVisualizerSystem>()?;
 
         let blueprint_db = ctx.blueprint_db();
         let view_id = query.space_view_id;
@@ -235,21 +200,21 @@ Displays a Position3D on a map.
             Err(err) => return Err(err),
         };
 
+        let geo_points_visualizer = system_output.view_systems.get::<GeoPointsVisualizer>()?;
+
         egui::Frame::default().show(ui, |ui| {
             let some_tiles_manager: Option<&mut dyn Tiles> = Some(tiles);
             let map_widget = ui.add(
                 Map::new(
                     some_tiles_manager,
                     map_memory,
-                    map_viz_system
+                    geo_points_visualizer
                         .map_entries
                         .first()
-                        .unwrap_or(&MapEntry::default())
+                        .unwrap_or(&GeoPointEntry::default())
                         .position,
                 )
-                .with_plugin(PositionsOnMap {
-                    positions: map_viz_system.map_entries.clone(),
-                }),
+                .with_plugin(geo_points_visualizer.plugin()),
             );
 
             map_widget.double_clicked().then(|| {
