@@ -58,7 +58,7 @@ class VideoFrameReferenceExt:
             elif seconds is not None or nanoseconds is not None:
                 raise ValueError("Cannot specify both `timestamp` and `seconds`/`nanoseconds`.")
             elif isinstance(timestamp, float):
-                _send_warning_or_raise("Cannot timestamp can't be specified as a float, use `seconds` instead.")
+                _send_warning_or_raise("Timestamp can't be specified as a float, use `seconds` instead.")
 
             self.__attrs_init__(
                 timestamp=timestamp,
