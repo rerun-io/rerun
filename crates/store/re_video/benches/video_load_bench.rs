@@ -6,11 +6,8 @@ use criterion::{criterion_group, criterion_main, Criterion};
 
 fn video_load(c: &mut Criterion) {
     let video_path = Path::new(env!("CARGO_MANIFEST_DIR"))
-        .parent()
-        .unwrap()
-        .parent()
-        .unwrap()
-        .parent()
+        .ancestors()
+        .nth(3)
         .unwrap()
         .join("tests/assets/video/Big_Buck_Bunny_1080_10s_av1.mp4");
     let video = std::fs::read(video_path).unwrap();
