@@ -566,4 +566,5 @@ re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2", rev = "e4717d6debc6
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }
 
-re_mp4 = { git = "https://github.com/rerun-io/re_mp4", branch = "jan/zerocopy" }
+# Commit on `main` branch of `re_mp4`
+re_mp4 = { git = "https://github.com/rerun-io/re_mp4", rev = "7d38361ee5b05f5a2b83a8029057c8a24d2e9023" }
