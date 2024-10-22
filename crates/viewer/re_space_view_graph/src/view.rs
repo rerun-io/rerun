@@ -1,15 +1,11 @@
 use std::collections::HashSet;
 
 use egui::{self, Rect};
-use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_types::SpaceViewClassIdentifier;
 use re_ui::{self, UiExt};
 use re_viewer_context::{
-    IdentifiedViewSystem as _, Item, SpaceViewClass, SpaceViewClassLayoutPriority,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
-    SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
-    SystemExecutionOutput, ViewQuery, ViewerContext,
+    external::re_entity_db::InstancePath, IdentifiedViewSystem as _, Item, SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext
 };
 
 use crate::{

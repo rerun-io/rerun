@@ -1,10 +1,9 @@
 use egui::Color32;
 use re_chunk::{ChunkComponentIterItem, LatestAtQuery};
-use re_entity_db::external::re_query::clamped_zip_2x2;
-use re_entity_db::external::re_query::range_zip_1x3;
 use re_log_types::EntityPath;
 use re_log_types::Instance;
-use re_renderer;
+use re_query::clamped_zip_2x2;
+use re_query::range_zip_1x3;
 use re_space_view::{DataResultQuery, RangeResultsExt};
 use re_types::{
     self, archetypes,
