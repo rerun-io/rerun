@@ -24,8 +24,8 @@ fn main() {
 
     println!("Decoding {video_path}");
 
-    let video = std::fs::read(video_path).expect("failed to read video");
-    let video = re_video::VideoData::load_mp4(&video).expect("failed to load video");
+    let video_data = std::fs::read(video_path).expect("failed to read video");
+    let video = re_video::VideoData::load_mp4(&video_data).expect("failed to load video");
 
     println!(
         "{} {}x{}",
@@ -37,11 +37,12 @@ fn main() {
     let mut decoder = re_video::decode::new_decoder(video_path.to_string(), &video)
         .expect("Failed to create decoder");
 
-    write_video_frames(&video, decoder.as_mut(), &output_dir);
+    write_video_frames(&video, &video_data, decoder.as_mut(), &output_dir);
 }
 
 fn write_video_frames(
     video: &re_video::VideoData,
+    video_data: &[u8],
     decoder: &mut dyn re_video::decode::SyncDecoder,
     output_dir: &PathBuf,
 ) {
@@ -61,7 +62,7 @@ fn write_video_frames(
     let start = Instant::now();
     for sample in &video.samples {
         let should_stop = std::sync::atomic::AtomicBool::new(false);
-        let chunk = video.get(sample).unwrap();
+        let chunk = sample.get(video_data).unwrap();
         decoder.submit_chunk(&should_stop, chunk, &on_output);
     }
 
