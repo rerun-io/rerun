@@ -167,75 +167,53 @@ mod test {
                 Some(&Node::Leaf(LeafNode { data: [0., 0.], .. })),
                 None,
                 None,
-                Some(&Node::Leaf(LeafNode { data: [0.4, 0.4], .. })),
+                Some(&Node::Leaf(LeafNode {
+                    data: [0.4, 0.4],
+                    ..
+                })),
             ])
         ));
-
     }
 
     #[test]
     fn handles_points_being_on_the_perimeter_of_the_quadtree_bounds() {
         let mut q = Quadtree::with_extent([0., 0.], [1., 1.]);
         q.add([0., 0.]);
-        assert!(matches!(q.root(), Some(&Node::Leaf(LeafNode { data: [0., 0.], .. }))));
+        assert!(matches!(
+            q.root(),
+            Some(&Node::Leaf(LeafNode { data: [0., 0.], .. }))
+        ));
 
-        q.add([1.,1.]);
+        q.add([1., 1.]);
         assert!(matches!(
             q.root().unwrap().children().unwrap(),
             [
-                Some(&Node::Leaf(LeafNode {
-                    data: [0., 0.],
-                    ..
-                })),
+                Some(&Node::Leaf(LeafNode { data: [0., 0.], .. })),
                 None,
                 None,
-                Some(&Node::Leaf(LeafNode {
-                    data: [1., 1.],
-                    ..
-                })),
+                Some(&Node::Leaf(LeafNode { data: [1., 1.], .. })),
             ]
         ));
 
-        q.add([1.,0.]);
+        q.add([1., 0.]);
         assert!(matches!(
             q.root().unwrap().children().unwrap(),
             [
-                Some(&Node::Leaf(LeafNode {
-                    data: [0., 0.],
-                    ..
-                })),
-                Some(&Node::Leaf(LeafNode {
-                    data: [1., 0.],
-                    ..
-                })),
+                Some(&Node::Leaf(LeafNode { data: [0., 0.], .. })),
+                Some(&Node::Leaf(LeafNode { data: [1., 0.], .. })),
                 None,
-                Some(&Node::Leaf(LeafNode {
-                    data: [1., 1.],
-                    ..
-                })),
+                Some(&Node::Leaf(LeafNode { data: [1., 1.], .. })),
             ]
         ));
 
-        q.add([0.,1.]);
+        q.add([0., 1.]);
         assert!(matches!(
             q.root().unwrap().children().unwrap(),
             [
-                Some(&Node::Leaf(LeafNode {
-                    data: [0., 0.],
-                    ..
-                })),
-                Some(&Node::Leaf(LeafNode {
-                    data: [1., 0.],
-                    ..
-                })),
-                Some(&Node::Leaf(LeafNode {
-                    data: [0., 1.],
-                    ..
-                })),
-                Some(&Node::Leaf(LeafNode {
-                    data: [1., 1.],
-                    ..
-                })),
+                Some(&Node::Leaf(LeafNode { data: [0., 0.], .. })),
+                Some(&Node::Leaf(LeafNode { data: [1., 0.], .. })),
+                Some(&Node::Leaf(LeafNode { data: [0., 1.], .. })),
+                Some(&Node::Leaf(LeafNode { data: [1., 1.], .. })),
             ]
         ));
     }

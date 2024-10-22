@@ -6,8 +6,8 @@ mod link;
 mod many_body;
 mod node;
 mod position;
-mod simulation;
 mod quadtree;
+mod simulation;
 
 pub use simulation::{Simulation, SimulationBuilder};
 
