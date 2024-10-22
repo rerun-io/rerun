@@ -1,13 +1,83 @@
+mod add;
+mod cover;
+mod indexer;
 mod position;
+
 pub use position::Position;
 
-#[derive(Debug)]
-pub enum Node<T: Position> {
-    Leaf { data: T },
-    Internal { children: [Option<Box<Node<T>>>; 4] },
+#[derive(Clone, Debug, PartialEq, Eq)]
+struct LeafNode<T: Position> {
+    data: T,
+    next: Option<Box<LeafNode<T>>>,
 }
 
-#[derive(Debug)]
+impl<'a, T: Position> LeafNode<T> {
+    fn new(data: T) -> Self {
+        Self { data, next: None }
+    }
+
+    fn insert(&mut self, data: T) {
+        let mut node = self;
+        loop {
+            match node.next {
+                Some(ref mut next) => {
+                    node = next;
+                }
+                None => {
+                    node.next = Some(Box::new(LeafNode::new(data)));
+                    return;
+                }
+            }
+        }
+    }
+
+    fn iter(&self) -> impl Iterator<Item = &T> {
+        LeafListIterator { next: Some(self) }
+    }
+}
+
+struct LeafListIterator<'a, T: Position> {
+    next: Option<&'a LeafNode<T>>,
+}
+
+impl<'a, T: Position> Iterator for LeafListIterator<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let next = self.next;
+        self.next = next.and_then(|node| node.next.as_deref());
+        next.map(|node| &node.data)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Node<T: Position> {
+    Leaf(LeafNode<T>),
+    Internal([Option<Box<Node<T>>>; 4]),
+}
+
+impl<T: Position> Node<T> {
+    fn leaf(&self) -> Option<&LeafNode<T>> {
+        match self {
+            Node::Leaf(leaf) => Some(leaf),
+            _ => None,
+        }
+    }
+
+    fn children(&self) -> Option<[Option<&Node<T>>; 4]> {
+        match self {
+            Node::Leaf(_) => None,
+            Node::Internal(children) => Some([
+                children[0].as_deref(),
+                children[1].as_deref(),
+                children[2].as_deref(),
+                children[3].as_deref(),
+            ]),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct Quadtree<T: Position> {
     x0: f32,
     y0: f32,
@@ -28,8 +98,18 @@ impl<T: Position> Default for Quadtree<T> {
     }
 }
 
-impl<T: Position> Quadtree<T> {
-    pub fn with_nodes(nodes: &[T]) -> Self {
+impl<P: Position> Quadtree<P> {
+    pub fn with_extent(min: [f32; 2], max: [f32; 2]) -> Self {
+        Self {
+            x0: min[0],
+            y0: min[1],
+            x1: max[0],
+            y1: max[1],
+            root: None,
+        }
+    }
+
+    pub fn from_nodes(nodes: &[P]) -> Self {
         let tree = Self {
             x0: f32::NAN,
             y0: f32::NAN,
@@ -47,99 +127,11 @@ impl<T: Position> Quadtree<T> {
         tree
     }
 
-    pub fn cover(&mut self, value: &impl Position) {
-        let x = value.x();
-        let y = value.y();
-
-        debug_assert!(!f32::is_nan(x));
-        debug_assert!(!f32::is_nan(y));
-
-        if f32::is_nan(self.x0) {
-            self.x0 = x.floor();
-            self.x1 = self.x0 + 1.0;
-            self.y0 = y.floor();
-            self.y1 = self.y0 + 1.0;
-        } else {
-            // Otherwise, double repeatedly to cover.
-            let mut z = if (self.x1 - self.x0).is_sign_positive() {
-                1.0
-            } else {
-                0.0
-            };
-
-            while self.x0 > x || x >= self.x1 || self.y0 > y || y >= self.y1 {
-                let i = ((y < self.y0) as usize) << 1 | ((x < self.x0) as usize);
-                let mut children = [None, None, None, None];
-                children[i] = self.root.take();
-                self.root = Some(Box::new(Node::Internal { children }));
-                z *= 2.0;
-                match i {
-                    0 => {
-                        self.x1 = self.x0 + z;
-                        self.y1 = self.y0 + z;
-                    }
-                    1 => {
-                        self.x0 = self.x1 - z;
-                        self.y1 = self.y0 + z;
-                    }
-                    2 => {
-                        self.x1 = self.x0 + z;
-                        self.y0 = self.y1 - z;
-                    }
-                    3 => {
-                        self.x0 = self.x1 - z;
-                        self.y0 = self.y1 - z;
-                    }
-                    _ => unreachable!(),
-                }
-            }
-        }
+    pub fn extent(&self) -> ([f32; 2], [f32; 2]) {
+        ([self.x0, self.y0], [self.x1, self.y1])
     }
 
-    pub fn add(mut self, value: T) -> Self {
-        self.cover(&value);
-
-        if self.root.is_none() {
-            self.root = Some(Box::new(Node::Leaf { data: value }));
-            return self;
-        }
-
-        todo!();
-
-        self
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-
-    #[test]
-    fn cover() {
-        let mut tree = Quadtree::<[f32; 2]>::default();
-        assert!(tree.x0.is_nan());
-
-        tree.cover(&[0.5, 0.5]);
-        assert_eq!(tree.x0, 0.0);
-        assert_eq!(tree.y0, 0.0);
-        assert_eq!(tree.x1, 1.0);
-        assert_eq!(tree.y1, 1.0);
-
-        tree.cover(&[1.5, 1.5]);
-        assert_eq!(tree.x0, 0.0);
-        assert_eq!(tree.y0, 0.0);
-        assert_eq!(tree.x1, 2.0);
-        assert_eq!(tree.y1, 2.0);
-    }
-
-    #[test]
-    fn add() {
-        let tree = Quadtree::<[f32; 2]>::default().add([0.5, 0.5]);
-        assert_eq!(tree.x0, 0.0);
-        assert_eq!(tree.y0, 0.0);
-        assert_eq!(tree.x1, 1.0);
-        assert_eq!(tree.y1, 1.0);
-
-        // TODO: test adding more nodes when we have a getter.
+    pub fn root(&self) -> Option<&Node<P>> {
+        self.root.as_ref().map(|node| &**node)
     }
 }
