@@ -1,4 +1,4 @@
-#![allow(unwrap_used)] // acceptable in benchmarks
+#![allow(clippy::unwrap_used)] // acceptable in benchmarks
 
 use std::path::Path;
 
