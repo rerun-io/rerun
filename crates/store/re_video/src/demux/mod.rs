@@ -289,7 +289,7 @@ pub struct Sample {
     /// Duration of the sample, in time units.
     pub duration: Time,
 
-    /// Offset into [`VideoData::data`]
+    /// Offset into the video data.
     pub byte_offset: u32,
 
     /// Length of sample starting at [`Sample::byte_offset`].
@@ -297,6 +297,13 @@ pub struct Sample {
 }
 
 impl Sample {
+    /// Read the sample from the video data.
+    ///
+    /// Note that `data` _must_ be a reference to the original MP4 file
+    /// from which the [`VideoData`] was loaded.
+    ///
+    /// Returns `None` if the sample is out of bounds, which can only happen
+    /// if `data` is not the original video data.
     pub fn get(&self, data: &[u8]) -> Option<Chunk> {
         let data = data
             .get(self.byte_offset as usize..(self.byte_offset + self.byte_length) as usize)?
