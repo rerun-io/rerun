@@ -31,6 +31,7 @@ If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `h
 rustup set default-host aarch64-apple-darwin && rustup install 1.79.0
 ```
 
+
 ## Building and running the Viewer
 
 Use this command for building and running the viewer:
@@ -38,8 +39,6 @@ Use this command for building and running the viewer:
 ```sh
 pixi run rerun
 ```
-
-This custom cargo command is enabled by an alias located in `.cargo/config.toml`.
 
 
 ## Running the Rust examples
