@@ -2,10 +2,7 @@ use itertools::Itertools;
 use smallvec::smallvec;
 use tinystl::StlData;
 
-use crate::{
-    mesh::{self},
-    CpuModel, RenderContext,
-};
+use crate::{mesh, CpuModel, RenderContext};
 
 #[derive(thiserror::Error, Debug)]
 pub enum StlImportError {

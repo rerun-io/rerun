@@ -34,7 +34,8 @@ impl framework::Example for Outlines {
         Self {
             is_paused: false,
             seconds_since_startup: 0.0,
-            model_mesh_instances: crate::framework::load_rerun_mesh(re_ctx),
+            model_mesh_instances: crate::framework::load_rerun_mesh(re_ctx)
+                .expect("Failed to load rerun mesh"),
         }
     }
 

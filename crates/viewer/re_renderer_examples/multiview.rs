@@ -13,7 +13,7 @@ use re_math::IsoTransform;
 
 use re_renderer::{
     renderer::{
-        GenericSkyboxDrawData, LineDrawData, LineStripFlags, MeshDrawData, GpuMeshInstance,
+        GenericSkyboxDrawData, GpuMeshInstance, LineDrawData, LineStripFlags, MeshDrawData,
         TestTriangleDrawData,
     },
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
@@ -276,7 +276,8 @@ impl Example for Multiview {
             .map(|_| random_color(&mut rnd))
             .collect_vec();
 
-        let model_mesh_instances = crate::framework::load_rerun_mesh(re_ctx);
+        let model_mesh_instances =
+            crate::framework::load_rerun_mesh(re_ctx).expect("Failed to load rerun mesh");
 
         let mesh_instance_positions_and_colors = lorenz_points(10.0)
             .iter()

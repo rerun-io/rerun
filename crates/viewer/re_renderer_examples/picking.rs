@@ -86,7 +86,8 @@ impl framework::Example for Picking {
             })
             .collect_vec();
 
-        let model_mesh_instances = crate::framework::load_rerun_mesh(re_ctx);
+        let model_mesh_instances =
+            crate::framework::load_rerun_mesh(re_ctx).expect("Failed to load rerun mesh");
 
         Self {
             point_sets,
