@@ -5555,8 +5555,7 @@ dependencies = [
 [[package]]
 name = "re_mp4"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d1e30657b1ae7f0dd3428a59dc8140732b74a22cc07763606c9ec4054138731"
+source = "git+https://github.com/rerun-io/re_mp4?branch=jan/zerocopy#6e322d15c07432dda8279f70b4145fa0f9b3057b"
 dependencies = [
  "byteorder",
  "bytes",

@@ -112,6 +112,7 @@ pub fn blob_preview_and_save_ui(
     }
     // Try to treat it as a video if treating it as image didn't work:
     else if let Some(blob_row_id) = blob_row_id {
+        let video_data = blob.as_slice();
         let video_result = ctx.cache.entry(|c: &mut re_viewer_context::VideoCache| {
             let debug_name = entity_path.to_string();
             c.entry(
@@ -129,6 +130,7 @@ pub fn blob_preview_and_save_ui(
             ui_layout,
             &video_result,
             video_timestamp,
+            video_data,
         );
     }
 
@@ -175,6 +177,7 @@ fn show_video_blob_info(
     ui_layout: UiLayout,
     video_result: &Result<re_renderer::video::Video, VideoLoadError>,
     video_timestamp: Option<VideoTimestamp>,
+    video_data: &[u8],
 ) {
     #[allow(clippy::match_same_arms)]
     match video_result {
@@ -262,7 +265,12 @@ fn show_video_blob_info(
                         ui.id().with("video_player").value(),
                     );
 
-                    match video.frame_at(render_ctx, decode_stream_id, timestamp_in_seconds) {
+                    match video.frame_at(
+                        render_ctx,
+                        decode_stream_id,
+                        timestamp_in_seconds,
+                        video_data,
+                    ) {
                         Ok(VideoFrameTexture {
                             texture,
                             time_range,

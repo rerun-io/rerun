@@ -565,3 +565,5 @@ missing_errors_doc = "allow"
 re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2", rev = "e4717d6debc6d4474ec10db8f629f823f57bad07" }
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }
+
+re_mp4 = { git = "https://github.com/rerun-io/re_mp4", branch = "jan/zerocopy" }
