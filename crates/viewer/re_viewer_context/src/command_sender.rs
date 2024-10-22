@@ -62,6 +62,9 @@ pub enum SystemCommand {
     #[cfg(debug_assertions)]
     EnableInspectBlueprintTimeline(bool),
 
+    /// Enable or disable the experimental graph space views.
+    EnableExperimentalGraphSpaceView(bool),
+
     /// Set the item selection.
     SetSelection(crate::Item),
 

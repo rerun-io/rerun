@@ -4,7 +4,7 @@ use egui::NumExt as _;
 
 use re_log_types::TimeZone;
 use re_ui::{UICommand, UiExt as _};
-use re_viewer_context::StoreContext;
+use re_viewer_context::{StoreContext, SystemCommand, SystemCommandSender};
 
 use crate::App;
 
@@ -295,7 +295,7 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
 }
 
 fn options_menu_ui(
-    _command_sender: &re_viewer_context::CommandSender,
+    command_sender: &re_viewer_context::CommandSender,
     ui: &mut egui::Ui,
     frame: &eframe::Frame,
     app_options: &mut re_viewer_context::AppOptions,
@@ -358,7 +358,7 @@ fn options_menu_ui(
     {
         ui.add_space(SPACING);
         ui.label("Experimental features:");
-        experimental_feature_ui(ui, app_options);
+        experimental_feature_ui(command_sender, ui, app_options);
     }
 
     if let Some(_backend) = frame
@@ -371,9 +371,9 @@ fn options_menu_ui(
         {
             ui.add_space(SPACING);
             if _backend == wgpu::Backend::BrowserWebGpu {
-                UICommand::RestartWithWebGl.menu_button_ui(ui, _command_sender);
+                UICommand::RestartWithWebGl.menu_button_ui(ui, command_sender);
             } else {
-                UICommand::RestartWithWebGpu.menu_button_ui(ui, _command_sender);
+                UICommand::RestartWithWebGpu.menu_button_ui(ui, command_sender);
             }
         }
     }
@@ -383,10 +383,23 @@ fn options_menu_ui(
 // compilation directive to `space_view_screenshot` and remove the one above the call size of this
 // function!!
 #[cfg(not(target_arch = "wasm32"))]
-fn experimental_feature_ui(ui: &mut egui::Ui, app_options: &mut re_viewer_context::AppOptions) {
+fn experimental_feature_ui(command_sender: &re_viewer_context::CommandSender, ui: &mut egui::Ui, app_options: &mut re_viewer_context::AppOptions) {
     ui
         .re_checkbox(&mut app_options.experimental_space_view_screenshots, "Space view screenshots")
         .on_hover_text("Allow taking screenshots of 2D and 3D space views via their context menu. Does not contain labels.");
+
+        if ui
+        .re_checkbox(
+            &mut app_options.experimental_graph_space_view,
+            "Graph space view",
+        )
+        .on_hover_text("Enable the experimental graph space view.")
+        .clicked()
+    {
+        command_sender.send_system(SystemCommand::EnableExperimentalGraphSpaceView(
+            app_options.experimental_graph_space_view,
+        ));
+    }
 }
 
 #[cfg(debug_assertions)]

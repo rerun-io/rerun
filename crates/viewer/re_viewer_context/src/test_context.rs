@@ -166,7 +166,8 @@ impl TestContext {
                 | SystemCommand::ClearAndGenerateBlueprint
                 | SystemCommand::ActivateRecording(_)
                 | SystemCommand::CloseStore(_)
-                | SystemCommand::CloseAllRecordings => handled = false,
+                | SystemCommand::CloseAllRecordings
+                | SystemCommand::EnableExperimentalGraphSpaceView(_) => handled = false,
 
                 #[cfg(debug_assertions)]
                 SystemCommand::EnableInspectBlueprintTimeline(_) => handled = false,
