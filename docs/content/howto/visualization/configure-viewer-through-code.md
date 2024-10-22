@@ -1,5 +1,5 @@
 ---
-title: Configure the Viewer through code
+title: Configure the Viewer through code (Blueprints)
 order: 100
 ---
 
