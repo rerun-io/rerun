@@ -1,6 +1,6 @@
 ---
 title: Implement custom visualizations (Rust only)
-order: 2
+order: 200
 description: How to extend the Rerun Viewer UI using Rust and egui
 ---
 
