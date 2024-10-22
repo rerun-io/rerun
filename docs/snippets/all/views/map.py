@@ -12,7 +12,7 @@ blueprint = rrb.Blueprint(
     rrb.MapView(
         origin="points",
         name="MapView",
-        map_options=rrb.archetypes.MapOptions(provider=rrb.components.MapProvider.MapboxStreets),
+        options=rrb.archetypes.MapOptions(provider=rrb.components.MapProvider.MapboxStreets),
     ),
     collapse_panels=True,
 )
