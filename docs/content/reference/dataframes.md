@@ -58,7 +58,7 @@ Then log that blueprint file in addition to the data itself:
 
 snippet: reference/dataframe_view_query_external
 
-Check out the blueprint API reference to learn more about all the ways that data can be searched and filtered:
+Check out the blueprint API and `log_file_from_path` references to learn more:
 * [🐍 Python blueprint API reference](https://ref.rerun.io/docs/python/latest/common/blueprint_apis/)
 * [🐍 Python `log_file_from_path`](https://ref.rerun.io/docs/python/latest/common/logging_functions/#rerun.log_file_from_path)
 * [🦀 Rust `log_file_from_path`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log_file_from_path)
