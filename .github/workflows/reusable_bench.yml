@@ -89,8 +89,10 @@ jobs:
 
       - name: Run benchmark
         # Use bash shell so we get pipefail behavior with tee
+        # Running under `pixi` so we get `nasm`
         run: |
-          cargo bench \
+          pixi run -e wheel-test-min \
+            cargo bench \
             --all-features \
             -p re_entity_db \
             -p re_log_encoding \
