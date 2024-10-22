@@ -6,7 +6,11 @@ use crate::{Time, Timescale};
 
 impl VideoData {
     pub fn load_mp4(bytes: &[u8]) -> Result<Self, VideoLoadError> {
-        let mp4 = re_mp4::Mp4::read_bytes(bytes)?;
+        re_tracing::profile_function!();
+        let mp4 = {
+            re_tracing::profile_scope!("Mp4::read_bytes");
+            re_mp4::Mp4::read_bytes(bytes)?
+        };
 
         let mp4_tracks = mp4.tracks().iter().map(|(k, t)| (*k, t.kind)).collect();
 

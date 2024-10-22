@@ -24,7 +24,7 @@ blueprint = rrb.Blueprint(
         query=rrb.archetypes.DataframeQuery(
             timeline="t",
             filter_by_range=(rr.TimeInt(seconds=0), rr.TimeInt(seconds=20)),
-            filter_by_event="/trig/tan_sparse:Scalar",
+            filter_is_not_null="/trig/tan_sparse:Scalar",
             select=["t", "log_tick", "/trig/sin:Scalar", "/trig/cos:Scalar", "/trig/tan_sparse:Scalar"],
         ),
     ),

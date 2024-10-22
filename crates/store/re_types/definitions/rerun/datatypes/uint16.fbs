@@ -2,7 +2,6 @@ namespace rerun.datatypes;
 
 /// A 16bit unsigned integer.
 struct UInt16 (
-  "attr.docs.unreleased",
   "attr.arrow.transparent",
   "attr.python.aliases": "int",
   "attr.python.array_aliases": "int, npt.NDArray[np.uint16]",

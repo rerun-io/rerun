@@ -62,7 +62,7 @@ The first argument for `start` determines the recordings to open in the viewer. 
 - a URL string to open a single recording
 - an array of strings to open multiple recordings
 
-Each URL can be either a file served over `http` or a connection to an SDK using our [serve](https://www.rerun.io/docs/reference/sdk-operating-modes#serve) API. See [web-viewer-serve-example](https://github.com/rerun-io/web-viewer-serve-example) for a full example of how to log data from our Python SDK to an embedded Rerun Viewer.
+Each URL can be either a file served over `http` or a connection to an SDK using our [serve](https://www.rerun.io/docs/reference/sdk/operating-modes#serve) API. See [web-viewer-serve-example](https://github.com/rerun-io/web-viewer-serve-example) for a full example of how to log data from our Python SDK to an embedded Rerun Viewer.
 
 ### Controlling the canvas
 

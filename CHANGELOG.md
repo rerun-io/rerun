@@ -4,6 +4,111 @@
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
 
+## [0.19.0](https://github.com/rerun-io/rerun/compare/0.18.2...0.19.0) - Dataframes & Video support
+
+
+<!-- TODO(emilk): insert a screenshot and/or code sample here -->
+
+📖 Release blogpost: Coming soon! <!-- TODO(niko): link to it! -->
+
+🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-19
+
+### ✨ Overview & highlights
+This release introduces two powerful features: a dataframe API (and view), as well as video support.
+
+#### ☰ Dataframe Python API
+We now have a Python API for querying the contents of an .rrd file. This integrates with popular packages such as [Pandas](https://pandas.pydata.org), [Polars](https://pola.rs), and [DuckDB](https://duckdb.org).
+
+You can read more in [the Dataframe API how-to guide](https://rerun.io/docs/content/howto/dataframe-api).
+
+We have also added a matching dataframe view inside the Rerun Viewer.
+Read more [here](https://rerun.io/docs/content/reference/types/views/dataframe_view).
+
+#### 🎬 Video
+Rerun now supports logging MP4 videos using the new [`AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video) archetype.
+This can greatly reduce bandwidth and storage requirements.
+
+While the web viewer supports a variety of codecs, the native viewer supports only the AV1 codec for the moment, but we plan to support H.264 in the near future as well.
+Read more about our video supports (and its limits) [in our video docs](https://rerun.io/docs/reference/video).
+
+### ⚠️ Breaking changes
+* 🗾 Blueprint files (.rbl) from previous Rerun versions will no longer load _automatically_
+* 🐧 Linux: Rerun now require glibc 2.17+
+* 🦀 Rust: The minimum supported Rust version is now 1.79
+
+🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-19
+
+### 🔎 Details
+
+ 📑 Raw changelog: https://github.com/rerun-io/rerun/compare/0.18.2...0.19.0
+
+#### 🪵 Log API
+- Tensor & depth image value ranges can now be configured, from UI & code [#7549](https://github.com/rerun-io/rerun/pull/7549)
+- New planar pixel formats: `Y_U_V24`/`Y_U_V16`/`Y_U_V12` - `_LimitedRange`/`FullRange` [#7666](https://github.com/rerun-io/rerun/pull/7666)
+- Refactor `MediaType` guessing [#7326](https://github.com/rerun-io/rerun/pull/7326)
+
+#### 🌊 C++ API
+- Add `nullptr` check when forwarding from component to datatype [#7430](https://github.com/rerun-io/rerun/pull/7430)
+
+#### 🐍 Python API
+- Add missing `show_labels` and `draw_order` arguments in Python API [#7363](https://github.com/rerun-io/rerun/pull/7363) (thanks [@kpreid](https://github.com/kpreid)!)
+- Allow logging to a recording without first calling `rr.init()` [#7698](https://github.com/rerun-io/rerun/pull/7698)
+- Add support for NumPy arrays to the arrow serializer for string datatypes [#7689](https://github.com/rerun-io/rerun/pull/7689)
+
+#### 🦀 Rust API
+- Update MSRV to Rust 1.79 [#7563](https://github.com/rerun-io/rerun/pull/7563)
+- Update ndarray to 0.16 and ndarray-rand to 0.15 [#7358](https://github.com/rerun-io/rerun/pull/7358) (thanks [@benliepert](https://github.com/benliepert)!)
+- Replace `host_web_viewer` method with `WebViewerConfig::host_web_viewer` [#7553](https://github.com/rerun-io/rerun/pull/7553)
+- Fix Rust's `TimeColumn::new_seconds/new_nanos` creating sequence timelines [#7402](https://github.com/rerun-io/rerun/pull/7402)
+
+#### 🪳 Bug fixes
+- Purge the query cache to prevent GC livelocks [#7370](https://github.com/rerun-io/rerun/pull/7370)
+- Bug fix: always show latest data in follow-mode [#7425](https://github.com/rerun-io/rerun/pull/7425)
+- Fix encoded image being suggested for non-image blobs (like video) [#7428](https://github.com/rerun-io/rerun/pull/7428)
+- Chunk store: support for overlapped range queries [#7586](https://github.com/rerun-io/rerun/pull/7586)
+- Fix image & video cache creating new entries when selecting data without explicit media type [#7590](https://github.com/rerun-io/rerun/pull/7590)
+
+#### 🌁 Viewer improvements
+- The viewer will tail an .rrd that's is being written to [#7475](https://github.com/rerun-io/rerun/pull/7475)
+- Native video support for AV1 [#7557](https://github.com/rerun-io/rerun/pull/7557)
+
+#### 🚀 Performance improvements
+- Improve performance for scenes with many entities & transforms [#7456](https://github.com/rerun-io/rerun/pull/7456)
+- `Caches` per recording [#7513](https://github.com/rerun-io/rerun/pull/7513)
+- Automatic removal of unreachable static chunks [#7518](https://github.com/rerun-io/rerun/pull/7518)
+- Invalidate hub-wide caches on deletions and overwrites [#7525](https://github.com/rerun-io/rerun/pull/7525)
+- Do not cache static entries in the query-time latest-at cache [#7654](https://github.com/rerun-io/rerun/pull/7654)
+- Make sure Arrow `filter` and `take` kernels early out where it makes sense [#7704](https://github.com/rerun-io/rerun/pull/7704)
+
+#### 🧑‍🏫 Examples
+- Add drone LiDAR example [#7336](https://github.com/rerun-io/rerun/pull/7336)
+- add instant_splat example [#7751](https://github.com/rerun-io/rerun/pull/7751) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
+
+#### 📚 Docs
+- Add video reference docs [#7533](https://github.com/rerun-io/rerun/pull/7533)
+- Document that Rerun does not support left-handed coords [#7690](https://github.com/rerun-io/rerun/pull/7690)
+- Add a How-to guide for the dataframe API [#7727](https://github.com/rerun-io/rerun/pull/7727)
+- Docs: move "roadmap" down to "development" [#7775](https://github.com/rerun-io/rerun/pull/7775)
+- Add a "Getting started" guide for the dataframe API [#7643](https://github.com/rerun-io/rerun/pull/7643)
+- Docs: clean up reference menu [#7776](https://github.com/rerun-io/rerun/pull/7776)
+- Updating "Navigating the viewer" [#7757](https://github.com/rerun-io/rerun/pull/7757)
+
+#### 🖼 UI improvements
+- Add a hook for views to add additional UI in the tab title bar [#7438](https://github.com/rerun-io/rerun/pull/7438)
+- Text fields in the selection panel now span the available width [#7487](https://github.com/rerun-io/rerun/pull/7487)
+- Do not deselect on ESC when it was used to close some other UI element [#7548](https://github.com/rerun-io/rerun/pull/7548)
+- Add UI for precisely picking an exact sequence time [#7673](https://github.com/rerun-io/rerun/pull/7673)
+- Remove the feature flag for plot query clamping [#7664](https://github.com/rerun-io/rerun/pull/7664)
+
+#### 🎨 Renderer improvements
+- Introduce image data conversion pipeline, taking over existing YUV conversions [#7640](https://github.com/rerun-io/rerun/pull/7640)
+
+#### 🧑‍💻 Dev-experience
+- Add a command palette action to reset egui's memory (debug build only) [#7446](https://github.com/rerun-io/rerun/pull/7446)
+- Add NOLINT block to `lint.py` [#7720](https://github.com/rerun-io/rerun/pull/7720)
+
+
+
 ## [0.18.2](https://github.com/rerun-io/rerun/compare/0.18.1...0.18.2) - Even more bug fixes
 
 - Update `time` crate to 0.3.36, fixing compilation on newer Rust versions [#7308](https://github.com/rerun-io/rerun/pull/7308)
@@ -163,7 +268,7 @@ API usage examples:
 
 The Rerun datastore now continuously compacts data as it comes in, in order find a sweet spot between ingestion speed, query performance and memory overhead.
 
-This is very similar to, and has many parallels with, the [micro-batching mechanism running on the SDK side](https://rerun.io/docs/reference/sdk-micro-batching).
+This is very similar to, and has many parallels with, the [micro-batching mechanism running on the SDK side](https://rerun.io/docs/reference/sdk/micro-batching).
 
 You can read more about this in the [dedicated documentation entry](https://rerun.io/docs/reference/store-compaction).
 
@@ -241,7 +346,7 @@ _All four tetrahedron meshes on this screen share the same vertices and are inst
 - Recommend install rerun-cli with `--locked` [#6868](https://github.com/rerun-io/rerun/pull/6868)
 - Remove `TensorBuffer::JPEG`, `DecodedTensor`, `TensorDecodeCache` [#6884](https://github.com/rerun-io/rerun/pull/6884)
 
-#### 🪳Bug Fixes
+#### 🪳 Bug fixes
 - Respect 0.0 for start and end boundaries of scalar axis [#6887](https://github.com/rerun-io/rerun/pull/6887) (thanks [@amidabucu](https://github.com/amidabucu)!)
 - Fix text log/document view icons [#6855](https://github.com/rerun-io/rerun/pull/6855)
 - Fix outdated use of view coordinates in `Spaces and Transforms` doc page [#6955](https://github.com/rerun-io/rerun/pull/6955)
@@ -1862,7 +1967,7 @@ Other highlights:
    - This can be used as an alternative to the previous `MsgSender::with_time` APIs.
  - The Rerun SDK now defaults to 8ms long microbatches instead of 50ms. This makes the default behavior more suitable
 for use-cases like real-time video feeds. [#2220](https://github.com/rerun-io/rerun/pull/2220)
-   - Check out [the microbatching docs](https://www.rerun.io/docs/reference/sdk-micro-batching) for more information
+   - Check out [the microbatching docs](https://www.rerun.io/docs/reference/sdk/micro-batching) for more information
    on fine-tuning the micro-batching behavior.
  - The web viewer now incremental loads `.rrd` files when streaming over HTTP. [#2412](https://github.com/rerun-io/rerun/pull/2412)
 
@@ -2193,7 +2298,7 @@ here's a smaller release packed with useful improvements 🎉
 - ⚠️ BREAKING: You must now call `rr.init` if you want logging to work.
 - ⚠️ BREAKING: `set_enabled` has been removed.
   In order to disable logging at runtime, call `set_global_data_recording(None)`.
-  See also [the doc section on this topic](https://www.rerun.io/docs/reference/sdk-logging-controls#dynamically-turn-logging-onoff).
+  See also [the doc section on this topic](https://www.rerun.io/docs/reference/sdk/logging-controls#dynamically-turn-logging-onoff).
 - `log_mesh_file`: accept either path or bytes [#2098](https://github.com/rerun-io/rerun/pull/2098)
 - Add `draw_order` to 2D primitives [#2138](https://github.com/rerun-io/rerun/pull/2138)
 - Add `rr.version()` [#2084](https://github.com/rerun-io/rerun/pull/2084)
@@ -2206,7 +2311,7 @@ here's a smaller release packed with useful improvements 🎉
 #### 🦀 Rust SDK
 - ⚠️ BREAKING: `set_enabled` has been removed.
   In order to disable logging at runtime, create a no-op recording via `RecordingStream::disabled()`.
-  See also [the doc section on this topic](https://www.rerun.io/docs/reference/sdk-logging-controls#dynamically-turn-logging-onoff).
+  See also [the doc section on this topic](https://www.rerun.io/docs/reference/sdk/logging-controls#dynamically-turn-logging-onoff).
 - ⚠️ BREAKING: `Session` has been replaced by `RecordingStream` [#1983](https://github.com/rerun-io/rerun/pull/1983)
 - ⚠️ BREAKING: `native_viewer` is now an opt-in feature of the `rerun` library [#2064](https://github.com/rerun-io/rerun/pull/2064)
 - Rust SDK: bring back support for implicit splats [#2059](https://github.com/rerun-io/rerun/pull/2059)

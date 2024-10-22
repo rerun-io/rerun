@@ -10,7 +10,31 @@ use arrow2::{
 };
 use itertools::Itertools;
 
+use crate::TransportChunk;
+
 // ---
+
+/// Returns true if the given `list_array` is semantically empty.
+///
+/// Semantic emptiness is defined as either one of these:
+/// * The list is physically empty (literally no data).
+/// * The list only contains null entries, or empty arrays, or a mix of both.
+pub fn is_list_array_semantically_empty(list_array: &ArrowListArray<i32>) -> bool {
+    let is_physically_empty = || list_array.is_empty();
+
+    let is_all_nulls = || {
+        list_array
+            .validity()
+            .map_or(false, |bitmap| bitmap.unset_bits() == list_array.len())
+    };
+
+    let is_all_empties = || list_array.offsets().lengths().all(|len| len == 0);
+
+    let is_a_mix_of_nulls_and_empties =
+        || list_array.iter().flatten().all(|array| array.is_empty());
+
+    is_physically_empty() || is_all_nulls() || is_all_empties() || is_a_mix_of_nulls_and_empties()
+}
 
 /// Create a sparse list-array out of an array of arrays.
 ///
@@ -355,6 +379,28 @@ pub fn take_array<A: ArrowArray + Clone, O: arrow2::types::Index>(
         "index arrays with validity bits are technically valid, but generally a sign that something went wrong",
     );
 
+    if indices.len() == array.len() {
+        let indices = indices.values().as_slice();
+
+        let starts_at_zero = || indices[0] == O::zero();
+        let is_consecutive = || {
+            indices
+                .windows(2)
+                .all(|values| values[1] == values[0] + O::one())
+        };
+
+        if starts_at_zero() && is_consecutive() {
+            #[allow(clippy::unwrap_used)]
+            return array
+                .clone()
+                .as_any()
+                .downcast_ref::<A>()
+                // Unwrap: that's initial type that we got.
+                .unwrap()
+                .clone();
+        }
+    }
+
     #[allow(clippy::unwrap_used)]
     arrow2::compute::take::take(array, indices)
         // Unwrap: this literally cannot fail.
@@ -364,4 +410,39 @@ pub fn take_array<A: ArrowArray + Clone, O: arrow2::types::Index>(
         // Unwrap: that's initial type that we got.
         .unwrap()
         .clone()
+}
+
+// ---
+
+use arrow2::{chunk::Chunk as ArrowChunk, datatypes::Schema as ArrowSchema};
+
+/// Concatenate multiple [`TransportChunk`]s into one.
+///
+/// This is a temporary method that we use while waiting to migrate towards `arrow-rs`.
+/// * `arrow2` doesn't have a `RecordBatch` type, therefore we emulate that using our `TransportChunk`s.
+/// * `arrow-rs` does have one, and it natively supports concatenation.
+pub fn concatenate_record_batches(
+    schema: ArrowSchema,
+    batches: &[TransportChunk],
+) -> anyhow::Result<TransportChunk> {
+    assert!(batches.iter().map(|batch| &batch.schema).all_equal());
+
+    let mut arrays = Vec::new();
+
+    if !batches.is_empty() {
+        for (i, _field) in schema.fields.iter().enumerate() {
+            let array = arrow2::compute::concatenate::concatenate(
+                &batches
+                    .iter()
+                    .map(|batch| &*batch.data[i] as &dyn ArrowArray)
+                    .collect_vec(),
+            )?;
+            arrays.push(array);
+        }
+    }
+
+    Ok(TransportChunk {
+        schema,
+        data: ArrowChunk::new(arrays),
+    })
 }

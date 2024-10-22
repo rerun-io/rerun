@@ -1,9 +1,11 @@
-use std::sync::{
-    atomic::{AtomicU64, Ordering},
-    OnceLock,
+use std::{
+    collections::BTreeSet,
+    sync::{
+        atomic::{AtomicU64, Ordering},
+        OnceLock,
+    },
 };
 
-use ahash::HashSet;
 use arrow2::{
     array::{
         Array as ArrowArray, BooleanArray as ArrowBooleanArray,
@@ -14,16 +16,14 @@ use arrow2::{
     Either,
 };
 use itertools::Itertools;
-use parking_lot::Mutex;
 
 use nohash_hasher::{IntMap, IntSet};
 use re_chunk::{
     Chunk, ComponentName, EntityPath, RangeQuery, RowId, TimeInt, Timeline, UnitChunkShared,
 };
 use re_chunk_store::{
-    ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector,
-    IndexValue, JoinEncoding, QueryExpression, SparseFillStrategy, TimeColumnDescriptor,
-    TimeColumnSelector,
+    ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector, Index,
+    IndexValue, QueryExpression, SparseFillStrategy, TimeColumnDescriptor, TimeColumnSelector,
 };
 use re_log_types::ResolvedTimeRange;
 use re_types_core::components::ClearIsRecursive;
@@ -41,13 +41,13 @@ use crate::{QueryEngine, RecordBatch};
 // * [x] latestat sparse-filling
 // * [x] sampling support
 // * [x] clears
-// * [ ] pagination (fast)
+// * [x] pagination (fast)
+// * [x] take kernel duplicates all memory
+// * [x] dedupe-latest without allocs/copies
+// * [ ] allocate null arrays once
 // * [ ] overlaps (less dumb)
 // * [ ] selector-based `filtered_index`
 // * [ ] configurable cache bypass
-// * [ ] allocate null arrays once
-// * [ ] take kernel duplicates all memory
-// * [ ] dedupe-latest without allocs/copies
 
 /// A handle to a dataframe query, ready to be executed.
 ///
@@ -86,6 +86,19 @@ struct QueryHandleState {
     /// See also [`QueryHandleState::arrow_schema`].
     selected_contents: Vec<(usize, ColumnDescriptor)>,
 
+    /// This keeps track of the static data associated with each entry in `selected_contents`, if any.
+    ///
+    /// This is queried only once during init, and will override all cells that follow.
+    ///
+    /// `selected_contents`: [`QueryHandleState::selected_contents`]
+    selected_static_values: Vec<Option<UnitChunkShared>>,
+
+    /// The actual index filter in use, since the user-specified one is optional.
+    ///
+    /// This just defaults to `Index::default()` if the user hasn't specified any: the actual
+    /// value is irrelevant since this means we are only concerned with static data anyway.
+    filtered_index: Index,
+
     /// The Arrow schema that corresponds to the `selected_contents`.
     ///
     /// All returned rows will have this schema.
@@ -109,23 +122,22 @@ struct QueryHandleState {
     // NOTE: Reminder: we have to query everything in the _view_, irrelevant of the current selection.
     view_chunks: Vec<Vec<(AtomicU64, Chunk)>>,
 
-    /// The index in `view_chunks` where the POV chunks are stored.
-    ///
-    /// * If set to `None`, then the caller didn't request a POV at all.
-    /// * If set to `Some(usize::MAX)`, then a POV was requested but couldn't be found in the view.
-    /// * Otherwise, points to the chunks that should be used to drive the iteration.
-    view_pov_chunks_idx: Option<usize>,
-
-    /// The stack of index values left to sample.
-    ///
-    /// Stored in reverse order, i.e. `pop()` is the next sample to retrieve.
-    using_index_values_stack: Mutex<Option<Vec<IndexValue>>>,
-
     /// Tracks the current row index: the position of the iterator. For [`QueryHandle::next_row`].
     ///
     /// This represents the number of rows that the caller has iterated on: it is completely
     /// unrelated to the cursors used to track the current position in each individual chunk.
+    ///
+    /// The corresponding index value can be obtained using `unique_index_values[cur_row]`.
+    ///
+    /// `unique_index_values[cur_row]`: [`QueryHandleState::unique_index_values`]
     cur_row: AtomicU64,
+
+    /// All unique index values that can possibly be returned by this query.
+    ///
+    /// Guaranteed ascendingly sorted and deduped.
+    ///
+    /// See also [`QueryHandleState::cur_row`].
+    unique_index_values: Vec<IndexValue>,
 }
 
 impl<'a> QueryHandle<'a> {
@@ -150,12 +162,11 @@ impl QueryHandle<'_> {
     fn init_(&self) -> QueryHandleState {
         re_tracing::profile_scope!("init");
 
-        // 1. Compute the schema of the view contents.
-        let view_contents = if let Some(view_contents) = self.query.view_contents.as_ref() {
-            self.engine.store.schema_for_view_contents(view_contents)
-        } else {
-            self.engine.store.schema()
-        };
+        // The timeline doesn't matter if we're running in static-only mode.
+        let filtered_index = self.query.filtered_index.unwrap_or_default();
+
+        // 1. Compute the schema for the query.
+        let view_contents = self.engine.store.schema_for_query(&self.query);
 
         // 2. Compute the schema of the selected contents.
         //
@@ -179,29 +190,24 @@ impl QueryHandle<'_> {
             metadata: Default::default(),
         };
 
-        let using_index_values_stack = self
-            .query
-            .using_index_values
-            .as_ref()
-            .map(|values| values.iter().rev().copied().collect_vec());
-
         // 4. Perform the query and keep track of all the relevant chunks.
         let query = {
-            let index_range =
-                if let Some(using_index_values_stack) = using_index_values_stack.as_ref() {
-                    using_index_values_stack
-                        .last() // reminder: it's reversed (stack)
-                        .and_then(|start| using_index_values_stack.first().map(|end| (start, end)))
-                        .map_or(ResolvedTimeRange::EMPTY, |(start, end)| {
-                            ResolvedTimeRange::new(*start, *end)
-                        })
-                } else {
-                    self.query
-                        .filtered_index_range
-                        .unwrap_or(ResolvedTimeRange::EVERYTHING)
-                };
+            let index_range = if self.query.filtered_index.is_none() {
+                ResolvedTimeRange::EMPTY // static-only
+            } else if let Some(using_index_values) = self.query.using_index_values.as_ref() {
+                using_index_values
+                    .first()
+                    .and_then(|start| using_index_values.last().map(|end| (start, end)))
+                    .map_or(ResolvedTimeRange::EMPTY, |(start, end)| {
+                        ResolvedTimeRange::new(*start, *end)
+                    })
+            } else {
+                self.query
+                    .filtered_index_range
+                    .unwrap_or(ResolvedTimeRange::EVERYTHING)
+            };
 
-            RangeQuery::new(self.query.filtered_index, index_range)
+            RangeQuery::new(filtered_index, index_range)
                 .keep_extra_timelines(true) // we want all the timelines we can get!
                 .keep_extra_components(false)
         };
@@ -258,7 +264,7 @@ impl QueryHandle<'_> {
                         // the time range for the specific component of interest.
                         chunk
                             .timelines()
-                            .get(&self.query.filtered_index)
+                            .get(&filtered_index)
                             .map(|time_column| time_column.time_range())
                             .map_or(TimeInt::STATIC, |time_range| time_range.min())
                     });
@@ -266,14 +272,82 @@ impl QueryHandle<'_> {
             }
         }
 
+        // 6. Collect all unique index values.
+        //
+        // Used to achieve ~O(log(n)) pagination.
+        let unique_index_values = if self.query.filtered_index.is_none() {
+            vec![TimeInt::STATIC]
+        } else if let Some(using_index_values) = self.query.using_index_values.as_ref() {
+            using_index_values
+                .iter()
+                .filter(|index_value| !index_value.is_static())
+                .copied()
+                .collect_vec()
+        } else {
+            re_tracing::profile_scope!("index_values");
+
+            let mut view_chunks = view_chunks.iter();
+            let view_chunks = if let Some(view_pov_chunks_idx) = view_pov_chunks_idx {
+                Either::Left(view_chunks.nth(view_pov_chunks_idx).into_iter())
+            } else {
+                Either::Right(view_chunks)
+            };
+
+            let mut all_unique_index_values: BTreeSet<TimeInt> = view_chunks
+                .flat_map(|chunks| {
+                    chunks.iter().filter_map(|(_cursor, chunk)| {
+                        chunk
+                            .timelines()
+                            .get(&filtered_index)
+                            .map(|time_column| time_column.times())
+                    })
+                })
+                .flatten()
+                .collect();
+
+            if let Some(filtered_index_values) = self.query.filtered_index_values.as_ref() {
+                all_unique_index_values.retain(|time| filtered_index_values.contains(time));
+            }
+
+            all_unique_index_values
+                .into_iter()
+                .filter(|index_value| !index_value.is_static())
+                .collect_vec()
+        };
+
+        let selected_static_values = {
+            re_tracing::profile_scope!("static_values");
+
+            selected_contents
+                .iter()
+                .map(|(_view_idx, descr)| match descr {
+                    ColumnDescriptor::Time(_) => None,
+                    ColumnDescriptor::Component(descr) => {
+                        let query =
+                            re_chunk::LatestAtQuery::new(Timeline::default(), TimeInt::STATIC);
+
+                        let results = self.engine.cache.latest_at(
+                            self.engine.store,
+                            &query,
+                            &descr.entity_path,
+                            [descr.component_name],
+                        );
+
+                        results.components.get(&descr.component_name).cloned()
+                    }
+                })
+                .collect_vec()
+        };
+
         QueryHandleState {
             view_contents,
             selected_contents,
+            selected_static_values,
+            filtered_index,
             arrow_schema,
             view_chunks,
-            view_pov_chunks_idx,
-            using_index_values_stack: Mutex::new(using_index_values_stack),
             cur_row: AtomicU64::new(0),
+            unique_index_values,
         }
     }
 
@@ -323,8 +397,7 @@ impl QueryHandle<'_> {
                     ColumnSelector::Component(selected_column) => {
                         let ComponentColumnSelector {
                             entity_path: selected_entity_path,
-                            component: selected_component_name,
-                            join_encoding: _,
+                            component_name: selected_component_name,
                         } = selected_column;
 
                         view_contents
@@ -336,7 +409,7 @@ impl QueryHandle<'_> {
                             })
                             .find(|(_idx, view_descr)| {
                                 view_descr.entity_path == *selected_entity_path
-                                    && view_descr.component_name == *selected_component_name
+                                    && view_descr.component_name.matches(selected_component_name)
                             })
                             .map_or_else(
                                 || {
@@ -346,10 +419,14 @@ impl QueryHandle<'_> {
                                             entity_path: selected_entity_path.clone(),
                                             archetype_name: None,
                                             archetype_field_name: None,
-                                            component_name: *selected_component_name,
+                                            component_name: ComponentName::from(
+                                                selected_component_name.clone(),
+                                            ),
                                             store_datatype: arrow2::datatypes::DataType::Null,
-                                            join_encoding: JoinEncoding::default(),
                                             is_static: false,
+                                            is_indicator: false,
+                                            is_tombstone: false,
+                                            is_semantically_empty: false,
                                         }),
                                     )
                                 },
@@ -368,11 +445,7 @@ impl QueryHandle<'_> {
         query: &RangeQuery,
         view_contents: &[ColumnDescriptor],
     ) -> (Option<usize>, Vec<Vec<(AtomicU64, Chunk)>>) {
-        let mut view_pov_chunks_idx = self
-            .query
-            .filtered_point_of_view
-            .as_ref()
-            .map(|_| usize::MAX);
+        let mut view_pov_chunks_idx = self.query.filtered_is_not_null.as_ref().map(|_| usize::MAX);
 
         let view_chunks = view_contents
             .iter()
@@ -385,9 +458,9 @@ impl QueryHandle<'_> {
                         .fetch_chunks(query, &column.entity_path, [column.component_name])
                         .unwrap_or_default();
 
-                    if let Some(pov) = self.query.filtered_point_of_view.as_ref() {
+                    if let Some(pov) = self.query.filtered_is_not_null.as_ref() {
                         if pov.entity_path == column.entity_path
-                            && pov.component == column.component_name
+                            && column.component_name.matches(&pov.component_name)
                         {
                             view_pov_chunks_idx = Some(idx);
                         }
@@ -539,11 +612,18 @@ impl QueryHandle<'_> {
                         // remaining unique index values all while taking row-id ordering semantics
                         // into account.
                         debug_assert!(
-                            chunk.is_sorted(),
+                            if let Some(index) = self.query.filtered_index.as_ref() {
+                                chunk.is_timeline_sorted(index)
+                            } else {
+                                chunk.is_sorted()
+                            },
                             "the query cache should have already taken care of sorting (and densifying!) the chunk",
                         );
 
-                        let chunk = chunk.deduped_latest_on_index(&self.query.filtered_index);
+                        // TODO(cmc): That'd be more elegant, but right now there is no way to
+                        // avoid allocations and copies when using Arrow's `ListArray`.
+                        //
+                        // let chunk = chunk.deduped_latest_on_index(&query.timeline);
 
                         (AtomicU64::default(), chunk)
                     })
@@ -552,6 +632,7 @@ impl QueryHandle<'_> {
     }
 
     /// The query used to instantiate this handle.
+    #[inline]
     pub fn query(&self) -> &QueryExpression {
         &self.query
     }
@@ -559,6 +640,7 @@ impl QueryHandle<'_> {
     /// Describes the columns that make up this view.
     ///
     /// See [`QueryExpression::view_contents`].
+    #[inline]
     pub fn view_contents(&self) -> &[ColumnDescriptor] {
         &self.init().view_contents
     }
@@ -568,6 +650,7 @@ impl QueryHandle<'_> {
     /// The extra `usize` is the index in [`Self::view_contents`] that this selection points to.
     ///
     /// See [`QueryExpression::selection`].
+    #[inline]
     pub fn selected_contents(&self) -> &[(usize, ColumnDescriptor)] {
         &self.init().selected_contents
     }
@@ -575,51 +658,107 @@ impl QueryHandle<'_> {
     /// All results returned by this handle will strictly follow this Arrow schema.
     ///
     /// Columns that do not yield any data will still be present in the results, filled with null values.
+    #[inline]
     pub fn schema(&self) -> &ArrowSchema {
         &self.init().arrow_schema
+    }
+
+    /// Advance all internal cursors so that the next row yielded will correspond to `row_idx`.
+    ///
+    /// Does nothing if `row_idx` is out of bounds.
+    ///
+    /// ## Concurrency
+    ///
+    /// Cursors are implemented using atomic variables, which means calling any of the `seek_*`
+    /// while iteration is concurrently ongoing is memory-safe but logically undefined racy
+    /// behavior. Be careful.
+    ///
+    /// ## Performance
+    ///
+    /// This requires going through every chunk once, and for each chunk running a binary search if
+    /// the chunk's time range contains the `index_value`.
+    ///
+    /// I.e.: it's pretty cheap already.
+    #[inline]
+    pub fn seek_to_row(&self, row_idx: usize) {
+        let state = self.init();
+
+        let Some(index_value) = state.unique_index_values.get(row_idx) else {
+            return;
+        };
+
+        state.cur_row.store(row_idx as _, Ordering::Relaxed);
+        self.seek_to_index_value(*index_value);
+    }
+
+    /// Advance all internal cursors so that the next row yielded will correspond to `index_value`.
+    ///
+    /// If `index_value` isn't present in the dataset, this seeks to the first index value
+    /// available past that point, if any.
+    ///
+    /// ## Concurrency
+    ///
+    /// Cursors are implemented using atomic variables, which means calling any of the `seek_*`
+    /// while iteration is concurrently ongoing is memory-safe but logically undefined racy
+    /// behavior. Be careful.
+    ///
+    /// ## Performance
+    ///
+    /// This requires going through every chunk once, and for each chunk running a binary search if
+    /// the chunk's time range contains the `index_value`.
+    ///
+    /// I.e.: it's pretty cheap already.
+    fn seek_to_index_value(&self, index_value: IndexValue) {
+        re_tracing::profile_function!();
+
+        let state = self.init();
+
+        if index_value.is_static() {
+            for chunks in &state.view_chunks {
+                for (cursor, _chunk) in chunks {
+                    cursor.store(0, Ordering::Relaxed);
+                }
+            }
+            return;
+        }
+
+        for chunks in &state.view_chunks {
+            for (cursor, chunk) in chunks {
+                // NOTE: The chunk has been densified already: its global time range is the same as
+                // the time range for the specific component of interest.
+                let Some(time_column) = chunk.timelines().get(&state.filtered_index) else {
+                    continue;
+                };
+
+                let time_range = time_column.time_range();
+
+                let new_cursor = if index_value < time_range.min() {
+                    0
+                } else if index_value > time_range.max() {
+                    chunk.num_rows() as u64 /* yes, one past the end -- not a mistake */
+                } else {
+                    time_column
+                        .times_raw()
+                        .partition_point(|&time| time < index_value.as_i64())
+                        as u64
+                };
+
+                cursor.store(new_cursor, Ordering::Relaxed);
+            }
+        }
     }
 
     /// How many rows of data will be returned?
     ///
     /// The number of rows depends and only depends on the _view contents_.
     /// The _selected contents_ has no influence on this value.
-    //
-    // TODO(cmc): implement this properly, cache the result, etc.
     pub fn num_rows(&self) -> u64 {
-        re_tracing::profile_function!();
+        let num_rows = self.init().unique_index_values.len() as _;
 
-        let state = self.init();
-
-        let mut view_chunks = state.view_chunks.iter();
-        let view_chunks = if let Some(view_pov_chunks_idx) = state.view_pov_chunks_idx {
-            Either::Left(view_chunks.nth(view_pov_chunks_idx).into_iter())
-        } else {
-            Either::Right(view_chunks)
-        };
-
-        let mut all_unique_timestamps: HashSet<TimeInt> = view_chunks
-            .flat_map(|chunks| {
-                chunks.iter().filter_map(|(_cursor, chunk)| {
-                    if chunk.is_static() {
-                        Some(Either::Left(std::iter::once(TimeInt::STATIC)))
-                    } else {
-                        chunk
-                            .timelines()
-                            .get(&self.query.filtered_index)
-                            .map(|time_column| Either::Right(time_column.times()))
-                    }
-                })
-            })
-            .flatten()
-            .collect();
-
-        if let Some(filtered_index_values) = self.query.filtered_index_values.as_ref() {
-            all_unique_timestamps.retain(|time| filtered_index_values.contains(time));
-        }
-
-        let num_rows = all_unique_timestamps.len() as _;
-
-        if cfg!(debug_assertions) {
+        // NOTE: This is too slow to run in practice, even for debug builds.
+        // Do keep this around though, it does come in handy.
+        #[allow(clippy::overly_complex_bool_expr)]
+        if false && cfg!(debug_assertions) {
             let expected_num_rows =
                 self.engine.query(self.query.clone()).into_iter().count() as u64;
             assert_eq!(expected_num_rows, num_rows);
@@ -646,16 +785,13 @@ impl QueryHandle<'_> {
     ///
     /// ## Pagination
     ///
-    /// This does not offer any kind of native pagination yet.
-    ///
-    /// To emulate pagination from user-space, use the `Iterator` API:
+    /// Use [`Self::seek_to_row`]:
     /// ```ignore
-    /// for row in query_handle.into_iter().skip(offset).take(len) {
+    /// query_handle.seek_to_row(42);
+    /// for row in query_handle.into_iter().take(len) {
     ///     // …
     /// }
     /// ```
-    //
-    // TODO(cmc): better/actual pagination
     pub fn next_row(&self) -> Option<Vec<Box<dyn ArrowArray>>> {
         re_tracing::profile_function!();
 
@@ -667,9 +803,6 @@ impl QueryHandle<'_> {
 
             /// How far are we into this `Chunk`?
             cursor: u64,
-
-            /// What's the index value at the current cursor?
-            index_value: TimeInt,
 
             /// What's the `RowId` at the current cursor?
             row_id: RowId,
@@ -691,7 +824,8 @@ impl QueryHandle<'_> {
 
         let state = self.init();
 
-        let _cur_row = state.cur_row.fetch_add(1, Ordering::Relaxed);
+        let row_idx = state.cur_row.fetch_add(1, Ordering::Relaxed);
+        let cur_index_value = state.unique_index_values.get(row_idx as usize)?;
 
         // First, we need to find, among all the chunks available for the current view contents,
         // what is their index value for the current row?
@@ -707,145 +841,132 @@ impl QueryHandle<'_> {
         for (view_column_idx, view_chunks) in state.view_chunks.iter().enumerate() {
             let streaming_state = &mut view_streaming_state[view_column_idx];
 
-            for (cur_cursor, cur_chunk) in view_chunks {
-                // NOTE: Too soon to increment the cursor, we cannot know yet which chunks will or
-                // will not be part of the current row.
-                let cur_cursor_value = cur_cursor.load(Ordering::Relaxed);
-
+            'overlaps: for (cur_cursor, cur_chunk) in view_chunks {
                 // TODO(cmc): This can easily be optimized by looking ahead and breaking as soon as chunks
                 // stop overlapping.
 
-                let Some((cur_index_value, cur_row_id)) = cur_chunk
-                    .iter_indices(&self.query.filtered_index)
-                    .nth(cur_cursor_value as _)
-                else {
-                    continue;
+                // NOTE: Too soon to increment the cursor, we cannot know yet which chunks will or
+                // will not be part of the current row.
+                let mut cur_cursor_value = cur_cursor.load(Ordering::Relaxed);
+
+                let cur_index_times_empty: &[i64] = &[];
+                let cur_index_times = cur_chunk
+                    .timelines()
+                    .get(&state.filtered_index)
+                    .map_or(cur_index_times_empty, |time_column| time_column.times_raw());
+                let cur_index_row_ids = cur_chunk.row_ids_raw();
+
+                // NOTE: "Deserializing" everything into a native vec is way too much for rustc to
+                // follow and doesn't get optimized at all -- we have to work with raw arrow data
+                // all the way, so this gets a bit complicated.
+                let cur_index_row_id_at = |at: usize| {
+                    let (times, incs) = cur_index_row_ids;
+
+                    let times = times.values().as_slice();
+                    let incs = incs.values().as_slice();
+
+                    let time = *times.get(at)?;
+                    let inc = *incs.get(at)?;
+
+                    Some(RowId::from_u128(((time as u128) << 64) | (inc as u128)))
                 };
+
+                let (index_value, cur_row_id) = 'walk: loop {
+                    let (Some(mut index_value), Some(mut cur_row_id)) = (
+                        cur_index_times
+                            .get(cur_cursor_value as usize)
+                            .copied()
+                            .map(TimeInt::new_temporal),
+                        cur_index_row_id_at(cur_cursor_value as usize),
+                    ) else {
+                        continue 'overlaps;
+                    };
+
+                    if index_value == *cur_index_value {
+                        // TODO(cmc): Because of Arrow's `ListArray` limitations, we inline the
+                        // "deduped_latest_on_index" logic here directly, which prevents a lot of
+                        // unnecessary allocations and copies.
+                        while let (Some(next_index_value), Some(next_row_id)) = (
+                            cur_index_times
+                                .get(cur_cursor_value as usize + 1)
+                                .copied()
+                                .map(TimeInt::new_temporal),
+                            cur_index_row_id_at(cur_cursor_value as usize + 1),
+                        ) {
+                            if next_index_value == *cur_index_value {
+                                index_value = next_index_value;
+                                cur_row_id = next_row_id;
+                                cur_cursor_value = cur_cursor.fetch_add(1, Ordering::Relaxed) + 1;
+                            } else {
+                                break;
+                            }
+                        }
+
+                        break 'walk (index_value, cur_row_id);
+                    }
+
+                    if index_value > *cur_index_value {
+                        continue 'overlaps;
+                    }
+
+                    cur_cursor_value = cur_cursor.fetch_add(1, Ordering::Relaxed) + 1;
+                };
+
+                debug_assert_eq!(index_value, *cur_index_value);
 
                 if let Some(streaming_state) = streaming_state.as_mut() {
                     let StreamingJoinStateEntry {
                         chunk,
                         cursor,
-                        index_value,
                         row_id,
                     } = streaming_state;
 
-                    let cur_chunk_has_smaller_index_value = cur_index_value < *index_value;
-                    // If these two chunks overlap and share the index value of the current
-                    // iteration, we shall pick the row with the most recent row-id.
-                    let cur_chunk_has_equal_index_but_higher_rowid =
-                        cur_index_value == *index_value && cur_row_id > *row_id;
-
-                    if cur_chunk_has_smaller_index_value
-                        || cur_chunk_has_equal_index_but_higher_rowid
-                    {
+                    if cur_row_id > *row_id {
                         *chunk = cur_chunk;
                         *cursor = cur_cursor_value;
-                        *index_value = cur_index_value;
                         *row_id = cur_row_id;
                     }
                 } else {
                     *streaming_state = Some(StreamingJoinStateEntry {
                         chunk: cur_chunk,
                         cursor: cur_cursor_value,
-                        index_value: cur_index_value,
                         row_id: cur_row_id,
                     });
                 };
             }
         }
 
-        // What's the index value we're looking for at the current iteration?
-        //
-        // `None` if we ran out of chunks.
-        let mut cur_index_value = if let Some(view_pov_chunks_idx) = state.view_pov_chunks_idx {
-            // If we do have a set point-of-view, then the current iteration corresponds to the
-            // next available index value across all PoV chunks.
-            view_streaming_state
-                .get(view_pov_chunks_idx)
-                .and_then(|streaming_state| streaming_state.as_ref().map(|s| s.index_value))
-        } else {
-            // If we do not have a set point-of-view, then the current iteration corresponds to the
-            // smallest available index value across all available chunks.
-            view_streaming_state
-                .iter()
-                .flatten()
-                // NOTE: We're purposefully ignoring RowId-related semantics here: we just want to know
-                // the value we're looking for on the "main" index (dedupe semantics).
-                .min_by_key(|streaming_state| streaming_state.index_value)
-                .map(|streaming_state| streaming_state.index_value)
-        };
-
-        // What's the next sample we're interested in, if any?
-        //
-        // `None` iff the query isn't sampled. Short-circuits if the query is sampled but has run out of samples.
-        let sampled_index_value =
-            if let Some(using_index_values) = state.using_index_values_stack.lock().as_mut() {
-                // NOTE: Look closely -- this short-circuits is there are no more samples in the vec.
-                Some(using_index_values.last().copied()?)
-            } else {
-                None
-            };
-
-        if let Some(sampled_index_value) = sampled_index_value {
-            if let Some(cur_index_value) = cur_index_value {
-                // If the current natural index value is smaller than the next sampled index value, then we need
-                // to skip the current row.
-                if sampled_index_value > cur_index_value {
-                    self.increment_cursors_at_index_value(cur_index_value);
-                    return self.next_row();
-                }
-            }
-
-            // If the current natural index value is equal to the current sample, then we should
-            // return the current row as usual.
-            //
-            // If the current natural index value is greater than the current sample, or if we wan out of
-            // natural indices altogether, then we should return whatever data is available for the
-            // current row (which might be all 'nulls').
-            //
-            // Either way, we can pop the sample from the stack, and use that as index value.
-
-            // These unwraps cannot fail since we the only way to get here is for `state.using_index_values`
-            // to exist and be non-empty.
-            #[allow(clippy::unwrap_used)]
-            {
-                cur_index_value = Some(
-                    state
-                        .using_index_values_stack
-                        .lock()
-                        .as_mut()
-                        .unwrap()
-                        .pop()
-                        .unwrap(),
-                );
-            }
-        }
-
-        let cur_index_value = cur_index_value?;
-
-        // `filtered_index_values` & `using_index_values` are exclusive.
-        if sampled_index_value.is_none() {
-            if let Some(filtered_index_values) = self.query.filtered_index_values.as_ref() {
-                if !filtered_index_values.contains(&cur_index_value) {
-                    self.increment_cursors_at_index_value(cur_index_value);
-                    return self.next_row();
-                }
-            }
-        }
-
         let mut view_streaming_state = view_streaming_state
             .into_iter()
-            .map(|streaming_state| match streaming_state {
-                Some(s) if s.index_value == cur_index_value => {
-                    Some(StreamingJoinState::StreamingJoinState(s))
-                }
-                _ => None,
-            })
+            .map(|streaming_state| streaming_state.map(StreamingJoinState::StreamingJoinState))
             .collect_vec();
+
+        // Static always wins, no matter what.
+        for (selected_idx, static_state) in state.selected_static_values.iter().enumerate() {
+            if let static_state @ Some(_) =
+                static_state.clone().map(StreamingJoinState::Retrofilled)
+            {
+                let Some(view_idx) = state
+                    .selected_contents
+                    .get(selected_idx)
+                    .map(|(view_idx, _)| *view_idx)
+                else {
+                    debug_assert!(false, "selected_idx out of bounds");
+                    continue;
+                };
+
+                let Some(streaming_state) = view_streaming_state.get_mut(view_idx) else {
+                    debug_assert!(false, "view_idx out of bounds");
+                    continue;
+                };
+
+                *streaming_state = static_state;
+            }
+        }
 
         match self.query.sparse_fill_strategy {
             SparseFillStrategy::None => {}
+
             SparseFillStrategy::LatestAtGlobal => {
                 // Everything that yielded `null` for the current iteration.
                 let null_streaming_states = view_streaming_state
@@ -873,7 +994,7 @@ impl QueryHandle<'_> {
                     // consecutive nulls etc). Later.
 
                     let query =
-                        re_chunk::LatestAtQuery::new(self.query.filtered_index, cur_index_value);
+                        re_chunk::LatestAtQuery::new(state.filtered_index, *cur_index_value);
 
                     let results = self.engine.cache.latest_at(
                         self.engine.store,
@@ -949,20 +1070,18 @@ impl QueryHandle<'_> {
                         .or_insert((time, time_sliced));
                 });
 
-            if let Some(sampled_index_value) = sampled_index_value {
-                if !sampled_index_value.is_static() {
-                    // The sampled index value (if temporal) should be the one returned for the
-                    // queried index, no matter what.
-                    max_value_per_index.insert(
-                        self.query.filtered_index,
-                        (
-                            sampled_index_value,
-                            ArrowPrimitiveArray::<i64>::from_vec(vec![cur_index_value.as_i64()])
-                                .to(self.query.filtered_index.datatype())
-                                .to_boxed(),
-                        ),
-                    );
-                }
+            if !cur_index_value.is_static() {
+                // The current index value (if temporal) should be the one returned for the
+                // queried index, no matter what.
+                max_value_per_index.insert(
+                    state.filtered_index,
+                    (
+                        *cur_index_value,
+                        ArrowPrimitiveArray::<i64>::from_vec(vec![cur_index_value.as_i64()])
+                            .to(state.filtered_index.datatype())
+                            .to_boxed(),
+                    ),
+                );
             }
         }
 
@@ -1033,8 +1152,6 @@ impl QueryHandle<'_> {
             })
             .collect_vec();
 
-        self.increment_cursors_at_index_value(cur_index_value);
-
         debug_assert_eq!(state.arrow_schema.fields.len(), selected_arrays.len());
 
         Some(selected_arrays)
@@ -1053,35 +1170,25 @@ impl QueryHandle<'_> {
             data: ArrowChunk::new(self.next_row()?),
         })
     }
-
-    /// Increment cursors for iteration corresponding to `cur_index_value`.
-    //
-    // NOTE: This is trickier than it looks: cursors need to be incremented not only for chunks
-    // that were used to return data during the current iteration, but also chunks that
-    // _attempted_ to return data and were preempted for one reason or another (overlap,
-    // intra-timestamp tie-break, etc).
-    fn increment_cursors_at_index_value(&self, cur_index_value: IndexValue) {
-        let state = self.init();
-        for view_chunks in &state.view_chunks {
-            for (cur_cursor, cur_chunk) in view_chunks {
-                if let Some((index_value, _row_id)) = cur_chunk
-                    .iter_indices(&self.query.filtered_index)
-                    .nth(cur_cursor.load(Ordering::Relaxed) as _)
-                {
-                    if cur_index_value == index_value {
-                        cur_cursor.fetch_add(1, Ordering::Relaxed);
-                    }
-                };
-            }
-        }
-    }
 }
 
 impl<'a> QueryHandle<'a> {
     /// Returns an iterator backed by [`Self::next_row`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
+    pub fn iter(&'a self) -> impl Iterator<Item = Vec<Box<dyn ArrowArray>>> + 'a {
+        std::iter::from_fn(move || self.next_row())
+    }
+
+    /// Returns an iterator backed by [`Self::next_row`].
+    #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
     pub fn into_iter(self) -> impl Iterator<Item = Vec<Box<dyn ArrowArray>>> + 'a {
         std::iter::from_fn(move || self.next_row())
+    }
+
+    /// Returns an iterator backed by [`Self::next_row_batch`].
+    #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
+    pub fn batch_iter(&'a self) -> impl Iterator<Item = RecordBatch> + 'a {
+        std::iter::from_fn(move || self.next_row_batch())
     }
 
     /// Returns an iterator backed by [`Self::next_row_batch`].
@@ -1098,7 +1205,7 @@ impl<'a> QueryHandle<'a> {
 mod tests {
     use std::sync::Arc;
 
-    use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
+    use re_chunk::{util::concatenate_record_batches, Chunk, ChunkId, RowId, TimePoint};
     use re_chunk_store::{ChunkStore, ChunkStoreConfig, ResolvedTimeRange, TimeInt};
     use re_log_types::{
         build_frame_nr, build_log_time,
@@ -1125,7 +1232,7 @@ mod tests {
     // * [x] filtered_index_values
     // * [x] view_contents
     // * [x] selection
-    // * [x] filtered_point_of_view
+    // * [x] filtered_is_not_null
     // * [x] sparse_fill_strategy
     // * [x] using_index_values
     //
@@ -1133,7 +1240,7 @@ mod tests {
     // * [x] num_rows
     // * [x] clears
     // * [ ] timelines returned with selection=none
-    // * [ ] pagination
+    // * [x] pagination
 
     // TODO(cmc): At some point I'd like to stress multi-entity queries too, but that feels less
     // urgent considering how things are implemented (each entity lives in its own index, so it's
@@ -1152,35 +1259,74 @@ mod tests {
             cache: &query_cache,
         };
 
-        let timeline = Timeline::new_sequence("frame_nr");
-        let query = QueryExpression::new(timeline);
-        eprintln!("{query:#?}:");
+        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
 
-        let query_handle = query_engine.query(query.clone());
-        assert_eq!(
-            query_engine.query(query.clone()).into_iter().count() as u64,
-            query_handle.num_rows()
-        );
-        let dataframe = concatenate_record_batches(
-            query_handle.schema().clone(),
-            &query_handle.into_batch_iter().collect_vec(),
-        );
-        eprintln!("{dataframe}");
+        // static
+        {
+            let query = QueryExpression::default();
+            eprintln!("{query:#?}:");
 
-        let got = format!("{:#?}", dataframe.data.iter().collect_vec());
-        let expected = unindent::unindent(
-            "\
-            [
-                Int64[None, 10, 20, 30, 40, 50, 60, 70],
-                Timestamp(Nanosecond, None)[None, 1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
-                ListArray[None, None, None, [2], [3], [4], None, [6]],
-                ListArray[[c], None, None, None, None, None, None, None],
-                ListArray[None, [{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
-            ]\
-            "
-        );
+            let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows()
+            );
+            let dataframe = concatenate_record_batches(
+                query_handle.schema().clone(),
+                &query_handle.into_batch_iter().collect_vec(),
+            )?;
+            eprintln!("{dataframe}");
 
-        similar_asserts::assert_eq!(expected, got);
+            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let expected = unindent::unindent(
+                "\
+                [
+                    Int64[None],
+                    Timestamp(Nanosecond, None)[None],
+                    ListArray[None],
+                    ListArray[[c]],
+                    ListArray[None],
+                ]\
+                ",
+            );
+
+            similar_asserts::assert_eq!(expected, got);
+        }
+
+        // temporal
+        {
+            let query = QueryExpression {
+                filtered_index,
+                ..Default::default()
+            };
+            eprintln!("{query:#?}:");
+
+            let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows()
+            );
+            let dataframe = concatenate_record_batches(
+                query_handle.schema().clone(),
+                &query_handle.into_batch_iter().collect_vec(),
+            )?;
+            eprintln!("{dataframe}");
+
+            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let expected = unindent::unindent(
+                "\
+                [
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
+                    ListArray[None, None, [2], [3], [4], None, [6]],
+                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
+                    ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
+                ]\
+                "
+            );
+
+            similar_asserts::assert_eq!(expected, got);
+        }
 
         Ok(())
     }
@@ -1197,9 +1343,12 @@ mod tests {
             cache: &query_cache,
         };
 
-        let timeline = Timeline::new_sequence("frame_nr");
-        let mut query = QueryExpression::new(timeline);
-        query.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
+        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let query = QueryExpression {
+            filtered_index,
+            sparse_fill_strategy: SparseFillStrategy::LatestAtGlobal,
+            ..Default::default()
+        };
         eprintln!("{query:#?}:");
 
         let query_handle = query_engine.query(query.clone());
@@ -1210,18 +1359,18 @@ mod tests {
         let dataframe = concatenate_record_batches(
             query_handle.schema().clone(),
             &query_handle.into_batch_iter().collect_vec(),
-        );
+        )?;
         eprintln!("{dataframe}");
 
         let got = format!("{:#?}", dataframe.data.iter().collect_vec());
         let expected = unindent::unindent(
             "\
             [
-                Int64[None, 10, 20, 30, 40, 50, 60, 70],
-                Timestamp(Nanosecond, None)[None, 1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
-                ListArray[None, None, None, [2], [3], [4], [4], [6]],
-                ListArray[[c], [c], [c], [c], [c], [c], [c], [c]],
-                ListArray[None, [{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
+                Int64[10, 20, 30, 40, 50, 60, 70],
+                Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
+                ListArray[None, None, [2], [3], [4], [4], [6]],
+                ListArray[[c], [c], [c], [c], [c], [c], [c]],
+                ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
             ]\
             "
         );
@@ -1243,9 +1392,12 @@ mod tests {
             cache: &query_cache,
         };
 
-        let timeline = Timeline::new_sequence("frame_nr");
-        let mut query = QueryExpression::new(timeline);
-        query.filtered_index_range = Some(ResolvedTimeRange::new(30, 60));
+        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let query = QueryExpression {
+            filtered_index,
+            filtered_index_range: Some(ResolvedTimeRange::new(30, 60)),
+            ..Default::default()
+        };
         eprintln!("{query:#?}:");
 
         let query_handle = query_engine.query(query.clone());
@@ -1256,18 +1408,18 @@ mod tests {
         let dataframe = concatenate_record_batches(
             query_handle.schema().clone(),
             &query_handle.into_batch_iter().collect_vec(),
-        );
+        )?;
         eprintln!("{dataframe}");
 
         let got = format!("{:#?}", dataframe.data.iter().collect_vec());
         let expected = unindent::unindent(
             "\
             [
-                Int64[None, 30, 40, 50, 60],
-                Timestamp(Nanosecond, None)[None, None, None, 1970-01-01 00:00:00.000000050, None],
-                ListArray[None, [2], [3], [4], None],
-                ListArray[[c], None, None, None, None],
-                ListArray[None, [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}]],
+                Int64[30, 40, 50, 60],
+                Timestamp(Nanosecond, None)[None, None, 1970-01-01 00:00:00.000000050, None],
+                ListArray[[2], [3], [4], None],
+                ListArray[[c], [c], [c], [c]],
+                ListArray[[{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}]],
             ]\
             ",
         );
@@ -1289,15 +1441,18 @@ mod tests {
             cache: &query_cache,
         };
 
-        let timeline = Timeline::new_sequence("frame_nr");
-        let mut query = QueryExpression::new(timeline);
-        query.filtered_index_values = Some(
-            [0, 30, 60, 90]
-                .into_iter()
-                .map(TimeInt::new_temporal)
-                .chain(std::iter::once(TimeInt::STATIC))
-                .collect(),
-        );
+        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let query = QueryExpression {
+            filtered_index,
+            filtered_index_values: Some(
+                [0, 30, 60, 90]
+                    .into_iter()
+                    .map(TimeInt::new_temporal)
+                    .chain(std::iter::once(TimeInt::STATIC))
+                    .collect(),
+            ),
+            ..Default::default()
+        };
         eprintln!("{query:#?}:");
 
         let query_handle = query_engine.query(query.clone());
@@ -1308,18 +1463,18 @@ mod tests {
         let dataframe = concatenate_record_batches(
             query_handle.schema().clone(),
             &query_handle.into_batch_iter().collect_vec(),
-        );
+        )?;
         eprintln!("{dataframe}");
 
         let got = format!("{:#?}", dataframe.data.iter().collect_vec());
         let expected = unindent::unindent(
             "\
             [
-                Int64[None, 30, 60],
-                Timestamp(Nanosecond, None)[None, None, None],
-                ListArray[None, [2], None],
-                ListArray[[c], None, None],
-                ListArray[None, [{x: 2, y: 2}], [{x: 5, y: 5}]],
+                Int64[30, 60],
+                Timestamp(Nanosecond, None)[None, None],
+                ListArray[[2], None],
+                ListArray[[c], [c]],
+                ListArray[[{x: 2, y: 2}], [{x: 5, y: 5}]],
             ]\
             ",
         );
@@ -1341,18 +1496,21 @@ mod tests {
             cache: &query_cache,
         };
 
-        let timeline = Timeline::new_sequence("frame_nr");
+        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
 
         // vanilla
         {
-            let mut query = QueryExpression::new(timeline);
-            query.using_index_values = Some(
-                [0, 15, 30, 30, 45, 60, 75, 90]
-                    .into_iter()
-                    .map(TimeInt::new_temporal)
-                    .chain(std::iter::once(TimeInt::STATIC))
-                    .collect(),
-            );
+            let query = QueryExpression {
+                filtered_index,
+                using_index_values: Some(
+                    [0, 15, 30, 30, 45, 60, 75, 90]
+                        .into_iter()
+                        .map(TimeInt::new_temporal)
+                        .chain(std::iter::once(TimeInt::STATIC))
+                        .collect(),
+                ),
+                ..Default::default()
+            };
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
@@ -1363,18 +1521,18 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
             let expected = unindent::unindent(
                 "\
                 [
-                    Int64[None, 0, 15, 30, 45, 60, 75, 90],
-                    Timestamp(Nanosecond, None)[None, None, None, None, None, None, None, None],
-                    ListArray[None, None, None, [2], None, None, None, None],
-                    ListArray[[c], None, None, None, None, None, None, None],
-                    ListArray[None, None, None, [{x: 2, y: 2}], None, [{x: 5, y: 5}], None, None],
+                    Int64[0, 15, 30, 45, 60, 75, 90],
+                    Timestamp(Nanosecond, None)[None, None, None, None, None, None, None],
+                    ListArray[None, None, [2], None, None, None, None],
+                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
+                    ListArray[None, None, [{x: 2, y: 2}], None, [{x: 5, y: 5}], None, None],
                 ]\
                 ",
             );
@@ -1383,16 +1541,19 @@ mod tests {
         }
 
         // sparse-filled
-        if true {
-            let mut query = QueryExpression::new(timeline);
-            query.using_index_values = Some(
-                [0, 15, 30, 30, 45, 60, 75, 90]
-                    .into_iter()
-                    .map(TimeInt::new_temporal)
-                    .chain(std::iter::once(TimeInt::STATIC))
-                    .collect(),
-            );
-            query.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
+        {
+            let query = QueryExpression {
+                filtered_index,
+                using_index_values: Some(
+                    [0, 15, 30, 30, 45, 60, 75, 90]
+                        .into_iter()
+                        .map(TimeInt::new_temporal)
+                        .chain(std::iter::once(TimeInt::STATIC))
+                        .collect(),
+                ),
+                sparse_fill_strategy: SparseFillStrategy::LatestAtGlobal,
+                ..Default::default()
+            };
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
@@ -1403,18 +1564,18 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
             let expected = unindent::unindent(
                 "\
                 [
-                    Int64[None, 0, 15, 30, 45, 60, 75, 90],
-                    Timestamp(Nanosecond, None)[None, None, 1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000070, 1970-01-01 00:00:00.000000070],
-                    ListArray[None, None, None, [2], [3], [4], [6], [6]],
-                    ListArray[[c], [c], [c], [c], [c], [c], [c], [c]],
-                    ListArray[None, None, [{x: 0, y: 0}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 5, y: 5}], [{x: 8, y: 8}], [{x: 8, y: 8}]],
+                    Int64[0, 15, 30, 45, 60, 75, 90],
+                    Timestamp(Nanosecond, None)[None, 1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000070, 1970-01-01 00:00:00.000000070],
+                    ListArray[None, None, [2], [3], [4], [6], [6]],
+                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
+                    ListArray[None, [{x: 0, y: 0}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 5, y: 5}], [{x: 8, y: 8}], [{x: 8, y: 8}]],
                 ]\
                 ",
             );
@@ -1426,7 +1587,7 @@ mod tests {
     }
 
     #[test]
-    fn filtered_point_of_view() -> anyhow::Result<()> {
+    fn filtered_is_not_null() -> anyhow::Result<()> {
         re_log::setup_logging();
 
         let store = create_nasty_store()?;
@@ -1437,17 +1598,19 @@ mod tests {
             cache: &query_cache,
         };
 
-        let timeline = Timeline::new_sequence("frame_nr");
+        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
         let entity_path: EntityPath = "this/that".into();
 
         // non-existing entity
         {
-            let mut query = QueryExpression::new(timeline);
-            query.filtered_point_of_view = Some(ComponentColumnSelector {
-                entity_path: "no/such/entity".into(),
-                component: MyPoint::name(),
-                join_encoding: Default::default(),
-            });
+            let query = QueryExpression {
+                filtered_index,
+                filtered_is_not_null: Some(ComponentColumnSelector {
+                    entity_path: "no/such/entity".into(),
+                    component_name: MyPoint::name().to_string(),
+                }),
+                ..Default::default()
+            };
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
@@ -1458,7 +1621,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1469,12 +1632,14 @@ mod tests {
 
         // non-existing component
         {
-            let mut query = QueryExpression::new(timeline);
-            query.filtered_point_of_view = Some(ComponentColumnSelector {
-                entity_path: entity_path.clone(),
-                component: "AComponentColumnThatDoesntExist".into(),
-                join_encoding: Default::default(),
-            });
+            let query = QueryExpression {
+                filtered_index,
+                filtered_is_not_null: Some(ComponentColumnSelector {
+                    entity_path: entity_path.clone(),
+                    component_name: "AComponentColumnThatDoesntExist".into(),
+                }),
+                ..Default::default()
+            };
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
@@ -1485,7 +1650,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1496,12 +1661,14 @@ mod tests {
 
         // MyPoint
         {
-            let mut query = QueryExpression::new(timeline);
-            query.filtered_point_of_view = Some(ComponentColumnSelector {
-                entity_path: entity_path.clone(),
-                component: MyPoint::name(),
-                join_encoding: Default::default(),
-            });
+            let query = QueryExpression {
+                filtered_index,
+                filtered_is_not_null: Some(ComponentColumnSelector {
+                    entity_path: entity_path.clone(),
+                    component_name: MyPoint::name().to_string(),
+                }),
+                ..Default::default()
+            };
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
@@ -1512,7 +1679,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1522,7 +1689,7 @@ mod tests {
                     Int64[10, 20, 30, 40, 50, 60, 70],
                     Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
                     ListArray[None, None, [2], [3], [4], None, [6]],
-                    ListArray[None, None, None, None, None, None, None],
+                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
                     ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
                 ]\
                 "
@@ -1533,12 +1700,14 @@ mod tests {
 
         // MyColor
         {
-            let mut query = QueryExpression::new(timeline);
-            query.filtered_point_of_view = Some(ComponentColumnSelector {
-                entity_path: entity_path.clone(),
-                component: MyColor::name(),
-                join_encoding: Default::default(),
-            });
+            let query = QueryExpression {
+                filtered_index,
+                filtered_is_not_null: Some(ComponentColumnSelector {
+                    entity_path: entity_path.clone(),
+                    component_name: MyColor::name().to_string(),
+                }),
+                ..Default::default()
+            };
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
@@ -1549,7 +1718,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1557,10 +1726,10 @@ mod tests {
                 "\
                 [
                     Int64[30, 40, 50, 70],
-                    Timestamp(Nanosecond, None)[None, None, None, None],
+                    Timestamp(Nanosecond, None)[None, None, 1970-01-01 00:00:00.000000050, 1970-01-01 00:00:00.000000070],
                     ListArray[[2], [3], [4], [6]],
-                    ListArray[None, None, None, None],
-                    ListArray[None, None, None, None],
+                    ListArray[[c], [c], [c], [c]],
+                    ListArray[[{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 8, y: 8}]],
                 ]\
                 ",
             );
@@ -1584,16 +1753,19 @@ mod tests {
         };
 
         let entity_path: EntityPath = "this/that".into();
-        let timeline = Timeline::new_sequence("frame_nr");
+        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
 
         // empty view
         {
-            let mut query = QueryExpression::new(timeline);
-            query.view_contents = Some(
-                [(entity_path.clone(), Some(Default::default()))]
-                    .into_iter()
-                    .collect(),
-            );
+            let query = QueryExpression {
+                filtered_index,
+                view_contents: Some(
+                    [(entity_path.clone(), Some(Default::default()))]
+                        .into_iter()
+                        .collect(),
+                ),
+                ..Default::default()
+            };
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
@@ -1604,7 +1776,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1614,23 +1786,26 @@ mod tests {
         }
 
         {
-            let mut query = QueryExpression::new(timeline);
-            query.view_contents = Some(
-                [(
-                    entity_path.clone(),
-                    Some(
-                        [
-                            MyLabel::name(),
-                            MyColor::name(),
-                            "AColumnThatDoesntEvenExist".into(),
-                        ]
-                        .into_iter()
-                        .collect(),
-                    ),
-                )]
-                .into_iter()
-                .collect(),
-            );
+            let query = QueryExpression {
+                filtered_index,
+                view_contents: Some(
+                    [(
+                        entity_path.clone(),
+                        Some(
+                            [
+                                MyLabel::name(),
+                                MyColor::name(),
+                                "AColumnThatDoesntEvenExist".into(),
+                            ]
+                            .into_iter()
+                            .collect(),
+                        ),
+                    )]
+                    .into_iter()
+                    .collect(),
+                ),
+                ..Default::default()
+            };
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
@@ -1641,17 +1816,17 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
             let expected = unindent::unindent(
                 "\
                 [
-                    Int64[None, 30, 40, 50, 70],
-                    Timestamp(Nanosecond, None)[None, None, None, None, None],
-                    ListArray[None, [2], [3], [4], [6]],
-                    ListArray[[c], None, None, None, None],
+                    Int64[30, 40, 50, 70],
+                    Timestamp(Nanosecond, None)[None, None, None, None],
+                    ListArray[[2], [3], [4], [6]],
+                    ListArray[[c], [c], [c], [c]],
                 ]\
                 ",
             );
@@ -1675,12 +1850,15 @@ mod tests {
         };
 
         let entity_path: EntityPath = "this/that".into();
-        let timeline = Timeline::new_sequence("frame_nr");
+        let filtered_index = Timeline::new_sequence("frame_nr");
 
         // empty selection
         {
-            let mut query = QueryExpression::new(timeline);
-            query.selection = Some(vec![]);
+            let query = QueryExpression {
+                filtered_index: Some(filtered_index),
+                selection: Some(vec![]),
+                ..Default::default()
+            };
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
@@ -1691,7 +1869,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
@@ -1702,18 +1880,21 @@ mod tests {
 
         // only indices (+ duplication)
         {
-            let mut query = QueryExpression::new(timeline);
-            query.selection = Some(vec![
-                ColumnSelector::Time(TimeColumnSelector {
-                    timeline: *timeline.name(),
-                }),
-                ColumnSelector::Time(TimeColumnSelector {
-                    timeline: *timeline.name(),
-                }),
-                ColumnSelector::Time(TimeColumnSelector {
-                    timeline: "ATimeColumnThatDoesntExist".into(),
-                }),
-            ]);
+            let query = QueryExpression {
+                filtered_index: Some(filtered_index),
+                selection: Some(vec![
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: "ATimeColumnThatDoesntExist".into(),
+                    }),
+                ]),
+                ..Default::default()
+            };
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
@@ -1724,16 +1905,16 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
             let expected = unindent::unindent(
                 "\
                 [
-                    Int64[None, 10, 20, 30, 40, 50, 60, 70],
-                    Int64[None, 10, 20, 30, 40, 50, 60, 70],
-                    NullArray(8),
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    NullArray(7),
                 ]\
                 ",
             );
@@ -1743,29 +1924,28 @@ mod tests {
 
         // only components (+ duplication)
         {
-            let mut query = QueryExpression::new(timeline);
-            query.selection = Some(vec![
-                ColumnSelector::Component(ComponentColumnSelector {
-                    entity_path: entity_path.clone(),
-                    component: MyColor::name(),
-                    join_encoding: Default::default(),
-                }),
-                ColumnSelector::Component(ComponentColumnSelector {
-                    entity_path: entity_path.clone(),
-                    component: MyColor::name(),
-                    join_encoding: Default::default(),
-                }),
-                ColumnSelector::Component(ComponentColumnSelector {
-                    entity_path: "non_existing_entity".into(),
-                    component: MyColor::name(),
-                    join_encoding: Default::default(),
-                }),
-                ColumnSelector::Component(ComponentColumnSelector {
-                    entity_path: entity_path.clone(),
-                    component: "AComponentColumnThatDoesntExist".into(),
-                    join_encoding: Default::default(),
-                }),
-            ]);
+            let query = QueryExpression {
+                filtered_index: Some(filtered_index),
+                selection: Some(vec![
+                    ColumnSelector::Component(ComponentColumnSelector {
+                        entity_path: entity_path.clone(),
+                        component_name: MyColor::name().to_string(),
+                    }),
+                    ColumnSelector::Component(ComponentColumnSelector {
+                        entity_path: entity_path.clone(),
+                        component_name: MyColor::name().to_string(),
+                    }),
+                    ColumnSelector::Component(ComponentColumnSelector {
+                        entity_path: "non_existing_entity".into(),
+                        component_name: MyColor::name().to_string(),
+                    }),
+                    ColumnSelector::Component(ComponentColumnSelector {
+                        entity_path: entity_path.clone(),
+                        component_name: "AComponentColumnThatDoesntExist".into(),
+                    }),
+                ]),
+                ..Default::default()
+            };
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
@@ -1776,17 +1956,97 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
             let expected = unindent::unindent(
                 "\
                 [
-                    ListArray[None, None, None, [2], [3], [4], None, [6]],
-                    ListArray[None, None, None, [2], [3], [4], None, [6]],
-                    NullArray(8),
-                    NullArray(8),
+                    ListArray[None, None, [2], [3], [4], None, [6]],
+                    ListArray[None, None, [2], [3], [4], None, [6]],
+                    NullArray(7),
+                    NullArray(7),
+                ]\
+                ",
+            );
+
+            similar_asserts::assert_eq!(expected, got);
+        }
+
+        // static
+        {
+            let query = QueryExpression {
+                filtered_index: Some(filtered_index),
+                selection: Some(vec![
+                    // NOTE: This will force a crash if the selected indexes vs. view indexes are
+                    // improperly handled.
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    //
+                    ColumnSelector::Component(ComponentColumnSelector {
+                        entity_path: entity_path.clone(),
+                        component_name: MyLabel::name().to_string(),
+                    }),
+                ]),
+                ..Default::default()
+            };
+            eprintln!("{query:#?}:");
+
+            let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows()
+            );
+            let dataframe = concatenate_record_batches(
+                query_handle.schema().clone(),
+                &query_handle.into_batch_iter().collect_vec(),
+            )?;
+            eprintln!("{dataframe}");
+
+            let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+            let expected = unindent::unindent(
+                "\
+                [
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    Int64[10, 20, 30, 40, 50, 60, 70],
+                    ListArray[[c], [c], [c], [c], [c], [c], [c]],
                 ]\
                 ",
             );
@@ -1810,46 +2070,46 @@ mod tests {
         };
 
         let entity_path: EntityPath = "this/that".into();
-        let timeline = Timeline::new_sequence("frame_nr");
+        let filtered_index = Timeline::new_sequence("frame_nr");
 
         // only components
         {
-            let mut query = QueryExpression::new(timeline);
-            query.view_contents = Some(
-                [(
-                    entity_path.clone(),
-                    Some([MyColor::name(), MyLabel::name()].into_iter().collect()),
-                )]
-                .into_iter()
-                .collect(),
-            );
-            query.selection = Some(vec![
-                ColumnSelector::Time(TimeColumnSelector {
-                    timeline: *timeline.name(),
-                }),
-                ColumnSelector::Time(TimeColumnSelector {
-                    timeline: *Timeline::log_time().name(),
-                }),
-                ColumnSelector::Time(TimeColumnSelector {
-                    timeline: *Timeline::log_tick().name(),
-                }),
-                //
-                ColumnSelector::Component(ComponentColumnSelector {
-                    entity_path: entity_path.clone(),
-                    component: MyPoint::name(),
-                    join_encoding: Default::default(),
-                }),
-                ColumnSelector::Component(ComponentColumnSelector {
-                    entity_path: entity_path.clone(),
-                    component: MyColor::name(),
-                    join_encoding: Default::default(),
-                }),
-                ColumnSelector::Component(ComponentColumnSelector {
-                    entity_path: entity_path.clone(),
-                    component: MyLabel::name(),
-                    join_encoding: Default::default(),
-                }),
-            ]);
+            let query = QueryExpression {
+                filtered_index: Some(filtered_index),
+                view_contents: Some(
+                    [(
+                        entity_path.clone(),
+                        Some([MyColor::name(), MyLabel::name()].into_iter().collect()),
+                    )]
+                    .into_iter()
+                    .collect(),
+                ),
+                selection: Some(vec![
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *filtered_index.name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *Timeline::log_time().name(),
+                    }),
+                    ColumnSelector::Time(TimeColumnSelector {
+                        timeline: *Timeline::log_tick().name(),
+                    }),
+                    //
+                    ColumnSelector::Component(ComponentColumnSelector {
+                        entity_path: entity_path.clone(),
+                        component_name: MyPoint::name().to_string(),
+                    }),
+                    ColumnSelector::Component(ComponentColumnSelector {
+                        entity_path: entity_path.clone(),
+                        component_name: MyColor::name().to_string(),
+                    }),
+                    ColumnSelector::Component(ComponentColumnSelector {
+                        entity_path: entity_path.clone(),
+                        component_name: MyLabel::name().to_string(),
+                    }),
+                ]),
+                ..Default::default()
+            };
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
@@ -1860,19 +2120,19 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
             let expected = unindent::unindent(
                 "\
                 [
-                    Int64[None, 30, 40, 50, 70],
-                    Timestamp(Nanosecond, None)[None, None, None, None, None],
-                    NullArray(5),
-                    NullArray(5),
-                    ListArray[None, [2], [3], [4], [6]],
-                    ListArray[[c], None, None, None, None],
+                    Int64[30, 40, 50, 70],
+                    Timestamp(Nanosecond, None)[None, None, None, None],
+                    NullArray(4),
+                    NullArray(4),
+                    ListArray[[2], [3], [4], [6]],
+                    ListArray[[c], [c], [c], [c]],
                 ]\
                 ",
             );
@@ -1897,13 +2157,16 @@ mod tests {
             cache: &query_cache,
         };
 
-        let timeline = Timeline::new_sequence("frame_nr");
+        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
         let entity_path = EntityPath::from("this/that");
 
         // barebones
         {
-            let mut query = QueryExpression::new(timeline);
-            query.view_contents = Some([(entity_path.clone(), None)].into_iter().collect());
+            let query = QueryExpression {
+                filtered_index,
+                view_contents: Some([(entity_path.clone(), None)].into_iter().collect()),
+                ..Default::default()
+            };
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
@@ -1914,18 +2177,18 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             let got = format!("{:#?}", dataframe.data.iter().collect_vec());
             let expected = unindent::unindent(
             "\
             [
-                Int64[None, 10, 20, 30, 40, 50, 60, 65, 70],
-                Timestamp(Nanosecond, None)[None, 1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, 1970-01-01 00:00:00.000000060, 1970-01-01 00:00:00.000000065, 1970-01-01 00:00:00.000000070],
-                ListArray[[], None, None, [2], [3], [4], [], [], [6]],
-                ListArray[[], None, None, None, None, None, [], [], None],
-                ListArray[[], [{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [], [], [{x: 8, y: 8}]],
+                Int64[10, 20, 30, 40, 50, 60, 65, 70],
+                Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, 1970-01-01 00:00:00.000000060, 1970-01-01 00:00:00.000000065, 1970-01-01 00:00:00.000000070],
+                ListArray[None, None, [2], [3], [4], [], [], [6]],
+                ListArray[[c], [c], [c], [c], [c], [c], [c], [c]],
+                ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [], [], [{x: 8, y: 8}]],
             ]\
             "
         );
@@ -1935,9 +2198,12 @@ mod tests {
 
         // sparse-filled
         {
-            let mut query = QueryExpression::new(timeline);
-            query.view_contents = Some([(entity_path.clone(), None)].into_iter().collect());
-            query.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
+            let query = QueryExpression {
+                filtered_index,
+                view_contents: Some([(entity_path.clone(), None)].into_iter().collect()),
+                sparse_fill_strategy: SparseFillStrategy::LatestAtGlobal,
+                ..Default::default()
+            };
             eprintln!("{query:#?}:");
 
             let query_handle = query_engine.query(query.clone());
@@ -1948,7 +2214,7 @@ mod tests {
             let dataframe = concatenate_record_batches(
                 query_handle.schema().clone(),
                 &query_handle.into_batch_iter().collect_vec(),
-            );
+            )?;
             eprintln!("{dataframe}");
 
             // TODO(#7650): Those null values for `MyColor` on 10 and 20 look completely insane, but then again
@@ -1959,16 +2225,194 @@ mod tests {
             let expected = unindent::unindent(
             "\
             [
-                Int64[None, 10, 20, 30, 40, 50, 60, 65, 70],
-                Timestamp(Nanosecond, None)[None, 1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, 1970-01-01 00:00:00.000000060, 1970-01-01 00:00:00.000000065, 1970-01-01 00:00:00.000000070],
-                ListArray[[], None, None, [2], [3], [4], [], [], [6]],
-                ListArray[[], [c], [c], [c], [c], [c], [], [], [c]],
-                ListArray[[], [{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [], [], [{x: 8, y: 8}]],
+                Int64[10, 20, 30, 40, 50, 60, 65, 70],
+                Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, 1970-01-01 00:00:00.000000060, 1970-01-01 00:00:00.000000065, 1970-01-01 00:00:00.000000070],
+                ListArray[None, None, [2], [3], [4], [], [], [6]],
+                ListArray[[c], [c], [c], [c], [c], [c], [c], [c]],
+                ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [], [], [{x: 8, y: 8}]],
             ]\
             "
         );
 
             similar_asserts::assert_eq!(expected, got);
+        }
+
+        Ok(())
+    }
+
+    #[test]
+    fn pagination() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let store = create_nasty_store()?;
+        eprintln!("{store}");
+        let query_cache = QueryCache::new(&store);
+        let query_engine = QueryEngine {
+            store: &store,
+            cache: &query_cache,
+        };
+
+        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+        let entity_path = EntityPath::from("this/that");
+
+        // basic
+        {
+            let query = QueryExpression {
+                filtered_index,
+                ..Default::default()
+            };
+            eprintln!("{query:#?}:");
+
+            let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows(),
+            );
+
+            let expected_rows = query_handle.batch_iter().collect_vec();
+
+            for _ in 0..3 {
+                for i in 0..expected_rows.len() {
+                    query_handle.seek_to_row(i);
+
+                    let expected = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
+                    )?;
+                    let got = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        &query_handle.batch_iter().take(3).collect_vec(),
+                    )?;
+
+                    let expected = format!("{:#?}", expected.data.iter().collect_vec());
+                    let got = format!("{:#?}", got.data.iter().collect_vec());
+
+                    similar_asserts::assert_eq!(expected, got);
+                }
+            }
+        }
+
+        // with pov
+        {
+            let query = QueryExpression {
+                filtered_index,
+                filtered_is_not_null: Some(ComponentColumnSelector {
+                    entity_path: entity_path.clone(),
+                    component_name: MyPoint::name().to_string(),
+                }),
+                ..Default::default()
+            };
+            eprintln!("{query:#?}:");
+
+            let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows(),
+            );
+
+            let expected_rows = query_handle.batch_iter().collect_vec();
+
+            for _ in 0..3 {
+                for i in 0..expected_rows.len() {
+                    query_handle.seek_to_row(i);
+
+                    let expected = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
+                    )?;
+                    let got = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        &query_handle.batch_iter().take(3).collect_vec(),
+                    )?;
+
+                    let expected = format!("{:#?}", expected.data.iter().collect_vec());
+                    let got = format!("{:#?}", got.data.iter().collect_vec());
+
+                    similar_asserts::assert_eq!(expected, got);
+                }
+            }
+        }
+
+        // with sampling
+        {
+            let query = QueryExpression {
+                filtered_index,
+                using_index_values: Some(
+                    [0, 15, 30, 30, 45, 60, 75, 90]
+                        .into_iter()
+                        .map(TimeInt::new_temporal)
+                        .chain(std::iter::once(TimeInt::STATIC))
+                        .collect(),
+                ),
+                ..Default::default()
+            };
+            eprintln!("{query:#?}:");
+
+            let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows(),
+            );
+
+            let expected_rows = query_handle.batch_iter().collect_vec();
+
+            for _ in 0..3 {
+                for i in 0..expected_rows.len() {
+                    query_handle.seek_to_row(i);
+
+                    let expected = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
+                    )?;
+                    let got = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        &query_handle.batch_iter().take(3).collect_vec(),
+                    )?;
+
+                    let expected = format!("{:#?}", expected.data.iter().collect_vec());
+                    let got = format!("{:#?}", got.data.iter().collect_vec());
+
+                    similar_asserts::assert_eq!(expected, got);
+                }
+            }
+        }
+
+        // with sparse-fill
+        {
+            let query = QueryExpression {
+                filtered_index,
+                sparse_fill_strategy: SparseFillStrategy::LatestAtGlobal,
+                ..Default::default()
+            };
+            eprintln!("{query:#?}:");
+
+            let query_handle = query_engine.query(query.clone());
+            assert_eq!(
+                query_engine.query(query.clone()).into_iter().count() as u64,
+                query_handle.num_rows(),
+            );
+
+            let expected_rows = query_handle.batch_iter().collect_vec();
+
+            for _ in 0..3 {
+                for i in 0..expected_rows.len() {
+                    query_handle.seek_to_row(i);
+
+                    let expected = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        &expected_rows.iter().skip(i).take(3).cloned().collect_vec(),
+                    )?;
+                    let got = concatenate_record_batches(
+                        query_handle.schema().clone(),
+                        &query_handle.batch_iter().take(3).collect_vec(),
+                    )?;
+
+                    let expected = format!("{:#?}", expected.data.iter().collect_vec());
+                    let got = format!("{:#?}", got.data.iter().collect_vec());
+
+                    similar_asserts::assert_eq!(expected, got);
+                }
+            }
         }
 
         Ok(())
@@ -2263,29 +2707,5 @@ mod tests {
         store.insert_chunk(&chunk5)?;
 
         Ok(())
-    }
-
-    fn concatenate_record_batches(schema: ArrowSchema, batches: &[RecordBatch]) -> RecordBatch {
-        assert!(batches.iter().map(|batch| &batch.schema).all_equal());
-
-        let mut arrays = Vec::new();
-
-        if !batches.is_empty() {
-            for (i, _field) in schema.fields.iter().enumerate() {
-                let array = arrow2::compute::concatenate::concatenate(
-                    &batches
-                        .iter()
-                        .map(|batch| &*batch.data[i] as &dyn ArrowArray)
-                        .collect_vec(),
-                )
-                .unwrap();
-                arrays.push(array);
-            }
-        }
-
-        RecordBatch {
-            schema,
-            data: ArrowChunk::new(arrays),
-        }
     }
 }

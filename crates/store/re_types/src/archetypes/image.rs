@@ -22,15 +22,16 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// See also [`archetypes::DepthImage`][crate::archetypes::DepthImage] and [`archetypes::SegmentationImage`][crate::archetypes::SegmentationImage].
 ///
+/// Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes::EncodedImage`][crate::archetypes::EncodedImage].
+/// For images that refer to video frames see [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference].
+/// Compressing images or using video data instead can save a lot of bandwidth and memory.
+///
 /// The raw image data is stored as a single buffer of bytes in a [`components::Blob`][crate::components::Blob].
 /// The meaning of these bytes is determined by the [`components::ImageFormat`][crate::components::ImageFormat] which specifies the resolution
 /// and the pixel format (e.g. RGB, RGBA, …).
 ///
 /// The order of dimensions in the underlying [`components::Blob`][crate::components::Blob] follows the typical
 /// row-major, interleaved-pixel image format.
-///
-/// Rerun also supports compressed images (JPEG, PNG, …), using [`archetypes::EncodedImage`][crate::archetypes::EncodedImage].
-/// Compressing images can save a lot of bandwidth and memory.
 ///
 /// ## Examples
 ///
@@ -64,67 +65,65 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </picture>
 /// </center>
 ///
-/// ### Advanced usage of `send_columns` to send multiple images at once
+/// ### Logging images with various formats
 /// ```ignore
-/// use ndarray::{s, Array, ShapeBuilder};
-/// use rerun::Archetype as _;
+/// use rerun::external::ndarray;
 ///
 /// fn main() -> Result<(), Box<dyn std::error::Error>> {
-///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_image_send_columns").spawn()?;
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_image_formats").spawn()?;
 ///
-///     // Timeline on which the images are distributed.
-///     let times = (0..20).collect::<Vec<i64>>();
+///     // Simple gradient image
+///     let image = ndarray::Array3::from_shape_fn((256, 256, 3), |(y, x, c)| match c {
+///         0 => x as u8,
+///         1 => (x + y).min(255) as u8,
+///         2 => y as u8,
+///         _ => unreachable!(),
+///     });
 ///
-///     // Create a batch of images with a moving rectangle.
-///     let width = 300;
-///     let height = 200;
-///     let mut images = Array::<u8, _>::zeros((times.len(), height, width, 3).f())
-///         .as_standard_layout() // Make sure the data is laid out as we expect it.
-///         .into_owned();
-///     images.slice_mut(s![.., .., .., 2]).fill(255);
-///     for &t in &times {
-///         let t = t as usize;
-///         images
-///             .slice_mut(s![t, 50..150, (t * 10)..(t * 10 + 100), 1])
-///             .fill(255);
-///     }
-///
-///     // Log the ImageFormat and indicator once, as static.
-///     let format = rerun::components::ImageFormat::rgb8([width as _, height as _]);
-///     rec.log_component_batches(
-///         "images",
-///         true,
-///         [&format as _, &rerun::Image::indicator() as _],
+///     // RGB image
+///     rec.log(
+///         "image_rgb",
+///         &rerun::Image::from_color_model_and_tensor(rerun::ColorModel::RGB, image.clone())?,
 ///     )?;
 ///
-///     // Split up the image data into several components referencing the underlying data.
-///     let image_size_in_bytes = width * height * 3;
-///     let blob = rerun::datatypes::Blob::from(images.into_raw_vec_and_offset().0);
-///     let image_column = times
-///         .iter()
-///         .map(|&t| {
-///             let byte_offset = image_size_in_bytes * (t as usize);
-///             rerun::components::ImageBuffer::from(
-///                 blob.clone() // Clone is only a reference count increase, not a full copy.
-///                     .sliced(byte_offset..(byte_offset + image_size_in_bytes)),
-///             )
-///         })
-///         .collect::<Vec<_>>();
+///     // Green channel only (Luminance)
+///     rec.log(
+///         "image_green_only",
+///         &rerun::Image::from_color_model_and_tensor(
+///             rerun::ColorModel::L,
+///             image.slice(ndarray::s![.., .., 1]).to_owned(),
+///         )?,
+///     )?;
 ///
-///     // Send all images at once.
-///     let timeline_values = rerun::TimeColumn::new_sequence("step", times);
-///     rec.send_columns("images", [timeline_values], [&image_column as _])?;
+///     // BGR image
+///     rec.log(
+///         "image_bgr",
+///         &rerun::Image::from_color_model_and_tensor(
+///             rerun::ColorModel::BGR,
+///             image.slice(ndarray::s![.., .., ..;-1]).to_owned(),
+///         )?,
+///     )?;
+///
+///     // New image with Separate Y/U/V planes with 4:2:2 chroma downsampling
+///     let mut yuv_bytes = Vec::with_capacity(256 * 256 + 128 * 256 * 2);
+///     yuv_bytes.extend(std::iter::repeat(128).take(256 * 256)); // Fixed value for Y.
+///     yuv_bytes.extend((0..256).flat_map(|_y| (0..128).map(|x| x * 2))); // Gradient for U.
+///     yuv_bytes.extend((0..256).flat_map(|y| std::iter::repeat(y as u8).take(128))); // Gradient for V.
+///     rec.log(
+///         "image_yuv422",
+///         &rerun::Image::from_pixel_format(
+///             [256, 256],
+///             rerun::PixelFormat::Y_U_V16_FullRange,
+///             yuv_bytes,
+///         ),
+///     )?;
 ///
 ///     Ok(())
 /// }
 /// ```
 /// <center>
 /// <picture>
-///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/480w.png">
-///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/768w.png">
-///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1024w.png">
-///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/1200w.png">
-///   <img src="https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/full.png" width="640">
+///   <img src="https://static.rerun.io/image_formats/7b8a162fcfd266f303980439beea997dc8544c24/full.png" width="640">
 /// </picture>
 /// </center>
 #[derive(Clone, Debug, PartialEq)]

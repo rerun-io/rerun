@@ -1,54 +1,15 @@
-use super::yuv_converter::{YuvFormatConversionTask, YuvPixelLayout};
+//! For an overview of image data interpretation check `re_video`'s decoder docs!
+
+use super::yuv_converter::{
+    YuvFormatConversionTask, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
+};
 use crate::{
     renderer::DrawError,
     wgpu_resources::{GpuTexture, TextureDesc},
     DebugLabel, RenderContext, Texture2DBufferInfo,
 };
 
-/// Type of color primaries a given image is in.
-///
-/// This applies both to YUV and RGB formats, but if not specified otherwise
-/// we assume BT.709 primaries for all RGB(A) 8bits per channel content (details below on [`ColorPrimaries::Bt709`]).
-/// Since with YUV content the color space is often less clear, we always explicitly
-/// specify it.
-///
-/// Ffmpeg's documentation has a short & good overview of these relationships:
-/// <https://trac.ffmpeg.org/wiki/colorspace#WhatiscolorspaceWhyshouldwecare/>
-///
-/// Values need to be kept in sync with `yuv_converter.wgsl`
-#[derive(Clone, Copy, Debug)]
-pub enum ColorPrimaries {
-    /// BT.601 (aka. SDTV, aka. Rec.601)
-    ///
-    /// Wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion/>
-    Bt601 = 0,
-
-    /// BT.709 (aka. HDTV, aka. Rec.709)
-    ///
-    /// Wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion/>
-    ///
-    /// These are the same primaries we usually assume and use for all our rendering
-    /// since they are the same primaries used by sRGB.
-    /// <https://en.wikipedia.org/wiki/Rec._709#Relationship_to_sRGB/>
-    /// The OETF/EOTF function (<https://en.wikipedia.org/wiki/Transfer_functions_in_imaging/>) is different,
-    /// but for all other purposes they are the same.
-    /// (The only reason for us to convert to optical units ("linear" instead of "gamma") is for
-    /// lighting & tonemapping where we typically start out with an sRGB image!)
-    Bt709 = 2,
-    //
-    // Not yet supported. These vary a lot more from the other two!
-    //
-    // /// BT.2020 (aka. PQ, aka. Rec.2020)
-    // ///
-    // /// Wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.2020_conversion/>
-    // BT2020_ConstantLuminance,
-    // BT2020_NonConstantLuminance,
-}
-
 /// Image data format that can be converted to a wgpu texture.
-///
-/// Names follow a similar convention as Facebook's Ocean library
-/// See <https://facebookresearch.github.io/ocean/docs/images/pixel_formats_and_plane_layout//>
 // TODO(andreas): Right now this combines both color space and pixel format. Consider separating them similar to how we do on user facing APIs.
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy, Debug)]
@@ -63,8 +24,9 @@ pub enum SourceImageDataFormat {
 
     /// YUV (== `YCbCr`) formats, typically using chroma downsampling.
     Yuv {
-        format: YuvPixelLayout,
-        primaries: ColorPrimaries,
+        layout: YuvPixelLayout,
+        coefficients: YuvMatrixCoefficients,
+        range: YuvRange,
     },
     //
     // TODO(#7608): Add rgb (3 channels!) formats.
@@ -77,7 +39,7 @@ impl From<wgpu::TextureFormat> for SourceImageDataFormat {
 }
 
 /// Error that can occur when converting image data to a texture.
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
 pub enum ImageDataToTextureError {
     #[error("Texture {0:?} has zero width or height!")]
     ZeroSize(DebugLabel),
@@ -113,6 +75,20 @@ pub enum ImageDataToTextureError {
     #[error("Gpu-based conversion for texture {label:?} did not succeed: {err}")]
     GpuBasedConversionError { label: DebugLabel, err: DrawError },
 
+    #[error("Texture {label:?} has invalid texture usage flags: {actual_usage:?}, expected at least {required_usage:?}")]
+    InvalidTargetTextureUsageFlags {
+        label: DebugLabel,
+        actual_usage: wgpu::TextureUsages,
+        required_usage: wgpu::TextureUsages,
+    },
+
+    #[error("Texture {label:?} has invalid texture format: {actual_format:?}, expected at least {required_format:?}")]
+    InvalidTargetTextureFormat {
+        label: DebugLabel,
+        actual_format: wgpu::TextureFormat,
+        required_format: wgpu::TextureFormat,
+    },
+
     // TODO(andreas): As we stop using `wgpu::TextureFormat` for input, this should become obsolete.
     #[error("Unsupported texture format {0:?}")]
     UnsupportedTextureFormat(wgpu::TextureFormat),
@@ -122,6 +98,8 @@ pub enum ImageDataToTextureError {
 ///
 /// Arbitrary (potentially gpu based) conversions may be performed to upload the data to the GPU.
 pub struct ImageDataDesc<'a> {
+    /// If this desc is not used for a texture update, this label is used for the target texture.
+    /// Otherwise, it may still used for any intermediate resources that may be required during the conversion process.
     pub label: DebugLabel,
 
     /// Data for the highest mipmap level.
@@ -143,13 +121,35 @@ pub struct ImageDataDesc<'a> {
 }
 
 impl<'a> ImageDataDesc<'a> {
-    fn validate(&self, limits: &wgpu::Limits) -> Result<(), ImageDataToTextureError> {
+    fn validate(
+        &self,
+        limits: &wgpu::Limits,
+        target_texture_desc: &TextureDesc,
+    ) -> Result<(), ImageDataToTextureError> {
         let Self {
             label,
             data,
             format,
             width_height,
         } = self;
+
+        if !target_texture_desc
+            .usage
+            .contains(self.target_texture_usage_requirements())
+        {
+            return Err(ImageDataToTextureError::InvalidTargetTextureUsageFlags {
+                label: target_texture_desc.label.clone(),
+                actual_usage: target_texture_desc.usage,
+                required_usage: self.target_texture_usage_requirements(),
+            });
+        }
+        if target_texture_desc.format != self.target_texture_format() {
+            return Err(ImageDataToTextureError::InvalidTargetTextureFormat {
+                label: target_texture_desc.label.clone(),
+                actual_format: target_texture_desc.format,
+                required_format: self.target_texture_format(),
+            });
+        }
 
         if width_height[0] == 0 || width_height[1] == 0 {
             return Err(ImageDataToTextureError::ZeroSize(label.clone()));
@@ -175,7 +175,7 @@ impl<'a> ImageDataDesc<'a> {
                         .ok_or(ImageDataToTextureError::UnsupportedTextureFormat(*format))?
                         as usize
             }
-            SourceImageDataFormat::Yuv { format, .. } => {
+            SourceImageDataFormat::Yuv { layout: format, .. } => {
                 format.num_data_buffer_bytes(*width_height)
             }
         };
@@ -190,6 +190,48 @@ impl<'a> ImageDataDesc<'a> {
         }
 
         Ok(())
+    }
+
+    /// The texture usages required in order to store this image data.
+    pub fn target_texture_usage_requirements(&self) -> wgpu::TextureUsages {
+        match self.format {
+            SourceImageDataFormat::WgpuCompatible(_) => wgpu::TextureUsages::COPY_DST, // Data arrives via raw data copy.
+            SourceImageDataFormat::Yuv { .. } => {
+                YuvFormatConversionTask::REQUIRED_TARGET_TEXTURE_USAGE_FLAGS
+            }
+        }
+    }
+
+    /// The texture format required in order to store this image data.
+    pub fn target_texture_format(&self) -> wgpu::TextureFormat {
+        match self.format {
+            SourceImageDataFormat::WgpuCompatible(format) => format,
+            SourceImageDataFormat::Yuv { .. } => YuvFormatConversionTask::OUTPUT_FORMAT,
+        }
+    }
+
+    /// Creates a texture that can hold the image data.
+    pub fn create_target_texture(
+        &self,
+        ctx: &RenderContext,
+        texture_usages: wgpu::TextureUsages,
+    ) -> GpuTexture {
+        ctx.gpu_resources.textures.alloc(
+            &ctx.device,
+            &TextureDesc {
+                label: self.label.clone(),
+                size: wgpu::Extent3d {
+                    width: self.width_height[0],
+                    height: self.width_height[1],
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1, // No mipmapping support yet.
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: self.target_texture_format(),
+                usage: self.target_texture_usage_requirements() | texture_usages,
+            },
+        )
     }
 }
 
@@ -208,10 +250,11 @@ impl<'a> ImageDataDesc<'a> {
 pub fn transfer_image_data_to_texture(
     ctx: &RenderContext,
     image_data: ImageDataDesc<'_>,
-) -> Result<GpuTexture, ImageDataToTextureError> {
+    target_texture: &GpuTexture,
+) -> Result<(), ImageDataToTextureError> {
     re_tracing::profile_function!();
 
-    image_data.validate(&ctx.device.limits())?;
+    image_data.validate(&ctx.device.limits(), &target_texture.creation_desc)?;
 
     let ImageDataDesc {
         label,
@@ -224,13 +267,13 @@ pub fn transfer_image_data_to_texture(
     // Reminder: We can't use raw buffers because of WebGL compatibility.
     let [data_texture_width, data_texture_height] = match source_format {
         SourceImageDataFormat::WgpuCompatible(_) => output_width_height,
-        SourceImageDataFormat::Yuv { format, .. } => {
-            format.data_texture_width_height(output_width_height)
+        SourceImageDataFormat::Yuv { layout, .. } => {
+            layout.data_texture_width_height(output_width_height)
         }
     };
     let data_texture_format = match source_format {
         SourceImageDataFormat::WgpuCompatible(format) => format,
-        SourceImageDataFormat::Yuv { format, .. } => format.data_texture_format(),
+        SourceImageDataFormat::Yuv { layout, .. } => layout.data_texture_format(),
     };
 
     // Allocate gpu belt data and upload it.
@@ -238,48 +281,58 @@ pub fn transfer_image_data_to_texture(
         SourceImageDataFormat::WgpuCompatible(_) => label.clone(),
         SourceImageDataFormat::Yuv { .. } => format!("{label}_source_data").into(),
     };
-    let data_texture = ctx.gpu_resources.textures.alloc(
-        &ctx.device,
-        &TextureDesc {
-            label: data_texture_label,
-            size: wgpu::Extent3d {
-                width: data_texture_width,
-                height: data_texture_height,
-                depth_or_array_layers: 1,
+
+    let data_texture = match source_format {
+        // Needs intermediate data texture.
+        SourceImageDataFormat::Yuv { .. } => ctx.gpu_resources.textures.alloc(
+            &ctx.device,
+            &TextureDesc {
+                label: data_texture_label,
+                size: wgpu::Extent3d {
+                    width: data_texture_width,
+                    height: data_texture_height,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1, // We don't have mipmap level generation yet!
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: data_texture_format,
+                usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
             },
-            mip_level_count: 1, // We don't have mipmap level generation yet!
-            sample_count: 1,
-            dimension: wgpu::TextureDimension::D2,
-            format: data_texture_format,
-            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-        },
-    );
+        ),
+
+        // Target is directly written to.
+        SourceImageDataFormat::WgpuCompatible(_) => target_texture.clone(),
+    };
+
     copy_data_to_texture(ctx, &data_texture, data.as_ref())?;
 
     // Build a converter task, feeding in the raw data.
     let converter_task = match source_format {
         SourceImageDataFormat::WgpuCompatible(_) => {
             // No further conversion needed, we're done here!
-            return Ok(data_texture);
+            return Ok(());
         }
-        SourceImageDataFormat::Yuv { format, primaries } => YuvFormatConversionTask::new(
+        SourceImageDataFormat::Yuv {
+            layout,
+            coefficients,
+            range,
+        } => YuvFormatConversionTask::new(
             ctx,
-            format,
-            primaries,
+            layout,
+            range,
+            coefficients,
             &data_texture,
-            &label,
-            output_width_height,
+            target_texture,
         ),
     };
 
     // Once there's different gpu based conversions, we should probably trait-ify this so we can keep the basic steps.
     // Note that we execute the task right away, but the way things are set up (by means of using the `Renderer` framework)
     // it would be fairly easy to schedule this differently!
-    let output_texture = converter_task
+    converter_task
         .convert_input_data_to_texture(ctx)
-        .map_err(|err| ImageDataToTextureError::GpuBasedConversionError { label, err })?;
-
-    Ok(output_texture)
+        .map_err(|err| ImageDataToTextureError::GpuBasedConversionError { label, err })
 }
 
 fn copy_data_to_texture(

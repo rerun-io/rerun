@@ -143,27 +143,35 @@ mode sets the default time range to _everything_. You can override this in the s
             SparseFillStrategy::None
         };
 
-        let view_columns = query_engine.schema_for_view_contents(&view_contents);
-        let selected_columns =
-            view_query.apply_column_visibility_to_view_columns(ctx, &view_columns)?;
-
-        let dataframe_query = re_chunk_store::QueryExpression {
+        let mut dataframe_query = re_chunk_store::QueryExpression {
             view_contents: Some(view_contents),
-            filtered_index: view_query.timeline(ctx)?,
+            filtered_index: Some(view_query.timeline(ctx)?),
             filtered_index_range: Some(view_query.filter_by_range()?),
-            filtered_point_of_view: view_query.filter_by_event()?,
+            filtered_is_not_null: view_query.filter_is_not_null()?,
             sparse_fill_strategy,
-            selection: selected_columns,
+            selection: None,
 
             // not yet unsupported by the dataframe view
             filtered_index_values: None,
             using_index_values: None,
+            include_semantically_empty_columns: false,
+            include_indicator_columns: false,
+            include_tombstone_columns: false,
         };
+
+        let view_columns = query_engine.schema_for_query(&dataframe_query);
+        dataframe_query.selection =
+            view_query.apply_column_visibility_to_view_columns(ctx, &view_columns)?;
 
         let query_handle = query_engine.query(dataframe_query);
 
-        let hide_column_actions =
-            dataframe_ui(ctx, ui, &query_handle, &mut state.expended_rows_cache);
+        let hide_column_actions = dataframe_ui(
+            ctx,
+            ui,
+            &query_handle,
+            &mut state.expended_rows_cache,
+            &query.space_view_id,
+        );
 
         view_query.handle_hide_column_actions(ctx, &view_columns, hide_column_actions)?;
 

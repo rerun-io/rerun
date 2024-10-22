@@ -22,7 +22,7 @@ namespace rerun::archetypes {
     /// Used to display individual video frames from a `archetypes::AssetVideo`.
     /// To show an entire video, a video frame reference for each frame of the video should be logged.
     ///
-    /// See <https://rerun.io/docs/concepts/video?speculative-link> for details of what is and isn't supported.
+    /// See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
     ///
     /// ## Examples
     ///
@@ -111,8 +111,6 @@ namespace rerun::archetypes {
     ///     // TODO(#5520): log blueprint once supported
     /// }
     /// ```
-    ///
-    /// ⚠ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
     struct VideoFrameReference {
         /// References the closest video frame to this timestamp.
         ///

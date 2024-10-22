@@ -11,7 +11,7 @@ mod texture_manager;
 mod yuv_converter;
 
 pub use image_data_to_texture::{
-    ColorPrimaries, ImageDataDesc, ImageDataToTextureError, SourceImageDataFormat,
+    transfer_image_data_to_texture, ImageDataDesc, ImageDataToTextureError, SourceImageDataFormat,
 };
 pub use texture_manager::{GpuTexture2D, TextureManager2D, TextureManager2DError};
-pub use yuv_converter::YuvPixelLayout;
+pub use yuv_converter::{YuvMatrixCoefficients, YuvPixelLayout, YuvRange};

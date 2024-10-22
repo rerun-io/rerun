@@ -1,11 +1,11 @@
 mod decoder;
 
-use std::{collections::hash_map::Entry, sync::Arc};
+use std::{collections::hash_map::Entry, ops::Range, sync::Arc};
 
 use ahash::HashMap;
 use parking_lot::Mutex;
 
-use re_video::VideoLoadError;
+use re_video::VideoData;
 
 use crate::{resource_managers::GpuTexture2D, RenderContext};
 
@@ -58,8 +58,11 @@ pub enum DecodingError {
     UnsupportedCodec { codec: String },
 
     #[cfg(not(target_arch = "wasm32"))]
-    #[error("Native video decoding not supported in native debug builds.")]
-    NoNativeDebug,
+    #[error("Native AV1 video decoding not supported in debug builds.")]
+    NoNativeAv1Debug,
+
+    #[error("Failed to create gpu texture from decoded video data: {0}")]
+    ImageDataToTextureError(#[from] crate::resource_managers::ImageDataToTextureError),
 }
 
 pub type FrameDecodingResult = Result<VideoFrameTexture, DecodingError>;
@@ -68,6 +71,9 @@ pub type FrameDecodingResult = Result<VideoFrameTexture, DecodingError>;
 pub struct VideoFrameTexture {
     /// The texture to show.
     pub texture: GpuTexture2D,
+
+    /// What part of the video this video frame covers.
+    pub time_range: Range<re_video::Time>,
 
     /// If true, the texture is outdated. Keep polling for a fresh one.
     pub is_pending: bool,
@@ -154,19 +160,17 @@ impl Video {
     /// - `video/mp4`
     pub fn load(
         debug_name: String,
-        data: &[u8],
-        media_type: &str,
+        data: Arc<VideoData>,
         decode_hw_acceleration: DecodeHardwareAcceleration,
-    ) -> Result<Self, VideoLoadError> {
-        let data = Arc::new(re_video::VideoData::load_from_bytes(data, media_type)?);
+    ) -> Self {
         let decoders = Mutex::new(HashMap::default());
 
-        Ok(Self {
+        Self {
             debug_name,
             data,
             decoders,
             decode_hw_acceleration,
-        })
+        }
     }
 
     /// The video data

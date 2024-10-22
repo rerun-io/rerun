@@ -15,6 +15,28 @@ use super::{Time, Timescale};
 
 use crate::{Chunk, TrackId, TrackKind};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ChromaSubsamplingModes {
+    /// No subsampling.
+    Yuv444,
+
+    /// Subsampling in X only.
+    Yuv422,
+
+    /// Subsampling in both X and Y.
+    Yuv420,
+}
+
+impl std::fmt::Display for ChromaSubsamplingModes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Yuv444 => write!(f, "4:4:4"),
+            Self::Yuv422 => write!(f, "4:2:2"),
+            Self::Yuv420 => write!(f, "4:2:0"),
+        }
+    }
+}
+
 /// Decoded video data.
 #[derive(Clone)]
 pub struct VideoData {
@@ -53,6 +75,7 @@ impl VideoData {
     /// TODO(andreas, jan): This should not copy the data, but instead store slices into a shared buffer.
     /// at the very least the should be a way to extract only metadata.
     pub fn load_from_bytes(data: &[u8], media_type: &str) -> Result<Self, VideoLoadError> {
+        re_tracing::profile_function!();
         match media_type {
             "video/mp4" => Self::load_mp4(data),
 
@@ -74,6 +97,12 @@ impl VideoData {
     #[inline]
     pub fn duration(&self) -> std::time::Duration {
         std::time::Duration::from_nanos(self.duration.into_nanos(self.timescale) as _)
+    }
+
+    /// Natural width and height of the video
+    #[inline]
+    pub fn dimensions(&self) -> [u32; 2] {
+        [self.width(), self.height()]
     }
 
     /// Natural width of the video.
@@ -116,6 +145,93 @@ impl VideoData {
         self.samples.len()
     }
 
+    /// Returns the subsampling mode of the video.
+    ///
+    /// Returns None if not detected or unknown.
+    pub fn subsampling_mode(&self) -> Option<ChromaSubsamplingModes> {
+        match &self.config.stsd.contents {
+            re_mp4::StsdBoxContent::Av01(av01_box) => {
+                // These are boolean options, see https://aomediacodec.github.io/av1-isobmff/#av1codecconfigurationbox-semantics
+                match (
+                    av01_box.av1c.chroma_subsampling_x != 0,
+                    av01_box.av1c.chroma_subsampling_y != 0,
+                ) {
+                    (true, true) => Some(ChromaSubsamplingModes::Yuv420),
+                    (true, false) => Some(ChromaSubsamplingModes::Yuv422),
+                    (false, true) => None, // Downsampling in Y but not in X is unheard of!
+                    // Either that or monochrome.
+                    // See https://aomediacodec.github.io/av1-spec/av1-spec.pdf#page=131
+                    (false, false) => Some(ChromaSubsamplingModes::Yuv444),
+                }
+            }
+            re_mp4::StsdBoxContent::Avc1(_)
+            | re_mp4::StsdBoxContent::Hvc1(_)
+            | re_mp4::StsdBoxContent::Hev1(_) => {
+                // Surely there's a way to get this!
+                None
+            }
+
+            re_mp4::StsdBoxContent::Vp08(vp08_box) => {
+                // Via https://www.ffmpeg.org/doxygen/4.3/vpcc_8c_source.html#l00116
+                // enum VPX_CHROMA_SUBSAMPLING
+                // {
+                //     VPX_SUBSAMPLING_420_VERTICAL = 0,
+                //     VPX_SUBSAMPLING_420_COLLOCATED_WITH_LUMA = 1,
+                //     VPX_SUBSAMPLING_422 = 2,
+                //     VPX_SUBSAMPLING_444 = 3,
+                // };
+                match vp08_box.vpcc.chroma_subsampling {
+                    0 | 1 => Some(ChromaSubsamplingModes::Yuv420),
+                    2 => Some(ChromaSubsamplingModes::Yuv422),
+                    3 => Some(ChromaSubsamplingModes::Yuv444),
+                    _ => None, // Unknown mode.
+                }
+            }
+            re_mp4::StsdBoxContent::Vp09(vp09_box) => {
+                // As above!
+                match vp09_box.vpcc.chroma_subsampling {
+                    0 | 1 => Some(ChromaSubsamplingModes::Yuv420),
+                    2 => Some(ChromaSubsamplingModes::Yuv422),
+                    3 => Some(ChromaSubsamplingModes::Yuv444),
+                    _ => None, // Unknown mode.
+                }
+            }
+
+            re_mp4::StsdBoxContent::Mp4a(_)
+            | re_mp4::StsdBoxContent::Tx3g(_)
+            | re_mp4::StsdBoxContent::Unknown(_) => None,
+        }
+    }
+
+    /// Per color component bit depth.
+    ///
+    /// Usually 8, but 10 for HDR (for example).
+    pub fn bit_depth(&self) -> Option<u8> {
+        self.config.stsd.contents.bit_depth()
+    }
+
+    /// Returns None if the mp4 doesn't specify whether the video is monochrome or
+    /// we haven't yet implemented the logic to determine this.
+    pub fn is_monochrome(&self) -> Option<bool> {
+        match &self.config.stsd.contents {
+            re_mp4::StsdBoxContent::Av01(av01_box) => Some(av01_box.av1c.monochrome),
+            re_mp4::StsdBoxContent::Avc1(_)
+            | re_mp4::StsdBoxContent::Hvc1(_)
+            | re_mp4::StsdBoxContent::Hev1(_) => {
+                // It should be possible to extract this from the picture parameter set.
+                None
+            }
+            re_mp4::StsdBoxContent::Vp08(_) | re_mp4::StsdBoxContent::Vp09(_) => {
+                // Similar to AVC/HEVC, this information is likely accessible.
+                None
+            }
+
+            re_mp4::StsdBoxContent::Mp4a(_)
+            | re_mp4::StsdBoxContent::Tx3g(_)
+            | re_mp4::StsdBoxContent::Unknown(_) => None,
+        }
+    }
+
     /// Determines the presentation timestamps of all frames inside a video, returning raw time values.
     ///
     /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
@@ -142,7 +258,7 @@ impl VideoData {
 
             Some(Chunk {
                 data: data.to_vec(),
-                timestamp: sample.decode_timestamp,
+                composition_timestamp: sample.composition_timestamp,
                 duration: sample.duration,
                 is_sync: sample.is_sync,
             })

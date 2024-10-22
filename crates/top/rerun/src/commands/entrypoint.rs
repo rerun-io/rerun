@@ -553,6 +553,7 @@ where
 
     if args.version {
         println!("{build_info}");
+        println!("Video features: {}", re_video::features().join(" "));
         return Ok(0);
     }
 
@@ -949,7 +950,7 @@ fn stream_to_rrd_on_disk(
     let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
     let file =
         std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
-    let mut encoder = re_log_encoding::encoder::Encoder::new(
+    let mut encoder = re_log_encoding::encoder::DroppableEncoder::new(
         re_build_info::CrateVersion::LOCAL,
         encoding_options,
         file,

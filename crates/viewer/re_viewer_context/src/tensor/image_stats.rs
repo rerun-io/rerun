@@ -1,6 +1,6 @@
 use half::f16;
 
-use re_types::datatypes::{ChannelDatatype, PixelFormat};
+use re_types::datatypes::ChannelDatatype;
 
 use crate::ImageInfo;
 
@@ -121,8 +121,11 @@ impl ImageStats {
         // ---------------------------
 
         let datatype = match image.format.pixel_format {
-            Some(PixelFormat::NV12 | PixelFormat::YUY2) => {
-                // We do the lazy thing here:
+            Some(_) => {
+                // We do the lazy thing here since we convert everything to RGB8 right now anyways.
+                // Note that this range is all about the format we're converting _to_.
+                // It would be nice if we can distininguish this better in the future:
+                // E.g. limited range YUV should have the correct limited range.
                 return Self {
                     range: Some((0.0, 255.0)),
                     finite_range: (0.0, 255.0),

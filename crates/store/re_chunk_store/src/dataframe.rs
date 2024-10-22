@@ -6,60 +6,14 @@ use arrow2::{
     array::ListArray as ArrowListArray,
     datatypes::{DataType as ArrowDatatype, Field as ArrowField},
 };
-use nohash_hasher::IntSet;
 
 use re_chunk::TimelineName;
-use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
+use re_log_types::{ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_types_core::{ArchetypeName, ComponentName};
 
-use crate::ChunkStore;
-
-// Used all over in docstrings.
-#[allow(unused_imports)]
-use crate::RowId;
+use crate::{ChunkStore, ColumnMetadata};
 
 // --- Descriptors ---
-
-/// When selecting secondary component columns, specify how the joined data should be encoded.
-///
-/// Because range-queries often involve repeating the same joined-in data multiple times,
-/// the strategy we choose for joining can have a significant impact on the size and memory
-/// overhead of the `RecordBatch`.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum JoinEncoding {
-    /// Slice the `RecordBatch` to minimal overlapping sub-ranges.
-    ///
-    /// This is the default, and should always be used for the POV component which defines
-    /// the optimal size for `RecordBatch`.
-    ///
-    /// This minimizes the need for allocation, but at the cost of `RecordBatch`es that are
-    /// almost always smaller than the optimal size. In the common worst-case, this will result
-    /// in single-row `RecordBatch`es.
-    #[default]
-    OverlappingSlice,
-
-    /// Dictionary-encode the joined column.
-    ///
-    /// Using dictionary-encoding allows any repeated data to be shared between rows,
-    /// but comes with the cost of an extra dictionary-lookup indirection.
-    ///
-    /// Note that this changes the physical type of the returned column.
-    ///
-    /// Using this encoding for complex types is incompatible with some arrow libraries.
-    DictionaryEncode,
-    //
-    // TODO(jleibs):
-    // RepeatCopy,
-    //
-    // Repeat the joined column by physically copying the data.
-    //
-    // This will always allocate a new column in the `RecordBatch`, matching the size of the
-    // POV component.
-    //
-    // This is the most expensive option, but can make working with the data more efficient,
-    // especially when the copied column is small.
-    //
-}
 
 // TODO(#6889): At some point all these descriptors needs to be interned and have handles or
 // something. And of course they need to be codegen. But we'll get there once we're back to
@@ -106,6 +60,14 @@ impl ColumnDescriptor {
         match self {
             Self::Time(descr) => descr.timeline.name().to_string(),
             Self::Component(descr) => descr.component_name.short_name().to_owned(),
+        }
+    }
+
+    #[inline]
+    pub fn is_static(&self) -> bool {
+        match self {
+            Self::Time(_) => false,
+            Self::Component(descr) => descr.is_static,
         }
     }
 }
@@ -189,13 +151,19 @@ pub struct ComponentColumnDescriptor {
     /// we introduce mono-type optimization, this might be a native type instead.
     pub store_datatype: ArrowDatatype,
 
-    /// How the data will be joined into the resulting `RecordBatch`.
-    //
-    // TODO(cmc): remove with the old re_dataframe.
-    pub join_encoding: JoinEncoding,
-
     /// Whether this column represents static data.
     pub is_static: bool,
+
+    /// Whether this column represents an indicator component.
+    pub is_indicator: bool,
+
+    /// Whether this column represents a [`Clear`]-related components.
+    ///
+    /// [`Clear`]: re_types_core::archetypes::Clear
+    pub is_tombstone: bool,
+
+    /// Whether this column contains either no data or only contains null and/or empty values (`[]`).
+    pub is_semantically_empty: bool,
 }
 
 impl PartialOrd for ComponentColumnDescriptor {
@@ -213,9 +181,11 @@ impl Ord for ComponentColumnDescriptor {
             archetype_name,
             archetype_field_name,
             component_name,
-            join_encoding: _,
             store_datatype: _,
             is_static: _,
+            is_indicator: _,
+            is_tombstone: _,
+            is_semantically_empty: _,
         } = self;
 
         entity_path
@@ -233,9 +203,11 @@ impl std::fmt::Display for ComponentColumnDescriptor {
             archetype_name,
             archetype_field_name,
             component_name,
-            join_encoding: _,
             store_datatype: _,
             is_static,
+            is_indicator: _,
+            is_tombstone: _,
+            is_semantically_empty: _,
         } = self;
 
         let s = match (archetype_name, component_name, archetype_field_name) {
@@ -265,29 +237,16 @@ impl std::fmt::Display for ComponentColumnDescriptor {
 }
 
 impl ComponentColumnDescriptor {
-    #[inline]
-    pub fn new<C: re_types_core::Component>(entity_path: EntityPath) -> Self {
-        let join_encoding = JoinEncoding::default();
-
-        // NOTE: The data is always a at least a list, whether it's latest-at or range.
-        // It might be wrapped further in e.g. a dict, but at the very least
-        // it's a list.
-        let store_datatype = ArrowListArray::<i32>::default_datatype(C::arrow_datatype());
-
-        Self {
-            entity_path,
-            archetype_name: None,
-            archetype_field_name: None,
-            component_name: C::name(),
-            join_encoding,
-            store_datatype,
-            is_static: false,
+    pub fn component_path(&self) -> ComponentPath {
+        ComponentPath {
+            entity_path: self.entity_path.clone(),
+            component_name: self.component_name,
         }
     }
 
     #[inline]
-    pub fn matches(&self, entity_path: &EntityPath, component_name: &ComponentName) -> bool {
-        &self.entity_path == entity_path && &self.component_name == component_name
+    pub fn matches(&self, entity_path: &EntityPath, component_name: &str) -> bool {
+        &self.entity_path == entity_path && self.component_name.matches(component_name)
     }
 
     fn metadata(&self) -> arrow2::datatypes::Metadata {
@@ -296,13 +255,19 @@ impl ComponentColumnDescriptor {
             archetype_name,
             archetype_field_name,
             component_name,
-            join_encoding: _,
             store_datatype: _,
             is_static,
+            is_indicator,
+            is_tombstone,
+            is_semantically_empty,
         } = self;
 
         [
             (*is_static).then_some(("sorbet.is_static".to_owned(), "yes".to_owned())),
+            (*is_indicator).then_some(("sorbet.is_indicator".to_owned(), "yes".to_owned())),
+            (*is_tombstone).then_some(("sorbet.is_tombstone".to_owned(), "yes".to_owned())),
+            (*is_semantically_empty)
+                .then_some(("sorbet.is_semantically_empty".to_owned(), "yes".to_owned())),
             Some(("sorbet.path".to_owned(), entity_path.to_string())),
             Some((
                 "sorbet.semantic_type".to_owned(),
@@ -325,14 +290,7 @@ impl ComponentColumnDescriptor {
 
     #[inline]
     pub fn returned_datatype(&self) -> ArrowDatatype {
-        match self.join_encoding {
-            JoinEncoding::OverlappingSlice => self.store_datatype.clone(),
-            JoinEncoding::DictionaryEncode => ArrowDatatype::Dictionary(
-                arrow2::datatypes::IntegerType::Int32,
-                std::sync::Arc::new(self.store_datatype.clone()),
-                true,
-            ),
-        }
+        self.store_datatype.clone()
     }
 
     #[inline]
@@ -348,12 +306,6 @@ impl ComponentColumnDescriptor {
         )
         // TODO(#6889): This needs some proper sorbetization -- I just threw these names randomly.
         .with_metadata(self.metadata())
-    }
-
-    #[inline]
-    pub fn with_join_encoding(mut self, join_encoding: JoinEncoding) -> Self {
-        self.join_encoding = join_encoding;
-        self
     }
 }
 
@@ -423,14 +375,10 @@ pub struct ComponentColumnSelector {
     pub entity_path: EntityPath,
 
     /// Semantic name associated with this data.
-    //
-    // TODO(cmc): this should be `component_name`.
-    pub component: ComponentName,
-
-    /// How to join the data into the `RecordBatch`.
-    //
-    // TODO(cmc): remove once old `re_dataframe` is gone.
-    pub join_encoding: JoinEncoding,
+    ///
+    /// This string will be flexibly matched against the available component names.
+    /// Valid matches are case invariant matches of either the full name or the short name.
+    pub component_name: String,
 }
 
 impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
@@ -438,8 +386,7 @@ impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
     fn from(desc: ComponentColumnDescriptor) -> Self {
         Self {
             entity_path: desc.entity_path.clone(),
-            component: desc.component_name,
-            join_encoding: desc.join_encoding,
+            component_name: desc.component_name.to_string(),
         }
     }
 }
@@ -450,26 +397,17 @@ impl ComponentColumnSelector {
     pub fn new<C: re_types_core::Component>(entity_path: EntityPath) -> Self {
         Self {
             entity_path,
-            component: C::name(),
-            join_encoding: JoinEncoding::default(),
+            component_name: C::name().to_string(),
         }
     }
 
     /// Select a component based on its [`EntityPath`] and [`ComponentName`].
     #[inline]
-    pub fn new_for_component_name(entity_path: EntityPath, component: ComponentName) -> Self {
+    pub fn new_for_component_name(entity_path: EntityPath, component_name: ComponentName) -> Self {
         Self {
             entity_path,
-            component,
-            join_encoding: JoinEncoding::default(),
+            component_name: component_name.to_string(),
         }
-    }
-
-    /// Specify how the data should be joined into the `RecordBatch`.
-    #[inline]
-    pub fn with_join_encoding(mut self, join_encoding: JoinEncoding) -> Self {
-        self.join_encoding = join_encoding;
-        self
     }
 }
 
@@ -477,11 +415,10 @@ impl std::fmt::Display for ComponentColumnSelector {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             entity_path,
-            component,
-            join_encoding: _,
+            component_name,
         } = self;
 
-        f.write_fmt(format_args!("{entity_path}@{}", component.short_name()))
+        f.write_fmt(format_args!("{entity_path}:{component_name}"))
     }
 }
 
@@ -497,9 +434,6 @@ pub struct ArchetypeFieldColumnSelector {
 
     /// The field within the `Archetype` associated with this data.
     field: String,
-
-    /// How to join the data into the `RecordBatch`.
-    join_encoding: JoinEncoding,
 }
 */
 
@@ -575,8 +509,7 @@ pub type IndexRange = ResolvedTimeRange;
 /// ```
 //
 // TODO(cmc): ideally we'd like this to be the same type as the one used in the blueprint, possibly?
-// TODO(cmc): Get rid of all re_dataframe (as opposed to re_dataframe) stuff and rename this.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct QueryExpression {
     /// The subset of the database that the query will run on: a set of [`EntityPath`]s and their
     /// associated [`ComponentName`]s.
@@ -592,22 +525,47 @@ pub struct QueryExpression {
     /// ```
     pub view_contents: Option<ViewContentsSelector>,
 
+    /// Whether the `view_contents` should ignore semantically empty columns.
+    ///
+    /// A semantically empty column is a column that either contains no data at all, or where all
+    /// values are either nulls or empty arrays (`[]`).
+    ///
+    /// `view_contents`: [`QueryExpression::view_contents`]
+    pub include_semantically_empty_columns: bool,
+
+    /// Whether the `view_contents` should ignore columns corresponding to indicator components.
+    ///
+    /// Indicator components are marker components, generally automatically inserted by Rerun, that
+    /// helps keep track of the original context in which a piece of data was logged/sent.
+    ///
+    /// `view_contents`: [`QueryExpression::view_contents`]
+    pub include_indicator_columns: bool,
+
+    /// Whether the `view_contents` should ignore columns corresponding to `Clear`-related components.
+    ///
+    /// `view_contents`: [`QueryExpression::view_contents`]
+    /// `Clear`: [`re_types_core::archetypes::Clear`]
+    pub include_tombstone_columns: bool,
+
     /// The index used to filter out _rows_ from the view contents.
     ///
     /// Only rows where at least 1 column contains non-null data at that index will be kept in the
     /// final dataset.
     ///
-    /// Example: `Timeline("frame")`.
+    /// If left unspecified, the results will only contain static data.
+    ///
+    /// Examples: `Some(Timeline("frame"))`, `None` (only static data).
     //
     // TODO(cmc): this has to be a selector otherwise this is a horrible UX.
-    pub filtered_index: Timeline,
+    pub filtered_index: Option<Index>,
 
     /// The range of index values used to filter out _rows_ from the view contents.
     ///
     /// Only rows where at least 1 of the view-contents contains non-null data within that range will be kept in
     /// the final dataset.
     ///
-    /// This is ignored if [`QueryExpression::using_index_values`] is set.
+    /// * This has no effect if `filtered_index` isn't set.
+    /// * This has no effect if [`QueryExpression::using_index_values`] is set.
     ///
     /// Example: `ResolvedTimeRange(10, 20)`.
     pub filtered_index_range: Option<IndexRange>,
@@ -617,7 +575,9 @@ pub struct QueryExpression {
     /// Only rows where at least 1 column contains non-null data at these specific values will be kept
     /// in the final dataset.
     ///
-    /// This is ignored if [`QueryExpression::using_index_values`] is set.
+    /// * This has no effect if `filtered_index` isn't set.
+    /// * This has no effect if [`QueryExpression::using_index_values`] is set.
+    /// * Using [`TimeInt::STATIC`] as index value has no effect.
     ///
     /// Example: `[TimeInt(12), TimeInt(14)]`.
     pub filtered_index_values: Option<BTreeSet<IndexValue>>,
@@ -629,10 +589,10 @@ pub struct QueryExpression {
     /// The semantics of the query are consistent with all other settings: the results will be
     /// sorted on the `filtered_index`, and only contain unique index values.
     ///
-    /// The order of the samples will be respected in the final result.
-    ///
-    /// If [`QueryExpression::using_index_values`] is set, it overrides both [`QueryExpression::filtered_index_range`]
-    /// and [`QueryExpression::filtered_index_values`].
+    /// * This has no effect if `filtered_index` isn't set.
+    /// * If set, this overrides both [`QueryExpression::filtered_index_range`] and
+    ///   [`QueryExpression::filtered_index_values`].
+    /// * Using [`TimeInt::STATIC`] as index value has no effect.
     ///
     /// Example: `[TimeInt(12), TimeInt(14)]`.
     pub using_index_values: Option<BTreeSet<IndexValue>>,
@@ -644,7 +604,7 @@ pub struct QueryExpression {
     /// Example: `ComponentColumnSelector("rerun.components.Position3D")`.
     //
     // TODO(cmc): multi-pov support
-    pub filtered_point_of_view: Option<ComponentColumnSelector>,
+    pub filtered_is_not_null: Option<ComponentColumnSelector>,
 
     /// Specifies how null values should be filled in the returned dataframe.
     ///
@@ -663,24 +623,6 @@ pub struct QueryExpression {
     pub selection: Option<Vec<ColumnSelector>>,
 }
 
-impl QueryExpression {
-    #[inline]
-    pub fn new(index: impl Into<Timeline>) -> Self {
-        let index = index.into();
-
-        Self {
-            view_contents: None,
-            filtered_index: index,
-            filtered_index_range: None,
-            filtered_index_values: None,
-            using_index_values: None,
-            filtered_point_of_view: None,
-            sparse_fill_strategy: SparseFillStrategy::None,
-            selection: None,
-        }
-    }
-}
-
 // ---
 
 impl ChunkStore {
@@ -690,9 +632,8 @@ impl ChunkStore {
     /// entity that has been written to the store so far.
     ///
     /// The order of the columns is guaranteed to be in a specific order:
-    /// * first, the control columns in lexical order (`RowId`);
-    /// * second, the time columns in lexical order (`frame_nr`, `log_time`, ...);
-    /// * third, the component columns in lexical order (`Color`, `Radius, ...`).
+    /// * first, the time columns in lexical order (`frame_nr`, `log_time`, ...);
+    /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
     pub fn schema(&self) -> Vec<ColumnDescriptor> {
         re_tracing::profile_function!();
 
@@ -703,87 +644,45 @@ impl ChunkStore {
             })
         });
 
-        let static_components =
-            self.static_chunk_ids_per_entity
-                .iter()
-                .flat_map(|(entity_path, per_component)| {
-                    // TODO(#6889): Fill `archetype_name`/`archetype_field_name` (or whatever their
-                    // final name ends up being) once we generate tags.
-                    per_component.keys().filter_map(|component_name| {
-                        self.lookup_datatype(component_name).map(|datatype| {
-                            ColumnDescriptor::Component(ComponentColumnDescriptor {
-                                entity_path: entity_path.clone(),
-                                archetype_name: None,
-                                archetype_field_name: None,
-                                component_name: *component_name,
-                                store_datatype: ArrowListArray::<i32>::default_datatype(
-                                    datatype.clone(),
-                                ),
-                                join_encoding: JoinEncoding::default(),
-                                is_static: true,
-                            })
-                        })
-                    })
-                });
-
-        // TODO(cmc): Opportunities for parallelization, if it proves to be a net positive in practice.
-        let temporal_components = self
-            .temporal_chunk_ids_per_entity_per_component
+        let components = self
+            .per_column_metadata
             .iter()
-            .flat_map(|(entity_path, per_timeline)| {
-                per_timeline
-                    .iter()
-                    .map(move |(timeline, per_component)| (entity_path, timeline, per_component))
+            .flat_map(|(entity_path, per_component)| {
+                per_component
+                    .keys()
+                    .map(move |component_name| (entity_path, component_name))
             })
-            .flat_map(|(entity_path, _timeline, per_component)| {
+            .filter_map(|(entity_path, component_name)| {
+                let metadata = self.lookup_column_metadata(entity_path, component_name)?;
+                let datatype = self.lookup_datatype(component_name)?;
+
+                Some(((entity_path, component_name), (metadata, datatype)))
+            })
+            .map(|((entity_path, component_name), (metadata, datatype))| {
+                let ColumnMetadata {
+                    is_static,
+                    is_indicator,
+                    is_tombstone,
+                    is_semantically_empty,
+                } = metadata;
+
                 // TODO(#6889): Fill `archetype_name`/`archetype_field_name` (or whatever their
                 // final name ends up being) once we generate tags.
-                per_component.keys().filter_map(|component_name| {
-                    self.lookup_datatype(component_name).map(|datatype| {
-                        ColumnDescriptor::Component(ComponentColumnDescriptor {
-                            entity_path: entity_path.clone(),
-                            archetype_name: None,
-                            archetype_field_name: None,
-                            component_name: *component_name,
-                            // NOTE: The data is always a at least a list, whether it's latest-at or range.
-                            // It might be wrapped further in e.g. a dict, but at the very least
-                            // it's a list.
-                            store_datatype: ArrowListArray::<i32>::default_datatype(
-                                datatype.clone(),
-                            ),
-                            join_encoding: JoinEncoding::default(),
-                            // NOTE: This will make it so shadowed temporal data automatically gets
-                            // discarded from the schema.
-                            is_static: self
-                                .static_chunk_ids_per_entity
-                                .get(entity_path)
-                                .map_or(false, |per_component| {
-                                    per_component.contains_key(component_name)
-                                }),
-                        })
-                    })
+                ColumnDescriptor::Component(ComponentColumnDescriptor {
+                    entity_path: entity_path.clone(),
+                    archetype_name: None,
+                    archetype_field_name: None,
+                    component_name: *component_name,
+                    // NOTE: The data is always a at least a list, whether it's latest-at or range.
+                    // It might be wrapped further in e.g. a dict, but at the very least
+                    // it's a list.
+                    store_datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
+                    is_static,
+                    is_indicator,
+                    is_tombstone,
+                    is_semantically_empty,
                 })
             });
-
-        use re_types_core::Archetype as _;
-        let clear_related_components: IntSet<ComponentName> =
-            re_types_core::archetypes::Clear::all_components()
-                .iter()
-                .copied()
-                .collect();
-
-        let components = static_components
-            .chain(temporal_components)
-            .filter(|col| match col {
-                ColumnDescriptor::Time(_) => true,
-                ColumnDescriptor::Component(descr) => {
-                    let is_indicator = descr.component_name.is_indicator_component();
-                    // Tombstones are not exposed to end users -- only their _effect_.
-                    let is_tombstone = clear_related_components.contains(&descr.component_name);
-                    !is_indicator && !is_tombstone
-                }
-            })
-            .collect::<BTreeSet<_>>();
 
         timelines.chain(components).collect()
     }
@@ -811,28 +710,60 @@ impl ChunkStore {
         &self,
         selector: &ComponentColumnSelector,
     ) -> ComponentColumnDescriptor {
+        // Happy path if this string is a valid component
+        // TODO(#7699) This currently interns every string ever queried which could be wasteful, especially
+        // in long-running servers. In practice this probably doesn't matter.
+        let direct_component = ComponentName::from(selector.component_name.clone());
+
+        let component_name = if self.all_components().contains(&direct_component) {
+            direct_component
+        } else {
+            self.all_components_for_entity(&selector.entity_path)
+                // First just check on the entity since this is the most likely place to find it.
+                .and_then(|components| {
+                    components
+                        .into_iter()
+                        .find(|component_name| component_name.matches(&selector.component_name))
+                })
+                // Fall back on matching any component in the store
+                .or_else(|| {
+                    self.all_components()
+                        .into_iter()
+                        .find(|component_name| component_name.matches(&selector.component_name))
+                })
+                // Finally fall back on the direct component name
+                .unwrap_or(direct_component)
+        };
+
+        let ColumnMetadata {
+            is_static,
+            is_indicator,
+            is_tombstone,
+            is_semantically_empty,
+        } = self
+            .lookup_column_metadata(&selector.entity_path, &component_name)
+            .unwrap_or(ColumnMetadata {
+                is_static: false,
+                is_indicator: false,
+                is_tombstone: false,
+                is_semantically_empty: false,
+            });
+
         let datatype = self
-            .lookup_datatype(&selector.component)
+            .lookup_datatype(&component_name)
             .cloned()
             .unwrap_or_else(|| ArrowDatatype::Null);
 
-        let is_static = self
-            .static_chunk_ids_per_entity
-            .get(&selector.entity_path)
-            .map_or(false, |per_component| {
-                per_component.contains_key(&selector.component)
-            });
-
-        // TODO(#6889): Fill `archetype_name`/`archetype_field_name` (or whatever their
-        // final name ends up being) once we generate tags.
         ComponentColumnDescriptor {
             entity_path: selector.entity_path.clone(),
             archetype_name: None,
             archetype_field_name: None,
-            component_name: selector.component,
+            component_name,
             store_datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
-            join_encoding: selector.join_encoding,
             is_static,
+            is_indicator,
+            is_tombstone,
+            is_semantically_empty,
         }
     }
 
@@ -859,29 +790,59 @@ impl ChunkStore {
             .collect()
     }
 
-    /// Returns the filtered schema for the given [`ViewContentsSelector`].
+    /// Returns the filtered schema for the given [`QueryExpression`].
     ///
     /// The order of the columns is guaranteed to be in a specific order:
-    /// * first, the control columns in lexical order (`RowId`);
-    /// * second, the time columns in lexical order (`frame_nr`, `log_time`, ...);
-    /// * third, the component columns in lexical order (`Color`, `Radius, ...`).
-    pub fn schema_for_view_contents(
-        &self,
-        view_contents: &ViewContentsSelector,
-    ) -> Vec<ColumnDescriptor> {
+    /// * first, the time columns in lexical order (`frame_nr`, `log_time`, ...);
+    /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
+    pub fn schema_for_query(&self, query: &QueryExpression) -> Vec<ColumnDescriptor> {
         re_tracing::profile_function!();
+
+        let QueryExpression {
+            view_contents,
+            include_semantically_empty_columns,
+            include_indicator_columns,
+            include_tombstone_columns,
+            filtered_index: _,
+            filtered_index_range: _,
+            filtered_index_values: _,
+            using_index_values: _,
+            filtered_is_not_null: _,
+            sparse_fill_strategy: _,
+            selection: _,
+        } = query;
+
+        let filter = |column: &ComponentColumnDescriptor| {
+            let is_part_of_view_contents = || {
+                view_contents.as_ref().map_or(true, |view_contents| {
+                    view_contents
+                        .get(&column.entity_path)
+                        .map_or(false, |components| {
+                            components.as_ref().map_or(true, |components| {
+                                components.contains(&column.component_name)
+                            })
+                        })
+                })
+            };
+
+            let passes_semantically_empty_check =
+                || *include_semantically_empty_columns || !column.is_semantically_empty;
+
+            let passes_indicator_check = || *include_indicator_columns || !column.is_indicator;
+
+            let passes_tombstone_check = || *include_tombstone_columns || !column.is_tombstone;
+
+            is_part_of_view_contents()
+                && passes_semantically_empty_check()
+                && passes_indicator_check()
+                && passes_tombstone_check()
+        };
 
         self.schema()
             .into_iter()
             .filter(|column| match column {
                 ColumnDescriptor::Time(_) => true,
-                ColumnDescriptor::Component(column) => view_contents
-                    .get(&column.entity_path)
-                    .map_or(false, |components| {
-                        components.as_ref().map_or(true, |components| {
-                            components.contains(&column.component_name)
-                        })
-                    }),
+                ColumnDescriptor::Component(column) => filter(column),
             })
             .collect()
     }

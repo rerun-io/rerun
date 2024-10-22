@@ -14,18 +14,26 @@ Query of the dataframe.
 
 * `timeline`: The timeline for this query.
 * `filter_by_range`: If provided, only rows whose timestamp is within this range will be shown.
-* `filter_by_event`: If provided, only show rows which contains a logged event for the specified component.
+* `filter_is_not_null`: If provided, only show rows which contains a logged event for the specified component.
 * `apply_latest_at`: Should empty cells be filled with latest-at queries?
 * `select`: Selected columns. If unset, all columns are selected.
 
 ## API reference links
- * 🐍 [Python API docs for `DataframeView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views?speculative-link#rerun.blueprint.views.DataframeView)
+ * 🐍 [Python API docs for `DataframeView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.DataframeView)
 
 ## Example
 
 ### Use a blueprint to customize a DataframeView.
 
 snippet: views/dataframe
+
+<picture data-inline-viewer="snippets/dataframe">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/dataframe_view/f89ae330b04baaa9b7576765dce37b5d4e7cef4e/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/dataframe_view/f89ae330b04baaa9b7576765dce37b5d4e7cef4e/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/dataframe_view/f89ae330b04baaa9b7576765dce37b5d4e7cef4e/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/dataframe_view/f89ae330b04baaa9b7576765dce37b5d4e7cef4e/1200w.png">
+  <img src="https://static.rerun.io/dataframe_view/f89ae330b04baaa9b7576765dce37b5d4e7cef4e/full.png">
+</picture>
 
 
 ## Visualized archetypes

@@ -1,6 +1,6 @@
 ---
 title: CLI manual
-order: 250
+order: 0
 ---
 
 ## rerun

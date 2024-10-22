@@ -34,12 +34,10 @@ re_tracing.workspace = true
 re_types_core.workspace = true
 
 # External dependencies:
-ahash.workspace = true
 anyhow.workspace = true
 arrow2.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
-parking_lot.workspace = true
 
 [dev-dependencies]
 re_types.workspace = true
