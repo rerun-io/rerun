@@ -10,6 +10,7 @@ from .asset_video import AssetVideo
 from .bar_chart import BarChart
 from .boxes2d import Boxes2D
 from .boxes3d import Boxes3D
+from .capsules3d import Capsules3D
 from .clear import Clear
 from .depth_image import DepthImage
 from .disconnected_space import DisconnectedSpace
@@ -43,6 +44,7 @@ __all__ = [
     "BarChart",
     "Boxes2D",
     "Boxes3D",
+    "Capsules3D",
     "Clear",
     "DepthImage",
     "DisconnectedSpace",
