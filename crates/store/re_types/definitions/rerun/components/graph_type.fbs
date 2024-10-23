@@ -1,0 +1,11 @@
+namespace rerun.components;
+
+/// An undirected edge in a graph connecting two nodes.
+struct GraphType (
+  "attr.rust.derive": "Default, PartialEq, Eq",
+  "attr.rust.repr": "transparent",
+  "attr.rust.custom_clause":
+    'cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))'
+) {
+  graph_type: rerun.datatypes.GraphType (order: 100);
+}

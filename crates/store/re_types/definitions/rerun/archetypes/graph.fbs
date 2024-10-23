@@ -1,0 +1,27 @@
+namespace rerun.archetypes;
+
+/// A graph that consists of nodes and edges.
+///
+/// By default, the graph is undirected.
+table Graph (
+  "attr.docs.category": "Graph",
+  "attr.docs.view_types": "Graph View"
+) {
+  // --- Required ---
+
+  /// A list of nodes.
+  nodes: [rerun.components.GraphNode] ("attr.rerun.component_required", order: 1000);
+
+  // --- Recommended ---
+
+  /// A list of edges.
+  edges: [rerun.components.GraphEdge] ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  /// Specifies if the graph is directed or undirected.
+  graph_type: rerun.components.GraphType ("attr.rerun.component_recommended", nullable, order: 2100);
+
+  // --- Optional ---
+
+  /// The position for each of the nodes.
+  node_positions: [rerun.components.Position2D] ("attr.rerun.component_optional", nullable, order: 3000);
+}

@@ -23,10 +23,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct GraphEdge {
     /// The id of the source node.
-    pub source: crate::datatypes::GraphLocation,
+    pub source: crate::datatypes::GraphNode,
 
     /// The id of the target node.
-    pub target: crate::datatypes::GraphLocation,
+    pub target: crate::datatypes::GraphNode,
 }
 
 impl ::re_types_core::SizeBytes for GraphEdge {
@@ -37,7 +37,7 @@ impl ::re_types_core::SizeBytes for GraphEdge {
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::datatypes::GraphLocation>::is_pod() && <crate::datatypes::GraphLocation>::is_pod()
+        <crate::datatypes::GraphNode>::is_pod() && <crate::datatypes::GraphNode>::is_pod()
     }
 }
 
@@ -58,12 +58,12 @@ impl ::re_types_core::Loggable for GraphEdge {
         DataType::Struct(std::sync::Arc::new(vec![
             Field::new(
                 "source",
-                <crate::datatypes::GraphLocation>::arrow_datatype(),
+                <crate::datatypes::GraphNode>::arrow_datatype(),
                 false,
             ),
             Field::new(
                 "target",
-                <crate::datatypes::GraphLocation>::arrow_datatype(),
+                <crate::datatypes::GraphNode>::arrow_datatype(),
                 false,
             ),
         ]))
@@ -107,8 +107,28 @@ impl ::re_types_core::Loggable for GraphEdge {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = source_bitmap;
-                            crate::datatypes::GraphLocation::to_arrow_opt(source)?
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                source.iter().map(|opt| {
+                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
+                                }),
+                            )?
+                            .into();
+                            let inner_data: arrow2::buffer::Buffer<u8> = source
+                                .into_iter()
+                                .flatten()
+                                .flat_map(|datum| datum.0 .0)
+                                .collect();
+
+                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                            unsafe {
+                                Utf8Array::<i32>::new_unchecked(
+                                    DataType::Utf8,
+                                    offsets,
+                                    inner_data,
+                                    source_bitmap,
+                                )
+                            }
+                            .boxed()
                         }
                     },
                     {
@@ -124,8 +144,28 @@ impl ::re_types_core::Loggable for GraphEdge {
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = target_bitmap;
-                            crate::datatypes::GraphLocation::to_arrow_opt(target)?
+                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                                target.iter().map(|opt| {
+                                    opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
+                                }),
+                            )?
+                            .into();
+                            let inner_data: arrow2::buffer::Buffer<u8> = target
+                                .into_iter()
+                                .flatten()
+                                .flat_map(|datum| datum.0 .0)
+                                .collect();
+
+                            #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                            unsafe {
+                                Utf8Array::<i32>::new_unchecked(
+                                    DataType::Utf8,
+                                    offsets,
+                                    inner_data,
+                                    target_bitmap,
+                                )
+                            }
+                            .boxed()
                         }
                     },
                 ],
@@ -173,9 +213,51 @@ impl ::re_types_core::Loggable for GraphEdge {
                         .with_context("rerun.datatypes.GraphEdge");
                     }
                     let arrow_data = &**arrays_by_name["source"];
-                    crate::datatypes::GraphLocation::from_arrow_opt(arrow_data)
+                    {
+                        let arrow_data = arrow_data
+                            .as_any()
+                            .downcast_ref::<arrow2::array::Utf8Array<i32>>()
+                            .ok_or_else(|| {
+                                let expected = DataType::Utf8;
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
+                            })
+                            .with_context("rerun.datatypes.GraphEdge#source")?;
+                        let arrow_data_buf = arrow_data.values();
+                        let offsets = arrow_data.offsets();
+                        arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                            offsets.iter().zip(offsets.lengths()),
+                            arrow_data.validity(),
+                        )
+                        .map(|elem| {
+                            elem.map(|(start, len)| {
+                                let start = *start as usize;
+                                let end = start + len;
+                                if end > arrow_data_buf.len() {
+                                    return Err(DeserializationError::offset_slice_oob(
+                                        (start, end),
+                                        arrow_data_buf.len(),
+                                    ));
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data =
+                                    unsafe { arrow_data_buf.clone().sliced_unchecked(start, len) };
+                                Ok(data)
+                            })
+                            .transpose()
+                        })
+                        .map(|res_or_opt| {
+                            res_or_opt.map(|res_or_opt| {
+                                res_or_opt.map(|v| {
+                                    crate::datatypes::GraphNode(::re_types_core::ArrowString(v))
+                                })
+                            })
+                        })
+                        .collect::<DeserializationResult<Vec<Option<_>>>>()
                         .with_context("rerun.datatypes.GraphEdge#source")?
                         .into_iter()
+                    }
                 };
                 let target = {
                     if !arrays_by_name.contains_key("target") {
@@ -186,9 +268,51 @@ impl ::re_types_core::Loggable for GraphEdge {
                         .with_context("rerun.datatypes.GraphEdge");
                     }
                     let arrow_data = &**arrays_by_name["target"];
-                    crate::datatypes::GraphLocation::from_arrow_opt(arrow_data)
+                    {
+                        let arrow_data = arrow_data
+                            .as_any()
+                            .downcast_ref::<arrow2::array::Utf8Array<i32>>()
+                            .ok_or_else(|| {
+                                let expected = DataType::Utf8;
+                                let actual = arrow_data.data_type().clone();
+                                DeserializationError::datatype_mismatch(expected, actual)
+                            })
+                            .with_context("rerun.datatypes.GraphEdge#target")?;
+                        let arrow_data_buf = arrow_data.values();
+                        let offsets = arrow_data.offsets();
+                        arrow2::bitmap::utils::ZipValidity::new_with_validity(
+                            offsets.iter().zip(offsets.lengths()),
+                            arrow_data.validity(),
+                        )
+                        .map(|elem| {
+                            elem.map(|(start, len)| {
+                                let start = *start as usize;
+                                let end = start + len;
+                                if end > arrow_data_buf.len() {
+                                    return Err(DeserializationError::offset_slice_oob(
+                                        (start, end),
+                                        arrow_data_buf.len(),
+                                    ));
+                                }
+
+                                #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                let data =
+                                    unsafe { arrow_data_buf.clone().sliced_unchecked(start, len) };
+                                Ok(data)
+                            })
+                            .transpose()
+                        })
+                        .map(|res_or_opt| {
+                            res_or_opt.map(|res_or_opt| {
+                                res_or_opt.map(|v| {
+                                    crate::datatypes::GraphNode(::re_types_core::ArrowString(v))
+                                })
+                            })
+                        })
+                        .collect::<DeserializationResult<Vec<Option<_>>>>()
                         .with_context("rerun.datatypes.GraphEdge#target")?
                         .into_iter()
+                    }
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(source, target),

@@ -15,9 +15,7 @@ from .depth_image import DepthImage
 from .disconnected_space import DisconnectedSpace
 from .ellipsoids3d import Ellipsoids3D
 from .encoded_image import EncodedImage
-from .graph_edges_directed import GraphEdgesDirected
-from .graph_edges_undirected import GraphEdgesUndirected
-from .graph_nodes import GraphNodes
+from .graph import Graph
 from .image import Image
 from .instance_poses3d import InstancePoses3D
 from .line_strips2d import LineStrips2D
@@ -51,9 +49,7 @@ __all__ = [
     "DisconnectedSpace",
     "Ellipsoids3D",
     "EncodedImage",
-    "GraphEdgesDirected",
-    "GraphEdgesUndirected",
-    "GraphNodes",
+    "Graph",
     "Image",
     "InstancePoses3D",
     "LineStrips2D",
