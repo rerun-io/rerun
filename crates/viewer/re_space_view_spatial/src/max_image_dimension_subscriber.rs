@@ -152,13 +152,9 @@ fn size_from_blob(blob: &dyn Array, media_type: Option<&dyn Array>) -> Option<[u
         reader.into_dimensions().ok().map(|size| size.into())
     } else if media_type.is_video() {
         re_tracing::profile_scope!("video");
-        if true {
-            None // TODO(#7821): Use the VideoCache here so we make sure we only load each video ONCE
-        } else {
-            re_video::VideoData::load_from_bytes(&blob, &media_type)
-                .ok()
-                .map(|video| video.dimensions())
-        }
+        re_video::VideoData::load_from_bytes(&blob, &media_type)
+            .ok()
+            .map(|video| video.dimensions())
     } else {
         None
     }
