@@ -134,12 +134,7 @@ where
             space_view_class_identifier: view_ctx.space_view_class_identifier(),
         };
 
-        let results = data_result.query_archetype_with_history::<A>(
-            ctx,
-            &query.timeline,
-            query.latest_at,
-            data_result.query_range(),
-        );
+        let results = data_result.query_archetype_with_history::<A>(ctx, query);
 
         let mut query_ctx = ctx.query_context(data_result, &latest_at);
         query_ctx.archetype_name = Some(A::name());

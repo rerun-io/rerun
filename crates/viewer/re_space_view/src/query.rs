@@ -6,7 +6,7 @@ use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
 use re_log_types::{TimeInt, Timeline};
 use re_query::LatestAtResults;
 use re_types_core::{Archetype, ComponentName};
-use re_viewer_context::{DataResult, QueryRange, ViewContext, ViewerContext};
+use re_viewer_context::{DataResult, QueryRange, ViewContext, ViewQuery, ViewerContext};
 
 // ---
 
@@ -239,9 +239,7 @@ pub trait DataResultQuery {
     fn query_archetype_with_history<'a, A: re_types_core::Archetype>(
         &'a self,
         ctx: &'a ViewContext<'a>,
-        timeline: &Timeline,
-        timeline_cursor: TimeInt,
-        query_range: &QueryRange,
+        view_query: &ViewQuery<'_>,
     ) -> HybridResults<'a>;
 
     fn best_fallback_for<'a>(
@@ -271,15 +269,13 @@ impl DataResultQuery for DataResult {
     fn query_archetype_with_history<'a, A: Archetype>(
         &'a self,
         ctx: &'a ViewContext<'a>,
-        timeline: &Timeline,
-        timeline_cursor: TimeInt,
-        query_range: &QueryRange,
+        view_query: &ViewQuery<'_>,
     ) -> HybridResults<'a> {
         query_archetype_with_history(
             ctx,
-            timeline,
-            timeline_cursor,
-            query_range,
+            &view_query.timeline,
+            view_query.latest_at,
+            self.query_range(),
             A::all_components().iter().copied(),
             self,
         )
