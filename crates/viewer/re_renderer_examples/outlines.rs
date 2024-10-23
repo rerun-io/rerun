@@ -5,7 +5,7 @@
 
 use itertools::Itertools;
 use re_renderer::{
-    renderer::MeshInstance,
+    renderer::GpuMeshInstance,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
     Color32, OutlineConfig, OutlineMaskPreference,
 };
@@ -16,7 +16,7 @@ mod framework;
 struct Outlines {
     is_paused: bool,
     seconds_since_startup: f32,
-    model_mesh_instances: Vec<MeshInstance>,
+    model_mesh_instances: Vec<GpuMeshInstance>,
 }
 
 struct MeshProperties {
@@ -34,7 +34,8 @@ impl framework::Example for Outlines {
         Self {
             is_paused: false,
             seconds_since_startup: 0.0,
-            model_mesh_instances: crate::framework::load_rerun_mesh(re_ctx),
+            model_mesh_instances: crate::framework::load_rerun_mesh(re_ctx)
+                .expect("Failed to load rerun mesh"),
         }
     }
 
@@ -110,9 +111,8 @@ impl framework::Example for Outlines {
             .flat_map(|props| {
                 self.model_mesh_instances
                     .iter()
-                    .map(move |instance| MeshInstance {
+                    .map(move |instance| GpuMeshInstance {
                         gpu_mesh: instance.gpu_mesh.clone(),
-                        mesh: None,
                         world_from_mesh: glam::Affine3A::from_rotation_translation(
                             props.rotation,
                             props.position,

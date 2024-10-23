@@ -9,7 +9,7 @@ pub use self::query::QueryHandle;
 #[doc(no_inline)]
 pub use self::external::arrow2::chunk::Chunk as ArrowChunk;
 #[doc(no_inline)]
-pub use self::external::re_chunk::util::concatenate_record_batches;
+pub use self::external::re_chunk::{util::concatenate_record_batches, TransportChunk};
 #[doc(no_inline)]
 pub use self::external::re_chunk_store::{
     ColumnSelector, ComponentColumnSelector, Index, IndexRange, IndexValue, QueryExpression,

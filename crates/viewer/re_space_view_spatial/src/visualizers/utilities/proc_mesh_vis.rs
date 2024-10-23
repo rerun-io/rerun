@@ -1,6 +1,6 @@
 use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
-use re_renderer::renderer::MeshInstance;
+use re_renderer::renderer::GpuMeshInstance;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, RenderContext};
 use re_types::components::{self, FillMode};
 use re_viewer_context::{
@@ -34,7 +34,7 @@ pub struct ProcMeshDrawableBuilder<'ctx, Fb> {
     pub line_batch_debug_label: re_renderer::DebugLabel,
 
     /// Accumulates triangle mesh instances to render.
-    pub solid_instances: Vec<MeshInstance>,
+    pub solid_instances: Vec<GpuMeshInstance>,
 
     pub query: &'ctx ViewQuery<'ctx>,
     pub render_ctx: &'ctx RenderContext,
@@ -221,9 +221,8 @@ where
                         ));
                     };
 
-                    self.solid_instances.push(MeshInstance {
+                    self.solid_instances.push(GpuMeshInstance {
                         gpu_mesh: solid_mesh.gpu_mesh,
-                        mesh: None,
                         world_from_mesh: world_from_instance,
                         outline_mask_ids: ent_context.highlight.index_outline_mask(instance),
                         picking_layer_id: picking_layer_id_from_instance_path_hash(

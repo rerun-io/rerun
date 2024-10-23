@@ -14,6 +14,7 @@ re_log_types.workspace = true
 re_dataframe.workspace = true
 
 # External
+arrow2 = { workspace = true, features = ["io_ipc"] }
 prost.workspace = true
 thiserror.workspace = true
 tonic.workspace = true

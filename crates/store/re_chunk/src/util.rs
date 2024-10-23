@@ -65,6 +65,7 @@ pub fn arrays_to_list_array(
     let data = if arrays_dense.is_empty() {
         arrow2::array::new_empty_array(array_datatype.clone())
     } else {
+        re_tracing::profile_scope!("concatenate", arrays_dense.len().to_string());
         arrow2::compute::concatenate::concatenate(&arrays_dense)
             .map_err(|err| {
                 re_log::warn_once!("failed to concatenate arrays: {err}");

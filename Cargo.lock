@@ -5868,8 +5868,7 @@ dependencies = [
 [[package]]
 name = "re_mp4"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d1e30657b1ae7f0dd3428a59dc8140732b74a22cc07763606c9ec4054138731"
+source = "git+https://github.com/rerun-io/re_mp4?rev=7d38361ee5b05f5a2b83a8029057c8a24d2e9023#7d38361ee5b05f5a2b83a8029057c8a24d2e9023"
 dependencies = [
  "byteorder",
  "bytes",
@@ -5939,6 +5938,7 @@ name = "re_remote_store_types"
 version = "0.20.0-alpha.1+dev"
 dependencies = [
  "prost 0.13.3",
+ "re_arrow2",
  "re_dataframe",
  "re_log_types",
  "thiserror",
@@ -6221,6 +6221,7 @@ dependencies = [
  "mimalloc",
  "nohash-hasher",
  "once_cell",
+ "re_arrow2",
  "re_chunk_store",
  "re_data_ui",
  "re_entity_db",
@@ -6235,6 +6236,7 @@ dependencies = [
  "re_tracing",
  "re_types",
  "re_ui",
+ "re_video",
  "re_viewer_context",
  "re_viewport_blueprint",
  "serde",
@@ -6513,6 +6515,7 @@ name = "re_video"
 version = "0.20.0-alpha.1+dev"
 dependencies = [
  "cfg_aliases 0.2.1",
+ "criterion",
  "crossbeam",
  "econtext",
  "indicatif",
@@ -6640,6 +6643,7 @@ dependencies = [
  "re_types",
  "re_types_core",
  "re_ui",
+ "re_video",
  "rfd",
  "serde",
  "slotmap",

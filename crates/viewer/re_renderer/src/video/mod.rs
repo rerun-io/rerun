@@ -5,7 +5,7 @@ use std::{collections::hash_map::Entry, ops::Range, sync::Arc};
 use ahash::HashMap;
 use parking_lot::Mutex;
 
-use re_video::VideoLoadError;
+use re_video::VideoData;
 
 use crate::{resource_managers::GpuTexture2D, RenderContext};
 
@@ -160,19 +160,17 @@ impl Video {
     /// - `video/mp4`
     pub fn load(
         debug_name: String,
-        data: &[u8],
-        media_type: &str,
+        data: Arc<VideoData>,
         decode_hw_acceleration: DecodeHardwareAcceleration,
-    ) -> Result<Self, VideoLoadError> {
-        let data = Arc::new(re_video::VideoData::load_from_bytes(data, media_type)?);
+    ) -> Self {
         let decoders = Mutex::new(HashMap::default());
 
-        Ok(Self {
+        Self {
             debug_name,
             data,
             decoders,
             decode_hw_acceleration,
-        })
+        }
     }
 
     /// The video data
@@ -205,6 +203,7 @@ impl Video {
         render_context: &RenderContext,
         decoder_stream_id: VideoDecodingStreamId,
         presentation_timestamp_s: f64,
+        video_data: &[u8],
     ) -> FrameDecodingResult {
         re_tracing::profile_function!();
 
@@ -235,7 +234,7 @@ impl Video {
         decoder_entry.frame_index = render_context.active_frame_idx();
         decoder_entry
             .decoder
-            .frame_at(render_context, presentation_timestamp_s)
+            .frame_at(render_context, presentation_timestamp_s, video_data)
     }
 
     /// Removes all decoders that have been unused in the last frame.
