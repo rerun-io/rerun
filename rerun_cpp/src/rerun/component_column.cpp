@@ -2,6 +2,7 @@
 
 #include "arrow_utils.hpp"
 #include "c/rerun.h"
+#include "compiler_utils.hpp"
 
 #include <arrow/array/array_nested.h>
 #include <arrow/buffer.h>
@@ -20,7 +21,12 @@ namespace rerun {
     ) {
         // Convert lengths into offsets.
         std::vector<uint32_t> offsets(lengths.size() + 1);
+        // Some GCC versions see ghosts here - this can't be a null dereference since we have at least 1 element.
+        RR_PUSH_WARNINGS
+        RR_DISABLE_NULL_DEREF_WARNING
         offsets[0] = 0;
+        RR_POP_WARNINGS
+
         for (size_t i = 0; i < lengths.size(); i++) {
             offsets[i + 1] = offsets[i] + lengths[i];
         }
