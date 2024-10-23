@@ -4,25 +4,16 @@ use re_types::datatypes;
 use super::NodeIdHash;
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub(crate) struct NodeIndex {
+pub struct NodeIndex {
     pub entity_hash: EntityPathHash,
     pub node_id: NodeIdHash,
 }
 
-impl From<datatypes::GraphLocation> for NodeIndex {
-    fn from(location: datatypes::GraphLocation) -> Self {
+impl NodeIndex {
+    pub fn new(entity_path: &EntityPath, node_id: &datatypes::GraphNode) -> Self {
         Self {
-            entity_hash: EntityPath::from(location.entity_path).hash(),
-            node_id: NodeIdHash::from(&location.node_id),
-        }
-    }
-}
-
-impl From<&datatypes::GraphLocation> for NodeIndex {
-    fn from(location: &datatypes::GraphLocation) -> Self {
-        Self {
-            entity_hash: EntityPath::from(location.entity_path.clone()).hash(),
-            node_id: NodeIdHash::from(&location.node_id),
+            entity_hash: entity_path.hash(),
+            node_id: NodeIdHash::from(node_id),
         }
     }
 }

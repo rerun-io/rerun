@@ -1,5 +1,4 @@
 use std::collections::{HashMap, HashSet};
-use std::hash::Hash;
 
 use egui::{self, Rect};
 use re_log_types::EntityPath;
@@ -22,11 +21,12 @@ use crate::{
 #[derive(Default)]
 pub struct GraphSpaceView;
 
-fn arrange_in_circle<S: ToString + Hash>(nodes: &mut HashMap<NodeIndex, (S, egui::Rect)>, radius: f32) {
+fn arrange_in_circle(
+    nodes: &mut HashMap<NodeIndex, (Option<EntityPath>, egui::Rect)>,
+    radius: f32,
+) {
     let n = nodes.len();
     let center = egui::Pos2::new(0.0, 0.0);
-
-    let nodes_by_entity  = nodes.iter().map(|(entity, (ix, _))| (entity, ix)).collect::<HashMap<_,_>>();
 
     for (i, (_id, (_, rect))) in nodes.iter_mut().enumerate() {
         let angle = 2.0 * std::f32::consts::PI * i as f32 / n as f32;
@@ -192,7 +192,10 @@ impl SpaceViewClass for GraphSpaceView {
                 for node in data.nodes() {
                     let ix = NodeIndex::from(&node);
                     seen.insert(ix);
-                    let (_,current) = state.layout.entry(ix).or_insert((node.entity_path.clone().into(), egui::Rect::ZERO));
+                    let (_, current) = state
+                        .layout
+                        .entry(ix)
+                        .or_insert((node.entity_path.clone().into(), egui::Rect::ZERO));
 
                     let response = scene.node(current.min, |ui| {
                         ui::draw_node(ui, &node, ent_highlight.index_highlight(node.instance))
@@ -229,13 +232,17 @@ impl SpaceViewClass for GraphSpaceView {
                 let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
                 for edge in data.edges() {
-                    if let (Some((_, source_pos)), Some((_,target_pos))) = (
-                        state.layout.get(&edge.source.into()),
-                        state.layout.get(&edge.target.into()),
+                    if let (Some((_, source_pos)), Some((_, target_pos))) = (
+                        state
+                            .layout
+                            .get(NodeIndex::new(edge.entity_path, &edge.source)),
+                        state
+                            .layout
+                            .get(NodeIndex::new(edge.entity_path, &edge.target)),
                     ) {
                         scene.edge(|ui| {
                             ui::draw_edge(
-                                ui,
+                                &ui,
                                 edge.color,
                                 source_pos,
                                 target_pos,
@@ -252,7 +259,7 @@ impl SpaceViewClass for GraphSpaceView {
                 let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
                 for edge in data.edges() {
-                    if let (Some((_,source_pos)), Some((_,target_pos))) = (
+                    if let (Some((_, source_pos)), Some((_, target_pos))) = (
                         state.layout.get(&edge.source.into()),
                         state.layout.get(&edge.target.into()),
                     ) {

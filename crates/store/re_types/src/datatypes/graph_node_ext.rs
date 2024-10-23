@@ -1,3 +1,5 @@
+use re_log_types::hash::Hash64;
+
 use super::GraphNode;
 
 impl std::convert::From<&str> for GraphNode {

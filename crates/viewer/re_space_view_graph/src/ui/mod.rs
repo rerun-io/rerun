@@ -18,7 +18,7 @@ use crate::{
 };
 
 pub fn draw_dummy(ui: &mut egui::Ui, instance: &UnknownNodeInstance) -> egui::Response {
-    let text = egui::RichText::new(format!("{} @ {}", instance.node_id, instance.entity_path))
+    let text = egui::RichText::new(format!("{}", instance.node_id))
         .color(ui.style().visuals.widgets.noninteractive.text_color());
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
     ui.add(egui::Button::new(text))

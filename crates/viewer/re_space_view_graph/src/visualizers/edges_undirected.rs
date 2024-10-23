@@ -36,7 +36,7 @@ impl EdgesUndirectedData {
         .map(|(edge, instance, color)| EdgeInstance {
             source: &edge.source,
             target: &edge.target,
-            _entity_path: &self.entity_path,
+            entity_path: &self.entity_path,
             instance,
             color: color.map(|c| egui::Color32::from(c.0)),
         })
