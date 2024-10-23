@@ -565,3 +565,6 @@ missing_errors_doc = "allow"
 re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2", rev = "e4717d6debc6d4474ec10db8f629f823f57bad07" }
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }
+
+# Commit on `main` branch of `re_mp4`
+re_mp4 = { git = "https://github.com/rerun-io/re_mp4", rev = "7d38361ee5b05f5a2b83a8029057c8a24d2e9023" }

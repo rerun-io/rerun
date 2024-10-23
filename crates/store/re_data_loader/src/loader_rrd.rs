@@ -2,6 +2,7 @@ use re_log_encoding::decoder::Decoder;
 
 #[cfg(not(target_arch = "wasm32"))]
 use crossbeam::channel::Receiver;
+use re_log_types::{ApplicationId, StoreId};
 
 // ---
 
@@ -17,8 +18,7 @@ impl crate::DataLoader for RrdLoader {
     #[cfg(not(target_arch = "wasm32"))]
     fn load_from_path(
         &self,
-        // NOTE: The Store ID comes from the rrd file itself.
-        _settings: &crate::DataLoaderSettings,
+        settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
         tx: std::sync::mpsc::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
@@ -57,12 +57,21 @@ impl crate::DataLoader for RrdLoader {
                     .name(format!("decode_and_stream({filepath:?})"))
                     .spawn({
                         let filepath = filepath.clone();
+                        let settings = settings.clone();
                         move || {
-                            decode_and_stream(&filepath, &tx, decoder);
+                            decode_and_stream(
+                                &filepath,
+                                &tx,
+                                decoder,
+                                settings.opened_application_id.as_ref(),
+                                // We never want to patch blueprints' store IDs, only their app IDs.
+                                None,
+                            );
                         }
                     })
                     .with_context(|| format!("Failed to open spawn IO thread for {filepath:?}"))?;
             }
+
             "rrd" => {
                 // For .rrd files we retry reading despite reaching EOF to support live (writer) streaming.
                 // Decoder will give up when it sees end of file marker (i.e. end-of-stream message header)
@@ -76,8 +85,15 @@ impl crate::DataLoader for RrdLoader {
                     .name(format!("decode_and_stream({filepath:?})"))
                     .spawn({
                         let filepath = filepath.clone();
+                        let settings = settings.clone();
                         move || {
-                            decode_and_stream(&filepath, &tx, decoder);
+                            decode_and_stream(
+                                &filepath,
+                                &tx,
+                                decoder,
+                                settings.opened_application_id.as_ref(),
+                                settings.opened_store_id.as_ref(),
+                            );
                         }
                     })
                     .with_context(|| format!("Failed to open spawn IO thread for {filepath:?}"))?;
@@ -90,8 +106,7 @@ impl crate::DataLoader for RrdLoader {
 
     fn load_from_file_contents(
         &self,
-        // NOTE: The Store ID comes from the rrd file itself.
-        _settings: &crate::DataLoaderSettings,
+        settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
         tx: std::sync::mpsc::Sender<crate::LoadedData>,
@@ -116,7 +131,13 @@ impl crate::DataLoader for RrdLoader {
             },
         };
 
-        decode_and_stream(&filepath, &tx, decoder);
+        decode_and_stream(
+            &filepath,
+            &tx,
+            decoder,
+            settings.opened_application_id.as_ref(),
+            settings.opened_store_id.as_ref(),
+        );
 
         Ok(())
     }
@@ -126,6 +147,8 @@ fn decode_and_stream<R: std::io::Read>(
     filepath: &std::path::Path,
     tx: &std::sync::mpsc::Sender<crate::LoadedData>,
     decoder: Decoder<R>,
+    forced_application_id: Option<&ApplicationId>,
+    forced_store_id: Option<&StoreId>,
 ) {
     re_tracing::profile_function!(filepath.display().to_string());
 
@@ -137,6 +160,39 @@ fn decode_and_stream<R: std::io::Read>(
                 continue;
             }
         };
+
+        let msg = if forced_application_id.is_some() || forced_store_id.is_some() {
+            match msg {
+                re_log_types::LogMsg::SetStoreInfo(set_store_info) => {
+                    re_log_types::LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
+                        info: re_log_types::StoreInfo {
+                            application_id: forced_application_id
+                                .cloned()
+                                .unwrap_or(set_store_info.info.application_id),
+                            store_id: forced_store_id
+                                .cloned()
+                                .unwrap_or(set_store_info.info.store_id),
+                            ..set_store_info.info
+                        },
+                        ..set_store_info
+                    })
+                }
+
+                re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg) => {
+                    re_log_types::LogMsg::ArrowMsg(
+                        forced_store_id.cloned().unwrap_or(store_id),
+                        arrow_msg,
+                    )
+                }
+
+                re_log_types::LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
+                    re_log_types::LogMsg::BlueprintActivationCommand(blueprint_activation_command)
+                }
+            }
+        } else {
+            msg
+        };
+
         if tx.send(msg.into()).is_err() {
             break; // The other end has decided to hang up, not our problem.
         }
