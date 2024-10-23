@@ -120,9 +120,8 @@ fn concat_single_is_noop() {
         let unconcatenated =
             memory_use(|| ArrowPrimitiveArray::from_vec((0..NUM_SCALARS).collect_vec()).to_boxed());
 
-        let concatenated = memory_use(|| {
-            re_chunk::util::concat_arrays(&[&*unconcatenated.0]).unwrap()
-        });
+        let concatenated =
+            memory_use(|| re_chunk::util::concat_arrays(&[&*unconcatenated.0]).unwrap());
 
         (unconcatenated, concatenated)
     });
