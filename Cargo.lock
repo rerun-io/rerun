@@ -6189,6 +6189,7 @@ version = "0.20.0-alpha.1+dev"
 dependencies = [
  "egui",
  "egui_plot",
+ "itertools 0.13.0",
  "re_chunk_store",
  "re_data_ui",
  "re_entity_db",

@@ -35,5 +35,5 @@ re_viewport_blueprint.workspace = true
 
 egui_plot.workspace = true
 egui.workspace = true
-
+itertools.workspace = true
 walkers = "0.25.0"

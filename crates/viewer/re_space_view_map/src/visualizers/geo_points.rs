@@ -5,8 +5,9 @@ use re_types::{
     Loggable as _,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext, ViewContextCollection,
-    ViewQuery, VisualizerQueryInfo, VisualizerSystem,
+    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
+    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 // ---
@@ -60,57 +61,49 @@ impl VisualizerSystem for GeoPointsVisualizer {
         for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
             let results = data_result.query_archetype_with_history::<Points3D>(ctx, view_query);
 
+            // gather all relevant chunks
             let timeline = view_query.timeline;
             let all_positions = results.iter_as(timeline, Position3D::name());
             let all_colors = results.iter_as(timeline, components::Color::name());
             let all_radii = results.iter_as(timeline, components::Radius::name());
 
-            let mut last_color = None;
-            let mut last_radius = None;
+            // default component values
+            let default_color: Color =
+                self.fallback_for(&ctx.query_context(data_result, &view_query.latest_at_query()));
+            let default_radius: Radius =
+                self.fallback_for(&ctx.query_context(data_result, &view_query.latest_at_query()));
 
+            // iterate over each chunk and find all relevant component slices
             for (_index, position, color, radii) in re_query::range_zip_1x2(
                 all_positions.component::<Position3D>(),
                 all_colors.component::<Color>(),
                 all_radii.component::<Radius>(),
             ) {
-                last_color = color
-                    .as_ref()
-                    .map(|c| c.as_slice().last())
-                    .flatten()
-                    .cloned()
-                    .or(last_color);
-                last_radius = radii
-                    .as_ref()
-                    .map(|r| r.as_slice().last())
-                    .flatten()
-                    .cloned()
-                    .or(last_radius);
+                // required component
+                let position = position.as_slice();
 
-                for (idx, pos) in position.as_slice().iter().enumerate() {
-                    let color = color
-                        .as_ref()
-                        .and_then(|c| c.as_slice().get(idx))
-                        .or(last_color.as_ref())
-                        .map(|c| {
-                            let c = c.0.to_array();
-                            egui::Color32::from_rgba_premultiplied(c[0], c[1], c[2], c[3])
-                        })
-                        .unwrap_or(egui::Color32::RED); //TODO: fallback provider
+                // optional components
+                let color = color.as_ref().map(|c| c.as_slice()).unwrap_or(&[]);
+                let radii = radii.as_ref().map(|r| r.as_slice()).unwrap_or(&[]);
 
-                    let radius = radii
-                        .as_ref()
-                        .and_then(|r| r.as_slice().get(idx))
-                        .or(last_radius.as_ref())
-                        .map(|r| {
-                            //TODO(#7872): support for radius in meter
-                            r.0.abs()
-                        })
-                        .unwrap_or(5.0); //TODO: fallback provider
+                // optional components values to be used for instance clamping semantics
+                let last_color = color.last().copied().unwrap_or(default_color);
+                let last_radii = radii.last().copied().unwrap_or(default_radius);
 
+                // iterate over all instances
+                for (position, color, radius) in itertools::izip!(
+                    position,
+                    color.iter().chain(std::iter::repeat(&last_color)),
+                    radii.iter().chain(std::iter::repeat(&last_radii)),
+                ) {
                     self.map_entries.push(GeoPointEntry {
-                        position: walkers::Position::from_lat_lon(pos.x() as f64, pos.y() as f64),
-                        radius,
-                        color,
+                        position: walkers::Position::from_lat_lon(
+                            position.x() as f64,
+                            position.y() as f64,
+                        ),
+                        //TODO(#7872): support for radius in meter
+                        radius: radius.0.abs(),
+                        color: color.0.into(),
                     });
                 }
             }
@@ -128,11 +121,23 @@ impl VisualizerSystem for GeoPointsVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(GeoPointsVisualizer => []);
+impl TypedComponentFallbackProvider<Color> for GeoPointsVisualizer {
+    fn fallback_for(&self, ctx: &QueryContext<'_>) -> Color {
+        auto_color_for_entity_path(ctx.target_entity_path)
+    }
+}
+
+impl TypedComponentFallbackProvider<Radius> for GeoPointsVisualizer {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> Radius {
+        Radius::from(5.0)
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(GeoPointsVisualizer => [Color, Radius]);
 
 impl GeoPointsVisualizer {
     /// Return a [`walkers::Plugin`] for this visualizer.
-    pub fn plugin<'a>(&'a self) -> impl walkers::Plugin + 'a {
+    pub fn plugin(&self) -> impl walkers::Plugin + '_ {
         GeoPointsPlugin {
             map_entries: &self.map_entries,
         }

@@ -244,7 +244,7 @@ fn get_tile_manager(provider: MapProvider, egui_ctx: &Context) -> HttpTiles {
         MapProvider::MapboxStreets => HttpTiles::new(
             walkers::sources::Mapbox {
                 style: walkers::sources::MapboxStyle::Streets,
-                access_token: mapbox_access_token.to_owned(),
+                access_token: mapbox_access_token.clone(),
                 high_resolution: false,
             },
             egui_ctx.clone(),
@@ -252,7 +252,7 @@ fn get_tile_manager(provider: MapProvider, egui_ctx: &Context) -> HttpTiles {
         MapProvider::MapboxDark => HttpTiles::new(
             walkers::sources::Mapbox {
                 style: walkers::sources::MapboxStyle::Dark,
-                access_token: mapbox_access_token.to_owned(),
+                access_token: mapbox_access_token.clone(),
                 high_resolution: false,
             },
             egui_ctx.clone(),
@@ -260,7 +260,7 @@ fn get_tile_manager(provider: MapProvider, egui_ctx: &Context) -> HttpTiles {
         MapProvider::MapboxSatellite => HttpTiles::new(
             walkers::sources::Mapbox {
                 style: walkers::sources::MapboxStyle::Satellite,
-                access_token: mapbox_access_token.to_owned(),
+                access_token: mapbox_access_token.clone(),
                 high_resolution: true,
             },
             egui_ctx.clone(),
