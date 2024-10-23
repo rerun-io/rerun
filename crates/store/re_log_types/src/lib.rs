@@ -420,7 +420,15 @@ pub enum FileSource {
         recommended_recording_id: Option<StoreId>,
     },
 
-    FileDialog,
+    FileDialog {
+        /// The [`ApplicationId`] that the viewer heuristically recommends should be used when loading
+        /// this data source, based on the surrounding context.
+        recommended_application_id: Option<ApplicationId>,
+
+        /// The [`StoreId`] that the viewer heuristically recommends should be used when loading
+        /// this data source, based on the surrounding context.
+        recommended_recording_id: Option<StoreId>,
+    },
 
     Sdk,
 }
@@ -468,7 +476,7 @@ impl std::fmt::Display for StoreSource {
             Self::File { file_source, .. } => match file_source {
                 FileSource::Cli => write!(f, "File via CLI"),
                 FileSource::DragAndDrop { .. } => write!(f, "File via drag-and-drop"),
-                FileSource::FileDialog => write!(f, "File via file dialog"),
+                FileSource::FileDialog { .. } => write!(f, "File via file dialog"),
                 FileSource::Sdk => write!(f, "File via SDK"),
             },
             Self::Viewer => write!(f, "Viewer-generated"),

@@ -591,7 +591,10 @@ impl App {
                 for file_path in open_file_dialog_native() {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
-                            FileSource::FileDialog,
+                            FileSource::FileDialog {
+                                recommended_application_id: None,
+                                recommended_recording_id: None,
+                            },
                             file_path,
                         )));
                 }
