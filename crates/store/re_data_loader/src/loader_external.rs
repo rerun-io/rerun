@@ -6,6 +6,8 @@ use std::{
 use ahash::HashMap;
 use once_cell::sync::Lazy;
 
+use crate::LoadedData;
+
 // ---
 
 /// To register a new external data loader, simply add an executable in your $PATH whose name
@@ -318,7 +320,9 @@ fn decode_and_stream<R: std::io::Read>(
                 continue;
             }
         };
-        if tx.send(msg.into()).is_err() {
+
+        let data = LoadedData::LogMsg(msg);
+        if tx.send(data).is_err() {
             break; // The other end has decided to hang up, not our problem.
         }
     }

@@ -45,7 +45,7 @@ pub fn load_from_path(
         }
     }
 
-    send(&settings.store_id, rx, tx);
+    send(rx, tx);
 
     Ok(())
 }
@@ -81,7 +81,7 @@ pub fn load_from_file_contents(
         }
     }
 
-    send(&settings.store_id, data, tx);
+    send(data, tx);
 
     Ok(())
 }
@@ -287,16 +287,11 @@ pub(crate) fn load(
 /// Forwards the data in `rx_loader` to `tx`, taking care of necessary conversions, if any.
 ///
 /// Runs asynchronously from another thread on native, synchronously on wasm.
-pub(crate) fn send(
-    store_id: &re_log_types::StoreId,
-    rx_loader: std::sync::mpsc::Receiver<LoadedData>,
-    tx: &Sender<LogMsg>,
-) {
+pub(crate) fn send(rx_loader: std::sync::mpsc::Receiver<LoadedData>, tx: &Sender<LogMsg>) {
     spawn({
         re_tracing::profile_function!();
 
         let tx = tx.clone();
-        let store_id = store_id.clone();
         move || {
             // ## Ignoring channel errors
             //
@@ -304,10 +299,10 @@ pub(crate) fn send(
             // poll the channel in any case so as to make sure that the data producer
             // doesn't get stuck.
             for data in rx_loader {
-                let msg = match data.into_log_msg(&store_id) {
+                let msg = match data.into_log_msg() {
                     Ok(msg) => msg,
                     Err(err) => {
-                        re_log::error!(%err, %store_id, "Couldn't serialize component data");
+                        re_log::error!(%err, "Couldn't serialize component data");
                         continue;
                     }
                 };
