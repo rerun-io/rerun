@@ -1304,7 +1304,14 @@ impl App {
             return;
         }
 
-        let active_application_id = store_ctx.and_then(|ctx| ctx.hub.active_app()).cloned();
+        let active_application_id = store_ctx
+            .and_then(|ctx| {
+                ctx.hub
+                    .active_app()
+                    // Don't redirect data to the welcome screen.
+                    .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
+            })
+            .cloned();
         let active_recording_id = store_ctx
             .and_then(|ctx| ctx.hub.active_recording_id())
             .cloned();
