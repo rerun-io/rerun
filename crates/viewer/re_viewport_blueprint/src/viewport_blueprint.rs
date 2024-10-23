@@ -123,28 +123,11 @@ impl ViewportBlueprint {
             })
             .unwrap_or_default();
 
-        let mut containers: BTreeMap<ContainerId, ContainerBlueprint> = all_container_ids
+        let containers: BTreeMap<ContainerId, ContainerBlueprint> = all_container_ids
             .into_iter()
             .filter_map(|id| ContainerBlueprint::try_from_db(blueprint_db, query, id))
             .map(|c| (c.id, c))
             .collect();
-
-        let root_container = root_container.map_or_else(
-            || {
-                // Create ephemeral root container if none was given.
-                // Note that this may happen again on every frame since it is *not* stored to the blueprint store,
-                // until there has been any other reason to store a (modified) blueprint.
-                // It's important that this id is stable across frames, otherwise the root container can't be selected.
-                let id = ContainerId::hashed_from_str("fallback_root_container");
-                let root_container = ContainerBlueprint {
-                    id,
-                    ..Default::default()
-                };
-                containers.insert(id, root_container);
-                id
-            },
-            |id| id.0.into(),
-        );
 
         // Auto layouting and auto space view are only enabled if no blueprint has been provided by the user.
         // Only enable auto-space-views if this is the app-default blueprint
@@ -159,7 +142,7 @@ impl ViewportBlueprint {
         let tree = build_tree_from_space_views_and_containers(
             space_views.values(),
             containers.values(),
-            root_container,
+            root_container.clone(),
         );
 
         let past_viewer_recommendations = past_viewer_recommendations
@@ -168,10 +151,15 @@ impl ViewportBlueprint {
             .cloned()
             .collect();
 
+        let root_container_or_placeholder = root_container.clone().map_or_else(
+            || ContainerId::hashed_from_str("placeholder_root_container"),
+            |id| id.0.into(),
+        );
+
         Self {
             space_views,
             containers,
-            root_container,
+            root_container: root_container_or_placeholder,
             tree,
             maximized: maximized.map(|id| id.0.into()),
             auto_layout,
@@ -920,7 +908,7 @@ impl ViewportBlueprint {
 fn build_tree_from_space_views_and_containers<'a>(
     space_views: impl Iterator<Item = &'a SpaceViewBlueprint>,
     containers: impl Iterator<Item = &'a ContainerBlueprint>,
-    root_container: ContainerId,
+    root_container: Option<RootContainer>,
 ) -> egui_tiles::Tree<SpaceViewId> {
     re_tracing::profile_function!();
     let mut tree = egui_tiles::Tree::empty("viewport_tree");
@@ -942,7 +930,11 @@ fn build_tree_from_space_views_and_containers<'a>(
     }
 
     // And finally, set the root
-    tree.root = Some(blueprint_id_to_tile_id(&root_container));
+
+    if let Some(root_container) = root_container {
+        let root_container = ContainerId::from(root_container.0);
+        tree.root = Some(blueprint_id_to_tile_id(&root_container));
+    }
 
     tree
 }
