@@ -16,13 +16,13 @@ impl LatLon {
 
     /// The latitude.
     #[inline]
-    pub fn lat(&self) -> f64 {
+    pub fn latitude(&self) -> f64 {
         self.0.x()
     }
 
     /// The longitude.
     #[inline]
-    pub fn lon(&self) -> f64 {
+    pub fn longitude(&self) -> f64 {
         self.0.y()
     }
 }

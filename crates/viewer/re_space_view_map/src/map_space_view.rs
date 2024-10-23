@@ -21,7 +21,7 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 
 use crate::map_windows;
-use crate::visualizers::geo_points::{GeoPointEntry, GeoPointsVisualizer};
+use crate::visualizers::geo_points::GeoPointsVisualizer;
 
 #[derive(Default)]
 pub struct MapSpaceViewState {
@@ -203,12 +203,7 @@ Displays a Position3D on a map.
                 Map::new(
                     some_tiles_manager,
                     map_memory,
-                    geo_points_visualizer
-                        .map_entries
-                        .first()
-                        //TODO: not the best way to specify a default position
-                        .unwrap_or(&GeoPointEntry::default())
-                        .position,
+                    geo_points_visualizer.default_position(),
                 )
                 .with_plugin(geo_points_visualizer.plugin()),
             );
