@@ -69,8 +69,8 @@ namespace rerun::archetypes {
 
         /// A color multiplier applied to the whole asset.
         ///
-        /// For mesh who already have albedo_factor in materials,
-        /// it will be overwritten by actual albedo_factor of Asset3D (if specified).
+        /// For mesh who already have `albedo_factor` in materials,
+        /// it will be overwritten by actual `albedo_factor` of `archetypes::Asset3D` (if specified).
         std::optional<rerun::components::AlbedoFactor> albedo_factor;
 
       public:
@@ -128,8 +128,8 @@ namespace rerun::archetypes {
 
         /// A color multiplier applied to the whole asset.
         ///
-        /// For mesh who already have albedo_factor in materials,
-        /// it will be overwritten by actual albedo_factor of Asset3D (if specified).
+        /// For mesh who already have `albedo_factor` in materials,
+        /// it will be overwritten by actual `albedo_factor` of `archetypes::Asset3D` (if specified).
         Asset3D with_albedo_factor(rerun::components::AlbedoFactor _albedo_factor) && {
             albedo_factor = std::move(_albedo_factor);
             // See: https://github.com/rerun-io/rerun/issues/4027
