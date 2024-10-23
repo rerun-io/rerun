@@ -51,8 +51,10 @@ disallowed-methods = [
   { path = "std::thread::spawn", reason = "Use `std::thread::Builder` and name the thread" },
 
   # Specify both `arrow2` and `re_arrow2` -- clippy gets lost in all the package renaming happening.
+  { path = "arrow2::compute::concatenate::concatenate", reason = "Use `re_chunk::util::concat_arrays` instead, which has proper early outs" },
   { path = "arrow2::compute::filter::filter", reason = "Use `re_chunk::util::filter_array` instead, which has proper early outs" },
   { path = "arrow2::compute::take::take", reason = "Use `re_chunk::util::take_array` instead, which has proper early outs" },
+  { path = "re_arrow2::compute::concatenate::concatenate", reason = "Use `re_chunk::util::concat_arrays` instead, which has proper early outs" },
   { path = "re_arrow2::compute::filter::filter", reason = "Use `re_chunk::util::filter_array` instead, which has proper early outs" },
   { path = "re_arrow2::compute::take::take", reason = "Use `re_chunk::util::take_array` instead, which has proper early outs" },
 
