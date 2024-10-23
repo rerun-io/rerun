@@ -25,13 +25,13 @@ class MapProvider(Enum):
     """**Component**: Name of the map provider to be used in Map views."""
 
     OpenStreetMap = 1
-    """OpenStreetMap is the default map provider."""
+    """`OpenStreetMap` is the default map provider."""
 
     MapboxStreets = 2
     """Mapbox Streets is a minimalistic map designed by Mapbox."""
 
     MapboxDark = 3
-    """Mapbox Dark is a dark themed map designed by Mapbox."""
+    """Mapbox Dark is a dark-themed map designed by Mapbox."""
 
     MapboxSatellite = 4
     """Mapbox Satellite is a satellite map designed by Mapbox."""

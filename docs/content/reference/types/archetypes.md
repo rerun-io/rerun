@@ -12,6 +12,10 @@ the intent of the logging code and triggers the activation of the corresponding 
 
 This page lists all built-in archetypes.
 
+## Geospatial
+
+* [`GeoPoints`](archetypes/geo_points.md): Geographical points with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
+
 ## Image & tensor
 
 * [`DepthImage`](archetypes/depth_image.md): A depth image, i.e. as captured by a depth camera.

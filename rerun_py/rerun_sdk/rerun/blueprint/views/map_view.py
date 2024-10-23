@@ -28,7 +28,7 @@ class MapView(SpaceView):
 
     rr.init("rerun_example_gps_coordinates", spawn=True)
 
-    rr.log("points", rr.Points3D([[47.6344, 19.1397, 0], [47.6334, 19.1399, 1]]))
+    rr.log("points", rr.GeoPoints([[47.6344, 19.1397], [47.6334, 19.1399]]))
 
     # Create a map view to display the chart.
     blueprint = rrb.Blueprint(

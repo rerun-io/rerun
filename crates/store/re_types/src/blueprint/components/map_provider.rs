@@ -23,14 +23,14 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 #[repr(u8)]
 pub enum MapProvider {
-    /// OpenStreetMap is the default map provider.
+    /// `OpenStreetMap` is the default map provider.
     #[default]
     OpenStreetMap = 1,
 
     /// Mapbox Streets is a minimalistic map designed by Mapbox.
     MapboxStreets = 2,
 
-    /// Mapbox Dark is a dark themed map designed by Mapbox.
+    /// Mapbox Dark is a dark-themed map designed by Mapbox.
     MapboxDark = 3,
 
     /// Mapbox Satellite is a satellite map designed by Mapbox.
@@ -51,9 +51,9 @@ impl ::re_types_core::reflection::Enum for MapProvider {
     #[inline]
     fn docstring_md(self) -> &'static str {
         match self {
-            Self::OpenStreetMap => "OpenStreetMap is the default map provider.",
+            Self::OpenStreetMap => "`OpenStreetMap` is the default map provider.",
             Self::MapboxStreets => "Mapbox Streets is a minimalistic map designed by Mapbox.",
-            Self::MapboxDark => "Mapbox Dark is a dark themed map designed by Mapbox.",
+            Self::MapboxDark => "Mapbox Dark is a dark-themed map designed by Mapbox.",
             Self::MapboxSatellite => "Mapbox Satellite is a satellite map designed by Mapbox.",
         }
     }

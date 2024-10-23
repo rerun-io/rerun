@@ -16,6 +16,7 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`ClassDescriptionMapElem`](datatypes/class_description_map_elem.md): A helper type for mapping [`datatypes.ClassId`](https://rerun.io/docs/reference/types/datatypes/class_id)s to class descriptions.
 * [`ClassId`](datatypes/class_id.md): A 16-bit ID representing a type of semantic class.
 * [`ColorModel`](datatypes/color_model.md): Specified what color components are present in an [`archetypes.Image`](https://rerun.io/docs/reference/types/archetypes/image).
+* [`DVec2D`](datatypes/dvec2d.md): A double-precision vector in 2D space.
 * [`EntityPath`](datatypes/entity_path.md): A path to an entity in the `ChunkStore`.
 * [`Float32`](datatypes/float32.md): A single-precision 32-bit IEEE 754 floating point number.
 * [`Float64`](datatypes/float64.md): A double-precision 64-bit IEEE 754 floating point number.

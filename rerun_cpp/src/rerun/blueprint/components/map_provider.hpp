@@ -23,13 +23,13 @@ namespace rerun::blueprint::components {
     /// **Component**: Name of the map provider to be used in Map views.
     enum class MapProvider : uint8_t {
 
-        /// OpenStreetMap is the default map provider.
+        /// `OpenStreetMap` is the default map provider.
         OpenStreetMap = 1,
 
         /// Mapbox Streets is a minimalistic map designed by Mapbox.
         MapboxStreets = 2,
 
-        /// Mapbox Dark is a dark themed map designed by Mapbox.
+        /// Mapbox Dark is a dark-themed map designed by Mapbox.
         MapboxDark = 3,
 
         /// Mapbox Satellite is a satellite map designed by Mapbox.

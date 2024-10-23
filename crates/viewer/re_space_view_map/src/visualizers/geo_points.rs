@@ -1,7 +1,7 @@
 use re_space_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_types::{
-    archetypes::Points3D,
-    components::{self, Color, Position3D, Radius},
+    archetypes::GeoPoints,
+    components::{Color, LatLon, Radius},
     Loggable as _,
 };
 use re_viewer_context::{
@@ -49,7 +49,7 @@ impl IdentifiedViewSystem for GeoPointsVisualizer {
 
 impl VisualizerSystem for GeoPointsVisualizer {
     fn visualizer_query_info(&self) -> VisualizerQueryInfo {
-        VisualizerQueryInfo::from_archetype::<Points3D>()
+        VisualizerQueryInfo::from_archetype::<GeoPoints>()
     }
 
     fn execute(
@@ -59,13 +59,13 @@ impl VisualizerSystem for GeoPointsVisualizer {
         _context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
         for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
-            let results = data_result.query_archetype_with_history::<Points3D>(ctx, view_query);
+            let results = data_result.query_archetype_with_history::<GeoPoints>(ctx, view_query);
 
             // gather all relevant chunks
             let timeline = view_query.timeline;
-            let all_positions = results.iter_as(timeline, Position3D::name());
-            let all_colors = results.iter_as(timeline, components::Color::name());
-            let all_radii = results.iter_as(timeline, components::Radius::name());
+            let all_positions = results.iter_as(timeline, LatLon::name());
+            let all_colors = results.iter_as(timeline, Color::name());
+            let all_radii = results.iter_as(timeline, Radius::name());
 
             // default component values
             let default_color: Color =
@@ -74,33 +74,30 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 self.fallback_for(&ctx.query_context(data_result, &view_query.latest_at_query()));
 
             // iterate over each chunk and find all relevant component slices
-            for (_index, position, color, radii) in re_query::range_zip_1x2(
-                all_positions.component::<Position3D>(),
+            for (_index, positions, colors, radii) in re_query::range_zip_1x2(
+                all_positions.component::<LatLon>(),
                 all_colors.component::<Color>(),
                 all_radii.component::<Radius>(),
             ) {
                 // required component
-                let position = position.as_slice();
+                let positions = positions.as_slice();
 
                 // optional components
-                let color = color.as_ref().map(|c| c.as_slice()).unwrap_or(&[]);
+                let colors = colors.as_ref().map(|c| c.as_slice()).unwrap_or(&[]);
                 let radii = radii.as_ref().map(|r| r.as_slice()).unwrap_or(&[]);
 
                 // optional components values to be used for instance clamping semantics
-                let last_color = color.last().copied().unwrap_or(default_color);
+                let last_color = colors.last().copied().unwrap_or(default_color);
                 let last_radii = radii.last().copied().unwrap_or(default_radius);
 
                 // iterate over all instances
                 for (position, color, radius) in itertools::izip!(
-                    position,
-                    color.iter().chain(std::iter::repeat(&last_color)),
+                    positions,
+                    colors.iter().chain(std::iter::repeat(&last_color)),
                     radii.iter().chain(std::iter::repeat(&last_radii)),
                 ) {
                     self.map_entries.push(GeoPointEntry {
-                        position: walkers::Position::from_lat_lon(
-                            position.x() as f64,
-                            position.y() as f64,
-                        ),
+                        position: walkers::Position::from_lat_lon(position.lat(), position.lon()),
                         //TODO(#7872): support for radius in meter
                         radius: radius.0.abs(),
                         color: color.0.into(),

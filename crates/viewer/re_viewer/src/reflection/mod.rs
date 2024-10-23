@@ -427,6 +427,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <LatLon as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A geographical position expressed in EPSG:4326 latitude and longitude.",
+                placeholder: Some(LatLon::default().to_arrow()?),
+            },
+        ),
+        (
             <LineStrip2D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A line strip in 2D space.\n\nA line strip is a list of points connected by line segments. It can be used to draw\napproximations of smooth curves.\n\nThe points will be connected in order, like so:\n```text\n       2------3     5\n      /        \\   /\n0----1          \\ /\n                 4\n```",
@@ -1068,6 +1075,24 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     docstring_md :
                     "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
                     is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.GeoPoints"),
+            ArchetypeReflection {
+                display_name: "Geo points",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name : "rerun.components.LatLon"
+                    .into(), display_name : "Positions", docstring_md :
+                    "The EPSG:4326 coordinates for the points.", is_required : true, },
+                    ArchetypeFieldReflection { component_name : "rerun.components.Radius"
+                    .into(), display_name : "Radii", docstring_md :
+                    "Optional radii for the points, effectively turning them into circles.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Colors",
+                    docstring_md : "Optional colors for the points.", is_required :
+                    false, },
                 ],
             },
         ),
