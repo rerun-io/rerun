@@ -2348,8 +2348,6 @@ dependencies = [
 [[package]]
 name = "ewebsock"
 version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "735ef60c8cd338b55f972d66c95558a71298d6f8bce1e1347d4c95b082ab2c37"
 dependencies = [
  "document-features",
  "js-sys",
@@ -5555,8 +5553,7 @@ dependencies = [
 [[package]]
 name = "re_mp4"
 version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d1e30657b1ae7f0dd3428a59dc8140732b74a22cc07763606c9ec4054138731"
+source = "git+https://github.com/rerun-io/re_mp4?rev=7d38361ee5b05f5a2b83a8029057c8a24d2e9023#7d38361ee5b05f5a2b83a8029057c8a24d2e9023"
 dependencies = [
  "byteorder",
  "bytes",
