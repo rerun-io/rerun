@@ -1,6 +1,6 @@
 ---
-title: Embed a Rerun Viewer
-order: 1500
+title: Embed Rerun in Web pages
+order: 100
 ---
 
 Integrating the Rerun Viewer into your web application can be accomplished either by [utilizing an iframe](#embedding-apprerunio-using-an-iframe) or by using our [JavaScript package](#using-the-javascript-package).

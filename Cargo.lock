@@ -5885,6 +5885,7 @@ dependencies = [
  "mimalloc",
  "nohash-hasher",
  "once_cell",
+ "re_arrow2",
  "re_chunk_store",
  "re_data_ui",
  "re_entity_db",
@@ -5899,6 +5900,7 @@ dependencies = [
  "re_tracing",
  "re_types",
  "re_ui",
+ "re_video",
  "re_viewer_context",
  "re_viewport_blueprint",
  "serde",
@@ -6177,6 +6179,7 @@ name = "re_video"
 version = "0.20.0-alpha.1+dev"
 dependencies = [
  "cfg_aliases 0.2.1",
+ "criterion",
  "crossbeam",
  "econtext",
  "indicatif",
@@ -6303,6 +6306,7 @@ dependencies = [
  "re_types",
  "re_types_core",
  "re_ui",
+ "re_video",
  "rfd",
  "serde",
  "slotmap",

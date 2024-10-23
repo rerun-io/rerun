@@ -1119,7 +1119,7 @@ impl RecordingStream {
         entity_path_prefix: Option<EntityPath>,
         static_: bool,
     ) -> RecordingStreamResult<()> {
-        self.log_file(filepath, None, entity_path_prefix, static_)
+        self.log_file(filepath, None, entity_path_prefix, static_, true)
     }
 
     /// Logs the given `contents` using all [`re_data_loader::DataLoader`]s available.
@@ -1138,9 +1138,12 @@ impl RecordingStream {
         entity_path_prefix: Option<EntityPath>,
         static_: bool,
     ) -> RecordingStreamResult<()> {
-        self.log_file(filepath, Some(contents), entity_path_prefix, static_)
+        self.log_file(filepath, Some(contents), entity_path_prefix, static_, true)
     }
 
+    /// If `prefer_current_recording` is set (which is always the case for now), the dataloader settings
+    /// will be configured as if the current SDK recording is the currently opened recording.
+    /// Most dataloaders prefer logging to the currently opened recording if one is set.
     #[cfg(feature = "data_loaders")]
     fn log_file(
         &self,
@@ -1148,6 +1151,7 @@ impl RecordingStream {
         contents: Option<std::borrow::Cow<'_, [u8]>>,
         entity_path_prefix: Option<EntityPath>,
         static_: bool,
+        prefer_current_recording: bool,
     ) -> RecordingStreamResult<()> {
         let Some(store_info) = self.store_info().clone() else {
             re_log::warn!("Ignored call to log_file() because RecordingStream has not been properly initialized");
@@ -1162,10 +1166,10 @@ impl RecordingStream {
             re_smart_channel::SmartChannelSource::File(filepath.into()),
         );
 
-        let settings = crate::DataLoaderSettings {
+        let mut settings = crate::DataLoaderSettings {
             application_id: Some(store_info.application_id.clone()),
             opened_application_id: None,
-            store_id: store_info.store_id,
+            store_id: store_info.store_id.clone(),
             opened_store_id: None,
             entity_path_prefix,
             timepoint: (!static_).then(|| {
@@ -1183,8 +1187,13 @@ impl RecordingStream {
                     now
                 })
                 .unwrap_or_default()
-            }), // timepoint: self.time,
+            }),
         };
+
+        if prefer_current_recording {
+            settings.opened_application_id = Some(store_info.application_id.clone());
+            settings.opened_store_id = Some(store_info.store_id);
+        }
 
         if let Some(contents) = contents {
             re_data_loader::load_from_file_contents(

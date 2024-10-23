@@ -60,9 +60,6 @@ pub struct VideoData {
     /// and should be presented in composition-timestamp order.
     pub samples: Vec<Sample>,
 
-    /// This array stores all data used by samples.
-    pub data: Vec<u8>,
-
     /// All the tracks in the mp4; not just the video track.
     ///
     /// Can be nice to show in a UI.
@@ -75,6 +72,7 @@ impl VideoData {
     /// TODO(andreas, jan): This should not copy the data, but instead store slices into a shared buffer.
     /// at the very least the should be a way to extract only metadata.
     pub fn load_from_bytes(data: &[u8], media_type: &str) -> Result<Self, VideoLoadError> {
+        re_tracing::profile_function!();
         match media_type {
             "video/mp4" => Self::load_mp4(data),
 
@@ -96,6 +94,12 @@ impl VideoData {
     #[inline]
     pub fn duration(&self) -> std::time::Duration {
         std::time::Duration::from_nanos(self.duration.into_nanos(self.timescale) as _)
+    }
+
+    /// Natural width and height of the video
+    #[inline]
+    pub fn dimensions(&self) -> [u32; 2] {
+        [self.width(), self.height()]
     }
 
     /// Natural width of the video.
@@ -238,25 +242,6 @@ impl VideoData {
                 .sorted()
         })
     }
-
-    /// Returns `None` if the sample is invalid/out-of-range.
-    pub fn get(&self, sample: &Sample) -> Option<Chunk> {
-        let byte_offset = sample.byte_offset as usize;
-        let byte_length = sample.byte_length as usize;
-
-        if self.data.len() < byte_offset + byte_length {
-            None
-        } else {
-            let data = &self.data[byte_offset..byte_offset + byte_length];
-
-            Some(Chunk {
-                data: data.to_vec(),
-                composition_timestamp: sample.composition_timestamp,
-                duration: sample.duration,
-                is_sync: sample.is_sync,
-            })
-        }
-    }
 }
 
 /// A Group of Pictures (GOP) always starts with an I-frame, followed by delta-frames.
@@ -304,11 +289,32 @@ pub struct Sample {
     /// Duration of the sample, in time units.
     pub duration: Time,
 
-    /// Offset into [`VideoData::data`]
+    /// Offset into the video data.
     pub byte_offset: u32,
 
     /// Length of sample starting at [`Sample::byte_offset`].
     pub byte_length: u32,
+}
+
+impl Sample {
+    /// Read the sample from the video data.
+    ///
+    /// Note that `data` _must_ be a reference to the original MP4 file
+    /// from which the [`VideoData`] was loaded.
+    ///
+    /// Returns `None` if the sample is out of bounds, which can only happen
+    /// if `data` is not the original video data.
+    pub fn get(&self, data: &[u8]) -> Option<Chunk> {
+        let data = data
+            .get(self.byte_offset as usize..(self.byte_offset + self.byte_length) as usize)?
+            .to_vec();
+        Some(Chunk {
+            data,
+            composition_timestamp: self.composition_timestamp,
+            duration: self.duration,
+            is_sync: self.is_sync,
+        })
+    }
 }
 
 /// Configuration of a video.
@@ -378,7 +384,6 @@ impl std::fmt::Debug for VideoData {
                 "samples",
                 &self.samples.iter().enumerate().collect::<Vec<_>>(),
             )
-            .field("data", &self.data.len())
             .finish()
     }
 }
