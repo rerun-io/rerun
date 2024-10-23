@@ -344,6 +344,7 @@ pub fn filter_array<A: ArrowArray + Clone>(array: &A, filter: &ArrowBooleanArray
         "filter masks with validity bits are technically valid, but generally a sign that something went wrong",
     );
 
+    #[allow(clippy::disallowed_methods)] // that's the whole point
     #[allow(clippy::unwrap_used)]
     arrow2::compute::filter::filter(array, filter)
         // Unwrap: this literally cannot fail.
@@ -402,6 +403,7 @@ pub fn take_array<A: ArrowArray + Clone, O: arrow2::types::Index>(
         }
     }
 
+    #[allow(clippy::disallowed_methods)] // that's the whole point
     #[allow(clippy::unwrap_used)]
     arrow2::compute::take::take(array, indices)
         // Unwrap: this literally cannot fail.
