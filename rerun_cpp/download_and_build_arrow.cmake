@@ -100,6 +100,7 @@ function(download_and_build_arrow)
         -Dxsimd_SOURCE=BUNDLED
         -DBOOST_SOURCE=BUNDLED
         -DARROW_BOOST_USE_SHARED=OFF
+        -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE} # Specify the toolchain file for cross-compilation (see https://github.com/rerun-io/rerun/issues/7445)
         SOURCE_SUBDIR cpp
         BUILD_BYPRODUCTS ${ARROW_LIBRARY_FILE} ${ARROW_BUNDLED_DEPENDENCIES_FILE}
     )
