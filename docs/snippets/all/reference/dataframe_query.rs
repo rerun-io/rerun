@@ -1,7 +1,5 @@
 //! Query and display the first 10 rows of a recording.
 
-#![allow(clippy::unwrap_used)]
-
 use rerun::{
     dataframe::{QueryCache, QueryEngine, QueryExpression, SparseFillStrategy, Timeline},
     ChunkStore, ChunkStoreConfig, VersionPolicy,
@@ -18,7 +16,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         path_to_rrd,
         VersionPolicy::Warn,
     )?;
-    let (_, store) = stores.first_key_value().unwrap();
+    let Some((_, store)) = stores.first_key_value() else {
+        return Ok(());
+    };
 
     let query_cache = QueryCache::new(store);
     let query_engine = QueryEngine {
