@@ -692,10 +692,9 @@ fn run_impl(
 
         #[cfg(feature = "server")]
         {
-            // Check if there is already a viewer running
-            // and if so, send the data to it.
+            // Check if there is already a viewer running and if so, send the data to it.
             use std::net::TcpStream;
-            let connect_addr = std::net::SocketAddr::new(args.bind.parse().unwrap(), args.port);
+            let connect_addr = std::net::SocketAddr::new("127.0.0.1".parse().unwrap(), args.port);
             if TcpStream::connect_timeout(&connect_addr, std::time::Duration::from_secs(1)).is_ok()
             {
                 re_log::info!(
