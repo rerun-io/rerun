@@ -73,8 +73,8 @@ pub struct Asset3D {
 
     /// A color multiplier applied to the whole asset.
     ///
-    /// For mesh who already have albedo_factor in materials,
-    /// it will be overwritten by actual albedo_factor of Asset3D (if specified).
+    /// For mesh who already have `albedo_factor` in materials,
+    /// it will be overwritten by actual `albedo_factor` of [`archetypes::Asset3D`][crate::archetypes::Asset3D] (if specified).
     pub albedo_factor: Option<crate::components::AlbedoFactor>,
 }
 
@@ -266,8 +266,8 @@ impl Asset3D {
 
     /// A color multiplier applied to the whole asset.
     ///
-    /// For mesh who already have albedo_factor in materials,
-    /// it will be overwritten by actual albedo_factor of Asset3D (if specified).
+    /// For mesh who already have `albedo_factor` in materials,
+    /// it will be overwritten by actual `albedo_factor` of [`archetypes::Asset3D`][crate::archetypes::Asset3D] (if specified).
     #[inline]
     pub fn with_albedo_factor(
         mut self,
