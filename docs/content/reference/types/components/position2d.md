@@ -19,5 +19,5 @@ A position in 2D space.
 
 * [`Arrows2D`](../archetypes/arrows2d.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)
-* [`Graph`](../archetypes/graph.md)
+* [`GraphNodes`](../archetypes/graph_nodes.md)
 * [`Points2D`](../archetypes/points2d.md)

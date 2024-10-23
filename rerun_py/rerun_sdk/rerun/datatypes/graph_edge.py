@@ -19,25 +19,11 @@ from .._baseclasses import (
 __all__ = ["GraphEdge", "GraphEdgeArrayLike", "GraphEdgeBatch", "GraphEdgeLike", "GraphEdgeType"]
 
 
-def _graph_edge__source__special_field_converter_override(x: datatypes.GraphNodeLike) -> datatypes.GraphNode:
-    if isinstance(x, datatypes.GraphNode):
-        return x
-    else:
-        return datatypes.GraphNode(x)
-
-
-def _graph_edge__target__special_field_converter_override(x: datatypes.GraphNodeLike) -> datatypes.GraphNode:
-    if isinstance(x, datatypes.GraphNode):
-        return x
-    else:
-        return datatypes.GraphNode(x)
-
-
 @define(init=False)
 class GraphEdge:
     """**Datatype**: Represents an edge in a graph connecting two nodes (possibly in different entities)."""
 
-    def __init__(self: Any, source: datatypes.GraphNodeLike, target: datatypes.GraphNodeLike):
+    def __init__(self: Any, source: datatypes.GraphLocationLike, target: datatypes.GraphLocationLike):
         """
         Create a new instance of the GraphEdge datatype.
 
@@ -53,12 +39,12 @@ class GraphEdge:
         # You can define your own __init__ function as a member of GraphEdgeExt in graph_edge_ext.py
         self.__attrs_init__(source=source, target=target)
 
-    source: datatypes.GraphNode = field(converter=_graph_edge__source__special_field_converter_override)
+    source: datatypes.GraphLocation = field()
     # The id of the source node.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    target: datatypes.GraphNode = field(converter=_graph_edge__target__special_field_converter_override)
+    target: datatypes.GraphLocation = field()
     # The id of the target node.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
@@ -78,8 +64,24 @@ class GraphEdgeType(BaseExtensionType):
         pa.ExtensionType.__init__(
             self,
             pa.struct([
-                pa.field("source", pa.utf8(), nullable=False, metadata={}),
-                pa.field("target", pa.utf8(), nullable=False, metadata={}),
+                pa.field(
+                    "source",
+                    pa.struct([
+                        pa.field("entity_path", pa.utf8(), nullable=False, metadata={}),
+                        pa.field("node_id", pa.utf8(), nullable=False, metadata={}),
+                    ]),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "target",
+                    pa.struct([
+                        pa.field("entity_path", pa.utf8(), nullable=False, metadata={}),
+                        pa.field("node_id", pa.utf8(), nullable=False, metadata={}),
+                    ]),
+                    nullable=False,
+                    metadata={},
+                ),
             ]),
             self._TYPE_NAME,
         )
@@ -90,15 +92,15 @@ class GraphEdgeBatch(BaseBatch[GraphEdgeArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: GraphEdgeArrayLike, data_type: pa.DataType) -> pa.Array:
-        from rerun.datatypes import GraphNodeBatch
+        from rerun.datatypes import GraphLocationBatch
 
         if isinstance(data, GraphEdge):
             data = [data]
 
         return pa.StructArray.from_arrays(
             [
-                GraphNodeBatch([x.source for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-                GraphNodeBatch([x.target for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                GraphLocationBatch([x.source for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                GraphLocationBatch([x.target for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

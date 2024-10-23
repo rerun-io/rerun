@@ -1,0 +1,19 @@
+include "entity_path.fbs";
+include "graph_node_id.fbs";
+
+namespace rerun.datatypes;
+
+/// Uniquely identifies a node in a graph by its entity path and node id.
+///
+/// We require this because the same node id can be used in multiple entities.
+table GraphLocation (
+    "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord, Hash",
+    "attr.rust.custom_clause":
+        'cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))'
+) {
+    /// The entity path that specifies where to find the node.
+    entity_path: rerun.datatypes.EntityPath (order: 100);
+
+    /// The id of the node.
+    node_id: rerun.datatypes.GraphNodeId (order: 200);
+}

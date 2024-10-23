@@ -4,7 +4,7 @@
 #pragma once
 
 #include "../result.hpp"
-#include "graph_node.hpp"
+#include "graph_location.hpp"
 
 #include <cstdint>
 #include <memory>
@@ -19,10 +19,10 @@ namespace rerun::datatypes {
     /// **Datatype**: Represents an edge in a graph connecting two nodes (possibly in different entities).
     struct GraphEdge {
         /// The id of the source node.
-        rerun::datatypes::GraphNode source;
+        rerun::datatypes::GraphLocation source;
 
         /// The id of the target node.
-        rerun::datatypes::GraphNode target;
+        rerun::datatypes::GraphLocation target;
 
       public:
         GraphEdge() = default;

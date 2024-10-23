@@ -7,8 +7,8 @@ Represents an edge in a graph connecting two nodes (possibly in different entiti
 
 ## Fields
 
-* source: [`GraphNode`](../datatypes/graph_node.md)
-* target: [`GraphNode`](../datatypes/graph_node.md)
+* source: [`GraphLocation`](../datatypes/graph_location.md)
+* target: [`GraphLocation`](../datatypes/graph_location.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `GraphEdge`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1GraphEdge.html)
@@ -18,4 +18,5 @@ Represents an edge in a graph connecting two nodes (possibly in different entiti
 
 ## Used by
 
-* [`GraphEdge`](../components/graph_edge.md)
+* [`GraphEdgeDirected`](../components/graph_edge_directed.md)
+* [`GraphEdgeUndirected`](../components/graph_edge_undirected.md)

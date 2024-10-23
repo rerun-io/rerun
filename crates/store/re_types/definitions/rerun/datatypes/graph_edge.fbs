@@ -1,14 +1,16 @@
+include "graph_location.fbs";
+
 namespace rerun.datatypes;
 
 /// Represents an edge in a graph connecting two nodes (possibly in different entities).
 table GraphEdge (
-  "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
-  "attr.rust.custom_clause":
-    'cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))'
+    "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
+    "attr.rust.custom_clause":
+        'cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))'
 ) {
   /// The id of the source node.
-  source: rerun.datatypes.GraphNode (order: 100);
+  source: rerun.datatypes.GraphLocation (order: 100);
 
   /// The id of the target node.
-  target: rerun.datatypes.GraphNode (order: 200);
+  target: rerun.datatypes.GraphLocation (order: 200);
 }

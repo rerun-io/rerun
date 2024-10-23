@@ -3,7 +3,7 @@
 
 #include "graph_edge.hpp"
 
-#include "graph_node.hpp"
+#include "graph_location.hpp"
 
 #include <arrow/builder.h>
 #include <arrow/type_fwd.h>
@@ -13,8 +13,16 @@ namespace rerun::datatypes {}
 namespace rerun {
     const std::shared_ptr<arrow::DataType>& Loggable<datatypes::GraphEdge>::arrow_datatype() {
         static const auto datatype = arrow::struct_({
-            arrow::field("source", Loggable<rerun::datatypes::GraphNode>::arrow_datatype(), false),
-            arrow::field("target", Loggable<rerun::datatypes::GraphNode>::arrow_datatype(), false),
+            arrow::field(
+                "source",
+                Loggable<rerun::datatypes::GraphLocation>::arrow_datatype(),
+                false
+            ),
+            arrow::field(
+                "target",
+                Loggable<rerun::datatypes::GraphLocation>::arrow_datatype(),
+                false
+            ),
         });
         return datatype;
     }
@@ -53,25 +61,29 @@ namespace rerun {
         }
 
         {
-            auto field_builder = static_cast<arrow::StringBuilder*>(builder->field_builder(0));
+            auto field_builder = static_cast<arrow::StructBuilder*>(builder->field_builder(0));
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::GraphNode>::fill_arrow_array_builder(
-                    field_builder,
-                    &elements[elem_idx].source,
-                    1
-                ));
+                RR_RETURN_NOT_OK(
+                    Loggable<rerun::datatypes::GraphLocation>::fill_arrow_array_builder(
+                        field_builder,
+                        &elements[elem_idx].source,
+                        1
+                    )
+                );
             }
         }
         {
-            auto field_builder = static_cast<arrow::StringBuilder*>(builder->field_builder(1));
+            auto field_builder = static_cast<arrow::StructBuilder*>(builder->field_builder(1));
             ARROW_RETURN_NOT_OK(field_builder->Reserve(static_cast<int64_t>(num_elements)));
             for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                RR_RETURN_NOT_OK(Loggable<rerun::datatypes::GraphNode>::fill_arrow_array_builder(
-                    field_builder,
-                    &elements[elem_idx].target,
-                    1
-                ));
+                RR_RETURN_NOT_OK(
+                    Loggable<rerun::datatypes::GraphLocation>::fill_arrow_array_builder(
+                        field_builder,
+                        &elements[elem_idx].target,
+                        1
+                    )
+                );
             }
         }
         ARROW_RETURN_NOT_OK(builder->AppendValues(static_cast<int64_t>(num_elements), nullptr));

@@ -29,9 +29,9 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`FillMode`](components/fill_mode.md): How a geometric shape is drawn and colored.
 * [`FillRatio`](components/fill_ratio.md): How much a primitive fills out the available space.
 * [`GammaCorrection`](components/gamma_correction.md): A gamma correction value to be used with a scalar value or color.
-* [`GraphEdge`](components/graph_edge.md): An undirected edge in a graph connecting two nodes.
-* [`GraphNode`](components/graph_node.md): A 32-bit ID representing a node in a graph.
-* [`GraphType`](components/graph_type.md): An undirected edge in a graph connecting two nodes.
+* [`GraphEdgeDirected`](components/graph_edge_directed.md): A directed edge in a graph connecting two nodes.
+* [`GraphEdgeUndirected`](components/graph_edge_undirected.md): An undirected edge in a graph connecting two nodes.
+* [`GraphNodeId`](components/graph_node_id.md): A 32-bit ID representing a node in a graph.
 * [`HalfSize2D`](components/half_size2d.md): Half-size (radius) of a 2D box.
 * [`HalfSize3D`](components/half_size3d.md): Half-size (radius) of a 3D box.
 * [`ImageBuffer`](components/image_buffer.md): A buffer that is known to store image data.
