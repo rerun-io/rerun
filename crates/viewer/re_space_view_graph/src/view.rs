@@ -1,11 +1,16 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
+use std::hash::Hash;
 
 use egui::{self, Rect};
 use re_log_types::EntityPath;
 use re_types::SpaceViewClassIdentifier;
 use re_ui::{self, UiExt};
 use re_viewer_context::{
-    external::re_entity_db::InstancePath, IdentifiedViewSystem as _, Item, SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery, ViewerContext
+    external::re_entity_db::InstancePath, IdentifiedViewSystem as _, Item, SpaceViewClass,
+    SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
+    ViewerContext,
 };
 
 use crate::{
@@ -16,6 +21,20 @@ use crate::{
 
 #[derive(Default)]
 pub struct GraphSpaceView;
+
+fn arrange_in_circle<S: ToString + Hash>(nodes: &mut HashMap<NodeIndex, (S, egui::Rect)>, radius: f32) {
+    let n = nodes.len();
+    let center = egui::Pos2::new(0.0, 0.0);
+
+    let nodes_by_entity  = nodes.iter().map(|(entity, (ix, _))| (entity, ix)).collect::<HashMap<_,_>>();
+
+    for (i, (_id, (_, rect))) in nodes.iter_mut().enumerate() {
+        let angle = 2.0 * std::f32::consts::PI * i as f32 / n as f32;
+        let x = center.x + radius * angle.cos();
+        let y = center.y + radius * angle.sin();
+        rect.set_center(egui::Pos2::new(x, y));
+    }
+}
 
 impl SpaceViewClass for GraphSpaceView {
     // State type as described above.
@@ -173,7 +192,7 @@ impl SpaceViewClass for GraphSpaceView {
                 for node in data.nodes() {
                     let ix = NodeIndex::from(&node);
                     seen.insert(ix);
-                    let current = state.layout.entry(ix).or_insert(egui::Rect::ZERO);
+                    let (_,current) = state.layout.entry(ix).or_insert((node.entity_path.clone().into(), egui::Rect::ZERO));
 
                     let response = scene.node(current.min, |ui| {
                         ui::draw_node(ui, &node, ent_highlight.index_highlight(node.instance))
@@ -201,7 +220,7 @@ impl SpaceViewClass for GraphSpaceView {
             for dummy in graph.unknown_nodes() {
                 let ix = NodeIndex::from(&dummy);
                 seen.insert(ix);
-                let current = state.layout.entry(ix).or_insert(Rect::ZERO);
+                let (_, current) = state.layout.entry(ix).or_insert((None, Rect::ZERO));
                 let response = scene.node(current.min, |ui| ui::draw_dummy(ui, &dummy));
                 *current = response.rect;
             }
@@ -210,7 +229,7 @@ impl SpaceViewClass for GraphSpaceView {
                 let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
                 for edge in data.edges() {
-                    if let (Some(source_pos), Some(target_pos)) = (
+                    if let (Some((_, source_pos)), Some((_,target_pos))) = (
                         state.layout.get(&edge.source.into()),
                         state.layout.get(&edge.target.into()),
                     ) {
@@ -233,7 +252,7 @@ impl SpaceViewClass for GraphSpaceView {
                 let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
                 for edge in data.edges() {
-                    if let (Some(source_pos), Some(target_pos)) = (
+                    if let (Some((_,source_pos)), Some((_,target_pos))) = (
                         state.layout.get(&edge.source.into()),
                         state.layout.get(&edge.target.into()),
                     ) {
@@ -252,11 +271,13 @@ impl SpaceViewClass for GraphSpaceView {
             }
         });
 
+        arrange_in_circle(&mut state.layout, state.layout_config.circle_radius);
+
         // TODO(grtlr): consider improving this!
-        // if state.should_fit_to_screen {
-        //     state.viewer.fit_to_screen();
-        //     state.should_fit_to_screen = false;
-        // }
+        if state.should_fit_to_screen {
+            state.viewer.fit_to_screen();
+            state.should_fit_to_screen = false;
+        }
 
         // Clean up the layout for nodes that are no longer present.
         // state.layout.retain(|k, _| seen.contains(k));

@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use re_chunk::EntityPath;
 use re_format::format_f32;
 use re_ui::UiExt;
 use re_viewer_context::SpaceViewState;
@@ -8,11 +9,24 @@ use crate::graph::NodeIndex;
 
 use super::{bounding_rect_from_iter, scene::ViewBuilder};
 
+#[derive(Debug)]
+pub struct RadialLayoutConfig {
+    pub circle_radius: f32,
+}
+
+impl Default for RadialLayoutConfig {
+    fn default() -> Self {
+        Self {
+            circle_radius: 400.0,
+        }
+    }
+}
+
 /// Space view state for the custom space view.
 ///
 /// This state is preserved between frames, but not across Viewer sessions.
 #[derive(Default)]
-pub(crate) struct GraphSpaceViewState {
+pub struct GraphSpaceViewState {
     pub viewer: ViewBuilder,
 
     /// Indicates if the viewer should fit to the screen the next time it is rendered.
@@ -20,8 +34,10 @@ pub(crate) struct GraphSpaceViewState {
     pub should_tick: bool,
 
     /// Positions of the nodes in world space.
-    pub layout: HashMap<NodeIndex, egui::Rect>,
-    // pub simulation: Option<re_force::Simulation<NodeIndex>>,
+    pub layout: HashMap<NodeIndex, (Option<EntityPath>, egui::Rect)>,
+
+    /// Layout properties.
+    pub layout_config: RadialLayoutConfig,
 }
 
 impl GraphSpaceViewState {
@@ -30,7 +46,9 @@ impl GraphSpaceViewState {
             .on_hover_text("The bounding box encompassing all Entities in the view right now");
         ui.vertical(|ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-            if let Some(egui::Rect { min, max }) = bounding_rect_from_iter(self.layout.values()) {
+            if let Some(egui::Rect { min, max }) =
+                bounding_rect_from_iter(self.layout.values().map(|n| &n.1))
+            {
                 ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
                 ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
             }
