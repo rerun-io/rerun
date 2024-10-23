@@ -34,7 +34,7 @@ Check out the API reference to learn more about all the ways that data can be se
 
 ### Using the blueprint API to configure a dataframe view
 
-The following snippet demonstrates how to query the first 10 rows in a Rerun recording using latest-at (i.e. time-aligned) semantics, and display them in a [dataframe view](types/views/dataframe_view):
+The following snippet demonstrates how visualize an entire Rerun recording using latest-at (i.e. time-aligned) semantics by displaying the results in a [dataframe view](types/views/dataframe_view):
 
 snippet: reference/dataframe_view_query
 
