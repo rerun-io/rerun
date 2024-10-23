@@ -433,6 +433,38 @@ pub enum FileSource {
     Sdk,
 }
 
+impl FileSource {
+    #[inline]
+    pub fn recommended_application_id(&self) -> Option<&ApplicationId> {
+        match self {
+            Self::FileDialog {
+                recommended_application_id,
+                ..
+            }
+            | Self::DragAndDrop {
+                recommended_application_id,
+                ..
+            } => recommended_application_id.as_ref(),
+            Self::Cli | Self::Sdk => None,
+        }
+    }
+
+    #[inline]
+    pub fn recommended_recording_id(&self) -> Option<&StoreId> {
+        match self {
+            Self::FileDialog {
+                recommended_recording_id,
+                ..
+            }
+            | Self::DragAndDrop {
+                recommended_recording_id,
+                ..
+            } => recommended_recording_id.as_ref(),
+            Self::Cli | Self::Sdk => None,
+        }
+    }
+}
+
 /// The source of a recording or blueprint.
 #[derive(Clone, Debug, PartialEq, Eq)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]

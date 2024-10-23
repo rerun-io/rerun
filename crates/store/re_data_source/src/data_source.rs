@@ -164,7 +164,11 @@ impl DataSource {
                 // or not.
                 let shared_store_id =
                     re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                let settings = re_data_loader::DataLoaderSettings::recommended(shared_store_id);
+                let settings = re_data_loader::DataLoaderSettings {
+                    opened_application_id: file_source.recommended_application_id().cloned(),
+                    opened_store_id: file_source.recommended_recording_id().cloned(),
+                    ..re_data_loader::DataLoaderSettings::recommended(shared_store_id)
+                };
                 re_data_loader::load_from_path(&settings, file_source, &path, &tx)
                     .with_context(|| format!("{path:?}"))?;
 
@@ -188,7 +192,11 @@ impl DataSource {
                 // or not.
                 let shared_store_id =
                     re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                let settings = re_data_loader::DataLoaderSettings::recommended(shared_store_id);
+                let settings = re_data_loader::DataLoaderSettings {
+                    opened_application_id: file_source.recommended_application_id().cloned(),
+                    opened_store_id: file_source.recommended_recording_id().cloned(),
+                    ..re_data_loader::DataLoaderSettings::recommended(shared_store_id)
+                };
                 re_data_loader::load_from_file_contents(
                     &settings,
                     file_source,
