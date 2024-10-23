@@ -322,6 +322,21 @@ pub fn new_list_array_of_empties(child_datatype: ArrowDatatype, len: usize) -> A
     )
 }
 
+/// Applies a [concatenate] kernel to the given `arrays`.
+///
+/// Early outs where it makes sense (e.g. `arrays.len() == 1`).
+///
+/// Returns an error if the arrays don't share the exact same datatype.
+///
+/// [concatenate]: arrow2::compute::concatenate::concatenate
+pub fn concat_arrays(arrays: &[&dyn ArrowArray]) -> arrow2::error::Result<Box<dyn ArrowArray>> {
+    if arrays.len() == 1 {
+        return Ok(arrays[0].to_boxed());
+    }
+
+    arrow2::compute::concatenate::concatenate(arrays)
+}
+
 /// Applies a [filter] kernel to the given `array`.
 ///
 /// Panics iff the length of the filter doesn't match the length of the array.
