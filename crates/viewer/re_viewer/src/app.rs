@@ -590,7 +590,7 @@ impl App {
             UICommand::Open => {
                 for file_path in open_file_dialog_native() {
                     self.command_sender
-                        .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
+                        .send_system(SystemCommand::LoadDataSource(DataSource::filepath(
                             FileSource::FileDialog,
                             file_path,
                         )));
@@ -1308,7 +1308,7 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = file.path {
                 self.command_sender
-                    .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
+                    .send_system(SystemCommand::LoadDataSource(DataSource::filepath(
                         FileSource::DragAndDrop,
                         path,
                     )));

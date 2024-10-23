@@ -18,7 +18,10 @@ pub enum DataSource {
 
     /// A path to a local file.
     #[cfg(not(target_arch = "wasm32"))]
-    FilePath(re_log_types::FileSource, std::path::PathBuf),
+    FilePath {
+        file_source: re_log_types::FileSource,
+        file_path: std::path::PathBuf,
+    },
 
     /// The contents of a file.
     ///
@@ -31,6 +34,16 @@ pub enum DataSource {
     // RRD data streaming in from standard input.
     #[cfg(not(target_arch = "wasm32"))]
     Stdin,
+}
+
+impl DataSource {
+    #[inline]
+    pub fn filepath(file_source: re_log_types::FileSource, file_path: std::path::PathBuf) -> Self {
+        Self::FilePath {
+            file_source,
+            file_path,
+        }
+    }
 }
 
 impl DataSource {
@@ -87,7 +100,7 @@ impl DataSource {
         let path = std::path::Path::new(&uri).to_path_buf();
 
         if uri.starts_with("file://") || path.exists() {
-            Self::FilePath(file_source, path)
+            Self::filepath(file_source, path)
         } else if uri.starts_with("http://")
             || uri.starts_with("https://")
             || (uri.starts_with("www.") && (uri.ends_with(".rrd") || uri.ends_with(".rbl")))
@@ -101,7 +114,7 @@ impl DataSource {
 
         // Now we are into heuristics territory:
         } else if looks_like_a_file_path(&uri) {
-            Self::FilePath(file_source, path)
+            Self::filepath(file_source, path)
         } else if uri.ends_with(".rrd") || uri.ends_with(".rbl") {
             Self::RrdHttpUrl {
                 url: uri,
@@ -122,7 +135,9 @@ impl DataSource {
         match self {
             Self::RrdHttpUrl { url, .. } => url.split('/').last().map(|r| r.to_owned()),
             #[cfg(not(target_arch = "wasm32"))]
-            Self::FilePath(_, path) => path.file_name().map(|s| s.to_string_lossy().to_string()),
+            Self::FilePath { file_path, .. } => file_path
+                .file_name()
+                .map(|s| s.to_string_lossy().to_string()),
             Self::FileContents(_, file_contents) => Some(file_contents.name.clone()),
             Self::WebSocketAddr(_) => None,
             #[cfg(not(target_arch = "wasm32"))]
@@ -153,10 +168,13 @@ impl DataSource {
             ),
 
             #[cfg(not(target_arch = "wasm32"))]
-            Self::FilePath(file_source, path) => {
+            Self::FilePath {
+                file_source,
+                file_path,
+            } => {
                 let (tx, rx) = re_smart_channel::smart_channel(
-                    SmartMessageSource::File(path.clone()),
-                    SmartChannelSource::File(path.clone()),
+                    SmartMessageSource::File(file_path.clone()),
+                    SmartChannelSource::File(file_path.clone()),
                 );
 
                 // This `StoreId` will be communicated to all `DataLoader`s, which may or may not
@@ -165,8 +183,8 @@ impl DataSource {
                 let shared_store_id =
                     re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
                 let settings = re_data_loader::DataLoaderSettings::recommended(shared_store_id);
-                re_data_loader::load_from_path(&settings, file_source, &path, &tx)
-                    .with_context(|| format!("{path:?}"))?;
+                re_data_loader::load_from_path(&settings, file_source, &file_path, &tx)
+                    .with_context(|| format!("{file_path:?}"))?;
 
                 if let Some(on_msg) = on_msg {
                     on_msg();
