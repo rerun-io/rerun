@@ -66,7 +66,7 @@ pub fn arrays_to_list_array(
         arrow2::array::new_empty_array(array_datatype.clone())
     } else {
         re_tracing::profile_scope!("concatenate", arrays_dense.len().to_string());
-        arrow2::compute::concatenate::concatenate(&arrays_dense)
+        concat_arrays(&arrays_dense)
             .map_err(|err| {
                 re_log::warn_once!("failed to concatenate arrays: {err}");
                 err
@@ -145,7 +145,7 @@ pub fn arrays_to_dictionary<Idx: Copy + Eq>(
     let data = if arrays_dense_deduped.is_empty() {
         arrow2::array::new_empty_array(array_datatype.clone())
     } else {
-        let values = arrow2::compute::concatenate::concatenate(&arrays_dense_deduped)
+        let values = concat_arrays(&arrays_dense_deduped)
             .map_err(|err| {
                 re_log::warn_once!("failed to concatenate arrays: {err}");
                 err
@@ -334,6 +334,7 @@ pub fn concat_arrays(arrays: &[&dyn ArrowArray]) -> arrow2::error::Result<Box<dy
         return Ok(arrays[0].to_boxed());
     }
 
+    #[allow(clippy::disallowed_methods)] // that's the whole point
     arrow2::compute::concatenate::concatenate(arrays)
 }
 
@@ -449,7 +450,7 @@ pub fn concatenate_record_batches(
 
     if !batches.is_empty() {
         for (i, _field) in schema.fields.iter().enumerate() {
-            let array = arrow2::compute::concatenate::concatenate(
+            let array = concat_arrays(
                 &batches
                     .iter()
                     .map(|batch| &*batch.data[i] as &dyn ArrowArray)

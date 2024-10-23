@@ -90,7 +90,7 @@ fn concat_does_allocate() {
             .collect_vec();
 
         let concatenated =
-            memory_use(|| arrow2::compute::concatenate::concatenate(&unconcatenated_refs).unwrap());
+            memory_use(|| re_chunk::util::concat_arrays(&unconcatenated_refs).unwrap());
 
         (unconcatenated, concatenated)
     });
@@ -121,7 +121,7 @@ fn concat_single_is_noop() {
             memory_use(|| ArrowPrimitiveArray::from_vec((0..NUM_SCALARS).collect_vec()).to_boxed());
 
         let concatenated = memory_use(|| {
-            arrow2::compute::concatenate::concatenate(&[&*unconcatenated.0]).unwrap()
+            re_chunk::util::concat_arrays(&[&*unconcatenated.0]).unwrap()
         });
 
         (unconcatenated, concatenated)
