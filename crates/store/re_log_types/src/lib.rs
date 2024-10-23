@@ -405,12 +405,23 @@ impl std::fmt::Display for PythonVersion {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum FileSource {
     Cli,
-    DragAndDrop,
+
+    DragAndDrop {
+        /// The [`ApplicationId`] that the viewer heuristically recommends should be used when loading
+        /// this data source, based on the surrounding context.
+        recommended_application_id: Option<ApplicationId>,
+
+        /// The [`StoreId`] that the viewer heuristically recommends should be used when loading
+        /// this data source, based on the surrounding context.
+        recommended_recording_id: Option<StoreId>,
+    },
+
     FileDialog,
+
     Sdk,
 }
 
@@ -456,7 +467,7 @@ impl std::fmt::Display for StoreSource {
             Self::RustSdk { rustc_version, .. } => write!(f, "Rust SDK (rustc {rustc_version})"),
             Self::File { file_source, .. } => match file_source {
                 FileSource::Cli => write!(f, "File via CLI"),
-                FileSource::DragAndDrop => write!(f, "File via drag-and-drop"),
+                FileSource::DragAndDrop { .. } => write!(f, "File via drag-and-drop"),
                 FileSource::FileDialog => write!(f, "File via file dialog"),
                 FileSource::Sdk => write!(f, "File via SDK"),
             },

@@ -1291,12 +1291,26 @@ impl App {
 
         let dropped_files = egui_ctx.input_mut(|i| std::mem::take(&mut i.raw.dropped_files));
 
+        let active_application_id = self
+            .store_hub
+            .as_ref()
+            .and_then(|hub| hub.active_app())
+            .cloned();
+        let active_recording_id = self
+            .store_hub
+            .as_ref()
+            .and_then(|hub| hub.active_recording_id())
+            .cloned();
+
         for file in dropped_files {
             if let Some(bytes) = file.bytes {
                 // This is what we get on Web.
                 self.command_sender
                     .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
-                        FileSource::DragAndDrop,
+                        FileSource::DragAndDrop {
+                            recommended_application_id: active_application_id.clone(),
+                            recommended_recording_id: active_recording_id.clone(),
+                        },
                         FileContents {
                             name: file.name.clone(),
                             bytes: bytes.clone(),
@@ -1309,7 +1323,10 @@ impl App {
             if let Some(path) = file.path {
                 self.command_sender
                     .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
-                        FileSource::DragAndDrop,
+                        FileSource::DragAndDrop {
+                            recommended_application_id: active_application_id.clone(),
+                            recommended_recording_id: active_recording_id.clone(),
+                        },
                         path,
                     )));
             }
