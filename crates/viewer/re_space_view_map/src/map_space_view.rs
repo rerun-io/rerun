@@ -20,7 +20,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use crate::map_windows;
+use crate::map_overlays;
 use crate::visualizers::geo_points::GeoPointsVisualizer;
 
 #[derive(Default)]
@@ -235,10 +235,9 @@ Displays a Position3D on a map.
                 }
             }
 
-            let map_pos = map_widget.rect;
-            let window_id = query.space_view_id.uuid().to_string();
-            map_windows::zoom(ui, &window_id, &map_pos, map_memory);
-            map_windows::acknowledge(ui, &window_id, &map_pos, tiles.attribution());
+            let map_rect = map_widget.rect;
+            map_overlays::zoom_buttons_overlay(ui, &map_rect, map_memory);
+            map_overlays::acknowledgement_overlay(ui, &map_rect, &tiles.attribution());
         });
 
         //
