@@ -228,13 +228,13 @@ pub struct ObjectStorage {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterRecordingsResponse {
-    #[prost(oneof = "register_recordings_response::Result", tags = "1, 2")]
-    pub result: ::core::option::Option<register_recordings_response::Result>,
+    #[prost(oneof = "register_recordings_response::Value", tags = "1, 2")]
+    pub value: ::core::option::Option<register_recordings_response::Value>,
 }
 /// Nested message and enum types in `RegisterRecordingsResponse`.
 pub mod register_recordings_response {
     #[derive(Clone, PartialEq, ::prost::Oneof)]
-    pub enum Result {
+    pub enum Value {
         #[prost(message, tag = "1")]
         Success(super::RegisterRecordingsResponseSuccess),
         #[prost(message, tag = "2")]

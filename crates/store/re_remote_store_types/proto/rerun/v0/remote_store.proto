@@ -27,7 +27,7 @@ message ObjectStorage {
 }
 
 message RegisterRecordingsResponse {
-    oneof result {
+    oneof value {
         RegisterRecordingsResponseSuccess success = 1;
         RegisterRecordingsResponseError error = 2;
     }
