@@ -11,6 +11,7 @@
 #include "datatypes/class_description_map_elem.hpp"
 #include "datatypes/class_id.hpp"
 #include "datatypes/color_model.hpp"
+#include "datatypes/dvec2d.hpp"
 #include "datatypes/entity_path.hpp"
 #include "datatypes/float32.hpp"
 #include "datatypes/float64.hpp"

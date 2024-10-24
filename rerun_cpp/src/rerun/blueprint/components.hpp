@@ -18,6 +18,7 @@
 #include "blueprint/components/included_space_view.hpp"
 #include "blueprint/components/interactive.hpp"
 #include "blueprint/components/lock_range_during_zoom.hpp"
+#include "blueprint/components/map_provider.hpp"
 #include "blueprint/components/panel_state.hpp"
 #include "blueprint/components/query_expression.hpp"
 #include "blueprint/components/root_container.hpp"
@@ -34,3 +35,4 @@
 #include "blueprint/components/visible_time_range.hpp"
 #include "blueprint/components/visual_bounds2d.hpp"
 #include "blueprint/components/visualizer_overrides.hpp"
+#include "blueprint/components/zoom_level.hpp"

@@ -147,6 +147,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <MapProvider as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Name of the map provider to be used in Map views.",
+                placeholder: Some(MapProvider::default().to_arrow()?),
+            },
+        ),
+        (
             <PanelState as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Tri-state for panel controls.",
@@ -256,6 +263,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Override the visualizers for an entity.\n\nThis component is a stop-gap mechanism based on the current implementation details\nof the visualizer system. It is not intended to be a long-term solution, but provides\nenough utility to be useful in the short term.\n\nThe long-term solution is likely to be based off: <https://github.com/rerun-io/rerun/issues/6626>\n\nThis can only be used as part of blueprints. It will have no effect if used\nin a regular entity.",
                 placeholder: Some(VisualizerOverrides::default().to_arrow()?),
+            },
+        ),
+        (
+            <ZoomLevel as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A zoom level determines how much of the world is visible on a map.",
+                placeholder: Some(ZoomLevel::default().to_arrow()?),
             },
         ),
         (
@@ -410,6 +424,13 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "A 16-bit ID representing a type of semantic keypoint within a class.",
                 placeholder: Some(KeypointId::default().to_arrow()?),
+            },
+        ),
+        (
+            <LatLon as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A geographical position expressed in EPSG:4326 latitude and longitude.",
+                placeholder: Some(LatLon::default().to_arrow()?),
             },
         ),
         (
@@ -1062,6 +1083,24 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.archetypes.GeoPoints"),
+            ArchetypeReflection {
+                display_name: "Geo points",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name : "rerun.components.LatLon"
+                    .into(), display_name : "Positions", docstring_md :
+                    "The EPSG:4326 coordinates for the points.", is_required : true, },
+                    ArchetypeFieldReflection { component_name : "rerun.components.Radius"
+                    .into(), display_name : "Radii", docstring_md :
+                    "Optional radii for the points, effectively turning them into circles.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Colors",
+                    docstring_md : "Optional colors for the points.", is_required :
+                    false, },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.archetypes.Image"),
             ArchetypeReflection {
                 display_name: "Image",
@@ -1586,6 +1625,21 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Select", docstring_md :
                     "Selected columns. If unset, all columns are selected.", is_required
                     : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.MapOptions"),
+            ArchetypeReflection {
+                display_name: "Map options",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.MapProvider".into(), display_name :
+                    "Provider", docstring_md : "Map provider and style to use.",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ZoomLevel".into(), display_name : "Zoom",
+                    docstring_md : "Zoom level for the map. The default is 16.",
+                    is_required : false, },
                 ],
             },
         ),

@@ -19,7 +19,10 @@ pub fn to_snake_case(s: &str) -> String {
 
     let mut parts: Vec<_> = s.split('.').map(ToOwned::to_owned).collect();
     if let Some(last) = parts.last_mut() {
-        *last = last.replace("UVec", "uvec").replace("UInt", "uint");
+        *last = last
+            .replace("UVec", "uvec")
+            .replace("DVec", "dvec")
+            .replace("UInt", "uint");
         *last = rerun_snake.convert(&last);
     }
     parts.join(".")
@@ -108,6 +111,7 @@ pub fn to_pascal_case(s: &str) -> String {
     if let Some(last) = parts.last_mut() {
         *last = last
             .replace("uvec", "UVec")
+            .replace("dvec", "DVec")
             .replace("uint", "UInt")
             .replace("2d", "2D") // NOLINT
             .replace("3d", "3D") // NOLINT

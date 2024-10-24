@@ -9,6 +9,7 @@ include "./datatypes/class_description.fbs";
 include "./datatypes/class_description_map_elem.fbs";
 include "./datatypes/class_id.fbs";
 include "./datatypes/color_model.fbs";
+include "./datatypes/dvec2d.fbs";
 include "./datatypes/entity_path.fbs";
 include "./datatypes/float32.fbs";
 include "./datatypes/float64.fbs";

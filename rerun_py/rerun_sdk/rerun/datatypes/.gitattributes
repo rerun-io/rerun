@@ -11,6 +11,7 @@ class_description.py linguist-generated=true
 class_description_map_elem.py linguist-generated=true
 class_id.py linguist-generated=true
 color_model.py linguist-generated=true
+dvec2d.py linguist-generated=true
 entity_path.py linguist-generated=true
 float32.py linguist-generated=true
 float64.py linguist-generated=true
