@@ -50,7 +50,7 @@ impl DataLoader for ArchetypeLoader {
 
     fn load_from_file_contents(
         &self,
-        _settings: &crate::DataLoaderSettings,
+        settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
         tx: std::sync::mpsc::Sender<LoadedData>,
@@ -133,8 +133,13 @@ impl DataLoader for ArchetypeLoader {
             )?);
         }
 
+        let store_id = settings
+            .opened_store_id
+            .clone()
+            .unwrap_or_else(|| settings.store_id.clone());
         for row in rows {
-            if tx.send(row.into()).is_err() {
+            let data = LoadedData::Chunk(store_id.clone(), row);
+            if tx.send(data).is_err() {
                 break; // The other end has decided to hang up, not our problem.
             }
         }

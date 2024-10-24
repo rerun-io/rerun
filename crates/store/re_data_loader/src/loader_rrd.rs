@@ -4,6 +4,8 @@ use re_log_encoding::decoder::Decoder;
 use crossbeam::channel::Receiver;
 use re_log_types::{ApplicationId, StoreId};
 
+use crate::LoadedData;
+
 // ---
 
 /// Loads data from any `rrd` file or in-memory contents.
@@ -193,7 +195,8 @@ fn decode_and_stream<R: std::io::Read>(
             msg
         };
 
-        if tx.send(msg.into()).is_err() {
+        let data = LoadedData::LogMsg(msg);
+        if tx.send(data).is_err() {
             break; // The other end has decided to hang up, not our problem.
         }
     }
