@@ -19,7 +19,7 @@ It's used in areas like robotics, spatial and embodied AI, generative media, ind
 Rerun is easy to use!
 Use the Rerun SDK (available for C++, Python and Rust) to log data like images, tensors, point clouds, and text.
 Logs are streamed to the Rerun Viewer for live visualization or to file for later use.
-You can also query the logged data through [our dataframe API](https://rerun.io/docs/content/howto/dataframe-api).
+You can also query the logged data through [our dataframe API](https://rerun.io/docs/content/howto/get-data-out).
 
 [Get started](#getting-started) in minutes – no account needed.
 
