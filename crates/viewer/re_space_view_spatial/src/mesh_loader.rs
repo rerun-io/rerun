@@ -3,7 +3,7 @@ use re_chunk_store::RowId;
 use re_renderer::{mesh::GpuMesh, RenderContext, Rgba32Unmul};
 use re_types::{
     archetypes::{Asset3D, Mesh3D},
-    components::MediaType,
+    components::{AlbedoFactor, MediaType},
 };
 use re_viewer_context::{gpu_bridge::texture_creation_desc_from_color_image, ImageInfo};
 
@@ -27,7 +27,7 @@ impl LoadedMesh {
     ) -> anyhow::Result<Self> {
         // TODO(emilk): load CpuMesh in background thread.
         match mesh {
-            AnyMesh::Asset(asset3d) => Self::load_asset3d(name, asset3d, render_ctx),
+            AnyMesh::Asset { asset } => Ok(Self::load_asset3d(name, asset, render_ctx)?),
             AnyMesh::Mesh { mesh, texture_key } => {
                 Ok(Self::load_mesh3d(name, mesh, texture_key, render_ctx)?)
             }
@@ -39,10 +39,11 @@ impl LoadedMesh {
         media_type: &MediaType,
         bytes: &[u8],
         render_ctx: &RenderContext,
+        albedo_factor: &Option<AlbedoFactor>,
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
-        let cpu_model = match media_type.as_str() {
+        let mut cpu_model = match media_type.as_str() {
             MediaType::GLTF | MediaType::GLB => {
                 re_renderer::importer::gltf::load_gltf_from_buffer(&name, bytes, render_ctx)?
             }
@@ -50,6 +51,12 @@ impl LoadedMesh {
             MediaType::STL => re_renderer::importer::stl::load_stl_from_buffer(bytes, render_ctx)?,
             _ => anyhow::bail!("{media_type} files are not supported"),
         };
+
+        // Overwriting albedo_factor of CpuMesh in specified in the Asset3D
+        cpu_model.instances.iter().for_each(|instance| {
+            cpu_model.meshes[instance.mesh].materials[0].albedo_factor =
+                albedo_factor.map_or(re_renderer::Rgba::WHITE, |c| c.0.into());
+        });
 
         let bbox = cpu_model.calculate_bounding_box();
         let mesh_instances = cpu_model.into_gpu_meshes(render_ctx)?;
@@ -68,11 +75,21 @@ impl LoadedMesh {
     ) -> anyhow::Result<Self> {
         re_tracing::profile_function!();
 
-        let Asset3D { blob, media_type } = asset3d;
+        let Asset3D {
+            blob,
+            media_type,
+            albedo_factor,
+        } = asset3d;
 
         let media_type = MediaType::or_guess_from_data(media_type.clone(), blob.as_slice())
             .ok_or_else(|| anyhow::anyhow!("couldn't guess media type"))?;
-        let slf = Self::load_asset3d_parts(name, &media_type, blob.as_slice(), render_ctx)?;
+        let slf = Self::load_asset3d_parts(
+            name,
+            &media_type,
+            blob.as_slice(),
+            render_ctx,
+            albedo_factor,
+        )?;
 
         Ok(slf)
     }

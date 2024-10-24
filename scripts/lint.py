@@ -791,6 +791,10 @@ def fix_header_casing(s: str) -> str:
         if word == "":
             continue
 
+        if word == "I":
+            new_words.append(word)
+            continue
+
         if is_emoji(word):
             new_words.append(word)
             continue
