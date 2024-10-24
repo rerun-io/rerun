@@ -8,19 +8,19 @@ namespace rerun {
 
 #ifdef EDIT_EXTENSION
         struct LatLonExt {
-            float lat_lon[2];
+            double lat_lon[2];
 #define LatLon LatLonExt
 
             // <CODEGEN_COPY_TO_HEADER>
 
             /// Construct LatLon from x/y values.
-            LatLon(float lat, float lon) : lat_lon{lat, lon} {}
+            LatLon(double lat, double lon) : lat_lon{lat, lon} {}
 
-            float latitude() const {
+            double latitude() const {
                 return lat_lon.x();
             }
 
-            float longitude() const {
+            double longitude() const {
                 return lat_lon.y();
             }
 
