@@ -104,6 +104,7 @@ def log_nuscenes(nusc: nuscenes.NuScenes, scene_name: str, max_time_sec: float) 
     first_timestamp_us = nusc.get("sample_data", first_lidar_token)["timestamp"]
     max_timestamp_us = first_timestamp_us + 1e6 * max_time_sec
 
+    log_lidar_and_ego_pose(first_lidar_token, nusc, max_timestamp_us)
     log_cameras(first_camera_tokens, nusc, max_timestamp_us)
     log_radars(first_radar_tokens, nusc, max_timestamp_us)
     log_annotations(first_sample_token, nusc, max_timestamp_us)
