@@ -5,6 +5,26 @@
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
 [opt_out.run]
+"concepts/static/log_static" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/static/log_temporal_10x" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/static/send_static" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/static/log_static_10x" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
 "concepts/viscomp-base" = [
   "cpp",  # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
