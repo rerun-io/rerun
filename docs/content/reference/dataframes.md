@@ -7,11 +7,11 @@ Rerun, at its core, is a database. As such, you can always get your data back in
 
 This can be achieved in three different ways, depending on your needs:
 * using the dataframe API, currently available in [Python](https://ref.rerun.io/docs/python/stable/common/dataframe/) and [Rust](https://docs.rs/rerun/latest/rerun/dataframe/index.html),
-* using the [blueprint API](../concepts/blueprint) to configure a [dataframe view](types/views/dataframe_view) from code,
-* or simply by setting up [dataframe view](types/views/dataframe_view) manually in the UI.
+* using the [blueprint API](../concepts/blueprint.md) to configure a [dataframe view](types/views/dataframe_view.md) from code,
+* or simply by setting up [dataframe view](types/views/dataframe_view.md) manually in the UI.
 
 This page is meant as a reference to get you up and running with these different solutions as quickly as possible.
-For an in-depth introduction to the dataframe API and the possible workflows it enables, check out [our Getting Started guide](../getting-started/data-out) or one of the accompanying [How-Tos](../howto/dataframe-api).
+For an in-depth introduction to the dataframe API and the possible workflows it enables, check out [our Getting Started guide](../getting-started/data-out) or one of the accompanying [How-Tos](../howto/dataframe-api.md).
 
 
 > We'll need an RRD file to query. Either use one of yours, or grab some of the example ones, e.g.:
@@ -34,7 +34,7 @@ Check out the API reference to learn more about all the ways that data can be se
 
 ### Using the blueprint API to configure a dataframe view
 
-The following snippet demonstrates how visualize an entire Rerun recording using latest-at (i.e. time-aligned) semantics by displaying the results in a [dataframe view](types/views/dataframe_view):
+The following snippet demonstrates how visualize an entire Rerun recording using latest-at (i.e. time-aligned) semantics by displaying the results in a [dataframe view](types/views/dataframe_view.md):
 
 snippet: reference/dataframe_view_query
 
@@ -59,15 +59,15 @@ Then log that blueprint file in addition to the data itself:
 snippet: reference/dataframe_view_query_external
 
 Check out the blueprint API and `log_file_from_path` references to learn more:
-* [🐍 Python blueprint API reference](https://ref.rerun.io/docs/python/latest/common/blueprint_apis/)
-* [🐍 Python `log_file_from_path`](https://ref.rerun.io/docs/python/latest/common/logging_functions/#rerun.log_file_from_path)
+* [🐍 Python blueprint API reference](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/)
+* [🐍 Python `log_file_from_path`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log_file_from_path)
 * [🦀 Rust `log_file_from_path`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log_file_from_path)
 * [🌊 C++ `log_file_from_path`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a20798d7ea74cce5c8174e5cacd0a2c47)
 
 
 ### Setting up dataframe view manually in the UI
 
-The same [dataframe view](types/views/dataframe_view) shown above can be configured purely from the UI:
+The same [dataframe view](types/views/dataframe_view.md) shown above can be configured purely from the UI:
 
 <video width="100%" autoplay loop muted controls>
     <source src="https://static.rerun.io/dataframe/df-dna-demo.webm" type="video/webm" />

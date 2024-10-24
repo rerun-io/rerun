@@ -3,7 +3,7 @@ title: Configure the Viewer through code
 order: 100
 ---
 
-As of Rerun 0.15, the state of the [blueprint](../reference/viewer/blueprint.md) can be directly manipulated using the
+As of Rerun 0.15, the state of the [blueprint](../../reference/viewer/blueprint.md) can be directly manipulated using the
 Rerun SDK.
 
 In the initial 0.15 release, the APIs are still somewhat limited and only available in the Python SDK.
@@ -139,7 +139,7 @@ Because the data in the space-view is relative to the `origin`, the `origin` wil
 in the blueprint tree, with all entities under the origin shown using relative paths.
 
 For Spatial views such as `Spatial2DView` and `Spatial3DView`, the `origin` plays an additional role with respect
-to data transforms. All data in the view will be transformed to the `origin` space before being displayed. See [Spaces and Transforms](../concepts/spaces-and-transforms.md) for more information.
+to data transforms. All data in the view will be transformed to the `origin` space before being displayed. See [Spaces and Transforms](../../concepts/spaces-and-transforms.md) for more information.
 
 For example:
 
@@ -155,7 +155,7 @@ rrb.Blueprint(
 ### `contents`
 
 If you need to further modify the contents of a space view, you can use the `contents` parameter. This parameter is
-a list of [entity query expressions](../reference/) that are either included or excluded from the
+a list of [entity query expressions](../../reference/) that are either included or excluded from the
 view.
 
 Each entity expressions starts with "+" for inclusion or "-" for an exclusion. The expressions can either be specific entity paths, or may end in a wildcard `/**` to include all entities under a specific subtree.
