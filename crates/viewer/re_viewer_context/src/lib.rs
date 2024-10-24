@@ -28,6 +28,7 @@ pub mod test_context; //TODO(ab): this should be behind #[cfg(test)], but then `
 mod time_control;
 mod time_drag_value;
 mod typed_entity_collections;
+mod undo;
 mod utils;
 mod viewer_context;
 
@@ -83,6 +84,7 @@ pub use time_drag_value::TimeDragValue;
 pub use typed_entity_collections::{
     ApplicableEntities, IndicatedEntities, PerVisualizer, VisualizableEntities,
 };
+pub use undo::BlueprintUndoState;
 pub use utils::{auto_color_egui, auto_color_for_entity_path, level_to_rich_text};
 pub use viewer_context::{RecordingConfig, ViewerContext};
 
