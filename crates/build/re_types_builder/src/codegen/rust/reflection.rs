@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use camino::Utf8PathBuf;
 use proc_macro2::TokenStream;
@@ -6,7 +6,8 @@ use quote::{format_ident, quote};
 
 use crate::{
     codegen::{autogen_warning, Target},
-    ObjectKind, Objects, Reporter, ATTR_RERUN_COMPONENT_REQUIRED,
+    ObjectKind, Objects, Reporter, ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RUST_DERIVE,
+    ATTR_RUST_DERIVE_ONLY,
 };
 
 use super::util::{append_tokens, doc_as_lines};
@@ -15,6 +16,7 @@ use super::util::{append_tokens, doc_as_lines};
 pub fn generate_reflection(
     reporter: &Reporter,
     objects: &Objects,
+    extension_contents_for_fqname: &HashMap<String, String>,
     files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
 ) {
     // Put into its own subfolder since codegen is set up in a way that it thinks that everything
@@ -23,7 +25,12 @@ pub fn generate_reflection(
     let path = Utf8PathBuf::from("crates/viewer/re_viewer/src/reflection/mod.rs");
 
     let mut imports = BTreeSet::new();
-    let component_reflection = generate_component_reflection(reporter, objects, &mut imports);
+    let component_reflection = generate_component_reflection(
+        reporter,
+        objects,
+        extension_contents_for_fqname,
+        &mut imports,
+    );
     let archetype_reflection = generate_archetype_reflection(reporter, objects);
 
     let mut code = format!("// {}\n\n", autogen_warning!());
@@ -77,6 +84,7 @@ pub fn generate_reflection(
 fn generate_component_reflection(
     reporter: &Reporter,
     objects: &Objects,
+    extension_contents_for_fqname: &HashMap<String, String>,
     imports: &mut BTreeSet<String>,
 ) -> TokenStream {
     let mut quoted_pairs = Vec::new();
@@ -111,11 +119,31 @@ fn generate_component_reflection(
             obj.is_experimental(),
         )
         .join("\n");
+
+        // Emit custom placeholder if there's a default implementation
+        let auto_derive_default = obj.is_enum() // All enums have default values currently!
+            || obj
+                .try_get_attr::<String>(ATTR_RUST_DERIVE_ONLY)
+                .or_else(|| obj.try_get_attr::<String>(ATTR_RUST_DERIVE))
+                .map_or(false, |derives| derives.contains("Default"));
+        let has_custom_default_impl =
+            extension_contents_for_fqname
+                .get(&obj.fqname)
+                .map_or(false, |contents| {
+                    contents.contains(&format!("impl Default for {}", &obj.name))
+                        || contents.contains(&format!("impl Default for super::{}", &obj.name))
+                });
+        let custom_placeholder = if auto_derive_default || has_custom_default_impl {
+            quote! { Some(#type_name::default().to_arrow()?) }
+        } else {
+            quote! { None }
+        };
+
         let quoted_reflection = quote! {
             ComponentReflection {
                 docstring_md: #docstring_md,
 
-                custom_placeholder: Some(#type_name::default().to_arrow()?),
+                custom_placeholder: #custom_placeholder,
             }
         };
         quoted_pairs.push(quote! { (#quoted_name, #quoted_reflection) });
