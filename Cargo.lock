@@ -2348,7 +2348,7 @@ dependencies = [
 [[package]]
 name = "ewebsock"
 version = "0.7.0"
-source = "git+https://github.com/rerun-io/ewebsock?branch=jan/fix-sleep-delay#e439ba53477dbd7a0ec40531772dcab23e161060"
+source = "git+https://github.com/rerun-io/ewebsock?rev=ac6552ecb70f058d81dd8fafaecd4b1daba24685#ac6552ecb70f058d81dd8fafaecd4b1daba24685"
 dependencies = [
  "document-features",
  "js-sys",
