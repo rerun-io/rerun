@@ -17,30 +17,32 @@ pub fn draw_edge(
         (HoverHighlight::Hovered, ..) => Some(ui.style().visuals.widgets.hovered.bg_fill),
     };
 
-    egui::Frame::default().show(ui, |ui| {
-        let source_center = source.center();
-        let target_center = target.center();
+    egui::Frame::default()
+        .show(ui, |ui| {
+            let source_center = source.center();
+            let target_center = target.center();
 
-        // Calculate direction vector from source to target
-        let direction = (target_center - source_center).normalized();
+            // Calculate direction vector from source to target
+            let direction = (target_center - source_center).normalized();
 
-        // Find the border points on both rectangles
-        let source_point = find_border_point(source, -direction); // Reverse direction for target
-        let target_point = find_border_point(target, direction);
+            // Find the border points on both rectangles
+            let source_point = find_border_point(source, -direction); // Reverse direction for target
+            let target_point = find_border_point(target, direction);
 
-        let painter = ui.painter();
-        if let Some(hcolor) = hcolor {
-            painter.line_segment([source_point, target_point], egui::Stroke::new(4.0, hcolor));
-        }
+            let painter = ui.painter();
+            if let Some(hcolor) = hcolor {
+                painter.line_segment([source_point, target_point], egui::Stroke::new(4.0, hcolor));
+            }
 
-        let color = color.unwrap_or(ui.style().visuals.text_color());
-        painter.line_segment([source_point, target_point], egui::Stroke::new(1.0, color));
+            let color = color.unwrap_or(ui.style().visuals.text_color());
+            painter.line_segment([source_point, target_point], egui::Stroke::new(1.0, color));
 
-        // Conditionally draw an arrow at the target point
-        if show_arrow {
-            draw_arrow(painter, target_point, direction, color);
-        }
-    }).response
+            // Conditionally draw an arrow at the target point
+            if show_arrow {
+                draw_arrow(painter, target_point, direction, color);
+            }
+        })
+        .response
 }
 
 // Helper function to find the point where the line intersects the border of a rectangle

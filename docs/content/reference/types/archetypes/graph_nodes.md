@@ -11,7 +11,7 @@ A list of nodes in a graph with optional labels, colors, etc.
 
 **Recommended**: [`Position2D`](../components/position2d.md), [`Color`](../components/color.md)
 
-**Optional**: [`Text`](../components/text.md)
+**Optional**: [`Text`](../components/text.md), [`ShowLabels`](../components/show_labels.md)
 
 ## Shown in
 * [Graph View](../views/graph_view.md)
