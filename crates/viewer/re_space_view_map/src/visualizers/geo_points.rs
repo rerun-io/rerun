@@ -119,7 +119,7 @@ impl GeoPointsVisualizer {
         }
     }
 
-    /// Compute the [`GeoSpan`] of all the points in the visualizer.
+    /// Compute the [`super::GeoSpan`] of all the points in the visualizer.
     pub fn span(&self) -> Option<super::GeoSpan> {
         super::GeoSpan::from_lat_long(
             self.map_entries
