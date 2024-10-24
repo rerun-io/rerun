@@ -91,6 +91,11 @@ views = [
   "cpp",
   "rust",
 ]
+"tutorials/custom-application-id" = [ # Not a complete examples
+  "cpp",
+  "rust",
+  "py",
+]
 "tutorials/custom-recording-id" = [ # Not a complete examples
   "cpp",
   "rust",
