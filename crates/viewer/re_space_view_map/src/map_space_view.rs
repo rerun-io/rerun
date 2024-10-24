@@ -78,24 +78,17 @@ impl SpaceViewClass for MapSpaceView {
         &re_ui::icons::SPACE_VIEW_MAP
     }
 
-    fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
-        format!(
-            "# Map view
+    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
+        "# Map view
 
 Displays a Position3D on a map.
 
 ## Navigation controls
 
-- Pan by dragging, or scroll (+{horizontal_scroll_modifier} for horizontal).
-- Zoom with pinch gesture or scroll + {zoom_scroll_modifier}.
-- Scroll + {aspect_scroll_modifier} to zoom only the temporal axis while holding the y-range fixed.
-- Drag with the {selection_rect_zoom_button} to zoom in/out using a selection.
-- Double-click to reset the view.",
-            horizontal_scroll_modifier = ModifiersMarkdown(HORIZONTAL_SCROLL_MODIFIER, egui_ctx),
-            zoom_scroll_modifier = ModifiersMarkdown(ZOOM_SCROLL_MODIFIER, egui_ctx),
-            aspect_scroll_modifier = ModifiersMarkdown(ASPECT_SCROLL_MODIFIER, egui_ctx),
-            selection_rect_zoom_button = MouseButtonMarkdown(SELECTION_RECT_ZOOM_BUTTON),
-        )
+- Pan by dragging.
+- Zoom with pinch gesture.
+- Double-click to reset the view."
+            .to_string()
     }
 
     fn on_register(
