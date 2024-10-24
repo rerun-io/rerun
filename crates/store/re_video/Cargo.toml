@@ -72,6 +72,8 @@ cfg_aliases.workspace = true
 [[example]]
 name = "frames"
 
+[lib]
+bench = false
 
 [[bench]]
 name = "video_load_bench"
