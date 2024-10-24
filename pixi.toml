@@ -9,6 +9,11 @@
 #
 # https://prefix.dev/docs/pixi/overview
 
+# We currently assume pixi version 0.34.0
+# You can check that your environment is correct by running:
+# - python scripts/check_env.py
+# - pixi run check-env
+
 [project]
 name = "rerun"
 authors = ["rerun.io <opensource@rerun.io>"]
@@ -113,6 +118,9 @@ examples-pypi = ["examples-common", "python-pypi"]
 
 [tasks]
 # Note: extra CLI argument after `pixi run TASK` are passed to the task cmd.
+
+# Check that your environment is set up correctly
+check-env = "python scripts/check_env.py"
 
 # Run the codegen. Optionally pass `--profile` argument if you want.
 codegen = "cargo --quiet run --package re_types_builder -- "

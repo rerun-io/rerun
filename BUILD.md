@@ -31,6 +31,12 @@ If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `h
 rustup set default-host aarch64-apple-darwin && rustup install 1.79.0
 ```
 
+## Validating your environment
+You can validate your environment is set up correctly by running:
+```sh
+pixi run check-env
+```
+
 
 ## Building and running the Viewer
 
