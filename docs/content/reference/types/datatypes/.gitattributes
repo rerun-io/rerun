@@ -10,6 +10,7 @@ class_description.md linguist-generated=true
 class_description_map_elem.md linguist-generated=true
 class_id.md linguist-generated=true
 color_model.md linguist-generated=true
+dvec2d.md linguist-generated=true
 entity_path.md linguist-generated=true
 float32.md linguist-generated=true
 float64.md linguist-generated=true

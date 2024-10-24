@@ -208,6 +208,13 @@ SECTION_TABLE: Final[list[Section]] = [
         gen_page=False,
     ),
     Section(
+        title="Geospatial Archetypes",
+        class_list=[
+            "archetypes.GeoPoints",
+        ],
+        gen_page=False,
+    ),
+    Section(
         title="Tensors",
         class_list=["archetypes.Tensor"],
         gen_page=False,

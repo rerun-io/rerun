@@ -2,6 +2,7 @@
 
 include "./views/bar_chart.fbs";
 include "./views/dataframe.fbs";
+include "./views/map.fbs";
 include "./views/spatial2d.fbs";
 include "./views/spatial3d.fbs";
 include "./views/tensor.fbs";

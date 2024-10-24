@@ -9,6 +9,7 @@ class_description.rs linguist-generated=true
 class_description_map_elem.rs linguist-generated=true
 class_id.rs linguist-generated=true
 color_model.rs linguist-generated=true
+dvec2d.rs linguist-generated=true
 image_format.rs linguist-generated=true
 keypoint_id.rs linguist-generated=true
 keypoint_pair.rs linguist-generated=true

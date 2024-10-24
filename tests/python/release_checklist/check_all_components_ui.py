@@ -140,6 +140,7 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     ),
     "ImagePlaneDistanceBatch": TestCase(batch=[100.0, 200.0, 300.0]),
     "KeypointIdBatch": TestCase(batch=[5, 6, 7]),
+    "LatLonBatch": TestCase(batch=[(0, 1), (2, 3), (4, 5)]),
     "LineStrip2DBatch": TestCase(
         batch=[
             ((0, 0), (1, 1), (2, 2)),
