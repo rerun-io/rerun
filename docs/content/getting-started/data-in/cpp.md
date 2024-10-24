@@ -188,7 +188,7 @@ For more information on how the Rerun data model works, refer to our section on 
 
 Notably, the [`RecordingStream::log`](https://github.com/rerun-io/rerun/blob/d962b34b07775bbacf14883d683cca6746852b6a/rerun_cpp/src/rerun/recording_stream.hpp#L236) method
 will handle any data type that implements the [`AsComponents<T>`](https://github.com/rerun-io/rerun/blob/latest/rerun_cpp/src/rerun/as_components.hpp) trait, making it easy to add your own data.
-For more information on how to supply your own components see [Use custom data](../../howto/extend/custom-data.md).
+For more information on how to supply your own components see [Use custom data](../../howto/logging/custom-data.md).
 
 ### Entities & hierarchies
 
