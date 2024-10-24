@@ -22,14 +22,6 @@ Configures the look and feel of the map.
 
 snippet: views/map
 
-<picture data-inline-viewer="snippets/map">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/1200w.png">
-  <img src="https://static.rerun.io/bar_chart_view/74fa45af3c7310b51cd283c37439ed8f8ca9356d/full.png">
-</picture>
-
 
 ## Visualized archetypes
 

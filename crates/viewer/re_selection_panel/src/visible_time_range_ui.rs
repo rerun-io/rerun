@@ -22,7 +22,7 @@ static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<
         SpatialSpaceView3D::identifier(),
         SpatialSpaceView2D::identifier(),
         TimeSeriesSpaceView::identifier(),
-        // TODO(ab): replace with `MapSpaceView::identifier()` when we get rid of the cargo feature
+        // TODO(#7876): replace with `MapSpaceView::identifier()` when we get rid of the cargo feature
         "Map".into(),
     ]
     .map(Into::into)

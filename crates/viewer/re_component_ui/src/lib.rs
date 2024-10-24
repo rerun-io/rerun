@@ -26,6 +26,7 @@ use datatype_uis::{
     edit_view_enum, edit_view_range1d, view_view_id,
 };
 
+use crate::datatype_uis::edit_f32_zoom_level;
 use re_types::{
     blueprint::components::{
         BackgroundKind, Corner2D, LockRangeDuringZoom, MapProvider, ViewFit, Visible, ZoomLevel,
@@ -40,7 +41,6 @@ use re_types::{
 };
 use re_types_blueprint::blueprint::components::{IncludedSpaceView, SpaceViewMaximized};
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
-
 // ----
 
 /// Crates a component ui registry and registers all editors of this crate to it.
@@ -65,7 +65,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<ImagePlaneDistance>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<MarkerSize>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<StrokeWidth>(edit_f32_zero_to_max);
-    registry.add_singleline_edit_or_view::<ZoomLevel>(edit_f32_zero_to_max);
+    registry.add_singleline_edit_or_view::<ZoomLevel>(edit_f32_zoom_level);
 
     // float min-max components:
     registry.add_singleline_edit_or_view::<DrawOrder>(edit_f32_min_to_max_float);

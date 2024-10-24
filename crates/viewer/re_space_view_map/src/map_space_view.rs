@@ -2,16 +2,11 @@ use egui::{Context, NumExt as _};
 use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
 use re_log_types::EntityPath;
-use re_space_view::controls::{
-    ASPECT_SCROLL_MODIFIER, HORIZONTAL_SCROLL_MODIFIER, SELECTION_RECT_ZOOM_BUTTON,
-    ZOOM_SCROLL_MODIFIER,
-};
 use re_space_view::suggest_space_view_for_each_entity;
 use re_types::{
     blueprint::{archetypes::MapOptions, components::MapProvider, components::ZoomLevel},
     SpaceViewClassIdentifier, View,
 };
-use re_ui::{ModifiersMarkdown, MouseButtonMarkdown};
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
@@ -88,7 +83,7 @@ Displays a Position3D on a map.
 - Pan by dragging.
 - Zoom with pinch gesture.
 - Double-click to reset the view."
-            .to_string()
+            .to_owned()
     }
 
     fn on_register(
