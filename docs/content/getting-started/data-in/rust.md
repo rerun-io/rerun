@@ -138,7 +138,7 @@ Notably, the [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.
 <!-- TODO(andreas): UPDATE DOC LINKS -->
 
 will handle any data type that implements the [`AsComponents`](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html) trait, making it easy to add your own data.
-For more information on how to supply your own components see [Use custom data](../../howto/extend/custom-data.md).
+For more information on how to supply your own components see [Use custom data](../../howto/logging/custom-data.md).
 
 ### Entities & hierarchies
 
