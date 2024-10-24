@@ -1101,16 +1101,20 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.GraphNode".into(), display_name : "Node ids",
                     docstring_md : "A list of node IDs.", is_required : true, },
-                    ArchetypeFieldReflection { component_name : "rerun.components.Text"
-                    .into(), display_name : "Labels", docstring_md :
-                    "Optional text labels for the node.", is_required : false, },
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.Position2D".into(), display_name : "Positions",
                     docstring_md : "Optional center positions of the nodes.", is_required
                     : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.Color".into(), display_name : "Colors",
                     docstring_md : "Optional colors for the boxes.", is_required : false,
-                    },
+                    }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Text".into(), display_name : "Labels", docstring_md
+                    : "Optional text labels for the node.", is_required : false, },
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.ShowLabels".into(), display_name : "Show labels",
+                    docstring_md :
+                    "Optional choice of whether the text labels should be shown by default.",
+                    is_required : false, },
                 ],
             },
         ),

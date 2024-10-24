@@ -24,31 +24,36 @@ pub struct GraphNodes {
     /// A list of node IDs.
     pub node_ids: Vec<crate::components::GraphNode>,
 
-    /// Optional text labels for the node.
-    pub labels: Option<Vec<crate::components::Text>>,
-
     /// Optional center positions of the nodes.
     pub positions: Option<Vec<crate::components::Position2D>>,
 
     /// Optional colors for the boxes.
     pub colors: Option<Vec<crate::components::Color>>,
+
+    /// Optional text labels for the node.
+    pub labels: Option<Vec<crate::components::Text>>,
+
+    /// Optional choice of whether the text labels should be shown by default.
+    pub show_labels: Option<crate::components::ShowLabels>,
 }
 
 impl ::re_types_core::SizeBytes for GraphNodes {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.node_ids.heap_size_bytes()
-            + self.labels.heap_size_bytes()
             + self.positions.heap_size_bytes()
             + self.colors.heap_size_bytes()
+            + self.labels.heap_size_bytes()
+            + self.show_labels.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <Vec<crate::components::GraphNode>>::is_pod()
-            && <Option<Vec<crate::components::Text>>>::is_pod()
             && <Option<Vec<crate::components::Position2D>>>::is_pod()
             && <Option<Vec<crate::components::Color>>>::is_pod()
+            && <Option<Vec<crate::components::Text>>>::is_pod()
+            && <Option<crate::components::ShowLabels>>::is_pod()
     }
 }
 
@@ -64,10 +69,15 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.Text".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            "rerun.components.Text".into(),
+            "rerun.components.ShowLabels".into(),
+        ]
+    });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.GraphNode".into(),
@@ -75,12 +85,13 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
             "rerun.components.Color".into(),
             "rerun.components.GraphNodesIndicator".into(),
             "rerun.components.Text".into(),
+            "rerun.components.ShowLabels".into(),
         ]
     });
 
 impl GraphNodes {
-    /// The total number of components in the archetype: 1 required, 3 recommended, 1 optional
-    pub const NUM_COMPONENTS: usize = 5usize;
+    /// The total number of components in the archetype: 1 required, 3 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 6usize;
 }
 
 /// Indicator component for the [`GraphNodes`] [`::re_types_core::Archetype`]
@@ -147,18 +158,6 @@ impl ::re_types_core::Archetype for GraphNodes {
                 .collect::<DeserializationResult<Vec<_>>>()
                 .with_context("rerun.archetypes.GraphNodes#node_ids")?
         };
-        let labels = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
-            Some({
-                <crate::components::Text>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.GraphNodes#labels")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.GraphNodes#labels")?
-            })
-        } else {
-            None
-        };
         let positions = if let Some(array) = arrays_by_name.get("rerun.components.Position2D") {
             Some({
                 <crate::components::Position2D>::from_arrow_opt(&**array)
@@ -183,11 +182,33 @@ impl ::re_types_core::Archetype for GraphNodes {
         } else {
             None
         };
+        let labels = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
+            Some({
+                <crate::components::Text>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.GraphNodes#labels")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.GraphNodes#labels")?
+            })
+        } else {
+            None
+        };
+        let show_labels = if let Some(array) = arrays_by_name.get("rerun.components.ShowLabels") {
+            <crate::components::ShowLabels>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.GraphNodes#show_labels")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         Ok(Self {
             node_ids,
-            labels,
             positions,
             colors,
+            labels,
+            show_labels,
         })
     }
 }
@@ -199,15 +220,18 @@ impl ::re_types_core::AsComponents for GraphNodes {
         [
             Some(Self::indicator()),
             Some((&self.node_ids as &dyn ComponentBatch).into()),
-            self.labels
-                .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.positions
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.colors
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            self.labels
+                .as_ref()
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            self.show_labels
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -225,20 +249,11 @@ impl GraphNodes {
     ) -> Self {
         Self {
             node_ids: node_ids.into_iter().map(Into::into).collect(),
-            labels: None,
             positions: None,
             colors: None,
+            labels: None,
+            show_labels: None,
         }
-    }
-
-    /// Optional text labels for the node.
-    #[inline]
-    pub fn with_labels(
-        mut self,
-        labels: impl IntoIterator<Item = impl Into<crate::components::Text>>,
-    ) -> Self {
-        self.labels = Some(labels.into_iter().map(Into::into).collect());
-        self
     }
 
     /// Optional center positions of the nodes.
@@ -258,6 +273,26 @@ impl GraphNodes {
         colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
     ) -> Self {
         self.colors = Some(colors.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Optional text labels for the node.
+    #[inline]
+    pub fn with_labels(
+        mut self,
+        labels: impl IntoIterator<Item = impl Into<crate::components::Text>>,
+    ) -> Self {
+        self.labels = Some(labels.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Optional choice of whether the text labels should be shown by default.
+    #[inline]
+    pub fn with_show_labels(
+        mut self,
+        show_labels: impl Into<crate::components::ShowLabels>,
+    ) -> Self {
+        self.show_labels = Some(show_labels.into());
         self
     }
 }

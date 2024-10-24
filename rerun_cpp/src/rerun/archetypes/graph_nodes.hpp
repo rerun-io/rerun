@@ -9,6 +9,7 @@
 #include "../components/color.hpp"
 #include "../components/graph_node.hpp"
 #include "../components/position2d.hpp"
+#include "../components/show_labels.hpp"
 #include "../components/text.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -24,14 +25,17 @@ namespace rerun::archetypes {
         /// A list of node IDs.
         Collection<rerun::components::GraphNode> node_ids;
 
-        /// Optional text labels for the node.
-        std::optional<Collection<rerun::components::Text>> labels;
-
         /// Optional center positions of the nodes.
         std::optional<Collection<rerun::components::Position2D>> positions;
 
         /// Optional colors for the boxes.
         std::optional<Collection<rerun::components::Color>> colors;
+
+        /// Optional text labels for the node.
+        std::optional<Collection<rerun::components::Text>> labels;
+
+        /// Optional choice of whether the text labels should be shown by default.
+        std::optional<rerun::components::ShowLabels> show_labels;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -47,13 +51,6 @@ namespace rerun::archetypes {
         explicit GraphNodes(Collection<rerun::components::GraphNode> _node_ids)
             : node_ids(std::move(_node_ids)) {}
 
-        /// Optional text labels for the node.
-        GraphNodes with_labels(Collection<rerun::components::Text> _labels) && {
-            labels = std::move(_labels);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
         /// Optional center positions of the nodes.
         GraphNodes with_positions(Collection<rerun::components::Position2D> _positions) && {
             positions = std::move(_positions);
@@ -64,6 +61,20 @@ namespace rerun::archetypes {
         /// Optional colors for the boxes.
         GraphNodes with_colors(Collection<rerun::components::Color> _colors) && {
             colors = std::move(_colors);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Optional text labels for the node.
+        GraphNodes with_labels(Collection<rerun::components::Text> _labels) && {
+            labels = std::move(_labels);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Optional choice of whether the text labels should be shown by default.
+        GraphNodes with_show_labels(rerun::components::ShowLabels _show_labels) && {
+            show_labels = std::move(_show_labels);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
