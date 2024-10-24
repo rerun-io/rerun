@@ -164,7 +164,7 @@ impl<'a> ViewerContext<'a> {
     /// Returns a placeholder value for a given component, solely identified by its name.
     ///
     /// A placeholder is an array of the component type with a single element which takes on some default value.
-    /// It can be set as part of the reflection information, see [`ComponentReflection::custom_placeholder`].
+    /// It can be set as part of the reflection information, see [`re_types_core::reflection::ComponentReflection::custom_placeholder`].
     /// Note that automatically generated placeholders ignore any extension types.
     ///
     /// This requires the component name to be known by either datastore or blueprint store and
