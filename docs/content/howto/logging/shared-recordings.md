@@ -31,8 +31,12 @@ Here's a simple example of such a workflow:
 rerun /tmp/recording*.rrd  # they share the same Recording ID!
 ```
 
-For more information, check out our [dedicated example](https://github.com/rerun-io/rerun/tree/main/examples/python/shared_recording).
+For more information, check out our dedicated examples:
+* [🐍 Python](https://github.com/rerun-io/rerun/blob/latest/examples/python/shared_recording/shared_recording.py)
+* [🦀 Rust](https://github.com/rerun-io/rerun/blob/latest/examples/rust/shared_recording/src/main.rs)
+* [🌊 C++](https://github.com/rerun-io/rerun/blob/latest/examples/cpp/shared_recording/main.cpp)
 
 ### Caveats
 
+TODO: nope
 We do not yet provide a way to merge [multiple recording files](https://github.com/rerun-io/rerun/issues/4057) into a single one directly from the CLI, although you can load all of them in the Rerun Viewer first and then use the save feature ([which has its own issues](https://github.com/rerun-io/rerun/issues/3091)).
