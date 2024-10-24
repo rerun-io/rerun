@@ -61,9 +61,7 @@ class BuildMode(Enum):
         return self.value
 
 
-def build_and_upload(
-    bucket: Bucket | None, mode: BuildMode, gcs_dir: str, target: str, compatibility: str, upload_gcs: bool
-) -> None:
+def build_and_upload(bucket: Bucket | None, mode: BuildMode, gcs_dir: str, target: str, compatibility: str) -> None:
     if mode is BuildMode.PYPI:
         # Only build web viewer when publishing to pypi
         run("pixi run rerun-build-web-release")
@@ -122,7 +120,6 @@ def main() -> None:
         args.dir,
         args.target or detect_target(),
         args.compat,
-        args.upload_gcs,
     )
 
 
