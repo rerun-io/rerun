@@ -34,6 +34,8 @@ impl<'a> From<Node<'a>> for NodeIndex {
     }
 }
 
+// TODO(grtlr): This struct is not used much currently. It might be worth considering to remove
+// it, if we don't require it for the layout algorithms nor the user interactions.
 pub(crate) struct Graph<'a> {
     /// Contains all nodes that are part mentioned in the edges but not part of the `nodes` list
     unknown: ahash::HashSet<(&'a EntityPath, datatypes::GraphNode)>,
