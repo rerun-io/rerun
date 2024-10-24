@@ -1,4 +1,6 @@
 fn main() {
+    re_build_tools::export_build_info_vars_for_crate(env!("CARGO_PKG_NAME"));
+
     // uncomment these when we update to Rust 1.80: https://blog.rust-lang.org/2024/05/06/check-cfg.html
     // println!("cargo::rustc-check-cfg=cfg(native)");
     // println!("cargo::rustc-check-cfg=cfg(linux_arm64)");

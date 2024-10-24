@@ -114,6 +114,7 @@ impl App {
     fn about_rerun_ui(&self, frame: &eframe::Frame, ui: &mut egui::Ui) {
         let re_build_info::BuildInfo {
             crate_name,
+            features,
             version,
             rustc_version,
             llvm_version,
@@ -137,6 +138,12 @@ impl App {
             "{crate_name} {version} {git_hash_suffix}\n\
             {target_triple}"
         );
+
+        // It is really the features of `rerun-cli` (the `rerun` binary) that are interesting.
+        // For the web-viewer we get `crate_name: "re_viewer"` here, which is much less interesting.
+        if crate_name == "rerun-cli" && !features.is_empty() {
+            label += &format!("\n{crate_name} features: {features}");
+        }
 
         if !rustc_version.is_empty() {
             label += &format!("\nrustc {rustc_version}");

@@ -15,6 +15,7 @@ macro_rules! build_info {
     () => {
         $crate::BuildInfo {
             crate_name: env!("CARGO_PKG_NAME"),
+            features: env!("RE_BUILD_FEATURES"),
             version: $crate::CrateVersion::parse(env!("CARGO_PKG_VERSION")),
             rustc_version: env!("RE_BUILD_RUSTC_VERSION"),
             llvm_version: env!("RE_BUILD_LLVM_VERSION"),

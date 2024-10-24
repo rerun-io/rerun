@@ -14,6 +14,9 @@ pub struct BuildInfo {
     /// `CARGO_PKG_NAME`
     pub crate_name: &'static str,
 
+    /// Space-separated names of all features enabled for this crate.
+    pub features: &'static str,
+
     /// Crate version, parsed from `CARGO_PKG_VERSION`, ignoring any `+metadata` suffix.
     pub version: super::CrateVersion,
 
@@ -74,6 +77,7 @@ impl std::fmt::Display for BuildInfo {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             crate_name,
+            features,
             version,
             rustc_version,
             llvm_version,
@@ -88,6 +92,10 @@ impl std::fmt::Display for BuildInfo {
         let llvm_version = (!llvm_version.is_empty()).then(|| format!("LLVM {llvm_version}"));
 
         write!(f, "{crate_name} {version}")?;
+
+        if !features.is_empty() {
+            write!(f, " ({features})")?;
+        }
 
         if let Some(rustc_version) = rustc_version {
             write!(f, " [{rustc_version}")?;
@@ -147,6 +155,7 @@ impl CrateVersion {
 fn crate_version_from_build_info_string() {
     let build_info = BuildInfo {
         crate_name: "re_build_info",
+        features: "default extra",
         version: CrateVersion {
             major: 0,
             minor: 10,

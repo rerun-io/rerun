@@ -194,6 +194,16 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
             );
         }
     }
+
+    if environment == Environment::PublishingCrates {
+        // We can't query this during `cargo publish`, but we also don't need the info.
+        set_env("RE_BUILD_FEATURES", "<unknown>");
+    } else {
+        set_env(
+            "RE_BUILD_FEATURES",
+            &enabled_features_of(crate_name).unwrap().join(" "),
+        );
+    }
 }
 
 /// ISO 8601 / RFC 3339 build time.
@@ -269,7 +279,39 @@ fn rust_llvm_versions() -> anyhow::Result<(String, String)> {
     ))
 }
 
-/// Returns info parsed from an invocation of the `cargo metadata` command
+/// Returns info parsed from an invocation of the `cargo metadata` command.
+///
+/// You may not run this during crate publishing.
 pub fn cargo_metadata() -> anyhow::Result<cargo_metadata::Metadata> {
+    // See https://github.com/rerun-io/rerun/pull/7885
+    anyhow::ensure!(
+        Environment::detect() != Environment::PublishingCrates,
+        "Can't get metadata during crate publishing - it would create a Cargo.lock file"
+    );
+
     Ok(cargo_metadata::MetadataCommand::new().exec()?)
+}
+
+/// Returns a list of all the enabled features of the given package.
+///
+/// You may not run this during crate publishing.
+pub fn enabled_features_of(crate_name: &str) -> anyhow::Result<Vec<String>> {
+    let metadata = cargo_metadata()?;
+
+    let mut features = vec![];
+    for package in &metadata.packages {
+        if package.name == crate_name {
+            for feature in package.features.keys() {
+                println!("Checking if feature is enabled: {feature:?}");
+                let feature_in_screaming_snake_case =
+                    feature.to_ascii_uppercase().replace('-', "_");
+                if std::env::var(format!("CARGO_FEATURE_{feature_in_screaming_snake_case}")).is_ok()
+                {
+                    features.push(feature.clone());
+                }
+            }
+        }
+    }
+
+    Ok(features)
 }

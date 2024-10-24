@@ -553,7 +553,7 @@ where
 
     if args.version {
         println!("{build_info}");
-        println!("Video features: {}", re_video::features().join(" "));
+        println!("Video features: {}", re_video::build_info().features);
         return Ok(0);
     }
 
