@@ -26,7 +26,7 @@ This installs both [rerun-sdk](https://pypi.org/project/rerun-sdk/) and [rerun-n
 When using the Rerun logging APIs, by default, the logged messages are buffered in-memory until
 you send them to a sink such as via `rr.connect()` or `rr.save()`.
 
-When using Rerun in a notebook, rather than using the other sinks, you have the option to use [`rr.notebook_show()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.notebook_show). This method embeds the [web viewer](./embed-rerun-viewer.md) using the IPython `display` mechanism in the cell output, and sends the current recording data to it.
+When using Rerun in a notebook, rather than using the other sinks, you have the option to use [`rr.notebook_show()`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.notebook_show). This method embeds the [web viewer](./embed-web.md) using the IPython `display` mechanism in the cell output, and sends the current recording data to it.
 
 Once the viewer is open, any subsequent `rr.log()` calls will send their data directly to the viewer,
 without any intermediate buffering.
@@ -74,7 +74,7 @@ rr.notebook_show(width=400, height=400)
 
 ## Working with blueprints
 
-[Blueprints](./configure-viewer-through-code.md) can also be used with `notebook_show()` by providing a `blueprint`
+[Blueprints](../visualization/configure-viewer-through-code.md) can also be used with `notebook_show()` by providing a `blueprint`
 parameter.
 
 For example
