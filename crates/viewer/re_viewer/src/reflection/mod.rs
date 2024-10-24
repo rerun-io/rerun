@@ -292,7 +292,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Blob as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A binary blob of data.",
-                custom_placeholder: Some(Blob::default().to_arrow()?),
+                custom_placeholder: None,
             },
         ),
         (
@@ -390,7 +390,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ImageBuffer as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A buffer that is known to store image data.\n\nTo interpret the contents of this buffer, see, [`components.ImageFormat`](https://rerun.io/docs/reference/types/components/image_format).",
-                custom_placeholder: Some(ImageBuffer::default().to_arrow()?),
+                custom_placeholder: None,
             },
         ),
         (
@@ -579,7 +579,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ShowLabels as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Whether the entity's [`components.Text`](https://rerun.io/docs/reference/types/components/text) label is shown.\n\nThe main purpose of this component existing separately from the labels themselves\nis to be overridden when desired, to allow hiding and showing from the viewer and\nblueprints.",
-                custom_placeholder: Some(ShowLabels::default().to_arrow()?),
+                custom_placeholder: None,
             },
         ),
         (
