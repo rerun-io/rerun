@@ -12,16 +12,12 @@ mod examples;
 
 #[derive(Copy, Clone, Debug, clap::ValueEnum, strum_macros::EnumIter)]
 enum Example {
-    Simple,
-    Disjoint,
     Lattice,
 }
 
 impl Example {
     fn run(&self, args: &Args) -> anyhow::Result<()> {
         match self {
-            Example::Simple => examples::simple::run(args),
-            Example::Disjoint => examples::disjoint::run(args, 20),
             Example::Lattice => examples::lattice::run(args, 10),
         }
     }
