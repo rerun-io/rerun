@@ -10,9 +10,9 @@ use re_ui::{toasts, DesignTokens, UICommand, UICommandSender};
 use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
-    AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState, SpaceViewClass,
-    SpaceViewClassRegistry, SpaceViewClassRegistryError, StoreContext, SystemCommand,
-    SystemCommandSender,
+    AppOptions, BlueprintUndoState, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState,
+    SpaceViewClass, SpaceViewClassRegistry, SpaceViewClassRegistryError, StoreContext,
+    SystemCommand, SystemCommandSender,
 };
 
 use crate::app_blueprint::PanelStateOverrides;
@@ -514,6 +514,15 @@ impl App {
                 // to apply updates here, but this needs more validation and testing to be safe.
                 if !self.state.app_options.inspect_blueprint_timeline {
                     let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
+
+                    let undo_state = self
+                        .state
+                        .blueprint_undo_state
+                        .entry(blueprint_id)
+                        .or_default();
+
+                    undo_state.clear_redo(blueprint_db);
+
                     for chunk in updates {
                         match blueprint_db.add_chunk(&Arc::new(chunk)) {
                             Ok(_store_events) => {}
@@ -524,6 +533,23 @@ impl App {
                     }
                 }
             }
+            SystemCommand::UndoBlueprint { blueprint_id } => {
+                let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
+                self.state
+                    .blueprint_undo_state
+                    .entry(blueprint_id)
+                    .or_default()
+                    .undo(blueprint_db);
+            }
+            SystemCommand::RedoBlueprint { blueprint_id } => {
+                let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
+                self.state
+                    .blueprint_undo_state
+                    .entry(blueprint_id)
+                    .or_default()
+                    .redo(blueprint_db);
+            }
+
             SystemCommand::DropEntity(blueprint_id, entity_path) => {
                 let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
                 blueprint_db.drop_entity_path_recursive(&entity_path);
@@ -618,6 +644,21 @@ impl App {
             UICommand::CloseAllRecordings => {
                 self.command_sender
                     .send_system(SystemCommand::CloseAllRecordings);
+            }
+
+            UICommand::Undo => {
+                if let Some(store_context) = store_context {
+                    let blueprint_id = store_context.blueprint.store_id().clone();
+                    self.command_sender
+                        .send_system(SystemCommand::UndoBlueprint { blueprint_id });
+                }
+            }
+            UICommand::Redo => {
+                if let Some(store_context) = store_context {
+                    let blueprint_id = store_context.blueprint.store_id().clone();
+                    self.command_sender
+                        .send_system(SystemCommand::RedoBlueprint { blueprint_id });
+                }
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -1531,7 +1572,7 @@ impl eframe::App for App {
         // TODO(#2579): implement web-storage for blueprints as well
         if let Some(hub) = &mut self.store_hub {
             if self.state.app_options.blueprint_gc {
-                hub.gc_blueprints();
+                hub.gc_blueprints(&self.state.blueprint_undo_state);
             }
 
             if let Err(err) = hub.save_app_blueprints() {
@@ -1652,7 +1693,7 @@ impl eframe::App for App {
         self.receive_messages(&mut store_hub, egui_ctx);
 
         if self.app_options().blueprint_gc {
-            store_hub.gc_blueprints();
+            store_hub.gc_blueprints(&self.state.blueprint_undo_state);
         }
 
         store_hub.purge_empty();
@@ -1678,9 +1719,17 @@ impl eframe::App for App {
 
         let store_context = store_hub.read_context();
 
+        let blueprint_query =
+            store_context
+                .as_ref()
+                .map_or(BlueprintUndoState::default_query(), |store_context| {
+                    self.state
+                        .blueprint_query_for_viewer(store_context.blueprint)
+                });
+
         let app_blueprint = AppBlueprint::new(
             store_context.as_ref(),
-            &self.state.blueprint_query_for_viewer(),
+            &blueprint_query,
             egui_ctx,
             self.panel_state_overrides_active
                 .then_some(self.panel_state_overrides),
