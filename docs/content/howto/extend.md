@@ -1,6 +1,6 @@
 ---
 title: Extend Rerun
-order: 1000
+hidden: true
 ---
 
 There are currently two major ways of extending Rerun. You can use Rerun with [your own custom data](logging/custom-data.md), or [extend the Rerun Viewer](visualization/extend-ui.md) (currently Rust only).
