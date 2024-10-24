@@ -888,8 +888,14 @@ fn add_picking_ray(
     let mut line_batch = line_builder.batch("picking ray");
 
     let origin = ray.point_along(0.0);
+
     // No harm in making this ray _very_ long. (Infinite messes with things though!)
-    let fallback_ray_end = ray.point_along(scene_bbox.size().length() * 10.0);
+    //
+    // There are some degenerated cases where just taking the scene bounding box isn't enough:
+    // For instance, we don't add pinholes & depth images to the bounding box since
+    // the default size of a pinhole visualization itself is determined by the bounding box.
+    let fallback_ray_end =
+        ray.point_along((scene_bbox.size().length() * 10.0).at_least(thick_ray_length * 10.0));
     let main_ray_end = ray.point_along(thick_ray_length);
 
     line_batch
