@@ -1,5 +1,3 @@
-use std::collections::HashSet;
-
 use re_log_types::EntityPath;
 use re_types::datatypes;
 
@@ -38,9 +36,9 @@ impl<'a> From<Node<'a>> for NodeIndex {
 
 pub(crate) struct Graph<'a> {
     /// Contains all nodes that are part mentioned in the edges but not part of the `nodes` list
-    unknown: HashSet<(&'a EntityPath, datatypes::GraphNode)>,
-    nodes: &'a Vec<NodeData>,
-    edges: &'a Vec<EdgeData>,
+    unknown: ahash::HashSet<(&'a EntityPath, datatypes::GraphNode)>,
+    nodes: &'a [NodeData],
+    edges: &'a [EdgeData],
 }
 
 impl<'a> Graph<'a> {
@@ -49,9 +47,9 @@ impl<'a> Graph<'a> {
             .iter()
             .flat_map(|entity| entity.nodes())
             .map(NodeIndex::from)
-            .collect::<HashSet<_>>();
+            .collect::<ahash::HashSet<_>>();
 
-        let mut unknown = HashSet::new();
+        let mut unknown = ahash::HashSet::default();
         for entity in edges {
             for edge in entity.edges() {
                 for node in edge.nodes() {

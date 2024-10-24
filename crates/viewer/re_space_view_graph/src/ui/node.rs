@@ -4,7 +4,7 @@ use crate::types::NodeInstance;
 
 pub fn draw_node(
     ui: &mut egui::Ui,
-    instance: &NodeInstance,
+    instance: &NodeInstance<'_>,
     highlight: InteractionHighlight,
 ) -> egui::Response {
     let hcolor = match (

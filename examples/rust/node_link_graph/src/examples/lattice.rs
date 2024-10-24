@@ -1,6 +1,6 @@
 use itertools::Itertools;
 
-use rerun::{Color, GraphEdges, GraphNodes};
+use rerun::{datatypes, Color, GraphEdges, GraphNodes};
 
 use crate::Args;
 
@@ -18,6 +18,7 @@ pub fn run(args: &Args, num_nodes: usize) -> anyhow::Result<()> {
             (i.to_string(), Color::from_rgb(r, g, 0))
         })
         .unzip();
+
     rec.log_static(
         "/lattice",
         &GraphNodes::new(nodes)
@@ -26,7 +27,8 @@ pub fn run(args: &Args, num_nodes: usize) -> anyhow::Result<()> {
                 let x_scaling = 100.0;
                 let y_scaling = 75.0;
                 [x as f32 * x_scaling, y as f32 * y_scaling]
-            })),
+            }))
+            .with_labels(coordinates.clone().map(|(x, y)| format!("({}, {})", x, y))),
     )?;
 
     let mut edges = Vec::new();
@@ -43,6 +45,9 @@ pub fn run(args: &Args, num_nodes: usize) -> anyhow::Result<()> {
         }
     }
 
-    rec.log_static("/lattice", &GraphEdges::new(edges))?;
+    rec.log_static(
+        "/lattice",
+        &GraphEdges::new(edges).with_graph_type([datatypes::GraphType::Directed]),
+    )?;
     Ok(())
 }

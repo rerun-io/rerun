@@ -157,15 +157,22 @@ impl<'a> Scene<'a> {
     where
         F: for<'b> FnOnce(&'b mut Ui) -> Response,
     {
-        let response = Area::new(self.id.with(("__node", self.counter.next().unwrap())))
-            .current_pos(pos)
-            .order(Order::Foreground)
-            .constrain(false)
-            .show(self.ui.ctx(), |ui| {
-                ui.set_clip_rect(self.clip_rect_world);
-                add_node_contents(ui)
-            })
-            .response;
+        let response = Area::new(
+            self.id.with((
+                "__node",
+                self.counter
+                    .next()
+                    .expect("The counter should never run out."),
+            )),
+        )
+        .current_pos(pos)
+        .order(Order::Foreground)
+        .constrain(false)
+        .show(self.ui.ctx(), |ui| {
+            ui.set_clip_rect(self.clip_rect_world);
+            add_node_contents(ui)
+        })
+        .response;
 
         let id = response.layer_id;
         self.ui.ctx().set_transform_layer(id, self.world_to_window);
@@ -180,15 +187,22 @@ impl<'a> Scene<'a> {
     where
         F: for<'b> FnOnce(&'b mut Ui) -> Response,
     {
-        let response = Area::new(self.id.with(("__entity", self.counter.next().unwrap())))
-            .fixed_pos(pos)
-            .order(Order::Background)
-            .constrain(false)
-            .show(self.ui.ctx(), |ui| {
-                ui.set_clip_rect(self.clip_rect_world);
-                add_entity_contents(ui)
-            })
-            .response;
+        let response = Area::new(
+            self.id.with((
+                "__entity",
+                self.counter
+                    .next()
+                    .expect("The counter should never run out."),
+            )),
+        )
+        .fixed_pos(pos)
+        .order(Order::Background)
+        .constrain(false)
+        .show(self.ui.ctx(), |ui| {
+            ui.set_clip_rect(self.clip_rect_world);
+            add_entity_contents(ui)
+        })
+        .response;
 
         let id = response.layer_id;
         self.ui.ctx().set_transform_layer(id, self.world_to_window);
@@ -199,16 +213,23 @@ impl<'a> Scene<'a> {
 
     pub fn edge<F>(&mut self, add_edge_contents: F) -> Response
     where
-        F: for<'b> FnOnce(&'b mut Ui),
+        F: for<'b> FnOnce(&'b mut Ui) -> Response,
     {
-        let response = Area::new(self.id.with(("edge", self.counter.next().unwrap())))
-            .order(Order::Middle)
-            .constrain(false)
-            .show(self.ui.ctx(), |ui| {
-                ui.set_clip_rect(self.clip_rect_world);
-                add_edge_contents(ui)
-            })
-            .response;
+        let response = Area::new(
+            self.id.with((
+                "edge",
+                self.counter
+                    .next()
+                    .expect("The counter should never run out."),
+            )),
+        )
+        .order(Order::Middle)
+        .constrain(false)
+        .show(self.ui.ctx(), |ui| {
+            ui.set_clip_rect(self.clip_rect_world);
+            add_edge_contents(ui)
+        })
+        .response;
 
         let id = response.layer_id;
         self.ui.ctx().set_transform_layer(id, self.world_to_window);

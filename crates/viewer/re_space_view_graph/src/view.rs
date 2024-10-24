@@ -1,8 +1,7 @@
-use std::collections::{HashMap, HashSet};
-use std::hash::Hash;
+use std::collections::HashSet;
 
 use egui::{self, Rect};
-use re_log::external::log;
+
 use re_log_types::EntityPath;
 use re_types::{datatypes, SpaceViewClassIdentifier};
 use re_ui::{self, UiExt};
@@ -22,21 +21,6 @@ use crate::{
 
 #[derive(Default)]
 pub struct GraphSpaceView;
-
-fn arrange_in_circle<S: ToString + Hash>(
-    nodes: &mut HashMap<NodeIndex, (S, egui::Rect)>,
-    radius: f32,
-) {
-    let n = nodes.len();
-    let center = egui::Pos2::new(0.0, 0.0);
-
-    for (i, (_id, (_, rect))) in nodes.iter_mut().enumerate() {
-        let angle = 2.0 * std::f32::consts::PI * i as f32 / n as f32;
-        let x = center.x + radius * angle.cos();
-        let y = center.y + radius * angle.sin();
-        rect.set_center(egui::Pos2::new(x, y));
-    }
-}
 
 impl SpaceViewClass for GraphSpaceView {
     // State type as described above.
@@ -234,14 +218,12 @@ impl SpaceViewClass for GraphSpaceView {
                                 target_pos,
                                 ent_highlight.index_highlight(edge.instance),
                                 edge.edge_type == datatypes::GraphType::Directed,
-                            );
+                            )
                         });
                     }
                 }
             }
         });
-
-        //arrange_in_circle(&mut state.layout, state.layout_config.circle_radius);
 
         // TODO(grtlr): consider improving this!
         if state.should_fit_to_screen {

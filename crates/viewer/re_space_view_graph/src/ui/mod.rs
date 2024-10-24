@@ -17,7 +17,7 @@ use crate::{
     types::UnknownNodeInstance,
 };
 
-pub fn draw_dummy(ui: &mut egui::Ui, instance: &UnknownNodeInstance) -> egui::Response {
+pub fn draw_dummy(ui: &mut egui::Ui, instance: &UnknownNodeInstance<'_>) -> egui::Response {
     let text = egui::RichText::new(format!("{} @ {}", instance.node_id, instance.entity_path))
         .color(ui.style().visuals.widgets.noninteractive.text_color());
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
@@ -59,6 +59,8 @@ pub fn draw_entity(
     response
 }
 
+// TODO(grtlr): We might need to come back to this for implementing layouts.
+#[allow(unused)]
 pub fn measure_node_sizes<'a>(
     ui: &mut egui::Ui,
     nodes: impl Iterator<Item = Node<'a>>,

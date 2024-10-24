@@ -51,7 +51,7 @@ impl<'a> EdgeInstance<'a> {
     }
 
     pub fn target_ix(&self) -> NodeIndex {
-        NodeIndex::from_entity_node(self.entity_path, self.source)
+        NodeIndex::from_entity_node(self.entity_path, self.target)
     }
 }
 

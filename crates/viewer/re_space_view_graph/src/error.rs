@@ -14,6 +14,6 @@ pub enum Error {
 impl From<Error> for SpaceViewSystemExecutionError {
     fn from(val: Error) -> Self {
         // TODO(grtlr): Ensure that this is the correct error type.
-        SpaceViewSystemExecutionError::DrawDataCreationError(Box::new(val))
+        Self::DrawDataCreationError(Box::new(val))
     }
 }

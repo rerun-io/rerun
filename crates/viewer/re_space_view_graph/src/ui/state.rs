@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use re_chunk::EntityPath;
 use re_format::format_f32;
 use re_ui::UiExt;
 use re_viewer_context::SpaceViewState;
@@ -8,19 +7,6 @@ use re_viewer_context::SpaceViewState;
 use crate::graph::NodeIndex;
 
 use super::{bounding_rect_from_iter, scene::ViewBuilder};
-
-#[derive(Debug)]
-pub struct RadialLayoutConfig {
-    pub circle_radius: f32,
-}
-
-impl Default for RadialLayoutConfig {
-    fn default() -> Self {
-        Self {
-            circle_radius: 400.0,
-        }
-    }
-}
 
 /// Space view state for the custom space view.
 ///
@@ -35,9 +21,6 @@ pub struct GraphSpaceViewState {
 
     /// Positions of the nodes in world space.
     pub layout: HashMap<NodeIndex, egui::Rect>,
-
-    /// Layout properties.
-    pub layout_config: RadialLayoutConfig,
 }
 
 impl GraphSpaceViewState {

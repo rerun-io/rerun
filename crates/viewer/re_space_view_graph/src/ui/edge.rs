@@ -7,7 +7,7 @@ pub fn draw_edge(
     target: &egui::Rect,
     highlight: InteractionHighlight,
     show_arrow: bool,
-) {
+) -> egui::Response {
     let hcolor = match (
         highlight.hover,
         highlight.selection != SelectionHighlight::None,
@@ -40,7 +40,7 @@ pub fn draw_edge(
         if show_arrow {
             draw_arrow(painter, target_point, direction, color);
         }
-    });
+    }).response
 }
 
 // Helper function to find the point where the line intersects the border of a rectangle
