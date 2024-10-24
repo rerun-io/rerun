@@ -69,6 +69,9 @@ extend-exclude = [
   # TODO(#4047): incomplete example snippet
   "docs/snippets/all/tutorials/timelines_example.py",
 
+  # Intentionally incomplete snippets
+  "docs/snippets/all/concepts/static",
+
   # generated
   "examples/python/objectron/objectron/proto/objectron/proto.py",
 

@@ -31,7 +31,7 @@ pub fn load_stl_from_buffer(
     let num_vertices = triangles.len() * 3;
 
     let material = mesh::Material {
-        label: "default material".into(),
+        label: name.clone().into(),
         index_range: 0..num_vertices as u32,
         albedo: ctx.texture_manager_2d.white_texture_unorm_handle().clone(),
         albedo_factor: crate::Rgba::WHITE,

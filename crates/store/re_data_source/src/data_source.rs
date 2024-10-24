@@ -164,7 +164,11 @@ impl DataSource {
                 // or not.
                 let shared_store_id =
                     re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                let settings = re_data_loader::DataLoaderSettings::recommended(shared_store_id);
+                let settings = re_data_loader::DataLoaderSettings {
+                    opened_application_id: file_source.recommended_application_id().cloned(),
+                    opened_store_id: file_source.recommended_recording_id().cloned(),
+                    ..re_data_loader::DataLoaderSettings::recommended(shared_store_id)
+                };
                 re_data_loader::load_from_path(&settings, file_source, &path, &tx)
                     .with_context(|| format!("{path:?}"))?;
 
@@ -188,7 +192,11 @@ impl DataSource {
                 // or not.
                 let shared_store_id =
                     re_log_types::StoreId::random(re_log_types::StoreKind::Recording);
-                let settings = re_data_loader::DataLoaderSettings::recommended(shared_store_id);
+                let settings = re_data_loader::DataLoaderSettings {
+                    opened_application_id: file_source.recommended_application_id().cloned(),
+                    opened_store_id: file_source.recommended_recording_id().cloned(),
+                    ..re_data_loader::DataLoaderSettings::recommended(shared_store_id)
+                };
                 re_data_loader::load_from_file_contents(
                     &settings,
                     file_source,
@@ -248,12 +256,15 @@ fn test_data_source_from_uri() {
     ];
     let ws = ["ws://foo.zip", "wss://foo.zip", "127.0.0.1"];
 
-    let file_source = FileSource::DragAndDrop;
+    let file_source = FileSource::DragAndDrop {
+        recommended_application_id: None,
+        recommended_recording_id: None,
+    };
 
     for uri in file {
         assert!(
             matches!(
-                DataSource::from_uri(file_source, uri.to_owned()),
+                DataSource::from_uri(file_source.clone(), uri.to_owned()),
                 DataSource::FilePath { .. }
             ),
             "Expected {uri:?} to be categorized as FilePath"
@@ -263,7 +274,7 @@ fn test_data_source_from_uri() {
     for uri in http {
         assert!(
             matches!(
-                DataSource::from_uri(file_source, uri.to_owned()),
+                DataSource::from_uri(file_source.clone(), uri.to_owned()),
                 DataSource::RrdHttpUrl { .. }
             ),
             "Expected {uri:?} to be categorized as RrdHttpUrl"
@@ -273,7 +284,7 @@ fn test_data_source_from_uri() {
     for uri in ws {
         assert!(
             matches!(
-                DataSource::from_uri(file_source, uri.to_owned()),
+                DataSource::from_uri(file_source.clone(), uri.to_owned()),
                 DataSource::WebSocketAddr(_)
             ),
             "Expected {uri:?} to be categorized as WebSocketAddr"

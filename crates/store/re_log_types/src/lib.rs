@@ -405,13 +405,64 @@ impl std::fmt::Display for PythonVersion {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum FileSource {
     Cli,
-    DragAndDrop,
-    FileDialog,
+
+    DragAndDrop {
+        /// The [`ApplicationId`] that the viewer heuristically recommends should be used when loading
+        /// this data source, based on the surrounding context.
+        recommended_application_id: Option<ApplicationId>,
+
+        /// The [`StoreId`] that the viewer heuristically recommends should be used when loading
+        /// this data source, based on the surrounding context.
+        recommended_recording_id: Option<StoreId>,
+    },
+
+    FileDialog {
+        /// The [`ApplicationId`] that the viewer heuristically recommends should be used when loading
+        /// this data source, based on the surrounding context.
+        recommended_application_id: Option<ApplicationId>,
+
+        /// The [`StoreId`] that the viewer heuristically recommends should be used when loading
+        /// this data source, based on the surrounding context.
+        recommended_recording_id: Option<StoreId>,
+    },
+
     Sdk,
+}
+
+impl FileSource {
+    #[inline]
+    pub fn recommended_application_id(&self) -> Option<&ApplicationId> {
+        match self {
+            Self::FileDialog {
+                recommended_application_id,
+                ..
+            }
+            | Self::DragAndDrop {
+                recommended_application_id,
+                ..
+            } => recommended_application_id.as_ref(),
+            Self::Cli | Self::Sdk => None,
+        }
+    }
+
+    #[inline]
+    pub fn recommended_recording_id(&self) -> Option<&StoreId> {
+        match self {
+            Self::FileDialog {
+                recommended_recording_id,
+                ..
+            }
+            | Self::DragAndDrop {
+                recommended_recording_id,
+                ..
+            } => recommended_recording_id.as_ref(),
+            Self::Cli | Self::Sdk => None,
+        }
+    }
 }
 
 /// The source of a recording or blueprint.
@@ -456,8 +507,8 @@ impl std::fmt::Display for StoreSource {
             Self::RustSdk { rustc_version, .. } => write!(f, "Rust SDK (rustc {rustc_version})"),
             Self::File { file_source, .. } => match file_source {
                 FileSource::Cli => write!(f, "File via CLI"),
-                FileSource::DragAndDrop => write!(f, "File via drag-and-drop"),
-                FileSource::FileDialog => write!(f, "File via file dialog"),
+                FileSource::DragAndDrop { .. } => write!(f, "File via drag-and-drop"),
+                FileSource::FileDialog { .. } => write!(f, "File via file dialog"),
                 FileSource::Sdk => write!(f, "File via SDK"),
             },
             Self::Viewer => write!(f, "Viewer-generated"),

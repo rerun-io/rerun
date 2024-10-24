@@ -161,8 +161,25 @@ jobs:
 
   # ---------------------------------------------------------------------------
 
+  markdown-paths-filter:
+    runs-on: ubuntu-latest
+    outputs:
+      md_changes: ${{ steps.filter.outputs.md_changes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            md_changes:
+              - '**/*.md'
+
   link-checker:
     name: Check links
+    needs: markdown-paths-filter
+    if: inputs.CHANNEL == 'nightly' || needs.markdown-paths-filter.outputs.md_changes == 'true'
     runs-on: ubuntu-latest
     # do not fail entire workflow (e.g. nightly) if this is the only failing check
     continue-on-error: true
@@ -174,7 +191,7 @@ jobs:
         id: lychee
         uses: lycheeverse/lychee-action@v1.10.0
         with:
-          fail: ${{ inputs.CHANNEL == 'nightly' }}
+          fail: true
           lycheeVersion: "0.15.1"
           # When given a directory, lychee checks only markdown, html and text files, everything else we have to glob in manually.
           # Pass --verbose, so that all considered links are printed, making it easier to debug.

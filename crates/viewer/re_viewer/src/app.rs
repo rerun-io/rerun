@@ -591,7 +591,10 @@ impl App {
                 for file_path in open_file_dialog_native() {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
-                            FileSource::FileDialog,
+                            FileSource::FileDialog {
+                                recommended_application_id: None,
+                                recommended_recording_id: None,
+                            },
                             file_path,
                         )));
                 }
@@ -1286,32 +1289,60 @@ impl App {
             .and_then(|store_hub| store_hub.active_recording())
     }
 
-    fn handle_dropping_files(&mut self, egui_ctx: &egui::Context) {
+    // NOTE: Relying on `self` is dangerous, as this is called during a time where some internal
+    // fields may have been temporarily `take()`n out. Keep this a static method.
+    fn handle_dropping_files(
+        egui_ctx: &egui::Context,
+        store_ctx: Option<&StoreContext<'_>>,
+        command_sender: &CommandSender,
+    ) {
         preview_files_being_dropped(egui_ctx);
 
         let dropped_files = egui_ctx.input_mut(|i| std::mem::take(&mut i.raw.dropped_files));
 
+        if dropped_files.is_empty() {
+            return;
+        }
+
+        let active_application_id = store_ctx
+            .and_then(|ctx| {
+                ctx.hub
+                    .active_app()
+                    // Don't redirect data to the welcome screen.
+                    .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
+            })
+            .cloned();
+        let active_recording_id = store_ctx
+            .and_then(|ctx| ctx.hub.active_recording_id())
+            .cloned();
+
         for file in dropped_files {
             if let Some(bytes) = file.bytes {
                 // This is what we get on Web.
-                self.command_sender
-                    .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
-                        FileSource::DragAndDrop,
+                command_sender.send_system(SystemCommand::LoadDataSource(
+                    DataSource::FileContents(
+                        FileSource::DragAndDrop {
+                            recommended_application_id: active_application_id.clone(),
+                            recommended_recording_id: active_recording_id.clone(),
+                        },
                         FileContents {
                             name: file.name.clone(),
                             bytes: bytes.clone(),
                         },
-                    )));
+                    ),
+                ));
                 continue;
             }
 
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = file.path {
-                self.command_sender
-                    .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
-                        FileSource::DragAndDrop,
-                        path,
-                    )));
+                command_sender.send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
+                    FileSource::DragAndDrop {
+                        recommended_application_id: active_application_id.clone(),
+                        recommended_recording_id: active_recording_id.clone(),
+                    },
+                    path,
+                )));
             }
         }
     }
@@ -1560,7 +1591,10 @@ impl eframe::App for App {
                 for file in files {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
-                            FileSource::FileDialog,
+                            FileSource::FileDialog {
+                                recommended_application_id: None,
+                                recommended_recording_id: None,
+                            },
                             file.clone(),
                         )));
                 }
@@ -1674,7 +1708,7 @@ impl eframe::App for App {
             self.command_sender.send_ui(cmd);
         }
 
-        self.handle_dropping_files(egui_ctx);
+        Self::handle_dropping_files(egui_ctx, store_context.as_ref(), &self.command_sender);
 
         // Run pending commands last (so we don't have to wait for a repaint before they are run):
         self.run_pending_ui_commands(egui_ctx, &app_blueprint, store_context.as_ref());
