@@ -228,12 +228,34 @@ pub struct ObjectStorage {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterRecordingsResponse {
+    #[prost(oneof = "register_recordings_response::Result", tags = "1, 2")]
+    pub result: ::core::option::Option<register_recordings_response::Result>,
+}
+/// Nested message and enum types in `RegisterRecordingsResponse`.
+pub mod register_recordings_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Result {
+        #[prost(message, tag = "1")]
+        Success(super::RegisterRecordingsResponseSuccess),
+        #[prost(message, tag = "2")]
+        Error(super::RegisterRecordingsResponseError),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegisterRecordingsResponseSuccess {
     /// Note / TODO(zehiko): this implies we read the record (for example go through entire .rrd file
     /// chunk by chunk) and extract the metadata. So we might want to 1/ not do this i.e.
     /// only do it as part of explicit GetMetadata request or 2/ do it if Request has "include_metadata=true"
     /// or 3/ do it always
     #[prost(message, repeated, tag = "2")]
     pub metadata: ::prost::alloc::vec::Vec<RecordingMetadata>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegisterRecordingsResponseError {
+    #[prost(string, tag = "1")]
+    pub message: ::prost::alloc::string::String,
+    #[prost(message, optional, tag = "2")]
+    pub obj_storage: ::core::option::Option<ObjectStorage>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetRecordingMetadataRequest {
