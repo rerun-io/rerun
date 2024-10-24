@@ -808,6 +808,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.MediaType".into(), display_name : "Media type",
                     docstring_md :
                     "The Media Type of the asset.\n\nSupported values:\n* `model/gltf-binary`\n* `model/gltf+json`\n* `model/obj` (.mtl material files are not supported yet, references are silently ignored)\n* `model/stl`\n\nIf omitted, the viewer will try to guess from the data blob.\nIf it cannot guess, it won't be able to render the asset.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.AlbedoFactor".into(), display_name :
+                    "Albedo factor", docstring_md :
+                    "A color multiplier applied to the whole asset.\n\nFor mesh who already have `albedo_factor` in materials,\nit will be overwritten by actual `albedo_factor` of [`archetypes.Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d) (if specified).",
                     is_required : false, },
                 ],
             },
