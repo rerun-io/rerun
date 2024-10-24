@@ -119,12 +119,13 @@ impl GeoPointsVisualizer {
         }
     }
 
-    pub fn default_position(&self) -> walkers::Position {
-        //TODO: need a better heuristics
-        self.map_entries
-            .first()
-            .map(|entry| entry.position)
-            .unwrap_or(walkers::Position::from_lat_lon(59.319224, 18.075514))
+    /// Compute the [`GeoSpan`] of all the points in the visualizer.
+    pub fn span(&self) -> Option<super::GeoSpan> {
+        super::GeoSpan::from_lat_long(
+            self.map_entries
+                .iter()
+                .map(|entry| (entry.position.lat(), entry.position.lon())),
+        )
     }
 }
 

@@ -1,4 +1,4 @@
-use egui::{self, Context};
+use egui::{Context, NumExt as _};
 use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
 use re_log_types::EntityPath;
@@ -15,8 +15,8 @@ use re_ui::{ModifiersMarkdown, MouseButtonMarkdown};
 use re_viewer_context::{
     SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput,
-    TypedComponentFallbackProvider, ViewQuery, ViewerContext,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
+    ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -144,17 +144,6 @@ Displays a Position3D on a map.
             );
         });
 
-        // "Center and follow" button to reset view following mode after interacting
-        // with the map.
-        let map_state = state.downcast_mut::<MapSpaceViewState>()?;
-        ui.horizontal(|ui| {
-            let is_detached = map_state.map_memory.detached().is_none();
-
-            if !is_detached && ui.button("Center and follow positions").clicked() {
-                map_state.map_memory.follow_my_position();
-            }
-        });
-
         Ok(())
     }
 
@@ -163,68 +152,106 @@ Displays a Position3D on a map.
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<MapSpaceViewState>()?;
+        let map_options = ViewProperty::from_archetype::<MapOptions>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.space_view_id,
+        );
 
-        let blueprint_db = ctx.blueprint_db();
-        let view_id = query.space_view_id;
-        let map_options =
-            ViewProperty::from_archetype::<MapOptions>(blueprint_db, ctx.blueprint_query, view_id);
+        let geo_points_visualizer = system_output.view_systems.get::<GeoPointsVisualizer>()?;
+
+        //
+        // Map Provider
+        //
+
         let map_provider = map_options.component_or_fallback::<MapProvider>(ctx, self, state)?;
-        let zoom_level = map_options
-            .component_or_fallback::<ZoomLevel>(ctx, self, state)?
-            .0;
-
-        if state.map_memory.set_zoom(*zoom_level).is_err() {
-            re_log::warn!(
-                "Failed to set zoom level for map. Zoom level should be between zero and 22"
-            );
-        };
-
-        // if state changed let's update it from the blueprint
         if state.selected_provider != map_provider {
             state.tiles = None;
             state.selected_provider = map_provider;
         }
 
+        //
+        // Pan/Zoom handling
+        //
+
+        // Rationale:
+        // - `walkers` has an auto vs. manual pan state, switching to the latter upon
+        //   user interaction. We let it keep track of that state.
+        // - The tracked location is the center of the lat/lon span of the geo objects.
+        // - When unset in the blueprint, the zoom level is computed from the geo objects and
+        //   saved as is.
+        // - Zoom computation: if multiple objects, fit them on screen, otherwise use 16.0.
+        //
+        // TODO(ab): show in UI and save in blueprint the auto vs. manual pan state (may require
+        // changes in walkers
+        // TODO(#7884): support more elaborate auto-pan/zoom modes.
+
+        let span = geo_points_visualizer.span();
+
+        let default_center_position = span
+            .as_ref()
+            .map(|span| span.center())
+            .unwrap_or(walkers::Position::from_lat_lon(59.319224, 18.075514)); // Rerun HQ
+
+        let blueprint_zoom_level = map_options
+            .component_or_empty::<ZoomLevel>()?
+            .map(|zoom| **zoom);
+        let default_zoom_level = span.and_then(|span| {
+            span.zoom_for_screen_size(
+                (ui.available_size() - egui::vec2(15.0, 15.0)).at_least(egui::Vec2::ZERO),
+            )
+        });
+        let zoom_level = blueprint_zoom_level.or(default_zoom_level).unwrap_or(16.0);
+
+        if state.map_memory.set_zoom(zoom_level).is_err() {
+            re_log::warn_once!(
+                "Failed to set zoom level for map. Zoom level should be between zero and 22"
+            );
+        };
+
+        //
+        // Map UI
+        //
+
         let (tiles, map_memory) = match state.ensure_and_get_mut_refs(ui.ctx()) {
             Ok(refs) => refs,
             Err(err) => return Err(err),
         };
-
-        let geo_points_visualizer = system_output.view_systems.get::<GeoPointsVisualizer>()?;
-
         egui::Frame::default().show(ui, |ui| {
             let some_tiles_manager: Option<&mut dyn Tiles> = Some(tiles);
             let map_widget = ui.add(
-                Map::new(
-                    some_tiles_manager,
-                    map_memory,
-                    geo_points_visualizer.default_position(),
-                )
-                .with_plugin(geo_points_visualizer.plugin()),
+                Map::new(some_tiles_manager, map_memory, default_center_position)
+                    .with_plugin(geo_points_visualizer.plugin()),
             );
 
-            map_widget.double_clicked().then(|| {
+            if map_widget.double_clicked() {
                 map_memory.follow_my_position();
-            });
+                if let Some(zoom_level) = default_zoom_level {
+                    let _ = map_memory.set_zoom(zoom_level);
+                }
+            }
 
             let map_pos = map_widget.rect;
             let window_id = query.space_view_id.uuid().to_string();
             map_windows::zoom(ui, &window_id, &map_pos, map_memory);
             map_windows::acknowledge(ui, &window_id, &map_pos, tiles.attribution());
-
-            // update blueprint if zoom level changed from ui
-            if map_memory.zoom() != *zoom_level {
-                map_options.save_blueprint_component(
-                    ctx,
-                    &ZoomLevel(re_types::datatypes::Float32(map_memory.zoom())),
-                );
-            }
         });
+
+        //
+        // Save Blueprint
+        //
+
+        if Some(map_memory.zoom()) != blueprint_zoom_level {
+            map_options.save_blueprint_component(
+                ctx,
+                &ZoomLevel(re_types::datatypes::Float32(map_memory.zoom())),
+            );
+        }
+
         Ok(())
     }
 }
@@ -263,11 +290,4 @@ fn get_tile_manager(provider: MapProvider, egui_ctx: &Context) -> HttpTiles {
     }
 }
 
-impl TypedComponentFallbackProvider<ZoomLevel> for MapSpaceView {
-    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> ZoomLevel {
-        // default zoom level is 16.
-        16.0.into()
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(MapSpaceView => [ZoomLevel]);
+re_viewer_context::impl_component_fallback_provider!(MapSpaceView => []);
