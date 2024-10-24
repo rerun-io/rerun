@@ -21,9 +21,9 @@ __all__ = ["GeoPoints"]
 @define(str=False, repr=False, init=False)
 class GeoPoints(Archetype):
     """
-    **Archetype**: Geographical points with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
+    **Archetype**: Geospatial points with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
 
-    **Note**: Geospatial entites are experimental.
+    **Note**: Geospatial entities are experimental.
     """
 
     def __init__(

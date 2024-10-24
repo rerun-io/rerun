@@ -18,9 +18,9 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: Geographical points with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
+/// **Archetype**: Geospatial points with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
 ///
-/// **Note**: Geospatial entites are experimental.
+/// **Note**: Geospatial entities are experimental.
 #[derive(Clone, Debug, PartialEq)]
 pub struct GeoPoints {
     /// The EPSG:4326 coordinates for the points.
