@@ -6187,6 +6187,8 @@ dependencies = [
  "indicatif",
  "itertools 0.13.0",
  "parking_lot",
+ "re_build_info",
+ "re_build_tools",
  "re_log",
  "re_mp4",
  "re_rav1d",
