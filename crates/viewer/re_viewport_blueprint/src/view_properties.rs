@@ -103,10 +103,11 @@ impl ViewProperty {
         view_state: &dyn re_viewer_context::SpaceViewState,
     ) -> Result<Vec<C>, ViewPropertyQueryError> {
         let component_name = C::name();
-        Ok(C::from_arrow(
-            self.component_or_fallback_raw(ctx, component_name, fallback_provider, view_state)?
+        C::from_arrow(
+            self.component_or_fallback_raw(ctx, component_name, fallback_provider, view_state)
                 .as_ref(),
-        )?)
+        )
+        .map_err(|err| err.into())
     }
 
     /// Get a single component or None, not using any fallbacks.
@@ -157,10 +158,10 @@ impl ViewProperty {
         component_name: ComponentName,
         fallback_provider: &dyn ComponentFallbackProvider,
         view_state: &dyn re_viewer_context::SpaceViewState,
-    ) -> Result<Box<dyn arrow2::array::Array>, ComponentFallbackError> {
+    ) -> Box<dyn arrow2::array::Array> {
         if let Some(value) = self.component_raw(component_name) {
             if value.len() > 0 {
-                return Ok(value);
+                return value;
             }
         }
         fallback_provider.fallback_for(&self.query_context(ctx, view_state), component_name)

@@ -21,7 +21,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: A buffer that is known to store image data.
 ///
 /// To interpret the contents of this buffer, see, [`components::ImageFormat`][crate::components::ImageFormat].
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 #[repr(transparent)]
 pub struct ImageBuffer(pub crate::datatypes::Blob);
 
