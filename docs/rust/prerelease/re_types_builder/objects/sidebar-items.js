@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["ElementType","FieldKind","ObjectKind","ObjectSpecifics","Type"],"fn":["filepath_from_declaration_file","is_testing_fqname"],"struct":["Attributes","Docs","Object","ObjectField","Objects"]};

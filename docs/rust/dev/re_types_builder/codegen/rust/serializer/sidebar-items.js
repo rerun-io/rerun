@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["InnerRepr"],"fn":["quote_arrow_field_serializer","quote_arrow_serializer"]};

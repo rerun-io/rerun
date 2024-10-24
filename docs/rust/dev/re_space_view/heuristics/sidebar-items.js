@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["suggest_space_view_for_each_entity"]};

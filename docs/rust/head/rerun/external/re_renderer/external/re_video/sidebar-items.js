@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PixelFormat","TrackKind","VideoLoadError"],"fn":["features"],"mod":["decode","demux"],"struct":["Chunk","Config","Frame","Sample","Time","Timescale","VideoData"],"type":["TrackId"]};

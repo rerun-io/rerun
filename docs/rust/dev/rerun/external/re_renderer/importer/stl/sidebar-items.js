@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["StlImportError"],"fn":["load_stl_from_buffer"]};

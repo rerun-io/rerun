@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PrimitiveType"],"mod":["simd"],"struct":["BitChunkIter","BitChunkOnes","IndexRange","days_ms","f16","i256","months_days_ns"],"trait":["BitChunk","Index","NativeType","Offset"]};

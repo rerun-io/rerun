@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["Error","PixelFormat","YuvMatrixCoefficients","YuvPixelLayout","YuvRange"],"fn":["new_decoder"],"mod":["async_decoder","av1"],"struct":["Chunk","Frame"],"trait":["SyncDecoder"],"type":["OutputCallback","Result"]};

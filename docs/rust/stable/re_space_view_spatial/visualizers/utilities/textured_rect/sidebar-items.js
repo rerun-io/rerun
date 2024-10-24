@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["bounding_box_for_textured_rect","textured_rect_from_image"]};

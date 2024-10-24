@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CodecError","TransportMessageV0"],"fn":["decode","encode","no_data"],"struct":["MessageHader"]};

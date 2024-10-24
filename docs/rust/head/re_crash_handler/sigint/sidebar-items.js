@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["track_sigint","was_sigint_ever_caught"],"static":["SIGINT_RECEIVED"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["auto_size_world_heuristic","auto_spawn_heuristic","update_depth_cloud_property_heuristics","update_object_property_heuristics","update_pinhole_property_heuristics","update_transform3d_lines_heuristics"]};

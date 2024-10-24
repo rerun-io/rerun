@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["format_dataframe","get_custom_display","parse_tuid","trim_name"],"struct":["DisplayDatatype","DisplayIntervalUnit","DisplayMetadata","DisplayTimeUnit"],"type":["CustomFormatter"]};

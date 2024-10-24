@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["CellStyle","HideColumnAction"],"fn":["cell_with_hover_button_ui","column_groups_for_entity","dataframe_ui","error_ui","line_ui","split_ui_vertically"],"struct":["BatchRef","DataframeTableDelegate","RowsDisplayData"]};

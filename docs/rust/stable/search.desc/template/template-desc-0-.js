@@ -1,0 +1,1 @@
+searchState.loadedDescShard("template", 0, "Example template.")

@@ -1,0 +1,3 @@
+(function() {var implementors = {
+"re_web_viewer_server":[["impl Service&lt;<a class=\"struct\" href=\"https://docs.rs/http/0.2.9/http/request/struct.Request.html\" title=\"struct http::request::Request\">Request</a>&lt;Body&gt;&gt; for <a class=\"struct\" href=\"re_web_viewer_server/struct.Svc.html\" title=\"struct re_web_viewer_server::Svc\">Svc</a>"],["impl&lt;T&gt; Service&lt;T&gt; for <a class=\"struct\" href=\"re_web_viewer_server/struct.MakeSvc.html\" title=\"struct re_web_viewer_server::MakeSvc\">MakeSvc</a>"]]
+};if (window.register_implementors) {window.register_implementors(implementors);} else {window.pending_implementors = implementors;}})()

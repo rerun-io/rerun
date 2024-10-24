@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["estimated_bytes_size","validity_size"],"macro":["dyn_binary","impl_size_bytes_pod","match_integer_type","with_match_primitive_type"],"trait":["SizeBytes"]};

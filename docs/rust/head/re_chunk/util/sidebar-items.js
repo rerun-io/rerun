@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["arrays_to_dictionary","arrays_to_list_array","arrays_to_list_array_opt","concat_arrays","concatenate_record_batches","filter_array","is_list_array_semantically_empty","new_list_array_of_empties","pad_list_array_back","pad_list_array_front","sparse_list_array_to_dense_list_array","take_array"]};

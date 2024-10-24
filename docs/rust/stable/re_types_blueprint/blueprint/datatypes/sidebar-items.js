@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"mod":["utf8list","utf8list_ext"],"struct":["Utf8List"]};

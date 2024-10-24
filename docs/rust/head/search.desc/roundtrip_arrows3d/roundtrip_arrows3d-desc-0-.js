@@ -1,0 +1,1 @@
+searchState.loadedDescShard("roundtrip_arrows3d", 0, "Logs a <code>Arrows3D</code> archetype for roundtrip checks.\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.")

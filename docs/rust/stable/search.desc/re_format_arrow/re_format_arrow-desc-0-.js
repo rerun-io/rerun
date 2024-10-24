@@ -1,0 +1,1 @@
+searchState.loadedDescShard("re_format_arrow", 0, "Formatting for tables of Arrow arrays\nReturns the argument unchanged.\nReturns the argument unchanged.\nReturns the argument unchanged.\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.\nCalls <code>U::from(self)</code>.\nCalls <code>U::from(self)</code>.\nCalls <code>U::from(self)</code>.")

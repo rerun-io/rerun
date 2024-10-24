@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["SelectionUpdateBehavior"],"fn":["action_list","context_menu_ui_for_item","show_context_menu_for_selection"],"mod":["actions","sub_menu"],"struct":["ContextMenuContext"],"trait":["ContextMenuAction"]};

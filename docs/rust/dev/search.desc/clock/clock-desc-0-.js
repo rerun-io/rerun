@@ -1,0 +1,1 @@
+searchState.loadedDescShard("clock", 0, "Builds an analog clock using Rerun’s <code>Vector3D</code> primitive.\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.")

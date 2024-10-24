@@ -1,0 +1,1 @@
+searchState.loadedDescShard("test_image_memory", 0, "Logs a bunch of big images to test Rerun memory usage.")

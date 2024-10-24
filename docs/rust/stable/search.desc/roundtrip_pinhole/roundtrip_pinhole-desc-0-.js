@@ -1,0 +1,1 @@
+searchState.loadedDescShard("roundtrip_pinhole", 0, "Logs a <code>Pinhole</code> archetype for roundtrip checks.\nReturns the argument unchanged.\nCalls <code>U::from(self)</code>.")

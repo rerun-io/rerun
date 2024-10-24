@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["GenericSkyboxType"],"mod":["gpu_data"],"struct":["GenericSkybox","GenericSkyboxDrawData"]};

@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["get_attr","get_first_by_tag_name","ingest","parse_description"],"macro":["document"],"struct":["Visitor"],"trait":["HasDescendants"]};

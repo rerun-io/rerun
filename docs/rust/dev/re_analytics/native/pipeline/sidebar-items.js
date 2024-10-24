@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["PipelineError"],"fn":["append_event","flush_events","flush_pending_events","realtime_pipeline","try_send_event"],"struct":["Pipeline"]};
