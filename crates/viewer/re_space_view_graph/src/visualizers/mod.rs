@@ -2,4 +2,4 @@ mod edges;
 mod nodes;
 
 pub use edges::{EdgeData, EdgesVisualizer};
-pub use nodes::{NodeVisualizer, NodeData};
+pub use nodes::{NodeData, NodeVisualizer};

@@ -46,9 +46,7 @@ impl GraphSpaceViewState {
             .on_hover_text("The bounding box encompassing all Entities in the view right now");
         ui.vertical(|ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-            if let Some(egui::Rect { min, max }) =
-                bounding_rect_from_iter(self.layout.values())
-            {
+            if let Some(egui::Rect { min, max }) = bounding_rect_from_iter(self.layout.values()) {
                 ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
                 ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
             }

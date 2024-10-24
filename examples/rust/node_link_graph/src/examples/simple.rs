@@ -1,4 +1,4 @@
-use rerun::{Color, GraphEdgesDirected, GraphEdgesUndirected, GraphNodes};
+use rerun::{datatypes::GraphType, Color, GraphEdges, GraphNodes};
 
 use crate::Args;
 
@@ -13,11 +13,8 @@ pub fn run(args: &Args) -> anyhow::Result<()> {
             .with_colors([Color::from_rgb(255, 0, 0), Color::from_rgb(255, 255, 0)]),
     )?;
 
-    rec.log("kitchen/nodes", &GraphNodes::new(["area0", "area1"]))?;
-    rec.log(
-        "kitchen/edges",
-        &GraphEdgesDirected::new([("kitchen/nodes", "area0", "area1")]),
-    )?;
+    rec.log("kitchen/areas", &GraphNodes::new(["area0", "area1"]))?;
+    rec.log("kitchen/areas", &GraphEdges::new([("area0", "area1")]))?;
 
     rec.set_time_sequence("frame", 1);
     rec.log("hallway/nodes", &GraphNodes::new(["area0"]))?;
@@ -27,34 +24,32 @@ pub fn run(args: &Args) -> anyhow::Result<()> {
         "living/objects",
         &GraphNodes::new(["table"]).with_labels(["Table"]),
     )?;
+
     rec.log(
-        "living/nodes",
+        "living/areas",
         &GraphNodes::new(["area0", "area1", "area2"]),
     )?;
     rec.log(
-        "living/edges",
-        &GraphEdgesDirected::new([
-            ("living/nodes", "area0", "area1"),
-            ("living/nodes", "area0", "area2"),
-            ("living/nodes", "area1", "area2"),
-        ]),
+        "living/areas",
+        &GraphEdges::new([("area0", "area1"), ("area0", "area2"), ("area1", "area2")]),
     )?;
 
     rec.log(
         "doors/edges",
-        &GraphEdgesDirected::new([
-            (("kitchen/nodes", "area0"), ("hallway/nodes", "area0")),
-            (("hallway/nodes", "area0"), ("living/nodes", "area2")),
+        &GraphEdges::new([
+            (("kitchen/nodes#area0"), ("hallway/nodes#area0")),
+            (("hallway/nodes#area0"), ("living/nodes#area2")),
         ]),
     )?;
 
     rec.log(
         "edges",
-        &GraphEdgesUndirected::new([
-            (("kitchen/nodes", "area0"), ("kitchen/objects", "sink")),
-            (("kitchen/nodes", "area1"), ("kitchen/objects", "fridge")),
-            (("living/nodes", "area1"), ("living/objects", "table")),
-        ]),
+        &GraphEdges::new([
+            (("kitchen/nodes#area0"), ("kitchen/objects#sink")),
+            (("kitchen/nodes#area1"), ("kitchen/objects#fridge")),
+            (("living/nodes#area1"), ("living/objects#table")),
+        ])
+        .with_graph_type([GraphType::Directed]),
     )?;
     Ok(())
 }

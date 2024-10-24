@@ -2,8 +2,9 @@ use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 
 use egui::{self, Rect};
+use re_log::external::log;
 use re_log_types::EntityPath;
-use re_types::SpaceViewClassIdentifier;
+use re_types::{datatypes, SpaceViewClassIdentifier};
 use re_ui::{self, UiExt};
 use re_viewer_context::{
     external::re_entity_db::InstancePath, IdentifiedViewSystem as _, Item, SpaceViewClass,
@@ -232,10 +233,10 @@ impl SpaceViewClass for GraphSpaceView {
                                 source_pos,
                                 target_pos,
                                 ent_highlight.index_highlight(edge.instance),
-                                false,
+                                edge.edge_type == datatypes::GraphType::Directed,
                             );
                         });
-                    };
+                    }
                 }
             }
         });

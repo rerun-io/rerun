@@ -44,19 +44,21 @@ impl NodeData {
             self.colors.iter().map(Option::Some),
             Option::<&components::Color>::default,
             self.positions.iter().copied().map(Option::Some),
-            Option::<[f32;2]>::default,
+            Option::<[f32; 2]>::default,
             self.labels.iter().map(Option::Some),
             Option::<&ArrowString>::default,
         )
-        .map(move |(node_id, instance, color, position,  label)| NodeInstance {
-            entity_path: &self.entity_path,
-            node_id,
-            instance,
-            color: color.map(|c| Color32::from(c.0)),
-            position,
-            show_labels: self.show_labels.map_or(true, bool::from),
-            label,
-        })
+        .map(
+            move |(node_id, instance, color, position, label)| NodeInstance {
+                entity_path: &self.entity_path,
+                node_id,
+                instance,
+                color: color.map(|c| Color32::from(c.0)),
+                position,
+                show_labels: self.show_labels.map_or(true, bool::from),
+                label,
+            },
+        )
     }
 }
 
@@ -108,7 +110,7 @@ impl VisualizerSystem for NodeVisualizer {
                     colors: colors.unwrap_or_default(),
                     positions: positions.unwrap_or_default().to_vec(),
                     labels: labels.unwrap_or_default(),
-                    show_labels: show_labels.unwrap_or_default().first().copied()
+                    show_labels: show_labels.unwrap_or_default().first().copied(),
                 });
             }
         }

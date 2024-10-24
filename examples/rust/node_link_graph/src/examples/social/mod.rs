@@ -1,9 +1,7 @@
 use itertools::Itertools;
 use rerun::{
     components::{self},
-    datatypes,
-    external::log,
-    GraphEdgesUndirected, GraphNodes,
+    datatypes, GraphEdges, GraphNodes,
 };
 
 use crate::Args;
@@ -14,8 +12,8 @@ use std::{
 
 struct Interaction {
     timestamp: u32,
-    person_a: datatypes::GraphNodeId,
-    person_b: datatypes::GraphNodeId,
+    person_a: datatypes::GraphNode,
+    person_b: datatypes::GraphNode,
 }
 
 fn parse_data_file() -> anyhow::Result<Vec<Interaction>> {
@@ -59,9 +57,9 @@ pub fn run(args: &Args) -> anyhow::Result<()> {
     rec.log_static(
         "/persons",
         &GraphNodes::new(
-            nodes.iter().map(|n| {
-                components::GraphNodeId::from(datatypes::GraphNodeId(n.to_string().into()))
-            }),
+            nodes
+                .iter()
+                .map(|n| components::GraphNode::from(datatypes::GraphNode(n.to_string().into()))),
         ),
     )?;
 
@@ -70,12 +68,8 @@ pub fn run(args: &Args) -> anyhow::Result<()> {
 
         rec.set_time_sequence("frame", timestamp);
         rec.log(
-            "/interactions",
-            &GraphEdgesUndirected::new(
-                interactions
-                    .into_iter()
-                    .map(|i| ("/persons", i.person_a, i.person_b)),
-            ),
+            "/persons",
+            &GraphEdges::new(interactions.into_iter().map(|i| (i.person_a, i.person_b))),
         )?;
     }
     Ok(())
