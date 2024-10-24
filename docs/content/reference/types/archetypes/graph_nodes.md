@@ -7,11 +7,11 @@ A list of nodes in a graph with optional labels, colors, etc.
 
 ## Components
 
-**Required**: [`GraphNodeId`](../components/graph_node_id.md)
+**Required**: [`GraphNode`](../components/graph_node.md)
 
-**Recommended**: [`Color`](../components/color.md), [`Position2D`](../components/position2d.md)
+**Recommended**: [`Position2D`](../components/position2d.md), [`Color`](../components/color.md)
 
-**Optional**: [`Text`](../components/text.md), [`ShowLabels`](../components/show_labels.md), [`ClassId`](../components/class_id.md)
+**Optional**: [`Text`](../components/text.md)
 
 ## Shown in
 * [Graph View](../views/graph_view.md)

@@ -34,7 +34,7 @@ pub struct GraphSpaceViewState {
     pub should_tick: bool,
 
     /// Positions of the nodes in world space.
-    pub layout: HashMap<NodeIndex, (Option<EntityPath>, egui::Rect)>,
+    pub layout: HashMap<NodeIndex, egui::Rect>,
 
     /// Layout properties.
     pub layout_config: RadialLayoutConfig,
@@ -47,7 +47,7 @@ impl GraphSpaceViewState {
         ui.vertical(|ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
             if let Some(egui::Rect { min, max }) =
-                bounding_rect_from_iter(self.layout.values().map(|n| &n.1))
+                bounding_rect_from_iter(self.layout.values())
             {
                 ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
                 ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));

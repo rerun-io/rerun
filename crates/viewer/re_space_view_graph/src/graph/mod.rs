@@ -5,11 +5,11 @@ use re_types::datatypes;
 
 use crate::{
     types::{EdgeInstance, NodeInstance, UnknownNodeInstance},
-    visualizers::{EdgesDirectedData, EdgesUndirectedData, NodeVisualizerData},
+    visualizers::{EdgeData, NodeData},
 };
 
 mod hash;
-pub(crate) use hash::NodeIdHash;
+pub(crate) use hash::GraphNodeHash;
 mod index;
 pub(crate) use index::NodeIndex;
 
@@ -19,7 +19,7 @@ pub(crate) enum Node<'a> {
 }
 
 impl<'a> From<&Node<'a>> for NodeIndex {
-    fn from(node: &Node) -> Self {
+    fn from(node: &Node<'a>) -> Self {
         match node {
             Node::Regular(node) => node.into(),
             Node::Unknown(node) => node.into(),
@@ -28,7 +28,7 @@ impl<'a> From<&Node<'a>> for NodeIndex {
 }
 
 impl<'a> From<Node<'a>> for NodeIndex {
-    fn from(node: Node) -> Self {
+    fn from(node: Node<'a>) -> Self {
         match node {
             Node::Regular(node) => node.into(),
             Node::Unknown(node) => node.into(),
@@ -38,65 +38,43 @@ impl<'a> From<Node<'a>> for NodeIndex {
 
 pub(crate) struct Graph<'a> {
     /// Contains all nodes that are part mentioned in the edges but not part of the `nodes` list
-    unknown: HashSet<(EntityPath, datatypes::GraphNodeId)>,
-    nodes: &'a Vec<NodeVisualizerData>,
-    directed: &'a Vec<EdgesDirectedData>,
-    undirected: &'a Vec<EdgesUndirectedData>,
+    unknown: HashSet<(&'a EntityPath, datatypes::GraphNode)>,
+    nodes: &'a Vec<NodeData>,
+    edges: &'a Vec<EdgeData>,
 }
 
 impl<'a> Graph<'a> {
-    pub fn from_nodes_edges(
-        nodes: &'a Vec<NodeVisualizerData>,
-        directed: &'a Vec<EdgesDirectedData>,
-        undirected: &'a Vec<EdgesUndirectedData>,
-    ) -> Option<Self> {
-        let mut seen: HashSet<(&EntityPath, &datatypes::GraphNodeId)> = nodes
+    pub fn from_nodes_edges(nodes: &'a Vec<NodeData>, edges: &'a Vec<EdgeData>) -> Self {
+        let seen = nodes
             .iter()
             .flat_map(|entity| entity.nodes())
-            .map(|n| (n.entity_path, n.node_id))
-            .collect();
+            .map(NodeIndex::from)
+            .collect::<HashSet<_>>();
 
         let mut unknown = HashSet::new();
-        for entity in undirected {
+        for entity in edges {
             for edge in entity.edges() {
                 for node in edge.nodes() {
-                    let entity_path = EntityPath::from(node.entity_path.clone());
-                    if seen.contains(&(&entity_path, &node.node_id)) {
+                    if seen.contains(&NodeIndex::from_entity_node(&entity.entity_path, node)) {
                         continue;
                     }
-                    unknown.insert((entity_path, node.node_id));
-                }
-            }
-        }
-        for entity in directed {
-            for edge in entity.edges() {
-                for node in edge.nodes() {
-                    let entity_path = EntityPath::from(node.entity_path.clone());
-                    if seen.contains(&(&entity_path, &node.node_id)) {
-                        continue;
-                    }
-                    unknown.insert((entity_path, node.node_id));
+                    unknown.insert((&entity.entity_path, node.clone()));
                 }
             }
         }
 
-        if nodes.is_empty() && unknown.is_empty() {
-            return None;
-        }
-
-        Some(Self {
+        Self {
             unknown,
             nodes,
-            directed,
-            undirected,
-        })
+            edges,
+        }
     }
 
-    pub fn nodes_by_entity(&self) -> impl Iterator<Item = &NodeVisualizerData> {
+    pub fn nodes_by_entity(&self) -> impl Iterator<Item = &NodeData> {
         self.nodes.iter()
     }
 
-    pub fn all_nodes(&'a self) -> impl Iterator<Item = Node> {
+    pub fn all_nodes(&'a self) -> impl Iterator<Item = Node<'a>> {
         let nodes = self
             .nodes
             .iter()
@@ -105,14 +83,12 @@ impl<'a> Graph<'a> {
         nodes.chain(unknowns)
     }
 
-    pub fn edges_by_entity(&self) -> impl Iterator<Item = &EdgesUndirectedData> {
-        self.undirected.iter()
+    pub fn edges_by_entity(&self) -> impl Iterator<Item = &EdgeData> {
+        self.edges.iter()
     }
 
-    pub fn all_edges(&self) -> impl Iterator<Item = EdgeInstance> {
-        let undirected = self.undirected.iter().flat_map(|entity| entity.edges());
-        let directed = self.directed.iter().flat_map(|entity| entity.edges());
-        undirected.chain(directed)
+    pub fn all_edges(&self) -> impl Iterator<Item = EdgeInstance<'_>> {
+        self.edges.iter().flat_map(|entity| entity.edges())
     }
 
     pub fn unknown_nodes(&'a self) -> impl Iterator<Item = UnknownNodeInstance<'a>> {

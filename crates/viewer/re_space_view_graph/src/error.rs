@@ -8,7 +8,7 @@ pub enum Error {
     EdgeUnknownNode,
 
     #[error("missing layout information for node `{1}` in entity `{0}`")]
-    MissingLayoutInformation(EntityPath, datatypes::GraphNodeId),
+    MissingLayoutInformation(EntityPath, datatypes::GraphNode),
 }
 
 impl From<Error> for SpaceViewSystemExecutionError {

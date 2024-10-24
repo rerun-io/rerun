@@ -4,8 +4,8 @@ use re_types::{datatypes, ArrowString};
 use crate::graph::NodeIndex;
 
 impl<'a> EdgeInstance<'a> {
-    pub fn nodes(&'a self) -> impl Iterator<Item = datatypes::GraphLocation> {
-        [self.source.clone(), self.target.clone()].into_iter()
+    pub fn nodes(&'a self) -> impl Iterator<Item = &datatypes::GraphNode> {
+        [self.source, self.target].into_iter()
     }
 }
 
@@ -13,7 +13,7 @@ impl<'a> From<&NodeInstance<'a>> for NodeIndex {
     fn from(node: &NodeInstance<'a>) -> Self {
         Self {
             entity_hash: node.entity_path.hash(),
-            node_id: node.node_id.into(),
+            node_hash: node.node_id.into(),
         }
     }
 }
@@ -22,30 +22,41 @@ impl<'a> From<NodeInstance<'a>> for NodeIndex {
     fn from(node: NodeInstance<'a>) -> Self {
         Self {
             entity_hash: node.entity_path.hash(),
-            node_id: node.node_id.into(),
+            node_hash: node.node_id.into(),
         }
     }
 }
 
-pub(crate) struct NodeInstance<'a> {
-    pub node_id: &'a datatypes::GraphNodeId,
+pub struct NodeInstance<'a> {
+    pub node_id: &'a datatypes::GraphNode,
     pub entity_path: &'a EntityPath,
     pub instance: Instance,
-    pub show_labels: bool,
     pub label: Option<&'a ArrowString>,
+    pub show_labels: bool,
     pub color: Option<egui::Color32>,
+    pub position: Option<[f32; 2]>,
 }
 
 pub struct EdgeInstance<'a> {
-    pub source: &'a datatypes::GraphLocation,
-    pub target: &'a datatypes::GraphLocation,
-    pub _entity_path: &'a re_log_types::EntityPath,
+    pub source: &'a datatypes::GraphNode,
+    pub target: &'a datatypes::GraphNode,
+    pub entity_path: &'a re_log_types::EntityPath,
     pub instance: Instance,
-    pub color: Option<egui::Color32>,
+    pub edge_type: datatypes::GraphType,
 }
 
-pub(crate) struct UnknownNodeInstance<'a> {
-    pub node_id: &'a datatypes::GraphNodeId,
+impl<'a> EdgeInstance<'a> {
+    pub fn source_ix(&self) -> NodeIndex {
+        NodeIndex::from_entity_node(self.entity_path, self.source)
+    }
+
+    pub fn target_ix(&self) -> NodeIndex {
+        NodeIndex::from_entity_node(self.entity_path, self.source)
+    }
+}
+
+pub struct UnknownNodeInstance<'a> {
+    pub node_id: &'a datatypes::GraphNode,
     pub entity_path: &'a EntityPath,
 }
 
@@ -53,7 +64,7 @@ impl<'a> From<&UnknownNodeInstance<'a>> for NodeIndex {
     fn from(node: &UnknownNodeInstance<'a>) -> Self {
         Self {
             entity_hash: node.entity_path.hash(),
-            node_id: node.node_id.into(),
+            node_hash: node.node_id.into(),
         }
     }
 }
@@ -62,7 +73,7 @@ impl<'a> From<UnknownNodeInstance<'a>> for NodeIndex {
     fn from(node: UnknownNodeInstance<'a>) -> Self {
         Self {
             entity_hash: node.entity_path.hash(),
-            node_id: node.node_id.into(),
+            node_hash: node.node_id.into(),
         }
     }
 }

@@ -24,13 +24,11 @@ class GraphNodes(Archetype):
 
     def __init__(
         self: Any,
-        node_ids: datatypes.GraphNodeIdArrayLike,
+        node_ids: datatypes.GraphNodeArrayLike,
         *,
         labels: datatypes.Utf8ArrayLike | None = None,
+        positions: datatypes.Vec2DArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
-        centers: datatypes.Vec2DArrayLike | None = None,
-        show_labels: datatypes.BoolLike | None = None,
-        class_ids: datatypes.ClassIdArrayLike | None = None,
     ):
         """
         Create a new instance of the GraphNodes archetype.
@@ -41,29 +39,16 @@ class GraphNodes(Archetype):
             A list of node IDs.
         labels:
             Optional text labels for the node.
+        positions:
+            Optional center positions of the nodes.
         colors:
             Optional colors for the boxes.
-        centers:
-            Optional center positions of the nodes.
-        show_labels:
-            Optional choice of whether the text labels should be shown by default.
-        class_ids:
-            Optional [`components.ClassId`][rerun.components.ClassId]s for the boxes.
-
-            The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
 
         """
 
         # You can define your own __init__ function as a member of GraphNodesExt in graph_nodes_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(
-                node_ids=node_ids,
-                labels=labels,
-                colors=colors,
-                centers=centers,
-                show_labels=show_labels,
-                class_ids=class_ids,
-            )
+            self.__attrs_init__(node_ids=node_ids, labels=labels, positions=positions, colors=colors)
             return
         self.__attrs_clear__()
 
@@ -72,10 +57,8 @@ class GraphNodes(Archetype):
         self.__attrs_init__(
             node_ids=None,  # type: ignore[arg-type]
             labels=None,  # type: ignore[arg-type]
+            positions=None,  # type: ignore[arg-type]
             colors=None,  # type: ignore[arg-type]
-            centers=None,  # type: ignore[arg-type]
-            show_labels=None,  # type: ignore[arg-type]
-            class_ids=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -85,9 +68,9 @@ class GraphNodes(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    node_ids: components.GraphNodeIdBatch = field(
+    node_ids: components.GraphNodeBatch = field(
         metadata={"component": "required"},
-        converter=components.GraphNodeIdBatch._required,  # type: ignore[misc]
+        converter=components.GraphNodeBatch._required,  # type: ignore[misc]
     )
     # A list of node IDs.
     #
@@ -102,16 +85,7 @@ class GraphNodes(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    colors: components.ColorBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=components.ColorBatch._optional,  # type: ignore[misc]
-    )
-    # Optional colors for the boxes.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    centers: components.Position2DBatch | None = field(
+    positions: components.Position2DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.Position2DBatch._optional,  # type: ignore[misc]
@@ -120,23 +94,12 @@ class GraphNodes(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    show_labels: components.ShowLabelsBatch | None = field(
+    colors: components.ColorBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=components.ShowLabelsBatch._optional,  # type: ignore[misc]
+        converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
-    # Optional choice of whether the text labels should be shown by default.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    class_ids: components.ClassIdBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
-    )
-    # Optional [`components.ClassId`][rerun.components.ClassId]s for the boxes.
-    #
-    # The [`components.ClassId`][rerun.components.ClassId] provides colors and labels if not specified explicitly.
+    # Optional colors for the boxes.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

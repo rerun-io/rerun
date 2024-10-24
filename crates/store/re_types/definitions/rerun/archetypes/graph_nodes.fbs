@@ -11,26 +11,19 @@ table GraphNodes (
   // --- Required ---
 
   /// A list of node IDs.
-  node_ids: [rerun.components.GraphNodeId] ("attr.rerun.component_required", order: 1000);
-
-  // --- Recommended ---
-
-  /// Optional text labels for the node.
-  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 2000);
+  node_ids: [rerun.components.GraphNode] ("attr.rerun.component_required", order: 1000);
 
   // --- Optional ---
 
-  /// Optional colors for the boxes.
-  colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
-
   /// Optional center positions of the nodes.
-  centers: [rerun.components.Position2D] ("attr.rerun.component_recommended", nullable, order: 3000);
+  positions: [rerun.components.Position2D] ("attr.rerun.component_recommended", nullable, order: 3000);
+
+  /// Optional colors for the boxes.
+  colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 3100);
+
+  /// Optional text labels for the node.
+  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3200);
 
   /// Optional choice of whether the text labels should be shown by default.
-  show_labels: rerun.components.ShowLabels ("attr.rerun.component_optional", nullable, order: 3050);
-
-  /// Optional [components.ClassId]s for the boxes.
-  ///
-  /// The [components.ClassId] provides colors and labels if not specified explicitly.
-  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3200);
+  show_labels: rerun.components.ShowLabels ("attr.rerun.component_optional", nullable, order: 3250);
 }

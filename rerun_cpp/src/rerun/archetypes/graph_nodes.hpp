@@ -6,11 +6,9 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
-#include "../components/class_id.hpp"
 #include "../components/color.hpp"
-#include "../components/graph_node_id.hpp"
+#include "../components/graph_node.hpp"
 #include "../components/position2d.hpp"
-#include "../components/show_labels.hpp"
 #include "../components/text.hpp"
 #include "../indicator_component.hpp"
 #include "../result.hpp"
@@ -24,24 +22,16 @@ namespace rerun::archetypes {
     /// **Archetype**: A list of nodes in a graph with optional labels, colors, etc.
     struct GraphNodes {
         /// A list of node IDs.
-        Collection<rerun::components::GraphNodeId> node_ids;
+        Collection<rerun::components::GraphNode> node_ids;
 
         /// Optional text labels for the node.
         std::optional<Collection<rerun::components::Text>> labels;
 
+        /// Optional center positions of the nodes.
+        std::optional<Collection<rerun::components::Position2D>> positions;
+
         /// Optional colors for the boxes.
         std::optional<Collection<rerun::components::Color>> colors;
-
-        /// Optional center positions of the nodes.
-        std::optional<Collection<rerun::components::Position2D>> centers;
-
-        /// Optional choice of whether the text labels should be shown by default.
-        std::optional<rerun::components::ShowLabels> show_labels;
-
-        /// Optional `components::ClassId`s for the boxes.
-        ///
-        /// The `components::ClassId` provides colors and labels if not specified explicitly.
-        std::optional<Collection<rerun::components::ClassId>> class_ids;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -54,7 +44,7 @@ namespace rerun::archetypes {
         GraphNodes() = default;
         GraphNodes(GraphNodes&& other) = default;
 
-        explicit GraphNodes(Collection<rerun::components::GraphNodeId> _node_ids)
+        explicit GraphNodes(Collection<rerun::components::GraphNode> _node_ids)
             : node_ids(std::move(_node_ids)) {}
 
         /// Optional text labels for the node.
@@ -64,32 +54,16 @@ namespace rerun::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
+        /// Optional center positions of the nodes.
+        GraphNodes with_positions(Collection<rerun::components::Position2D> _positions) && {
+            positions = std::move(_positions);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
         /// Optional colors for the boxes.
         GraphNodes with_colors(Collection<rerun::components::Color> _colors) && {
             colors = std::move(_colors);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// Optional center positions of the nodes.
-        GraphNodes with_centers(Collection<rerun::components::Position2D> _centers) && {
-            centers = std::move(_centers);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// Optional choice of whether the text labels should be shown by default.
-        GraphNodes with_show_labels(rerun::components::ShowLabels _show_labels) && {
-            show_labels = std::move(_show_labels);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// Optional `components::ClassId`s for the boxes.
-        ///
-        /// The `components::ClassId` provides colors and labels if not specified explicitly.
-        GraphNodes with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {
-            class_ids = std::move(_class_ids);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

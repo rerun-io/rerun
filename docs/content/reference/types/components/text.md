@@ -22,8 +22,6 @@ A string of text, e.g. for labels and text documents.
 * [`Boxes2D`](../archetypes/boxes2d.md)
 * [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
-* [`GraphEdgesDirected`](../archetypes/graph_edges_directed.md)
-* [`GraphEdgesUndirected`](../archetypes/graph_edges_undirected.md)
 * [`GraphNodes`](../archetypes/graph_nodes.md)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
 * [`LineStrips3D`](../archetypes/line_strips3d.md)

@@ -16,17 +16,18 @@ use re_viewer_context::{
 use crate::{
     graph::{Graph, NodeIndex},
     ui::{self, GraphSpaceViewState},
-    visualizers::{EdgesDirectedVisualizer, EdgesUndirectedVisualizer, NodeVisualizer},
+    visualizers::{EdgesVisualizer, NodeVisualizer},
 };
 
 #[derive(Default)]
 pub struct GraphSpaceView;
 
-fn arrange_in_circle<S: ToString + Hash>(nodes: &mut HashMap<NodeIndex, (S, egui::Rect)>, radius: f32) {
+fn arrange_in_circle<S: ToString + Hash>(
+    nodes: &mut HashMap<NodeIndex, (S, egui::Rect)>,
+    radius: f32,
+) {
     let n = nodes.len();
     let center = egui::Pos2::new(0.0, 0.0);
-
-    let nodes_by_entity  = nodes.iter().map(|(entity, (ix, _))| (entity, ix)).collect::<HashMap<_,_>>();
 
     for (i, (_id, (_, rect))) in nodes.iter_mut().enumerate() {
         let angle = 2.0 * std::f32::consts::PI * i as f32 / n as f32;
@@ -61,8 +62,7 @@ impl SpaceViewClass for GraphSpaceView {
         system_registry: &mut SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
         system_registry.register_visualizer::<NodeVisualizer>()?;
-        system_registry.register_visualizer::<EdgesDirectedVisualizer>()?;
-        system_registry.register_visualizer::<EdgesUndirectedVisualizer>()
+        system_registry.register_visualizer::<EdgesVisualizer>()
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
@@ -125,21 +125,9 @@ impl SpaceViewClass for GraphSpaceView {
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let node_system = system_output.view_systems.get::<NodeVisualizer>()?;
-        let directed_system = system_output
-            .view_systems
-            .get::<EdgesDirectedVisualizer>()?;
-        let undirected_system = system_output
-            .view_systems
-            .get::<EdgesUndirectedVisualizer>()?;
+        let edge_system = system_output.view_systems.get::<EdgesVisualizer>()?;
 
-        let Some(graph) = Graph::from_nodes_edges(
-            &node_system.data,
-            &directed_system.data,
-            &undirected_system.data,
-        ) else {
-            re_log::warn!("No graph data available.");
-            return Ok(());
-        };
+        let graph = Graph::from_nodes_edges(&node_system.data, &edge_system.data);
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
@@ -183,7 +171,7 @@ impl SpaceViewClass for GraphSpaceView {
         let mut seen: HashSet<NodeIndex> = HashSet::new();
 
         state.viewer.scene(ui, |mut scene| {
-            for data in node_system.data.iter() {
+            for data in &node_system.data {
                 let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
                 // We keep track of the size of the current entity.
@@ -192,7 +180,11 @@ impl SpaceViewClass for GraphSpaceView {
                 for node in data.nodes() {
                     let ix = NodeIndex::from(&node);
                     seen.insert(ix);
-                    let (_,current) = state.layout.entry(ix).or_insert((node.entity_path.clone().into(), egui::Rect::ZERO));
+                    let current = state.layout.entry(ix).or_insert(
+                        node.position.map_or(egui::Rect::ZERO, |p| {
+                            Rect::from_center_size(p.into(), egui::Vec2::ZERO)
+                        }),
+                    );
 
                     let response = scene.node(current.min, |ui| {
                         ui::draw_node(ui, &node, ent_highlight.index_highlight(node.instance))
@@ -220,58 +212,35 @@ impl SpaceViewClass for GraphSpaceView {
             for dummy in graph.unknown_nodes() {
                 let ix = NodeIndex::from(&dummy);
                 seen.insert(ix);
-                let (_, current) = state.layout.entry(ix).or_insert((None, Rect::ZERO));
+                let current = state.layout.entry(ix).or_insert(Rect::ZERO);
                 let response = scene.node(current.min, |ui| ui::draw_dummy(ui, &dummy));
                 *current = response.rect;
             }
 
-            for data in undirected_system.data.iter() {
+            for data in &edge_system.data {
                 let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
                 for edge in data.edges() {
-                    if let (Some((_, source_pos)), Some((_,target_pos))) = (
-                        state.layout.get(&edge.source.into()),
-                        state.layout.get(&edge.target.into()),
+                    if let (Some(source_pos), Some(target_pos)) = (
+                        state.layout.get(&edge.source_ix()),
+                        state.layout.get(&edge.target_ix()),
                     ) {
                         scene.edge(|ui| {
                             ui::draw_edge(
                                 ui,
-                                edge.color,
+                                None, // TODO(grtlr): change this back once we have edge colors
                                 source_pos,
                                 target_pos,
                                 ent_highlight.index_highlight(edge.instance),
                                 false,
-                            )
+                            );
                         });
                     };
                 }
             }
-
-            // TODO(grtlr): consider reducing this duplication?
-            for data in directed_system.data.iter() {
-                let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
-
-                for edge in data.edges() {
-                    if let (Some((_,source_pos)), Some((_,target_pos))) = (
-                        state.layout.get(&edge.source.into()),
-                        state.layout.get(&edge.target.into()),
-                    ) {
-                        let _response = scene.edge(|ui| {
-                            ui::draw_edge(
-                                ui,
-                                edge.color,
-                                source_pos,
-                                target_pos,
-                                ent_highlight.index_highlight(edge.instance),
-                                true,
-                            )
-                        });
-                    }
-                }
-            }
         });
 
-        arrange_in_circle(&mut state.layout, state.layout_config.circle_radius);
+        //arrange_in_circle(&mut state.layout, state.layout_config.circle_radius);
 
         // TODO(grtlr): consider improving this!
         if state.should_fit_to_screen {
@@ -280,7 +249,7 @@ impl SpaceViewClass for GraphSpaceView {
         }
 
         // Clean up the layout for nodes that are no longer present.
-        // state.layout.retain(|k, _| seen.contains(k));
+        state.layout.retain(|k, _| seen.contains(k));
 
         // let pos = state.layout.iter().map(|(&k, v)| (k, v.center()));
         // let links = graph
