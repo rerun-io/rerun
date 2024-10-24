@@ -205,7 +205,6 @@ def run_roundtrip_cpp(arch: str) -> str:
     output_path = f"tests/cpp/roundtrips/{arch}/out.rrd"
 
     extension = ".exe" if os.name == "nt" else ""
-    config = "release" if release else "debug"
     cmd = [f"./build/debug/tests/cpp/roundtrips/{target_name}{extension}", output_path]
     run(cmd, env=roundtrip_env(), timeout=12000)
 
