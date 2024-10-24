@@ -5891,6 +5891,7 @@ dependencies = [
  "ahash",
  "bytemuck",
  "egui",
+ "nohash-hasher",
  "re_chunk",
  "re_format",
  "re_log",

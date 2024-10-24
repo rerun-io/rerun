@@ -38,3 +38,4 @@ egui.workspace = true
 bytemuck = "1.18"
 thiserror = "1.0"
 ahash = "0.8"
+nohash-hasher = "0.2"

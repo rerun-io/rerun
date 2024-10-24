@@ -47,7 +47,7 @@ impl<'a> Graph<'a> {
             .iter()
             .flat_map(|entity| entity.nodes())
             .map(NodeIndex::from)
-            .collect::<ahash::HashSet<_>>();
+            .collect::<nohash_hasher::IntSet<NodeIndex>>();
 
         let mut unknown = ahash::HashSet::default();
         for entity in edges {

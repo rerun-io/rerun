@@ -5,6 +5,8 @@ use re_types::datatypes;
 #[derive(Copy, Clone, Eq, PartialOrd, Ord)]
 pub(crate) struct GraphNodeHash(Hash64);
 
+impl nohash_hasher::IsEnabled for GraphNodeHash {}
+
 impl GraphNodeHash {
     #[inline]
     pub fn hash64(&self) -> u64 {
