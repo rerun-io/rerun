@@ -17,13 +17,13 @@ namespace rerun::components {
 
       public: // START of extensions from lat_lon_ext.cpp:
         /// Construct LatLon from x/y values.
-        LatLon(float lat, float lon) : lat_lon{lat, lon} {}
+        LatLon(double lat, double lon) : lat_lon{lat, lon} {}
 
-        float latitude() const {
+        double latitude() const {
             return lat_lon.x();
         }
 
-        float longitude() const {
+        double longitude() const {
             return lat_lon.y();
         }
 
