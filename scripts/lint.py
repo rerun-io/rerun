@@ -1205,6 +1205,9 @@ def main() -> None:
         "./crates/build/re_types_builder/src/reflection.rs",  # auto-generated
         "./crates/store/re_remote_store_types/src/v0/rerun.remote_store.v0.rs",  # auto-generated
         "./docs/content/reference/cli.md",  # auto-generated
+        "./docs/snippets/all/tutorials/custom-application-id.cpp", # nuh-uh, I don't want rerun_example_ here
+        "./docs/snippets/all/tutorials/custom-application-id.py", # nuh-uh, I don't want rerun_example_ here
+        "./docs/snippets/all/tutorials/custom-application-id.rs", # nuh-uh, I don't want rerun_example_ here
         "./examples/assets",
         "./examples/python/detect_and_track_objects/cache/version.txt",
         "./examples/python/objectron/objectron/proto/",  # auto-generated
