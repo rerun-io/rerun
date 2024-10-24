@@ -14,9 +14,7 @@ impl ContextMenuAction for RemoveAction {
     fn supports_item(&self, ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
         match item {
             Item::SpaceView(_) => true,
-            Item::Container(container_id) => {
-                ctx.viewport_blueprint.root_container != Some(*container_id)
-            }
+            Item::Container(container_id) => ctx.viewport_blueprint.root_container != *container_id,
             Item::DataResult(_, instance_path) => instance_path.is_all(),
             _ => false,
         }
