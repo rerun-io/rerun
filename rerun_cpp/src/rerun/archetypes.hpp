@@ -15,6 +15,8 @@
 #include "archetypes/disconnected_space.hpp"
 #include "archetypes/ellipsoids3d.hpp"
 #include "archetypes/encoded_image.hpp"
+#include "archetypes/graph_edges.hpp"
+#include "archetypes/graph_nodes.hpp"
 #include "archetypes/image.hpp"
 #include "archetypes/instance_poses3d.hpp"
 #include "archetypes/line_strips2d.hpp"

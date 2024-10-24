@@ -1,0 +1,24 @@
+namespace rerun.archetypes;
+
+// ---
+
+/// A list of edges in a graph.
+///
+/// By default, edges are undirected.
+table GraphEdges (
+  "attr.rust.derive": "PartialEq, Eq",
+  "attr.docs.category": "Graph",
+  "attr.docs.view_types": "Graph View"
+) {
+  // --- Required ---
+
+  /// A list of node IDs.
+  edges: [rerun.components.GraphEdge] ("attr.rerun.component_required", order: 1000);
+
+
+  // --- Recommended ---
+
+  /// Specifies if the graph is directed or undirected.
+  graph_type: [rerun.components.GraphType] ("attr.rerun.component_recommended", nullable, order: 2000);
+
+}
