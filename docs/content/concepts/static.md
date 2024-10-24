@@ -45,7 +45,7 @@ Similarly, [coordinate systems](spaces-and-transforms.md) or [annotation context
 ### Memory savings
 
 When you store _temporal_ data in Rerun, it is always appended to the existing dataset: there is no such thing as overwriting temporal data. The dataset only grows, it never shrinks.
-To compensate for that, the Rerun viewer has a [garbage collection mechanism](../howto/limit-ram) that will drop the oldest data from the store when memory becomes scarce.
+To compensate for that, the Rerun viewer has a [garbage collection mechanism](../howto/visualization/limit-ram.md) that will drop the oldest data from the store when memory becomes scarce.
 
 For example, the following snippet stores 10 images at index `4` on the `frame` [timeline](timelines.md):
 
@@ -80,7 +80,7 @@ If you were to log the snippet above to a file (using e.g. `rr.save()`), you'd f
 
 If you wanted the recording file itself to only contain a single static value, you would need to either:
 * Stream the data to the viewer, and then save the recording directly out of the viewer using `Menu > Save recording` (or the equivalent palette command).
-* Manually recompact your recording using the [Rerun CLI](../reference/cli#rerun-rrd-compact) so that the data overwrite semantics can get appropriately applied, e.g.: `rerun rrd compact -o compacted.rrd myrecording.rrd`.
+* Manually recompact your recording using the [Rerun CLI](../reference/cli.md#rerun-rrd-compact) so that the data overwrite semantics can get appropriately applied, e.g.: `rerun rrd compact -o compacted.rrd myrecording.rrd`.
 
 
 ### In the viewer

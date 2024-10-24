@@ -9,7 +9,7 @@ Sometimes you want to send big chunks of data to Rerun efficiently. To do so, yo
 
 `send_columns` lets you efficiently log the state of an entity over time, logging multiple time and component columns in one call.
 
-In contrast to the `log` function, `send_columns` does NOT add any other timelines to the data. Neither the built-in timelines `log_time` and `log_tick`, nor any [user timelines](../concepts/timelines.md). Only the timelines explicitly included in the call to `send_columns` will be included.
+In contrast to the `log` function, `send_columns` does NOT add any other timelines to the data. Neither the built-in timelines `log_time` and `log_tick`, nor any [user timelines](../../concepts/timelines.md). Only the timelines explicitly included in the call to `send_columns` will be included.
 
 API docs of `send_columns`:
 * [🌊 C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#ad17571d51185ce2fc2fc2f5c3070ad65)
