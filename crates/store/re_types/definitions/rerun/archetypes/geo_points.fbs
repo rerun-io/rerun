@@ -4,6 +4,7 @@ namespace rerun.archetypes;
 
 /// Geographical points with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
 ///
+/// **Note**: Geospatial entites are experimental.
 // TODO(ab): add snippet and screenshot
 table GeoPoints (
   "attr.rust.derive": "PartialEq",

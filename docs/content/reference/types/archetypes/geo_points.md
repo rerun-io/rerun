@@ -5,6 +5,8 @@ title: "GeoPoints"
 
 Geographical points with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
 
+**Note**: Geospatial entites are experimental.
+
 ## Components
 
 **Required**: [`LatLon`](../components/lat_lon.md)

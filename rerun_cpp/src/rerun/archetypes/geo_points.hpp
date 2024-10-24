@@ -19,6 +19,8 @@
 
 namespace rerun::archetypes {
     /// **Archetype**: Geographical points with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
+    ///
+    /// **Note**: Geospatial entites are experimental.
     struct GeoPoints {
         /// The EPSG:4326 coordinates for the points.
         Collection<rerun::components::LatLon> positions;
