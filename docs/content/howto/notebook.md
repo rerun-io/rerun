@@ -1,5 +1,5 @@
 ---
 title: Embed Rerun in notebooks
 hidden: true
-redirect: howto/integrations/embed-notebook
+redirect: howto/integrations/embed-notebooks
 ---

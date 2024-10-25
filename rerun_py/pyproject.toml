@@ -70,6 +70,8 @@ extend-exclude = [
   "docs/snippets/all/tutorials/timelines_example.py",
 
   # Intentionally incomplete snippets
+  "docs/snippets/all/tutorials/custom-application-id.py",
+  "docs/snippets/all/tutorials/custom-recording-id.py",
   "docs/snippets/all/concepts/static",
 
   # generated
