@@ -77,10 +77,31 @@ impl FfmpegCliH264Decoder {
 
             FfmpegCommand::new()
                 .hide_banner()
+                // "Reduce the latency introduced by buffering during initial input streams analysis."
+                //.arg("-fflags nobuffer")
+                //
+                // .. instead use these more aggressive options found here
+                // https://stackoverflow.com/a/49273163
+                .args([
+                    "-probesize",
+                    "32", // 32 bytes is the minimum probe size.
+                    "-analyzeduration",
+                    "0",
+                ])
                 // Keep in mind that all arguments that are about the input, need to go before!
                 .format("h264") // High risk here: What's is available?
                 .input("-") // stdin is our input!
-                .rawvideo() // Output rgb24 on stdout. (TODO(emilk) for later: any format we can read directly on re_renderer would be better!)
+                // TODO: Do we have to do this instead?
+                // Set constant frame rate.
+                // We can't properly handle variable frame rate since `rawvideo` output won't report timestamps.
+                // To work around this we'd first need to establish a mapping of frame numbers to timestamps.
+                // This isn't entirely trivial since individual chunks may have arbitrary composition & decode timestamps.
+                //.fps_mode(1)
+                //
+                // TODO(andreas): at least do `rgba`. But we could also do `yuv420p` for instance if that's what the video is specifying
+                // (should be faster overall at no quality loss if the video is in this format).
+                // Check `ffmpeg -pix_fmts` for full list.
+                .rawvideo() // Output rgb24 on stdout.
                 .spawn()
                 .map_err(Error::FailedToStartFfmpeg)?
         };
