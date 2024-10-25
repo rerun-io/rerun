@@ -39,6 +39,9 @@ analytics = ["dep:re_analytics"]
 ## Enable the map view
 map_view = ["dep:re_space_view_map"]
 
+## Enable the rrdp data source.
+rrdp = ["re_data_source/rrdp"]
+
 
 [dependencies]
 # Internal:

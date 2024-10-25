@@ -22,6 +22,9 @@ all-features = true
 [features]
 default = []
 
+## Enable the rrdp data source.
+rrdp = ["dep:re_remote_store_types"]
+
 
 [dependencies]
 re_data_loader.workspace = true
@@ -38,6 +41,9 @@ re_ws_comms = { workspace = true, features = ["client"] }
 anyhow.workspace = true
 itertools.workspace = true
 rayon.workspace = true
+
+# Optional dependencies:
+re_remote_store_types = { workspace = true, optional = true }
 
 [build-dependencies]
 re_build_tools.workspace = true

@@ -31,6 +31,10 @@ pub enum DataSource {
     // RRD data streaming in from standard input.
     #[cfg(not(target_arch = "wasm32"))]
     Stdin,
+
+    /// A remote file, served over RRDP interface.
+    #[cfg(feature = "rrdp")]
+    RrdpUrl { url: String },
 }
 
 impl DataSource {
