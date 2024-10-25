@@ -14,6 +14,7 @@ pub trait UICommandSender {
 pub enum UICommand {
     // Listed in the order they show up in the command palette by default!
     Open,
+    Import,
     SaveRecording,
     SaveRecordingSelection,
     SaveBlueprint,
@@ -111,7 +112,8 @@ impl UICommand {
 
             Self::SaveBlueprint => ("Save blueprint…", "Save the current viewer setup as a Rerun blueprint file (.rbl)"),
 
-            Self::Open => ("Open…", "Open any supported files (.rrd, images, meshes, …)"),
+            Self::Open => ("Open…", "Open any supported files (.rrd, images, meshes, …) in a new recording"),
+            Self::Import => ("Import…", "Import any supported files (.rrd, images, meshes, …) in the current recording"),
 
             Self::CloseCurrentRecording => (
                 "Close current recording",
@@ -271,6 +273,10 @@ impl UICommand {
             KeyboardShortcut::new(Modifiers::COMMAND, key)
         }
 
+        fn cmd_shift(key: Key) -> KeyboardShortcut {
+            KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::SHIFT), key)
+        }
+
         fn cmd_alt(key: Key) -> KeyboardShortcut {
             KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::ALT), key)
         }
@@ -284,6 +290,7 @@ impl UICommand {
             Self::SaveRecordingSelection => Some(cmd_alt(Key::S)),
             Self::SaveBlueprint => None,
             Self::Open => Some(cmd(Key::O)),
+            Self::Import => Some(cmd_shift(Key::O)),
             Self::CloseCurrentRecording => None,
             Self::CloseAllRecordings => None,
 

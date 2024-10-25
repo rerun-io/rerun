@@ -20,13 +20,6 @@ impl From<Vec<u8>> for Blob {
     }
 }
 
-impl Default for Blob {
-    #[inline]
-    fn default() -> Self {
-        Self(Vec::new().into())
-    }
-}
-
 impl std::ops::Deref for Blob {
     type Target = re_types_core::ArrowBuffer<u8>;
 

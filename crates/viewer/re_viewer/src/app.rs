@@ -146,6 +146,13 @@ const MIN_ZOOM_FACTOR: f32 = 0.2;
 #[cfg(not(target_arch = "wasm32"))]
 const MAX_ZOOM_FACTOR: f32 = 5.0;
 
+#[cfg(target_arch = "wasm32")]
+struct PendingFilePromise {
+    recommended_application_id: Option<ApplicationId>,
+    recommended_recording_id: Option<re_log_types::StoreId>,
+    promise: poll_promise::Promise<Vec<re_data_source::FileContents>>,
+}
+
 /// The Rerun Viewer as an [`eframe`] application.
 pub struct App {
     build_info: re_build_info::BuildInfo,
@@ -169,7 +176,7 @@ pub struct App {
     rx: ReceiveSet<LogMsg>,
 
     #[cfg(target_arch = "wasm32")]
-    open_files_promise: Option<poll_promise::Promise<Vec<re_data_source::FileContents>>>,
+    open_files_promise: Option<PendingFilePromise>,
 
     /// What is serialized
     pub(crate) state: AppState,
@@ -564,6 +571,18 @@ impl App {
         store_context: Option<&StoreContext<'_>>,
         cmd: UICommand,
     ) {
+        let active_application_id = store_context
+            .and_then(|ctx| {
+                ctx.hub
+                    .active_app()
+                    // Don't redirect data to the welcome screen.
+                    .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
+            })
+            .cloned();
+        let active_recording_id = store_context
+            .and_then(|ctx| ctx.hub.active_recording_id())
+            .cloned();
+
         match cmd {
             UICommand::SaveRecording => {
                 if let Err(err) = save_recording(self, store_context, None) {
@@ -602,12 +621,57 @@ impl App {
             #[cfg(target_arch = "wasm32")]
             UICommand::Open => {
                 let egui_ctx = egui_ctx.clone();
-                self.open_files_promise = Some(poll_promise::Promise::spawn_local(async move {
+
+                // Open: we want to try and load into a new dedicated recording.
+                let recommended_application_id = None;
+                let recommended_recording_id = None;
+                let promise = poll_promise::Promise::spawn_local(async move {
                     let file = async_open_rrd_dialog().await;
                     egui_ctx.request_repaint(); // Wake ui thread
                     file
-                }));
+                });
+
+                self.open_files_promise = Some(PendingFilePromise {
+                    recommended_application_id,
+                    recommended_recording_id,
+                    promise,
+                });
             }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::Import => {
+                for file_path in open_file_dialog_native() {
+                    self.command_sender
+                        .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
+                            FileSource::FileDialog {
+                                recommended_application_id: active_application_id.clone(),
+                                recommended_recording_id: active_recording_id.clone(),
+                            },
+                            file_path,
+                        )));
+                }
+            }
+            #[cfg(target_arch = "wasm32")]
+            UICommand::Import => {
+                let egui_ctx = egui_ctx.clone();
+
+                // Import: we want to try and load into the current recording.
+                let recommended_application_id = active_application_id;
+                let recommended_recording_id = active_recording_id;
+
+                let promise = poll_promise::Promise::spawn_local(async move {
+                    let file = async_open_rrd_dialog().await;
+                    egui_ctx.request_repaint(); // Wake ui thread
+                    file
+                });
+
+                self.open_files_promise = Some(PendingFilePromise {
+                    recommended_application_id,
+                    recommended_recording_id,
+                    promise,
+                });
+            }
+
             UICommand::CloseCurrentRecording => {
                 let cur_rec = store_context.map(|ctx| ctx.recording.store_id());
                 if let Some(cur_rec) = cur_rec {
@@ -1586,14 +1650,19 @@ impl eframe::App for App {
         }
 
         #[cfg(target_arch = "wasm32")]
-        if let Some(promise) = &self.open_files_promise {
+        if let Some(PendingFilePromise {
+            recommended_application_id,
+            recommended_recording_id,
+            promise,
+        }) = &self.open_files_promise
+        {
             if let Some(files) = promise.ready() {
                 for file in files {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
                             FileSource::FileDialog {
-                                recommended_application_id: None,
-                                recommended_recording_id: None,
+                                recommended_application_id: recommended_application_id.clone(),
+                                recommended_recording_id: recommended_recording_id.clone(),
                             },
                             file.clone(),
                         )));
