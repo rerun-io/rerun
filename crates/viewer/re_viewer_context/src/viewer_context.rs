@@ -181,7 +181,7 @@ impl<'a> ViewerContext<'a> {
         .unwrap_or_else(||
             {
                 // TODO(andreas): Is this operation common enough to cache the result? If so, here or in the reflection data?
-                // The nice thing about this would be that we could always give out references (but updating said cache wouldn't be easy in that case..)
+                // The nice thing about this would be that we could always give out references (but updating said cache wouldn't be easy in that case).
         let datatype = self
         .recording_store()
         .lookup_datatype(&component)
