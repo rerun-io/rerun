@@ -7,6 +7,7 @@ import "rerun/v0/common.proto";
 service StorageNode {
     rpc ListRecordings(ListRecordingsRequest) returns (ListRecordingsResponse) {}
     rpc Query(QueryRequest) returns (stream QueryResponse) {}
+    rpc FetchRecording(FetchRecordingRequest) returns (stream FetchRecordingResponse) {}
     rpc GetRecordingMetadata(GetRecordingMetadataRequest) returns (GetRecordingMetadataResponse) {}
     // TODO(zehiko) - should this be singular recording registration? Currently we can have 1 rrd => many recordings
     rpc RegisterRecordings(RegisterRecordingsRequest) returns (RegisterRecordingsResponse) {}
@@ -114,4 +115,21 @@ message RecordingInfo {
 
 enum RecordingType {
     RRD = 0;
+}
+
+// ----------------- FetchRecording -----------------
+
+message FetchRecordingRequest {
+    RecordingId id = 1;
+}
+
+// TODO(jleibs): Eventually this becomes either query-mediated in some way, but for now
+// it's useful to be able to just get back the whole RRD somehow.
+message FetchRecordingResponse {
+    // TODO(zehiko) we need to expand this to become something like 'encoder options'
+    // as we will need to specify additional options like compression, including schema
+    // in payload, etc.
+    EncoderVersion encoder_version = 1;
+    // payload is raw bytes that the relevant codec can interpret
+    bytes payload = 2;
 }
