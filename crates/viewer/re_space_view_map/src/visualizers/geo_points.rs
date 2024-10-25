@@ -57,10 +57,10 @@ impl VisualizerSystem for GeoPointsVisualizer {
             let all_colors = results.iter_as(timeline, Color::name());
             let all_radii = results.iter_as(timeline, Radius::name());
 
-            // default component values
-            let default_color: Color =
+            // fallback component values
+            let fallback_color: Color =
                 self.fallback_for(&ctx.query_context(data_result, &view_query.latest_at_query()));
-            let default_radius: Radius =
+            let fallback_radius: Radius =
                 self.fallback_for(&ctx.query_context(data_result, &view_query.latest_at_query()));
 
             // iterate over each chunk and find all relevant component slices
@@ -77,8 +77,8 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 let radii = radii.as_ref().map(|r| r.as_slice()).unwrap_or(&[]);
 
                 // optional components values to be used for instance clamping semantics
-                let last_color = colors.last().copied().unwrap_or(default_color);
-                let last_radii = radii.last().copied().unwrap_or(default_radius);
+                let last_color = colors.last().copied().unwrap_or(fallback_color);
+                let last_radii = radii.last().copied().unwrap_or(fallback_radius);
 
                 // iterate over all instances
                 for (position, color, radius) in itertools::izip!(
