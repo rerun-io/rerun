@@ -77,6 +77,8 @@ const CRATES_AT_INFO_LEVEL: &[&str] = &[
     // only let rustls log in debug mode: https://github.com/rerun-io/rerun/issues/3104
     #[cfg(debug_assertions)]
     "rustls",
+    // walkers generates noise around tile download, see https://github.com/podusowski/walkers/issues/199
+    "walkers",
     // winit 0.30.5 spams about `set_cursor_visible` calls. It's gone on winit master, so hopefully gone in next winit release.
     "winit",
 ];
