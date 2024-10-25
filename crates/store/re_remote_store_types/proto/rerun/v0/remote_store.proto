@@ -49,7 +49,7 @@ message RegisterRecordingsResponse {
 // Server can include details about the error as part of gRPC error (Status)
 message RegistrationError {
     // error code
-    Code code = 1;
+    ErrorCode code = 1;
     // url of the recording that failed to register
     string url = 2;
     // human readable details about the error

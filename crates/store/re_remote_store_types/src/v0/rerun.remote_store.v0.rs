@@ -212,22 +212,22 @@ impl SparseFillStrategy {
 /// Error codes for application level errors
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
-pub enum Code {
+pub enum ErrorCode {
     /// unused
-    NoError = 0,
+    Unused = 0,
     /// object store access error
     ObjectStoreError = 1,
     /// metadata database access error
     MetadataDbError = 2,
 }
-impl Code {
+impl ErrorCode {
     /// String value of the enum field names used in the ProtoBuf definition.
     ///
     /// The values are not transformed in any way and thus are considered stable
     /// (if the ProtoBuf definition does not change) and safe for programmatic use.
     pub fn as_str_name(&self) -> &'static str {
         match self {
-            Self::NoError => "_NO_ERROR",
+            Self::Unused => "_UNUSED",
             Self::ObjectStoreError => "OBJECT_STORE_ERROR",
             Self::MetadataDbError => "METADATA_DB_ERROR",
         }
@@ -235,7 +235,7 @@ impl Code {
     /// Creates an enum from field names used in the ProtoBuf definition.
     pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
         match value {
-            "_NO_ERROR" => Some(Self::NoError),
+            "_UNUSED" => Some(Self::Unused),
             "OBJECT_STORE_ERROR" => Some(Self::ObjectStoreError),
             "METADATA_DB_ERROR" => Some(Self::MetadataDbError),
             _ => None,
@@ -287,7 +287,7 @@ pub struct RegisterRecordingsResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegistrationError {
     /// error code
-    #[prost(enumeration = "Code", tag = "1")]
+    #[prost(enumeration = "ErrorCode", tag = "1")]
     pub code: i32,
     /// url of the recording that failed to register
     #[prost(string, tag = "2")]

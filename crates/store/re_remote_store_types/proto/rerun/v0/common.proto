@@ -163,9 +163,9 @@ enum SparseFillStrategy {
 }
 
 // Error codes for application level errors
-enum Code {
+enum ErrorCode {
     // unused
-    _NO_ERROR = 0;
+    _UNUSED = 0;
 
     // object store access error
     OBJECT_STORE_ERROR = 1;
