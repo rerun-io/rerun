@@ -7,9 +7,9 @@ import rerun as rr
 
 
 def main() -> None:
-    print("Hello, world!")
-
     rr.init("rerun_example_py_node_link", spawn=True)
+
+    rr.log("binary_tree", rr.GraphNodes(["a", "b", "c"]))
 
 
 if __name__ == "__main__":

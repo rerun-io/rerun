@@ -75,4 +75,6 @@ Some examples will download a small datasets before they run. They will do so th
 ## Contributions welcome
 Feel free to open a PR to add a new example!
 
+If you add an example, please make sure to add the corresponding entry to the top-level `pixi.toml` file as well, otherwise it will not be picked up.
+
 See [`CONTRIBUTING.md`](../../CONTRIBUTING.md) for details on how to contribute.
