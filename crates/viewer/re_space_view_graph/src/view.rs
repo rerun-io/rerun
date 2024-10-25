@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use egui::{self, Rect};
 
 use re_log_types::EntityPath;
-use re_types::{components, datatypes, SpaceViewClassIdentifier};
+use re_types::{components, SpaceViewClassIdentifier};
 use re_ui::{self, UiExt};
 use re_viewer_context::{
     external::re_entity_db::InstancePath, IdentifiedViewSystem as _, Item, SpaceViewClass,
@@ -116,39 +116,6 @@ impl SpaceViewClass for GraphSpaceView {
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
-        // let Some(layout) = &mut state.layout else {
-        //     let node_sizes = ui::measure_node_sizes(ui, graph.all_nodes());
-
-        //     let undirected = undirected_system
-        //         .data
-        //         .iter()
-        //         .flat_map(|d| d.edges().map(|e| (e.source.into(), e.target.into())));
-
-        //     let directed = directed_system
-        //         .data
-        //         .iter()
-        //         .flat_map(|d| d.edges().map(|e| (e.source.into(), e.target.into())));
-
-        //     let layout =
-        //         state
-        //             .layout_provider
-        //             .compute(node_sizes.into_iter(), undirected, directed)?;
-
-        //     state.layout = Some(layout);
-
-        //     state.should_fit_to_screen = true;
-
-        //     return Ok(());
-        // };
-
-        // if graph
-        //     .all_nodes()
-        //     .any(|n| !layout.contains_key(&NodeIndex::from(&n)))
-        // {
-        //     state.layout = None;
-        //     return Ok(());
-        // }
-
         // We keep track of the nodes in the data to clean up the layout.
         // TODO(grtlr): once we settle on a design, it might make sense to create a
         // `Layout` struct that keeps track of the layout and the nodes that
@@ -233,31 +200,6 @@ impl SpaceViewClass for GraphSpaceView {
 
         // Clean up the layout for nodes that are no longer present.
         state.layout.retain(|k, _| seen.contains(k));
-
-        // let pos = state.layout.iter().map(|(&k, v)| (k, v.center()));
-        // let links = graph
-        //     .all_edges()
-        //     .map(|e| (e.source.into(), e.target.into()))
-        //     .collect();
-
-        // let simulation = state.simulation.get_or_insert_with(|| {
-        //     re_force::SimulationBuilder::default()
-        //         .build(pos)
-        //         // .add_force_collide("collide".to_string(), Default::default())
-        //         // .add_force_x("x".to_string(), Default::default())
-        //         // .add_force_y("y".to_string(), Default::default())
-        //         .add_force_link("link".to_string(), LinkBuilder::new(links))
-        //         .add_force_many_body("many_body".to_string(), Default::default())
-        // });
-
-        // if state.should_tick {
-        //     simulation.tick(1);
-        //     state.should_tick = false;
-
-        //     for (ix, pos) in simulation.positions() {
-        //         state.layout.get_mut(ix).unwrap().set_center(pos.into())
-        //     }
-        // }
 
         // TODO(grtlr): come up with a good heuristic of when to do this.
         if state.should_fit_to_screen {

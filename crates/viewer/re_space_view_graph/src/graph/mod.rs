@@ -2,7 +2,7 @@ use re_log_types::EntityPath;
 use re_types::datatypes;
 
 use crate::{
-    types::{EdgeInstance, NodeInstance, UnknownNodeInstance},
+    types::UnknownNodeInstance,
     visualizers::{EdgeData, NodeData},
 };
 
@@ -11,40 +11,14 @@ pub(crate) use hash::GraphNodeHash;
 mod index;
 pub(crate) use index::NodeIndex;
 
-pub(crate) enum Node<'a> {
-    Regular(NodeInstance<'a>),
-    Unknown(UnknownNodeInstance<'a>),
-}
-
-impl<'a> From<&Node<'a>> for NodeIndex {
-    fn from(node: &Node<'a>) -> Self {
-        match node {
-            Node::Regular(node) => node.into(),
-            Node::Unknown(node) => node.into(),
-        }
-    }
-}
-
-impl<'a> From<Node<'a>> for NodeIndex {
-    fn from(node: Node<'a>) -> Self {
-        match node {
-            Node::Regular(node) => node.into(),
-            Node::Unknown(node) => node.into(),
-        }
-    }
-}
-
-// TODO(grtlr): This struct is not used much currently. It might be worth considering to remove
-// it, if we don't require it for the layout algorithms nor the user interactions.
+// TODO(grtlr): This struct should act as an abstraction over the graph in the future.
 pub(crate) struct Graph<'a> {
     /// Contains all nodes that are part mentioned in the edges but not part of the `nodes` list
     unknown: ahash::HashSet<(&'a EntityPath, datatypes::GraphNode)>,
-    nodes: &'a [NodeData],
-    edges: &'a [EdgeData],
 }
 
 impl<'a> Graph<'a> {
-    pub fn from_nodes_edges(nodes: &'a Vec<NodeData>, edges: &'a Vec<EdgeData>) -> Self {
+    pub fn from_nodes_edges(nodes: &'a [NodeData], edges: &'a [EdgeData]) -> Self {
         let seen = nodes
             .iter()
             .flat_map(|entity| entity.nodes())
@@ -63,32 +37,7 @@ impl<'a> Graph<'a> {
             }
         }
 
-        Self {
-            unknown,
-            nodes,
-            edges,
-        }
-    }
-
-    pub fn nodes_by_entity(&self) -> impl Iterator<Item = &NodeData> {
-        self.nodes.iter()
-    }
-
-    pub fn all_nodes(&'a self) -> impl Iterator<Item = Node<'a>> {
-        let nodes = self
-            .nodes
-            .iter()
-            .flat_map(|entity| entity.nodes().map(Node::Regular));
-        let unknowns = self.unknown_nodes().map(Node::Unknown);
-        nodes.chain(unknowns)
-    }
-
-    pub fn edges_by_entity(&self) -> impl Iterator<Item = &EdgeData> {
-        self.edges.iter()
-    }
-
-    pub fn all_edges(&self) -> impl Iterator<Item = EdgeInstance<'_>> {
-        self.edges.iter().flat_map(|entity| entity.edges())
+        Self { unknown }
     }
 
     pub fn unknown_nodes(&'a self) -> impl Iterator<Item = UnknownNodeInstance<'a>> {

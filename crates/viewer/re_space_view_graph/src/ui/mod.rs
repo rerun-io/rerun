@@ -1,7 +1,5 @@
-use std::collections::HashMap;
-
 use re_log_types::EntityPath;
-use re_viewer_context::{InteractionHighlight, SpaceViewHighlights};
+use re_viewer_context::SpaceViewHighlights;
 
 mod edge;
 pub(crate) use edge::draw_edge;
@@ -12,10 +10,7 @@ pub(crate) use state::GraphSpaceViewState;
 
 pub(crate) mod scene;
 
-use crate::{
-    graph::{Node, NodeIndex},
-    types::UnknownNodeInstance,
-};
+use crate::types::UnknownNodeInstance;
 
 pub fn draw_dummy(ui: &mut egui::Ui, instance: &UnknownNodeInstance<'_>) -> egui::Response {
     let text = egui::RichText::new(format!("{} @ {}", instance.node_id, instance.entity_path))
@@ -57,32 +52,6 @@ pub fn draw_entity(
     }
 
     response
-}
-
-// TODO(grtlr): We might need to come back to this for implementing layouts.
-#[allow(unused)]
-pub fn measure_node_sizes<'a>(
-    ui: &mut egui::Ui,
-    nodes: impl Iterator<Item = Node<'a>>,
-) -> HashMap<NodeIndex, egui::Vec2> {
-    let mut sizes = HashMap::new();
-    let ctx = ui.ctx();
-    ctx.request_discard("measuring node sizes");
-    ui.horizontal(|ui| {
-        for node in nodes {
-            match node {
-                Node::Regular(instance) => {
-                    let r = draw_node(ui, &instance, InteractionHighlight::default());
-                    sizes.insert((&instance).into(), r.rect.size());
-                }
-                Node::Unknown(instance) => {
-                    let r = draw_dummy(ui, &instance);
-                    sizes.insert((&instance).into(), r.rect.size());
-                }
-            };
-        }
-    });
-    sizes
 }
 
 pub fn bounding_rect_from_iter<'a>(
