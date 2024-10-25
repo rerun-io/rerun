@@ -7,6 +7,9 @@ import rerun as rr
 
 s = 3  # scaling factor for the positions
 
+# Potentially unbalanced and not sorted binary tree. :nerd_face:.
+# :warning: The nodes have to be unique, which is why we use `5_0`…
+
 nodes = {
     "1": {"label": "1", "pos": (0 * s, 0 * s)},
     "7": {"label": "7", "pos": (-20 * s, 30 * s)},
@@ -48,9 +51,6 @@ def to_edge(e: tuple[str, str]) -> rr.components.GraphEdge:
 
 def main() -> None:
     rr.init("rerun_example_py_node_link", spawn=True)
-
-    # Potentially unbalanced and not sorted :nerd_face:.
-    # :warning: The nodes have to be unique, which is why we use `5_0`…
 
     t = 0
     for level in levels:
