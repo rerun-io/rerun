@@ -122,6 +122,8 @@ impl SpaceViewClass for GraphSpaceView {
         // get added and removed and cleans up automatically (guard pattern).
         let mut seen: HashSet<NodeIndex> = HashSet::new();
 
+        let layout_was_empty = state.layout.is_empty();
+
         state.viewer.scene(ui, |mut scene| {
             for data in &node_system.data {
                 let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
@@ -192,19 +194,11 @@ impl SpaceViewClass for GraphSpaceView {
             }
         });
 
-        // TODO(grtlr): consider improving this!
-        if state.should_fit_to_screen {
-            state.viewer.fit_to_screen();
-            state.should_fit_to_screen = false;
-        }
-
         // Clean up the layout for nodes that are no longer present.
         state.layout.retain(|k, _| seen.contains(k));
 
-        // TODO(grtlr): come up with a good heuristic of when to do this.
-        if state.should_fit_to_screen {
+        if layout_was_empty {
             state.viewer.fit_to_screen();
-            state.should_fit_to_screen = false;
         }
 
         Ok(())
