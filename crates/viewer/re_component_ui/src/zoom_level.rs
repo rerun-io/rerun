@@ -1,8 +1,11 @@
 use re_types::datatypes;
 use re_viewer_context::MaybeMutRef;
 
-//TODO(#7876): move this to `re_space_view_map` when the crate is no longer behind a Cargo feature.
-const MAX_ZOOM_LEVEL: f32 = 22.0;
+// TODO(#7876): move this to `re_space_view_map` when the crate is no longer behind a Cargo feature.
+// TODO(ab): currently set at 19 because that's what walkers has as hard-coded limit. In the future,
+// walkers will need to be more flexible (e.g. depend on the actually max zoom level for the map
+// provider). At that point, we will have to set some kind of "max ever" value here.
+const MAX_ZOOM_LEVEL: f32 = 19.0;
 
 /// Editor for a [`re_types::blueprint::components::ZoomLevel`].
 pub fn edit_zoom_level(

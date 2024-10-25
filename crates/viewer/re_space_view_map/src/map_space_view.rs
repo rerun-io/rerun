@@ -98,11 +98,7 @@ Displays geospatial primitives on a map.
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
-        Box::<MapSpaceViewState>::new(MapSpaceViewState {
-            tiles: None,
-            map_memory: MapMemory::default(),
-            selected_provider: MapProvider::default(),
-        })
+        Box::<MapSpaceViewState>::new(MapSpaceViewState::default())
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
@@ -201,8 +197,11 @@ Displays geospatial primitives on a map.
         let zoom_level = blueprint_zoom_level.or(default_zoom_level).unwrap_or(16.0);
 
         if state.map_memory.set_zoom(zoom_level).is_err() {
-            re_log::warn_once!(
-                "Failed to set zoom level for map. Zoom level should be between zero and 22"
+            //TODO(ab): we need a better handling of this, but requires upstream work (including
+            //accepting higher zoom level and using lower-resolution tiles.
+            re_log::debug!(
+                "Zoom level {zoom_level} rejected by walkers (probably means that it is not \
+                supported by the configured map provider)"
             );
         };
 
