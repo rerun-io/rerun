@@ -160,7 +160,7 @@ pub fn decode(version: EncoderVersion, data: &[u8]) -> Result<Option<TransportCh
     }
 }
 
-// TODO(zehiko) use common arrow ipc serialization / deserialization logic
+// TODO(zehiko) extract common serialization logic
 impl RecordingMetadata {
     /// Create `RecordingMetadata` from arrow schema and arrow record batch
     pub fn try_from(

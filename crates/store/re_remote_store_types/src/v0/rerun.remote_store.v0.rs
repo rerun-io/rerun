@@ -276,21 +276,6 @@ pub struct ObjectStorage {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterRecordingsResponse {
-    #[prost(oneof = "register_recordings_response::Response", tags = "1, 2")]
-    pub response: ::core::option::Option<register_recordings_response::Response>,
-}
-/// Nested message and enum types in `RegisterRecordingsResponse`.
-pub mod register_recordings_response {
-    #[derive(Clone, PartialEq, ::prost::Oneof)]
-    pub enum Response {
-        #[prost(message, tag = "1")]
-        Success(super::RegistrationSuccess),
-        #[prost(message, tag = "2")]
-        Error(super::RegistrationError),
-    }
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RegistrationSuccess {
     /// Note / TODO(zehiko): this implies we read the record (for example go through entire .rrd file
     /// chunk by chunk) and extract the metadata. So we might want to 1/ not do this i.e.
     /// only do it as part of explicit GetMetadata request or 2/ do it if Request has "include_metadata=true"
@@ -298,6 +283,7 @@ pub struct RegistrationSuccess {
     #[prost(message, repeated, tag = "2")]
     pub metadata: ::prost::alloc::vec::Vec<RecordingMetadata>,
 }
+/// Server can include details about the error as part of gRPC error (Status)
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegistrationError {
     /// error code
