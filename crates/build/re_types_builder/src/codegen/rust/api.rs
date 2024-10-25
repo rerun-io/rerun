@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -57,6 +57,7 @@ impl CodeGenerator for RustCodeGenerator {
         arrow_registry: &ArrowRegistry,
     ) -> BTreeMap<Utf8PathBuf, String> {
         let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
+        let mut extension_contents_for_fqname: HashMap<String, String> = Default::default();
 
         for object_kind in ObjectKind::ALL {
             self.generate_folder(
@@ -65,11 +66,17 @@ impl CodeGenerator for RustCodeGenerator {
                 arrow_registry,
                 object_kind,
                 &mut files_to_write,
+                &mut extension_contents_for_fqname,
             );
         }
 
         generate_blueprint_validation(reporter, objects, &mut files_to_write);
-        generate_reflection(reporter, objects, &mut files_to_write);
+        generate_reflection(
+            reporter,
+            objects,
+            &extension_contents_for_fqname,
+            &mut files_to_write,
+        );
 
         files_to_write
     }
@@ -83,6 +90,7 @@ impl RustCodeGenerator {
         arrow_registry: &ArrowRegistry,
         object_kind: ObjectKind,
         files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
+        extension_contents_for_fqname: &mut HashMap<String, String>,
     ) {
         let crates_root_path = self.workspace_path.join("crates");
 
@@ -104,8 +112,13 @@ impl RustCodeGenerator {
             let filename = format!("{filename_stem}.rs");
 
             let filepath = module_path.join(filename);
-
             let mut code = generate_object_file(reporter, objects, arrow_registry, obj, &filepath);
+
+            if let Ok(extension_contents) =
+                std::fs::read_to_string(module_path.join(format!("{filename_stem}_ext.rs")))
+            {
+                extension_contents_for_fqname.insert(obj.fqname.clone(), extension_contents);
+            }
 
             if crate_name == "re_types_core" {
                 code = code.replace("::re_types_core", "crate");
