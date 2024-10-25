@@ -29,7 +29,7 @@ The Viewer's UI scaling defaults to the OS scaling which typically is 100% for f
 * [`Boxes2D`](../archetypes/boxes2d.md)
 * [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
-* [`GeoPoints`](../archetypes/geo_points.md)
+* [`GeoPoints`](../archetypes/geo_points.md?speculative-link)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
 * [`LineStrips3D`](../archetypes/line_strips3d.md)
 * [`Points2D`](../archetypes/points2d.md)

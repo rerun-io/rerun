@@ -5,7 +5,8 @@ namespace rerun.blueprint.views;
 /// \example views/map title="Use a blueprint to create a map view."
 //TODO(ab): add a screenshot
 table MapView (
-    "attr.rerun.view_identifier": "Map"
+    "attr.rerun.view_identifier": "Map",
+    "attr.docs.unreleased"
 ) {
     /// Configures the zoom level of the map view.
     zoom: rerun.blueprint.archetypes.MapZoom (order: 1000);

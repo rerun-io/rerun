@@ -3,7 +3,8 @@ namespace rerun.blueprint.archetypes;
 
 /// Configuration for the background map of the map view.
 table MapBackground (
-    "attr.rerun.scope": "blueprint"
+    "attr.rerun.scope": "blueprint",
+    "attr.docs.unreleased"
 ) {
     // --- Optional ---
 

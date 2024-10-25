@@ -10,11 +10,11 @@ A double-precision vector in 2D space.
 * xy: 2x `f64`
 
 ## API reference links
- * 🌊 [C++ API docs for `DVec2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1DVec2D.html)
- * 🐍 [Python API docs for `DVec2D`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.DVec2D)
- * 🦀 [Rust API docs for `DVec2D`](https://docs.rs/rerun/latest/rerun/datatypes/struct.DVec2D.html)
+ * 🌊 [C++ API docs for `DVec2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1DVec2D.html?speculative-link)
+ * 🐍 [Python API docs for `DVec2D`](https://ref.rerun.io/docs/python/stable/common/datatypes?speculative-link#rerun.datatypes.DVec2D)
+ * 🦀 [Rust API docs for `DVec2D`](https://docs.rs/rerun/latest/rerun/datatypes/struct.DVec2D.html?speculative-link)
 
 
 ## Used by
 
-* [`LatLon`](../components/lat_lon.md)
+* [`LatLon`](../components/lat_lon.md?speculative-link)

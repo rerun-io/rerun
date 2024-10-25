@@ -9,7 +9,8 @@ namespace rerun.archetypes;
 table GeoPoints (
   "attr.rust.derive": "PartialEq",
   "attr.docs.category": "Geospatial",
-  "attr.docs.view_types": "MapView"
+  "attr.docs.view_types": "MapView",
+  "attr.docs.unreleased"
 ) {
   // --- Required ---
 

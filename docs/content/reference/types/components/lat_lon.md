@@ -10,11 +10,11 @@ A geographical position expressed in EPSG:4326 latitude and longitude.
 * lat_lon: [`DVec2D`](../datatypes/dvec2d.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `LatLon`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1LatLon.html)
- * 🐍 [Python API docs for `LatLon`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.LatLon)
- * 🦀 [Rust API docs for `LatLon`](https://docs.rs/rerun/latest/rerun/components/struct.LatLon.html)
+ * 🌊 [C++ API docs for `LatLon`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1LatLon.html?speculative-link)
+ * 🐍 [Python API docs for `LatLon`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.LatLon)
+ * 🦀 [Rust API docs for `LatLon`](https://docs.rs/rerun/latest/rerun/components/struct.LatLon.html?speculative-link)
 
 
 ## Used by
 
-* [`GeoPoints`](../archetypes/geo_points.md)
+* [`GeoPoints`](../archetypes/geo_points.md?speculative-link)
