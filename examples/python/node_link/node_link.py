@@ -11,5 +11,6 @@ def main() -> None:
 
     rr.init("rerun_example_py_node_link", spawn=True)
 
+
 if __name__ == "__main__":
     main()
