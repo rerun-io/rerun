@@ -120,7 +120,7 @@ enum RecordingType {
 // ----------------- FetchRecording -----------------
 
 message FetchRecordingRequest {
-    RecordingId id = 1;
+    RecordingId recording_id = 1;
 }
 
 // TODO(jleibs): Eventually this becomes either query-mediated in some way, but for now

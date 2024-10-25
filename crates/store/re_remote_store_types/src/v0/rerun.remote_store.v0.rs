@@ -358,7 +358,7 @@ pub struct RecordingInfo {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FetchRecordingRequest {
     #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<RecordingId>,
+    pub recording_id: ::core::option::Option<RecordingId>,
 }
 /// TODO(jleibs): Eventually this becomes either query-mediated in some way, but for now
 /// it's useful to be able to just get back the whole RRD somehow.
