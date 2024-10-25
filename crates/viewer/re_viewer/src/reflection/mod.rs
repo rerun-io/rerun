@@ -150,7 +150,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <MapProvider as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Name of the map provider to be used in Map views.",
-                placeholder: Some(MapProvider::default().to_arrow()?),
+                custom_placeholder: Some(MapProvider::default().to_arrow()?),
             },
         ),
         (
@@ -271,7 +271,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ZoomLevel as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A zoom level determines how much of the world is visible on a map.",
-                placeholder: Some(ZoomLevel::default().to_arrow()?),
+                custom_placeholder: Some(ZoomLevel::default().to_arrow()?),
             },
         ),
         (
@@ -432,7 +432,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <LatLon as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A geographical position expressed in EPSG:4326 latitude and longitude.",
-                placeholder: Some(LatLon::default().to_arrow()?),
+                custom_placeholder: Some(LatLon::default().to_arrow()?),
             },
         ),
         (
