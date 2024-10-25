@@ -238,7 +238,7 @@ impl VideoData {
         self.gops.iter().flat_map(|seg| {
             self.samples[seg.range()]
                 .iter()
-                .map(|sample| sample.composition_timestamp.into_nanos(self.timescale))
+                .map(|sample| sample.presentation_timestamp.into_nanos(self.timescale))
                 .sorted()
         })
     }
@@ -276,15 +276,16 @@ pub struct Sample {
     ///
     /// Samples should be decoded in this order.
     ///
-    /// `decode_timestamp <= composition_timestamp`
+    /// `decode_timestamp <= presentation_timestamp`
     pub decode_timestamp: Time,
 
     /// Time at which this sample appears in the frame stream, in time units.
+    /// Often synonymous with `presentation_timestamp`.
     ///
     /// The frame should be shown at this time.
     ///
-    /// `decode_timestamp <= composition_timestamp`
-    pub composition_timestamp: Time,
+    /// `decode_timestamp <= presentation_timestamp`
+    pub presentation_timestamp: Time,
 
     /// Duration of the sample, in time units.
     pub duration: Time,
@@ -311,7 +312,7 @@ impl Sample {
         Some(Chunk {
             data,
             decode_timestamp: self.decode_timestamp,
-            composition_timestamp: self.composition_timestamp,
+            presentation_timestamp: self.presentation_timestamp,
             duration: self.duration,
             is_sync: self.is_sync,
         })

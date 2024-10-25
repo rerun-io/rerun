@@ -211,14 +211,14 @@ pub struct Chunk {
     /// Decode timestamp of this sample.
     /// Chunks are expected to be submitted in the order of decode timestamp.
     ///
-    /// `decode_timestamp <= composition_timestamp`
+    /// `decode_timestamp <= presentation_timestamp`
     pub decode_timestamp: Time,
 
-    /// Presentation/composition timestamp for the sample in this chunk.
-    /// *not* decode timestamp.
+    /// Presentation timestamp for the sample in this chunk.
+    /// Often synonymous with `composition_timestamp`.
     ///
-    /// `decode_timestamp <= composition_timestamp`
-    pub composition_timestamp: Time,
+    /// `decode_timestamp <= presentation_timestamp`
+    pub presentation_timestamp: Time,
 
     pub duration: Time,
 }

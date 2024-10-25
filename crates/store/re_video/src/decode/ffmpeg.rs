@@ -1,8 +1,8 @@
 //! Send video data to `ffmpeg` over CLI to decode it.
 
-use std::{io::Write, sync::atomic::Ordering};
+use std::{collections::BTreeMap, io::Write, sync::atomic::Ordering};
 
-use crossbeam::channel::{Receiver, Sender, TryRecvError};
+use crossbeam::channel::{Receiver, Sender};
 use ffmpeg_sidecar::{
     command::FfmpegCommand,
     event::{FfmpegEvent, LogLevel},
@@ -47,10 +47,8 @@ impl From<Error> for super::Error {
 
 /// ffmpeg does not tell us the timestamp/duration of a given frame, so we need to remember it.
 struct FrameInfo {
-    /// Monotonic index, from start
-    frame_num: u32,
-
-    timestamp: Time,
+    decode_timestamp: Time,
+    presentation_timestamp: Time,
     duration: Time,
 }
 
@@ -161,6 +159,8 @@ fn read_ffmpeg_output(
         false
     }
 
+    let mut pending_frames = BTreeMap::new();
+
     for event in ffmpeg_iterator {
         #[allow(clippy::match_same_arms)]
         match event {
@@ -236,25 +236,37 @@ fn read_ffmpeg_output(
             }
 
             FfmpegEvent::OutputFrame(frame) => {
-                let frame_info: FrameInfo = match frame_info_rx.try_recv() {
-                    Ok(frame_info) => frame_info,
+                let frame_info = match pending_frames.pop_first() {
+                    Some((_, frame_info)) => frame_info,
+                    None => {
+                        // Retrieve frame infos until decode timestamp is no longer behind composition timestamp.
+                        // This is important because frame infos come not in in composition order,
+                        // but ffmpeg will report frames in composition order!
+                        loop {
+                            let Ok(frame_info) = frame_info_rx.try_recv() else {
+                                re_log::debug!("Receiver disconnected");
+                                return;
+                            };
 
-                    Err(TryRecvError::Disconnected) => {
-                        re_log::debug!("Receiver disconnected");
-                        return;
-                    }
-
-                    Err(TryRecvError::Empty) => {
-                        // This shouldn't happen
-                        if frame_tx.send(Err(Error::NoFrameInfo.into())).is_err() {
-                            re_log::warn!("Got no frame-info, and failed to send error");
+                            // Example how how presentation timestamps and decode timestamps can play out:
+                            //    PTS: 1 4 2 3
+                            //    DTS: 1 2 3 4
+                            // Stream: I P B B
+                            //
+                            // Essentially we need to wait until the dts has "caught up" with the pts!
+                            let highest_pts = pending_frames
+                                .last_key_value()
+                                .map_or(frame_info.presentation_timestamp, |(pts, _)| *pts);
+                            if frame_info.decode_timestamp <= highest_pts {
+                                break frame_info;
+                            }
+                            pending_frames.insert(frame_info.presentation_timestamp, frame_info);
                         }
-                        return;
                     }
                 };
 
                 let ffmpeg_sidecar::event::OutputVideoFrame {
-                    frame_num,
+                    frame_num: _, // This is made up by ffmpeg sidecar.
                     pix_fmt,
                     width,
                     height,
@@ -263,12 +275,11 @@ fn read_ffmpeg_output(
                     timestamp: _, // This is a timestamp made up by ffmpeg_sidecar based on limited information it has.
                 } = frame;
 
-                debug_assert_eq!(
-                    frame_info.frame_num, frame_num,
-                    "We are out-of-sync with ffmpeg"
-                ); // TODO: fix somehow
-
-                re_log::trace!("Received frame {frame_num}: fmt {pix_fmt:?} size {width}x{height}");
+                re_log::trace!(
+                    "Received frame: dts {:?} cts {:?} fmt {pix_fmt:?} size {width}x{height}",
+                    frame_info.decode_timestamp,
+                    frame_info.presentation_timestamp
+                );
 
                 debug_assert_eq!(pix_fmt, "rgb24");
                 debug_assert_eq!(width as usize * height as usize * 3, data.len());
@@ -279,7 +290,7 @@ fn read_ffmpeg_output(
                         height,
                         data,
                         format: crate::PixelFormat::Rgb8Unorm,
-                        presentation_timestamp: frame_info.timestamp,
+                        presentation_timestamp: frame_info.presentation_timestamp,
                         duration: frame_info.duration,
                     }))
                     .is_err()
@@ -322,11 +333,9 @@ impl SyncDecoder for FfmpegCliH264Decoder {
         // We send the information about this chunk first.
         // This assumes each sample/chunk will result in exactly one frame.
         // If this assumption is not held, we will get weird errors, like videos playing to slowly.
-        // TODO: this also assumes that the frame comes back in this order.
-        // Which is definitely wrong, as we know that frames are not necessarily in composition time stamp order!
         let frame_info = FrameInfo {
-            frame_num: self.frame_num,
-            timestamp: chunk.composition_timestamp,
+            presentation_timestamp: chunk.presentation_timestamp,
+            decode_timestamp: chunk.decode_timestamp,
             duration: chunk.duration,
         };
 
@@ -490,7 +499,7 @@ fn write_avc_chunk_to_nalu_stream(
 /// Possible values for `nal_unit_type` field in `nal_unit`.
 ///
 /// Encodes to 5 bits.
-/// Via: https://docs.rs/less-avc/0.1.5/src/less_avc/nal_unit.rs.html#232
+/// Via: <https://docs.rs/less-avc/0.1.5/src/less_avc/nal_unit.rs.html#232/>
 #[derive(PartialEq, Eq)]
 #[non_exhaustive]
 #[repr(u8)]
