@@ -1,8 +1,8 @@
 namespace rerun.blueprint.views;
 
-/// A map view.
+/// A 2D map view to display geospatial primitives.
 ///
-/// \example views/map title="Use a blueprint to create a MapView."
+/// \example views/map title="Use a blueprint to create a map view."
 //TODO(ab): add a screenshot
 table MapView (
     "attr.rerun.view_identifier": "Map"

@@ -18,7 +18,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **View**: A map view.
+/// **View**: A 2D map view to display geospatial primitives.
 #[derive(Clone, Debug)]
 pub struct MapView {
     /// Configures the zoom level of the map view.

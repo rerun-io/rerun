@@ -80,7 +80,7 @@ impl SpaceViewClass for MapSpaceView {
     fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
         "# Map view
 
-Displays a Position3D on a map.
+Displays geospatial primitives on a map.
 
 ## Navigation controls
 

@@ -17,16 +17,16 @@ from ..api import SpaceView, SpaceViewContentsLike
 
 class MapView(SpaceView):
     """
-    **View**: A map view.
+    **View**: A 2D map view to display geospatial primitives.
 
     Example
     -------
-    ### Use a blueprint to create a MapView.:
+    ### Use a blueprint to create a map view.:
     ```python
     import rerun as rr
     import rerun.blueprint as rrb
 
-    rr.init("rerun_example_gps_coordinates", spawn=True)
+    rr.init("rerun_example_map_view", spawn=True)
 
     rr.log("points", rr.GeoPoints([[47.6344, 19.1397], [47.6334, 19.1399]]))
 
@@ -36,7 +36,8 @@ class MapView(SpaceView):
         rrb.MapView(
             origin="points",
             name="MapView",
-            options=rrb.archetypes.MapOptions(provider=rrb.components.MapProvider.MapboxStreets, zoom=16.0),
+            zoom=rrb.archetypes.MapZoom(16.0),
+            background=rrb.archetypes.MapBackground(rrb.components.MapProvider.OpenStreetMap),
         ),
         collapse_panels=True,
     )
