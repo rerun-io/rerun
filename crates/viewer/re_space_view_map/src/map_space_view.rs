@@ -4,7 +4,11 @@ use walkers::{HttpTiles, Map, MapMemory, Tiles};
 use re_log_types::EntityPath;
 use re_space_view::suggest_space_view_for_each_entity;
 use re_types::{
-    blueprint::{archetypes::MapOptions, components::MapProvider, components::ZoomLevel},
+    blueprint::{
+        archetypes::{MapBackground, MapZoom},
+        components::MapProvider,
+        components::ZoomLevel,
+    },
     SpaceViewClassIdentifier, View,
 };
 use re_viewer_context::{
@@ -123,13 +127,8 @@ Displays a Position3D on a map.
         space_view_id: SpaceViewId,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_ui::list_item::list_item_scope(ui, "map_selection_ui", |ui| {
-            re_space_view::view_property_ui::<re_types::blueprint::archetypes::MapOptions>(
-                ctx,
-                ui,
-                space_view_id,
-                self,
-                state,
-            );
+            re_space_view::view_property_ui::<MapZoom>(ctx, ui, space_view_id, self, state);
+            re_space_view::view_property_ui::<MapBackground>(ctx, ui, space_view_id, self, state);
         });
 
         Ok(())
@@ -144,7 +143,13 @@ Displays a Position3D on a map.
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<MapSpaceViewState>()?;
-        let map_options = ViewProperty::from_archetype::<MapOptions>(
+        let map_background = ViewProperty::from_archetype::<MapBackground>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.space_view_id,
+        );
+
+        let map_zoom = ViewProperty::from_archetype::<MapZoom>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
             query.space_view_id,
@@ -156,7 +161,7 @@ Displays a Position3D on a map.
         // Map Provider
         //
 
-        let map_provider = map_options.component_or_fallback::<MapProvider>(ctx, self, state)?;
+        let map_provider = map_background.component_or_fallback::<MapProvider>(ctx, self, state)?;
         if state.selected_provider != map_provider {
             state.tiles = None;
             state.selected_provider = map_provider;
@@ -185,7 +190,7 @@ Displays a Position3D on a map.
             .map(|span| span.center())
             .unwrap_or(walkers::Position::from_lat_lon(59.319224, 18.075514)); // Rerun HQ
 
-        let blueprint_zoom_level = map_options
+        let blueprint_zoom_level = map_zoom
             .component_or_empty::<ZoomLevel>()?
             .map(|zoom| **zoom);
         let default_zoom_level = span.and_then(|span| {
@@ -233,7 +238,7 @@ Displays a Position3D on a map.
         //
 
         if Some(map_memory.zoom()) != blueprint_zoom_level {
-            map_options.save_blueprint_component(
+            map_zoom.save_blueprint_component(
                 ctx,
                 &ZoomLevel(re_types::datatypes::Float32(map_memory.zoom())),
             );

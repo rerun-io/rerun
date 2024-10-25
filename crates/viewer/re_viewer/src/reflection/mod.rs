@@ -1629,16 +1629,27 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
-            ArchetypeName::new("rerun.blueprint.archetypes.MapOptions"),
+            ArchetypeName::new("rerun.blueprint.archetypes.MapBackground"),
             ArchetypeReflection {
-                display_name: "Map options",
+                display_name: "Map background",
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.MapProvider".into(), display_name :
-                    "Provider", docstring_md : "Map provider and style to use.",
-                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "Provider", docstring_md :
+                    "Map provider and style to use.\n\n**Note**: Requires a Mapbox API key in the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.MapZoom"),
+            ArchetypeReflection {
+                display_name: "Map zoom",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ZoomLevel".into(), display_name : "Zoom",
-                    docstring_md : "Zoom level for the map. The default is 16.",
+                    docstring_md :
+                    "Zoom level for the map.\n\nZoom level follow the [`OpenStreetMap` definition](https://wiki.openstreetmap.org/wiki/Zoom_levels).",
                     is_required : false, },
                 ],
             },

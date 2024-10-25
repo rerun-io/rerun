@@ -7,6 +7,9 @@ namespace rerun.blueprint.views;
 table MapView (
     "attr.rerun.view_identifier": "Map"
 ) {
-    /// Configures the look and feel of the map.
-    options: rerun.blueprint.archetypes.MapOptions (order: 1000);
+    /// Configures the zoom level of the map view.
+    zoom: rerun.blueprint.archetypes.MapZoom (order: 1000);
+
+    /// Configuration for the background map of the map view.
+    background: rerun.blueprint.archetypes.MapBackground (order: 2000);
 }

@@ -7,11 +7,10 @@ A map view.
 
 ## Properties
 
-### `options`
-Configures the look and feel of the map.
-
-* `provider`: Map provider and style to use.
-* `zoom`: Zoom level for the map. The default is 16.
+### `zoom`
+Configures the zoom level of the map view.
+### `background`
+Configuration for the background map of the map view.
 
 ## API reference links
  * 🐍 [Python API docs for `MapView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.MapView)

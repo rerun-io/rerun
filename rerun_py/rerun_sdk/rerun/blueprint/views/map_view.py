@@ -31,11 +31,12 @@ class MapView(SpaceView):
     rr.log("points", rr.GeoPoints([[47.6344, 19.1397], [47.6334, 19.1399]]))
 
     # Create a map view to display the chart.
+    # TODO(#7903): cleanup the blueprint API for the map view
     blueprint = rrb.Blueprint(
         rrb.MapView(
             origin="points",
             name="MapView",
-            options=rrb.archetypes.MapOptions(provider=rrb.components.MapProvider.MapboxStreets),
+            options=rrb.archetypes.MapOptions(provider=rrb.components.MapProvider.MapboxStreets, zoom=16.0),
         ),
         collapse_panels=True,
     )
@@ -54,7 +55,8 @@ class MapView(SpaceView):
         visible: datatypes.BoolLike | None = None,
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
-        options: blueprint_archetypes.MapOptions | None = None,
+        zoom: blueprint_archetypes.MapZoom | None = None,
+        background: blueprint_archetypes.MapBackground | None = None,
     ) -> None:
         """
         Construct a blueprint for a new MapView view.
@@ -85,16 +87,23 @@ class MapView(SpaceView):
             Important note: the path must be a fully qualified entity path starting at the root. The override paths
             do not yet support `$origin` relative paths or glob expressions.
             This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
-        options:
-            Configures the look and feel of the map.
+        zoom:
+            Configures the zoom level of the map view.
+        background:
+            Configuration for the background map of the map view.
 
         """
 
         properties: dict[str, AsComponents] = {}
-        if options is not None:
-            if not isinstance(options, blueprint_archetypes.MapOptions):
-                options = blueprint_archetypes.MapOptions(options)
-            properties["MapOptions"] = options
+        if zoom is not None:
+            if not isinstance(zoom, blueprint_archetypes.MapZoom):
+                zoom = blueprint_archetypes.MapZoom(zoom)
+            properties["MapZoom"] = zoom
+
+        if background is not None:
+            if not isinstance(background, blueprint_archetypes.MapBackground):
+                background = blueprint_archetypes.MapBackground(background)
+            properties["MapBackground"] = background
 
         super().__init__(
             class_identifier="Map",

@@ -21,48 +21,23 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **View**: A map view.
 #[derive(Clone, Debug)]
 pub struct MapView {
-    /// Configures the look and feel of the map.
-    pub options: crate::blueprint::archetypes::MapOptions,
+    /// Configures the zoom level of the map view.
+    pub zoom: crate::blueprint::archetypes::MapZoom,
+
+    /// Configuration for the background map of the map view.
+    pub background: crate::blueprint::archetypes::MapBackground,
 }
 
 impl ::re_types_core::SizeBytes for MapView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.options.heap_size_bytes()
+        self.zoom.heap_size_bytes() + self.background.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::blueprint::archetypes::MapOptions>::is_pod()
-    }
-}
-
-impl<T: Into<crate::blueprint::archetypes::MapOptions>> From<T> for MapView {
-    fn from(v: T) -> Self {
-        Self { options: v.into() }
-    }
-}
-
-impl std::borrow::Borrow<crate::blueprint::archetypes::MapOptions> for MapView {
-    #[inline]
-    fn borrow(&self) -> &crate::blueprint::archetypes::MapOptions {
-        &self.options
-    }
-}
-
-impl std::ops::Deref for MapView {
-    type Target = crate::blueprint::archetypes::MapOptions;
-
-    #[inline]
-    fn deref(&self) -> &crate::blueprint::archetypes::MapOptions {
-        &self.options
-    }
-}
-
-impl std::ops::DerefMut for MapView {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::blueprint::archetypes::MapOptions {
-        &mut self.options
+        <crate::blueprint::archetypes::MapZoom>::is_pod()
+            && <crate::blueprint::archetypes::MapBackground>::is_pod()
     }
 }
 
