@@ -265,7 +265,7 @@ impl Cache for SolidCache {
 fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<SolidMesh, MeshError> {
     re_tracing::profile_function!();
 
-    let mesh: mesh::Mesh = match *key {
+    let mesh: mesh::CpuMesh = match *key {
         ProcMeshKey::Cube => {
             let mut mg = re_math::MeshGen::new();
             mg.push_cube(Vec3::splat(0.5), re_math::IsoTransform::IDENTITY);
@@ -280,7 +280,7 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
                 .collect();
             let materials = materials_for_uncolored_mesh(render_ctx, triangle_indices.len());
 
-            mesh::Mesh {
+            mesh::CpuMesh {
                 label: format!("{key:?}").into(),
                 materials,
                 triangle_indices,
@@ -313,7 +313,7 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
 
             let materials = materials_for_uncolored_mesh(render_ctx, triangle_indices.len());
 
-            mesh::Mesh {
+            mesh::CpuMesh {
                 label: format!("{key:?}").into(),
 
                 // bytemuck is re-grouping the indices into triples without realloc

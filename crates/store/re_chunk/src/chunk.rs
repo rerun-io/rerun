@@ -621,6 +621,7 @@ impl Chunk {
         timelines: BTreeMap<Timeline, TimeColumn>,
         components: BTreeMap<ComponentName, ArrowListArray<i32>>,
     ) -> ChunkResult<Self> {
+        re_tracing::profile_function!();
         let row_ids = row_ids
             .to_arrow()
             // NOTE: impossible, but better safe than sorry.

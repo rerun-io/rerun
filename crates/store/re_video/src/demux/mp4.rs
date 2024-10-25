@@ -41,7 +41,6 @@ impl VideoData {
         let mut samples = Vec::<Sample>::new();
         let mut gops = Vec::<GroupOfPictures>::new();
         let mut gop_sample_start_index = 0;
-        let data = track.data.clone();
 
         for sample in &track.samples {
             if sample.is_sync && !samples.is_empty() {
@@ -86,7 +85,6 @@ impl VideoData {
             duration,
             gops,
             samples,
-            data,
             mp4_tracks,
         })
     }

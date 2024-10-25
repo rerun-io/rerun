@@ -37,6 +37,7 @@ nasm = [
 
 
 [dependencies]
+re_build_info.workspace = true
 re_log.workspace = true
 re_tracing.workspace = true
 
@@ -62,12 +63,20 @@ dav1d = { workspace = true, optional = true, default-features = false, features 
 
 [dev-dependencies]
 indicatif.workspace = true
-
+criterion.workspace = true
 
 # For build.rs:
 [build-dependencies]
+re_build_tools.workspace = true
 cfg_aliases.workspace = true
 
 
 [[example]]
 name = "frames"
+
+[lib]
+bench = false
+
+[[bench]]
+name = "video_load_bench"
+harness = false

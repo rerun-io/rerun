@@ -221,6 +221,10 @@ def docs_slow(timings: list[Timing]) -> None:
 def tests(timings: list[Timing]) -> None:
     # We first use `--no-run` to measure the time of compiling vs actually running
 
+    # Make sure we have the test assets first.
+    print("Downloading test assets…")
+    subprocess.run([sys.executable, "tests/assets/download_test_assets.py"])
+
     # Just a normal `cargo test` should always work:
     timings.append(run_cargo("test", "--all-targets --no-run"))
     timings.append(run_cargo("test", "--all-targets"))
