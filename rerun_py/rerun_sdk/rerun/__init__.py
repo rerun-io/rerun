@@ -154,10 +154,12 @@ from .script_helpers import (
 )
 from .sinks import (
     connect as connect,
+    connect_tcp as connect_tcp,
     disconnect as disconnect,
     save as save,
     send_blueprint as send_blueprint,
     serve as serve,
+    serve_web as serve_web,
     spawn as spawn,
     stdout as stdout,
 )
