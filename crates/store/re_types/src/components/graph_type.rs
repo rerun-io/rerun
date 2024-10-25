@@ -11,6 +11,7 @@
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
+#![allow(non_camel_case_types)]
 
 use ::re_types_core::external::arrow2;
 use ::re_types_core::ComponentName;
@@ -19,49 +20,51 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Specifies if a graph has directed or undirected edges.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
-#[repr(transparent)]
+#[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct GraphType(pub crate::datatypes::GraphType);
+#[repr(u8)]
+pub enum GraphType {
+    /// The graph has undirected edges.
+    #[default]
+    Undirected = 1,
+
+    /// The graph has directed edges.
+    Directed = 2,
+}
+
+impl ::re_types_core::reflection::Enum for GraphType {
+    #[inline]
+    fn variants() -> &'static [Self] {
+        &[Self::Undirected, Self::Directed]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::Undirected => "The graph has undirected edges.",
+            Self::Directed => "The graph has directed edges.",
+        }
+    }
+}
 
 impl ::re_types_core::SizeBytes for GraphType {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
+        0
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::datatypes::GraphType>::is_pod()
+        true
     }
 }
 
-impl<T: Into<crate::datatypes::GraphType>> From<T> for GraphType {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::GraphType> for GraphType {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::GraphType {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for GraphType {
-    type Target = crate::datatypes::GraphType;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::GraphType {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for GraphType {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::GraphType {
-        &mut self.0
+impl std::fmt::Display for GraphType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Undirected => write!(f, "Undirected"),
+            Self::Directed => write!(f, "Directed"),
+        }
     }
 }
 
@@ -77,7 +80,9 @@ impl ::re_types_core::Loggable for GraphType {
 
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        crate::datatypes::GraphType::arrow_datatype()
+        #![allow(clippy::wildcard_imports)]
+        use arrow2::datatypes::*;
+        DataType::UInt8
     }
 
     fn to_arrow_opt<'a>(
@@ -86,12 +91,30 @@ impl ::re_types_core::Loggable for GraphType {
     where
         Self: Clone + 'a,
     {
-        crate::datatypes::GraphType::to_arrow_opt(data.into_iter().map(|datum| {
-            datum.map(|datum| match datum.into() {
-                ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
-                ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
-            })
-        }))
+        #![allow(clippy::wildcard_imports)]
+        #![allow(clippy::manual_is_variant_and)]
+        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, datatypes::*};
+        Ok({
+            let (somes, data0): (Vec<_>, Vec<_>) = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    let datum = datum.map(|datum| *datum as u8);
+                    (datum.is_some(), datum)
+                })
+                .unzip();
+            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                let any_nones = somes.iter().any(|some| !*some);
+                any_nones.then(|| somes.into())
+            };
+            PrimitiveArray::new(
+                Self::arrow_datatype(),
+                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                data0_bitmap,
+            )
+            .boxed()
+        })
     }
 
     fn from_arrow_opt(
@@ -100,16 +123,31 @@ impl ::re_types_core::Loggable for GraphType {
     where
         Self: Sized,
     {
-        crate::datatypes::GraphType::from_arrow_opt(arrow_data)
-            .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
-    }
-
-    #[inline]
-    fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
-    where
-        Self: Sized,
-    {
-        crate::datatypes::GraphType::from_arrow(arrow_data)
-            .map(|v| v.into_iter().map(Self).collect())
+        #![allow(clippy::wildcard_imports)]
+        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
+        Ok(arrow_data
+            .as_any()
+            .downcast_ref::<UInt8Array>()
+            .ok_or_else(|| {
+                let expected = Self::arrow_datatype();
+                let actual = arrow_data.data_type().clone();
+                DeserializationError::datatype_mismatch(expected, actual)
+            })
+            .with_context("rerun.components.GraphType#enum")?
+            .into_iter()
+            .map(|opt| opt.copied())
+            .map(|typ| match typ {
+                Some(1) => Ok(Some(Self::Undirected)),
+                Some(2) => Ok(Some(Self::Directed)),
+                None => Ok(None),
+                Some(invalid) => Err(DeserializationError::missing_union_arm(
+                    Self::arrow_datatype(),
+                    "<invalid>",
+                    invalid as _,
+                )),
+            })
+            .collect::<DeserializationResult<Vec<Option<_>>>>()
+            .with_context("rerun.components.GraphType")?)
     }
 }

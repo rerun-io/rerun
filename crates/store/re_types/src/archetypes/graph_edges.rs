@@ -27,7 +27,7 @@ pub struct GraphEdges {
     pub edges: Vec<crate::components::GraphEdge>,
 
     /// Specifies if the graph is directed or undirected.
-    pub graph_type: Option<Vec<crate::components::GraphType>>,
+    pub graph_type: Option<crate::components::GraphType>,
 }
 
 impl ::re_types_core::SizeBytes for GraphEdges {
@@ -39,7 +39,7 @@ impl ::re_types_core::SizeBytes for GraphEdges {
     #[inline]
     fn is_pod() -> bool {
         <Vec<crate::components::GraphEdge>>::is_pod()
-            && <Option<Vec<crate::components::GraphType>>>::is_pod()
+            && <Option<crate::components::GraphType>>::is_pod()
     }
 }
 
@@ -136,14 +136,11 @@ impl ::re_types_core::Archetype for GraphEdges {
                 .with_context("rerun.archetypes.GraphEdges#edges")?
         };
         let graph_type = if let Some(array) = arrays_by_name.get("rerun.components.GraphType") {
-            Some({
-                <crate::components::GraphType>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.GraphEdges#graph_type")?
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context("rerun.archetypes.GraphEdges#graph_type")?
-            })
+            <crate::components::GraphType>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.GraphEdges#graph_type")?
+                .into_iter()
+                .next()
+                .flatten()
         } else {
             None
         };
@@ -160,7 +157,7 @@ impl ::re_types_core::AsComponents for GraphEdges {
             Some((&self.edges as &dyn ComponentBatch).into()),
             self.graph_type
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -182,11 +179,8 @@ impl GraphEdges {
 
     /// Specifies if the graph is directed or undirected.
     #[inline]
-    pub fn with_graph_type(
-        mut self,
-        graph_type: impl IntoIterator<Item = impl Into<crate::components::GraphType>>,
-    ) -> Self {
-        self.graph_type = Some(graph_type.into_iter().map(Into::into).collect());
+    pub fn with_graph_type(mut self, graph_type: impl Into<crate::components::GraphType>) -> Self {
+        self.graph_type = Some(graph_type.into());
         self
     }
 }

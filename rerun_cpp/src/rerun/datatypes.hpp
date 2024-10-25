@@ -16,7 +16,6 @@
 #include "datatypes/float64.hpp"
 #include "datatypes/graph_edge.hpp"
 #include "datatypes/graph_node.hpp"
-#include "datatypes/graph_type.hpp"
 #include "datatypes/image_format.hpp"
 #include "datatypes/keypoint_id.hpp"
 #include "datatypes/keypoint_pair.hpp"

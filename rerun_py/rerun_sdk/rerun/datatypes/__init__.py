@@ -40,7 +40,6 @@ from .float32 import Float32, Float32ArrayLike, Float32Batch, Float32Like, Float
 from .float64 import Float64, Float64ArrayLike, Float64Batch, Float64Like, Float64Type
 from .graph_edge import GraphEdge, GraphEdgeArrayLike, GraphEdgeBatch, GraphEdgeLike, GraphEdgeType
 from .graph_node import GraphNode, GraphNodeArrayLike, GraphNodeBatch, GraphNodeLike, GraphNodeType
-from .graph_type import GraphType, GraphTypeArrayLike, GraphTypeBatch, GraphTypeLike, GraphTypeType
 from .image_format import ImageFormat, ImageFormatArrayLike, ImageFormatBatch, ImageFormatLike, ImageFormatType
 from .keypoint_id import KeypointId, KeypointIdArrayLike, KeypointIdBatch, KeypointIdLike, KeypointIdType
 from .keypoint_pair import KeypointPair, KeypointPairArrayLike, KeypointPairBatch, KeypointPairLike, KeypointPairType
@@ -194,11 +193,6 @@ __all__ = [
     "GraphNodeBatch",
     "GraphNodeLike",
     "GraphNodeType",
-    "GraphType",
-    "GraphTypeArrayLike",
-    "GraphTypeBatch",
-    "GraphTypeLike",
-    "GraphTypeType",
     "ImageFormat",
     "ImageFormatArrayLike",
     "ImageFormatBatch",

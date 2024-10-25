@@ -3,36 +3,37 @@
 
 #pragma once
 
-#include "../datatypes/graph_type.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
 #include <memory>
 
+namespace arrow {
+    /// \private
+    template <typename T>
+    class NumericBuilder;
+
+    class Array;
+    class DataType;
+    class UInt8Type;
+    using UInt8Builder = NumericBuilder<UInt8Type>;
+} // namespace arrow
+
 namespace rerun::components {
     /// **Component**: Specifies if a graph has directed or undirected edges.
-    struct GraphType {
-        rerun::datatypes::GraphType graph_type;
+    enum class GraphType : uint8_t {
 
-      public:
-        GraphType() = default;
+        /// The graph has undirected edges.
+        Undirected = 1,
 
-        GraphType(rerun::datatypes::GraphType graph_type_) : graph_type(graph_type_) {}
-
-        GraphType& operator=(rerun::datatypes::GraphType graph_type_) {
-            graph_type = graph_type_;
-            return *this;
-        }
-
-        /// Cast to the underlying GraphType datatype
-        operator rerun::datatypes::GraphType() const {
-            return graph_type;
-        }
+        /// The graph has directed edges.
+        Directed = 2,
     };
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::GraphType) == sizeof(components::GraphType));
+    template <typename T>
+    struct Loggable;
 
     /// \private
     template <>
@@ -40,27 +41,16 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.GraphType";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::GraphType>::arrow_datatype();
-        }
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
 
         /// Serializes an array of `rerun::components::GraphType` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::GraphType* instances, size_t num_instances
-        ) {
-            if (num_instances == 0) {
-                return Loggable<rerun::datatypes::GraphType>::to_arrow(nullptr, 0);
-            } else if (instances == nullptr) {
-                return rerun::Error(
-                    ErrorCode::UnexpectedNullArgument,
-                    "Passed array instances is null when num_elements> 0."
-                );
-            } else {
-                return Loggable<rerun::datatypes::GraphType>::to_arrow(
-                    &instances->graph_type,
-                    num_instances
-                );
-            }
-        }
+        );
+
+        /// Fills an arrow array builder with an array of this type.
+        static rerun::Error fill_arrow_array_builder(
+            arrow::UInt8Builder* builder, const components::GraphType* elements, size_t num_elements
+        );
     };
 } // namespace rerun

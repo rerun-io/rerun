@@ -11,7 +11,6 @@ class_id.rs linguist-generated=true
 color_model.rs linguist-generated=true
 graph_edge.rs linguist-generated=true
 graph_node.rs linguist-generated=true
-graph_type.rs linguist-generated=true
 image_format.rs linguist-generated=true
 keypoint_id.rs linguist-generated=true
 keypoint_pair.rs linguist-generated=true

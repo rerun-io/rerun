@@ -3,7 +3,7 @@ use std::collections::HashSet;
 use egui::{self, Rect};
 
 use re_log_types::EntityPath;
-use re_types::{datatypes, SpaceViewClassIdentifier};
+use re_types::{components, datatypes, SpaceViewClassIdentifier};
 use re_ui::{self, UiExt};
 use re_viewer_context::{
     external::re_entity_db::InstancePath, IdentifiedViewSystem as _, Item, SpaceViewClass,
@@ -150,7 +150,7 @@ impl SpaceViewClass for GraphSpaceView {
         // }
 
         // We keep track of the nodes in the data to clean up the layout.
-        // TODO: once we settle on a design, it might make sense to create a
+        // TODO(grtlr): once we settle on a design, it might make sense to create a
         // `Layout` struct that keeps track of the layout and the nodes that
         // get added and removed and cleans up automatically (guard pattern).
         let mut seen: HashSet<NodeIndex> = HashSet::new();
@@ -217,7 +217,7 @@ impl SpaceViewClass for GraphSpaceView {
                                 source_pos,
                                 target_pos,
                                 ent_highlight.index_highlight(edge.instance),
-                                edge.edge_type == datatypes::GraphType::Directed,
+                                edge.edge_type == components::GraphType::Directed,
                             )
                         });
                     }

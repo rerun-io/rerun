@@ -19,6 +19,6 @@ table GraphEdges (
   // --- Recommended ---
 
   /// Specifies if the graph is directed or undirected.
-  graph_type: [rerun.components.GraphType] ("attr.rerun.component_recommended", nullable, order: 2000);
+  graph_type: rerun.components.GraphType ("attr.rerun.component_recommended", nullable, order: 2000);
 
 }

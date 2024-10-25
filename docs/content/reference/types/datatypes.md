@@ -21,7 +21,6 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`Float64`](datatypes/float64.md): A double-precision 64-bit IEEE 754 floating point number.
 * [`GraphEdge`](datatypes/graph_edge.md): An edge in a graph connecting two nodes.
 * [`GraphNode`](datatypes/graph_node.md): A string-based ID representing a node in a graph.
-* [`GraphType`](datatypes/graph_type.md): Specifies if a graph has directed or undirected edges.
 * [`ImageFormat`](datatypes/image_format.md): The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).
 * [`KeypointId`](datatypes/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
 * [`KeypointPair`](datatypes/keypoint_pair.md): A connection between two [`datatypes.KeypointId`](https://rerun.io/docs/reference/types/datatypes/keypoint_id)s.

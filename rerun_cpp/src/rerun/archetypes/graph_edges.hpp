@@ -25,7 +25,7 @@ namespace rerun::archetypes {
         Collection<rerun::components::GraphEdge> edges;
 
         /// Specifies if the graph is directed or undirected.
-        std::optional<Collection<rerun::components::GraphType>> graph_type;
+        std::optional<rerun::components::GraphType> graph_type;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -42,7 +42,7 @@ namespace rerun::archetypes {
             : edges(std::move(_edges)) {}
 
         /// Specifies if the graph is directed or undirected.
-        GraphEdges with_graph_type(Collection<rerun::components::GraphType> _graph_type) && {
+        GraphEdges with_graph_type(rerun::components::GraphType _graph_type) && {
             graph_type = std::move(_graph_type);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)

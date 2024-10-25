@@ -2,7 +2,7 @@ use re_chunk::{ChunkComponentIterItem, LatestAtQuery};
 use re_log_types::Instance;
 use re_query::{clamped_zip_2x1, range_zip_1x1};
 use re_space_view::{DataResultQuery, RangeResultsExt};
-use re_types::{self, archetypes, components, datatypes, Loggable as _};
+use re_types::{self, archetypes, components, Loggable as _};
 use re_viewer_context::{
     self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext, ViewContextCollection,
     ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
@@ -17,7 +17,7 @@ pub struct EdgesVisualizer {
 
 pub struct EdgeData {
     pub entity_path: re_log_types::EntityPath,
-    pub graph_type: datatypes::GraphType,
+    pub graph_type: components::GraphType,
     edges: ChunkComponentIterItem<components::GraphEdge>,
 }
 
@@ -82,7 +82,7 @@ impl VisualizerSystem for EdgesVisualizer {
                     graph_type: graph_type
                         .unwrap_or_default()
                         .first()
-                        .map(|x| x.0)
+                        .copied()
                         .unwrap_or_default(),
                 });
             }

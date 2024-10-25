@@ -1,6 +1,6 @@
 use itertools::Itertools;
 
-use rerun::{datatypes, Color, GraphEdges, GraphNodes};
+use rerun::{components, Color, GraphEdges, GraphNodes};
 
 use crate::Args;
 
@@ -47,7 +47,7 @@ pub fn run(args: &Args, num_nodes: usize) -> anyhow::Result<()> {
 
     rec.log_static(
         "/lattice",
-        &GraphEdges::new(edges).with_graph_type([datatypes::GraphType::Directed]),
+        &GraphEdges::new(edges).with_graph_type(components::GraphType::Directed),
     )?;
     Ok(())
 }

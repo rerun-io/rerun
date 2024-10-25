@@ -1,5 +1,5 @@
 use re_log_types::{EntityPath, Instance};
-use re_types::{datatypes, ArrowString};
+use re_types::{components, datatypes, ArrowString};
 
 use crate::graph::NodeIndex;
 
@@ -42,7 +42,7 @@ pub struct EdgeInstance<'a> {
     pub target: &'a datatypes::GraphNode,
     pub entity_path: &'a re_log_types::EntityPath,
     pub instance: Instance,
-    pub edge_type: datatypes::GraphType,
+    pub edge_type: components::GraphType,
 }
 
 impl<'a> EdgeInstance<'a> {

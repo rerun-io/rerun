@@ -5,32 +5,71 @@
 
 from __future__ import annotations
 
-from .. import datatypes
+from typing import Literal, Sequence, Union
+
+import pyarrow as pa
+
 from .._baseclasses import (
+    BaseBatch,
+    BaseExtensionType,
     ComponentBatchMixin,
-    ComponentMixin,
 )
 
-__all__ = ["GraphType", "GraphTypeBatch", "GraphTypeType"]
+__all__ = ["GraphType", "GraphTypeArrayLike", "GraphTypeBatch", "GraphTypeLike", "GraphTypeType"]
 
 
-class GraphType(datatypes.GraphType, ComponentMixin):
+from enum import Enum
+
+
+class GraphType(Enum):
     """**Component**: Specifies if a graph has directed or undirected edges."""
 
-    _BATCH_TYPE = None
-    # You can define your own __init__ function as a member of GraphTypeExt in graph_type_ext.py
+    Undirected = 1
+    """The graph has undirected edges."""
 
-    # Note: there are no fields here because GraphType delegates to datatypes.GraphType
-    pass
+    Directed = 2
+    """The graph has directed edges."""
+
+    @classmethod
+    def auto(cls, val: str | int | GraphType) -> GraphType:
+        """Best-effort converter, including a case-insensitive string matcher."""
+        if isinstance(val, GraphType):
+            return val
+        if isinstance(val, int):
+            return cls(val)
+        try:
+            return cls[val]
+        except KeyError:
+            val_lower = val.lower()
+            for variant in cls:
+                if variant.name.lower() == val_lower:
+                    return variant
+        raise ValueError(f"Cannot convert {val} to {cls.__name__}")
+
+    def __str__(self) -> str:
+        """Returns the variant name."""
+        return self.name
 
 
-class GraphTypeType(datatypes.GraphTypeType):
+GraphTypeLike = Union[GraphType, Literal["Directed", "Undirected", "directed", "undirected"], int]
+GraphTypeArrayLike = Union[GraphTypeLike, Sequence[GraphTypeLike]]
+
+
+class GraphTypeType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.components.GraphType"
 
+    def __init__(self) -> None:
+        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
 
-class GraphTypeBatch(datatypes.GraphTypeBatch, ComponentBatchMixin):
+
+class GraphTypeBatch(BaseBatch[GraphTypeArrayLike], ComponentBatchMixin):
     _ARROW_TYPE = GraphTypeType()
 
+    @staticmethod
+    def _native_to_pa_array(data: GraphTypeArrayLike, data_type: pa.DataType) -> pa.Array:
+        if isinstance(data, (GraphType, int, str)):
+            data = [data]
 
-# This is patched in late to avoid circular dependencies.
-GraphType._BATCH_TYPE = GraphTypeBatch  # type: ignore[assignment]
+        pa_data = [GraphType.auto(v).value if v is not None else None for v in data]  # type: ignore[redundant-expr]
+
+        return pa.array(pa_data, type=data_type)

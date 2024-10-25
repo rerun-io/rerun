@@ -32,7 +32,7 @@ from .fill_ratio import FillRatio, FillRatioBatch, FillRatioType
 from .gamma_correction import GammaCorrection, GammaCorrectionBatch, GammaCorrectionType
 from .graph_edge import GraphEdge, GraphEdgeBatch, GraphEdgeType
 from .graph_node import GraphNode, GraphNodeBatch, GraphNodeType
-from .graph_type import GraphType, GraphTypeBatch, GraphTypeType
+from .graph_type import GraphType, GraphTypeArrayLike, GraphTypeBatch, GraphTypeLike, GraphTypeType
 from .half_size2d import HalfSize2D, HalfSize2DBatch, HalfSize2DType
 from .half_size3d import HalfSize3D, HalfSize3DBatch, HalfSize3DType
 from .image_buffer import ImageBuffer, ImageBufferBatch, ImageBufferType
@@ -161,7 +161,9 @@ __all__ = [
     "GraphNodeBatch",
     "GraphNodeType",
     "GraphType",
+    "GraphTypeArrayLike",
     "GraphTypeBatch",
+    "GraphTypeLike",
     "GraphTypeType",
     "HalfSize2D",
     "HalfSize2DBatch",

@@ -5,14 +5,15 @@ title: "GraphType"
 
 Specifies if a graph has directed or undirected edges.
 
-## Fields
+## Variants
 
-* graph_type: [`GraphType`](../datatypes/graph_type.md)
+* Undirected
+* Directed
 
 ## API reference links
- * 🌊 [C++ API docs for `GraphType`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1GraphType.html)
+ * 🌊 [C++ API docs for `GraphType`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
  * 🐍 [Python API docs for `GraphType`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.GraphType)
- * 🦀 [Rust API docs for `GraphType`](https://docs.rs/rerun/latest/rerun/components/struct.GraphType.html)
+ * 🦀 [Rust API docs for `GraphType`](https://docs.rs/rerun/latest/rerun/components/enum.GraphType.html)
 
 
 ## Used by

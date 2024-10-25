@@ -14,7 +14,6 @@ include "./datatypes/float32.fbs";
 include "./datatypes/float64.fbs";
 include "./datatypes/graph_edge.fbs";
 include "./datatypes/graph_node.fbs";
-include "./datatypes/graph_type.fbs";
 include "./datatypes/image_format.fbs";
 include "./datatypes/keypoint_id.fbs";
 include "./datatypes/keypoint_pair.fbs";
