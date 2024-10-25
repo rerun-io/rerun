@@ -131,6 +131,8 @@ pub trait SyncDecoder {
     /// Submit some work and read the results.
     ///
     /// Stop early if `should_stop` is `true` or turns `true`.
+    ///
+    /// TODO: spec out how this blocks. is this viable for ffmpeg? probably not. we don't know when to block for sure.
     fn submit_chunk(&mut self, should_stop: &AtomicBool, chunk: Chunk, on_output: &OutputCallback);
 
     /// Clear and reset everything
@@ -189,8 +191,16 @@ pub struct Chunk {
 
     pub data: Vec<u8>,
 
+    /// Decode timestamp of this sample.
+    /// Chunks are expected to be submitted in the order of decode timestamp.
+    ///
+    /// `decode_timestamp <= composition_timestamp`
+    pub decode_timestamp: Time,
+
     /// Presentation/composition timestamp for the sample in this chunk.
     /// *not* decode timestamp.
+    ///
+    /// `decode_timestamp <= composition_timestamp`
     pub composition_timestamp: Time,
 
     pub duration: Time,
@@ -202,7 +212,7 @@ pub struct Frame {
     pub width: u32,
     pub height: u32,
     pub format: PixelFormat,
-    pub timestamp: Time,
+    pub composition_timestamp: Time,
     pub duration: Time,
 }
 

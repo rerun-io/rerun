@@ -232,7 +232,7 @@ fn output_picture(
         width: picture.width(),
         height: picture.height(),
         format,
-        timestamp: Time(picture.timestamp().unwrap_or(0)),
+        composition_timestamp: Time(picture.timestamp().unwrap_or(0)),
         duration: Time(picture.duration()),
     };
     on_output(Ok(frame));

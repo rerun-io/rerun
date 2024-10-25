@@ -310,6 +310,7 @@ impl Sample {
             .to_vec();
         Some(Chunk {
             data,
+            decode_timestamp: self.decode_timestamp,
             composition_timestamp: self.composition_timestamp,
             duration: self.duration,
             is_sync: self.is_sync,

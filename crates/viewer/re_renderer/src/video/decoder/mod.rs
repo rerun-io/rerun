@@ -260,8 +260,9 @@ impl VideoDecoder {
         //     = determines the decoding order of samples
         //
         // Note: `decode <= composition` for any given sample.
-        //       For some codecs, the two timestamps are the same.
+        //       For some codecs & videos, the two timestamps are the same.
         // We must enqueue samples in decode order, but show them in composition order.
+        // In the presence of b-frames this order may be different!
 
         // 1. Find the latest sample where `decode_timestamp <= presentation_timestamp`.
         //    Because `decode <= composition`, we never have to look further ahead in the

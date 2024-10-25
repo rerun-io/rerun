@@ -46,7 +46,7 @@ impl NativeDecoder {
             let debug_name = debug_name.clone();
             move |frame: re_video::decode::Result<Frame>| match frame {
                 Ok(frame) => {
-                    re_log::trace!("Decoded frame at {:?}", frame.timestamp);
+                    re_log::trace!("Decoded frame at {:?}", frame.composition_timestamp);
                     let mut output = decoder_output.lock();
                     output.frames.push(frame);
                     output.error = None; // We successfully decoded a frame, reset the error state.
@@ -89,9 +89,11 @@ impl VideoChunkDecoder for NativeDecoder {
         let mut decoder_output = self.decoder_output.lock();
         let frames = &mut decoder_output.frames;
 
-        let Some(frame_idx) =
-            latest_at_idx(frames, |frame| frame.timestamp, &presentation_timestamp)
-        else {
+        let Some(frame_idx) = latest_at_idx(
+            frames,
+            |frame| frame.composition_timestamp,
+            &presentation_timestamp,
+        ) else {
             return Err(DecodingError::EmptyBuffer);
         };
 
@@ -103,7 +105,8 @@ impl VideoChunkDecoder for NativeDecoder {
         let frame_idx = 0;
         let frame = &frames[frame_idx];
 
-        let frame_time_range = frame.timestamp..frame.timestamp + frame.duration;
+        let frame_time_range =
+            frame.composition_timestamp..frame.composition_timestamp + frame.duration;
 
         if frame_time_range.contains(&presentation_timestamp)
             && video_texture.time_range != frame_time_range

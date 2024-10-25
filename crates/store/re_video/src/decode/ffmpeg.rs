@@ -1,6 +1,6 @@
 //! Send video data to `ffmpeg` over CLI to decode it.
 
-use std::sync::atomic::Ordering;
+use std::{io::Write, sync::atomic::Ordering};
 
 use crossbeam::channel::{Receiver, Sender, TryRecvError};
 use ffmpeg_sidecar::{
@@ -23,7 +23,7 @@ pub enum Error {
     #[error("Failed to get iterator: {0}")]
     NoIterator(String),
 
-    #[error("There's a bug in Rerun")]
+    #[error("No frame info received, this is a likely a bug in Rerun")]
     NoFrameInfo,
 
     #[error("Failed to write data to ffmpeg: {0}")]
@@ -231,9 +231,6 @@ fn read_ffmpeg_output(
             }
 
             FfmpegEvent::OutputFrame(frame) => {
-                // NOTE: `frame.timestamp` is monotonically increasing,
-                // and is not the actual timestamp in the stream.
-
                 let frame_info: FrameInfo = match frame_info_rx.try_recv() {
                     Ok(frame_info) => frame_info,
 
@@ -257,7 +254,8 @@ fn read_ffmpeg_output(
                     width,
                     height,
                     data,
-                    ..
+                    output_index: _, // This is the stream index. for all we do it's always 0.
+                    timestamp: _, // This is a timestamp made up by ffmpeg_sidecar based on limited information it has.
                 } = frame;
 
                 debug_assert_eq!(
@@ -276,7 +274,7 @@ fn read_ffmpeg_output(
                         height,
                         data,
                         format: crate::PixelFormat::Rgb8Unorm,
-                        timestamp: frame_info.composition_timestamp,
+                        composition_timestamp: frame_info.composition_timestamp,
                         duration: frame_info.duration,
                     }))
                     .is_err()
@@ -308,7 +306,7 @@ impl SyncDecoder for FfmpegCliH264Decoder {
         re_tracing::profile_function!();
 
         // First read any outstanding messages (e.g. error reports),
-        // so they get orderer correctly.
+        // so they get ordered correctly.
         while let Ok(frame_result) = self.frame_rx.try_recv() {
             if should_stop.load(Ordering::Relaxed) {
                 return;
@@ -319,6 +317,8 @@ impl SyncDecoder for FfmpegCliH264Decoder {
         // We send the information about this chunk first.
         // This assumes each sample/chunk will result in exactly one frame.
         // If this assumption is not held, we will get weird errors, like videos playing to slowly.
+        // TODO: this also assumes that the frame comes back in this order.
+        // Which is definitely wrong, as we know that frames are not necessarily in composition time stamp order!
         let frame_info = FrameInfo {
             frame_num: self.frame_num,
             composition_timestamp: chunk.composition_timestamp,
@@ -343,17 +343,16 @@ impl SyncDecoder for FfmpegCliH264Decoder {
             ) {
                 on_output(Err(err.into()));
             }
+
+            self.ffmpeg_stdin.flush().ok();
         }
 
-        // Read results and/or errors:
         while let Ok(frame_result) = self.frame_rx.try_recv() {
             if should_stop.load(Ordering::Relaxed) {
                 return;
             }
             on_output(frame_result);
         }
-
-        // TODO: block until we have processed the frame!
     }
 
     fn reset(&mut self) {
@@ -408,7 +407,7 @@ fn write_avc_chunk_to_nalu_stream(
         state.previous_frame_was_idr = false;
     }
 
-    // A single cjhunk may consist of multiple NAL units, each of which need our special treatment.
+    // A single chunk may consist of multiple NAL units, each of which need our special treatment.
     // (most of the time it's 1:1, but there might be extra NAL units for info, especially at the start).
     let mut buffer_offset: usize = 0;
     let sample_end = chunk.data.len();
@@ -456,6 +455,13 @@ fn write_avc_chunk_to_nalu_stream(
             return Err(Error::BadVideoData("Not enough bytes to".to_owned()));
         }
 
+        let nal_header = NalHeader(chunk.data[data_start]);
+        re_log::trace!(
+            "nal_header: {:?}, {}",
+            nal_header.unit_type(),
+            nal_header.ref_idc()
+        );
+
         let data = &chunk.data[data_start..data_end];
 
         nalu_stream
@@ -474,4 +480,73 @@ fn write_avc_chunk_to_nalu_stream(
     }
 
     Ok(())
+}
+
+/// Possible values for `nal_unit_type` field in `nal_unit`.
+///
+/// Encodes to 5 bits.
+/// Via: https://docs.rs/less-avc/0.1.5/src/less_avc/nal_unit.rs.html#232
+#[derive(PartialEq, Eq)]
+#[non_exhaustive]
+#[repr(u8)]
+#[derive(Copy, Clone, Debug)]
+pub enum NalUnitType {
+    /// Unspecified
+    Unspecified = 0,
+
+    /// Coded slice of a non-IDR picture
+    CodedSliceOfANonIDRPicture = 1,
+
+    /// Coded slice data partition A
+    CodedSliceDataPartitionA = 2,
+
+    /// Coded slice data partition B
+    CodedSliceDataPartitionB = 3,
+
+    /// Coded slice data partition C
+    CodedSliceDataPartitionC = 4,
+
+    /// Coded slice of an IDR picture
+    CodedSliceOfAnIDRPicture = 5,
+
+    /// Supplemental enhancement information (SEI)
+    SupplementalEnhancementInformation = 6,
+
+    /// Sequence parameter set
+    SequenceParameterSet = 7,
+
+    /// Picture parameter set
+    PictureParameterSet = 8,
+
+    /// Header type not listed here.
+    Other,
+}
+
+/// Header of the "Network Abstraction Layer" unit that is used by H.264/AVC & H.265/HEVC.
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+struct NalHeader(pub u8);
+
+impl NalHeader {
+    pub fn unit_type(self) -> NalUnitType {
+        match self.0 & 0b111 {
+            0 => NalUnitType::Unspecified,
+            1 => NalUnitType::CodedSliceOfANonIDRPicture,
+            2 => NalUnitType::CodedSliceDataPartitionA,
+            3 => NalUnitType::CodedSliceDataPartitionB,
+            4 => NalUnitType::CodedSliceDataPartitionC,
+            5 => NalUnitType::CodedSliceOfAnIDRPicture,
+            6 => NalUnitType::SupplementalEnhancementInformation,
+            7 => NalUnitType::SequenceParameterSet,
+            8 => NalUnitType::PictureParameterSet,
+            _ => NalUnitType::Other,
+        }
+    }
+
+    /// Ref idc is a value from 0-3 that tells us how "important" the frame/sample is.
+    ///
+    /// For details see:
+    /// <https://yumichan.net/video-processing/video-compression/breif-description-of-nal_ref_idc-value-in-h-246-nalu/>
+    fn ref_idc(self) -> u8 {
+        (self.0 >> 5) & 0b11
+    }
 }
