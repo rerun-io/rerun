@@ -196,7 +196,7 @@ impl RecordingMetadata {
         }
     }
 
-    /// Get arrow data from `RecordingMetadata`
+    /// Get metadata as arrow data
     pub fn data(&self) -> Result<(ArrowSchema, ArrowChunk<Box<dyn ArrowArray>>), CodecError> {
         let mut reader = std::io::Cursor::new(self.payload.clone());
 
