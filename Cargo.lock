@@ -5606,6 +5606,7 @@ dependencies = [
  "re_log_encoding",
  "re_log_types",
  "re_remote_store_types",
+ "re_rrdp_comms",
  "re_smart_channel",
  "re_tracing",
  "re_ws_comms",
@@ -6029,6 +6030,15 @@ dependencies = [
  "wgpu",
  "winit",
  "zip",
+]
+
+[[package]]
+name = "re_rrdp_comms"
+version = "0.20.0-alpha.1+dev"
+dependencies = [
+ "re_log",
+ "re_log_types",
+ "re_smart_channel",
 ]
 
 [[package]]

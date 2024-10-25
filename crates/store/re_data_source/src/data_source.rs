@@ -90,6 +90,11 @@ impl DataSource {
 
         let path = std::path::Path::new(&uri).to_path_buf();
 
+        #[cfg(feature = "rrdp")]
+        if uri.starts_with("rrdp://") {
+            return Self::RrdpUrl { url: uri };
+        }
+
         if uri.starts_with("file://") || path.exists() {
             Self::FilePath(file_source, path)
         } else if uri.starts_with("http://")
@@ -131,6 +136,8 @@ impl DataSource {
             Self::WebSocketAddr(_) => None,
             #[cfg(not(target_arch = "wasm32"))]
             Self::Stdin => None,
+            #[cfg(feature = "rrdp")]
+            Self::RrdpUrl { .. } => None, // TODO(jleibs): This needs to come from the RRDP server.
         }
     }
 
@@ -235,6 +242,9 @@ impl DataSource {
 
                 Ok(rx)
             }
+
+            #[cfg(feature = "rrdp")]
+            Self::RrdpUrl { url } => Ok(re_rrdp_comms::stream_recording(url, on_msg)),
         }
     }
 }
