@@ -84,6 +84,7 @@ examples = [
   "live_camera_edge_detection",
   "segment_anything_model",
   "tapir",
+  "ml_depth_pro",
 ]
 
 [categories.3d-reconstruction] # NOLINT
@@ -152,10 +153,13 @@ examples = [
 # or explicitly excluded by running `python scripts/check_example_manifest_coverage.py`.
 [ignored]
 examples = [
+  "_empty_rerun_sdk",
+  "all_examples",
   "custom_collection_adapter",
   "custom_data_loader",
   "custom_space_view",
   "custom_store_subscriber",
+  "dataframe_query",
   "drone_lidar",
   "extend_viewer_ui",
   "external_data_loader",
@@ -165,6 +169,4 @@ examples = [
   "spawn_viewer",
   "stdio",
   "template",
-  "all_examples",
-  "_empty_rerun_sdk",
 ]

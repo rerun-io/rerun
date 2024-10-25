@@ -63,6 +63,102 @@ use arrow2::{
 };
 use itertools::Itertools;
 
+// --- concat ---
+
+#[test]
+fn concat_does_allocate() {
+    re_log::setup_logging();
+
+    const NUM_SCALARS: i64 = 10_000_000;
+
+    let (
+        ((_unconcatenated, unconcatenated_size_bytes), (_concatenated, concatenated_size_bytes)),
+        total_size_bytes,
+    ) = memory_use(|| {
+        let unconcatenated = memory_use(|| {
+            std::iter::repeat(NUM_SCALARS as usize / 10)
+                .take(10)
+                .map(|_| {
+                    ArrowPrimitiveArray::from_vec((0..NUM_SCALARS / 10).collect_vec()).to_boxed()
+                })
+                .collect_vec()
+        });
+        let unconcatenated_refs = unconcatenated
+            .0
+            .iter()
+            .map(|a| &**a as &dyn ArrowArray)
+            .collect_vec();
+
+        let concatenated =
+            memory_use(|| re_chunk::util::concat_arrays(&unconcatenated_refs).unwrap());
+
+        (unconcatenated, concatenated)
+    });
+
+    eprintln!(
+        "unconcatenated={} concatenated={} total={}",
+        re_format::format_bytes(unconcatenated_size_bytes as _),
+        re_format::format_bytes(concatenated_size_bytes as _),
+        re_format::format_bytes(total_size_bytes as _),
+    );
+
+    assert!(unconcatenated_size_bytes + concatenated_size_bytes <= total_size_bytes);
+    assert!(unconcatenated_size_bytes as f64 >= concatenated_size_bytes as f64 * 0.95);
+    assert!(unconcatenated_size_bytes as f64 <= concatenated_size_bytes as f64 * 1.05);
+}
+
+#[test]
+fn concat_single_is_noop() {
+    re_log::setup_logging();
+
+    const NUM_SCALARS: i64 = 10_000_000;
+
+    let (
+        ((unconcatenated, unconcatenated_size_bytes), (concatenated, concatenated_size_bytes)),
+        total_size_bytes,
+    ) = memory_use(|| {
+        let unconcatenated =
+            memory_use(|| ArrowPrimitiveArray::from_vec((0..NUM_SCALARS).collect_vec()).to_boxed());
+
+        let concatenated =
+            memory_use(|| re_chunk::util::concat_arrays(&[&*unconcatenated.0]).unwrap());
+
+        (unconcatenated, concatenated)
+    });
+
+    eprintln!(
+        "unconcatenated={} concatenated={} total={}",
+        re_format::format_bytes(unconcatenated_size_bytes as _),
+        re_format::format_bytes(concatenated_size_bytes as _),
+        re_format::format_bytes(total_size_bytes as _),
+    );
+
+    assert!(concatenated_size_bytes < 100);
+    assert!(unconcatenated_size_bytes as f64 >= total_size_bytes as f64 * 0.95);
+    assert!(unconcatenated_size_bytes as f64 <= total_size_bytes as f64 * 1.05);
+
+    {
+        let unconcatenated = unconcatenated
+            .as_any()
+            .downcast_ref::<ArrowPrimitiveArray<i64>>()
+            .unwrap();
+        let concatenated = concatenated
+            .as_any()
+            .downcast_ref::<ArrowPrimitiveArray<i64>>()
+            .unwrap();
+
+        assert!(
+            std::ptr::eq(
+                unconcatenated.values().as_ptr_range().start,
+                concatenated.values().as_ptr_range().start
+            ),
+            "whole thing should be a noop -- pointers should match"
+        );
+    }
+}
+
+// --- filter ---
+
 #[test]
 fn filter_does_allocate() {
     re_log::setup_logging();
@@ -190,6 +286,8 @@ fn filter_empty_or_full_is_noop() {
         );
     }
 }
+
+// --- take ---
 
 #[test]
 // TODO(cmc): That's the end goal, but it is simply impossible with `ListArray`'s encoding.

@@ -553,7 +553,7 @@ where
 
     if args.version {
         println!("{build_info}");
-        println!("Video features: {}", re_video::features().join(" "));
+        println!("Video features: {}", re_video::build_info().features);
         return Ok(0);
     }
 
@@ -613,6 +613,7 @@ fn run_impl(
 ) -> anyhow::Result<()> {
     #[cfg(feature = "native_viewer")]
     let profiler = run_profiler(&args);
+    let mut is_another_viewer_running = false;
 
     #[cfg(feature = "native_viewer")]
     let startup_options = {
@@ -655,20 +656,7 @@ fn run_impl(
     };
 
     // Where do we get the data from?
-    let rx: Vec<Receiver<LogMsg>> = if args.url_or_paths.is_empty() {
-        #[cfg(feature = "server")]
-        {
-            let server_options = re_sdk_comms::ServerOptions {
-                max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
-                quiet: false,
-            };
-            let rx = re_sdk_comms::serve(&args.bind, args.port, server_options)?;
-            vec![rx]
-        }
-
-        #[cfg(not(feature = "server"))]
-        vec![]
-    } else {
+    let rx: Vec<Receiver<LogMsg>> = {
         let data_sources = args
             .url_or_paths
             .iter()
@@ -697,10 +685,35 @@ fn run_impl(
             }
         }
 
-        data_sources
+        let mut rxs = data_sources
             .into_iter()
             .map(|data_source| data_source.stream(None))
-            .collect::<Result<Vec<_>, _>>()?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        #[cfg(feature = "server")]
+        {
+            // Check if there is already a viewer running and if so, send the data to it.
+            use std::net::TcpStream;
+            let connect_addr = std::net::SocketAddr::new("127.0.0.1".parse().unwrap(), args.port);
+            if TcpStream::connect_timeout(&connect_addr, std::time::Duration::from_secs(1)).is_ok()
+            {
+                re_log::info!(
+                    addr = %connect_addr,
+                    "A process is already listening at this address. Assuming it's a Rerun Viewer."
+                );
+                is_another_viewer_running = true;
+            } else {
+                let server_options = re_sdk_comms::ServerOptions {
+                    max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
+                    quiet: false,
+                };
+                let tcp_listener: Receiver<LogMsg> =
+                    re_sdk_comms::serve(&args.bind, args.port, server_options)?;
+                rxs.push(tcp_listener);
+            }
+        }
+
+        rxs
     };
 
     // Now what do we do with the data?
@@ -772,6 +785,9 @@ fn run_impl(
 
             return Ok(());
         }
+    } else if is_another_viewer_running {
+        re_log::info!("Another viewer is already running, streaming data to it.");
+        Ok(())
     } else {
         #[cfg(feature = "native_viewer")]
         return re_viewer::run_native_app(

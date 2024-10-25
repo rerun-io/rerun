@@ -688,7 +688,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <VideoTimestamp as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).",
+                docstring_md: "Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).",
                 placeholder: Some(VideoTimestamp::default().to_arrow()?),
             },
         ),
@@ -808,6 +808,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.MediaType".into(), display_name : "Media type",
                     docstring_md :
                     "The Media Type of the asset.\n\nSupported values:\n* `model/gltf-binary`\n* `model/gltf+json`\n* `model/obj` (.mtl material files are not supported yet, references are silently ignored)\n* `model/stl`\n\nIf omitted, the viewer will try to guess from the data blob.\nIf it cannot guess, it won't be able to render the asset.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.AlbedoFactor".into(), display_name :
+                    "Albedo factor", docstring_md :
+                    "A color multiplier applied to the whole asset.\n\nFor mesh who already have `albedo_factor` in materials,\nit will be overwritten by actual `albedo_factor` of [`archetypes.Asset3D`](https://rerun.io/docs/reference/types/archetypes/asset3d) (if specified).",
                     is_required : false, },
                 ],
             },
@@ -1485,7 +1489,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.EntityPath".into(), display_name :
                     "Video reference", docstring_md :
-                    "Optional reference to an entity with a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).\n\nIf none is specified, the video is assumed to be at the same entity.\nNote that blueprint overrides on the referenced video will be ignored regardless,\nas this is always interpreted as a reference to the data store.\n\nFor a series of video frame references, it is recommended to specify this path only once\nat the beginning of the series and then rely on latest-at query semantics to\nkeep the video reference active.",
+                    "Optional reference to an entity with a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).\n\nIf none is specified, the video is assumed to be at the same entity.\nNote that blueprint overrides on the referenced video will be ignored regardless,\nas this is always interpreted as a reference to the data store.\n\nFor a series of video frame references, it is recommended to specify this path only once\nat the beginning of the series and then rely on latest-at query semantics to\nkeep the video reference active.",
                     is_required : false, },
                 ],
             },

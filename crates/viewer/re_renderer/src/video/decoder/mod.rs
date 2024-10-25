@@ -189,6 +189,7 @@ impl VideoDecoder {
         &mut self,
         render_ctx: &RenderContext,
         presentation_timestamp_s: f64,
+        video_data: &[u8],
     ) -> Result<VideoFrameTexture, DecodingError> {
         if presentation_timestamp_s < 0.0 {
             return Err(DecodingError::NegativeTimestamp);
@@ -197,7 +198,7 @@ impl VideoDecoder {
         let presentation_timestamp = presentation_timestamp.min(self.data.duration); // Don't seek past the end of the video.
 
         let error_on_last_frame_at = self.last_error.is_some();
-        let result = self.frame_at_internal(render_ctx, presentation_timestamp);
+        let result = self.frame_at_internal(render_ctx, presentation_timestamp, video_data);
 
         match result {
             Ok(()) => {
@@ -248,6 +249,7 @@ impl VideoDecoder {
         &mut self,
         render_ctx: &RenderContext,
         presentation_timestamp: Time,
+        video_data: &[u8],
     ) -> Result<(), DecodingError> {
         re_tracing::profile_function!();
 
@@ -322,12 +324,12 @@ impl VideoDecoder {
         if requested_gop_idx != self.current_gop_idx {
             if self.current_gop_idx.saturating_add(1) == requested_gop_idx {
                 // forward seek to next GOP - queue up the one _after_ requested
-                self.enqueue_gop(requested_gop_idx + 1)?;
+                self.enqueue_gop(requested_gop_idx + 1, video_data)?;
             } else {
                 // forward seek by N>1 OR backward seek across GOPs - reset
                 self.reset()?;
-                self.enqueue_gop(requested_gop_idx)?;
-                self.enqueue_gop(requested_gop_idx + 1)?;
+                self.enqueue_gop(requested_gop_idx, video_data)?;
+                self.enqueue_gop(requested_gop_idx + 1, video_data)?;
             }
         } else if requested_sample_idx != self.current_sample_idx {
             // special case: handle seeking backwards within a single GOP
@@ -335,8 +337,8 @@ impl VideoDecoder {
             // while maintaining a buffer of only 2 GOPs
             if requested_sample_idx < self.current_sample_idx {
                 self.reset()?;
-                self.enqueue_gop(requested_gop_idx)?;
-                self.enqueue_gop(requested_gop_idx + 1)?;
+                self.enqueue_gop(requested_gop_idx, video_data)?;
+                self.enqueue_gop(requested_gop_idx + 1, video_data)?;
             }
         }
 
@@ -384,7 +386,7 @@ impl VideoDecoder {
     /// Enqueue all samples in the given GOP.
     ///
     /// Does nothing if the index is out of bounds.
-    fn enqueue_gop(&mut self, gop_idx: usize) -> Result<(), DecodingError> {
+    fn enqueue_gop(&mut self, gop_idx: usize, video_data: &[u8]) -> Result<(), DecodingError> {
         let Some(gop) = self.data.gops.get(gop_idx) else {
             return Ok(());
         };
@@ -392,7 +394,7 @@ impl VideoDecoder {
         let samples = &self.data.samples[gop.range()];
 
         for (i, sample) in samples.iter().enumerate() {
-            let chunk = self.data.get(sample).ok_or(DecodingError::BadData)?;
+            let chunk = sample.get(video_data).ok_or(DecodingError::BadData)?;
             let is_keyframe = i == 0;
             self.chunk_decoder.decode(chunk, is_keyframe)?;
         }

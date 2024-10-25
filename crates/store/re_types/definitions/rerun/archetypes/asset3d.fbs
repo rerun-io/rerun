@@ -33,4 +33,12 @@ table Asset3D (
   /// If omitted, the viewer will try to guess from the data blob.
   /// If it cannot guess, it won't be able to render the asset.
   media_type: rerun.components.MediaType  ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  // --- Optional ---
+
+  /// A color multiplier applied to the whole asset.
+  ///
+  /// For mesh who already have `albedo_factor` in materials,
+  /// it will be overwritten by actual `albedo_factor` of [archetypes.Asset3D] (if specified).
+  albedo_factor: rerun.components.AlbedoFactor ("attr.rerun.component_optional", nullable, order: 3100);
 }

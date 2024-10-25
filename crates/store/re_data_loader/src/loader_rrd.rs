@@ -1,5 +1,11 @@
 use re_log_encoding::decoder::Decoder;
 
+#[cfg(not(target_arch = "wasm32"))]
+use crossbeam::channel::Receiver;
+use re_log_types::{ApplicationId, StoreId};
+
+use crate::LoadedData;
+
 // ---
 
 /// Loads data from any `rrd` file or in-memory contents.
@@ -14,8 +20,7 @@ impl crate::DataLoader for RrdLoader {
     #[cfg(not(target_arch = "wasm32"))]
     fn load_from_path(
         &self,
-        // NOTE: The Store ID comes from the rrd file itself.
-        _settings: &crate::DataLoaderSettings,
+        settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
         tx: std::sync::mpsc::Sender<crate::LoadedData>,
     ) -> Result<(), crate::DataLoaderError> {
@@ -54,12 +59,21 @@ impl crate::DataLoader for RrdLoader {
                     .name(format!("decode_and_stream({filepath:?})"))
                     .spawn({
                         let filepath = filepath.clone();
+                        let settings = settings.clone();
                         move || {
-                            decode_and_stream(&filepath, &tx, decoder);
+                            decode_and_stream(
+                                &filepath,
+                                &tx,
+                                decoder,
+                                settings.opened_application_id.as_ref(),
+                                // We never want to patch blueprints' store IDs, only their app IDs.
+                                None,
+                            );
                         }
                     })
                     .with_context(|| format!("Failed to open spawn IO thread for {filepath:?}"))?;
             }
+
             "rrd" => {
                 // For .rrd files we retry reading despite reaching EOF to support live (writer) streaming.
                 // Decoder will give up when it sees end of file marker (i.e. end-of-stream message header)
@@ -73,8 +87,15 @@ impl crate::DataLoader for RrdLoader {
                     .name(format!("decode_and_stream({filepath:?})"))
                     .spawn({
                         let filepath = filepath.clone();
+                        let settings = settings.clone();
                         move || {
-                            decode_and_stream(&filepath, &tx, decoder);
+                            decode_and_stream(
+                                &filepath,
+                                &tx,
+                                decoder,
+                                settings.opened_application_id.as_ref(),
+                                settings.opened_store_id.as_ref(),
+                            );
                         }
                     })
                     .with_context(|| format!("Failed to open spawn IO thread for {filepath:?}"))?;
@@ -87,8 +108,7 @@ impl crate::DataLoader for RrdLoader {
 
     fn load_from_file_contents(
         &self,
-        // NOTE: The Store ID comes from the rrd file itself.
-        _settings: &crate::DataLoaderSettings,
+        settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
         tx: std::sync::mpsc::Sender<crate::LoadedData>,
@@ -113,7 +133,13 @@ impl crate::DataLoader for RrdLoader {
             },
         };
 
-        decode_and_stream(&filepath, &tx, decoder);
+        decode_and_stream(
+            &filepath,
+            &tx,
+            decoder,
+            settings.opened_application_id.as_ref(),
+            settings.opened_store_id.as_ref(),
+        );
 
         Ok(())
     }
@@ -123,6 +149,8 @@ fn decode_and_stream<R: std::io::Read>(
     filepath: &std::path::Path,
     tx: &std::sync::mpsc::Sender<crate::LoadedData>,
     decoder: Decoder<R>,
+    forced_application_id: Option<&ApplicationId>,
+    forced_store_id: Option<&StoreId>,
 ) {
     re_tracing::profile_function!(filepath.display().to_string());
 
@@ -134,7 +162,41 @@ fn decode_and_stream<R: std::io::Read>(
                 continue;
             }
         };
-        if tx.send(msg.into()).is_err() {
+
+        let msg = if forced_application_id.is_some() || forced_store_id.is_some() {
+            match msg {
+                re_log_types::LogMsg::SetStoreInfo(set_store_info) => {
+                    re_log_types::LogMsg::SetStoreInfo(re_log_types::SetStoreInfo {
+                        info: re_log_types::StoreInfo {
+                            application_id: forced_application_id
+                                .cloned()
+                                .unwrap_or(set_store_info.info.application_id),
+                            store_id: forced_store_id
+                                .cloned()
+                                .unwrap_or(set_store_info.info.store_id),
+                            ..set_store_info.info
+                        },
+                        ..set_store_info
+                    })
+                }
+
+                re_log_types::LogMsg::ArrowMsg(store_id, arrow_msg) => {
+                    re_log_types::LogMsg::ArrowMsg(
+                        forced_store_id.cloned().unwrap_or(store_id),
+                        arrow_msg,
+                    )
+                }
+
+                re_log_types::LogMsg::BlueprintActivationCommand(blueprint_activation_command) => {
+                    re_log_types::LogMsg::BlueprintActivationCommand(blueprint_activation_command)
+                }
+            }
+        } else {
+            msg
+        };
+
+        let data = LoadedData::LogMsg(msg);
+        if tx.send(data).is_err() {
             break; // The other end has decided to hang up, not our problem.
         }
     }
@@ -145,7 +207,9 @@ fn decode_and_stream<R: std::io::Read>(
 #[cfg(not(target_arch = "wasm32"))]
 struct RetryableFileReader {
     reader: std::io::BufReader<std::fs::File>,
-    rx: std::sync::mpsc::Receiver<notify::Result<notify::Event>>,
+    rx_file_notifs: Receiver<notify::Result<notify::Event>>,
+    rx_ticker: Receiver<std::time::Instant>,
+
     #[allow(dead_code)]
     watcher: notify::RecommendedWatcher,
 }
@@ -160,8 +224,15 @@ impl RetryableFileReader {
             .with_context(|| format!("Failed to open file {filepath:?}"))?;
         let reader = std::io::BufReader::new(file);
 
-        let (tx, rx) = std::sync::mpsc::channel();
-        let mut watcher = notify::recommended_watcher(tx)
+        #[cfg(not(any(target_os = "windows", target_arch = "wasm32")))]
+        re_crash_handler::sigint::track_sigint();
+
+        // 50ms is just a nice tradeoff: we just need the delay to not be perceptible by a human
+        // while not needlessly hammering the CPU.
+        let rx_ticker = crossbeam::channel::tick(std::time::Duration::from_millis(50));
+
+        let (tx_file_notifs, rx_file_notifs) = crossbeam::channel::unbounded();
+        let mut watcher = notify::recommended_watcher(tx_file_notifs)
             .with_context(|| format!("failed to create file watcher for {filepath:?}"))?;
 
         watcher
@@ -170,7 +241,8 @@ impl RetryableFileReader {
 
         Ok(Self {
             reader,
-            rx,
+            rx_file_notifs,
+            rx_ticker,
             watcher,
         })
     }
@@ -198,16 +270,30 @@ impl std::io::Read for RetryableFileReader {
 impl RetryableFileReader {
     fn block_until_file_changes(&self) -> std::io::Result<usize> {
         #[allow(clippy::disallowed_methods)]
-        match self.rx.recv() {
-            Ok(Ok(event)) => match event.kind {
-                notify::EventKind::Remove(_) => Err(std::io::Error::new(
-                    std::io::ErrorKind::NotFound,
-                    "file removed",
-                )),
-                _ => Ok(0),
-            },
-            Ok(Err(err)) => Err(std::io::Error::new(std::io::ErrorKind::Other, err)),
-            Err(err) => Err(std::io::Error::new(std::io::ErrorKind::Other, err)),
+        loop {
+            crossbeam::select! {
+                // Periodically check for SIGINT.
+                recv(self.rx_ticker) -> _ => {
+                    if re_crash_handler::sigint::was_sigint_ever_caught() {
+                        return Err(std::io::Error::new(std::io::ErrorKind::Interrupted, "SIGINT"));
+                    }
+                }
+
+                // Otherwise check for file notifications.
+                recv(self.rx_file_notifs) -> res => {
+                    return match res {
+                        Ok(Ok(event)) => match event.kind {
+                            notify::EventKind::Remove(_) => Err(std::io::Error::new(
+                                std::io::ErrorKind::NotFound,
+                                "file removed",
+                            )),
+                            _ => Ok(0),
+                        },
+                        Ok(Err(err)) => Err(std::io::Error::new(std::io::ErrorKind::Other, err)),
+                        Err(err) => Err(std::io::Error::new(std::io::ErrorKind::Other, err)),
+                    }
+                }
+            }
         }
     }
 }

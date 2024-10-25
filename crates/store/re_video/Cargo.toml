@@ -40,6 +40,7 @@ nasm = [
 
 
 [dependencies]
+re_build_info.workspace = true
 re_log.workspace = true
 re_tracing.workspace = true
 
@@ -69,12 +70,20 @@ ffmpeg-sidecar = { workspace = true, optional = true }
 [dev-dependencies]
 # For the `frames` example:
 indicatif.workspace = true
-
+criterion.workspace = true
 
 # For build.rs:
 [build-dependencies]
+re_build_tools.workspace = true
 cfg_aliases.workspace = true
 
 
 [[example]]
 name = "frames"
+
+[lib]
+bench = false
+
+[[bench]]
+name = "video_load_bench"
+harness = false

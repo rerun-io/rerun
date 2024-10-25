@@ -65,7 +65,8 @@ pub fn arrays_to_list_array(
     let data = if arrays_dense.is_empty() {
         arrow2::array::new_empty_array(array_datatype.clone())
     } else {
-        arrow2::compute::concatenate::concatenate(&arrays_dense)
+        re_tracing::profile_scope!("concatenate", arrays_dense.len().to_string());
+        concat_arrays(&arrays_dense)
             .map_err(|err| {
                 re_log::warn_once!("failed to concatenate arrays: {err}");
                 err
@@ -144,7 +145,7 @@ pub fn arrays_to_dictionary<Idx: Copy + Eq>(
     let data = if arrays_dense_deduped.is_empty() {
         arrow2::array::new_empty_array(array_datatype.clone())
     } else {
-        let values = arrow2::compute::concatenate::concatenate(&arrays_dense_deduped)
+        let values = concat_arrays(&arrays_dense_deduped)
             .map_err(|err| {
                 re_log::warn_once!("failed to concatenate arrays: {err}");
                 err
@@ -321,6 +322,22 @@ pub fn new_list_array_of_empties(child_datatype: ArrowDatatype, len: usize) -> A
     )
 }
 
+/// Applies a [concatenate] kernel to the given `arrays`.
+///
+/// Early outs where it makes sense (e.g. `arrays.len() == 1`).
+///
+/// Returns an error if the arrays don't share the exact same datatype.
+///
+/// [concatenate]: arrow2::compute::concatenate::concatenate
+pub fn concat_arrays(arrays: &[&dyn ArrowArray]) -> arrow2::error::Result<Box<dyn ArrowArray>> {
+    if arrays.len() == 1 {
+        return Ok(arrays[0].to_boxed());
+    }
+
+    #[allow(clippy::disallowed_methods)] // that's the whole point
+    arrow2::compute::concatenate::concatenate(arrays)
+}
+
 /// Applies a [filter] kernel to the given `array`.
 ///
 /// Panics iff the length of the filter doesn't match the length of the array.
@@ -343,6 +360,7 @@ pub fn filter_array<A: ArrowArray + Clone>(array: &A, filter: &ArrowBooleanArray
         "filter masks with validity bits are technically valid, but generally a sign that something went wrong",
     );
 
+    #[allow(clippy::disallowed_methods)] // that's the whole point
     #[allow(clippy::unwrap_used)]
     arrow2::compute::filter::filter(array, filter)
         // Unwrap: this literally cannot fail.
@@ -401,6 +419,7 @@ pub fn take_array<A: ArrowArray + Clone, O: arrow2::types::Index>(
         }
     }
 
+    #[allow(clippy::disallowed_methods)] // that's the whole point
     #[allow(clippy::unwrap_used)]
     arrow2::compute::take::take(array, indices)
         // Unwrap: this literally cannot fail.
@@ -431,7 +450,7 @@ pub fn concatenate_record_batches(
 
     if !batches.is_empty() {
         for (i, _field) in schema.fields.iter().enumerate() {
-            let array = arrow2::compute::concatenate::concatenate(
+            let array = concat_arrays(
                 &batches
                     .iter()
                     .map(|batch| &*batch.data[i] as &dyn ArrowArray)

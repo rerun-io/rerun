@@ -5,6 +5,26 @@
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
 [opt_out.run]
+"concepts/static/log_static" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/static/log_temporal_10x" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/static/send_static" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/static/log_static_10x" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
 "concepts/viscomp-base" = [
   "cpp",  # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
@@ -38,6 +58,26 @@ views = [
   "rust", # Doesn't support partitioned component batches yet.
 ]
 "migration/log_line" = [ # Not a complete example -- just a single log line
+  "cpp",
+  "rust",
+  "py",
+]
+"reference/dataframe_query" = [ # No output
+  "cpp",
+  "rust",
+  "py",
+]
+"reference/dataframe_save_blueprint" = [ # No output
+  "cpp",
+  "rust",
+  "py",
+]
+"reference/dataframe_view_query" = [ # No output
+  "cpp",
+  "rust",
+  "py",
+]
+"reference/dataframe_view_query_external" = [ # No output
   "cpp",
   "rust",
   "py",

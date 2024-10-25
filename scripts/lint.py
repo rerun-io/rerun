@@ -791,6 +791,10 @@ def fix_header_casing(s: str) -> str:
         if word == "":
             continue
 
+        if word == "I":
+            new_words.append(word)
+            continue
+
         if is_emoji(word):
             new_words.append(word)
             continue
@@ -1199,6 +1203,7 @@ def main() -> None:
         "./.pytest_cache",
         "./CODE_STYLE.md",
         "./crates/build/re_types_builder/src/reflection.rs",  # auto-generated
+        "./crates/store/re_remote_store_types/src/v0/rerun.remote_store.v0.rs",  # auto-generated
         "./docs/content/reference/cli.md",  # auto-generated
         "./examples/assets",
         "./examples/python/detect_and_track_objects/cache/version.txt",

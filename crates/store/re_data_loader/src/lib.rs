@@ -53,8 +53,6 @@ pub struct DataLoaderSettings {
     pub application_id: Option<re_log_types::ApplicationId>,
 
     /// The [`re_log_types::ApplicationId`] that is currently opened in the viewer, if any.
-    //
-    // TODO(#5350): actually support this
     pub opened_application_id: Option<re_log_types::ApplicationId>,
 
     /// The recommended [`re_log_types::StoreId`] to log the data to, based on the surrounding context.
@@ -64,8 +62,6 @@ pub struct DataLoaderSettings {
     pub store_id: re_log_types::StoreId,
 
     /// The [`re_log_types::StoreId`] that is currently opened in the viewer, if any.
-    //
-    // TODO(#5350): actually support this
     pub opened_store_id: Option<re_log_types::StoreId>,
 
     /// What should the logged entity paths be prefixed with?
@@ -318,39 +314,18 @@ impl DataLoaderError {
 /// most convenient for them, whether it is raw components, arrow chunks or even
 /// full-on [`LogMsg`]s.
 pub enum LoadedData {
-    Chunk(Chunk),
-    ArrowMsg(ArrowMsg),
+    Chunk(re_log_types::StoreId, Chunk),
+    ArrowMsg(re_log_types::StoreId, ArrowMsg),
     LogMsg(LogMsg),
-}
-
-impl From<Chunk> for LoadedData {
-    #[inline]
-    fn from(value: Chunk) -> Self {
-        Self::Chunk(value)
-    }
-}
-
-impl From<ArrowMsg> for LoadedData {
-    #[inline]
-    fn from(value: ArrowMsg) -> Self {
-        Self::ArrowMsg(value)
-    }
-}
-
-impl From<LogMsg> for LoadedData {
-    #[inline]
-    fn from(value: LogMsg) -> Self {
-        Self::LogMsg(value)
-    }
 }
 
 impl LoadedData {
     /// Pack the data into a [`LogMsg`].
-    pub fn into_log_msg(self, store_id: &re_log_types::StoreId) -> ChunkResult<LogMsg> {
+    pub fn into_log_msg(self) -> ChunkResult<LogMsg> {
         match self {
-            Self::Chunk(chunk) => Ok(LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg()?)),
+            Self::Chunk(store_id, chunk) => Ok(LogMsg::ArrowMsg(store_id, chunk.to_arrow_msg()?)),
 
-            Self::ArrowMsg(msg) => Ok(LogMsg::ArrowMsg(store_id.clone(), msg)),
+            Self::ArrowMsg(store_id, msg) => Ok(LogMsg::ArrowMsg(store_id, msg)),
 
             Self::LogMsg(msg) => Ok(msg),
         }

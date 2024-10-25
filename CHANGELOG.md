@@ -1,27 +1,28 @@
 # Rerun changelog
 
 
-## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD) - Dataframe & Video
+## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
-<!-- TODO(emilk): insert a screenshot and/or code sample here -->
 
-📖 Release blogpost: Coming soon! <!-- TODO(niko): link to it! -->
+## [0.19.0](https://github.com/rerun-io/rerun/compare/0.18.2...0.19.0) - Dataframes & Video support
+
+📖 Release blogpost: https://rerun.io/blog/dataframe
 
 🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-19
 
 ### ✨ Overview & highlights
 This release introduces two powerful features: a dataframe API (and view), as well as video support.
 
-#### ☰ Dataframe Python API
-We now have a Python API for querying the contents of an .rrd file. This integrates with popular packages such as [Pandas](https://pandas.pydata.org), [Polars](https://pola.rs), and [DuckDB](https://duckdb.org).
+#### ☰ Dataframe API
+We now have an API for querying the contents of an .rrd file. This integrates with popular packages such as [Pandas](https://pandas.pydata.org), [Polars](https://pola.rs), and [DuckDB](https://duckdb.org).
 
-You can read more in [the Dataframe API how-to guide](https://rerun.io/docs/content/howto/dataframe-api?speculative-link).
+You can read more in [the Dataframe API how-to guide](https://rerun.io/docs/howto/dataframe-api).
 
 We have also added a matching dataframe view inside the Rerun Viewer.
-Read more [here](https://rerun.io/docs/content/reference/types/views/dataframe_view?speculative-link).
+Read more [here](https://rerun.io/docs/reference/types/views/dataframe_view).
 
 #### 🎬 Video
-Rerun now supports logging MP4 videos using the new [`AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link) archetype.
+Rerun now supports logging MP4 videos using the new [`AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video) archetype.
 This can greatly reduce bandwidth and storage requirements.
 
 While the web viewer supports a variety of codecs, the native viewer supports only the AV1 codec for the moment, but we plan to support H.264 in the near future as well.
@@ -29,16 +30,20 @@ Read more about our video supports (and its limits) [in our video docs](https://
 
 ### ⚠️ Breaking changes
 * 🗾 Blueprint files (.rbl) from previous Rerun versions will no longer load _automatically_
-* 🐧 Linux: Rerun now require glibc 2.17+
+* 🐧 Linux: Rerun now requires glibc 2.17+
 * 🦀 Rust: The minimum supported Rust version is now 1.79
 
 🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-19
 
 ### 🔎 Details
 
+ 📑 Raw changelog: https://github.com/rerun-io/rerun/compare/0.18.2...0.19.0
+
 #### 🪵 Log API
+- BGR(A) image format support [#7238](https://github.com/rerun-io/rerun/pull/7238)
 - Tensor & depth image value ranges can now be configured, from UI & code [#7549](https://github.com/rerun-io/rerun/pull/7549)
 - New planar pixel formats: `Y_U_V24`/`Y_U_V16`/`Y_U_V12` - `_LimitedRange`/`FullRange` [#7666](https://github.com/rerun-io/rerun/pull/7666)
+- Add `ShowLabels` component, which controls whether instances’ labels are shown [#7249](https://github.com/rerun-io/rerun/pull/7249) (thanks [@kpreid](https://github.com/kpreid)!)
 - Refactor `MediaType` guessing [#7326](https://github.com/rerun-io/rerun/pull/7326)
 
 #### 🌊 C++ API
@@ -65,6 +70,7 @@ Read more about our video supports (and its limits) [in our video docs](https://
 #### 🌁 Viewer improvements
 - The viewer will tail an .rrd that's is being written to [#7475](https://github.com/rerun-io/rerun/pull/7475)
 - Native video support for AV1 [#7557](https://github.com/rerun-io/rerun/pull/7557)
+- Allow splitting entity path expressions with whitespace [#7782](https://github.com/rerun-io/rerun/pull/7782)
 
 #### 🚀 Performance improvements
 - Improve performance for scenes with many entities & transforms [#7456](https://github.com/rerun-io/rerun/pull/7456)
@@ -76,7 +82,7 @@ Read more about our video supports (and its limits) [in our video docs](https://
 
 #### 🧑‍🏫 Examples
 - Add drone LiDAR example [#7336](https://github.com/rerun-io/rerun/pull/7336)
-- add instant_splat example [#7751](https://github.com/rerun-io/rerun/pull/7751) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
+- Add `instant_splat` example [#7751](https://github.com/rerun-io/rerun/pull/7751) (thanks [@pablovela5620](https://github.com/pablovela5620)!)
 
 #### 📚 Docs
 - Add video reference docs [#7533](https://github.com/rerun-io/rerun/pull/7533)
