@@ -86,17 +86,3 @@ fn edit_f32_zero_to_one_raw(ui: &mut egui::Ui, value: &mut MaybeMutRef<'_, f32>)
         ui.label(re_format::format_f32(**value))
     }
 }
-
-/// Editor for a [`re_types::blueprint::components::ZoomLevel`] value from zero to 19.0.
-pub fn edit_f32_zoom_level(
-    _ctx: &re_viewer_context::ViewerContext<'_>,
-    ui: &mut egui::Ui,
-    value: &mut MaybeMutRef<'_, impl std::ops::DerefMut<Target = datatypes::Float32>>,
-) -> egui::Response {
-    let mut value: MaybeMutRef<'_, f32> = match value {
-        MaybeMutRef::Ref(value) => MaybeMutRef::Ref(value),
-        MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(&mut value.deref_mut().0),
-    };
-
-    edit_f32_float_raw_with_speed_impl(ui, &mut value, 0.0..=19.0, 0.1)
-}

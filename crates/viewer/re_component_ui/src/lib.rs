@@ -19,6 +19,7 @@ mod transforms;
 mod video_timestamp;
 mod view_coordinates;
 mod visual_bounds2d;
+mod zoom_level;
 
 use datatype_uis::{
     display_name_ui, display_text_ui, edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max,
@@ -26,7 +27,6 @@ use datatype_uis::{
     edit_view_enum, edit_view_range1d, view_view_id,
 };
 
-use crate::datatype_uis::edit_f32_zoom_level;
 use re_types::{
     blueprint::components::{
         BackgroundKind, Corner2D, LockRangeDuringZoom, MapProvider, ViewFit, Visible, ZoomLevel,
@@ -65,7 +65,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<ImagePlaneDistance>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<MarkerSize>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<StrokeWidth>(edit_f32_zero_to_max);
-    registry.add_singleline_edit_or_view::<ZoomLevel>(edit_f32_zoom_level);
+    registry.add_singleline_edit_or_view::<ZoomLevel>(zoom_level::edit_zoom_level);
 
     // float min-max components:
     registry.add_singleline_edit_or_view::<DrawOrder>(edit_f32_min_to_max_float);
