@@ -34,7 +34,7 @@ impl SpaceViewClass for GraphSpaceView {
     }
 
     fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_GENERIC
+        &re_ui::icons::SPACE_VIEW_GRAPH
     }
 
     fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
