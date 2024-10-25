@@ -1,5 +1,5 @@
 ---
-title: Stream from Rust
+title: Send from Rust
 order: 3
 ---
 
