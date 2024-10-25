@@ -209,6 +209,39 @@ impl SparseFillStrategy {
         }
     }
 }
+/// Error codes for application level errors
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum ErrorCode {
+    /// unused
+    Unused = 0,
+    /// object store access error
+    ObjectStoreError = 1,
+    /// metadata database access error
+    MetadataDbError = 2,
+}
+impl ErrorCode {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unused => "_UNUSED",
+            Self::ObjectStoreError => "OBJECT_STORE_ERROR",
+            Self::MetadataDbError => "METADATA_DB_ERROR",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "_UNUSED" => Some(Self::Unused),
+            "OBJECT_STORE_ERROR" => Some(Self::ObjectStoreError),
+            "METADATA_DB_ERROR" => Some(Self::MetadataDbError),
+            _ => None,
+        }
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterRecordingsRequest {
     #[prost(string, tag = "1")]
@@ -234,6 +267,19 @@ pub struct RegisterRecordingsResponse {
     /// or 3/ do it always
     #[prost(message, repeated, tag = "2")]
     pub metadata: ::prost::alloc::vec::Vec<RecordingMetadata>,
+}
+/// Server can include details about the error as part of gRPC error (Status)
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegistrationError {
+    /// error code
+    #[prost(enumeration = "ErrorCode", tag = "1")]
+    pub code: i32,
+    /// url of the recording that failed to register
+    #[prost(string, tag = "2")]
+    pub url: ::prost::alloc::string::String,
+    /// human readable details about the error
+    #[prost(string, tag = "3")]
+    pub message: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetRecordingMetadataRequest {
