@@ -4,8 +4,6 @@ namespace rerun.components;
 
 /// An edge in a graph connecting two nodes.
 table GraphEdge (
-  "attr.python.aliases": "Sequence[str], Tuple[str, str]",
-  "attr.python.array_aliases": "Sequence[str]",
   "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
   "attr.rust.repr": "transparent",
   "attr.rust.custom_clause":
