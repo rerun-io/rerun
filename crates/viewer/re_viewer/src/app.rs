@@ -257,10 +257,9 @@ impl App {
         }
 
         let mut space_view_class_registry = SpaceViewClassRegistry::default();
-        if let Err(err) = populate_space_view_class_registry_with_builtin(
-            &mut space_view_class_registry,
-            state.app_options(),
-        ) {
+        if let Err(err) =
+            populate_space_view_class_registry_with_builtin(&mut space_view_class_registry)
+        {
             re_log::error!(
                 "Failed to populate the view type registry with built-in space views: {}",
                 err
@@ -533,23 +532,6 @@ impl App {
             #[cfg(debug_assertions)]
             SystemCommand::EnableInspectBlueprintTimeline(show) => {
                 self.app_options_mut().inspect_blueprint_timeline = show;
-            }
-
-            SystemCommand::EnableExperimentalGraphSpaceView(enabled) => {
-                let result = if enabled {
-                    self.space_view_class_registry
-                        .add_class::<re_space_view_graph::GraphSpaceView>()
-                } else {
-                    self.space_view_class_registry
-                        .remove_class::<re_space_view_graph::GraphSpaceView>()
-                };
-
-                if let Err(err) = result {
-                    re_log::warn_once!(
-                        "Failed to {} experimental graph space view: {err}",
-                        if enabled { "enable" } else { "disable" }
-                    );
-                }
             }
 
             SystemCommand::SetSelection(item) => {
@@ -1728,7 +1710,6 @@ impl eframe::App for App {
 /// Add built-in space views to the registry.
 fn populate_space_view_class_registry_with_builtin(
     space_view_class_registry: &mut SpaceViewClassRegistry,
-    app_options: &AppOptions,
 ) -> Result<(), SpaceViewClassRegistryError> {
     re_tracing::profile_function!();
     space_view_class_registry.add_class::<re_space_view_bar_chart::BarChartSpaceView>()?;
@@ -1740,9 +1721,8 @@ fn populate_space_view_class_registry_with_builtin(
     space_view_class_registry.add_class::<re_space_view_text_log::TextSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_time_series::TimeSeriesSpaceView>()?;
 
-    if app_options.experimental_graph_space_view {
-        space_view_class_registry.add_class::<re_space_view_graph::GraphSpaceView>()?;
-    }
+    // The following are experimental views.
+    space_view_class_registry.add_class::<re_space_view_graph::GraphSpaceView>()?;
 
     Ok(())
 }
