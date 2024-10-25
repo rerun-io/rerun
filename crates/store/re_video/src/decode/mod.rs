@@ -208,8 +208,16 @@ pub struct Chunk {
 
     pub data: Vec<u8>,
 
+    /// Decode timestamp of this sample.
+    /// Chunks are expected to be submitted in the order of decode timestamp.
+    ///
+    /// `decode_timestamp <= composition_timestamp`
+    pub decode_timestamp: Time,
+
     /// Presentation/composition timestamp for the sample in this chunk.
     /// *not* decode timestamp.
+    ///
+    /// `decode_timestamp <= composition_timestamp`
     pub composition_timestamp: Time,
 
     pub duration: Time,
