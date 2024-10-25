@@ -34,6 +34,16 @@ message RegisterRecordingsResponse {
     repeated RecordingMetadata metadata = 2;
 }
 
+// Server can include details about the error as part of gRPC error (Status)
+message RegistrationError {
+    // error code
+    ErrorCode code = 1;
+    // url of the recording that failed to register
+    string url = 2;
+    // human readable details about the error
+    string message = 3;
+}
+
 // ---------------- GetRecordingMetadata  -----------------
 
 message GetRecordingMetadataRequest {
