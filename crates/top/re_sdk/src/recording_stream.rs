@@ -310,8 +310,24 @@ impl RecordingStreamBuilder {
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").connect()?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
+    #[deprecated(since = "0.20.0", note = "use connect_tcp() instead")]
     pub fn connect(self) -> RecordingStreamResult<RecordingStream> {
-        self.connect_opts(crate::default_server_addr(), crate::default_flush_timeout())
+        self.connect_tcp()
+    }
+
+    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
+    /// remote Rerun instance.
+    ///
+    /// See also [`Self::connect_opts`] if you wish to configure the TCP connection.
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").connect()?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn connect_tcp(self) -> RecordingStreamResult<RecordingStream> {
+        self.connect_tcp_opts(crate::default_server_addr(), crate::default_flush_timeout())
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
@@ -328,7 +344,30 @@ impl RecordingStreamBuilder {
     ///     .connect_opts(re_sdk::default_server_addr(), re_sdk::default_flush_timeout())?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
+    #[deprecated(since = "0.20.0", note = "use connect_tcp_opts() instead")]
     pub fn connect_opts(
+        self,
+        addr: std::net::SocketAddr,
+        flush_timeout: Option<std::time::Duration>,
+    ) -> RecordingStreamResult<RecordingStream> {
+        self.connect_tcp_opts(addr, flush_timeout)
+    }
+
+    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
+    /// remote Rerun instance.
+    ///
+    /// `flush_timeout` is the minimum time the [`TcpSink`][`crate::log_sink::TcpSink`] will
+    /// wait during a flush before potentially dropping data. Note: Passing `None` here can cause a
+    /// call to `flush` to block indefinitely if a connection cannot be established.
+    ///
+    /// ## Example
+    ///
+    /// ```no_run
+    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
+    ///     .connect_opts(re_sdk::default_server_addr(), re_sdk::default_flush_timeout())?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    pub fn connect_tcp_opts(
         self,
         addr: std::net::SocketAddr,
         flush_timeout: Option<std::time::Duration>,
@@ -464,12 +503,12 @@ impl RecordingStreamBuilder {
         // NOTE: If `_RERUN_TEST_FORCE_SAVE` is set, all recording streams will write to disk no matter
         // what, thus spawning a viewer is pointless (and probably not intended).
         if forced_sink_path().is_some() {
-            return self.connect_opts(connect_addr, flush_timeout);
+            return self.connect_tcp_opts(connect_addr, flush_timeout);
         }
 
         crate::spawn(opts)?;
 
-        self.connect_opts(connect_addr, flush_timeout)
+        self.connect_tcp_opts(connect_addr, flush_timeout)
     }
 
     /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
@@ -503,7 +542,56 @@ impl RecordingStreamBuilder {
     //
     // # TODO(#5531): keep static data around.
     #[cfg(feature = "web_viewer")]
+    #[deprecated(since = "0.20.0", note = "use serve_web() instead")]
     pub fn serve(
+        self,
+        bind_ip: &str,
+        web_port: WebViewerServerPort,
+        ws_port: RerunServerPort,
+        server_memory_limit: re_memory::MemoryLimit,
+        open_browser: bool,
+    ) -> RecordingStreamResult<RecordingStream> {
+        self.serve_web(
+            bind_ip,
+            web_port,
+            ws_port,
+            server_memory_limit,
+            open_browser,
+        )
+    }
+
+    /// Creates a new [`RecordingStream`] that is pre-configured to stream the data through to a
+    /// web-based Rerun viewer via WebSockets.
+    ///
+    /// If the `open_browser` argument is `true`, your default browser will be opened with a
+    /// connected web-viewer.
+    ///
+    /// If not, you can connect to this server using the `rerun` binary (`cargo install rerun-cli --locked`).
+    ///
+    /// ## Details
+    /// This method will spawn two servers: one HTTPS server serving the Rerun Web Viewer `.html` and `.wasm` files,
+    /// and then one WebSocket server that streams the log data to the web viewer (or to a native viewer, or to multiple viewers).
+    ///
+    /// The WebSocket server will buffer all log data in memory so that late connecting viewers will get all the data.
+    /// You can limit the amount of data buffered by the WebSocket server with the `server_memory_limit` argument.
+    /// Once reached, the earliest logged data will be dropped.
+    /// Note that this means that static data may be dropped if logged early (see <https://github.com/rerun-io/rerun/issues/5531>).
+    ///
+    /// ## Example
+    ///
+    /// ```ignore
+    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
+    ///     .serve("0.0.0.0",
+    ///            Default::default(),
+    ///            Default::default(),
+    ///            re_sdk::MemoryLimit::from_fraction_of_total(0.25),
+    ///            true)?;
+    /// # Ok::<(), Box<dyn std::error::Error>>(())
+    /// ```
+    //
+    // # TODO(#5531): keep static data around.
+    #[cfg(feature = "web_viewer")]
+    pub fn serve_web(
         self,
         bind_ip: &str,
         web_port: WebViewerServerPort,
