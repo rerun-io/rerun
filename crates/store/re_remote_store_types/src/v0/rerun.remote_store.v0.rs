@@ -209,6 +209,39 @@ impl SparseFillStrategy {
         }
     }
 }
+/// Error codes for application level errors
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum Code {
+    /// unused
+    NoError = 0,
+    /// object store access error
+    ObjectStoreError = 1,
+    /// metadata database access error
+    MetadataDbError = 2,
+}
+impl Code {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::NoError => "_NO_ERROR",
+            Self::ObjectStoreError => "OBJECT_STORE_ERROR",
+            Self::MetadataDbError => "METADATA_DB_ERROR",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "_NO_ERROR" => Some(Self::NoError),
+            "OBJECT_STORE_ERROR" => Some(Self::ObjectStoreError),
+            "METADATA_DB_ERROR" => Some(Self::MetadataDbError),
+            _ => None,
+        }
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterRecordingsRequest {
     #[prost(string, tag = "1")]
@@ -228,12 +261,39 @@ pub struct ObjectStorage {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterRecordingsResponse {
+    #[prost(oneof = "register_recordings_response::Response", tags = "1, 2")]
+    pub response: ::core::option::Option<register_recordings_response::Response>,
+}
+/// Nested message and enum types in `RegisterRecordingsResponse`.
+pub mod register_recordings_response {
+    #[derive(Clone, PartialEq, ::prost::Oneof)]
+    pub enum Response {
+        #[prost(message, tag = "1")]
+        Success(super::RegistrationSuccess),
+        #[prost(message, tag = "2")]
+        Error(super::RegistrationError),
+    }
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegistrationSuccess {
     /// Note / TODO(zehiko): this implies we read the record (for example go through entire .rrd file
     /// chunk by chunk) and extract the metadata. So we might want to 1/ not do this i.e.
     /// only do it as part of explicit GetMetadata request or 2/ do it if Request has "include_metadata=true"
     /// or 3/ do it always
     #[prost(message, repeated, tag = "2")]
     pub metadata: ::prost::alloc::vec::Vec<RecordingMetadata>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegistrationError {
+    /// error code
+    #[prost(enumeration = "Code", tag = "1")]
+    pub code: i32,
+    /// url of the recording that failed to register
+    #[prost(string, tag = "2")]
+    pub url: ::prost::alloc::string::String,
+    /// human readable details about the error
+    #[prost(string, tag = "3")]
+    pub message: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetRecordingMetadataRequest {
