@@ -43,7 +43,7 @@ deny = [
   { name = "egui_glow" },   # We use wgpu
   { name = "openssl-sys" }, # We prefer rustls
   { name = "openssl" },     # We prefer rustls
-  { name = "reqwest" },     # We prefer ureq - less dependencies
+  # { name = "reqwest" },   # We prefer ureq - less dependencies TODO(#7876): reenable that when `walkers` is updated
 ]
 skip = [
   { name = "ahash" },             # Popular crate + fast release schedule = lots of crates still using old versions
@@ -71,6 +71,7 @@ skip-tree = [
   { name = "toml_edit" },      # Old version via egui-winit, newer used by rustdoc-json
   { name = "windows" },        # Old version used by accesskit_windows, newer version used by wgpu
   { name = "tower" },          # tonic depends on 0.4.3, but also transitively (axum) on 0.5.1
+  { name = "walkers" },        # TODO(#7876): suppress that when `walkers` is updated
 ]
 
 

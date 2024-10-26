@@ -61,6 +61,9 @@ pub enum SpaceViewSystemExecutionError {
     #[error("Failed to create draw data: {0}")]
     DrawDataCreationError(Box<dyn std::error::Error>),
 
+    #[error("Error accessing map view tiles.")]
+    MapTilesError,
+
     #[error(transparent)]
     GpuTransferError(#[from] re_renderer::CpuWriteGpuReadError),
 

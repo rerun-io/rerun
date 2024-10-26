@@ -35,6 +35,7 @@ from .class_description_map_elem import (
 )
 from .class_id import ClassId, ClassIdArrayLike, ClassIdBatch, ClassIdLike, ClassIdType
 from .color_model import ColorModel, ColorModelArrayLike, ColorModelBatch, ColorModelLike, ColorModelType
+from .dvec2d import DVec2D, DVec2DArrayLike, DVec2DBatch, DVec2DLike, DVec2DType
 from .entity_path import EntityPath, EntityPathArrayLike, EntityPathBatch, EntityPathLike, EntityPathType
 from .float32 import Float32, Float32ArrayLike, Float32Batch, Float32Like, Float32Type
 from .float64 import Float64, Float64ArrayLike, Float64Batch, Float64Like, Float64Type
@@ -166,6 +167,11 @@ __all__ = [
     "ColorModelBatch",
     "ColorModelLike",
     "ColorModelType",
+    "DVec2D",
+    "DVec2DArrayLike",
+    "DVec2DBatch",
+    "DVec2DLike",
+    "DVec2DType",
     "EntityPath",
     "EntityPathArrayLike",
     "EntityPathBatch",

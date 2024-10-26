@@ -45,7 +45,7 @@ default = ["native_viewer", "web_viewer"]
 
 ## The features we enable when we build the pre-built binaries during our releases.
 ## This may enable features that require extra build tools that not everyone heas.
-release = ["default", "nasm"]
+release = ["default", "nasm", "map_view"]
 
 ## Enable faster native video decoding with assembly.
 ## You need to install [nasm](https://nasm.us/) to compile with this feature.
@@ -54,6 +54,11 @@ nasm = ["rerun/nasm"]
 ## Support spawning a native viewer.
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
 native_viewer = ["rerun/native_viewer"]
+
+## Support the map view.
+## This adds a lot of extra dependencies.
+#TODO(#7876): remove this feature when we have fewer dependencies
+map_view = ["rerun/map_view"]
 
 ## Support serving a web viewer over HTTP.
 ##
