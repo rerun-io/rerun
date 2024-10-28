@@ -1816,6 +1816,8 @@ fn populate_space_view_class_registry_with_builtin(
 ) -> Result<(), SpaceViewClassRegistryError> {
     re_tracing::profile_function!();
     space_view_class_registry.add_class::<re_space_view_bar_chart::BarChartSpaceView>()?;
+    #[cfg(feature = "map_view")]
+    space_view_class_registry.add_class::<re_space_view_map::MapSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_spatial::SpatialSpaceView2D>()?;
     space_view_class_registry.add_class::<re_space_view_spatial::SpatialSpaceView3D>()?;
     space_view_class_registry.add_class::<re_space_view_tensor::TensorSpaceView>()?;

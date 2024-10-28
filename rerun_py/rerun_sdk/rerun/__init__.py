@@ -64,6 +64,7 @@ from .archetypes import (
     DisconnectedSpace as DisconnectedSpace,
     Ellipsoids3D as Ellipsoids3D,
     EncodedImage as EncodedImage,
+    GeoPoints as GeoPoints,
     Image as Image,
     InstancePoses3D as InstancePoses3D,
     LineStrips2D as LineStrips2D,
