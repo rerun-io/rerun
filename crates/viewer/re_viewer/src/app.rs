@@ -802,7 +802,7 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintChunkStore => {
                 if let Some(ctx) = store_context {
-                    let text = format!("{}", ctx.recording.store());
+                    let text = format!("{}", ctx.recording.store().read());
                     egui_ctx.output_mut(|o| o.copied_text = text.clone());
                     println!("{text}");
                 }
@@ -810,7 +810,7 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintBlueprintStore => {
                 if let Some(ctx) = store_context {
-                    let text = format!("{}", ctx.blueprint.store());
+                    let text = format!("{}", ctx.blueprint.store().read());
                     egui_ctx.output_mut(|o| o.copied_text = text.clone());
                     println!("{text}");
                 }
@@ -868,7 +868,7 @@ impl App {
             return;
         };
         let rec_id = entity_db.store_id();
-        let Some(rec_cfg) = self.state.recording_config_mut(rec_id) else {
+        let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) else {
             return;
         };
         let time_ctrl = rec_cfg.time_ctrl.get_mut();

@@ -112,7 +112,7 @@ impl AppState {
         store_context: Option<&StoreContext<'_>>,
     ) -> Option<(re_entity_db::Timeline, ResolvedTimeRangeF)> {
         let rec_id = store_context.as_ref()?.recording.store_id();
-        let rec_cfg = self.recording_configs.get(rec_id)?;
+        let rec_cfg = self.recording_configs.get(&rec_id)?;
 
         // is there an active loop selection?
         let time_ctrl = rec_cfg.time_ctrl.read();
@@ -206,9 +206,9 @@ impl AppState {
         );
 
         let applicable_entities_per_visualizer = space_view_class_registry
-            .applicable_entities_for_visualizer_systems(recording.store_id());
+            .applicable_entities_for_visualizer_systems(&recording.store_id());
         let indicated_entities_per_visualizer =
-            space_view_class_registry.indicated_entities_per_visualizer(recording.store_id());
+            space_view_class_registry.indicated_entities_per_visualizer(&recording.store_id());
 
         // Execute the queries for every `SpaceView`
         let mut query_results = {

@@ -132,7 +132,6 @@ impl SpaceViewBlueprint {
         re_tracing::profile_function!();
 
         let results = blueprint_db.query_caches().latest_at(
-            blueprint_db.store(),
             query,
             &id.as_entity_path(),
             blueprint_archetypes::SpaceViewBlueprint::all_components()
@@ -262,6 +261,7 @@ impl SpaceViewBlueprint {
                         store_context.blueprint_timepoint_for_writes(),
                         blueprint
                             .store()
+                            .read()
                             .all_components_on_timeline(&query.timeline(), path)
                             .into_iter()
                             .flat_map(|v| v.into_iter())
@@ -275,7 +275,7 @@ impl SpaceViewBlueprint {
                             .filter_map(|component_name| {
                                 let array = blueprint
                                     .query_caches()
-                                    .latest_at(blueprint.store(), query, path, [component_name])
+                                    .latest_at(query, path, [component_name])
                                     .component_batch_raw(&component_name);
                                 array.map(|array| (component_name, array))
                             }),

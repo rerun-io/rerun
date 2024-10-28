@@ -92,7 +92,7 @@ fn recommended_space_views_for_selection(
     let space_view_class_registry = ctx.viewer_context.space_view_class_registry;
     let recording = ctx.viewer_context.recording();
     let applicable_entities_per_visualizer =
-        space_view_class_registry.applicable_entities_for_visualizer_systems(recording.store_id());
+        space_view_class_registry.applicable_entities_for_visualizer_systems(&recording.store_id());
 
     for entry in space_view_class_registry.iter_registry() {
         let Some(suggested_root) = entry

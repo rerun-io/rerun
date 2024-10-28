@@ -128,7 +128,7 @@ mode sets the default time range to _everything_. You can override this in the s
         let view_query = view_query::Query::from_blueprint(ctx, query.space_view_id);
 
         let query_engine = re_dataframe::QueryEngine {
-            store: ctx.recording().store(),
+            store: ctx.recording().store().clone(),
             cache: ctx.recording().query_caches(),
         };
 

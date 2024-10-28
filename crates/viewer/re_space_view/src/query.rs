@@ -42,7 +42,6 @@ pub fn range_with_blueprint_resolved_data(
     component_set.retain(|component| !overrides.components.contains_key(component));
 
     let results = ctx.recording().query_caches().range(
-        ctx.recording_store(),
         range_query,
         &data_result.entity_path,
         component_set.iter().copied(),
@@ -53,7 +52,6 @@ pub fn range_with_blueprint_resolved_data(
     // component_set.retain(|component| !results.components.contains_key(component));
 
     let defaults = ctx.viewer_ctx.blueprint_db().query_caches().latest_at(
-        ctx.viewer_ctx.store_context.blueprint.store(),
         ctx.viewer_ctx.blueprint_query,
         ctx.defaults_path,
         component_set.iter().copied(),
@@ -99,7 +97,6 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     }
 
     let results = ctx.viewer_ctx.recording().query_caches().latest_at(
-        ctx.viewer_ctx.recording_store(),
         latest_at_query,
         &data_result.entity_path,
         component_set.iter().copied(),
@@ -110,7 +107,6 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     // component_set.retain(|component| !results.components.contains_key(component));
 
     let defaults = ctx.viewer_ctx.blueprint_db().query_caches().latest_at(
-        ctx.viewer_ctx.store_context.blueprint.store(),
         ctx.viewer_ctx.blueprint_query,
         ctx.defaults_path,
         component_set.iter().copied(),
@@ -195,20 +191,16 @@ fn query_overrides<'a>(
                     // currently. This may want to use range_query instead depending on how
                     // component override data-references are resolved.
                     ctx.store_context.blueprint.query_caches().latest_at(
-                        ctx.store_context.blueprint.store(),
                         &current_query,
                         &override_value.path,
                         [*component_name],
                     )
                 }
-                re_log_types::StoreKind::Blueprint => {
-                    ctx.store_context.blueprint.query_caches().latest_at(
-                        ctx.store_context.blueprint.store(),
-                        &current_query,
-                        &override_value.path,
-                        [*component_name],
-                    )
-                }
+                re_log_types::StoreKind::Blueprint => ctx
+                    .store_context
+                    .blueprint
+                    .query_caches()
+                    .latest_at(&current_query, &override_value.path, [*component_name]),
             };
 
             // If we successfully find a non-empty override, add it to our results.

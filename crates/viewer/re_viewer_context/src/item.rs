@@ -190,6 +190,7 @@ pub fn resolve_mono_instance_path(
         // NOTE: While we normally frown upon direct queries to the datastore, `all_components` is fine.
         let Some(component_names) = entity_db
             .store()
+            .read()
             .all_components_on_timeline(&query.timeline(), &instance.entity_path)
         else {
             // No components at all, return unindexed entity.
@@ -199,12 +200,7 @@ pub fn resolve_mono_instance_path(
         for component_name in component_names {
             if let Some(array) = entity_db
                 .query_caches()
-                .latest_at(
-                    entity_db.store(),
-                    query,
-                    &instance.entity_path,
-                    [component_name],
-                )
+                .latest_at(query, &instance.entity_path, [component_name])
                 .component_batch_raw(&component_name)
             {
                 if array.len() > 1 {

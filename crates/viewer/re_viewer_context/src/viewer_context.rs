@@ -95,19 +95,19 @@ impl<'a> ViewerContext<'a> {
 
     /// The chunk store of the active recording.
     #[inline]
-    pub fn recording_store(&self) -> &re_chunk_store::ChunkStore {
+    pub fn recording_store(&self) -> &re_chunk_store::ChunkStoreHandle {
         self.store_context.recording.store()
     }
 
     /// The chunk store of the active blueprint.
     #[inline]
-    pub fn blueprint_store(&self) -> &re_chunk_store::ChunkStore {
+    pub fn blueprint_store(&self) -> &re_chunk_store::ChunkStoreHandle {
         self.store_context.blueprint.store()
     }
 
     /// The `StoreId` of the active recording.
     #[inline]
-    pub fn recording_id(&self) -> &re_log_types::StoreId {
+    pub fn recording_id(&self) -> re_log_types::StoreId {
         self.store_context.recording.store_id()
     }
 
@@ -183,7 +183,8 @@ impl<'a> ViewerContext<'a> {
             }
             &reflection.datatype
         } else {
-            self.recording_store()
+            self.recording_engine()
+                .store()
                 .lookup_datatype(&component)
                 .or_else(|| self.blueprint_store().lookup_datatype(&component))
                 .unwrap_or_else(|| {

@@ -23,9 +23,9 @@ impl DataUi for ComponentPath {
                 "Indicator component for the {archetype_name} archetype"
             ));
         } else {
-            let results =
-                db.query_caches()
-                    .latest_at(db.store(), query, entity_path, [*component_name]);
+            let results = db
+                .query_caches()
+                .latest_at(query, entity_path, [*component_name]);
             if let Some(unit) = results.components.get(component_name) {
                 crate::ComponentPathLatestAtResults {
                     component_path: self.clone(),
@@ -33,7 +33,7 @@ impl DataUi for ComponentPath {
                 }
                 .data_ui(ctx, ui, ui_layout, query, db);
             } else if ctx.recording().tree().subtree(entity_path).is_some() {
-                if db.store().entity_has_component_on_timeline(
+                if db.store().read().entity_has_component_on_timeline(
                     &query.timeline(),
                     entity_path,
                     component_name,

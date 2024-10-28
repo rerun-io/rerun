@@ -47,7 +47,7 @@ impl<'a> ViewContext<'a> {
 
     /// The chunk store of the active recording.
     #[inline]
-    pub fn recording_store(&self) -> &re_chunk_store::ChunkStore {
+    pub fn recording_store(&self) -> &re_chunk_store::ChunkStoreHandle {
         self.viewer_ctx.recording_store()
     }
 
@@ -59,7 +59,7 @@ impl<'a> ViewContext<'a> {
 
     /// The `StoreId` of the active recording.
     #[inline]
-    pub fn recording_id(&self) -> &re_log_types::StoreId {
+    pub fn recording_id(&self) -> re_log_types::StoreId {
         self.viewer_ctx.recording_id()
     }
 

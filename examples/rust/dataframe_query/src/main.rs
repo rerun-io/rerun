@@ -7,6 +7,7 @@ use rerun::{
         concatenate_record_batches, EntityPathFilter, QueryCache, QueryEngine, QueryExpression,
         SparseFillStrategy, Timeline,
     },
+    external::re_chunk_store::ChunkStoreHandle,
     ChunkStore, ChunkStoreConfig, StoreKind, VersionPolicy,
 };
 
@@ -46,16 +47,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &ChunkStoreConfig::DEFAULT,
         path_to_rrd,
         VersionPolicy::Warn,
-    )?;
+    )?
+    .into_iter()
+    .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)));
 
-    for (store_id, store) in &stores {
+    for (store_id, store) in stores {
         if store_id.kind != StoreKind::Recording {
             continue;
         }
 
-        let query_cache = QueryCache::new(store);
+        let query_cache = QueryCache::new(store.clone());
         let query_engine = QueryEngine {
-            store,
+            store: store.clone(),
             cache: &query_cache,
         };
 

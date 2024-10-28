@@ -707,12 +707,11 @@ fn visit_relevant_chunks(
 ) {
     re_tracing::profile_function!();
 
+    let store = db.store().read();
     let query = RangeQuery::new(timeline, time_range);
 
     if let Some(component_name) = component_name {
-        let chunks = db
-            .store()
-            .range_relevant_chunks(&query, entity_path, component_name);
+        let chunks = store.range_relevant_chunks(&query, entity_path, component_name);
 
         for chunk in chunks {
             let Some(num_events) = chunk.num_events_for_component(component_name) else {
@@ -727,10 +726,7 @@ fn visit_relevant_chunks(
         }
     } else if let Some(subtree) = db.tree().subtree(entity_path) {
         subtree.visit_children_recursively(|entity_path| {
-            for chunk in db
-                .store()
-                .range_relevant_chunks_for_all_components(&query, entity_path)
-            {
+            for chunk in store.range_relevant_chunks_for_all_components(&query, entity_path) {
                 let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
                     continue;
                 };

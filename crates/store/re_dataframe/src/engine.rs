@@ -1,5 +1,5 @@
 use re_chunk::{EntityPath, TransportChunk};
-use re_chunk_store::{ChunkStore, ColumnDescriptor, QueryExpression};
+use re_chunk_store::{ChunkStoreHandle, ColumnDescriptor, QueryExpression};
 use re_log_types::EntityPathFilter;
 use re_query::QueryCache;
 
@@ -30,7 +30,7 @@ pub type RecordBatch = TransportChunk;
 // got to go. But for that we need to generally introduce `ChunkStoreHandle` and `QueryCacheHandle`
 // first, and this is not as straightforward as it seems.
 pub struct QueryEngine<'a> {
-    pub store: &'a ChunkStore,
+    pub store: ChunkStoreHandle,
     pub cache: &'a QueryCache,
 }
 
@@ -45,7 +45,7 @@ impl QueryEngine<'_> {
     /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
     #[inline]
     pub fn schema(&self) -> Vec<ColumnDescriptor> {
-        self.store.schema()
+        self.store.read().schema()
     }
 
     /// Returns the filtered schema for the given [`QueryExpression`].
@@ -55,7 +55,7 @@ impl QueryEngine<'_> {
     /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
     #[inline]
     pub fn schema_for_query(&self, query: &QueryExpression) -> Vec<ColumnDescriptor> {
-        self.store.schema_for_query(query)
+        self.store.read().schema_for_query(query)
     }
 
     /// Starts a new query by instantiating a [`QueryHandle`].
@@ -71,6 +71,7 @@ impl QueryEngine<'_> {
         filter: &'a EntityPathFilter,
     ) -> impl Iterator<Item = EntityPath> + 'a {
         self.store
+            .read()
             .all_entities()
             .into_iter()
             .filter(|entity_path| filter.matches(entity_path))

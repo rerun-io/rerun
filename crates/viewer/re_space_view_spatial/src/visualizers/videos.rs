@@ -406,7 +406,6 @@ fn latest_at_query_video_from_datastore(
     let query = ctx.current_query();
 
     let results = ctx.recording().query_caches().latest_at(
-        ctx.recording_store(),
         &query,
         entity_path,
         AssetVideo::all_components().iter().copied(),

@@ -132,6 +132,7 @@ fn entity_ui(
     // Each entity can have many components (e.g. position, color, radius, …):
     if let Some(components) = entity_db
         .store()
+        .read()
         .all_components_on_timeline(&timeline, entity_path)
     {
         for component in components {
@@ -153,12 +154,9 @@ fn component_ui(
     // just show the last value logged for each component:
     let query = re_chunk_store::LatestAtQuery::latest(timeline);
 
-    let results = entity_db.query_caches().latest_at(
-        entity_db.store(),
-        &query,
-        entity_path,
-        [component_name],
-    );
+    let results = entity_db
+        .query_caches()
+        .latest_at(&query, entity_path, [component_name]);
 
     if let Some(data) = results.component_batch_raw(&component_name) {
         egui::ScrollArea::vertical()
