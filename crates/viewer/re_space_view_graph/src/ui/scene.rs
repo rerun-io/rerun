@@ -165,7 +165,7 @@ impl<'a> Scene<'a> {
                     .expect("The counter should never run out."),
             )),
         )
-        .current_pos(pos)
+        .fixed_pos(pos)
         .order(Order::Foreground)
         .constrain(false)
         .show(self.ui.ctx(), |ui| {
