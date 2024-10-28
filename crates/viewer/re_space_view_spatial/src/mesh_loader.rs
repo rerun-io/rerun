@@ -53,10 +53,11 @@ impl LoadedMesh {
         };
 
         // Overwriting albedo_factor of CpuMesh in specified in the Asset3D
-        cpu_model.instances.iter().for_each(|instance| {
-            cpu_model.meshes[instance.mesh].materials[0].albedo_factor =
-                albedo_factor.map_or(re_renderer::Rgba::WHITE, |c| c.0.into());
-        });
+        if let Some(albedo_factor) = albedo_factor {
+            for instance in &cpu_model.instances {
+                cpu_model.meshes[instance.mesh].materials[0].albedo_factor = albedo_factor.0.into();
+            }
+        }
 
         let bbox = cpu_model.calculate_bounding_box();
         let mesh_instances = cpu_model.into_gpu_meshes(render_ctx)?;
