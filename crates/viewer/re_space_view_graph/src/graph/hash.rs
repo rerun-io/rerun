@@ -1,5 +1,5 @@
 use re_log_types::hash::Hash64;
-use re_types::datatypes;
+use re_types::components;
 
 /// A 64 bit hash of [`GraphNodeId`] with very small risk of collision.
 #[derive(Copy, Clone, Eq, PartialOrd, Ord)]
@@ -27,8 +27,8 @@ impl std::fmt::Debug for GraphNodeHash {
     }
 }
 
-impl From<&datatypes::GraphNode> for GraphNodeHash {
-    fn from(node_id: &datatypes::GraphNode) -> Self {
+impl From<&components::GraphNode> for GraphNodeHash {
+    fn from(node_id: &components::GraphNode) -> Self {
         Self(Hash64::hash(node_id))
     }
 }

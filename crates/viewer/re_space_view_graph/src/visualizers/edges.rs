@@ -31,8 +31,8 @@ impl EdgeData {
             Option::<()>::default,
         )
         .map(|(edge, instance, _placeholder)| EdgeInstance {
-            source: &edge.source,
-            target: &edge.target,
+            source: edge.first.clone().into(),
+            target: edge.second.clone().into(),
             entity_path: &self.entity_path,
             instance,
             edge_type: self.graph_type,

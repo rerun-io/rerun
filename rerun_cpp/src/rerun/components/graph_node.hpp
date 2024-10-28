@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../datatypes/graph_node.hpp"
+#include "../datatypes/utf8.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -14,34 +14,34 @@
 namespace rerun::components {
     /// **Component**: A string-based ID representing a node in a graph.
     struct GraphNode {
-        rerun::datatypes::GraphNode id;
+        rerun::datatypes::Utf8 id;
 
       public:
         GraphNode() = default;
 
-        GraphNode(rerun::datatypes::GraphNode id_) : id(std::move(id_)) {}
+        GraphNode(rerun::datatypes::Utf8 id_) : id(std::move(id_)) {}
 
-        GraphNode& operator=(rerun::datatypes::GraphNode id_) {
+        GraphNode& operator=(rerun::datatypes::Utf8 id_) {
             id = std::move(id_);
             return *this;
         }
 
-        GraphNode(std::string id_) : id(std::move(id_)) {}
+        GraphNode(std::string value_) : id(std::move(value_)) {}
 
-        GraphNode& operator=(std::string id_) {
-            id = std::move(id_);
+        GraphNode& operator=(std::string value_) {
+            id = std::move(value_);
             return *this;
         }
 
-        /// Cast to the underlying GraphNode datatype
-        operator rerun::datatypes::GraphNode() const {
+        /// Cast to the underlying Utf8 datatype
+        operator rerun::datatypes::Utf8() const {
             return id;
         }
     };
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::GraphNode) == sizeof(components::GraphNode));
+    static_assert(sizeof(rerun::datatypes::Utf8) == sizeof(components::GraphNode));
 
     /// \private
     template <>
@@ -50,7 +50,7 @@ namespace rerun {
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::GraphNode>::arrow_datatype();
+            return Loggable<rerun::datatypes::Utf8>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::components::GraphNode` into an arrow array.
@@ -58,17 +58,14 @@ namespace rerun {
             const components::GraphNode* instances, size_t num_instances
         ) {
             if (num_instances == 0) {
-                return Loggable<rerun::datatypes::GraphNode>::to_arrow(nullptr, 0);
+                return Loggable<rerun::datatypes::Utf8>::to_arrow(nullptr, 0);
             } else if (instances == nullptr) {
                 return rerun::Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Passed array instances is null when num_elements> 0."
                 );
             } else {
-                return Loggable<rerun::datatypes::GraphNode>::to_arrow(
-                    &instances->id,
-                    num_instances
-                );
+                return Loggable<rerun::datatypes::Utf8>::to_arrow(&instances->id, num_instances);
             }
         }
     };

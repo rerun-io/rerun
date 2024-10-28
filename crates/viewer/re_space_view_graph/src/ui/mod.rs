@@ -13,8 +13,12 @@ pub(crate) mod scene;
 use crate::types::UnknownNodeInstance;
 
 pub fn draw_dummy(ui: &mut egui::Ui, instance: &UnknownNodeInstance<'_>) -> egui::Response {
-    let text = egui::RichText::new(format!("{} @ {}", instance.node_id, instance.entity_path))
-        .color(ui.style().visuals.widgets.noninteractive.text_color());
+    let text = egui::RichText::new(format!(
+        "{} @ {}",
+        instance.node_id.as_str(),
+        instance.entity_path
+    ))
+    .color(ui.style().visuals.widgets.noninteractive.text_color());
     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
     ui.add(egui::Button::new(text))
 }

@@ -1,0 +1,14 @@
+namespace rerun.datatypes;
+
+/// Stores a tuple of UTF-8 strings.
+table Utf8Pair (
+    "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
+    "attr.rust.custom_clause":
+        'cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))'
+) {
+  /// The first string.
+  first: rerun.datatypes.Utf8 (order: 100);
+
+  /// The second string.
+  second: rerun.datatypes.Utf8 (order: 200);
+}

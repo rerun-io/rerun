@@ -26,7 +26,7 @@ class GraphEdges(Archetype):
     By default, edges are undirected.
     """
 
-    def __init__(self: Any, edges: datatypes.GraphEdgeArrayLike, *, graph_type: components.GraphTypeLike | None = None):
+    def __init__(self: Any, edges: datatypes.Utf8PairArrayLike, *, graph_type: components.GraphTypeLike | None = None):
         """
         Create a new instance of the GraphEdges archetype.
 

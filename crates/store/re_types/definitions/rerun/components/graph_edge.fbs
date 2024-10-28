@@ -9,5 +9,5 @@ table GraphEdge (
   "attr.rust.custom_clause":
     'cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))'
 ) {
-  edge: rerun.datatypes.GraphEdge (order: 100);
+  edge: rerun.datatypes.Utf8Pair (order: 100);
 }

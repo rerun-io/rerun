@@ -1,11 +1,11 @@
 use re_log_types::{EntityPath, Instance};
-use re_types::{components, datatypes, ArrowString};
+use re_types::{components, ArrowString};
 
 use crate::graph::NodeIndex;
 
 impl<'a> EdgeInstance<'a> {
-    pub fn nodes(&'a self) -> impl Iterator<Item = &datatypes::GraphNode> {
-        [self.source, self.target].into_iter()
+    pub fn nodes(&'a self) -> impl Iterator<Item = &components::GraphNode> {
+        [&self.source, &self.target].into_iter()
     }
 }
 
@@ -28,7 +28,7 @@ impl<'a> From<NodeInstance<'a>> for NodeIndex {
 }
 
 pub struct NodeInstance<'a> {
-    pub node_id: &'a datatypes::GraphNode,
+    pub node_id: &'a components::GraphNode,
     pub entity_path: &'a EntityPath,
     pub instance: Instance,
     pub label: Option<&'a ArrowString>,
@@ -38,8 +38,8 @@ pub struct NodeInstance<'a> {
 }
 
 pub struct EdgeInstance<'a> {
-    pub source: &'a datatypes::GraphNode,
-    pub target: &'a datatypes::GraphNode,
+    pub source: components::GraphNode,
+    pub target: components::GraphNode,
     pub entity_path: &'a re_log_types::EntityPath,
     pub instance: Instance,
     pub edge_type: components::GraphType,
@@ -47,16 +47,16 @@ pub struct EdgeInstance<'a> {
 
 impl<'a> EdgeInstance<'a> {
     pub fn source_ix(&self) -> NodeIndex {
-        NodeIndex::from_entity_node(self.entity_path, self.source)
+        NodeIndex::from_entity_node(self.entity_path, &self.source)
     }
 
     pub fn target_ix(&self) -> NodeIndex {
-        NodeIndex::from_entity_node(self.entity_path, self.target)
+        NodeIndex::from_entity_node(self.entity_path, &self.target)
     }
 }
 
 pub struct UnknownNodeInstance<'a> {
-    pub node_id: &'a datatypes::GraphNode,
+    pub node_id: &'a components::GraphNode,
     pub entity_path: &'a EntityPath,
 }
 

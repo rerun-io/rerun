@@ -1,5 +1,5 @@
 use re_log_types::EntityPath;
-use re_types::datatypes;
+use re_types::components;
 
 use crate::{
     types::UnknownNodeInstance,
@@ -14,7 +14,7 @@ pub(crate) use index::NodeIndex;
 // TODO(grtlr): This struct should act as an abstraction over the graph in the future.
 pub(crate) struct Graph<'a> {
     /// Contains all nodes that are part mentioned in the edges but not part of the `nodes` list
-    unknown: ahash::HashSet<(&'a EntityPath, datatypes::GraphNode)>,
+    unknown: ahash::HashSet<(&'a EntityPath, components::GraphNode)>,
 }
 
 impl<'a> Graph<'a> {

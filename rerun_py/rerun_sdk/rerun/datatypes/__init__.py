@@ -38,8 +38,6 @@ from .color_model import ColorModel, ColorModelArrayLike, ColorModelBatch, Color
 from .entity_path import EntityPath, EntityPathArrayLike, EntityPathBatch, EntityPathLike, EntityPathType
 from .float32 import Float32, Float32ArrayLike, Float32Batch, Float32Like, Float32Type
 from .float64 import Float64, Float64ArrayLike, Float64Batch, Float64Like, Float64Type
-from .graph_edge import GraphEdge, GraphEdgeArrayLike, GraphEdgeBatch, GraphEdgeLike, GraphEdgeType
-from .graph_node import GraphNode, GraphNodeArrayLike, GraphNodeBatch, GraphNodeLike, GraphNodeType
 from .image_format import ImageFormat, ImageFormatArrayLike, ImageFormatBatch, ImageFormatLike, ImageFormatType
 from .keypoint_id import KeypointId, KeypointIdArrayLike, KeypointIdBatch, KeypointIdLike, KeypointIdType
 from .keypoint_pair import KeypointPair, KeypointPairArrayLike, KeypointPairBatch, KeypointPairLike, KeypointPairType
@@ -93,6 +91,7 @@ from .uint16 import UInt16, UInt16ArrayLike, UInt16Batch, UInt16Like, UInt16Type
 from .uint32 import UInt32, UInt32ArrayLike, UInt32Batch, UInt32Like, UInt32Type
 from .uint64 import UInt64, UInt64ArrayLike, UInt64Batch, UInt64Like, UInt64Type
 from .utf8 import Utf8, Utf8ArrayLike, Utf8Batch, Utf8Like, Utf8Type
+from .utf8pair import Utf8Pair, Utf8PairArrayLike, Utf8PairBatch, Utf8PairLike, Utf8PairType
 from .uuid import Uuid, UuidArrayLike, UuidBatch, UuidLike, UuidType
 from .uvec2d import UVec2D, UVec2DArrayLike, UVec2DBatch, UVec2DLike, UVec2DType
 from .uvec3d import UVec3D, UVec3DArrayLike, UVec3DBatch, UVec3DLike, UVec3DType
@@ -183,16 +182,6 @@ __all__ = [
     "Float64Batch",
     "Float64Like",
     "Float64Type",
-    "GraphEdge",
-    "GraphEdgeArrayLike",
-    "GraphEdgeBatch",
-    "GraphEdgeLike",
-    "GraphEdgeType",
-    "GraphNode",
-    "GraphNodeArrayLike",
-    "GraphNodeBatch",
-    "GraphNodeLike",
-    "GraphNodeType",
     "ImageFormat",
     "ImageFormatArrayLike",
     "ImageFormatBatch",
@@ -322,6 +311,11 @@ __all__ = [
     "Utf8ArrayLike",
     "Utf8Batch",
     "Utf8Like",
+    "Utf8Pair",
+    "Utf8PairArrayLike",
+    "Utf8PairBatch",
+    "Utf8PairLike",
+    "Utf8PairType",
     "Utf8Type",
     "Uuid",
     "UuidArrayLike",

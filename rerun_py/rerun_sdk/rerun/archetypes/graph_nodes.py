@@ -24,7 +24,7 @@ class GraphNodes(Archetype):
 
     def __init__(
         self: Any,
-        node_ids: datatypes.GraphNodeArrayLike,
+        node_ids: datatypes.Utf8ArrayLike,
         *,
         positions: datatypes.Vec2DArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,

@@ -22,7 +22,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct GraphEdge(pub crate::datatypes::GraphEdge);
+pub struct GraphEdge(pub crate::datatypes::Utf8Pair);
 
 impl ::re_types_core::SizeBytes for GraphEdge {
     #[inline]
@@ -32,35 +32,35 @@ impl ::re_types_core::SizeBytes for GraphEdge {
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::datatypes::GraphEdge>::is_pod()
+        <crate::datatypes::Utf8Pair>::is_pod()
     }
 }
 
-impl<T: Into<crate::datatypes::GraphEdge>> From<T> for GraphEdge {
+impl<T: Into<crate::datatypes::Utf8Pair>> From<T> for GraphEdge {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::GraphEdge> for GraphEdge {
+impl std::borrow::Borrow<crate::datatypes::Utf8Pair> for GraphEdge {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::GraphEdge {
+    fn borrow(&self) -> &crate::datatypes::Utf8Pair {
         &self.0
     }
 }
 
 impl std::ops::Deref for GraphEdge {
-    type Target = crate::datatypes::GraphEdge;
+    type Target = crate::datatypes::Utf8Pair;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::GraphEdge {
+    fn deref(&self) -> &crate::datatypes::Utf8Pair {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for GraphEdge {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::GraphEdge {
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8Pair {
         &mut self.0
     }
 }
@@ -77,7 +77,7 @@ impl ::re_types_core::Loggable for GraphEdge {
 
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        crate::datatypes::GraphEdge::arrow_datatype()
+        crate::datatypes::Utf8Pair::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(
@@ -86,7 +86,7 @@ impl ::re_types_core::Loggable for GraphEdge {
     where
         Self: Clone + 'a,
     {
-        crate::datatypes::GraphEdge::to_arrow_opt(data.into_iter().map(|datum| {
+        crate::datatypes::Utf8Pair::to_arrow_opt(data.into_iter().map(|datum| {
             datum.map(|datum| match datum.into() {
                 ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
                 ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
@@ -100,7 +100,7 @@ impl ::re_types_core::Loggable for GraphEdge {
     where
         Self: Sized,
     {
-        crate::datatypes::GraphEdge::from_arrow_opt(arrow_data)
+        crate::datatypes::Utf8Pair::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 }

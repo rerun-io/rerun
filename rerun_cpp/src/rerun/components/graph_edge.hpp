@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../datatypes/graph_edge.hpp"
+#include "../datatypes/utf8pair.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -13,27 +13,27 @@
 namespace rerun::components {
     /// **Component**: An edge in a graph connecting two nodes.
     struct GraphEdge {
-        rerun::datatypes::GraphEdge edge;
+        rerun::datatypes::Utf8Pair edge;
 
       public:
         GraphEdge() = default;
 
-        GraphEdge(rerun::datatypes::GraphEdge edge_) : edge(std::move(edge_)) {}
+        GraphEdge(rerun::datatypes::Utf8Pair edge_) : edge(std::move(edge_)) {}
 
-        GraphEdge& operator=(rerun::datatypes::GraphEdge edge_) {
+        GraphEdge& operator=(rerun::datatypes::Utf8Pair edge_) {
             edge = std::move(edge_);
             return *this;
         }
 
-        /// Cast to the underlying GraphEdge datatype
-        operator rerun::datatypes::GraphEdge() const {
+        /// Cast to the underlying Utf8Pair datatype
+        operator rerun::datatypes::Utf8Pair() const {
             return edge;
         }
     };
 } // namespace rerun::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::GraphEdge) == sizeof(components::GraphEdge));
+    static_assert(sizeof(rerun::datatypes::Utf8Pair) == sizeof(components::GraphEdge));
 
     /// \private
     template <>
@@ -42,7 +42,7 @@ namespace rerun {
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::GraphEdge>::arrow_datatype();
+            return Loggable<rerun::datatypes::Utf8Pair>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::components::GraphEdge` into an arrow array.
@@ -50,14 +50,14 @@ namespace rerun {
             const components::GraphEdge* instances, size_t num_instances
         ) {
             if (num_instances == 0) {
-                return Loggable<rerun::datatypes::GraphEdge>::to_arrow(nullptr, 0);
+                return Loggable<rerun::datatypes::Utf8Pair>::to_arrow(nullptr, 0);
             } else if (instances == nullptr) {
                 return rerun::Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Passed array instances is null when num_elements> 0."
                 );
             } else {
-                return Loggable<rerun::datatypes::GraphEdge>::to_arrow(
+                return Loggable<rerun::datatypes::Utf8Pair>::to_arrow(
                     &instances->edge,
                     num_instances
                 );

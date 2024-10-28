@@ -1,5 +1,5 @@
 use re_log_types::{EntityPath, EntityPathHash};
-use re_types::datatypes;
+use re_types::components;
 
 use super::GraphNodeHash;
 
@@ -20,7 +20,7 @@ impl std::hash::Hash for NodeIndex {
 }
 
 impl NodeIndex {
-    pub fn from_entity_node(entity_path: &EntityPath, node: &datatypes::GraphNode) -> Self {
+    pub fn from_entity_node(entity_path: &EntityPath, node: &components::GraphNode) -> Self {
         Self {
             entity_hash: entity_path.hash(),
             node_hash: GraphNodeHash::from(node),

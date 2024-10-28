@@ -19,8 +19,6 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`EntityPath`](datatypes/entity_path.md): A path to an entity in the `ChunkStore`.
 * [`Float32`](datatypes/float32.md): A single-precision 32-bit IEEE 754 floating point number.
 * [`Float64`](datatypes/float64.md): A double-precision 64-bit IEEE 754 floating point number.
-* [`GraphEdge`](datatypes/graph_edge.md): An edge in a graph connecting two nodes.
-* [`GraphNode`](datatypes/graph_node.md): A string-based ID representing a node in a graph.
 * [`ImageFormat`](datatypes/image_format.md): The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).
 * [`KeypointId`](datatypes/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
 * [`KeypointPair`](datatypes/keypoint_pair.md): A connection between two [`datatypes.KeypointId`](https://rerun.io/docs/reference/types/datatypes/keypoint_id)s.
@@ -47,6 +45,7 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`UVec3D`](datatypes/uvec3d.md): A uint32 vector in 3D space.
 * [`UVec4D`](datatypes/uvec4d.md): A uint vector in 4D space.
 * [`Utf8`](datatypes/utf8.md): A string of text, encoded as UTF-8.
+* [`Utf8Pair`](datatypes/utf8pair.md): Stores a tuple of UTF-8 strings.
 * [`Uuid`](datatypes/uuid.md): A 16-byte UUID.
 * [`Vec2D`](datatypes/vec2d.md): A vector in 2D space.
 * [`Vec3D`](datatypes/vec3d.md): A vector in 3D space.

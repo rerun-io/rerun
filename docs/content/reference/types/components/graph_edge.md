@@ -7,7 +7,7 @@ An edge in a graph connecting two nodes.
 
 ## Fields
 
-* edge: [`GraphEdge`](../datatypes/graph_edge.md)
+* edge: [`Utf8Pair`](../datatypes/utf8pair.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `GraphEdge`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1GraphEdge.html)

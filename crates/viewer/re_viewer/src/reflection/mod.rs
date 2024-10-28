@@ -376,21 +376,21 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <GraphEdge as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "An edge in a graph connecting two nodes.",
-                placeholder: Some(GraphEdge::default().to_arrow()?),
+                custom_placeholder: Some(GraphEdge::default().to_arrow()?),
             },
         ),
         (
             <GraphNode as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A string-based ID representing a node in a graph.",
-                placeholder: Some(GraphNode::default().to_arrow()?),
+                custom_placeholder: Some(GraphNode::default().to_arrow()?),
             },
         ),
         (
             <GraphType as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Specifies if a graph has directed or undirected edges.",
-                placeholder: Some(GraphType::default().to_arrow()?),
+                custom_placeholder: Some(GraphType::default().to_arrow()?),
             },
         ),
         (

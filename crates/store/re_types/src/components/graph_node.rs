@@ -19,10 +19,10 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A string-based ID representing a node in a graph.
-#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
-pub struct GraphNode(pub crate::datatypes::GraphNode);
+pub struct GraphNode(pub crate::datatypes::Utf8);
 
 impl ::re_types_core::SizeBytes for GraphNode {
     #[inline]
@@ -32,35 +32,35 @@ impl ::re_types_core::SizeBytes for GraphNode {
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::datatypes::GraphNode>::is_pod()
+        <crate::datatypes::Utf8>::is_pod()
     }
 }
 
-impl<T: Into<crate::datatypes::GraphNode>> From<T> for GraphNode {
+impl<T: Into<crate::datatypes::Utf8>> From<T> for GraphNode {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::GraphNode> for GraphNode {
+impl std::borrow::Borrow<crate::datatypes::Utf8> for GraphNode {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::GraphNode {
+    fn borrow(&self) -> &crate::datatypes::Utf8 {
         &self.0
     }
 }
 
 impl std::ops::Deref for GraphNode {
-    type Target = crate::datatypes::GraphNode;
+    type Target = crate::datatypes::Utf8;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::GraphNode {
+    fn deref(&self) -> &crate::datatypes::Utf8 {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for GraphNode {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::GraphNode {
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
         &mut self.0
     }
 }
@@ -77,7 +77,7 @@ impl ::re_types_core::Loggable for GraphNode {
 
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        crate::datatypes::GraphNode::arrow_datatype()
+        crate::datatypes::Utf8::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(
@@ -86,7 +86,7 @@ impl ::re_types_core::Loggable for GraphNode {
     where
         Self: Clone + 'a,
     {
-        crate::datatypes::GraphNode::to_arrow_opt(data.into_iter().map(|datum| {
+        crate::datatypes::Utf8::to_arrow_opt(data.into_iter().map(|datum| {
             datum.map(|datum| match datum.into() {
                 ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
                 ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
@@ -100,7 +100,7 @@ impl ::re_types_core::Loggable for GraphNode {
     where
         Self: Sized,
     {
-        crate::datatypes::GraphNode::from_arrow_opt(arrow_data)
+        crate::datatypes::Utf8::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 }

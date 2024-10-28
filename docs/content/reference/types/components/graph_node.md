@@ -7,7 +7,7 @@ A string-based ID representing a node in a graph.
 
 ## Fields
 
-* id: [`GraphNode`](../datatypes/graph_node.md)
+* id: [`Utf8`](../datatypes/utf8.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `GraphNode`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1GraphNode.html)
