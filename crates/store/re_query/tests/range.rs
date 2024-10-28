@@ -15,7 +15,7 @@ use re_log_types::{
     example_components::{MyColor, MyPoint, MyPoints},
     EntityPath, TimePoint,
 };
-use re_query::Caches;
+use re_query::QueryCache;
 use re_types::Archetype;
 use re_types_core::Loggable as _;
 
@@ -27,7 +27,7 @@ fn simple_range() -> anyhow::Result<()> {
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(&store);
 
     let entity_path: EntityPath = "point".into();
 
@@ -119,7 +119,7 @@ fn static_range() -> anyhow::Result<()> {
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(&store);
 
     let entity_path: EntityPath = "point".into();
 
@@ -250,7 +250,7 @@ fn time_back_and_forth() {
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(&store);
 
     let entity_path: EntityPath = "point".into();
 
@@ -386,7 +386,7 @@ fn invalidation() {
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             Default::default(),
         );
-        let mut caches = Caches::new(&store);
+        let mut caches = QueryCache::new(&store);
 
         let row_id1 = RowId::new();
         let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -658,7 +658,7 @@ fn invalidation_of_future_optionals() {
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(&store);
 
     let entity_path = "points";
 
@@ -759,7 +759,7 @@ fn invalidation_static() {
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(&store);
 
     let entity_path = "points";
 
@@ -837,7 +837,7 @@ fn concurrent_multitenant_edge_case() {
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(&store);
 
     let entity_path: EntityPath = "point".into();
 
@@ -908,7 +908,7 @@ fn concurrent_multitenant_edge_case2() {
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(&store);
 
     let entity_path: EntityPath = "point".into();
 
@@ -1016,12 +1016,12 @@ fn concurrent_multitenant_edge_case2() {
 
 // // ---
 
-fn insert_and_react(store: &mut ChunkStore, caches: &mut Caches, chunk: &Arc<Chunk>) {
+fn insert_and_react(store: &mut ChunkStore, caches: &mut QueryCache, chunk: &Arc<Chunk>) {
     caches.on_events(&store.insert_chunk(chunk).unwrap());
 }
 
 fn query_and_compare(
-    caches: &Caches,
+    caches: &QueryCache,
     store: &ChunkStore,
     query: &RangeQuery,
     entity_path: &EntityPath,

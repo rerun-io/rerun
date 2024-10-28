@@ -20,7 +20,7 @@ pub use self::external::re_log_types::{
     EntityPath, EntityPathFilter, ResolvedTimeRange, TimeInt, Timeline,
 };
 #[doc(no_inline)]
-pub use self::external::re_query::Caches as QueryCache;
+pub use self::external::re_query::QueryCache;
 
 pub mod external {
     pub use re_chunk;

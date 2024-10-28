@@ -1401,7 +1401,7 @@ impl PyRRDArchive {
             .iter()
             .filter(|(id, _)| matches!(id.kind, StoreKind::Recording))
             .map(|(_, store)| {
-                let cache = re_dataframe::external::re_query::Caches::new(store);
+                let cache = re_dataframe::external::re_query::QueryCache::new(store);
                 PyRecording {
                     store: store.clone(),
                     cache,
