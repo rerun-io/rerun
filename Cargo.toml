@@ -267,6 +267,8 @@ tiny_http = { version = "0.12", default-features = false }
 tinystl = { version = "0.0.3", default-features = false }
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tobj = "4.0"
+tokio = { version = "1.40.0", default-features = false }
+tokio-stream = "0.1.16"
 toml = { version = "0.8.10", default-features = false }
 tonic = "0.12.3"
 tonic-build = "0.12.3"

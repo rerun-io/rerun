@@ -20,7 +20,7 @@ all-features = true
 
 
 [features]
-default = []
+default = ["rrdp"]
 
 ## Enable the rrdp data source.
 rrdp = ["dep:re_remote_store_types", "dep:re_rrdp_comms"]
