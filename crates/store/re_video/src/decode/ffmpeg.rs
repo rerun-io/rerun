@@ -163,7 +163,9 @@ fn read_ffmpeg_output(
         false
     }
 
-    let mut pending_frames = BTreeMap::new();
+    // Pending frames, sorted by their presentation timestamp.
+    let mut pending_frame_infos = BTreeMap::new();
+    let mut highest_dts = Time(i64::MIN); // Highest dts encountered so far.
 
     for event in ffmpeg_iterator {
         #[allow(clippy::match_same_arms)]
@@ -242,36 +244,43 @@ fn read_ffmpeg_output(
 
             FfmpegEvent::Progress(_) => {
                 // We can get out frame number etc here to know how far behind we are.
-                // By default this triggers every 0.5s.
+                // By default this triggers every 5s.
             }
 
             FfmpegEvent::OutputFrame(frame) => {
-                let frame_info = match pending_frames.pop_first() {
-                    Some((_, frame_info)) => frame_info,
-                    None => {
-                        // Retrieve frame infos until decode timestamp is no longer behind composition timestamp.
-                        // This is important because frame infos come not in in composition order,
-                        // but ffmpeg will report frames in composition order!
-                        loop {
-                            let Ok(frame_info) = frame_info_rx.try_recv() else {
-                                re_log::debug!("Receiver disconnected");
-                                return;
-                            };
+                // DTS <= PTS
+                // chunk sorted by DTS
 
-                            // Example how how presentation timestamps and decode timestamps can play out:
-                            //    PTS: 1 4 2 3
-                            //    DTS: 1 2 3 4
-                            // Stream: I P B B
-                            //
-                            // Essentially we need to wait until the dts has "caught up" with the pts!
-                            let highest_pts = pending_frames
-                                .last_key_value()
-                                .map_or(frame_info.presentation_timestamp, |(pts, _)| *pts);
-                            if frame_info.decode_timestamp <= highest_pts {
-                                break frame_info;
-                            }
-                            pending_frames.insert(frame_info.presentation_timestamp, frame_info);
-                        }
+                // Frames come in in PTS order, but "frame info" comes in in DTS order!
+                //
+                // Whenever the highest known DTS is behind the PTS, we need to wait until the DTS catches up.
+                // Otherwise, we'd assign the wrong PTS to the frame that just came in.
+                //
+                // Example how how presentation timestamps and decode timestamps
+                // can play out in the presence of B-frames to illustrate this:
+                //    PTS: 1 4 2 3
+                //    DTS: 1 2 3 4
+                // Stream: I P B B
+                let frame_info = loop {
+                    if pending_frame_infos
+                        .first_key_value()
+                        .map_or(true, |(pts, _)| *pts > highest_dts)
+                    {
+                        let Ok(frame_info) = frame_info_rx.try_recv() else {
+                            re_log::debug!("Receiver disconnected");
+                            return;
+                        };
+
+                        debug_assert!(
+                            frame_info.decode_timestamp > highest_dts,
+                            "Decode timestamps are expected to increase monotonically"
+                        );
+                        highest_dts = frame_info.decode_timestamp;
+                        pending_frame_infos.insert(frame_info.presentation_timestamp, frame_info);
+                    } else {
+                        // There must be an element here, otherwise we wouldn't be in this branch.
+                        #[allow(clippy::unwrap_used)]
+                        break pending_frame_infos.pop_first().unwrap().1;
                     }
                 };
 
@@ -329,7 +338,7 @@ impl AsyncDecoder for FfmpegCliH264Decoder {
             duration: chunk.duration,
         };
 
-        // TODO: schedule this.
+        // TODO: schedule this in a thread.
         if self.frame_info_tx.send(frame_info).is_err() {
             // The other thread must be down, e.g. because `ffmpeg` crashed.
             // It should already have reported that as an error - no need to repeat it here.
@@ -484,6 +493,8 @@ fn write_avc_chunk_to_nalu_stream(
 
         buffer_offset = data_end;
     }
+
+    // TODO: Write an Access Unit Delimiter (AUD) NAL unit to the stream?
 
     Ok(())
 }
