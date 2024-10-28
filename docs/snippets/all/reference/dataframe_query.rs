@@ -1,8 +1,10 @@
 //! Query and display the first 10 rows of a recording.
 
 use rerun::{
-    dataframe::{QueryCache, QueryEngine, QueryExpression, SparseFillStrategy, Timeline},
-    ChunkStore, ChunkStoreConfig, VersionPolicy,
+    dataframe::{
+        QueryCache, QueryCacheHandle, QueryEngine, QueryExpression, SparseFillStrategy, Timeline,
+    },
+    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, VersionPolicy,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -11,19 +13,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let path_to_rrd = &args[1];
     let timeline = Timeline::log_time();
 
-    let stores = ChunkStore::from_rrd_filepath(
+    let mut stores = ChunkStore::from_rrd_filepath(
         &ChunkStoreConfig::DEFAULT,
         path_to_rrd,
         VersionPolicy::Warn,
-    )?;
-    let Some((_, store)) = stores.first_key_value() else {
+    )?
+    .into_values()
+    .map(ChunkStoreHandle::new);
+
+    let Some(store) = stores.next() else {
         return Ok(());
     };
 
-    let query_cache = QueryCache::new(store);
+    let query_cache = QueryCacheHandle::new(QueryCache::new(store.clone()));
     let query_engine = QueryEngine {
         store,
-        cache: &query_cache,
+        cache: query_cache,
     };
 
     let query = QueryExpression {

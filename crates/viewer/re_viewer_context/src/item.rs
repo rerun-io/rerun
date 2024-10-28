@@ -200,6 +200,7 @@ pub fn resolve_mono_instance_path(
         for component_name in component_names {
             if let Some(array) = entity_db
                 .query_caches()
+                .read()
                 .latest_at(query, &instance.entity_path, [component_name])
                 .component_batch_raw(&component_name)
             {

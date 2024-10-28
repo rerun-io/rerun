@@ -122,9 +122,10 @@ fn latest_at(
     let components: Vec<(ComponentName, UnitChunkShared)> = components
         .iter()
         .filter_map(|&component_name| {
-            let mut results = db
-                .query_caches()
-                .latest_at(query, entity_path, [component_name]);
+            let mut results =
+                db.query_caches()
+                    .read()
+                    .latest_at(query, entity_path, [component_name]);
 
             // We ignore components that are unset at this point in time
             results

@@ -793,8 +793,7 @@ impl StoreHub {
 
     /// Populate a [`StoreHubStats`] based on the active app.
     //
-    // TODO(jleibs): We probably want stats for all recordings, not just
-    // the active recording.
+    // TODO(jleibs): We probably want stats for all recordings, not just the active recording.
     pub fn stats(&self) -> StoreHubStats {
         re_tracing::profile_function!();
 
@@ -810,7 +809,7 @@ impl StoreHub {
             .unwrap_or_default();
 
         let blueprint_cached_stats = blueprint
-            .map(|entity_db| entity_db.query_caches().stats())
+            .map(|entity_db| entity_db.query_caches().read().stats())
             .unwrap_or_default();
 
         let blueprint_config = blueprint
@@ -827,7 +826,7 @@ impl StoreHub {
             .unwrap_or_default();
 
         let recording_cached_stats = recording
-            .map(|entity_db| entity_db.query_caches().stats())
+            .map(|entity_db| entity_db.query_caches().read().stats())
             .unwrap_or_default();
 
         let recording_config2 = recording

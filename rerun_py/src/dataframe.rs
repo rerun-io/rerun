@@ -567,7 +567,7 @@ impl PySchema {
 #[pyclass(name = "Recording")]
 pub struct PyRecording {
     store: ChunkStoreHandle,
-    cache: re_dataframe::QueryCache,
+    cache: re_dataframe::QueryCacheHandle,
 }
 
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
@@ -1140,10 +1140,10 @@ impl PyRecordingView {
 }
 
 impl PyRecording {
-    fn engine(&self) -> QueryEngine<'_> {
+    fn engine(&self) -> QueryEngine {
         QueryEngine {
             store: self.store.clone(),
-            cache: &self.cache,
+            cache: self.cache.clone(),
         }
     }
 
@@ -1403,7 +1403,9 @@ impl PyRRDArchive {
             .iter()
             .filter(|(id, _)| matches!(id.kind, StoreKind::Recording))
             .map(|(_, store)| {
-                let cache = re_dataframe::QueryCache::new(store.clone());
+                let cache = re_dataframe::QueryCacheHandle::new(re_dataframe::QueryCache::new(
+                    store.clone(),
+                ));
                 PyRecording {
                     store: store.clone(),
                     cache,

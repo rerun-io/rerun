@@ -4,10 +4,9 @@ use itertools::Itertools;
 
 use rerun::{
     dataframe::{
-        concatenate_record_batches, EntityPathFilter, QueryCache, QueryEngine, QueryExpression,
-        SparseFillStrategy, Timeline,
+        concatenate_record_batches, ChunkStoreHandle, EntityPathFilter, QueryCache,
+        QueryCacheHandle, QueryEngine, QueryExpression, SparseFillStrategy, Timeline,
     },
-    external::re_chunk_store::ChunkStoreHandle,
     ChunkStore, ChunkStoreConfig, StoreKind, VersionPolicy,
 };
 
@@ -56,10 +55,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             continue;
         }
 
-        let query_cache = QueryCache::new(store.clone());
+        let query_cache = QueryCacheHandle::new(QueryCache::new(store.clone()));
         let query_engine = QueryEngine {
             store: store.clone(),
-            cache: &query_cache,
+            cache: query_cache.clone(),
         };
 
         let query = QueryExpression {
