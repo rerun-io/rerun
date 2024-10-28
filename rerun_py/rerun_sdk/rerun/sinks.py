@@ -5,6 +5,7 @@ import pathlib
 import warnings
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
 from rerun.recording_stream import RecordingStream, get_application_id
@@ -20,6 +21,10 @@ def is_recording_enabled(recording: RecordingStream | None) -> bool:
     return bindings.is_enabled()  # type: ignore[no-any-return]
 
 
+@deprecated(
+    """Please migrate to `rr.connect_tcp(…)`.
+  See: https://www.rerun.io/docs/reference/migration-0-20 for more details."""
+)
 def connect(
     addr: str | None = None,
     *,
@@ -28,9 +33,11 @@ def connect(
     recording: RecordingStream | None = None,
 ) -> None:
     """
-    ⚠️ DEPRECATED ⚠️ - `connect` is deprecated. Use `connect_tcp` instead.
-
     Connect to a remote Rerun Viewer on the given ip:port.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.connect_tcp][].
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-20) for more details.
 
     Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
 
@@ -64,9 +71,6 @@ def connect(
     return connect_tcp(
         addr, flush_timeout_sec=flush_timeout_sec, default_blueprint=default_blueprint, recording=recording
     )
-
-
-_connect = connect  # we need this because Python scoping is horrible
 
 
 def connect_tcp(
@@ -243,6 +247,10 @@ def disconnect(recording: RecordingStream | None = None) -> None:
     bindings.disconnect(recording=recording)
 
 
+@deprecated(
+    """Please migrate to `rr.serve_web(…)`.
+  See: https://www.rerun.io/docs/reference/migration-0-20 for more details."""
+)
 def serve(
     *,
     open_browser: bool = True,
@@ -253,9 +261,11 @@ def serve(
     server_memory_limit: str = "25%",
 ) -> None:
     """
-    ⚠️ DEPRECATED ⚠️ - `serve` is deprecated. Use `serve_web` instead.
-
     Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.serve_web][].
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-20) for more details.
 
     You can also connect to this server with the native viewer using `rerun localhost:9090`.
 
@@ -467,4 +477,4 @@ def spawn(
     _spawn_viewer(port=port, memory_limit=memory_limit, hide_welcome_screen=hide_welcome_screen)
 
     if connect:
-        _connect(f"127.0.0.1:{port}", recording=recording, default_blueprint=default_blueprint)
+        connect_tcp(f"127.0.0.1:{port}", recording=recording, default_blueprint=default_blueprint)
