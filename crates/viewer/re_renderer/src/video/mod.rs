@@ -1,4 +1,4 @@
-mod decoder;
+mod player;
 
 use std::{collections::hash_map::Entry, ops::Range, sync::Arc};
 
@@ -88,10 +88,10 @@ pub struct VideoFrameTexture {
 /// The id does not need to be globally unique, just unique enough to distinguish streams of the same video.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 
-pub struct VideoDecodingStreamId(pub u64);
+pub struct VideoPlayerStreamId(pub u64);
 
-struct DecoderEntry {
-    decoder: decoder::VideoDecoder,
+struct PlayerEntry {
+    player: player::VideoPlayer,
     frame_index: u64,
 }
 
@@ -101,7 +101,7 @@ struct DecoderEntry {
 pub struct Video {
     debug_name: String,
     data: Arc<re_video::VideoData>,
-    decoders: Mutex<HashMap<VideoDecodingStreamId, DecoderEntry>>,
+    players: Mutex<HashMap<VideoPlayerStreamId, PlayerEntry>>,
     decode_hw_acceleration: DecodeHardwareAcceleration,
 }
 
@@ -168,7 +168,7 @@ impl Video {
         Self {
             debug_name,
             data,
-            decoders,
+            players: decoders,
             decode_hw_acceleration,
         }
     }
@@ -201,7 +201,7 @@ impl Video {
     pub fn frame_at(
         &self,
         render_context: &RenderContext,
-        decoder_stream_id: VideoDecodingStreamId,
+        decoder_stream_id: VideoPlayerStreamId,
         presentation_timestamp_s: f64,
         video_data: &[u8],
     ) -> FrameDecodingResult {
@@ -214,18 +214,18 @@ impl Video {
         // Upgradable-reads exclude other upgradable-reads which means that if an element is not found,
         // we have to drop the unlock and relock with a write lock, during which new elements may be inserted.
         // This can be overcome by looping until successful, or instead we can just use a single Mutex lock and leave it there.
-        let mut decoders = self.decoders.lock();
+        let mut decoders = self.players.lock();
         let decoder_entry = match decoders.entry(decoder_stream_id) {
             Entry::Occupied(occupied_entry) => occupied_entry.into_mut(),
             Entry::Vacant(vacant_entry) => {
-                let new_decoder = decoder::VideoDecoder::new(
+                let new_decoder = player::VideoPlayer::new(
                     &self.debug_name,
                     render_context,
                     self.data.clone(),
                     self.decode_hw_acceleration,
                 )?;
-                vacant_entry.insert(DecoderEntry {
-                    decoder: new_decoder,
+                vacant_entry.insert(PlayerEntry {
+                    player: new_decoder,
                     frame_index: global_frame_idx,
                 })
             }
@@ -233,7 +233,7 @@ impl Video {
 
         decoder_entry.frame_index = render_context.active_frame_idx();
         decoder_entry
-            .decoder
+            .player
             .frame_at(render_context, presentation_timestamp_s, video_data)
     }
 
@@ -245,7 +245,7 @@ impl Video {
             return;
         }
 
-        let mut decoders = self.decoders.lock();
+        let mut decoders = self.players.lock();
         decoders.retain(|_, decoder| decoder.frame_index >= active_frame_idx - 1);
     }
 }

@@ -2,7 +2,7 @@
 mod web;
 
 #[cfg(not(target_arch = "wasm32"))]
-mod native_decoder;
+mod native_chunk_decoder;
 
 use std::{ops::Range, sync::Arc, time::Duration};
 
@@ -82,7 +82,7 @@ trait VideoChunkDecoder: 'static + Send {
 /// Decode video to a texture.
 ///
 /// If you want to sample multiple points in a video simultaneously, use multiple decoders.
-pub struct VideoDecoder {
+pub struct VideoPlayer {
     data: Arc<re_video::VideoData>,
     chunk_decoder: Box<dyn VideoChunkDecoder>,
 
@@ -97,7 +97,7 @@ pub struct VideoDecoder {
     last_error: Option<TimedDecodingError>,
 }
 
-impl VideoDecoder {
+impl VideoPlayer {
     pub fn new(
         debug_name: &str,
         render_ctx: &RenderContext,
@@ -132,7 +132,7 @@ impl VideoDecoder {
                 let decoder = web::WebVideoDecoder::new(data.clone(), hw_acceleration)?;
             } else {
                 // Native
-                let decoder = native_decoder::NativeDecoder::new(debug_name.clone(), |on_output| {
+                let decoder = native_chunk_decoder::NativeDecoder::new(debug_name.clone(), |on_output| {
                     re_video::decode::new_decoder(debug_name, &data, on_output)
                 })?;
             }

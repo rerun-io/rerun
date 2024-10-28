@@ -159,7 +159,7 @@ impl VideoFrameReferenceVisualizer {
             return;
         };
 
-        let decode_stream_id = re_renderer::video::VideoDecodingStreamId(
+        let decode_stream_id = re_renderer::video::VideoPlayerStreamId(
             Hash64::hash((entity_path.hash(), view_id)).hash64(),
         );
 
