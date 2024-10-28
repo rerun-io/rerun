@@ -5,7 +5,7 @@ use std::sync::{
 
 use crossbeam::channel::{unbounded, Receiver, Sender};
 
-use super::{Chunk, Frame, OutputCallback, Result, SyncDecoder};
+use super::{AsyncDecoder, Chunk, Frame, OutputCallback, Result, SyncDecoder};
 
 enum Command {
     Chunk(Chunk),
@@ -32,23 +32,8 @@ impl Default for Comms {
     }
 }
 
-/// Interface for an asynchronous video decoder.
-///
-/// Output callback is passed in on creation of a concrete type.
-pub trait AsyncDecoder: Send + Sync {
-    /// Submits a chunk for decoding in the background.
-    ///
-    /// Chunks are expected to come in in the order of their decoding timestamp.
-    fn submit_chunk(&mut self, chunk: Chunk);
-
-    /// Resets the decoder.
-    ///
-    /// This does not block, all chunks sent to `decode` before this point will be discarded.
-    fn reset(&mut self);
-}
-
 /// Runs a [`SyncDecoder`] in a background thread, for non-blocking video decoding.
-pub struct AsyncDecoderWrapper {
+pub(super) struct AsyncDecoderWrapper {
     /// Where the decoding happens
     _thread: std::thread::JoinHandle<()>,
 
@@ -93,16 +78,18 @@ impl AsyncDecoderWrapper {
 
 impl AsyncDecoder for AsyncDecoderWrapper {
     // NOTE: The interface is all `&mut self` to avoid certain types of races.
-    fn submit_chunk(&mut self, chunk: Chunk) {
+    fn submit_chunk(&mut self, chunk: Chunk) -> Result<()> {
         re_tracing::profile_function!();
         self.command_tx.send(Command::Chunk(chunk)).ok();
+
+        Ok(())
     }
 
     /// Resets the decoder.
     ///
     /// This does not block, all chunks sent to `decode` before this point will be discarded.
     // NOTE: The interface is all `&mut self` to avoid certain types of races.
-    fn reset(&mut self) {
+    fn reset(&mut self) -> Result<()> {
         re_tracing::profile_function!();
 
         // Increment resets first…
@@ -112,6 +99,8 @@ impl AsyncDecoder for AsyncDecoderWrapper {
 
         // …so it is visible on the decoder thread when it gets the `Reset` command.
         self.command_tx.send(Command::Reset).ok();
+
+        Ok(())
     }
 }
 

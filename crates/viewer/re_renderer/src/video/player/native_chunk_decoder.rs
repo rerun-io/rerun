@@ -11,7 +11,7 @@ use crate::{
         transfer_image_data_to_texture, ImageDataDesc, SourceImageDataFormat,
         YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
     },
-    video::DecodingError,
+    video::VideoPlayerError,
     wgpu_resources::GpuTexture,
     RenderContext,
 };
@@ -39,7 +39,7 @@ impl NativeDecoder {
             Box<dyn Fn(re_video::decode::Result<Frame>) + Send + Sync>,
         )
             -> re_video::decode::Result<Box<dyn re_video::decode::AsyncDecoder>>,
-    ) -> Result<Self, DecodingError> {
+    ) -> Result<Self, VideoPlayerError> {
         re_tracing::profile_function!();
 
         let decoder_output = Arc::new(Mutex::new(DecoderOutput::default()));
@@ -48,14 +48,14 @@ impl NativeDecoder {
             let decoder_output = decoder_output.clone();
             move |frame: re_video::decode::Result<Frame>| match frame {
                 Ok(frame) => {
-                    re_log::trace!("Decoded frame at {:?}", frame.timestamp);
+                    re_log::trace!("Decoded frame at {:?}", frame.presentation_timestamp);
                     let mut output = decoder_output.lock();
                     output.frames.push(frame);
                     output.error = None; // We successfully decoded a frame, reset the error state.
                 }
                 Err(err) => {
                     re_log::warn_once!("Error during decoding of {debug_name}: {err}");
-                    let err = DecodingError::Decoding(err.to_string());
+                    let err = VideoPlayerError::Decoding(err);
                     let mut output = decoder_output.lock();
                     if let Some(error) = &mut output.error {
                         error.latest_error = err;
@@ -67,11 +67,11 @@ impl NativeDecoder {
         };
 
         let decoder = make_decoder(Box::new(on_output)).map_err(|err| match err {
-            re_video::decode::Error::NoNativeAv1Debug => DecodingError::NoNativeAv1Debug,
+            re_video::decode::Error::NoNativeAv1Debug => VideoPlayerError::NoNativeAv1Debug,
             re_video::decode::Error::UnsupportedCodec(codec) => {
-                DecodingError::UnsupportedCodec { codec }
+                VideoPlayerError::UnsupportedCodec { codec }
             }
-            _ => DecodingError::DecoderSetupFailure(err.to_string()),
+            _ => VideoPlayerError::DecoderSetupFailure(err.to_string()),
         })?;
 
         Ok(Self {
@@ -83,8 +83,8 @@ impl NativeDecoder {
 
 impl VideoChunkDecoder for NativeDecoder {
     /// Start decoding the given chunk.
-    fn decode(&mut self, chunk: Chunk, _is_keyframe: bool) -> Result<(), DecodingError> {
-        self.decoder.submit_chunk(chunk);
+    fn decode(&mut self, chunk: Chunk, _is_keyframe: bool) -> Result<(), VideoPlayerError> {
+        self.decoder.submit_chunk(chunk)?;
         Ok(())
     }
 
@@ -93,14 +93,16 @@ impl VideoChunkDecoder for NativeDecoder {
         render_ctx: &RenderContext,
         video_texture: &mut VideoTexture,
         presentation_timestamp: Time,
-    ) -> Result<(), DecodingError> {
+    ) -> Result<(), VideoPlayerError> {
         let mut decoder_output = self.decoder_output.lock();
         let frames = &mut decoder_output.frames;
 
-        let Some(frame_idx) =
-            latest_at_idx(frames, |frame| frame.timestamp, &presentation_timestamp)
-        else {
-            return Err(DecodingError::EmptyBuffer);
+        let Some(frame_idx) = latest_at_idx(
+            frames,
+            |frame| frame.presentation_timestamp,
+            &presentation_timestamp,
+        ) else {
+            return Err(VideoPlayerError::EmptyBuffer);
         };
 
         // drain up-to (but not including) the frame idx, clearing out any frames
@@ -111,7 +113,8 @@ impl VideoChunkDecoder for NativeDecoder {
         let frame_idx = 0;
         let frame = &frames[frame_idx];
 
-        let frame_time_range = frame.timestamp..frame.timestamp + frame.duration;
+        let frame_time_range =
+            frame.presentation_timestamp..frame.presentation_timestamp + frame.duration;
 
         if frame_time_range.contains(&presentation_timestamp)
             && video_texture.time_range != frame_time_range
@@ -124,8 +127,8 @@ impl VideoChunkDecoder for NativeDecoder {
     }
 
     /// Reset the video decoder and discard all frames.
-    fn reset(&mut self) -> Result<(), DecodingError> {
-        self.decoder.reset();
+    fn reset(&mut self) -> Result<(), VideoPlayerError> {
+        self.decoder.reset()?;
 
         let mut decoder_output = self.decoder_output.lock();
         decoder_output.error = None;
@@ -144,7 +147,7 @@ fn copy_video_frame_to_texture(
     ctx: &RenderContext,
     frame: &Frame,
     target_texture: &GpuTexture,
-) -> Result<(), DecodingError> {
+) -> Result<(), VideoPlayerError> {
     let format = match frame.format {
         re_video::PixelFormat::Rgb8Unorm => {
             // TODO(andreas): `ImageDataDesc` should have RGB handling!

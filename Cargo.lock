@@ -6516,6 +6516,7 @@ dependencies = [
  "econtext",
  "indicatif",
  "itertools 0.13.0",
+ "js-sys",
  "parking_lot",
  "re_build_info",
  "re_build_tools",
@@ -6523,7 +6524,11 @@ dependencies = [
  "re_mp4",
  "re_rav1d",
  "re_tracing",
+ "serde",
  "thiserror",
+ "wasm-bindgen",
+ "web-sys",
+ "web-time",
 ]
 
 [[package]]
@@ -6581,6 +6586,7 @@ dependencies = [
  "re_types_blueprint",
  "re_types_core",
  "re_ui",
+ "re_video",
  "re_viewer_context",
  "re_viewport",
  "re_viewport_blueprint",

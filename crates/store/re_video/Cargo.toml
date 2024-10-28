@@ -25,6 +25,9 @@ features = ["all"]
 [features]
 default = ["av1"]
 
+## Enable serialization for data structures that support it.
+serde = ["dep:serde"]
+
 ## Native AV1 decoding.
 av1 = ["dep:dav1d"]
 
@@ -46,6 +49,7 @@ econtext.workspace = true
 itertools.workspace = true
 parking_lot.workspace = true
 re_mp4.workspace = true
+serde = { workspace = true, optional = true }
 thiserror.workspace = true
 
 # We enable re_rav1d on native, UNLESS we're on Linux Arm64
@@ -60,6 +64,24 @@ dav1d = { workspace = true, optional = true, default-features = false, features 
   # We opt-out of wasm features so we don't need `nasm` installed. It's still pretty fast.
   "bitdepth_8",
 ] }
+
+
+# web
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys.workspace = true
+wasm-bindgen.workspace = true
+web-sys = { workspace = true, features = [
+  "DomException",
+  "EncodedVideoChunk",
+  "EncodedVideoChunkInit",
+  "EncodedVideoChunkType",
+  "HardwareAcceleration",
+  "VideoDecoder",
+  "VideoDecoderConfig",
+  "VideoDecoderInit",
+  "VideoFrame",
+] }
+web-time.workspace = true
 
 [dev-dependencies]
 indicatif.workspace = true

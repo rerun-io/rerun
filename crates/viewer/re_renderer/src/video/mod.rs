@@ -5,14 +5,13 @@ use std::{collections::hash_map::Entry, ops::Range, sync::Arc};
 use ahash::HashMap;
 use parking_lot::Mutex;
 
-use re_video::VideoData;
+use re_video::{decode::DecodeHardwareAcceleration, VideoData};
 
 use crate::{resource_managers::GpuTexture2D, RenderContext};
 
-/// Error that can occur during frame decoding.
-// TODO(jan, andreas): These errors are for the most part specific to the web decoder right now.
+/// Error that can occur during playing videos.
 #[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
-pub enum DecodingError {
+pub enum VideoPlayerError {
     #[error("Failed to start decoder")]
     StartDecoder(String),
 
@@ -44,7 +43,7 @@ pub enum DecodingError {
 
     /// e.g. unsupported codec
     #[error("Failed to decode video: {0}")]
-    Decoding(String),
+    Decoding(#[from] re_video::decode::Error),
 
     #[error("The timestamp passed was negative.")]
     NegativeTimestamp,
@@ -65,7 +64,7 @@ pub enum DecodingError {
     ImageDataToTextureError(#[from] crate::resource_managers::ImageDataToTextureError),
 }
 
-pub type FrameDecodingResult = Result<VideoFrameTexture, DecodingError>;
+pub type FrameDecodingResult = Result<VideoFrameTexture, VideoPlayerError>;
 
 /// Information about the status of a frame decoding.
 pub struct VideoFrameTexture {
@@ -103,54 +102,6 @@ pub struct Video {
     data: Arc<re_video::VideoData>,
     players: Mutex<HashMap<VideoPlayerStreamId, PlayerEntry>>,
     decode_hw_acceleration: DecodeHardwareAcceleration,
-}
-
-/// How the video should be decoded.
-///
-/// Depending on the decoder backend, these settings are merely hints and may be ignored.
-/// However, they can be useful in some situations to work around issues.
-///
-/// On the web this directly corresponds to
-/// <https://www.w3.org/TR/webcodecs/#hardware-acceleration>
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum DecodeHardwareAcceleration {
-    /// May use hardware acceleration if available and compatible with the codec.
-    #[default]
-    Auto,
-
-    /// Should use a software decoder even if hardware acceleration is available.
-    ///
-    /// If no software decoder is present, this may cause decoding to fail.
-    PreferSoftware,
-
-    /// Should use a hardware decoder.
-    ///
-    /// If no hardware decoder is present, this may cause decoding to fail.
-    PreferHardware,
-}
-
-impl std::fmt::Display for DecodeHardwareAcceleration {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Auto => write!(f, "Auto"),
-            Self::PreferSoftware => write!(f, "Prefer software"),
-            Self::PreferHardware => write!(f, "Prefer hardware"),
-        }
-    }
-}
-
-impl std::str::FromStr for DecodeHardwareAcceleration {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.trim().to_lowercase().replace('-', "_").as_str() {
-            "auto" => Ok(Self::Auto),
-            "prefer_software" | "software" => Ok(Self::PreferSoftware),
-            "prefer_hardware" | "hardware" => Ok(Self::PreferHardware),
-            _ => Err(()),
-        }
-    }
 }
 
 impl Video {
