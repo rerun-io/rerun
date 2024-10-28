@@ -323,7 +323,7 @@ impl RecordingStreamBuilder {
     /// ## Example
     ///
     /// ```no_run
-    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").connect()?;
+    /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app").connect_tcp()?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     pub fn connect_tcp(self) -> RecordingStreamResult<RecordingStream> {
@@ -581,11 +581,11 @@ impl RecordingStreamBuilder {
     ///
     /// ```ignore
     /// let rec = re_sdk::RecordingStreamBuilder::new("rerun_example_app")
-    ///     .serve("0.0.0.0",
-    ///            Default::default(),
-    ///            Default::default(),
-    ///            re_sdk::MemoryLimit::from_fraction_of_total(0.25),
-    ///            true)?;
+    ///     .serve_web("0.0.0.0",
+    ///                Default::default(),
+    ///                Default::default(),
+    ///                re_sdk::MemoryLimit::from_fraction_of_total(0.25),
+    ///                true)?;
     /// # Ok::<(), Box<dyn std::error::Error>>(())
     /// ```
     //
