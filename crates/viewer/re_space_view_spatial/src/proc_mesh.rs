@@ -8,13 +8,13 @@ use glam::{uvec3, vec3, Vec3, Vec3A};
 use hexasphere::BaseShape;
 use itertools::Itertools as _;
 use ordered_float::NotNan;
-use re_math::MeshGen;
-use re_renderer::mesh::GpuMesh;
-use re_renderer::mesh::MeshError;
 use smallvec::smallvec;
 
-use re_renderer::mesh;
-use re_renderer::RenderContext;
+use re_math::MeshGen;
+use re_renderer::{
+    mesh::{self, GpuMesh, MeshError},
+    RenderContext,
+};
 use re_viewer_context::Cache;
 
 // ----------------------------------------------------------------------------

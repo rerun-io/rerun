@@ -38,19 +38,23 @@ impl Capsules3D {
                 // Convert the pair of points to the distance between them and the rotation
                 // from +Z to the direction between them.
                 let direction = p2 - p1;
-                let length = direction.length();
 
-                let quaternion = if length > 0.0 {
-                    glam::Quat::from_rotation_arc(glam::Vec3::Z, direction / length)
+                if let Some(normalized_direction) = direction.try_normalize() {
+                    (
+                        components::Length::from(direction.length()),
+                        components::PoseTranslation3D::from(p1),
+                        components::PoseRotationQuat::from(glam::Quat::from_rotation_arc(
+                            glam::Vec3::Z,
+                            normalized_direction,
+                        )),
+                    )
                 } else {
-                    glam::Quat::IDENTITY
-                };
-
-                (
-                    components::Length::from(length),
-                    components::PoseTranslation3D::from(p1),
-                    components::PoseRotationQuat::from(quaternion),
-                )
+                    (
+                        components::Length::from(0.0),
+                        components::PoseTranslation3D::from(p1),
+                        components::PoseRotationQuat::IDENTITY,
+                    )
+                }
             })
             .multiunzip();
 
