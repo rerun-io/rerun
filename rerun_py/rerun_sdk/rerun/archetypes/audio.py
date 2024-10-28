@@ -22,9 +22,7 @@ __all__ = ["Audio"]
 class Audio(Archetype):
     """**Archetype**: Raw uncompressed PCM-encoded audio data (e.g. WAV, AIFF, etc.)."""
 
-    def __init__(
-        self: Any, data: datatypes.TensorDataLike, *, sample_rate: components.AudioSampleRateLike | None = None
-    ):
+    def __init__(self: Any, data: datatypes.TensorDataLike, *, sample_rate: datatypes.Float32Like | None = None):
         """
         Create a new instance of the Audio archetype.
 

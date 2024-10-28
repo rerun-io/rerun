@@ -3,21 +3,11 @@
 
 #pragma once
 
+#include "../datatypes/float32.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
 #include <memory>
-
-namespace arrow {
-    /// \private
-    template <typename T>
-    class NumericBuilder;
-
-    class Array;
-    class DataType;
-    class FloatType;
-    using FloatBuilder = NumericBuilder<FloatType>;
-} // namespace arrow
 
 namespace rerun::components {
     /// **Component**: Sample-rate of an PCM-encoded audio file, in Hz.
@@ -30,10 +20,17 @@ namespace rerun::components {
     /// So this should more accurately be called the _frame rate_ of the audio,
     /// but it is commonly known as the frame rate for historical reasons.
     struct AudioSampleRate {
-        float value;
+        rerun::datatypes::Float32 value;
 
       public:
         AudioSampleRate() = default;
+
+        AudioSampleRate(rerun::datatypes::Float32 value_) : value(value_) {}
+
+        AudioSampleRate& operator=(rerun::datatypes::Float32 value_) {
+            value = value_;
+            return *this;
+        }
 
         AudioSampleRate(float value_) : value(value_) {}
 
@@ -41,12 +38,16 @@ namespace rerun::components {
             value = value_;
             return *this;
         }
+
+        /// Cast to the underlying Float32 datatype
+        operator rerun::datatypes::Float32() const {
+            return value;
+        }
     };
 } // namespace rerun::components
 
 namespace rerun {
-    template <typename T>
-    struct Loggable;
+    static_assert(sizeof(rerun::datatypes::Float32) == sizeof(components::AudioSampleRate));
 
     /// \private
     template <>
@@ -54,17 +55,27 @@ namespace rerun {
         static constexpr const char Name[] = "rerun.components.AudioSampleRate";
 
         /// Returns the arrow data type this type corresponds to.
-        static const std::shared_ptr<arrow::DataType>& arrow_datatype();
+        static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+            return Loggable<rerun::datatypes::Float32>::arrow_datatype();
+        }
 
         /// Serializes an array of `rerun::components::AudioSampleRate` into an arrow array.
         static Result<std::shared_ptr<arrow::Array>> to_arrow(
             const components::AudioSampleRate* instances, size_t num_instances
-        );
-
-        /// Fills an arrow array builder with an array of this type.
-        static rerun::Error fill_arrow_array_builder(
-            arrow::FloatBuilder* builder, const components::AudioSampleRate* elements,
-            size_t num_elements
-        );
+        ) {
+            if (num_instances == 0) {
+                return Loggable<rerun::datatypes::Float32>::to_arrow(nullptr, 0);
+            } else if (instances == nullptr) {
+                return rerun::Error(
+                    ErrorCode::UnexpectedNullArgument,
+                    "Passed array instances is null when num_elements> 0."
+                );
+            } else {
+                return Loggable<rerun::datatypes::Float32>::to_arrow(
+                    &instances->value,
+                    num_instances
+                );
+            }
+        }
     };
 } // namespace rerun

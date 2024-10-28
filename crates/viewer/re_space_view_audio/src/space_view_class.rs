@@ -1,11 +1,13 @@
+use re_chunk_store::{LatestAtQuery, RowId, TimeType};
+use re_ui::UiExt as _;
 use web_time::Instant;
 
-use re_data_store::{LatestAtQuery, TimeType};
 use re_space_view::suggest_space_view_for_each_entity;
-use re_viewer_context::external::{re_entity_db::EntityProperties, re_log_types::RowId};
+use re_types::View;
 use re_viewer_context::{
     external::re_log_types::EntityPath, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewState, SpaceViewSystemExecutionError, ViewQuery, ViewerContext,
+    SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError, ViewQuery,
+    ViewerContext,
 };
 
 use crate::{
@@ -48,18 +50,34 @@ impl SpaceViewState for AudioSpaceViewState {
 #[derive(Default)]
 pub struct AudioSpaceView;
 
+type ViewType = re_types::blueprint::views::AudioView;
+
 impl SpaceViewClass for AudioSpaceView {
-    type State = AudioSpaceViewState;
-
-    const IDENTIFIER: &'static str = "Audio";
-    const DISPLAY_NAME: &'static str = "Audio";
-
-    fn icon(&self) -> &'static re_ui::Icon {
-        &re_ui::icons::SPACE_VIEW_TEXT
+    fn identifier() -> re_types::SpaceViewClassIdentifier
+    where
+        Self: Sized,
+    {
+        ViewType::identifier()
     }
 
-    fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        "Shows and plays audio.".into()
+    fn display_name(&self) -> &'static str {
+        "Audio"
+    }
+
+    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
+        "# Audio view
+
+Plays back `Audio` entries over time."
+            .to_owned()
+    }
+
+    fn new_state(&self) -> Box<dyn SpaceViewState> {
+        Box::new(AudioSpaceViewState::default())
+    }
+
+    fn icon(&self) -> &'static re_ui::Icon {
+        // TODO: use a custom icon
+        &re_ui::icons::SPACE_VIEW_TEXT
     }
 
     fn on_register(
@@ -75,29 +93,31 @@ impl SpaceViewClass for AudioSpaceView {
 
     fn selection_ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
+        state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
-        _root_entity_properties: &mut EntityProperties,
-    ) {
-        let Self::State {
-            volume, scrubbing, ..
-        } = state;
+    ) -> Result<(), SpaceViewSystemExecutionError> {
+        let mut state = state.downcast_mut::<AudioSpaceViewState>()?;
 
-        ctx.re_ui.selection_grid(ui, "text_config").show(ui, |ui| {
-            ctx.re_ui.grid_left_hand_label(ui, "Volume");
+        let AudioSpaceViewState {
+            volume, scrubbing, ..
+        } = &mut state;
+
+        ui.selection_grid("text_config").show(ui, |ui| {
+            ui.grid_left_hand_label("Volume");
             ui.vertical(|ui| {
                 ui.add(egui::DragValue::new(volume).speed(0.05));
             });
             ui.end_row();
 
-            ctx.re_ui
-                .grid_left_hand_label(ui, "Enable scrubbing (very buggy!)");
+            ui.grid_left_hand_label("Enable scrubbing (very buggy!)");
             ui.checkbox(scrubbing, "");
             ui.end_row();
         });
+
+        Ok(())
     }
 
     fn spawn_heuristics(
@@ -113,11 +133,13 @@ impl SpaceViewClass for AudioSpaceView {
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        state: &mut Self::State,
-        _root_entity_properties: &EntityProperties,
-        _query: &ViewQuery<'_>,
+        state: &mut dyn SpaceViewState,
+
+        query: &ViewQuery<'_>,
         system_output: re_viewer_context::SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
+        let mut state = state.downcast_mut::<AudioSpaceViewState>()?;
+
         let audio = system_output.view_systems.get::<AudioSystem>()?;
 
         let is_playing = ctx.rec_cfg.time_ctrl.read().is_playing();
@@ -135,7 +157,7 @@ impl SpaceViewClass for AudioSpaceView {
         let dt = ui.input(|i| i.unstable_dt);
 
         egui::Frame {
-            inner_margin: re_ui::ReUi::view_padding().into(),
+            inner_margin: re_ui::DesignTokens::view_padding().into(),
             ..egui::Frame::default()
         }
         .show(ui, |ui| {
@@ -188,13 +210,13 @@ fn handle_entry(
     } = entry;
 
     if is_scrubbing {
-        if query.timeline.typ() != TimeType::Time {
+        if query.timeline().typ() != TimeType::Time {
             return;
         }
         let Some(data_time) = data_time else {
             return;
         };
-        let ns_since_logged = query.at - *data_time;
+        let ns_since_logged = query.at() - *data_time;
         let time_offset = 1e-9 * ns_since_logged.as_f64();
         let frame_offset = (time_offset.max(0.0) * audio.frame_rate as f64).round() as usize;
 
@@ -253,8 +275,8 @@ fn handle_entry(
         if last_played_row_id != Some(row_id) {
             let mut offset_sec = 0.0;
             if let (Some(data_time), Some(duration_sec)) = (data_time, duration_sec) {
-                if query.timeline.typ() == TimeType::Time {
-                    let ns_since_logged = query.at - *data_time;
+                if query.timeline().typ() == TimeType::Time {
+                    let ns_since_logged = query.at() - *data_time;
                     let sec_since_logged = 1e-9 * ns_since_logged.as_f64();
                     if 0.0 <= sec_since_logged && sec_since_logged <= *duration_sec {
                         offset_sec = sec_since_logged;
@@ -292,9 +314,7 @@ fn audio_entry_ui(
 ) {
     use re_ui::SyntaxHighlighting as _;
 
-    let re_ui = ctx.re_ui;
-
-    let timeline = query.timeline;
+    let timeline = query.timeline();
 
     let AudioEntry {
         row_id,
@@ -308,52 +328,49 @@ fn audio_entry_ui(
     } = audio_entry;
 
     egui::Grid::new("audio_info").num_columns(2).show(ui, |ui| {
-        re_ui.grid_left_hand_label(ui, "ID");
+        ui.grid_left_hand_label("ID");
         ui.label(row_id.to_string());
         ui.end_row();
 
-        re_ui.grid_left_hand_label(ui, "Entity");
+        ui.grid_left_hand_label("Entity");
         ui.label(entity_path.syntax_highlighted(ui.style()));
         ui.end_row();
 
         if let Some(data_time) = *data_time {
-            re_ui.grid_left_hand_label(ui, "Logged at");
+            ui.grid_left_hand_label("Logged at");
             ui.label(timeline.typ().format(data_time, ctx.app_options.time_zone));
             ui.end_row();
         }
 
-        re_ui.grid_left_hand_label(ui, "Sample rate");
-        ui.label(format!(
-            "{} Hz",
-            re_format::format_number((*frame_rate) as _)
-        ));
+        ui.grid_left_hand_label("Sample rate");
+        ui.label(format!("{} Hz", re_format::format_f32((*frame_rate) as _)));
         ui.end_row();
 
         if let Some(channels) = num_channels {
-            re_ui.grid_left_hand_label(ui, "Channels");
+            ui.grid_left_hand_label("Channels");
             ui.label(channels.to_string());
             ui.end_row();
         }
 
         if let Some(num_frames) = num_frames {
-            re_ui.grid_left_hand_label(ui, "Frames");
-            ui.label(re_format::format_number(*num_frames as _));
+            ui.grid_left_hand_label("Frames");
+            ui.label(re_format::format_uint(*num_frames));
             ui.end_row();
         }
 
         if let Some(duration_sec) = duration_sec {
-            re_ui.grid_left_hand_label(ui, "Duration");
+            ui.grid_left_hand_label("Duration");
             ui.label(format!("{duration_sec:.3} s"));
             ui.end_row();
         }
 
         if let Some(data_time) = *data_time {
             if timeline.typ() == TimeType::Time {
-                let ns_since_logged = query.at - data_time;
+                let ns_since_logged = query.at() - data_time;
                 let sec_since_logged = 1e-9 * ns_since_logged.as_f64();
                 if let Some(duration_sec) = duration_sec {
                     if 0.0 <= sec_since_logged && sec_since_logged <= *duration_sec {
-                        re_ui.grid_left_hand_label(ui, "Current time");
+                        ui.grid_left_hand_label("Current time");
                         ui.label(format!("{sec_since_logged:.3} s"));
                         ui.end_row();
                     }

@@ -4,7 +4,8 @@ namespace rerun.archetypes;
 /// Raw uncompressed PCM-encoded audio data (e.g. WAV, AIFF, etc.).
 table Audio (
   "attr.rust.derive": "PartialEq",
-  "attr.cpp.no_field_ctors"
+  "attr.cpp.no_field_ctors",
+  "attr.docs.view_types": "AudioView"
 ) {
   // --- Required ---
 

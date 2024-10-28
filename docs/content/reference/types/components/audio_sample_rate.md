@@ -15,7 +15,7 @@ but it is commonly known as the frame rate for historical reasons.
 
 ## Fields
 
-* value: `f32`
+* value: [`Float32`](../datatypes/float32.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `AudioSampleRate`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1AudioSampleRate.html)

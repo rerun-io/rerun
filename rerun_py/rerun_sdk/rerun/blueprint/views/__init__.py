@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from .audio_view import AudioView
 from .bar_chart_view import BarChartView
 from .dataframe_view import DataframeView
 from .spatial2d_view import Spatial2DView
@@ -12,6 +13,7 @@ from .text_log_view import TextLogView
 from .time_series_view import TimeSeriesView
 
 __all__ = [
+    "AudioView",
     "BarChartView",
     "DataframeView",
     "Spatial2DView",

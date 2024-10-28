@@ -17,6 +17,7 @@ A single-precision 32-bit IEEE 754 floating point number.
 
 ## Used by
 
+* [`AudioSampleRate`](../components/audio_sample_rate.md)
 * [`AxisLength`](../components/axis_length.md)
 * [`DepthMeter`](../components/depth_meter.md)
 * [`DrawOrder`](../components/draw_order.md)

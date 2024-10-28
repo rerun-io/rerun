@@ -1,14 +1,16 @@
-use re_data_store::{LatestAtQuery, TimeInt};
-use re_query::{query_archetype, QueryError};
+use re_chunk_store::{LatestAtQuery, RowId, TimeInt};
+use re_query::QueryError;
+use re_space_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_types::{
     archetypes::{self, Audio},
-    components,
+    components::{self, AudioSampleRate, TensorData, ValueRange},
     datatypes::TensorDimension,
+    Loggable,
 };
 use re_viewer_context::{
-    external::re_log_types::{EntityPath, RowId},
-    IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContextCollection, ViewQuery,
-    ViewerContext, VisualizerQueryInfo, VisualizerSystem,
+    external::re_log_types::EntityPath, IdentifiedViewSystem, SpaceViewSystemExecutionError,
+    ViewContext, ViewContextCollection, ViewQuery, ViewerContext, VisualizerQueryInfo,
+    VisualizerSystem,
 };
 
 // ---
@@ -71,63 +73,58 @@ impl VisualizerSystem for AudioSystem {
 
     fn execute(
         &mut self,
-        ctx: &ViewerContext<'_>,
-        query: &ViewQuery<'_>,
-        _view_ctx: &ViewContextCollection,
+        ctx: &ViewContext<'_>,
+        view_query: &ViewQuery<'_>,
+        _context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
-        let store = ctx.entity_db.store();
-
-        let timeline_query = LatestAtQuery::new(query.timeline, query.latest_at);
+        let timeline_query = LatestAtQuery::new(view_query.timeline, view_query.latest_at);
 
         self.query = Some(timeline_query.clone());
 
-        for data_result in query.iter_visible_data_results(Self::identifier()) {
-            // TODO(#3320): this match can go away once the issue is resolved
-            match query_archetype::<archetypes::Audio>(
-                store,
-                &timeline_query,
-                &data_result.entity_path,
+        for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
+            let results =
+                data_result.latest_at_with_blueprint_resolved_data::<Audio>(ctx, &timeline_query);
+
+            let timeline = view_query.timeline;
+
+            let all_tensors = results.iter_as(timeline, TensorData::name());
+            let all_sample_rates = results.iter_as(timeline, AudioSampleRate::name());
+
+            for ((data_time, data_id), tensors, sample_rate) in re_query::range_zip_1x1(
+                all_tensors.component::<TensorData>(),
+                all_sample_rates.component::<components::AudioSampleRate>(),
             ) {
-                Ok(arch_view) => {
-                    let datas = arch_view.iter_required_component::<components::TensorData>()?;
-                    let sample_rates =
-                        arch_view.iter_optional_component::<components::AudioSampleRate>()?;
+                let Some(data) = tensors.first() else {
+                    continue;
+                };
+                let num_samples = data.buffer.num_elements();
+                let num_channels = num_channels(&data.shape);
 
-                    for (data, sample_rate) in itertools::izip!(datas, sample_rates) {
-                        let num_samples = data.buffer.num_elements();
-                        let num_channels = num_channels(&data.shape);
-                        let frame_rate = sample_rate.map_or(44100.0, |r| r.0);
+                // TODO: Proper fallback provider
+                let frame_rate = sample_rate
+                    .and_then(|r| r.first().cloned())
+                    .map_or(44100.0, |r| r.0 .0);
 
-                        let mut num_frames = None;
-                        let mut duration_sec = None;
+                let mut num_frames = None;
+                let mut duration_sec = None;
 
-                        if let (Some(num_samples), Some(num_channels)) = (num_samples, num_channels)
-                        {
-                            let frames = num_samples as u64 / num_channels;
-                            num_frames = Some(frames);
-                            duration_sec = Some(frames as f64 / frame_rate as f64);
-                        }
-
-                        self.entries.push(AudioEntry {
-                            row_id: arch_view.primary_row_id(),
-                            entity_path: data_result.entity_path.clone(), // TODO: instance path?
-                            data,
-                            data_time: arch_view.data_time(),
-                            frame_rate,
-                            num_channels,
-                            num_frames,
-                            duration_sec,
-                        });
-                    }
+                if let Some(num_channels) = num_channels {
+                    let frames = num_samples as u64 / num_channels;
+                    num_frames = Some(frames);
+                    duration_sec = Some(frames as f64 / frame_rate as f64);
                 }
-                Err(QueryError::PrimaryNotFound(_)) => {}
-                Err(err) => {
-                    re_log::error_once!(
-                        "Unexpected error querying {:?}: {err}",
-                        &data_result.entity_path
-                    );
-                }
-            };
+
+                self.entries.push(AudioEntry {
+                    row_id: data_id,
+                    entity_path: data_result.entity_path.clone(), // TODO: instance path?
+                    data: data.clone(),
+                    data_time: Some(data_time),
+                    frame_rate,
+                    num_channels,
+                    num_frames,
+                    duration_sec,
+                });
+            }
         }
 
         Ok(Vec::new())
@@ -135,6 +132,10 @@ impl VisualizerSystem for AudioSystem {
 
     fn as_any(&self) -> &dyn std::any::Any {
         self
+    }
+
+    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+        todo!()
     }
 }
 

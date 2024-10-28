@@ -12,6 +12,7 @@ Raw uncompressed PCM-encoded audio data (e.g. WAV, AIFF, etc.).
 **Recommended**: [`AudioSampleRate`](../components/audio_sample_rate.md)
 
 ## Shown in
+* [AudioView](../views/audio_view.md)
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links

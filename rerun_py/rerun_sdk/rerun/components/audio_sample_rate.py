@@ -5,31 +5,16 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Sequence, Union
-
-import numpy as np
-import numpy.typing as npt
-import pyarrow as pa
-from attrs import define, field
-
+from .. import datatypes
 from .._baseclasses import (
-    BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
     ComponentMixin,
 )
 
-__all__ = [
-    "AudioSampleRate",
-    "AudioSampleRateArrayLike",
-    "AudioSampleRateBatch",
-    "AudioSampleRateLike",
-    "AudioSampleRateType",
-]
+__all__ = ["AudioSampleRate", "AudioSampleRateBatch", "AudioSampleRateType"]
 
 
-@define(init=False)
-class AudioSampleRate(ComponentMixin):
+class AudioSampleRate(datatypes.Float32, ComponentMixin):
     """
     **Component**: Sample-rate of an PCM-encoded audio file, in Hz.
 
@@ -43,48 +28,18 @@ class AudioSampleRate(ComponentMixin):
     """
 
     _BATCH_TYPE = None
+    # You can define your own __init__ function as a member of AudioSampleRateExt in audio_sample_rate_ext.py
 
-    def __init__(self: Any, value: AudioSampleRateLike):
-        """Create a new instance of the AudioSampleRate component."""
-
-        # You can define your own __init__ function as a member of AudioSampleRateExt in audio_sample_rate_ext.py
-        self.__attrs_init__(value=value)
-
-    value: float = field(converter=float)
-
-    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
-        # You can define your own __array__ function as a member of AudioSampleRateExt in audio_sample_rate_ext.py
-        return np.asarray(self.value, dtype=dtype)
-
-    def __float__(self) -> float:
-        return float(self.value)
-
-    def __hash__(self) -> int:
-        return hash(self.value)
+    # Note: there are no fields here because AudioSampleRate delegates to datatypes.Float32
+    pass
 
 
-if TYPE_CHECKING:
-    AudioSampleRateLike = Union[AudioSampleRate, float]
-else:
-    AudioSampleRateLike = Any
-
-AudioSampleRateArrayLike = Union[AudioSampleRate, Sequence[AudioSampleRateLike], float, npt.NDArray[np.float32]]
-
-
-class AudioSampleRateType(BaseExtensionType):
+class AudioSampleRateType(datatypes.Float32Type):
     _TYPE_NAME: str = "rerun.components.AudioSampleRate"
 
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.float32(), self._TYPE_NAME)
 
-
-class AudioSampleRateBatch(BaseBatch[AudioSampleRateArrayLike], ComponentBatchMixin):
+class AudioSampleRateBatch(datatypes.Float32Batch, ComponentBatchMixin):
     _ARROW_TYPE = AudioSampleRateType()
-
-    @staticmethod
-    def _native_to_pa_array(data: AudioSampleRateArrayLike, data_type: pa.DataType) -> pa.Array:
-        array = np.asarray(data, dtype=np.float32).flatten()
-        return pa.array(array, type=data_type)
 
 
 # This is patched in late to avoid circular dependencies.
