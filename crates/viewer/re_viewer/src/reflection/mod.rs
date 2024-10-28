@@ -38,672 +38,697 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ActiveTab as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The active tab in a tabbed container.",
-                placeholder: Some(ActiveTab::default().to_arrow()?),
+                custom_placeholder: Some(ActiveTab::default().to_arrow()?),
             },
         ),
         (
             <ApplyLatestAt as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Whether empty cells in a dataframe should be filled with a latest-at query.",
-                placeholder: Some(ApplyLatestAt::default().to_arrow()?),
+                custom_placeholder: Some(ApplyLatestAt::default().to_arrow()?),
             },
         ),
         (
             <AutoLayout as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Whether the viewport layout is determined automatically.",
-                placeholder: Some(AutoLayout::default().to_arrow()?),
+                custom_placeholder: Some(AutoLayout::default().to_arrow()?),
             },
         ),
         (
             <AutoSpaceViews as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Whether or not space views should be created automatically.",
-                placeholder: Some(AutoSpaceViews::default().to_arrow()?),
+                custom_placeholder: Some(AutoSpaceViews::default().to_arrow()?),
             },
         ),
         (
             <BackgroundKind as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The type of the background in a view.",
-                placeholder: Some(BackgroundKind::default().to_arrow()?),
+                custom_placeholder: Some(BackgroundKind::default().to_arrow()?),
             },
         ),
         (
             <ColumnShare as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The layout share of a column in the container.",
-                placeholder: Some(ColumnShare::default().to_arrow()?),
+                custom_placeholder: Some(ColumnShare::default().to_arrow()?),
             },
         ),
         (
             <ComponentColumnSelector as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Describe a component column to be selected in the dataframe view.",
-                placeholder: Some(ComponentColumnSelector::default().to_arrow()?),
+                custom_placeholder: Some(ComponentColumnSelector::default().to_arrow()?),
             },
         ),
         (
             <ContainerKind as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The kind of a blueprint container (tabs, grid, …).",
-                placeholder: Some(ContainerKind::default().to_arrow()?),
+                custom_placeholder: Some(ContainerKind::default().to_arrow()?),
             },
         ),
         (
             <Corner2D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "One of four 2D corners, typically used to align objects.",
-                placeholder: Some(Corner2D::default().to_arrow()?),
+                custom_placeholder: Some(Corner2D::default().to_arrow()?),
             },
         ),
         (
             <FilterByRange as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Configuration for a filter-by-range feature of the dataframe view.",
-                placeholder: Some(FilterByRange::default().to_arrow()?),
+                custom_placeholder: Some(FilterByRange::default().to_arrow()?),
             },
         ),
         (
             <FilterIsNotNull as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Configuration for the filter is not null feature of the dataframe view.",
-                placeholder: Some(FilterIsNotNull::default().to_arrow()?),
+                custom_placeholder: Some(FilterIsNotNull::default().to_arrow()?),
             },
         ),
         (
             <GridColumns as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "How many columns a grid container should have.",
-                placeholder: Some(GridColumns::default().to_arrow()?),
+                custom_placeholder: Some(GridColumns::default().to_arrow()?),
             },
         ),
         (
             <IncludedContent as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "All the contents in the container.",
-                placeholder: Some(IncludedContent::default().to_arrow()?),
+                custom_placeholder: Some(IncludedContent::default().to_arrow()?),
             },
         ),
         (
             <IncludedSpaceView as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The unique id of a space view, used to refer to views in containers.",
-                placeholder: Some(IncludedSpaceView::default().to_arrow()?),
+                custom_placeholder: Some(IncludedSpaceView::default().to_arrow()?),
             },
         ),
         (
             <Interactive as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Whether the entity can be interacted with.\n\nNon interactive components are still visible, but mouse interactions in the view are disabled.",
-                placeholder: Some(Interactive::default().to_arrow()?),
+                custom_placeholder: Some(Interactive::default().to_arrow()?),
             },
         ),
         (
             <LockRangeDuringZoom as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Indicate whether the range should be locked when zooming in on the data.\n\nDefault is `false`, i.e. zoom will change the visualized range.",
-                placeholder: Some(LockRangeDuringZoom::default().to_arrow()?),
+                custom_placeholder: Some(LockRangeDuringZoom::default().to_arrow()?),
+            },
+        ),
+        (
+            <MapProvider as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Name of the map provider to be used in Map views.",
+                custom_placeholder: Some(MapProvider::default().to_arrow()?),
             },
         ),
         (
             <PanelState as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Tri-state for panel controls.",
-                placeholder: Some(PanelState::default().to_arrow()?),
+                custom_placeholder: Some(PanelState::default().to_arrow()?),
             },
         ),
         (
             <QueryExpression as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "An individual query expression used to filter a set of [`datatypes.EntityPath`](https://rerun.io/docs/reference/types/datatypes/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of `SpaceViewContents`.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.",
-                placeholder: Some(QueryExpression::default().to_arrow()?),
+                custom_placeholder: Some(QueryExpression::default().to_arrow()?),
             },
         ),
         (
             <RootContainer as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The container that sits at the root of a viewport.",
-                placeholder: Some(RootContainer::default().to_arrow()?),
+                custom_placeholder: Some(RootContainer::default().to_arrow()?),
             },
         ),
         (
             <RowShare as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The layout share of a row in the container.",
-                placeholder: Some(RowShare::default().to_arrow()?),
+                custom_placeholder: Some(RowShare::default().to_arrow()?),
             },
         ),
         (
             <SelectedColumns as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Describe a component column to be selected in the dataframe view.",
-                placeholder: Some(SelectedColumns::default().to_arrow()?),
+                custom_placeholder: Some(SelectedColumns::default().to_arrow()?),
             },
         ),
         (
             <SpaceViewClass as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The class identifier of view, e.g. `\"2D\"`, `\"TextLog\"`, ….",
-                placeholder: Some(SpaceViewClass::default().to_arrow()?),
+                custom_placeholder: Some(SpaceViewClass::default().to_arrow()?),
             },
         ),
         (
             <SpaceViewMaximized as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Whether a space view is maximized.",
-                placeholder: Some(SpaceViewMaximized::default().to_arrow()?),
+                custom_placeholder: Some(SpaceViewMaximized::default().to_arrow()?),
             },
         ),
         (
             <SpaceViewOrigin as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The origin of a `SpaceView`.",
-                placeholder: Some(SpaceViewOrigin::default().to_arrow()?),
+                custom_placeholder: Some(SpaceViewOrigin::default().to_arrow()?),
             },
         ),
         (
             <TensorDimensionIndexSlider as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Show a slider for the index of some dimension of a slider.",
-                placeholder: Some(TensorDimensionIndexSlider::default().to_arrow()?),
+                custom_placeholder: Some(
+                    TensorDimensionIndexSlider::default().to_arrow()?,
+                ),
             },
         ),
         (
             <TimelineName as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A timeline identified by its name.",
-                placeholder: Some(TimelineName::default().to_arrow()?),
+                custom_placeholder: Some(TimelineName::default().to_arrow()?),
             },
         ),
         (
             <ViewFit as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Determines whether an image or texture should be scaled to fit the viewport.",
-                placeholder: Some(ViewFit::default().to_arrow()?),
+                custom_placeholder: Some(ViewFit::default().to_arrow()?),
             },
         ),
         (
             <ViewerRecommendationHash as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Hash of a viewer recommendation.\n\nThe formation of this hash is considered an internal implementation detail of the viewer.",
-                placeholder: Some(ViewerRecommendationHash::default().to_arrow()?),
+                custom_placeholder: Some(ViewerRecommendationHash::default().to_arrow()?),
             },
         ),
         (
             <Visible as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Whether the container, view, entity or instance is currently visible.",
-                placeholder: Some(Visible::default().to_arrow()?),
+                custom_placeholder: Some(Visible::default().to_arrow()?),
             },
         ),
         (
             <VisibleTimeRange as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The range of values on a given timeline that will be included in a view's query.\n\nRefer to `VisibleTimeRanges` archetype for more information.",
-                placeholder: Some(VisibleTimeRange::default().to_arrow()?),
+                custom_placeholder: Some(VisibleTimeRange::default().to_arrow()?),
             },
         ),
         (
             <VisualBounds2D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Visual bounds in 2D space used for `Spatial2DView`.",
-                placeholder: Some(VisualBounds2D::default().to_arrow()?),
+                custom_placeholder: Some(VisualBounds2D::default().to_arrow()?),
             },
         ),
         (
             <VisualizerOverrides as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Override the visualizers for an entity.\n\nThis component is a stop-gap mechanism based on the current implementation details\nof the visualizer system. It is not intended to be a long-term solution, but provides\nenough utility to be useful in the short term.\n\nThe long-term solution is likely to be based off: <https://github.com/rerun-io/rerun/issues/6626>\n\nThis can only be used as part of blueprints. It will have no effect if used\nin a regular entity.",
-                placeholder: Some(VisualizerOverrides::default().to_arrow()?),
+                custom_placeholder: Some(VisualizerOverrides::default().to_arrow()?),
+            },
+        ),
+        (
+            <ZoomLevel as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A zoom level determines how much of the world is visible on a map.",
+                custom_placeholder: Some(ZoomLevel::default().to_arrow()?),
             },
         ),
         (
             <AggregationPolicy as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Policy for aggregation of multiple scalar plot values.\n\nThis is used for lines in plots when the X axis distance of individual points goes below a single pixel,\ni.e. a single pixel covers more than one tick worth of data. It can greatly improve performance\n(and readability) in such situations as it prevents overdraw.",
-                placeholder: Some(AggregationPolicy::default().to_arrow()?),
+                custom_placeholder: Some(AggregationPolicy::default().to_arrow()?),
             },
         ),
         (
             <AlbedoFactor as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A color multiplier, usually applied to a whole entity, e.g. a mesh.",
-                placeholder: Some(AlbedoFactor::default().to_arrow()?),
+                custom_placeholder: Some(AlbedoFactor::default().to_arrow()?),
             },
         ),
         (
             <AnnotationContext as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The annotation context provides additional information on how to display entities.\n\nEntities can use [`datatypes.ClassId`](https://rerun.io/docs/reference/types/datatypes/class_id)s and [`datatypes.KeypointId`](https://rerun.io/docs/reference/types/datatypes/keypoint_id)s to provide annotations, and\nthe labels and colors will be looked up in the appropriate\nannotation context. We use the *first* annotation context we find in the\npath-hierarchy when searching up through the ancestors of a given entity\npath.",
-                placeholder: Some(AnnotationContext::default().to_arrow()?),
+                custom_placeholder: Some(AnnotationContext::default().to_arrow()?),
             },
         ),
         (
             <AxisLength as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The length of an axis in local units of the space.",
-                placeholder: Some(AxisLength::default().to_arrow()?),
+                custom_placeholder: Some(AxisLength::default().to_arrow()?),
             },
         ),
         (
             <Blob as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A binary blob of data.",
-                placeholder: Some(Blob::default().to_arrow()?),
+                custom_placeholder: None,
             },
         ),
         (
             <ClassId as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A 16-bit ID representing a type of semantic class.",
-                placeholder: Some(ClassId::default().to_arrow()?),
+                custom_placeholder: Some(ClassId::default().to_arrow()?),
             },
         ),
         (
             <ClearIsRecursive as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Configures how a clear operation should behave - recursive or not.",
-                placeholder: Some(ClearIsRecursive::default().to_arrow()?),
+                custom_placeholder: Some(ClearIsRecursive::default().to_arrow()?),
             },
         ),
         (
             <Color as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.\n\nThe color is stored as a 32-bit integer, where the most significant\nbyte is `R` and the least significant byte is `A`.",
-                placeholder: Some(Color::default().to_arrow()?),
+                custom_placeholder: Some(Color::default().to_arrow()?),
             },
         ),
         (
             <Colormap as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Colormap for mapping scalar values within a given range to a color.\n\nThis provides a number of popular pre-defined colormaps.\nIn the future, the Rerun Viewer will allow users to define their own colormaps,\nbut currently the Viewer is limited to the types defined here.",
-                placeholder: Some(Colormap::default().to_arrow()?),
+                custom_placeholder: Some(Colormap::default().to_arrow()?),
             },
         ),
         (
             <DepthMeter as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The world->depth map scaling factor.\n\nThis measures how many depth map units are in a world unit.\nFor instance, if a depth map uses millimeters and the world uses meters,\nthis value would be `1000`.\n\nNote that the only effect on 2D views is the physical depth values shown when hovering the image.\nIn 3D views on the other hand, this affects where the points of the point cloud are placed.",
-                placeholder: Some(DepthMeter::default().to_arrow()?),
+                custom_placeholder: Some(DepthMeter::default().to_arrow()?),
             },
         ),
         (
             <DisconnectedSpace as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Spatially disconnect this entity from its parent.\n\nSpecifies that the entity path at which this is logged is spatially disconnected from its parent,\nmaking it impossible to transform the entity path into its parent's space and vice versa.\nIt *only* applies to space views that work with spatial transformations, i.e. 2D & 3D space views.\nThis is useful for specifying that a subgraph is independent of the rest of the scene.",
-                placeholder: Some(DisconnectedSpace::default().to_arrow()?),
+                custom_placeholder: Some(DisconnectedSpace::default().to_arrow()?),
             },
         ),
         (
             <DrawOrder as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Draw order of 2D elements. Higher values are drawn on top of lower values.\n\nAn entity can have only a single draw order component.\nWithin an entity draw order is governed by the order of the components.\n\nDraw order for entities with the same draw order is generally undefined.",
-                placeholder: Some(DrawOrder::default().to_arrow()?),
+                custom_placeholder: Some(DrawOrder::default().to_arrow()?),
             },
         ),
         (
             <EntityPath as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A path to an entity, usually to reference some data that is part of the target entity.",
-                placeholder: Some(EntityPath::default().to_arrow()?),
+                custom_placeholder: Some(EntityPath::default().to_arrow()?),
             },
         ),
         (
             <FillMode as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "How a geometric shape is drawn and colored.",
-                placeholder: Some(FillMode::default().to_arrow()?),
+                custom_placeholder: Some(FillMode::default().to_arrow()?),
             },
         ),
         (
             <FillRatio as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "How much a primitive fills out the available space.\n\nUsed for instance to scale the points of the point cloud created from [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) projection in 3D views.\nValid range is from 0 to max float although typically values above 1.0 are not useful.\n\nDefaults to 1.0.",
-                placeholder: Some(FillRatio::default().to_arrow()?),
+                custom_placeholder: Some(FillRatio::default().to_arrow()?),
             },
         ),
         (
             <GammaCorrection as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A gamma correction value to be used with a scalar value or color.\n\nUsed to adjust the gamma of a color or scalar value between 0 and 1 before rendering.\n`new_value = old_value ^ gamma`\n\nValid range is from 0 (excluding) to max float.\nDefaults to 1.0 unless otherwise specified.",
-                placeholder: Some(GammaCorrection::default().to_arrow()?),
+                custom_placeholder: Some(GammaCorrection::default().to_arrow()?),
             },
         ),
         (
             <HalfSize2D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Half-size (radius) of a 2D box.\n\nMeasured in its local coordinate system.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
-                placeholder: Some(HalfSize2D::default().to_arrow()?),
+                custom_placeholder: Some(HalfSize2D::default().to_arrow()?),
             },
         ),
         (
             <HalfSize3D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Half-size (radius) of a 3D box.\n\nMeasured in its local coordinate system.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
-                placeholder: Some(HalfSize3D::default().to_arrow()?),
+                custom_placeholder: Some(HalfSize3D::default().to_arrow()?),
             },
         ),
         (
             <ImageBuffer as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A buffer that is known to store image data.\n\nTo interpret the contents of this buffer, see, [`components.ImageFormat`](https://rerun.io/docs/reference/types/components/image_format).",
-                placeholder: Some(ImageBuffer::default().to_arrow()?),
+                custom_placeholder: None,
             },
         ),
         (
             <ImageFormat as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).",
-                placeholder: Some(ImageFormat::default().to_arrow()?),
+                custom_placeholder: Some(ImageFormat::default().to_arrow()?),
             },
         ),
         (
             <ImagePlaneDistance as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.\n\nThis is only used for visualization purposes, and does not affect the projection itself.",
-                placeholder: Some(ImagePlaneDistance::default().to_arrow()?),
+                custom_placeholder: Some(ImagePlaneDistance::default().to_arrow()?),
             },
         ),
         (
             <KeypointId as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A 16-bit ID representing a type of semantic keypoint within a class.",
-                placeholder: Some(KeypointId::default().to_arrow()?),
+                custom_placeholder: Some(KeypointId::default().to_arrow()?),
+            },
+        ),
+        (
+            <LatLon as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A geographical position expressed in EPSG:4326 latitude and longitude.",
+                custom_placeholder: Some(LatLon::default().to_arrow()?),
             },
         ),
         (
             <Length as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Length, or one-dimensional size.\n\nMeasured in its local coordinate system; consult the archetype in use to determine which\naxis or part of the entity this is the length of.",
-                placeholder: Some(Length::default().to_arrow()?),
+                custom_placeholder: Some(Length::default().to_arrow()?),
             },
         ),
         (
             <LineStrip2D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A line strip in 2D space.\n\nA line strip is a list of points connected by line segments. It can be used to draw\napproximations of smooth curves.\n\nThe points will be connected in order, like so:\n```text\n       2------3     5\n      /        \\   /\n0----1          \\ /\n                 4\n```",
-                placeholder: Some(LineStrip2D::default().to_arrow()?),
+                custom_placeholder: Some(LineStrip2D::default().to_arrow()?),
             },
         ),
         (
             <LineStrip3D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A line strip in 3D space.\n\nA line strip is a list of points connected by line segments. It can be used to draw\napproximations of smooth curves.\n\nThe points will be connected in order, like so:\n```text\n       2------3     5\n      /        \\   /\n0----1          \\ /\n                 4\n```",
-                placeholder: Some(LineStrip3D::default().to_arrow()?),
+                custom_placeholder: Some(LineStrip3D::default().to_arrow()?),
             },
         ),
         (
             <MagnificationFilter as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.",
-                placeholder: Some(MagnificationFilter::default().to_arrow()?),
+                custom_placeholder: Some(MagnificationFilter::default().to_arrow()?),
             },
         ),
         (
             <MarkerShape as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The visual appearance of a point in e.g. a 2D plot.",
-                placeholder: Some(MarkerShape::default().to_arrow()?),
+                custom_placeholder: Some(MarkerShape::default().to_arrow()?),
             },
         ),
         (
             <MarkerSize as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Radius of a marker of a point in e.g. a 2D plot, measured in UI points.",
-                placeholder: Some(MarkerSize::default().to_arrow()?),
+                custom_placeholder: Some(MarkerSize::default().to_arrow()?),
             },
         ),
         (
             <MediaType as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A standardized media type (RFC2046, formerly known as MIME types), encoded as a string.\n\nThe complete reference of officially registered media types is maintained by the IANA and can be\nconsulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.",
-                placeholder: Some(MediaType::default().to_arrow()?),
+                custom_placeholder: Some(MediaType::default().to_arrow()?),
             },
         ),
         (
             <Name as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A display name, typically for an entity or a item like a plot series.",
-                placeholder: Some(Name::default().to_arrow()?),
+                custom_placeholder: Some(Name::default().to_arrow()?),
             },
         ),
         (
             <Opacity as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Degree of transparency ranging from 0.0 (fully transparent) to 1.0 (fully opaque).\n\nThe final opacity value may be a result of multiplication with alpha values as specified by other color sources.\nUnless otherwise specified, the default value is 1.",
-                placeholder: Some(Opacity::default().to_arrow()?),
+                custom_placeholder: Some(Opacity::default().to_arrow()?),
             },
         ),
         (
             <PinholeProjection as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Camera projection, from image coordinates to view coordinates.\n\nChild from parent.\nImage coordinates from camera view coordinates.\n\nExample:\n```text\n1496.1     0.0  980.5\n   0.0  1496.1  744.5\n   0.0     0.0    1.0\n```",
-                placeholder: Some(PinholeProjection::default().to_arrow()?),
+                custom_placeholder: Some(PinholeProjection::default().to_arrow()?),
             },
         ),
         (
             <PoseRotationAxisAngle as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.",
-                placeholder: Some(PoseRotationAxisAngle::default().to_arrow()?),
+                custom_placeholder: Some(PoseRotationAxisAngle::default().to_arrow()?),
             },
         ),
         (
             <PoseRotationQuat as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A 3D rotation expressed as a quaternion that doesn't propagate in the transform hierarchy.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer, quaternions will always be normalized.",
-                placeholder: Some(PoseRotationQuat::default().to_arrow()?),
+                custom_placeholder: Some(PoseRotationQuat::default().to_arrow()?),
             },
         ),
         (
             <PoseScale3D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A 3D scale factor that doesn't propagate in the transform hierarchy.\n\nA scale of 1.0 means no scaling.\nA scale of 2.0 means doubling the size.\nEach component scales along the corresponding axis.",
-                placeholder: Some(PoseScale3D::default().to_arrow()?),
+                custom_placeholder: Some(PoseScale3D::default().to_arrow()?),
             },
         ),
         (
             <PoseTransformMat3x3 as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A 3x3 transformation matrix Matrix that doesn't propagate in the transform hierarchy.\n\n3x3 matrixes are able to represent any affine transformation in 3D space,\ni.e. rotation, scaling, shearing, reflection etc.\n\nMatrices in Rerun are stored as flat list of coefficients in column-major order:\n```text\n            column 0       column 1       column 2\n       -------------------------------------------------\nrow 0 | flat_columns[0] flat_columns[3] flat_columns[6]\nrow 1 | flat_columns[1] flat_columns[4] flat_columns[7]\nrow 2 | flat_columns[2] flat_columns[5] flat_columns[8]\n```",
-                placeholder: Some(PoseTransformMat3x3::default().to_arrow()?),
+                custom_placeholder: Some(PoseTransformMat3x3::default().to_arrow()?),
             },
         ),
         (
             <PoseTranslation3D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A translation vector in 3D space that doesn't propagate in the transform hierarchy.",
-                placeholder: Some(PoseTranslation3D::default().to_arrow()?),
+                custom_placeholder: Some(PoseTranslation3D::default().to_arrow()?),
             },
         ),
         (
             <Position2D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A position in 2D space.",
-                placeholder: Some(Position2D::default().to_arrow()?),
+                custom_placeholder: Some(Position2D::default().to_arrow()?),
             },
         ),
         (
             <Position3D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A position in 3D space.",
-                placeholder: Some(Position3D::default().to_arrow()?),
+                custom_placeholder: Some(Position3D::default().to_arrow()?),
             },
         ),
         (
             <Radius as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The radius of something, e.g. a point.\n\nInternally, positive values indicate scene units, whereas negative values\nare interpreted as UI points.\n\nUI points are independent of zooming in Views, but are sensitive to the application UI scaling.\nat 100% UI scaling, UI points are equal to pixels\nThe Viewer's UI scaling defaults to the OS scaling which typically is 100% for full HD screens and 200% for 4k screens.",
-                placeholder: Some(Radius::default().to_arrow()?),
+                custom_placeholder: Some(Radius::default().to_arrow()?),
             },
         ),
         (
             <Range1D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A 1D range, specifying a lower and upper bound.",
-                placeholder: Some(Range1D::default().to_arrow()?),
+                custom_placeholder: Some(Range1D::default().to_arrow()?),
             },
         ),
         (
             <Resolution as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Pixel resolution width & height, e.g. of a camera sensor.\n\nTypically in integer units, but for some use cases floating point may be used.",
-                placeholder: Some(Resolution::default().to_arrow()?),
+                custom_placeholder: Some(Resolution::default().to_arrow()?),
             },
         ),
         (
             <RotationAxisAngle as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "3D rotation represented by a rotation around a given axis.",
-                placeholder: Some(RotationAxisAngle::default().to_arrow()?),
+                custom_placeholder: Some(RotationAxisAngle::default().to_arrow()?),
             },
         ),
         (
             <RotationQuat as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A 3D rotation expressed as a quaternion.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer, quaternions will always be normalized.",
-                placeholder: Some(RotationQuat::default().to_arrow()?),
+                custom_placeholder: Some(RotationQuat::default().to_arrow()?),
             },
         ),
         (
             <Scalar as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A scalar value, encoded as a 64-bit floating point.\n\nUsed for time series plots.",
-                placeholder: Some(Scalar::default().to_arrow()?),
+                custom_placeholder: Some(Scalar::default().to_arrow()?),
             },
         ),
         (
             <Scale3D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A 3D scale factor.\n\nA scale of 1.0 means no scaling.\nA scale of 2.0 means doubling the size.\nEach component scales along the corresponding axis.",
-                placeholder: Some(Scale3D::default().to_arrow()?),
+                custom_placeholder: Some(Scale3D::default().to_arrow()?),
             },
         ),
         (
             <ShowLabels as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Whether the entity's [`components.Text`](https://rerun.io/docs/reference/types/components/text) label is shown.\n\nThe main purpose of this component existing separately from the labels themselves\nis to be overridden when desired, to allow hiding and showing from the viewer and\nblueprints.",
-                placeholder: Some(ShowLabels::default().to_arrow()?),
+                custom_placeholder: None,
             },
         ),
         (
             <StrokeWidth as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The width of a stroke specified in UI points.",
-                placeholder: Some(StrokeWidth::default().to_arrow()?),
+                custom_placeholder: Some(StrokeWidth::default().to_arrow()?),
             },
         ),
         (
             <TensorData as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "An N-dimensional array of numbers.\n\nThe number of dimensions and their respective lengths is specified by the `shape` field.\nThe dimensions are ordered from outermost to innermost. For example, in the common case of\na 2D RGB Image, the shape would be `[height, width, channel]`.\n\nThese dimensions are combined with an index to look up values from the `buffer` field,\nwhich stores a contiguous array of typed values.",
-                placeholder: Some(TensorData::default().to_arrow()?),
+                custom_placeholder: Some(TensorData::default().to_arrow()?),
             },
         ),
         (
             <TensorDimensionIndexSelection as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Specifies a concrete index on a tensor dimension.",
-                placeholder: Some(TensorDimensionIndexSelection::default().to_arrow()?),
+                custom_placeholder: Some(
+                    TensorDimensionIndexSelection::default().to_arrow()?,
+                ),
             },
         ),
         (
             <TensorHeightDimension as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Specifies which dimension to use for height.",
-                placeholder: Some(TensorHeightDimension::default().to_arrow()?),
+                custom_placeholder: Some(TensorHeightDimension::default().to_arrow()?),
             },
         ),
         (
             <TensorWidthDimension as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Specifies which dimension to use for width.",
-                placeholder: Some(TensorWidthDimension::default().to_arrow()?),
+                custom_placeholder: Some(TensorWidthDimension::default().to_arrow()?),
             },
         ),
         (
             <Texcoord2D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A 2D texture UV coordinate.\n\nTexture coordinates specify a position on a 2D texture.\nA range from 0-1 covers the entire texture in the respective dimension.\nUnless configured otherwise, the texture repeats outside of this range.\nRerun uses top-left as the origin for UV coordinates.\n\n  0     U     1\n0 + --------- →\n  |           .\nV |           .\n  |           .\n1 ↓ . . . . . .\n\nThis is the same convention as in Vulkan/Metal/DX12/WebGPU, but (!) unlike OpenGL,\nwhich places the origin at the bottom-left.",
-                placeholder: Some(Texcoord2D::default().to_arrow()?),
+                custom_placeholder: Some(Texcoord2D::default().to_arrow()?),
             },
         ),
         (
             <Text as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A string of text, e.g. for labels and text documents.",
-                placeholder: Some(Text::default().to_arrow()?),
+                custom_placeholder: Some(Text::default().to_arrow()?),
             },
         ),
         (
             <TextLogLevel as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The severity level of a text log message.\n\nRecommended to be one of:\n* `\"CRITICAL\"`\n* `\"ERROR\"`\n* `\"WARN\"`\n* `\"INFO\"`\n* `\"DEBUG\"`\n* `\"TRACE\"`",
-                placeholder: Some(TextLogLevel::default().to_arrow()?),
+                custom_placeholder: Some(TextLogLevel::default().to_arrow()?),
             },
         ),
         (
             <TransformMat3x3 as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A 3x3 transformation matrix Matrix.\n\n3x3 matrixes are able to represent any affine transformation in 3D space,\ni.e. rotation, scaling, shearing, reflection etc.\n\nMatrices in Rerun are stored as flat list of coefficients in column-major order:\n```text\n            column 0       column 1       column 2\n       -------------------------------------------------\nrow 0 | flat_columns[0] flat_columns[3] flat_columns[6]\nrow 1 | flat_columns[1] flat_columns[4] flat_columns[7]\nrow 2 | flat_columns[2] flat_columns[5] flat_columns[8]\n```",
-                placeholder: Some(TransformMat3x3::default().to_arrow()?),
+                custom_placeholder: Some(TransformMat3x3::default().to_arrow()?),
             },
         ),
         (
             <TransformRelation as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Specifies relation a spatial transform describes.",
-                placeholder: Some(TransformRelation::default().to_arrow()?),
+                custom_placeholder: Some(TransformRelation::default().to_arrow()?),
             },
         ),
         (
             <Translation3D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A translation vector in 3D space.",
-                placeholder: Some(Translation3D::default().to_arrow()?),
+                custom_placeholder: Some(Translation3D::default().to_arrow()?),
             },
         ),
         (
             <TriangleIndices as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The three indices of a triangle in a triangle mesh.",
-                placeholder: Some(TriangleIndices::default().to_arrow()?),
+                custom_placeholder: Some(TriangleIndices::default().to_arrow()?),
             },
         ),
         (
             <ValueRange as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Range of expected or valid values, specifying a lower and upper bound.",
-                placeholder: Some(ValueRange::default().to_arrow()?),
+                custom_placeholder: Some(ValueRange::default().to_arrow()?),
             },
         ),
         (
             <Vector2D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A vector in 2D space.",
-                placeholder: Some(Vector2D::default().to_arrow()?),
+                custom_placeholder: Some(Vector2D::default().to_arrow()?),
             },
         ),
         (
             <Vector3D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "A vector in 3D space.",
-                placeholder: Some(Vector3D::default().to_arrow()?),
+                custom_placeholder: Some(Vector3D::default().to_arrow()?),
             },
         ),
         (
             <VideoTimestamp as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).",
-                placeholder: Some(VideoTimestamp::default().to_arrow()?),
+                custom_placeholder: Some(VideoTimestamp::default().to_arrow()?),
             },
         ),
         (
             <ViewCoordinates as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "How we interpret the coordinate system of an entity/space.\n\nFor instance: What is \"up\"? What does the Z axis mean?\n\nThe three coordinates are always ordered as [x, y, z].\n\nFor example [Right, Down, Forward] means that the X axis points to the right, the Y axis points\ndown, and the Z axis points forward.\n\n⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).\n\nThe following constants are used to represent the different directions:\n * Up = 1\n * Down = 2\n * Right = 3\n * Left = 4\n * Forward = 5\n * Back = 6",
-                placeholder: Some(ViewCoordinates::default().to_arrow()?),
+                custom_placeholder: Some(ViewCoordinates::default().to_arrow()?),
             },
         ),
     ];
@@ -1107,6 +1132,24 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     docstring_md :
                     "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
                     is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.GeoPoints"),
+            ArchetypeReflection {
+                display_name: "Geo points",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name : "rerun.components.LatLon"
+                    .into(), display_name : "Positions", docstring_md :
+                    "The EPSG:4326 coordinates for the points.", is_required : true, },
+                    ArchetypeFieldReflection { component_name : "rerun.components.Radius"
+                    .into(), display_name : "Radii", docstring_md :
+                    "Optional radii for the points, effectively turning them into circles.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Colors",
+                    docstring_md : "Optional colors for the points.", is_required :
+                    false, },
                 ],
             },
         ),
@@ -1635,6 +1678,32 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Select", docstring_md :
                     "Selected columns. If unset, all columns are selected.", is_required
                     : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.MapBackground"),
+            ArchetypeReflection {
+                display_name: "Map background",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.MapProvider".into(), display_name :
+                    "Provider", docstring_md :
+                    "Map provider and style to use.\n\n**Note**: Requires a Mapbox API key in the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.MapZoom"),
+            ArchetypeReflection {
+                display_name: "Map zoom",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ZoomLevel".into(), display_name : "Zoom",
+                    docstring_md :
+                    "Zoom level for the map.\n\nZoom level follow the [`OpenStreetMap` definition](https://wiki.openstreetmap.org/wiki/Zoom_levels).",
+                    is_required : false, },
                 ],
             },
         ),

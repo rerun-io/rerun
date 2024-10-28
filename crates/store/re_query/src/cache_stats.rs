@@ -2,17 +2,17 @@ use std::collections::BTreeMap;
 
 use re_types_core::SizeBytes as _;
 
-use crate::{CacheKey, Caches};
+use crate::{QueryCache, QueryCacheKey};
 
 // ---
 
 /// Stats for all primary caches.
 ///
-/// Fetch them via [`Caches::stats`].
+/// Fetch them via [`QueryCache::stats`].
 #[derive(Default, Debug, Clone)]
 pub struct CachesStats {
-    pub latest_at: BTreeMap<CacheKey, CacheStats>,
-    pub range: BTreeMap<CacheKey, CacheStats>,
+    pub latest_at: BTreeMap<QueryCacheKey, CacheStats>,
+    pub range: BTreeMap<QueryCacheKey, CacheStats>,
 }
 
 impl CachesStats {
@@ -49,7 +49,7 @@ pub struct CacheStats {
     pub total_actual_size_bytes: u64,
 }
 
-impl Caches {
+impl QueryCache {
     /// Computes the stats for all primary caches.
     pub fn stats(&self) -> CachesStats {
         re_tracing::profile_function!();

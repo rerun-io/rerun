@@ -1,7 +1,7 @@
 use re_chunk::{EntityPath, TransportChunk};
 use re_chunk_store::{ChunkStore, ColumnDescriptor, QueryExpression};
 use re_log_types::EntityPathFilter;
-use re_query::Caches;
+use re_query::QueryCache;
 
 use crate::QueryHandle;
 
@@ -31,7 +31,7 @@ pub type RecordBatch = TransportChunk;
 // first, and this is not as straightforward as it seems.
 pub struct QueryEngine<'a> {
     pub store: &'a ChunkStore,
-    pub cache: &'a Caches,
+    pub cache: &'a QueryCache,
 }
 
 impl QueryEngine<'_> {

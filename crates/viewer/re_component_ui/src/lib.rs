@@ -19,6 +19,7 @@ mod transforms;
 mod video_timestamp;
 mod view_coordinates;
 mod visual_bounds2d;
+mod zoom_level;
 
 use datatype_uis::{
     display_name_ui, display_text_ui, edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max,
@@ -27,7 +28,9 @@ use datatype_uis::{
 };
 
 use re_types::{
-    blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, ViewFit, Visible},
+    blueprint::components::{
+        BackgroundKind, Corner2D, LockRangeDuringZoom, MapProvider, ViewFit, Visible, ZoomLevel,
+    },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
         FillRatio, GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize, Name,
@@ -38,7 +41,6 @@ use re_types::{
 };
 use re_types_blueprint::blueprint::components::{IncludedSpaceView, SpaceViewMaximized};
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
-
 // ----
 
 /// Crates a component ui registry and registers all editors of this crate to it.
@@ -63,6 +65,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<ImagePlaneDistance>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<MarkerSize>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<StrokeWidth>(edit_f32_zero_to_max);
+    registry.add_singleline_edit_or_view::<ZoomLevel>(zoom_level::edit_zoom_level);
 
     // float min-max components:
     registry.add_singleline_edit_or_view::<DrawOrder>(edit_f32_min_to_max_float);
@@ -91,6 +94,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
     registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MagnificationFilter>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<MapProvider>(edit_view_enum);
     registry.add_singleline_edit_or_view::<TransformRelation>(edit_view_enum);
     registry.add_singleline_edit_or_view::<ViewFit>(edit_view_enum);
 

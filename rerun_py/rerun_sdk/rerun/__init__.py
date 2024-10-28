@@ -65,6 +65,7 @@ from .archetypes import (
     DisconnectedSpace as DisconnectedSpace,
     Ellipsoids3D as Ellipsoids3D,
     EncodedImage as EncodedImage,
+    GeoPoints as GeoPoints,
     Image as Image,
     InstancePoses3D as InstancePoses3D,
     LineStrips2D as LineStrips2D,
@@ -154,10 +155,12 @@ from .script_helpers import (
 )
 from .sinks import (
     connect as connect,
+    connect_tcp as connect_tcp,
     disconnect as disconnect,
     save as save,
     send_blueprint as send_blueprint,
     serve as serve,
+    serve_web as serve_web,
     spawn as spawn,
     stdout as stdout,
 )

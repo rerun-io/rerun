@@ -15,10 +15,22 @@ service StorageNode {
 // ---------------- RegisterRecording ------------------
 
 message RegisterRecordingsRequest {
+    // human readable description of the recording
     string description = 1;
+    // information about recording's backing storage
+    // TODO(zehiko) add separate info about the "source" recording
     ObjectStorage obj_storage = 2;
-    // TODO(zehiko) should this be auto-discoverable?
+    // type of recording
     RecordingType typ = 3;
+    // (optional) any additional metadata that should be associated with the recording
+    // You can associate any arbtrirary number of columns with a specific recording
+    RecordingMetadata metadata = 4;
+}
+
+// Recording metadata is single row arrow record batch
+message RecordingMetadata {
+    EncoderVersion encoder_version = 1;
+    bytes payload = 2;
 }
 
 message ObjectStorage {
@@ -34,6 +46,16 @@ message RegisterRecordingsResponse {
     repeated RecordingMetadata metadata = 2;
 }
 
+// Server can include details about the error as part of gRPC error (Status)
+message RegistrationError {
+    // error code
+    ErrorCode code = 1;
+    // url of the recording that failed to register
+    string url = 2;
+    // human readable details about the error
+    string message = 3;
+}
+
 // ---------------- GetRecordingMetadata  -----------------
 
 message GetRecordingMetadataRequest {
@@ -41,13 +63,8 @@ message GetRecordingMetadataRequest {
 }
 
 message GetRecordingMetadataResponse {
-    RecordingMetadata metadata = 1;
-}
-
-message RecordingMetadata {
     RecordingId id = 1;
-    Schema schema = 2;
-    repeated TimeMetadata time_metadata = 3;
+    RecordingMetadata metadata = 2;
 }
 
 message TimeMetadata {

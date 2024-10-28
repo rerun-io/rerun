@@ -10,7 +10,7 @@ The top-level index file should look like
 Function | Description
 -------- | -----------
 [rerun.init()](initialization/#rerun.init) | Initialize the Rerun SDK …
-[rerun.connect()](initialization/#rerun.connect) | Connect to a remote Rerun Viewer on the …
+[rerun.connect_tcp()](initialization/#rerun.connect_tcp) | Connect to a remote Rerun Viewer on the …
 [rerun.spawn()](initialization/#rerun.spawn) | Spawn a Rerun Viewer …
 …
 
@@ -85,10 +85,12 @@ SECTION_TABLE: Final[list[Section]] = [
         func_list=[
             "init",
             "connect",
+            "connect_tcp",
             "disconnect",
             "save",
             "send_blueprint",
             "serve",
+            "serve_web",
             "spawn",
             "memory_recording",
             "notebook_show",
@@ -205,6 +207,13 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.Mesh3D",
             "archetypes.Points2D",
             "archetypes.Points3D",
+        ],
+        gen_page=False,
+    ),
+    Section(
+        title="Geospatial Archetypes",
+        class_list=[
+            "archetypes.GeoPoints",
         ],
         gen_page=False,
     ),

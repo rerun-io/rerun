@@ -1,0 +1,16 @@
+namespace rerun.blueprint.views;
+
+/// A 2D map view to display geospatial primitives.
+///
+/// \example views/map title="Use a blueprint to create a map view."
+//TODO(ab): add a screenshot
+table MapView (
+    "attr.rerun.view_identifier": "Map",
+    "attr.docs.unreleased"
+) {
+    /// Configures the zoom level of the map view.
+    zoom: rerun.blueprint.archetypes.MapZoom (order: 1000);
+
+    /// Configuration for the background map of the map view.
+    background: rerun.blueprint.archetypes.MapBackground (order: 2000);
+}

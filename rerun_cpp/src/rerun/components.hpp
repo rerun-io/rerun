@@ -24,6 +24,7 @@
 #include "components/image_format.hpp"
 #include "components/image_plane_distance.hpp"
 #include "components/keypoint_id.hpp"
+#include "components/lat_lon.hpp"
 #include "components/length.hpp"
 #include "components/line_strip2d.hpp"
 #include "components/line_strip3d.hpp"

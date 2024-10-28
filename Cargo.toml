@@ -90,8 +90,9 @@ re_renderer_examples = { path = "crates/viewer/re_renderer_examples", version = 
 re_selection_panel = { path = "crates/viewer/re_selection_panel", version = "=0.20.0-alpha.1", default-features = false }
 re_space_view = { path = "crates/viewer/re_space_view", version = "=0.20.0-alpha.1", default-features = false }
 re_space_view_bar_chart = { path = "crates/viewer/re_space_view_bar_chart", version = "=0.20.0-alpha.1", default-features = false }
-re_space_view_dataframe = { path = "crates/viewer/re_space_view_dataframe", version = "=0.20.0-alpha.1", default-features = false }
 re_space_view_spatial = { path = "crates/viewer/re_space_view_spatial", version = "=0.20.0-alpha.1", default-features = false }
+re_space_view_dataframe = { path = "crates/viewer/re_space_view_dataframe", version = "=0.20.0-alpha.1", default-features = false }
+re_space_view_map = { path = "crates/viewer/re_space_view_map", version = "=0.20.0-alpha.1", default-features = false }
 re_space_view_tensor = { path = "crates/viewer/re_space_view_tensor", version = "=0.20.0-alpha.1", default-features = false }
 re_space_view_text_document = { path = "crates/viewer/re_space_view_text_document", version = "=0.20.0-alpha.1", default-features = false }
 re_space_view_text_log = { path = "crates/viewer/re_space_view_text_log", version = "=0.20.0-alpha.1", default-features = false }
