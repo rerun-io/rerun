@@ -60,8 +60,8 @@ impl TimeInt {
     pub const ONE: Self = Self(Some(NonMinI64::ONE));
 
     #[inline]
-    pub fn is_static(&self) -> bool {
-        *self == Self::STATIC
+    pub fn is_static(self) -> bool {
+        self == Self::STATIC
     }
 
     /// Creates a new temporal [`TimeInt`].
@@ -100,7 +100,7 @@ impl TimeInt {
 
     /// Returns `i64::MIN` for [`Self::STATIC`].
     #[inline]
-    pub const fn as_i64(&self) -> i64 {
+    pub const fn as_i64(self) -> i64 {
         match self.0 {
             Some(t) => t.get(),
             None => i64::MIN,
@@ -109,7 +109,7 @@ impl TimeInt {
 
     /// Returns `f64::MIN` for [`Self::STATIC`].
     #[inline]
-    pub const fn as_f64(&self) -> f64 {
+    pub const fn as_f64(self) -> f64 {
         match self.0 {
             Some(t) => t.get() as _,
             None => f64::MIN,
@@ -118,19 +118,21 @@ impl TimeInt {
 
     /// Always returns [`Self::STATIC`] for [`Self::STATIC`].
     #[inline]
-    pub fn inc(&self) -> Self {
+    #[must_use]
+    pub fn inc(self) -> Self {
         match self.0 {
             Some(t) => Self::new_temporal(t.get().saturating_add(1)),
-            None => *self,
+            None => self,
         }
     }
 
     /// Always returns [`Self::STATIC`] for [`Self::STATIC`].
     #[inline]
-    pub fn dec(&self) -> Self {
+    #[must_use]
+    pub fn dec(self) -> Self {
         match self.0 {
             Some(t) => Self::new_temporal(t.get().saturating_sub(1)),
-            None => *self,
+            None => self,
         }
     }
 }

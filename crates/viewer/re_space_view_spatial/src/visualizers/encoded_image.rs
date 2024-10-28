@@ -155,14 +155,12 @@ impl EncodedImageVisualizer {
             let Some(blob) = blobs.first() else {
                 continue;
             };
-            let media_type = media_types.and_then(|media_types| media_types.first().cloned());
+            let media_type = media_types
+                .and_then(|media_types| media_types.first().cloned())
+                .map(|media_type| MediaType(media_type.into()));
 
             let image = ctx.viewer_ctx.cache.entry(|c: &mut ImageDecodeCache| {
-                c.entry(
-                    tensor_data_row_id,
-                    blob,
-                    media_type.as_ref().map(|mt| mt.as_str()),
-                )
+                c.entry(tensor_data_row_id, blob, media_type.as_ref())
             });
 
             let image = match image {
@@ -180,12 +178,14 @@ impl EncodedImageVisualizer {
             let opacity = opacity.copied().unwrap_or_else(|| self.fallback_for(ctx));
             let multiplicative_tint =
                 re_renderer::Rgba::from_white_alpha(opacity.0.clamp(0.0, 1.0));
+            let colormap = None;
 
             if let Some(textured_rect) = textured_rect_from_image(
                 ctx.viewer_ctx,
                 entity_path,
                 spatial_ctx,
                 &image,
+                colormap,
                 multiplicative_tint,
                 "EncodedImage",
                 &mut self.data,

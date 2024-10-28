@@ -1,5 +1,7 @@
 //! Detect and handle signals, panics, and other crashes, making sure to log them and optionally send them off to analytics.
 
+pub mod sigint;
+
 use re_build_info::BuildInfo;
 
 #[cfg(not(target_os = "windows"))]
@@ -56,6 +58,8 @@ fn install_panic_hook(_build_info: BuildInfo) {
             // This prints the panic message and callstack:
             (*previous_panic_hook)(panic_info);
         }
+
+        econtext::print_econtext(); // Print additional error context, if any
 
         eprintln!(
             "\n\
@@ -163,6 +167,8 @@ fn install_signal_handler(build_info: BuildInfo) {
         let callstack = callstack();
         write_to_stderr(&callstack);
         write_to_stderr("\n");
+
+        econtext::print_econtext(); // Print additional error context, if any
 
         // Let's print the important stuff _again_ so it is visible at the bottom of the users terminal:
         write_to_stderr("\n");

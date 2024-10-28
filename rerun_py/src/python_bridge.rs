@@ -2,9 +2,9 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pyfunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
-use std::collections::HashMap;
 use std::io::IsTerminal as _;
 use std::path::PathBuf;
+use std::{borrow::Borrow, collections::HashMap};
 
 use itertools::Itertools;
 use pyo3::{
@@ -171,6 +171,9 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     use crate::video::asset_video_read_frame_timestamps_ns;
     m.add_function(wrap_pyfunction!(asset_video_read_frame_timestamps_ns, m)?)?;
+
+    // dataframes
+    crate::dataframe::register(m)?;
 
     Ok(())
 }
@@ -345,6 +348,7 @@ impl std::ops::Deref for PyRecordingStream {
 }
 
 #[pyfunction]
+#[pyo3(signature = (recording=None))]
 fn get_application_id(recording: Option<&PyRecordingStream>) -> Option<String> {
     get_data_recording(recording)?
         .store_info()
@@ -352,6 +356,7 @@ fn get_application_id(recording: Option<&PyRecordingStream>) -> Option<String> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (recording=None))]
 fn get_recording_id(recording: Option<&PyRecordingStream>) -> Option<String> {
     get_data_recording(recording)?
         .store_info()
@@ -361,6 +366,7 @@ fn get_recording_id(recording: Option<&PyRecordingStream>) -> Option<String> {
 /// Returns the currently active data recording in the global scope, if any; fallbacks to the
 /// specified recording otherwise, if any.
 #[pyfunction]
+#[pyo3(signature = (recording=None))]
 fn get_data_recording(recording: Option<&PyRecordingStream>) -> Option<PyRecordingStream> {
     RecordingStream::get_quiet(
         re_sdk::StoreKind::Recording,
@@ -385,6 +391,7 @@ fn cleanup_if_forked_child() {
 ///
 /// Returns the previous one, if any.
 #[pyfunction]
+#[pyo3(signature = (recording=None))]
 fn set_global_data_recording(
     py: Python<'_>,
     recording: Option<&PyRecordingStream>,
@@ -417,6 +424,7 @@ fn get_thread_local_data_recording() -> Option<PyRecordingStream> {
 ///
 /// Returns the previous one, if any.
 #[pyfunction]
+#[pyo3(signature = (recording=None))]
 fn set_thread_local_data_recording(
     py: Python<'_>,
     recording: Option<&PyRecordingStream>,
@@ -442,6 +450,7 @@ fn set_thread_local_data_recording(
 /// Returns the currently active blueprint recording in the global scope, if any; fallbacks to the
 /// specified recording otherwise, if any.
 #[pyfunction]
+#[pyo3(signature = (overrides=None))]
 fn get_blueprint_recording(overrides: Option<&PyRecordingStream>) -> Option<PyRecordingStream> {
     RecordingStream::get_quiet(
         re_sdk::StoreKind::Blueprint,
@@ -460,6 +469,7 @@ fn get_global_blueprint_recording() -> Option<PyRecordingStream> {
 ///
 /// Returns the previous one, if any.
 #[pyfunction]
+#[pyo3(signature = (recording=None))]
 fn set_global_blueprint_recording(
     py: Python<'_>,
     recording: Option<&PyRecordingStream>,
@@ -492,6 +502,7 @@ fn get_thread_local_blueprint_recording() -> Option<PyRecordingStream> {
 ///
 /// Returns the previous one, if any.
 #[pyfunction]
+#[pyo3(signature = (recording=None))]
 fn set_thread_local_blueprint_recording(
     py: Python<'_>,
     recording: Option<&PyRecordingStream>,
@@ -517,6 +528,7 @@ fn set_thread_local_blueprint_recording(
 // --- Sinks ---
 
 #[pyfunction]
+#[pyo3(signature = (recording=None))]
 fn is_enabled(recording: Option<&PyRecordingStream>) -> bool {
     get_data_recording(recording).map_or(false, |rec| rec.is_enabled())
 }
@@ -833,6 +845,7 @@ impl PyMemorySinkStorage {
     /// Concatenate the contents of the [`MemorySinkStorage`] as bytes.
     ///
     /// Note: This will do a blocking flush before returning!
+    #[pyo3(signature = (concat=None))]
     fn concat_as_bytes<'p>(
         &self,
         concat: Option<&Self>,
@@ -991,6 +1004,7 @@ fn serve(
 /// Subsequent log messages will be buffered and either sent on the next call to `connect`,
 /// or shown with `show`.
 #[pyfunction]
+#[pyo3(signature = (recording=None))]
 fn disconnect(py: Python<'_>, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
@@ -1004,6 +1018,7 @@ fn disconnect(py: Python<'_>, recording: Option<&PyRecordingStream>) {
 
 /// Block until outstanding data has been flushed to the sink
 #[pyfunction]
+#[pyo3(signature = (blocking, recording=None))]
 fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
@@ -1022,6 +1037,7 @@ fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) 
 // --- Time ---
 
 #[pyfunction]
+#[pyo3(signature = (timeline, sequence, recording=None))]
 fn set_time_sequence(timeline: &str, sequence: i64, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
@@ -1030,6 +1046,7 @@ fn set_time_sequence(timeline: &str, sequence: i64, recording: Option<&PyRecordi
 }
 
 #[pyfunction]
+#[pyo3(signature = (timeline, seconds, recording=None))]
 fn set_time_seconds(timeline: &str, seconds: f64, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
@@ -1038,6 +1055,7 @@ fn set_time_seconds(timeline: &str, seconds: f64, recording: Option<&PyRecording
 }
 
 #[pyfunction]
+#[pyo3(signature = (timeline, nanos, recording=None))]
 fn set_time_nanos(timeline: &str, nanos: i64, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
@@ -1046,6 +1064,7 @@ fn set_time_nanos(timeline: &str, nanos: i64, recording: Option<&PyRecordingStre
 }
 
 #[pyfunction]
+#[pyo3(signature = (timeline, recording=None))]
 fn disable_timeline(timeline: &str, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
@@ -1054,6 +1073,7 @@ fn disable_timeline(timeline: &str, recording: Option<&PyRecordingStream>) {
 }
 
 #[pyfunction]
+#[pyo3(signature = (recording=None))]
 fn reset_time(recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
@@ -1311,9 +1331,14 @@ fn escape_entity_path_part(part: &str) -> String {
 }
 
 #[pyfunction]
-fn new_entity_path(parts: Vec<&pyo3::types::PyString>) -> PyResult<String> {
-    let parts: PyResult<Vec<&str>> = parts.iter().map(|part| part.to_str()).collect();
-    let path = EntityPath::from(parts?.into_iter().map(EntityPathPart::from).collect_vec());
+fn new_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyResult<String> {
+    let parts: PyResult<Vec<_>> = parts.iter().map(|part| part.to_cow()).collect();
+    let path = EntityPath::from(
+        parts?
+            .into_iter()
+            .map(|part| EntityPathPart::from(part.borrow()))
+            .collect_vec(),
+    );
     Ok(path.to_string())
 }
 

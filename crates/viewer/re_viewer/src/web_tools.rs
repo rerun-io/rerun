@@ -14,12 +14,15 @@ pub trait JsResultExt<T> {
     fn ok_or_log_js_error(self) -> Option<T>;
 
     /// Logs an error if the result is an error and returns the result, but only once.
+    #[allow(unused)]
     fn ok_or_log_js_error_once(self) -> Option<T>;
 
     /// Log a warning if there is an `Err`, but only log the exact same message once.
+    #[allow(unused)]
     fn warn_on_js_err_once(self, msg: impl std::fmt::Display) -> Option<T>;
 
     /// Unwraps in debug builds otherwise logs an error if the result is an error and returns the result.
+    #[allow(unused)]
     fn unwrap_debug_or_log_js_error(self) -> Option<T>;
 }
 

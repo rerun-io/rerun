@@ -19,8 +19,6 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Timestamp inside a [`archetypes::AssetVideo`][crate::archetypes::AssetVideo].
-///
-/// ⚠️ **This type is experimental and may be removed in future versions**
 #[derive(Clone, Debug, Copy, PartialEq, Eq, Default)]
 #[repr(transparent)]
 pub struct VideoTimestamp(pub crate::datatypes::VideoTimestamp);

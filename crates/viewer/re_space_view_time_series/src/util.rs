@@ -32,7 +32,6 @@ pub fn determine_time_range(
     time_offset: i64,
     data_result: &re_viewer_context::DataResult,
     plot_mem: Option<&egui_plot::PlotMemory>,
-    enable_query_clamping: bool,
 ) -> ResolvedTimeRange {
     let query_range = data_result.query_range();
 
@@ -68,7 +67,7 @@ pub fn determine_time_range(
 
     // If we're not in auto mode, which is the mode where the query drives the bounds of the plot,
     // then we want the bounds of the plots to drive the query!
-    if !is_auto_bounds && enable_query_clamping {
+    if !is_auto_bounds {
         if let Some((x_min, x_max)) = plot_bounds {
             time_range.set_min(i64::max(time_range.min().as_i64(), x_min));
             time_range.set_max(i64::min(time_range.max().as_i64(), x_max));

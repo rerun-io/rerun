@@ -21,9 +21,9 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: References a single video frame.
 ///
 /// Used to display individual video frames from a [`archetypes::AssetVideo`][crate::archetypes::AssetVideo].
-/// To show an entire video, a fideo frame reference for each frame of the video should be logged.
+/// To show an entire video, a video frame reference for each frame of the video should be logged.
 ///
-/// ⚠️ **This type is experimental and may be removed in future versions**
+/// See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
 ///
 /// ## Examples
 ///

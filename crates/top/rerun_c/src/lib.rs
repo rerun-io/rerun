@@ -189,7 +189,7 @@ pub struct CDataRow {
 pub struct CComponentColumns {
     pub component_type: CComponentTypeHandle,
 
-    /// A ListArray with the datatype `List(component_type)`.
+    /// A `ListArray` with the datatype `List(component_type)`.
     pub array: arrow2::ffi::ArrowArray,
 }
 
@@ -463,7 +463,7 @@ thread_local! {
     /// We need something that is guaranteed to be dropped with the thread shutting down.
     /// A simple integer value won't do that, `Box` works but seems wasteful, so we use a trivial type with a drop implementation.
     #[allow(clippy::unnecessary_box_returns)]
-    pub static THREAD_LIFE_TRACKER: TrivialTypeWithDrop = TrivialTypeWithDrop;
+    pub static THREAD_LIFE_TRACKER: TrivialTypeWithDrop = const { TrivialTypeWithDrop };
 }
 
 #[allow(unsafe_code)]

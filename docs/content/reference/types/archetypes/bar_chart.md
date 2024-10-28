@@ -15,6 +15,7 @@ The x values will be the indices of the array, and the bar heights will be the p
 
 ## Shown in
 * [BarChartView](../views/bar_chart_view.md)
+* [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `BarChart`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1BarChart.html)

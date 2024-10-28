@@ -8,7 +8,7 @@ use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 use crate::{commands::RrdCommands, CallSource};
 
 #[cfg(feature = "web_viewer")]
-use re_sdk::web_viewer::host_web_viewer;
+use re_sdk::web_viewer::WebViewerConfig;
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
 #[cfg(feature = "server")]
@@ -187,7 +187,7 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
 
     /// Start the viewer in the browser (instead of locally).
     ///
-    /// Requires Rerun to have been compiled with the 'web_viewer' feature.
+    /// Requires Rerun to have been compiled with the `web_viewer` feature.
     ///
     /// This implies `--serve`.
     #[clap(long)]
@@ -230,6 +230,28 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     // GL could be enabled on MacOS via `angle` but given prior issues with ANGLE this seems to be a bad idea!
     #[clap(long)]
     renderer: Option<String>,
+
+    /// Overwrites hardware acceleration option for video decoding.
+    ///
+    /// By default uses the last provided setting, which is `auto` if never configured.
+    ///
+    /// Depending on the decoder backend, these settings are merely hints and may be ignored.
+    /// However, they can be useful in some situations to work around issues.
+    ///
+    /// Possible values:
+    ///
+    /// * `auto`
+    /// May use hardware acceleration if available and compatible with the codec.
+    ///
+    /// * `prefer_software`
+    /// Should use a software decoder even if hardware acceleration is available.
+    /// If no software decoder is present, this may cause decoding to fail.
+    ///
+    /// * `prefer_hardware`
+    /// Should use a hardware decoder.
+    /// If no hardware decoder is present, this may cause decoding to fail.
+    #[clap(long, verbatim_doc_comment)]
+    video_decoder: Option<String>,
 
     // ----------------------------------------------------------------------------
     // Debug-options:
@@ -531,6 +553,7 @@ where
 
     if args.version {
         println!("{build_info}");
+        println!("Video features: {}", re_video::build_info().features);
         return Ok(0);
     }
 
@@ -590,10 +613,21 @@ fn run_impl(
 ) -> anyhow::Result<()> {
     #[cfg(feature = "native_viewer")]
     let profiler = run_profiler(&args);
+    let mut is_another_viewer_running = false;
 
     #[cfg(feature = "native_viewer")]
     let startup_options = {
         re_tracing::profile_scope!("StartupOptions");
+
+        let video_decoder_hw_acceleration =
+            args.video_decoder.as_ref().and_then(|s| match s.parse() {
+                Err(()) => {
+                    re_log::warn_once!("Failed to parse --video-decoder value: {s}. Ignoring.");
+                    None
+                }
+                Ok(hw_accell) => Some(hw_accell),
+            });
+
         re_viewer::StartupOptions {
             hide_welcome_screen: args.hide_welcome_screen,
             memory_limit: re_memory::MemoryLimit::parse(&args.memory_limit)
@@ -614,27 +648,15 @@ fn run_impl(
             } else {
                 None
             },
-            force_wgpu_backend: None,
+            force_wgpu_backend: args.renderer.clone(),
+            video_decoder_hw_acceleration,
 
             panel_state_overrides: Default::default(),
         }
     };
 
     // Where do we get the data from?
-    let rx: Vec<Receiver<LogMsg>> = if args.url_or_paths.is_empty() {
-        #[cfg(feature = "server")]
-        {
-            let server_options = re_sdk_comms::ServerOptions {
-                max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
-                quiet: false,
-            };
-            let rx = re_sdk_comms::serve(&args.bind, args.port, server_options)?;
-            vec![rx]
-        }
-
-        #[cfg(not(feature = "server"))]
-        vec![]
-    } else {
+    let rx: Vec<Receiver<LogMsg>> = {
         let data_sources = args
             .url_or_paths
             .iter()
@@ -647,23 +669,51 @@ fn run_impl(
             if let DataSource::WebSocketAddr(rerun_server_ws_url) = data_sources[0].clone() {
                 // Special case! We are connecting a web-viewer to a web-socket address.
                 // Instead of piping, just host a web-viewer that connects to the web-socket directly:
-                host_web_viewer(
-                    &args.bind,
-                    args.web_viewer_port,
-                    args.renderer,
-                    true,
-                    &rerun_server_ws_url,
-                )?
+
+                WebViewerConfig {
+                    bind_ip: args.bind,
+                    web_port: args.web_viewer_port,
+                    source_url: Some(rerun_server_ws_url),
+                    force_wgpu_backend: args.renderer,
+                    video_decoder: args.video_decoder,
+                    open_browser: true,
+                }
+                .host_web_viewer()?
                 .block();
 
                 return Ok(());
             }
         }
 
-        data_sources
+        let mut rxs = data_sources
             .into_iter()
             .map(|data_source| data_source.stream(None))
-            .collect::<Result<Vec<_>, _>>()?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        #[cfg(feature = "server")]
+        {
+            // Check if there is already a viewer running and if so, send the data to it.
+            use std::net::TcpStream;
+            let connect_addr = std::net::SocketAddr::new("127.0.0.1".parse().unwrap(), args.port);
+            if TcpStream::connect_timeout(&connect_addr, std::time::Duration::from_secs(1)).is_ok()
+            {
+                re_log::info!(
+                    addr = %connect_addr,
+                    "A process is already listening at this address. Assuming it's a Rerun Viewer."
+                );
+                is_another_viewer_running = true;
+            } else {
+                let server_options = re_sdk_comms::ServerOptions {
+                    max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
+                    quiet: false,
+                };
+                let tcp_listener: Receiver<LogMsg> =
+                    re_sdk_comms::serve(&args.bind, args.port, server_options)?;
+                rxs.push(tcp_listener);
+            }
+        }
+
+        rxs
     };
 
     // Now what do we do with the data?
@@ -721,18 +771,23 @@ fn run_impl(
                 let open_browser = args.web_viewer;
 
                 // This is the server that serves the Wasm+HTML:
-                host_web_viewer(
-                    &args.bind,
-                    args.web_viewer_port,
-                    args.renderer,
+                WebViewerConfig {
+                    bind_ip: args.bind,
+                    web_port: args.web_viewer_port,
+                    source_url: Some(_ws_server.server_url()),
+                    force_wgpu_backend: args.renderer,
+                    video_decoder: args.video_decoder,
                     open_browser,
-                    &_ws_server.server_url(),
-                )?
+                }
+                .host_web_viewer()?
                 .block(); // dropping should stop the server
             }
 
             return Ok(());
         }
+    } else if is_another_viewer_running {
+        re_log::info!("Another viewer is already running, streaming data to it.");
+        Ok(())
     } else {
         #[cfg(feature = "native_viewer")]
         return re_viewer::run_native_app(
@@ -911,7 +966,7 @@ fn stream_to_rrd_on_disk(
     let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
     let file =
         std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
-    let mut encoder = re_log_encoding::encoder::Encoder::new(
+    let mut encoder = re_log_encoding::encoder::DroppableEncoder::new(
         re_build_info::CrateVersion::LOCAL,
         encoding_options,
         file,

@@ -228,6 +228,11 @@ impl MediaType {
     pub fn is_image(&self) -> bool {
         self.as_str().starts_with("image/")
     }
+
+    /// Returns `true` if this is an video media type.
+    pub fn is_video(&self) -> bool {
+        self.as_str().starts_with("video/")
+    }
 }
 
 impl std::fmt::Display for MediaType {

@@ -17,10 +17,8 @@ table TensorScalarMapping (
     ///
     /// Raises the normalized values to the power of this value before mapping to color.
     /// Acts like an inverse brightness. Defaults to 1.0.
+    ///
+    /// The final value for display is set as:
+    /// `colormap( ((value - data_display_range.min) / (data_display_range.max - data_display_range.min)) ** gamma )`
     gamma: rerun.components.GammaCorrection ("attr.rerun.component_optional", nullable, order: 1200);
-
-    // TODO(andreas): explicit scalar ranges should go in here as well!
-    // Overall we should communicate scalar mapping to work like this here
-    // https://matplotlib.org/stable/api/_as_gen/matplotlib.colors.PowerNorm.html#matplotlib.colors.PowerNorm
-    // (value - vmin) ** gamma / (vmax - vmin) ** gamma
 }

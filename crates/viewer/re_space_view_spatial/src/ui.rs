@@ -169,7 +169,7 @@ pub fn create_labels(
     // Closest last (painters algorithm)
     labels.sort_by_key(|label| {
         if let UiLabelTarget::Position3D(pos) = label.target {
-            OrderedFloat::from(-ui_from_world_3d.transform_point3(pos).z)
+            OrderedFloat::from(-ui_from_world_3d.project_point3(pos).z)
         } else {
             OrderedFloat::from(0.0)
         }
@@ -272,14 +272,48 @@ pub fn create_labels(
 pub fn paint_loading_spinners(
     ui: &egui::Ui,
     ui_from_scene: egui::emath::RectTransform,
+    eye3d: &Eye,
     visualizers: &re_viewer_context::VisualizerCollection,
 ) {
-    for data in visualizers.iter_visualizer_data::<SpatialViewVisualizerData>() {
-        for &rect_in_scene in &data.loading_rects {
-            let rect_in_ui = ui_from_scene.transform_rect(rect_in_scene);
+    use glam::Vec3Swizzles as _;
+    use glam::Vec4Swizzles as _;
 
-            // Shrink slightly:
-            let rect = egui::Rect::from_center_size(rect_in_ui.center(), 0.75 * rect_in_ui.size());
+    let ui_from_world_3d = eye3d.ui_from_world(*ui_from_scene.to());
+
+    for data in visualizers.iter_visualizer_data::<SpatialViewVisualizerData>() {
+        for &crate::visualizers::LoadingSpinner {
+            center,
+            half_extent_u,
+            half_extent_v,
+        } in &data.loading_spinners
+        {
+            // Transform to ui coordinates:
+            let center_unprojected = ui_from_world_3d * center.extend(1.0);
+            if center_unprojected.w < 0.0 {
+                continue; // behind camera eye
+            }
+            let center_in_scene: glam::Vec2 = center_unprojected.xy() / center_unprojected.w;
+
+            let mut radius_in_scene = f32::INFINITY;
+
+            // Estimate the radius so we are unlikely to exceed the projected box:
+            for radius_vec in [half_extent_u, -half_extent_u, half_extent_v, -half_extent_v] {
+                let axis_radius = center_in_scene
+                    .distance(ui_from_world_3d.project_point3(center + radius_vec).xy());
+                radius_in_scene = radius_in_scene.min(axis_radius);
+            }
+
+            radius_in_scene *= 0.75; // Shrink a bit
+
+            let max_radius = 0.5 * ui_from_scene.from().size().min_elem();
+            radius_in_scene = radius_in_scene.min(max_radius);
+
+            let rect = egui::Rect::from_center_size(
+                egui::pos2(center_in_scene.x, center_in_scene.y),
+                egui::Vec2::splat(2.0 * radius_in_scene),
+            );
+
+            let rect = ui_from_scene.transform_rect(rect);
 
             egui::Spinner::new().paint_at(ui, rect);
         }

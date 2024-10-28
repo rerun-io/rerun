@@ -30,4 +30,4 @@ comfy-table = { workspace = true, features = ["tty"] }
 
 # web dependencies:
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-comfy-table = { workspace = true }
+comfy-table.workspace = true

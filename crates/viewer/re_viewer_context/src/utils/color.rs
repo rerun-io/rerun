@@ -11,5 +11,5 @@ pub fn auto_color_egui(val: u16) -> egui::Color32 {
 pub fn auto_color_for_entity_path(
     entity_path: &re_entity_db::EntityPath,
 ) -> re_types::components::Color {
-    auto_color_egui((entity_path.hash64() % std::u16::MAX as u64) as u16).into()
+    auto_color_egui((entity_path.hash64() % u16::MAX as u64) as u16).into()
 }

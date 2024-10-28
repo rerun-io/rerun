@@ -5,69 +5,31 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from attrs import define, field
 
-from ... import datatypes
 from ..._baseclasses import (
     Archetype,
 )
 from ...blueprint import components as blueprint_components
-from ...error_utils import catch_and_log_exceptions
+from .dataframe_query_ext import DataframeQueryExt
 
 __all__ = ["DataframeQuery"]
 
 
 @define(str=False, repr=False, init=False)
-class DataframeQuery(Archetype):
+class DataframeQuery(DataframeQueryExt, Archetype):
     """**Archetype**: The query for the dataframe view."""
 
-    def __init__(
-        self: Any,
-        *,
-        timeline: datatypes.Utf8Like | None = None,
-        kind: blueprint_components.QueryKindLike | None = None,
-        latest_at_queries: blueprint_components.LatestAtQueriesLike | None = None,
-        time_range_queries: blueprint_components.TimeRangeQueriesLike | None = None,
-    ):
-        """
-        Create a new instance of the DataframeQuery archetype.
-
-        Parameters
-        ----------
-        timeline:
-            The timeline for this query.
-
-            If unset, use the time panel's timeline and a latest-at query, ignoring all other components of this archetype.
-        kind:
-            Kind of query: latest-at or range.
-        latest_at_queries:
-            Configuration for latest-at queries.
-
-            Note: configuration as saved on a per-timeline basis.
-        time_range_queries:
-            Configuration for the time range queries.
-
-            Note: configuration as saved on a per-timeline basis.
-
-        """
-
-        # You can define your own __init__ function as a member of DataframeQueryExt in dataframe_query_ext.py
-        with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(
-                timeline=timeline, kind=kind, latest_at_queries=latest_at_queries, time_range_queries=time_range_queries
-            )
-            return
-        self.__attrs_clear__()
+    # __init__ can be found in dataframe_query_ext.py
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
         self.__attrs_init__(
             timeline=None,  # type: ignore[arg-type]
-            kind=None,  # type: ignore[arg-type]
-            latest_at_queries=None,  # type: ignore[arg-type]
-            time_range_queries=None,  # type: ignore[arg-type]
+            filter_by_range=None,  # type: ignore[arg-type]
+            filter_is_not_null=None,  # type: ignore[arg-type]
+            apply_latest_at=None,  # type: ignore[arg-type]
+            select=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -84,38 +46,45 @@ class DataframeQuery(Archetype):
     )
     # The timeline for this query.
     #
-    # If unset, use the time panel's timeline and a latest-at query, ignoring all other components of this archetype.
+    # If unset, the timeline currently active on the time panel is used.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    kind: blueprint_components.QueryKindBatch | None = field(
+    filter_by_range: blueprint_components.FilterByRangeBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.QueryKindBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.FilterByRangeBatch._optional,  # type: ignore[misc]
     )
-    # Kind of query: latest-at or range.
+    # If provided, only rows whose timestamp is within this range will be shown.
+    #
+    # Note: will be unset as soon as `timeline` is changed.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    latest_at_queries: blueprint_components.LatestAtQueriesBatch | None = field(
+    filter_is_not_null: blueprint_components.FilterIsNotNullBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.LatestAtQueriesBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.FilterIsNotNullBatch._optional,  # type: ignore[misc]
     )
-    # Configuration for latest-at queries.
-    #
-    # Note: configuration as saved on a per-timeline basis.
+    # If provided, only show rows which contains a logged event for the specified component.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    time_range_queries: blueprint_components.TimeRangeQueriesBatch | None = field(
+    apply_latest_at: blueprint_components.ApplyLatestAtBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.TimeRangeQueriesBatch._optional,  # type: ignore[misc]
+        converter=blueprint_components.ApplyLatestAtBatch._optional,  # type: ignore[misc]
     )
-    # Configuration for the time range queries.
+    # Should empty cells be filled with latest-at queries?
     #
-    # Note: configuration as saved on a per-timeline basis.
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    select: blueprint_components.SelectedColumnsBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=blueprint_components.SelectedColumnsBatch._optional,  # type: ignore[misc]
+    )
+    # Selected columns. If unset, all columns are selected.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -33,13 +33,15 @@ re_renderer = { workspace = true, features = [
   "import-obj",
   "import-stl",
 ] }
-re_types = { workspace = true, features = ["ecolor", "glam", "image"] }
+re_space_view.workspace = true
 re_tracing.workspace = true
+re_types = { workspace = true, features = ["ecolor", "glam", "image"] }
 re_ui.workspace = true
+re_video.workspace = true
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
-re_space_view.workspace = true
 
+arrow2.workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 bitflags.workspace = true

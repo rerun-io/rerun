@@ -65,6 +65,13 @@ impl From<ComponentPath> for Item {
     }
 }
 
+impl From<EntityPath> for Item {
+    #[inline]
+    fn from(entity_path: EntityPath) -> Self {
+        Self::InstancePath(InstancePath::from(entity_path))
+    }
+}
+
 impl From<InstancePath> for Item {
     #[inline]
     fn from(instance_path: InstancePath) -> Self {

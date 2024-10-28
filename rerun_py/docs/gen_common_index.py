@@ -303,6 +303,29 @@ SECTION_TABLE: Final[list[Section]] = [
     ################################################################################
     # Remaining sections
     Section(
+        title="Dataframe",
+        mod_path="rerun.dataframe",
+        func_list=[
+            "load_archive",
+            "load_recording",
+        ],
+        class_list=[
+            "ComponentColumnDescriptor",
+            "ComponentColumnSelector",
+            "IndexColumnDescriptor",
+            "IndexColumnSelector",
+            "Recording",
+            "RecordingView",
+            "RRDArchive",
+            "Schema",
+            "AnyColumn",
+            "AnyComponentColumn",
+            "ComponentLike",
+            "ViewContentsLike",
+        ],
+        show_tables=True,
+    ),
+    Section(
         title="Script Helpers",
         func_list=[
             "script_add_args",
@@ -360,7 +383,8 @@ def is_mentioned(thing: str) -> bool:
 
 
 # Virtual folder where we will generate the md files
-root = Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
+rerun_py_root = Path(__file__).parent.parent.resolve()
+sdk_root = Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
 common_dir = Path("common")
 
 # Make sure all archetypes are included in the index:
@@ -371,8 +395,16 @@ for archetype in all_archetypes():
 # Lots of other potentially interesting stuff we could pull out in the future
 # This is what mkdocstrings uses under the hood
 search_paths = [path for path in sys.path if path]  # eliminate empty path
-search_paths.insert(0, root.as_posix())
-rerun_pkg = griffe.load("rerun", search_paths=search_paths)
+
+# This is where maturin puts rerun_bindings
+search_paths.insert(0, rerun_py_root.as_posix())
+# This is where the rerun package is
+search_paths.insert(0, sdk_root.as_posix())
+
+loader = griffe.GriffeLoader(search_paths=search_paths)
+
+bindings_pkg = loader.load("rerun_bindings", find_stubs_package=True)
+rerun_pkg = loader.load("rerun")
 
 # Create the nav for this section
 nav = mkdocs_gen_files.Nav()
@@ -401,7 +433,7 @@ There are many different ways of sending data to the Rerun Viewer depending on w
 to achieve and whether the viewer is running in the same process as your code, in another process,
 or even as a separate web application.
 
-Checkout [SDK Operating Modes](https://www.rerun.io/docs/reference/sdk-operating-modes) for an
+Checkout [SDK Operating Modes](https://www.rerun.io/docs/reference/sdk/operating-modes) for an
 overview of what's possible and how.
 
 ## APIs
@@ -439,6 +471,12 @@ overview of what's possible and how.
                     fd.write("      filters: []\n")
                 if section.show_submodules:
                     fd.write("      show_submodules: True\n")
+            # Helpful for debugging
+            if 0:
+                with mkdocs_gen_files.open(write_path, "r") as fd:
+                    print("FOR SECTION", section.title)
+                    print(fd.read())
+                    print()
 
         # Write out a table for the section in the index_file
         if section.show_tables:
@@ -447,6 +485,9 @@ overview of what's possible and how.
                 index_file.write("Function | Description\n")
                 index_file.write("-------- | -----------\n")
                 for func_name in section.func_list:
+                    if section.mod_path != "rerun":
+                        mod_tail = section.mod_path.split(".")[1:]
+                        func_name = ".".join(mod_tail + [func_name])
                     func = rerun_pkg[func_name]
                     index_file.write(f"[`rerun.{func_name}()`][rerun.{func_name}] | {func.docstring.lines[0]}\n")
             if section.class_list:

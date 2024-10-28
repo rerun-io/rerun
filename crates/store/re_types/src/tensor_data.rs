@@ -146,7 +146,7 @@ impl TensorDataType {
         }
     }
 
-    /// What is the minimum value representable by this datatype?
+    /// What is the minimum finite value representable by this datatype?
     #[inline]
     pub fn min_value(&self) -> f64 {
         match self {
@@ -166,7 +166,7 @@ impl TensorDataType {
         }
     }
 
-    /// What is the maximum value representable by this datatype?
+    /// What is the maximum finite value representable by this datatype?
     #[inline]
     pub fn max_value(&self) -> f64 {
         match self {

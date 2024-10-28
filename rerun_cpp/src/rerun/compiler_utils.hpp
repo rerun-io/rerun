@@ -52,3 +52,10 @@
 #else
 #define RR_DISABLE_DEPRECATION_WARNING
 #endif
+
+// Disable possible null reference warning
+#if defined(__GNUC__) || defined(__clang__)
+#define RR_DISABLE_NULL_DEREF_WARNING _Pragma("GCC diagnostic ignored \"-Wnull-dereference\"")
+#else
+#define RR_DISABLE_NULL_DEREF_WARNING
+#endif

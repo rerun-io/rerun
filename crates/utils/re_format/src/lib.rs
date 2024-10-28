@@ -408,6 +408,20 @@ pub fn parse_f64(text: &str) -> Option<f64> {
     text.parse().ok()
 }
 
+/// Parses a number, ignoring whitespace (e.g. thousand separators),
+/// and treating the special minus character `MINUS` (−) as a minus sign.
+pub fn parse_i64(text: &str) -> Option<i64> {
+    let text: String = text
+        .chars()
+        // Ignore whitespace (trailing, leading, and thousands separators):
+        .filter(|c| !c.is_whitespace())
+        // Replace special minus character with normal minus (hyphen):
+        .map(|c| if c == '−' { '-' } else { c })
+        .collect();
+
+    text.parse().ok()
+}
+
 /// Pretty format a large number by using SI notation (base 10), e.g.
 ///
 /// ```

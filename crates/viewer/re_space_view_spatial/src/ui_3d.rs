@@ -50,7 +50,7 @@ pub struct View3DState {
     /// If this is a camera, it takes over the camera pose, otherwise follows the entity.
     pub tracked_entity: Option<EntityPath>,
 
-    /// Eye pose just before we started following an entity [Self::tracked_entity].
+    /// Eye pose just before we started following an entity [`Self::tracked_entity`].
     camera_before_tracked_entity: Option<Eye>,
 
     eye_interpolation: Option<EyeInterpolation>,
@@ -691,6 +691,7 @@ impl SpatialSpaceView3D {
         crate::ui::paint_loading_spinners(
             ui,
             RectTransform::from_to(ui_rect, ui_rect),
+            &eye,
             &system_output.view_systems,
         );
 
@@ -887,8 +888,14 @@ fn add_picking_ray(
     let mut line_batch = line_builder.batch("picking ray");
 
     let origin = ray.point_along(0.0);
+
     // No harm in making this ray _very_ long. (Infinite messes with things though!)
-    let fallback_ray_end = ray.point_along(scene_bbox.size().length() * 10.0);
+    //
+    // There are some degenerated cases where just taking the scene bounding box isn't enough:
+    // For instance, we don't add pinholes & depth images to the bounding box since
+    // the default size of a pinhole visualization itself is determined by the bounding box.
+    let fallback_ray_end =
+        ray.point_along((scene_bbox.size().length() * 10.0).at_least(thick_ray_length * 10.0));
     let main_ray_end = ray.point_along(thick_ray_length);
 
     line_batch

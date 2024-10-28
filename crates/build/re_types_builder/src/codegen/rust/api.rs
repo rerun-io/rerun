@@ -161,6 +161,11 @@ fn generate_object_file(
         code.push_str("#![allow(deprecated)]\n");
     }
 
+    if obj.is_enum() {
+        // Needed for PixelFormat. Should we limit this via attribute to just that?
+        code.push_str("#![allow(non_camel_case_types)]\n");
+    }
+
     code.push_str("\n\n");
 
     code.push_str("use ::re_types_core::external::arrow2;\n");
@@ -975,6 +980,7 @@ fn quote_trait_impls_for_datatype_or_component(
                 // re_tracing::profile_function!();
 
                 #![allow(clippy::wildcard_imports)]
+                #![allow(clippy::manual_is_variant_and)]
                 use arrow2::{datatypes::*, array::*};
                 use ::re_types_core::{Loggable as _, ResultExt as _};
 

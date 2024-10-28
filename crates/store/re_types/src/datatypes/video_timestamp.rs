@@ -22,8 +22,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// Specified in nanoseconds.
 /// Presentation timestamps are typically measured as time since video start.
-///
-/// ⚠️ **This type is experimental and may be removed in future versions**
 #[derive(Clone, Debug, Default, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct VideoTimestamp(
     /// Presentation timestamp value in nanoseconds.
@@ -80,6 +78,7 @@ impl ::re_types_core::Loggable for VideoTimestamp {
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
+        #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({

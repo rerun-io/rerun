@@ -433,7 +433,7 @@ mod tests {
 pub struct Duration(i64);
 
 impl Duration {
-    pub const MAX: Self = Self(std::i64::MAX);
+    pub const MAX: Self = Self(i64::MAX);
     const NANOS_PER_SEC: i64 = 1_000_000_000;
     const NANOS_PER_MILLI: i64 = 1_000_000;
     const SEC_PER_MINUTE: i64 = 60;
@@ -535,14 +535,21 @@ impl Duration {
     }
 }
 
+impl From<std::time::Duration> for Duration {
+    #[inline]
+    fn from(duration: std::time::Duration) -> Self {
+        Self::from_nanos(duration.as_nanos() as _)
+    }
+}
+
 impl std::ops::Neg for Duration {
     type Output = Self;
 
     #[inline]
     fn neg(self) -> Self {
         // Handle negation without overflow:
-        if self.0 == std::i64::MIN {
-            Self(std::i64::MAX)
+        if self.0 == i64::MIN {
+            Self(i64::MAX)
         } else {
             Self(-self.0)
         }

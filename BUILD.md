@@ -23,13 +23,20 @@ cd rerun
 
 Now install the `pixi` package manager: <https://github.com/prefix-dev/pixi?tab=readme-ov-file#installation>
 
-Make sure `cargo --version` prints `1.76.0` once you are done.
+Make sure `cargo --version` prints `1.79.0` once you are done.
 
 If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
 
 ```sh
-rustup set default-host aarch64-apple-darwin && rustup install 1.76.0
+rustup set default-host aarch64-apple-darwin && rustup install 1.79.0
 ```
+
+## Validating your environment
+You can validate your environment is set up correctly by running:
+```sh
+pixi run check-env
+```
+
 
 ## Building and running the Viewer
 
@@ -38,8 +45,6 @@ Use this command for building and running the viewer:
 ```sh
 pixi run rerun
 ```
-
-This custom cargo command is enabled by an alias located in `.cargo/config.toml`.
 
 
 ## Running the Rust examples

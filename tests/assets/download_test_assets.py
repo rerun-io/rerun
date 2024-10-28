@@ -2,7 +2,7 @@
 Downloads test assets used by tests.
 
 Usage:
-    pixi run python ./tests/assets/download_assets.py
+    pixi run python tests/assets/download_test_assets.py
 """
 
 from __future__ import annotations

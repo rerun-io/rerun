@@ -87,7 +87,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.25.0
+          pixi-version: v0.34.0
 
       - name: Update crate versions
         id: versioning
@@ -234,7 +234,7 @@ jobs:
     secrets: inherit
 
   publish-rerun_c:
-    name: "Build and Publish rerun_c"
+    name: "Build and Publish C/C++ SDKs"
     needs: [version]
     uses: ./.github/workflows/reusable_publish_rerun_c.yml
     with:
@@ -398,7 +398,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.25.0
+          pixi-version: v0.34.0
 
       - name: git config
         run: |

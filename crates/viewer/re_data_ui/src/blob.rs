@@ -103,18 +103,24 @@ pub fn blob_preview_and_save_ui(
     // Try to treat it as an image:
     let image = blob_row_id.and_then(|row_id| {
         ctx.cache
-            .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
-                c.entry(row_id, blob, media_type.as_ref().map(|mt| mt.as_str()))
-            })
+            .entry(|c: &mut re_viewer_context::ImageDecodeCache| c.entry(row_id, blob, media_type))
             .ok()
     });
     if let Some(image) = &image {
-        image_preview_ui(ctx, ui, ui_layout, query, entity_path, image);
+        let colormap = None; // TODO(andreas): Rely on default here for now.
+        image_preview_ui(ctx, ui, ui_layout, query, entity_path, image, colormap);
     }
     // Try to treat it as a video if treating it as image didn't work:
     else if let Some(blob_row_id) = blob_row_id {
         let video_result = ctx.cache.entry(|c: &mut re_viewer_context::VideoCache| {
-            c.entry(blob_row_id, blob, media_type.as_ref().map(|mt| mt.as_str()))
+            let debug_name = entity_path.to_string();
+            c.entry(
+                debug_name,
+                blob_row_id,
+                blob,
+                media_type,
+                ctx.app_options.video_decoder_hw_acceleration,
+            )
         });
 
         show_video_blob_info(
@@ -123,6 +129,7 @@ pub fn blob_preview_and_save_ui(
             ui_layout,
             &video_result,
             video_timestamp,
+            blob,
         );
     }
 
@@ -153,12 +160,11 @@ pub fn blob_preview_and_save_ui(
                 let image_stats = ctx
                     .cache
                     .entry(|c: &mut re_viewer_context::ImageStatsCache| c.entry(&image));
-                if let Ok(data_range) = re_viewer_context::gpu_bridge::image_data_range_heuristic(
+                let data_range = re_viewer_context::gpu_bridge::image_data_range_heuristic(
                     &image_stats,
                     &image.format,
-                ) {
-                    crate::image::copy_image_button_ui(ui, &image, data_range);
-                }
+                );
+                crate::image::copy_image_button_ui(ui, &image, data_range);
             }
         });
     }
@@ -170,6 +176,7 @@ fn show_video_blob_info(
     ui_layout: UiLayout,
     video_result: &Result<re_renderer::video::Video, VideoLoadError>,
     video_timestamp: Option<VideoTimestamp>,
+    blob: &re_types::datatypes::Blob,
 ) {
     #[allow(clippy::match_same_arms)]
     match video_result {
@@ -188,22 +195,39 @@ fn show_video_blob_info(
                         data.height()
                     )),
                 );
-                ui.list_item_flat_noninteractive(PropertyContent::new("Duration").value_text(
-                    format!(
-                        "{}",
-                        re_log_types::Duration::from_millis(data.duration_ms() as i64)
-                    ),
-                ));
+                if let Some(bit_depth) = data.config.stsd.contents.bit_depth() {
+                    let mut bit_depth = bit_depth.to_string();
+                    if data.is_monochrome() == Some(true) {
+                        bit_depth = format!("{bit_depth} (monochrome)");
+                    }
+
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("Bit depth").value_text(bit_depth),
+                    );
+                }
+                if let Some(subsampling_mode) = data.subsampling_mode() {
+                    // Don't show subsampling mode for monochrome, doesn't make sense usually.
+                    if data.is_monochrome() != Some(true) {
+                        ui.list_item_flat_noninteractive(
+                            PropertyContent::new("Subsampling mode")
+                                .value_text(subsampling_mode.to_string()),
+                        );
+                    }
+                }
+                ui.list_item_flat_noninteractive(
+                    PropertyContent::new("Duration")
+                        .value_text(format!("{}", re_log_types::Duration::from(data.duration()))),
+                );
                 // Some people may think that num_frames / duration = fps, but that's not true, videos may have variable frame rate.
                 // At the same time, we don't want to overload users with video codec/container specific stuff that they have to understand,
                 // and for all intents and purposes one sample = one frame.
                 // So the compromise is that we truthfully show the number of *samples* here and don't talk about frames.
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Sample count")
-                        .value_text(format!("{}", data.num_samples())),
+                        .value_text(re_format::format_uint(data.num_samples())),
                 );
                 ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Codec").value_text(data.codec()),
+                    PropertyContent::new("Codec").value_text(data.human_readable_codec_string()),
                 );
 
                 if ui_layout != UiLayout::Tooltip {
@@ -233,29 +257,25 @@ fn show_video_blob_info(
                         // but the point here is not to have a nice viewer,
                         // but to show the user what they have selected
                         ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
-                        ui.input(|i| i.time) % video.data().duration_sec()
+                        ui.input(|i| i.time) % video.data().duration().as_secs_f64()
                     };
 
                     let decode_stream_id = re_renderer::video::VideoDecodingStreamId(
                         ui.id().with("video_player").value(),
                     );
 
-                    match video.frame_at(render_ctx, decode_stream_id, timestamp_in_seconds) {
-                        Ok(frame) => {
-                            let is_pending;
-                            let texture = match frame {
-                                VideoFrameTexture::Ready(texture) => {
-                                    is_pending = false;
-                                    texture
-                                }
-
-                                VideoFrameTexture::Pending(placeholder) => {
-                                    is_pending = true;
-                                    ui.ctx().request_repaint();
-                                    placeholder
-                                }
-                            };
-
+                    match video.frame_at(
+                        render_ctx,
+                        decode_stream_id,
+                        timestamp_in_seconds,
+                        blob.as_slice(),
+                    ) {
+                        Ok(VideoFrameTexture {
+                            texture,
+                            time_range,
+                            is_pending,
+                            show_spinner,
+                        }) => {
                             let response = crate::image::texture_preview_ui(
                                 render_ctx,
                                 ui,
@@ -265,6 +285,10 @@ fn show_video_blob_info(
                             );
 
                             if is_pending {
+                                ui.ctx().request_repaint(); // Keep polling for an up-to-date texture
+                            }
+
+                            if show_spinner {
                                 // Shrink slightly:
                                 let smaller_rect = egui::Rect::from_center_size(
                                     response.rect.center(),
@@ -272,6 +296,23 @@ fn show_video_blob_info(
                                 );
                                 egui::Spinner::new().paint_at(ui, smaller_rect);
                             }
+
+                            response.on_hover_ui(|ui| {
+                                // Prevent `Area` auto-sizing from shrinking tooltips with dynamic content.
+                                // See https://github.com/emilk/egui/issues/5167
+                                ui.set_max_width(ui.spacing().tooltip_width);
+
+                                let timescale = video.data().timescale;
+                                ui.label(format!(
+                                    "Frame at {} - {}",
+                                    re_format::format_timestamp_seconds(
+                                        time_range.start.into_secs(timescale),
+                                    ),
+                                    re_format::format_timestamp_seconds(
+                                        time_range.end.into_secs(timescale),
+                                    ),
+                                ));
+                            });
                         }
 
                         Err(err) => {
@@ -281,15 +322,13 @@ fn show_video_blob_info(
                 }
             });
         }
-        Err(VideoLoadError::MediaTypeIsNotAVideo { .. }) => {
+        Err(VideoLoadError::MimeTypeIsNotAVideo { .. }) => {
             // Don't show an error if this wasn't a video in the first place.
             // Unfortunately we can't easily detect here if the Blob was _supposed_ to be a video, for that we'd need tagged components!
             // (User may have confidently logged a non-video format as Video, we should tell them that!)
         }
-        Err(VideoLoadError::UnrecognizedVideoFormat {
-            provided_media_type: None,
-        }) => {
-            // If we couldn't detect the media type and the loader didn't know the format,
+        Err(VideoLoadError::UnrecognizedMimeType) => {
+            // If we couldn't detect the media type,
             // we can't show an error for unrecognized formats since maybe this wasn't a video to begin with.
             // See also `MediaTypeIsNotAVideo` case above.
         }

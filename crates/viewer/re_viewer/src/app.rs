@@ -73,6 +73,12 @@ pub struct StartupOptions {
     /// Forces wgpu backend to use the specified graphics API, e.g. `webgl` or `webgpu`.
     pub force_wgpu_backend: Option<String>,
 
+    /// Overwrites hardware acceleration option for video decoding.
+    ///
+    /// By default uses the last provided setting, which is `auto` if never configured.
+    /// This also can be changed in the viewer's option menu.
+    pub video_decoder_hw_acceleration: Option<re_renderer::video::DecodeHardwareAcceleration>,
+
     /// Fullscreen is handled by JS on web.
     ///
     /// This holds some callbacks which we use to communicate
@@ -120,6 +126,7 @@ impl Default for StartupOptions {
 
             expect_data_soon: None,
             force_wgpu_backend: None,
+            video_decoder_hw_acceleration: None,
 
             #[cfg(target_arch = "wasm32")]
             fullscreen_options: Default::default(),
@@ -138,6 +145,13 @@ impl Default for StartupOptions {
 const MIN_ZOOM_FACTOR: f32 = 0.2;
 #[cfg(not(target_arch = "wasm32"))]
 const MAX_ZOOM_FACTOR: f32 = 5.0;
+
+#[cfg(target_arch = "wasm32")]
+struct PendingFilePromise {
+    recommended_application_id: Option<ApplicationId>,
+    recommended_recording_id: Option<re_log_types::StoreId>,
+    promise: poll_promise::Promise<Vec<re_data_source::FileContents>>,
+}
 
 /// The Rerun Viewer as an [`eframe`] application.
 pub struct App {
@@ -162,7 +176,7 @@ pub struct App {
     rx: ReceiveSet<LogMsg>,
 
     #[cfg(target_arch = "wasm32")]
-    open_files_promise: Option<poll_promise::Promise<Vec<re_data_source::FileContents>>>,
+    open_files_promise: Option<PendingFilePromise>,
 
     /// What is serialized
     pub(crate) state: AppState,
@@ -224,7 +238,7 @@ impl App {
             );
         }
 
-        let state: AppState = if startup_options.persist_state {
+        let mut state: AppState = if startup_options.persist_state {
             storage
                 .and_then(|storage| {
                     // This re-implements: `eframe::get_value` so we can customize the warning message.
@@ -245,13 +259,16 @@ impl App {
             AppState::default()
         };
 
+        if let Some(video_decoder_hw_acceleration) = startup_options.video_decoder_hw_acceleration {
+            state.app_options.video_decoder_hw_acceleration = video_decoder_hw_acceleration;
+        }
+
         let mut space_view_class_registry = SpaceViewClassRegistry::default();
-        if let Err(err) = populate_space_view_class_registry_with_builtin(
-            &mut space_view_class_registry,
-            state.app_options(),
-        ) {
+        if let Err(err) =
+            populate_space_view_class_registry_with_builtin(&mut space_view_class_registry)
+        {
             re_log::error!(
-                "Failed to populate space view type registry with built-in space views: {}",
+                "Failed to populate the view type registry with built-in space views: {}",
                 err
             );
         }
@@ -278,15 +295,12 @@ impl App {
 
         let panel_state_overrides = startup_options.panel_state_overrides;
 
-        let reflection = match crate::reflection::generate_reflection() {
-            Ok(reflection) => reflection,
-            Err(err) => {
-                re_log::error!(
-                    "Failed to create list of serialized default values for components: {err}"
-                );
-                Default::default()
-            }
-        };
+        let reflection = crate::reflection::generate_reflection().unwrap_or_else(|err| {
+            re_log::error!(
+                "Failed to create list of serialized default values for components: {err}"
+            );
+            Default::default()
+        });
 
         Self {
             build_info,
@@ -526,25 +540,15 @@ impl App {
             SystemCommand::EnableInspectBlueprintTimeline(show) => {
                 self.app_options_mut().inspect_blueprint_timeline = show;
             }
-            SystemCommand::EnableExperimentalDataframeSpaceView(enabled) => {
-                let result = if enabled {
-                    self.space_view_class_registry
-                        .add_class::<re_space_view_dataframe::DataframeSpaceView>()
-                } else {
-                    self.space_view_class_registry
-                        .remove_class::<re_space_view_dataframe::DataframeSpaceView>()
-                };
-
-                if let Err(err) = result {
-                    re_log::warn_once!(
-                        "Failed to {} experimental dataframe space view: {err}",
-                        if enabled { "enable" } else { "disable" }
-                    );
-                }
-            }
 
             SystemCommand::SetSelection(item) => {
                 self.state.selection_state.set_selection(item);
+            }
+
+            SystemCommand::SetActiveTimeline { rec_id, timeline } => {
+                if let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) {
+                    rec_cfg.time_ctrl.write().set_timeline(timeline);
+                }
             }
 
             SystemCommand::SetFocus(item) => {
@@ -567,6 +571,18 @@ impl App {
         store_context: Option<&StoreContext<'_>>,
         cmd: UICommand,
     ) {
+        let active_application_id = store_context
+            .and_then(|ctx| {
+                ctx.hub
+                    .active_app()
+                    // Don't redirect data to the welcome screen.
+                    .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
+            })
+            .cloned();
+        let active_recording_id = store_context
+            .and_then(|ctx| ctx.hub.active_recording_id())
+            .cloned();
+
         match cmd {
             UICommand::SaveRecording => {
                 if let Err(err) = save_recording(self, store_context, None) {
@@ -594,7 +610,10 @@ impl App {
                 for file_path in open_file_dialog_native() {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
-                            FileSource::FileDialog,
+                            FileSource::FileDialog {
+                                recommended_application_id: None,
+                                recommended_recording_id: None,
+                            },
                             file_path,
                         )));
                 }
@@ -602,12 +621,57 @@ impl App {
             #[cfg(target_arch = "wasm32")]
             UICommand::Open => {
                 let egui_ctx = egui_ctx.clone();
-                self.open_files_promise = Some(poll_promise::Promise::spawn_local(async move {
+
+                // Open: we want to try and load into a new dedicated recording.
+                let recommended_application_id = None;
+                let recommended_recording_id = None;
+                let promise = poll_promise::Promise::spawn_local(async move {
                     let file = async_open_rrd_dialog().await;
                     egui_ctx.request_repaint(); // Wake ui thread
                     file
-                }));
+                });
+
+                self.open_files_promise = Some(PendingFilePromise {
+                    recommended_application_id,
+                    recommended_recording_id,
+                    promise,
+                });
             }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::Import => {
+                for file_path in open_file_dialog_native() {
+                    self.command_sender
+                        .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
+                            FileSource::FileDialog {
+                                recommended_application_id: active_application_id.clone(),
+                                recommended_recording_id: active_recording_id.clone(),
+                            },
+                            file_path,
+                        )));
+                }
+            }
+            #[cfg(target_arch = "wasm32")]
+            UICommand::Import => {
+                let egui_ctx = egui_ctx.clone();
+
+                // Import: we want to try and load into the current recording.
+                let recommended_application_id = active_application_id;
+                let recommended_recording_id = active_recording_id;
+
+                let promise = poll_promise::Promise::spawn_local(async move {
+                    let file = async_open_rrd_dialog().await;
+                    egui_ctx.request_repaint(); // Wake ui thread
+                    file
+                });
+
+                self.open_files_promise = Some(PendingFilePromise {
+                    recommended_application_id,
+                    recommended_recording_id,
+                    promise,
+                });
+            }
+
             UICommand::CloseCurrentRecording => {
                 let cur_rec = store_context.map(|ctx| ctx.recording.store_id());
                 if let Some(cur_rec) = cur_rec {
@@ -1289,32 +1353,60 @@ impl App {
             .and_then(|store_hub| store_hub.active_recording())
     }
 
-    fn handle_dropping_files(&mut self, egui_ctx: &egui::Context) {
+    // NOTE: Relying on `self` is dangerous, as this is called during a time where some internal
+    // fields may have been temporarily `take()`n out. Keep this a static method.
+    fn handle_dropping_files(
+        egui_ctx: &egui::Context,
+        store_ctx: Option<&StoreContext<'_>>,
+        command_sender: &CommandSender,
+    ) {
         preview_files_being_dropped(egui_ctx);
 
         let dropped_files = egui_ctx.input_mut(|i| std::mem::take(&mut i.raw.dropped_files));
 
+        if dropped_files.is_empty() {
+            return;
+        }
+
+        let active_application_id = store_ctx
+            .and_then(|ctx| {
+                ctx.hub
+                    .active_app()
+                    // Don't redirect data to the welcome screen.
+                    .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
+            })
+            .cloned();
+        let active_recording_id = store_ctx
+            .and_then(|ctx| ctx.hub.active_recording_id())
+            .cloned();
+
         for file in dropped_files {
             if let Some(bytes) = file.bytes {
                 // This is what we get on Web.
-                self.command_sender
-                    .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
-                        FileSource::DragAndDrop,
+                command_sender.send_system(SystemCommand::LoadDataSource(
+                    DataSource::FileContents(
+                        FileSource::DragAndDrop {
+                            recommended_application_id: active_application_id.clone(),
+                            recommended_recording_id: active_recording_id.clone(),
+                        },
                         FileContents {
                             name: file.name.clone(),
                             bytes: bytes.clone(),
                         },
-                    )));
+                    ),
+                ));
                 continue;
             }
 
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = file.path {
-                self.command_sender
-                    .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
-                        FileSource::DragAndDrop,
-                        path,
-                    )));
+                command_sender.send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
+                    FileSource::DragAndDrop {
+                        recommended_application_id: active_application_id.clone(),
+                        recommended_recording_id: active_recording_id.clone(),
+                    },
+                    path,
+                )));
             }
         }
     }
@@ -1558,12 +1650,20 @@ impl eframe::App for App {
         }
 
         #[cfg(target_arch = "wasm32")]
-        if let Some(promise) = &self.open_files_promise {
+        if let Some(PendingFilePromise {
+            recommended_application_id,
+            recommended_recording_id,
+            promise,
+        }) = &self.open_files_promise
+        {
             if let Some(files) = promise.ready() {
                 for file in files {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
-                            FileSource::FileDialog,
+                            FileSource::FileDialog {
+                                recommended_application_id: recommended_application_id.clone(),
+                                recommended_recording_id: recommended_recording_id.clone(),
+                            },
                             file.clone(),
                         )));
                 }
@@ -1677,7 +1777,7 @@ impl eframe::App for App {
             self.command_sender.send_ui(cmd);
         }
 
-        self.handle_dropping_files(egui_ctx);
+        Self::handle_dropping_files(egui_ctx, store_context.as_ref(), &self.command_sender);
 
         // Run pending commands last (so we don't have to wait for a repaint before they are run):
         self.run_pending_ui_commands(egui_ctx, &app_blueprint, store_context.as_ref());
@@ -1713,7 +1813,6 @@ impl eframe::App for App {
 /// Add built-in space views to the registry.
 fn populate_space_view_class_registry_with_builtin(
     space_view_class_registry: &mut SpaceViewClassRegistry,
-    app_options: &AppOptions,
 ) -> Result<(), SpaceViewClassRegistryError> {
     re_tracing::profile_function!();
     space_view_class_registry.add_class::<re_space_view_bar_chart::BarChartSpaceView>()?;
@@ -1723,10 +1822,7 @@ fn populate_space_view_class_registry_with_builtin(
     space_view_class_registry.add_class::<re_space_view_text_document::TextDocumentSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_text_log::TextSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_time_series::TimeSeriesSpaceView>()?;
-
-    if app_options.experimental_dataframe_space_view {
-        space_view_class_registry.add_class::<re_space_view_dataframe::DataframeSpaceView>()?;
-    }
+    space_view_class_registry.add_class::<re_space_view_dataframe::DataframeSpaceView>()?;
 
     Ok(())
 }

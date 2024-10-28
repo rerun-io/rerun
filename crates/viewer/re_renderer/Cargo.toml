@@ -52,7 +52,7 @@ re_error.workspace = true
 re_log.workspace = true
 re_math.workspace = true
 re_tracing.workspace = true
-re_video.workspace = true
+re_video = { workspace = true, default-features = true }
 
 ahash.workspace = true
 anyhow.workspace = true
@@ -65,7 +65,7 @@ ecolor = { workspace = true, features = ["bytemuck"] }
 enumset.workspace = true
 glam = { workspace = true, features = ["bytemuck"] }
 half = { workspace = true, features = ["bytemuck"] }
-itertools = { workspace = true }
+itertools.workspace = true
 never.workspace = true
 ordered-float.workspace = true
 parking_lot.workspace = true
@@ -77,6 +77,7 @@ smallvec.workspace = true
 static_assertions.workspace = true
 thiserror.workspace = true
 type-map.workspace = true
+web-time.workspace = true
 wgpu.workspace = true
 wgpu-core.workspace = true                                           # Needed for error handling when wgpu-core implemented backend is used.
 wgpu-types.workspace = true
@@ -100,12 +101,12 @@ getrandom = { workspace = true, features = [
 ] } # getrandom needs the `js` feature to be enabled. It is dragged in indirectly.
 js-sys.workspace = true
 wasm-bindgen-futures.workspace = true
-web-time.workspace = true
 web-sys = { workspace = true, features = [
   "DomException",
   "EncodedVideoChunk",
   "EncodedVideoChunkInit",
   "EncodedVideoChunkType",
+  "HardwareAcceleration",
   "VideoDecoder",
   "VideoDecoderConfig",
   "VideoDecoderInit",

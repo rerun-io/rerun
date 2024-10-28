@@ -19,7 +19,7 @@ mod gpu_data {
     use crate::wgpu_buffer_types;
 
     /// Keep in sync with `composite.wgsl`
-    #[repr(C, align(256))]
+    #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct CompositeUniformBuffer {
         pub outline_color_layer_a: wgpu_buffer_types::Vec4,

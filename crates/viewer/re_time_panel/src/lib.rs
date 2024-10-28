@@ -22,7 +22,7 @@ use re_data_ui::{item_ui::guess_instance_path_icon, sorted_component_list_for_ui
 use re_entity_db::{EntityTree, InstancePath};
 use re_log_types::{
     external::re_types_core::ComponentName, ComponentPath, EntityPath, EntityPathPart,
-    ResolvedTimeRange, TimeInt, TimeReal,
+    ResolvedTimeRange, TimeInt, TimeReal, TimeType,
 };
 use re_types::blueprint::components::PanelState;
 use re_ui::{list_item, ContextExt as _, DesignTokens, UiExt as _};
@@ -1088,10 +1088,33 @@ fn help_button(ui: &mut egui::Ui) {
     );
 }
 
-fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, time_ctrl: &TimeControl) {
+fn current_time_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui, time_ctrl: &mut TimeControl) {
     if let Some(time_int) = time_ctrl.time_int() {
         let time_type = time_ctrl.time_type();
-        ui.monospace(time_type.format(time_int, ctx.app_options.time_zone));
+        match time_type {
+            re_log_types::TimeType::Time => {
+                // TODO(#7653): parse time stamps
+                ui.monospace(time_type.format(time_int, ctx.app_options.time_zone));
+            }
+            re_log_types::TimeType::Sequence => {
+                // NOTE: egui uses `f64` for all numbers internally, so we get precision problems if the integer gets too big.
+                if time_int.as_f64() as i64 == time_int.as_i64() {
+                    let mut int = time_int.as_i64();
+                    let drag_value = egui::DragValue::new(&mut int)
+                        .custom_formatter(|x, _range| {
+                            TimeType::format_sequence(TimeInt::new_temporal(x as i64))
+                        })
+                        .custom_parser(|s| TimeType::parse_sequence(s).map(TimeInt::as_f64));
+                    let response = ui.add(drag_value);
+                    if response.changed() {
+                        time_ctrl.set_time(TimeInt::new_temporal(int));
+                    }
+                } else {
+                    // Avoid the precision problems by just displaying the number without the ability to change it (here).
+                    ui.monospace(time_type.format(time_int, ctx.app_options.time_zone));
+                }
+            }
+        }
     }
 }
 

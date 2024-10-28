@@ -51,6 +51,7 @@ from .containers import (
 )
 from .views import (
     BarChartView as BarChartView,
+    DataframeView as DataframeView,
     Spatial2DView as Spatial2DView,
     Spatial3DView as Spatial3DView,
     TensorView as TensorView,

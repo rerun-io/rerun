@@ -20,10 +20,7 @@ all-features = true
 
 [dependencies]
 re_chunk_store.workspace = true
-re_data_ui.workspace = true
-re_entity_db.workspace = true
 re_format.workspace = true
-re_format_arrow.workspace = true
 re_log_types.workspace = true
 re_types.workspace = true
 re_ui.workspace = true

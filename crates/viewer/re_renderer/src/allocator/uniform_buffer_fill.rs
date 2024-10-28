@@ -2,27 +2,20 @@ use re_log::ResultExt;
 
 use crate::{wgpu_resources::BindGroupEntry, DebugLabel, RenderContext};
 
-struct UniformBufferAlignmentCheck<T> {
+struct UniformBufferSizeCheck<T> {
     pub _marker: std::marker::PhantomData<T>,
 }
 
-impl<T> UniformBufferAlignmentCheck<T> {
+impl<T> UniformBufferSizeCheck<T> {
     /// wgpu requires uniform buffers to be aligned to up to 256 bytes.
     ///
-    /// This is a property of device limits, see [`WebGPU` specification](https://www.w3.org/TR/webgpu/#limits).
+    /// By ensuring that all uniform buffers have a size that is a multiple of 256 bytes,
+    /// we are guaranteed that bulk copies of multiple uniform buffers in a cpu-write-gpu-read buffer
+    /// can be copied to (a 256 byte aligned) gpu-readable buffer in a single copy operation.
+    ///
+    /// This requirement is a property of device limits, see [`WebGPU` specification](https://www.w3.org/TR/webgpu/#limits).
     /// Implementations are allowed to advertise a lower alignment requirement, however
-    /// 256 bytes is fairly common even in modern hardware and is even hardcoded for DX12.
-    ///
-    /// Technically this is only relevant when sub-allocating a buffer, as the wgpu backend
-    /// is internally forced to make sure that the start of any [`wgpu::Buffer`] with [`wgpu::BufferUsages::UNIFORM`] usage
-    /// has this alignment. Practically, ensuring this alignment everywhere
-    ///
-    /// Alternatively to enforcing this alignment on the type we could:
-    /// * only align on the gpu buffer
-    ///     -> causes more fine grained `copy_buffer_to_buffer` calls on the gpu encoder
-    /// * only align on the [`CpuWriteGpuReadBuffer`][crate::allocator::CpuWriteGpuReadBuffer] & gpu buffer
-    ///     -> causes more complicated offset computation on [`CpuWriteGpuReadBuffer`][crate::allocator::CpuWriteGpuReadBuffer] as well as either
-    ///         holes at padding (-> undefined values & slow for write combined!) or complicated nulling of padding
+    /// 256 bytes is fairly common even in modern hardware and is hardcoded to this value for DX12.
     ///
     /// About the [`bytemuck::Pod`] requirement (dragged in by [`CpuWriteGpuReadBuffer`][crate::allocator::CpuWriteGpuReadBuffer]):
     /// [`bytemuck::Pod`] forces us to be explicit about padding as it doesn't allow invisible padding bytes!
@@ -30,8 +23,9 @@ impl<T> UniformBufferAlignmentCheck<T> {
     /// But this leads to more unsafe code, harder to avoid holes in write combined memory access
     /// and potentially undefined values in the padding bytes on GPU.
     const CHECK: () = assert!(
-        std::mem::align_of::<T>() >= 256 && std::mem::size_of::<T>() > 0,
-        "Uniform buffers need to be bigger than 0 bytes and aligned to 256 bytes. Use `#[repr(C, align(256))]`"
+        std::mem::size_of::<T>() % 256 == 0 && std::mem::size_of::<T>() > 0,
+        "Uniform buffers need to have a size that is a multiple of 256 bytes.
+ Use types like `F32RowPadded` or `PaddingRow` to pad out as needed."
     );
 }
 
@@ -48,7 +42,7 @@ pub fn create_and_fill_uniform_buffer_batch<T: bytemuck::Pod + Send + Sync>(
     re_tracing::profile_function!(label.get().unwrap_or_default());
 
     #[allow(clippy::let_unit_value)]
-    let _ = UniformBufferAlignmentCheck::<T>::CHECK;
+    let _ = UniformBufferSizeCheck::<T>::CHECK;
 
     if content.len() == 0 {
         return vec![];

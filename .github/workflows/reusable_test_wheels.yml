@@ -147,7 +147,7 @@ jobs:
 
       - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.25.0
+          pixi-version: v0.34.0
           # Only has the deps for round-trips. Not all examples.
           environments: wheel-test-min
 
@@ -212,8 +212,18 @@ jobs:
         # This used to cause issues on Windows during the setup of the pixi environment when running from inside `compare_snippet_output.py`.
         run: pixi run -e wheel-test-min cpp-build-snippets
 
+      - name: Download test assets
+        if: ${{ !inputs.FAST }}
+        # Separated out of compare_snippet_output.py run so we control the pixi environment.
+        # This used to cause issues on Windows during the setup of the pixi environment when running from inside `compare_snippet_output.py`.
+        run: pixi run -e wheel-test-min python ./tests/assets/download_test_assets.py
+
       - name: Run docs/snippets/compare_snippet_output.py
         if: ${{ !inputs.FAST }}
         # explicit target because otherwise cargo loses the target cache… even though this is the target anyhow…
         # --no-py-build because rerun-sdk is already built and installed
-        run: pixi run -e wheel-test-min RUST_LOG=debug python docs/snippets/compare_snippet_output.py --target ${{ needs.set-config.outputs.TARGET }} --no-py-build --no-cpp-build
+        # --no-asset-download because we already downloaded the assets
+        run: pixi run -e wheel-test-min RUST_LOG=debug python docs/snippets/compare_snippet_output.py --target ${{ needs.set-config.outputs.TARGET }} --no-py-build --no-cpp-build --no-asset-download
+
+      - name: Check the python library signatures
+        run: pixi run -e wheel-test-min python scripts/ci/python_check_signatures.py

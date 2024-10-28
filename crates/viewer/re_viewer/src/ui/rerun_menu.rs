@@ -4,7 +4,7 @@ use egui::NumExt as _;
 
 use re_log_types::TimeZone;
 use re_ui::{UICommand, UiExt as _};
-use re_viewer_context::{StoreContext, SystemCommand, SystemCommandSender};
+use re_viewer_context::StoreContext;
 
 use crate::App;
 
@@ -37,6 +37,7 @@ impl App {
             ui.add_space(SPACING);
 
             UICommand::Open.menu_button_ui(ui, &self.command_sender);
+            UICommand::Import.menu_button_ui(ui, &self.command_sender);
 
             self.save_buttons_ui(ui, _store_context);
 
@@ -114,6 +115,7 @@ impl App {
     fn about_rerun_ui(&self, frame: &eframe::Frame, ui: &mut egui::Ui) {
         let re_build_info::BuildInfo {
             crate_name,
+            features,
             version,
             rustc_version,
             llvm_version,
@@ -137,6 +139,12 @@ impl App {
             "{crate_name} {version} {git_hash_suffix}\n\
             {target_triple}"
         );
+
+        // It is really the features of `rerun-cli` (the `rerun` binary) that are interesting.
+        // For the web-viewer we get `crate_name: "re_viewer"` here, which is much less interesting.
+        if crate_name == "rerun-cli" && !features.is_empty() {
+            label += &format!("\n{crate_name} features: {features}");
+        }
 
         if !rustc_version.is_empty() {
             label += &format!("\nrustc {rustc_version}");
@@ -295,7 +303,7 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
 }
 
 fn options_menu_ui(
-    command_sender: &re_viewer_context::CommandSender,
+    _command_sender: &re_viewer_context::CommandSender,
     ui: &mut egui::Ui,
     frame: &eframe::Frame,
     app_options: &mut re_viewer_context::AppOptions,
@@ -325,9 +333,40 @@ fn options_menu_ui(
     );
 
     {
+        use re_renderer::video::DecodeHardwareAcceleration;
+
+        let hardware_acceleration = &mut app_options.video_decoder_hw_acceleration;
+
+        ui.horizontal(|ui| {
+            ui.label("Video Decoder:");
+            egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
+                .selected_text(hardware_acceleration.to_string())
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(
+                        hardware_acceleration,
+                        DecodeHardwareAcceleration::Auto,
+                        DecodeHardwareAcceleration::Auto.to_string(),
+                    ) | ui.selectable_value(
+                        hardware_acceleration,
+                        DecodeHardwareAcceleration::PreferSoftware,
+                        DecodeHardwareAcceleration::PreferSoftware.to_string(),
+                    ) | ui.selectable_value(
+                        hardware_acceleration,
+                        DecodeHardwareAcceleration::PreferHardware,
+                        DecodeHardwareAcceleration::PreferHardware.to_string(),
+                    )
+                });
+            // Note that the setting is part of the video's cache key, so if it changes the cache entries outdate automatically.
+        });
+    }
+
+    // Currently, the wasm target does not have any experimental features. Remove this conditional
+    // compilation directive if/when this changes.
+    #[cfg(not(target_arch = "wasm32"))]
+    {
         ui.add_space(SPACING);
         ui.label("Experimental features:");
-        experimental_feature_ui(command_sender, ui, app_options);
+        experimental_feature_ui(ui, app_options);
     }
 
     if let Some(_backend) = frame
@@ -340,42 +379,22 @@ fn options_menu_ui(
         {
             ui.add_space(SPACING);
             if _backend == wgpu::Backend::BrowserWebGpu {
-                UICommand::RestartWithWebGl.menu_button_ui(ui, command_sender);
+                UICommand::RestartWithWebGl.menu_button_ui(ui, _command_sender);
             } else {
-                UICommand::RestartWithWebGpu.menu_button_ui(ui, command_sender);
+                UICommand::RestartWithWebGpu.menu_button_ui(ui, _command_sender);
             }
         }
     }
 }
 
-fn experimental_feature_ui(
-    command_sender: &re_viewer_context::CommandSender,
-    ui: &mut egui::Ui,
-    app_options: &mut re_viewer_context::AppOptions,
-) {
-    #[cfg(not(target_arch = "wasm32"))]
+// IMPORTANT: if/when adding wasm-compatible experimental features, move this conditional
+// compilation directive to `space_view_screenshot` and remove the one above the call size of this
+// function!!
+#[cfg(not(target_arch = "wasm32"))]
+fn experimental_feature_ui(ui: &mut egui::Ui, app_options: &mut re_viewer_context::AppOptions) {
     ui
         .re_checkbox(&mut app_options.experimental_space_view_screenshots, "Space view screenshots")
         .on_hover_text("Allow taking screenshots of 2D and 3D space views via their context menu. Does not contain labels.");
-
-    if ui
-        .re_checkbox(
-            &mut app_options.experimental_dataframe_space_view,
-            "Dataframe space view",
-        )
-        .on_hover_text("Enable the experimental dataframe space view.")
-        .clicked()
-    {
-        command_sender.send_system(SystemCommand::EnableExperimentalDataframeSpaceView(
-            app_options.experimental_dataframe_space_view,
-        ));
-    }
-
-    ui.re_checkbox(
-        &mut app_options.plot_query_clamping,
-        "Plots: query clamping",
-    )
-    .on_hover_text("Toggle query clamping for the plot visualizers. This is enabled by default and is only made toggable to facilitate potential bug hunts and performance comparisons.");
 }
 
 #[cfg(debug_assertions)]

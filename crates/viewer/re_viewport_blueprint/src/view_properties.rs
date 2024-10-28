@@ -175,6 +175,11 @@ impl ViewProperty {
         ctx.save_blueprint_component(&self.blueprint_store_path, components);
     }
 
+    /// Clears a blueprint component.
+    pub fn clear_blueprint_component<C: re_types::Component>(&self, ctx: &ViewerContext<'_>) {
+        ctx.clear_blueprint_component_by_name(&self.blueprint_store_path, C::name());
+    }
+
     /// Resets a blueprint component to the value it had in the default blueprint.
     pub fn reset_blueprint_component<C: re_types::Component>(&self, ctx: &ViewerContext<'_>) {
         ctx.reset_blueprint_component_by_name(&self.blueprint_store_path, C::name());

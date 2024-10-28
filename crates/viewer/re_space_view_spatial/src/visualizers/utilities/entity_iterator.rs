@@ -1,13 +1,10 @@
 use itertools::Either;
 
-use re_chunk_store::{LatestAtQuery, RangeQuery};
 use re_log_types::{TimeInt, Timeline};
-use re_space_view::{
-    latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data, HybridResults,
-};
+use re_space_view::{DataResultQuery as _, HybridResults};
 use re_types::Archetype;
 use re_viewer_context::{
-    IdentifiedViewSystem, QueryContext, QueryRange, SpaceViewSystemExecutionError, ViewContext,
+    IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError, ViewContext,
     ViewContextCollection, ViewQuery,
 };
 
@@ -90,47 +87,6 @@ fn test_clamped_vec() {
 
 // --- Chunk-based APIs ---
 
-pub fn query_archetype_with_history<'a, A: Archetype>(
-    ctx: &'a ViewContext<'a>,
-    timeline: &Timeline,
-    timeline_cursor: TimeInt,
-    query_range: &QueryRange,
-    data_result: &'a re_viewer_context::DataResult,
-) -> HybridResults<'a> {
-    match query_range {
-        QueryRange::TimeRange(time_range) => {
-            let range_query = RangeQuery::new(
-                *timeline,
-                re_log_types::ResolvedTimeRange::from_relative_time_range(
-                    time_range,
-                    timeline_cursor,
-                ),
-            );
-            let results = range_with_blueprint_resolved_data(
-                ctx,
-                None,
-                &range_query,
-                data_result,
-                A::all_components().iter().copied(),
-            );
-            (range_query, results).into()
-        }
-        QueryRange::LatestAt => {
-            let latest_query = LatestAtQuery::new(*timeline, timeline_cursor);
-            let query_shadowed_defaults = false;
-            let results = latest_at_with_blueprint_resolved_data(
-                ctx,
-                None,
-                &latest_query,
-                data_result,
-                A::all_components().iter().copied(),
-                query_shadowed_defaults,
-            );
-            (latest_query, results).into()
-        }
-    }
-}
-
 /// Iterates through all entity views for a given archetype.
 ///
 /// The callback passed in gets passed along a [`SpatialSceneEntityContext`] which contains
@@ -178,13 +134,7 @@ where
             space_view_class_identifier: view_ctx.space_view_class_identifier(),
         };
 
-        let results = query_archetype_with_history::<A>(
-            ctx,
-            &query.timeline,
-            query.latest_at,
-            data_result.query_range(),
-            data_result,
-        );
+        let results = data_result.query_archetype_with_history::<A>(ctx, query);
 
         let mut query_ctx = ctx.query_context(data_result, &latest_at);
         query_ctx.archetype_name = Some(A::name());

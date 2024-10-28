@@ -5,6 +5,26 @@
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
 [opt_out.run]
+"concepts/static/log_static" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/static/log_temporal_10x" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/static/send_static" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/static/log_static_10x" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
 "concepts/viscomp-base" = [
   "cpp",  # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
@@ -42,6 +62,26 @@ views = [
   "rust",
   "py",
 ]
+"reference/dataframe_query" = [ # No output
+  "cpp",
+  "rust",
+  "py",
+]
+"reference/dataframe_save_blueprint" = [ # No output
+  "cpp",
+  "rust",
+  "py",
+]
+"reference/dataframe_view_query" = [ # No output
+  "cpp",
+  "rust",
+  "py",
+]
+"reference/dataframe_view_query_external" = [ # No output
+  "cpp",
+  "rust",
+  "py",
+]
 "tutorials/annotation-context" = [ # Not a complete example
   "cpp",
   "rust",
@@ -50,6 +90,11 @@ views = [
 "tutorials/any_values" = [ # Not yet implemented
   "cpp",
   "rust",
+]
+"tutorials/custom-application-id" = [ # Not a complete examples
+  "cpp",
+  "rust",
+  "py",
 ]
 "tutorials/custom-recording-id" = [ # Not a complete examples
   "cpp",
@@ -78,6 +123,11 @@ views = [
   "py",   # Doesn't terminate
 ]
 "tutorials/visualizer-overrides" = [
+  "cpp",  # Not implemented
+  "rust", # Not implemented
+]
+"tutorials/data_out" = [
+  "py",   # Requires context (an RRD file to be exported by the user)
   "cpp",  # Not implemented
   "rust", # Not implemented
 ]

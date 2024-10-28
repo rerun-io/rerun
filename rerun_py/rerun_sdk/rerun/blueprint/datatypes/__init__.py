@@ -9,12 +9,26 @@ from .component_column_selector import (
     ComponentColumnSelectorLike,
     ComponentColumnSelectorType,
 )
-from .latest_at_query import (
-    LatestAtQuery,
-    LatestAtQueryArrayLike,
-    LatestAtQueryBatch,
-    LatestAtQueryLike,
-    LatestAtQueryType,
+from .filter_by_range import (
+    FilterByRange,
+    FilterByRangeArrayLike,
+    FilterByRangeBatch,
+    FilterByRangeLike,
+    FilterByRangeType,
+)
+from .filter_is_not_null import (
+    FilterIsNotNull,
+    FilterIsNotNullArrayLike,
+    FilterIsNotNullBatch,
+    FilterIsNotNullLike,
+    FilterIsNotNullType,
+)
+from .selected_columns import (
+    SelectedColumns,
+    SelectedColumnsArrayLike,
+    SelectedColumnsBatch,
+    SelectedColumnsLike,
+    SelectedColumnsType,
 )
 from .tensor_dimension_index_slider import (
     TensorDimensionIndexSlider,
@@ -22,13 +36,6 @@ from .tensor_dimension_index_slider import (
     TensorDimensionIndexSliderBatch,
     TensorDimensionIndexSliderLike,
     TensorDimensionIndexSliderType,
-)
-from .time_range_query import (
-    TimeRangeQuery,
-    TimeRangeQueryArrayLike,
-    TimeRangeQueryBatch,
-    TimeRangeQueryLike,
-    TimeRangeQueryType,
 )
 from .utf8list import Utf8List, Utf8ListArrayLike, Utf8ListBatch, Utf8ListLike, Utf8ListType
 
@@ -38,21 +45,26 @@ __all__ = [
     "ComponentColumnSelectorBatch",
     "ComponentColumnSelectorLike",
     "ComponentColumnSelectorType",
-    "LatestAtQuery",
-    "LatestAtQueryArrayLike",
-    "LatestAtQueryBatch",
-    "LatestAtQueryLike",
-    "LatestAtQueryType",
+    "FilterByRange",
+    "FilterByRangeArrayLike",
+    "FilterByRangeBatch",
+    "FilterByRangeLike",
+    "FilterByRangeType",
+    "FilterIsNotNull",
+    "FilterIsNotNullArrayLike",
+    "FilterIsNotNullBatch",
+    "FilterIsNotNullLike",
+    "FilterIsNotNullType",
+    "SelectedColumns",
+    "SelectedColumnsArrayLike",
+    "SelectedColumnsBatch",
+    "SelectedColumnsLike",
+    "SelectedColumnsType",
     "TensorDimensionIndexSlider",
     "TensorDimensionIndexSliderArrayLike",
     "TensorDimensionIndexSliderBatch",
     "TensorDimensionIndexSliderLike",
     "TensorDimensionIndexSliderType",
-    "TimeRangeQuery",
-    "TimeRangeQueryArrayLike",
-    "TimeRangeQueryBatch",
-    "TimeRangeQueryLike",
-    "TimeRangeQueryType",
     "Utf8List",
     "Utf8ListArrayLike",
     "Utf8ListBatch",

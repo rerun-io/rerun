@@ -27,8 +27,6 @@ default = []
 # Rerun dependencies:
 re_chunk.workspace = true
 re_chunk_store.workspace = true
-re_error.workspace = true
-re_format.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
 re_query.workspace = true
@@ -36,17 +34,13 @@ re_tracing.workspace = true
 re_types_core.workspace = true
 
 # External dependencies:
-ahash.workspace = true
 anyhow.workspace = true
 arrow2.workspace = true
-backtrace.workspace = true
-indent.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
-parking_lot.workspace = true
-paste.workspace = true
-seq-macro.workspace = true
-thiserror.workspace = true
 
 [dev-dependencies]
 re_types.workspace = true
+
+similar-asserts.workspace = true
+unindent.workspace = true

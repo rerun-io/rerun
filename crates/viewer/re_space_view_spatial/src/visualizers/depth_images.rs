@@ -6,15 +6,16 @@ use re_renderer::renderer::{ColormappedTexture, DepthCloud, DepthClouds};
 use re_types::{
     archetypes::DepthImage,
     components::{
-        self, Colormap, DepthMeter, DrawOrder, FillRatio, ImageBuffer, ImageFormat, ViewCoordinates,
+        self, Colormap, DepthMeter, DrawOrder, FillRatio, ImageBuffer, ImageFormat, ValueRange,
+        ViewCoordinates,
     },
     image::ImageKind,
     Loggable as _,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, ImageInfo, QueryContext, SpaceViewClass,
-    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
-    ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    ApplicableEntities, ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache,
+    QueryContext, SpaceViewClass, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
     VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -48,6 +49,8 @@ struct DepthImageComponentData {
     image: ImageInfo,
     depth_meter: Option<DepthMeter>,
     fill_ratio: Option<FillRatio>,
+    colormap: Option<Colormap>,
+    value_range: Option<[f64; 2]>,
 }
 
 impl DepthImageVisualizer {
@@ -68,15 +71,31 @@ impl DepthImageVisualizer {
 
         for data in images {
             let DepthImageComponentData {
-                mut image,
+                image,
                 depth_meter,
                 fill_ratio,
+                colormap,
+                value_range,
             } = data;
 
             let depth_meter = depth_meter.unwrap_or_else(|| self.fallback_for(ctx));
 
             // All depth images must have a colormap:
-            image.colormap = Some(image.colormap.unwrap_or_else(|| self.fallback_for(ctx)));
+            let colormap = colormap.unwrap_or_else(|| self.fallback_for(ctx));
+            let value_range = value_range
+                .map(|r| [r[0] as f32, r[1] as f32])
+                .unwrap_or_else(|| {
+                    // Don't use fallback provider since it has to query information we already have.
+                    let image_stats = ctx
+                        .viewer_ctx
+                        .cache
+                        .entry(|c: &mut ImageStatsCache| c.entry(&image));
+                    ColormapWithRange::default_range_for_depth_images(&image_stats)
+                });
+            let colormap_with_range = ColormapWithRange {
+                colormap,
+                value_range,
+            };
 
             // First try to create a textured rect for this image.
             // Even if we end up only showing a depth cloud,
@@ -86,6 +105,7 @@ impl DepthImageVisualizer {
                 entity_path,
                 ent_context,
                 &image,
+                Some(&colormap_with_range),
                 re_renderer::Rgba::WHITE,
                 "DepthImage",
                 &mut self.data,
@@ -185,12 +205,17 @@ impl DepthImageVisualizer {
         let pixel_width_from_depth = (0.5 * fov_y).tan() / (0.5 * dimensions.y as f32);
         let point_radius_from_world_depth = *radius_scale.0 * pixel_width_from_depth;
 
+        let min_max_depth_in_world = [
+            world_depth_from_texture_depth * depth_texture.range[0],
+            world_depth_from_texture_depth * depth_texture.range[1],
+        ];
+
         Ok(DepthCloud {
             world_from_rdf,
             depth_camera_intrinsics: intrinsics.image_from_camera.0.into(),
             world_depth_from_texture_depth,
             point_radius_from_world_depth,
-            max_depth_in_world: world_depth_from_texture_depth * depth_texture.range[1],
+            min_max_depth_in_world,
             depth_dimensions: dimensions,
             depth_texture: depth_texture.texture.clone(),
             colormap: match depth_texture.color_mapper {
@@ -261,18 +286,20 @@ impl VisualizerSystem for DepthImageVisualizer {
                     ImageFormat::name(),
                 );
                 let all_colormaps = results.iter_as(timeline, Colormap::name());
+                let all_value_ranges = results.iter_as(timeline, ValueRange::name());
                 let all_depth_meters = results.iter_as(timeline, DepthMeter::name());
                 let all_fill_ratios = results.iter_as(timeline, FillRatio::name());
 
-                let mut data = re_query::range_zip_1x4(
+                let mut data = re_query::range_zip_1x5(
                     all_buffers_indexed,
                     all_formats_indexed,
                     all_colormaps.component::<components::Colormap>(),
+                    all_value_ranges.primitive_array::<2, f64>(),
                     all_depth_meters.primitive::<f32>(),
                     all_fill_ratios.primitive::<f32>(),
                 )
                 .filter_map(
-                    |(index, buffers, format, colormap, depth_meter, fill_ratio)| {
+                    |(index, buffers, format, colormap, value_range, depth_meter, fill_ratio)| {
                         let buffer = buffers.first()?;
 
                         Some(DepthImageComponentData {
@@ -281,10 +308,11 @@ impl VisualizerSystem for DepthImageVisualizer {
                                 buffer: buffer.clone().into(),
                                 format: first_copied(format.as_deref())?.0,
                                 kind: ImageKind::Depth,
-                                colormap: first_copied(colormap.as_deref()),
                             },
                             depth_meter: first_copied(depth_meter).map(Into::into),
                             fill_ratio: first_copied(fill_ratio).map(Into::into),
+                            colormap: first_copied(colormap.as_deref()),
+                            value_range: first_copied(value_range).map(Into::into),
                         })
                     },
                 );
@@ -335,9 +363,46 @@ impl VisualizerSystem for DepthImageVisualizer {
     }
 }
 
+impl TypedComponentFallbackProvider<DrawOrder> for DepthImageVisualizer {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
+        DrawOrder::DEFAULT_DEPTH_IMAGE
+    }
+}
+
+impl TypedComponentFallbackProvider<ValueRange> for DepthImageVisualizer {
+    fn fallback_for(
+        &self,
+        ctx: &re_viewer_context::QueryContext<'_>,
+    ) -> re_types::components::ValueRange {
+        if let Some(((_time, buffer_row_id), image_buffer)) = ctx
+            .recording()
+            .latest_at_component::<ImageBuffer>(ctx.target_entity_path, ctx.query)
+        {
+            // TODO(andreas): What about overrides on the image format?
+            if let Some((_, format)) = ctx
+                .recording()
+                .latest_at_component::<ImageFormat>(ctx.target_entity_path, ctx.query)
+            {
+                let image = ImageInfo {
+                    buffer_row_id,
+                    buffer: image_buffer.0,
+                    format: format.0,
+                    kind: ImageKind::Depth,
+                };
+                let cache = ctx.viewer_ctx.cache;
+                let image_stats = cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
+                let default_range = ColormapWithRange::default_range_for_depth_images(&image_stats);
+                return [default_range[0] as f64, default_range[1] as f64].into();
+            }
+        }
+
+        [0.0, f64::MAX].into()
+    }
+}
+
 impl TypedComponentFallbackProvider<Colormap> for DepthImageVisualizer {
     fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> Colormap {
-        Colormap::Turbo
+        ColormapWithRange::DEFAULT_DEPTH_COLORMAP
     }
 }
 
@@ -352,13 +417,7 @@ impl TypedComponentFallbackProvider<DepthMeter> for DepthImageVisualizer {
     }
 }
 
-impl TypedComponentFallbackProvider<DrawOrder> for DepthImageVisualizer {
-    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> DrawOrder {
-        DrawOrder::DEFAULT_DEPTH_IMAGE
-    }
-}
-
-re_viewer_context::impl_component_fallback_provider!(DepthImageVisualizer => [Colormap, DepthMeter, DrawOrder]);
+re_viewer_context::impl_component_fallback_provider!(DepthImageVisualizer => [Colormap, ValueRange, DepthMeter, DrawOrder]);
 
 fn first_copied<T: Copy>(slice: Option<&[T]>) -> Option<T> {
     slice.and_then(|element| element.first()).copied()

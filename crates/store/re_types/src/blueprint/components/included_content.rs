@@ -21,7 +21,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: All the contents in the container.
 #[derive(Clone, Debug, Default)]
 pub struct IncludedContent(
-    /// List of the contents by EntityPath.
+    /// List of the contents by [`datatypes::EntityPath`][crate::datatypes::EntityPath].
     ///
     /// This must be a path in the blueprint store.
     /// Typically structure as `<blueprint_registry>/<uuid>`.

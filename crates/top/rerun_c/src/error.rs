@@ -86,8 +86,10 @@ mod tests {
     use crate::{CError, CErrorCode};
 
     #[test]
-    #[allow(unsafe_code)]
     fn write_error_handles_message_overflow() {
+        #![allow(clippy::ref_as_ptr)]
+        #![allow(unsafe_code)]
+
         // With ASCII character.
         let description = "a".repeat(CError::MAX_MESSAGE_SIZE_BYTES * 2);
         let error = CError::new(CErrorCode::Ok, &description);
