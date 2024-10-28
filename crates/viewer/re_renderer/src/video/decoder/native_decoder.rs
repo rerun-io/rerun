@@ -28,14 +28,17 @@ struct DecoderOutput {
 
 /// Native video decoder
 pub struct NativeDecoder {
-    decoder: re_video::decode::AsyncDecoder,
+    decoder: Box<dyn re_video::decode::AsyncDecoder>,
     decoder_output: Arc<Mutex<DecoderOutput>>,
 }
 
 impl NativeDecoder {
     pub fn new(
         debug_name: String,
-        sync_decoder: Box<dyn re_video::decode::SyncDecoder + Send>,
+        make_decoder: impl FnOnce(
+            Box<dyn Fn(re_video::decode::Result<Frame>) + Send + Sync>,
+        )
+            -> re_video::decode::Result<Box<dyn re_video::decode::AsyncDecoder>>,
     ) -> Result<Self, DecodingError> {
         re_tracing::profile_function!();
 
@@ -43,7 +46,6 @@ impl NativeDecoder {
 
         let on_output = {
             let decoder_output = decoder_output.clone();
-            let debug_name = debug_name.clone();
             move |frame: re_video::decode::Result<Frame>| match frame {
                 Ok(frame) => {
                     re_log::trace!("Decoded frame at {:?}", frame.timestamp);
@@ -64,7 +66,13 @@ impl NativeDecoder {
             }
         };
 
-        let decoder = re_video::decode::AsyncDecoder::new(debug_name, sync_decoder, on_output);
+        let decoder = make_decoder(Box::new(on_output)).map_err(|err| match err {
+            re_video::decode::Error::NoNativeAv1Debug => DecodingError::NoNativeAv1Debug,
+            re_video::decode::Error::UnsupportedCodec(codec) => {
+                DecodingError::UnsupportedCodec { codec }
+            }
+            _ => DecodingError::DecoderSetupFailure(err.to_string()),
+        })?;
 
         Ok(Self {
             decoder,
@@ -76,7 +84,7 @@ impl NativeDecoder {
 impl VideoChunkDecoder for NativeDecoder {
     /// Start decoding the given chunk.
     fn decode(&mut self, chunk: Chunk, _is_keyframe: bool) -> Result<(), DecodingError> {
-        self.decoder.decode(chunk);
+        self.decoder.submit_chunk(chunk);
         Ok(())
     }
 

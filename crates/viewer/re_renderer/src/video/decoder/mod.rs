@@ -130,26 +130,15 @@ impl VideoDecoder {
             if #[cfg(target_arch = "wasm32")] {
                 // Web
                 let decoder = web::WebVideoDecoder::new(data.clone(), hw_acceleration)?;
-                return Ok(Self::from_chunk_decoder(render_ctx, data, decoder));
             } else {
                 // Native
-                match re_video::decode::new_decoder(debug_name.clone(), &data) {
-                    Ok(sync_decoder) => {
-                        let decoder = native_decoder::NativeDecoder::new(debug_name, sync_decoder)?;
-                        return Ok(Self::from_chunk_decoder(render_ctx, data, decoder));
-                    }
-                    Err(re_video::decode::Error::NoNativeAv1Debug) => {
-                        return Err(DecodingError::NoNativeAv1Debug);
-                    }
-                    Err(re_video::decode::Error::UnsupportedCodec(codec)) => {
-                        return Err(DecodingError::UnsupportedCodec { codec });
-                    }
-                    Err(err) => {
-                        return Err(DecodingError::DecoderSetupFailure(err.to_string()));
-                    }
-                }
+                let decoder = native_decoder::NativeDecoder::new(debug_name.clone(), |on_output| {
+                    re_video::decode::new_decoder(debug_name, &data, on_output)
+                })?;
             }
-        }
+        };
+
+        Ok(Self::from_chunk_decoder(render_ctx, data, decoder))
     }
 
     #[allow(unused)] // Unused for certain build flags

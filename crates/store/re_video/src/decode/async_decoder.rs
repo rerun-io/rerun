@@ -9,7 +9,6 @@ use super::{Chunk, Frame, OutputCallback, Result, SyncDecoder};
 
 enum Command {
     Chunk(Chunk),
-    Flush { on_done: Sender<()> },
     Reset,
     Stop,
 }
@@ -33,8 +32,23 @@ impl Default for Comms {
     }
 }
 
+/// Interface for an asynchronous video decoder.
+///
+/// Output callback is passed in on creation of a concrete type.
+pub trait AsyncDecoder: Send + Sync {
+    /// Submits a chunk for decoding in the background.
+    ///
+    /// Chunks are expected to come in in the order of their decoding timestamp.
+    fn submit_chunk(&mut self, chunk: Chunk);
+
+    /// Resets the decoder.
+    ///
+    /// This does not block, all chunks sent to `decode` before this point will be discarded.
+    fn reset(&mut self);
+}
+
 /// Runs a [`SyncDecoder`] in a background thread, for non-blocking video decoding.
-pub struct AsyncDecoder {
+pub struct AsyncDecoderWrapper {
     /// Where the decoding happens
     _thread: std::thread::JoinHandle<()>,
 
@@ -45,7 +59,7 @@ pub struct AsyncDecoder {
     comms: Comms,
 }
 
-impl AsyncDecoder {
+impl AsyncDecoderWrapper {
     pub fn new(
         debug_name: String,
         mut sync_decoder: Box<dyn SyncDecoder + Send>,
@@ -75,9 +89,11 @@ impl AsyncDecoder {
             comms,
         }
     }
+}
 
+impl AsyncDecoder for AsyncDecoderWrapper {
     // NOTE: The interface is all `&mut self` to avoid certain types of races.
-    pub fn decode(&mut self, chunk: Chunk) {
+    fn submit_chunk(&mut self, chunk: Chunk) {
         re_tracing::profile_function!();
         self.command_tx.send(Command::Chunk(chunk)).ok();
     }
@@ -86,7 +102,7 @@ impl AsyncDecoder {
     ///
     /// This does not block, all chunks sent to `decode` before this point will be discarded.
     // NOTE: The interface is all `&mut self` to avoid certain types of races.
-    pub fn reset(&mut self) {
+    fn reset(&mut self) {
         re_tracing::profile_function!();
 
         // Increment resets first…
@@ -97,18 +113,9 @@ impl AsyncDecoder {
         // …so it is visible on the decoder thread when it gets the `Reset` command.
         self.command_tx.send(Command::Reset).ok();
     }
-
-    /// Blocks until all pending frames have been decoded.
-    // NOTE: The interface is all `&mut self` to avoid certain types of races.
-    pub fn flush(&mut self) {
-        re_tracing::profile_function!();
-        let (tx, rx) = crossbeam::channel::bounded(0);
-        self.command_tx.send(Command::Flush { on_done: tx }).ok();
-        rx.recv().ok();
-    }
 }
 
-impl Drop for AsyncDecoder {
+impl Drop for AsyncDecoderWrapper {
     fn drop(&mut self) {
         re_tracing::profile_function!();
 
@@ -144,9 +151,6 @@ fn decoder_thread(
                 if !has_outstanding_reset {
                     decoder.submit_chunk(&comms.should_stop, chunk, on_output);
                 }
-            }
-            Command::Flush { on_done } => {
-                on_done.send(()).ok();
             }
             Command::Reset => {
                 decoder.reset();
