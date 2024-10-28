@@ -4,80 +4,63 @@ use egui::{
     emath::TSTransform, Area, Color32, Id, LayerId, Order, Painter, Pos2, Rect, Response, Sense,
     Stroke, Ui,
 };
-use re_log::external::log;
+
+fn fit_to_world_rect(clip_rect_window: Rect, world_rect: Rect) -> TSTransform {
+    let available_size = clip_rect_window.size();
+
+    // Compute the scale factor to fit the bounding rectangle into the available screen size.
+    let scale_x = available_size.x / world_rect.width();
+    let scale_y = available_size.y / world_rect.height();
+
+    // Use the smaller of the two scales to ensure the whole rectangle fits on the screen.
+    let scale = scale_x.min(scale_y).min(1.0);
+
+    // Compute the translation to center the bounding rect in the screen.
+    let center_screen = Pos2::new(available_size.x / 2.0, available_size.y / 2.0);
+    let center_world = world_rect.center().to_vec2();
+
+    // Set the transformation to scale and then translate to center.
+
+    TSTransform::from_translation(center_screen.to_vec2() - center_world * scale)
+        * TSTransform::from_scaling(scale)
+}
 
 pub struct ViewBuilder {
-    world_to_view: TSTransform,
-    clip_rect_window: Rect,
-    // TODO(grtlr): separate state from builder
-    pub show_debug: bool,
+    show_debug: bool,
+    world_bounds: Rect,
     bounding_rect: Rect,
 }
 
-impl Default for ViewBuilder {
-    fn default() -> Self {
+impl ViewBuilder {
+    pub fn from_world_bounds(world_bounds: impl Into<Rect>) -> Self {
         Self {
-            world_to_view: Default::default(),
-            clip_rect_window: Rect::NOTHING,
+            world_bounds: world_bounds.into(),
             show_debug: false,
             bounding_rect: Rect::NOTHING,
         }
     }
-}
 
-impl ViewBuilder {
-    fn fit_to_rect(&mut self, bounding_rect: Rect) {
-        let available_size = self.clip_rect_window.size();
-
-        // Compute the scale factor to fit the bounding rectangle into the available screen size.
-        let scale_x = available_size.x / bounding_rect.width();
-        let scale_y = available_size.y / bounding_rect.height();
-
-        // Use the smaller of the two scales to ensure the whole rectangle fits on the screen.
-        let scale = scale_x.min(scale_y).min(1.0);
-
-        // Compute the translation to center the bounding rect in the screen.
-        let center_screen = Pos2::new(available_size.x / 2.0, available_size.y / 2.0);
-        let center_world = bounding_rect.center().to_vec2();
-
-        // Set the transformation to scale and then translate to center.
-        self.world_to_view =
-            TSTransform::from_translation(center_screen.to_vec2() - center_world * scale)
-                * TSTransform::from_scaling(scale);
-    }
-
-    pub fn fit_to_screen(&mut self) {
-        self.fit_to_rect(self.bounding_rect);
+    pub fn show_debug(&mut self) {
+        self.show_debug = true;
     }
 
     /// Return the clip rect of the scene in window coordinates.
-    pub fn scene<F>(&mut self, ui: &mut Ui, add_scene_contents: F) -> Rect
+    pub fn scene<F>(mut self, ui: &mut Ui, add_scene_contents: F) -> (Rect, Response)
     where
         F: for<'b> FnOnce(Scene<'b>),
     {
         let (id, clip_rect_window) = ui.allocate_space(ui.available_size());
-        self.clip_rect_window = clip_rect_window;
-
         let response = ui.interact(clip_rect_window, id, Sense::click_and_drag());
 
+        let mut world_to_view = fit_to_world_rect(clip_rect_window, self.world_bounds);
+
         if response.dragged() {
-            self.world_to_view.translation += response.drag_delta();
+            world_to_view.translation += response.drag_delta();
         }
 
         let view_to_window = TSTransform::from_translation(ui.min_rect().left_top().to_vec2());
-        let world_to_window = view_to_window * self.world_to_view;
 
-        #[cfg(debug_assertions)]
-        if response.double_clicked() {
-            if let Some(window) = response.interact_pointer_pos() {
-                log::debug!(
-                    "Click event! Window: {:?}, View: {:?} World: {:?}",
-                    window,
-                    view_to_window.inverse() * window,
-                    world_to_window.inverse() * window,
-                );
-            }
-        }
+        let world_to_window = view_to_window * world_to_view;
 
         if let Some(pointer) = ui.ctx().input(|i| i.pointer.hover_pos()) {
             // Note: doesn't catch zooming / panning if a button in this PanZoom container is hovered.
@@ -87,13 +70,13 @@ impl ViewBuilder {
                 let pan_delta = ui.ctx().input(|i| i.smooth_scroll_delta);
 
                 // Zoom in on pointer:
-                self.world_to_view = self.world_to_view
+                world_to_view = world_to_view
                     * TSTransform::from_translation(pointer_in_world.to_vec2())
                     * TSTransform::from_scaling(zoom_delta)
                     * TSTransform::from_translation(-pointer_in_world.to_vec2());
 
                 // Pan:
-                self.world_to_view = TSTransform::from_translation(pan_delta) * self.world_to_view;
+                world_to_view = TSTransform::from_translation(pan_delta) * world_to_view;
             }
         }
 
@@ -137,7 +120,10 @@ impl ViewBuilder {
             }
         }
 
-        clip_rect_window
+        (
+            (view_to_window * world_to_view).inverse() * clip_rect_window,
+            response,
+        )
     }
 }
 

@@ -4,10 +4,10 @@
 
 mod error;
 mod graph;
+mod properties;
 mod types;
 mod ui;
 mod view;
-mod properties;
 mod visualizers;
 
 pub use view::GraphSpaceView;

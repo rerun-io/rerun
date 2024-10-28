@@ -1,7 +1,10 @@
 use re_types::blueprint::components::VisualBounds2D;
 use re_viewer_context::{SpaceViewStateExt as _, TypedComponentFallbackProvider};
 
-use crate::{ui::{bounding_rect_from_iter, GraphSpaceViewState}, GraphSpaceView};
+use crate::{
+    ui::{bounding_rect_from_iter, GraphSpaceViewState},
+    GraphSpaceView,
+};
 
 fn valid_bound(rect: &egui::Rect) -> bool {
     rect.is_finite() && rect.is_positive()

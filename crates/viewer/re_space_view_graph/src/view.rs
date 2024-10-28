@@ -2,9 +2,14 @@ use std::collections::HashSet;
 
 use egui::{self, Rect};
 
+use re_log::ResultExt as _;
 use re_log_types::EntityPath;
-use re_types::{components, SpaceViewClassIdentifier};
-use re_ui::{self, UiExt};
+use re_space_view::view_property_ui;
+use re_types::{
+    blueprint::{self, archetypes::VisualBounds2D},
+    components, SpaceViewClassIdentifier,
+};
+use re_ui::{self, UiExt as _};
 use re_viewer_context::{
     external::re_entity_db::InstancePath, IdentifiedViewSystem as _, Item, SpaceViewClass,
     SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
@@ -12,10 +17,11 @@ use re_viewer_context::{
     SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
     ViewerContext,
 };
+use re_viewport_blueprint::ViewProperty;
 
 use crate::{
     graph::{Graph, NodeIndex},
-    ui::{self, bounding_rect_from_iter, GraphSpaceViewState},
+    ui::{self, bounding_rect_from_iter, scene::ViewBuilder, GraphSpaceViewState},
     visualizers::{EdgesVisualizer, NodeVisualizer},
 };
 
@@ -59,7 +65,7 @@ impl SpaceViewClass for GraphSpaceView {
             .downcast_ref::<GraphSpaceViewState>()
             .ok()
             .map(|state| {
-                let (width, height) = state.visual_bounds_2d.map_or_else(
+                let (width, height) = state.world_bounds.map_or_else(
                     || {
                         let bbox = bounding_rect_from_iter(state.layout.values());
                         (
@@ -103,18 +109,20 @@ impl SpaceViewClass for GraphSpaceView {
     /// In this sample we show a combo box to select the color coordinates mode.
     fn selection_ui(
         &self,
-        _ctx: &ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
-        _space_view_id: SpaceViewId,
+        space_view_id: SpaceViewId,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
-        ui.selection_grid("graph_settings_ui").show(ui, |ui| {
-            state.bounding_box_ui(ui);
+        ui.selection_grid("graph_view_settings_ui").show(ui, |ui| {
+            state.layout_ui(ui);
             state.debug_ui(ui);
         });
+
+        view_property_ui::<VisualBounds2D>(ctx, ui, space_view_id, self, state);
 
         Ok(())
     }
@@ -145,7 +153,28 @@ impl SpaceViewClass for GraphSpaceView {
 
         let layout_was_empty = state.layout.is_empty();
 
-        state.viewer.scene(ui, |mut scene| {
+        let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.space_view_id,
+        );
+
+        let bounds: blueprint::components::VisualBounds2D = bounds_property
+            .component_or_fallback(ctx, self, state)
+            .ok_or_log_error()
+            .unwrap_or_default();
+
+        state.world_bounds = Some(bounds);
+        let bounds_rect: egui::Rect = bounds.into();
+
+        let mut viewer = ViewBuilder::from_world_bounds(bounds_rect);
+
+        // TODO(grtlr): Is there a blueprint archetype for debug information?
+        if state.show_debug {
+            viewer.show_debug();
+        }
+
+        let (new_world_bounds, response) = viewer.scene(ui, |mut scene| {
             for data in &node_system.data {
                 let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
@@ -215,12 +244,18 @@ impl SpaceViewClass for GraphSpaceView {
             }
         });
 
+        // Update blueprint if changed
+        let updated_bounds: blueprint::components::VisualBounds2D = new_world_bounds.into();
+        if response.double_clicked() || layout_was_empty {
+            bounds_property.reset_blueprint_component::<blueprint::components::VisualBounds2D>(ctx);
+        } else if bounds != updated_bounds {
+            bounds_property.save_blueprint_component(ctx, &updated_bounds);
+        }
+        // Update stored bounds on the state, so visualizers see an up-to-date value.
+        state.world_bounds = Some(bounds);
+
         // Clean up the layout for nodes that are no longer present.
         state.layout.retain(|k, _| seen.contains(k));
-
-        if layout_was_empty {
-            state.viewer.fit_to_screen();
-        }
 
         Ok(())
     }

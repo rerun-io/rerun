@@ -7,28 +7,25 @@ use re_viewer_context::SpaceViewState;
 
 use crate::graph::NodeIndex;
 
-use super::{bounding_rect_from_iter, scene::ViewBuilder};
+use super::bounding_rect_from_iter;
 
 /// Space view state for the custom space view.
 ///
 /// This state is preserved between frames, but not across Viewer sessions.
 #[derive(Default)]
 pub struct GraphSpaceViewState {
-    pub viewer: ViewBuilder,
-
-    /// Indicates if the viewer should fit to the screen the next time it is rendered.
-    pub should_fit_to_screen: bool,
-
     /// Positions of the nodes in world space.
     pub layout: HashMap<NodeIndex, egui::Rect>,
 
-    pub visual_bounds_2d: Option<VisualBounds2D>,
+    pub show_debug: bool,
+
+    pub world_bounds: Option<VisualBounds2D>,
 }
 
 impl GraphSpaceViewState {
-    pub fn bounding_box_ui(&mut self, ui: &mut egui::Ui) {
-        ui.grid_left_hand_label("Bounding box")
-            .on_hover_text("The bounding box encompassing all Entities in the view right now");
+    pub fn layout_ui(&mut self, ui: &mut egui::Ui) {
+        ui.grid_left_hand_label("Layout")
+            .on_hover_text("The bounding box encompassing all entities in the view right now");
         ui.vertical(|ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
             let egui::Rect { min, max } = bounding_rect_from_iter(self.layout.values());
@@ -36,18 +33,10 @@ impl GraphSpaceViewState {
             ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
         });
         ui.end_row();
-
-        if ui
-            .button("Fit to screen")
-            .on_hover_text("Fit the bounding box to the screen")
-            .clicked()
-        {
-            self.should_fit_to_screen = true;
-        }
     }
 
     pub fn debug_ui(&mut self, ui: &mut egui::Ui) {
-        ui.re_checkbox(&mut self.viewer.show_debug, "Show debug information")
+        ui.re_checkbox(&mut self.show_debug, "Show debug information")
             .on_hover_text("Shows debug information for the current graph");
         ui.end_row();
     }

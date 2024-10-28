@@ -58,8 +58,6 @@ pub fn draw_entity(
     response
 }
 
-pub fn bounding_rect_from_iter<'a>(
-    rectangles: impl Iterator<Item = &'a egui::Rect>,
-) -> egui::Rect {
+pub fn bounding_rect_from_iter<'a>(rectangles: impl Iterator<Item = &'a egui::Rect>) -> egui::Rect {
     rectangles.fold(egui::Rect::NOTHING, |acc, rect| acc.union(*rect))
 }
