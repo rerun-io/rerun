@@ -87,11 +87,21 @@ impl VisualizerSystem for AudioSystem {
 
             let timeline = view_query.timeline;
 
-            let all_tensors = results.iter_as(timeline, TensorData::name());
+            let Some(all_tensor_chunks) = results.get_required_chunks(&TensorData::name()) else {
+                continue;
+            };
+
+            // TODO: This is gross. We can't use `results.iter_as(timeline, TensorData::name());` because
+            // the index value won't get populated correctly. This seems like a bug in `HybridLatestAtResults`
+            let all_tensors_indexed = all_tensor_chunks.iter().flat_map(move |chunk| {
+                chunk
+                    .iter_component_indices(&timeline, &TensorData::name())
+                    .zip(chunk.iter_component::<TensorData>())
+            });
             let all_sample_rates = results.iter_as(timeline, AudioSampleRate::name());
 
             for ((data_time, data_id), tensors, sample_rate) in re_query::range_zip_1x1(
-                all_tensors.component::<TensorData>(),
+                all_tensors_indexed,
                 all_sample_rates.component::<components::AudioSampleRate>(),
             ) {
                 let Some(data) = tensors.first() else {
