@@ -129,7 +129,7 @@ mode sets the default time range to _everything_. You can override this in the s
 
         let query_engine = re_dataframe::QueryEngine {
             store: ctx.recording().store().clone(),
-            cache: ctx.recording().query_caches(),
+            cache: ctx.recording().query_caches().clone(),
         };
 
         let view_contents = query

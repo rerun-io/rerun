@@ -156,6 +156,7 @@ fn component_ui(
 
     let results = entity_db
         .query_caches()
+        .read()
         .latest_at(&query, entity_path, [component_name]);
 
     if let Some(data) = results.component_batch_raw(&component_name) {

@@ -32,7 +32,7 @@ pub(crate) enum HideColumnAction {
 pub(crate) fn dataframe_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    query_handle: &re_dataframe::QueryHandle<'_>,
+    query_handle: &re_dataframe::QueryHandle,
     expanded_rows_cache: &mut ExpandedRowsCache,
     space_view_id: &SpaceViewId,
 ) -> Vec<HideColumnAction> {
@@ -182,7 +182,7 @@ impl RowsDisplayData {
 /// [`egui_table::TableDelegate`] implementation for displaying a [`QueryHandle`] in a table.
 struct DataframeTableDelegate<'a> {
     ctx: &'a ViewerContext<'a>,
-    query_handle: &'a QueryHandle<'a>,
+    query_handle: &'a QueryHandle,
     selected_columns: &'a [ColumnDescriptor],
     header_entity_paths: Vec<Option<EntityPath>>,
     display_data: anyhow::Result<RowsDisplayData>,

@@ -54,9 +54,9 @@ use crate::{QueryEngine, RecordBatch};
 /// Cheaply created via [`QueryEngine::query`].
 ///
 /// See [`QueryHandle::next_row`] or [`QueryHandle::into_iter`].
-pub struct QueryHandle<'a> {
+pub struct QueryHandle {
     /// Handle to the [`QueryEngine`].
-    pub(crate) engine: &'a QueryEngine<'a>,
+    pub(crate) engine: QueryEngine,
 
     /// The original query expression used to instantiate this handle.
     pub(crate) query: QueryExpression,
@@ -140,8 +140,8 @@ struct QueryHandleState {
     unique_index_values: Vec<IndexValue>,
 }
 
-impl<'a> QueryHandle<'a> {
-    pub(crate) fn new(engine: &'a QueryEngine<'a>, query: QueryExpression) -> Self {
+impl QueryHandle {
+    pub(crate) fn new(engine: QueryEngine, query: QueryExpression) -> Self {
         Self {
             engine,
             query,
@@ -150,7 +150,7 @@ impl<'a> QueryHandle<'a> {
     }
 }
 
-impl QueryHandle<'_> {
+impl QueryHandle {
     /// Lazily initialize internal private state.
     ///
     /// It is important that query handles stay cheap to create.
@@ -163,6 +163,7 @@ impl QueryHandle<'_> {
         re_tracing::profile_scope!("init");
 
         let store = self.engine.store.read();
+        let query_cache = self.engine.cache.read();
 
         // The timeline doesn't matter if we're running in static-only mode.
         let filtered_index = self.query.filtered_index.unwrap_or_default();
@@ -328,7 +329,7 @@ impl QueryHandle<'_> {
                         let query =
                             re_chunk::LatestAtQuery::new(Timeline::default(), TimeInt::STATIC);
 
-                        let results = self.engine.cache.latest_at(
+                        let results = query_cache.latest_at(
                             &query,
                             &descr.entity_path,
                             [descr.component_name],
@@ -587,7 +588,11 @@ impl QueryHandle<'_> {
         //
         // TODO(cmc): Going through the cache is very useful in a Viewer context, but
         // not so much in an SDK context. Make it configurable.
-        let results = self.engine.cache.range(query, entity_path, component_names);
+        let results = self
+            .engine
+            .cache
+            .read()
+            .range(query, entity_path, component_names);
 
         debug_assert!(
             results.components.len() <= 1,
@@ -793,6 +798,8 @@ impl QueryHandle<'_> {
     pub fn next_row(&self) -> Option<Vec<Box<dyn ArrowArray>>> {
         re_tracing::profile_function!();
 
+        let query_cache = self.engine.cache.read();
+
         /// Temporary state used to resolve the streaming join for the current iteration.
         #[derive(Debug)]
         struct StreamingJoinStateEntry<'a> {
@@ -994,11 +1001,8 @@ impl QueryHandle<'_> {
                     let query =
                         re_chunk::LatestAtQuery::new(state.filtered_index, *cur_index_value);
 
-                    let results = self.engine.cache.latest_at(
-                        &query,
-                        &descr.entity_path,
-                        [descr.component_name],
-                    );
+                    let results =
+                        query_cache.latest_at(&query, &descr.entity_path, [descr.component_name]);
 
                     *streaming_state = results
                         .components
@@ -1169,28 +1173,28 @@ impl QueryHandle<'_> {
     }
 }
 
-impl<'a> QueryHandle<'a> {
+impl QueryHandle {
     /// Returns an iterator backed by [`Self::next_row`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn iter(&'a self) -> impl Iterator<Item = Vec<Box<dyn ArrowArray>>> + 'a {
+    pub fn iter(&self) -> impl Iterator<Item = Vec<Box<dyn ArrowArray>>> + '_ {
         std::iter::from_fn(move || self.next_row())
     }
 
     /// Returns an iterator backed by [`Self::next_row`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn into_iter(self) -> impl Iterator<Item = Vec<Box<dyn ArrowArray>>> + 'a {
+    pub fn into_iter(self) -> impl Iterator<Item = Vec<Box<dyn ArrowArray>>> {
         std::iter::from_fn(move || self.next_row())
     }
 
     /// Returns an iterator backed by [`Self::next_row_batch`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn batch_iter(&'a self) -> impl Iterator<Item = RecordBatch> + 'a {
+    pub fn batch_iter(&self) -> impl Iterator<Item = RecordBatch> + '_ {
         std::iter::from_fn(move || self.next_row_batch())
     }
 
     /// Returns an iterator backed by [`Self::next_row_batch`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn into_batch_iter(self) -> impl Iterator<Item = RecordBatch> + 'a {
+    pub fn into_batch_iter(self) -> impl Iterator<Item = RecordBatch> {
         std::iter::from_fn(move || self.next_row_batch())
     }
 }

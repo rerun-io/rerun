@@ -199,6 +199,7 @@ fn active_defaults(
         .into_iter()
         .filter(|c| {
             db.query_caches()
+                .read()
                 .latest_at(query, &view.defaults_path, [*c])
                 .component_batch_raw(c)
                 .map_or(false, |data| !data.is_empty())

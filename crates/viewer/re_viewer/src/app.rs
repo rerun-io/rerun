@@ -818,13 +818,13 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ClearPrimaryCache => {
                 if let Some(ctx) = store_context {
-                    ctx.recording.query_caches().clear();
+                    ctx.recording.query_caches().write().clear();
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintPrimaryCache => {
                 if let Some(ctx) = store_context {
-                    let text = format!("{:?}", ctx.recording.query_caches());
+                    let text = format!("{:?}", ctx.recording.query_caches().read());
                     egui_ctx.output_mut(|o| o.copied_text = text.clone());
                     println!("{text}");
                 }

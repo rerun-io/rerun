@@ -25,6 +25,7 @@ impl DataUi for ComponentPath {
         } else {
             let results = db
                 .query_caches()
+                .read()
                 .latest_at(query, entity_path, [*component_name]);
             if let Some(unit) = results.components.get(component_name) {
                 crate::ComponentPathLatestAtResults {

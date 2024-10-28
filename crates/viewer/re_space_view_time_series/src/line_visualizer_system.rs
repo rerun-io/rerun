@@ -460,7 +460,7 @@ fn collect_recursive_clears(
 
     let mut clear_entity_path = entity_path.clone();
     loop {
-        let results = ctx.recording().query_caches().range(
+        let results = ctx.recording().query_caches().read().range(
             query,
             &clear_entity_path,
             [ClearIsRecursive::name()],

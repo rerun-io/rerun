@@ -1,7 +1,7 @@
 use re_chunk::{EntityPath, TransportChunk};
 use re_chunk_store::{ChunkStoreHandle, ColumnDescriptor, QueryExpression};
 use re_log_types::EntityPathFilter;
-use re_query::QueryCache;
+use re_query::QueryCacheHandle;
 
 use crate::QueryHandle;
 
@@ -15,26 +15,24 @@ use re_chunk_store::ComponentColumnDescriptor;
 // `TransportChunk` type until we migrate to `arrow-rs`.
 // `TransportChunk` maps 1:1 to `RecordBatch` so the switch (and the compatibility layer in the meantime)
 // will be trivial.
-// TODO(cmc): add an `arrow` feature to transportchunk in a follow-up pr and call it a day.
 pub type RecordBatch = TransportChunk;
 
 // --- Queries ---
 
 /// A handle to our user-facing query engine.
 ///
+/// Cheap to clone.
+///
 /// See the following methods:
 /// * [`QueryEngine::schema`]: get the complete schema of the recording.
 /// * [`QueryEngine::query`]: execute a [`QueryExpression`] on the recording.
-//
-// TODO(cmc): This needs to be a refcounted type that can be easily be passed around: the ref has
-// got to go. But for that we need to generally introduce `ChunkStoreHandle` and `QueryCacheHandle`
-// first, and this is not as straightforward as it seems.
-pub struct QueryEngine<'a> {
+#[derive(Clone)]
+pub struct QueryEngine {
     pub store: ChunkStoreHandle,
-    pub cache: &'a QueryCache,
+    pub cache: QueryCacheHandle,
 }
 
-impl QueryEngine<'_> {
+impl QueryEngine {
     /// Returns the full schema of the store.
     ///
     /// This will include a column descriptor for every timeline and every component on every
@@ -60,8 +58,8 @@ impl QueryEngine<'_> {
 
     /// Starts a new query by instantiating a [`QueryHandle`].
     #[inline]
-    pub fn query(&self, query: QueryExpression) -> QueryHandle<'_> {
-        QueryHandle::new(self, query)
+    pub fn query(&self, query: QueryExpression) -> QueryHandle {
+        QueryHandle::new(self.clone(), query)
     }
 
     /// Returns an iterator over all the [`EntityPath`]s present in the database.

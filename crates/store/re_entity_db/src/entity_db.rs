@@ -12,6 +12,7 @@ use re_log_types::{
     ApplicationId, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF,
     SetStoreInfo, StoreId, StoreInfo, StoreKind, Timeline,
 };
+use re_query::{QueryCache, QueryCacheHandle};
 
 use crate::{Error, TimesPerTimeline};
 
@@ -65,7 +66,7 @@ pub struct EntityDb {
     data_store: ChunkStoreHandle,
 
     /// Query caches for the data in [`Self::data_store`].
-    query_caches: re_query::QueryCache,
+    query_caches: QueryCacheHandle,
 
     stats: IngestionStatistics,
 }
@@ -77,7 +78,7 @@ impl EntityDb {
 
     pub fn with_store_config(store_id: StoreId, store_config: ChunkStoreConfig) -> Self {
         let data_store = ChunkStoreHandle::new(ChunkStore::new(store_id.clone(), store_config));
-        let query_caches = re_query::QueryCache::new(data_store.clone());
+        let query_caches = QueryCacheHandle::new(QueryCache::new(data_store.clone()));
 
         Self {
             data_source: None,
@@ -112,14 +113,15 @@ impl EntityDb {
     }
 
     #[inline]
-    pub fn query_caches(&self) -> &re_query::QueryCache {
+    pub fn query_caches(&self) -> &QueryCacheHandle {
         &self.query_caches
     }
 
-    pub fn query_engine(&self) -> re_dataframe::QueryEngine<'_> {
+    #[inline]
+    pub fn query_engine(&self) -> re_dataframe::QueryEngine {
         re_dataframe::QueryEngine {
             store: self.store().clone(),
-            cache: self.query_caches(),
+            cache: self.query_caches().clone(),
         }
     }
 
@@ -136,6 +138,7 @@ impl EntityDb {
         component_names: impl IntoIterator<Item = re_types_core::ComponentName>,
     ) -> re_query::LatestAtResults {
         self.query_caches()
+            .read()
             .latest_at(query, entity_path, component_names)
     }
 
@@ -155,6 +158,7 @@ impl EntityDb {
     ) -> Option<((TimeInt, RowId), C)> {
         let results = self
             .query_caches()
+            .read()
             .latest_at(query, entity_path, [C::name()]);
         results
             .component_mono()
@@ -177,6 +181,7 @@ impl EntityDb {
     ) -> Option<((TimeInt, RowId), C)> {
         let results = self
             .query_caches()
+            .read()
             .latest_at(query, entity_path, [C::name()]);
         results
             .component_mono_quiet()
@@ -360,7 +365,7 @@ impl EntityDb {
             // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
             self.times_per_timeline.on_events(&store_events);
             self.time_histogram_per_timeline.on_events(&store_events);
-            self.query_caches.on_events(&store_events);
+            self.query_caches.write().on_events(&store_events);
             self.tree.on_store_additions(&store_events);
 
             // It is possible for writes to trigger deletions: specifically in the case of
@@ -421,7 +426,9 @@ impl EntityDb {
             // to regain some space.
             // See <https://github.com/rerun-io/rerun/issues/7369#issuecomment-2335164098> for the
             // complete rationale.
-            self.query_caches.purge_fraction_of_ram(fraction_to_purge);
+            self.query_caches
+                .write()
+                .purge_fraction_of_ram(fraction_to_purge);
         }
 
         store_events
@@ -499,7 +506,7 @@ impl EntityDb {
         re_tracing::profile_function!();
 
         self.times_per_timeline.on_events(store_events);
-        self.query_caches.on_events(store_events);
+        self.query_caches.write().on_events(store_events);
         self.time_histogram_per_timeline.on_events(store_events);
         self.tree.on_store_deletions(store, store_events);
     }
