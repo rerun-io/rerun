@@ -310,6 +310,52 @@ pub struct ChunkStoreGeneration {
     gc_id: u64,
 }
 
+/// A ref-counted, inner-mutable handle to a [`ChunkStore`].
+///
+/// Cheap to clone.
+///
+/// It is possible to grab the lock behind this handle while _maintaining a static lifetime_, see:
+/// * [`ChunkStoreHandle::read_arc`]
+/// * [`ChunkStoreHandle::write_arc`]
+#[derive(Clone)]
+pub struct ChunkStoreHandle(Arc<parking_lot::RwLock<ChunkStore>>);
+
+impl ChunkStoreHandle {
+    #[inline]
+    pub fn new(store: ChunkStore) -> Self {
+        Self(Arc::new(parking_lot::RwLock::new(store)))
+    }
+
+    #[inline]
+    pub fn into_inner(self) -> Arc<parking_lot::RwLock<ChunkStore>> {
+        self.0
+    }
+}
+
+impl ChunkStoreHandle {
+    #[inline]
+    pub fn read(&self) -> parking_lot::RwLockReadGuard<'_, ChunkStore> {
+        self.0.read()
+    }
+
+    #[inline]
+    pub fn write(&self) -> parking_lot::RwLockWriteGuard<'_, ChunkStore> {
+        self.0.write()
+    }
+
+    #[inline]
+    pub fn read_arc(&self) -> parking_lot::ArcRwLockReadGuard<parking_lot::RawRwLock, ChunkStore> {
+        parking_lot::RwLock::read_arc(&self.0)
+    }
+
+    #[inline]
+    pub fn write_arc(
+        &self,
+    ) -> parking_lot::ArcRwLockWriteGuard<parking_lot::RawRwLock, ChunkStore> {
+        parking_lot::RwLock::write_arc(&self.0)
+    }
+}
+
 /// A complete chunk store: covers all timelines, all entities, everything.
 ///
 /// The chunk store _always_ works at the chunk level, whether it is for write & read queries or
@@ -497,8 +543,8 @@ impl ChunkStore {
     }
 
     #[inline]
-    pub fn id(&self) -> &StoreId {
-        &self.id
+    pub fn id(&self) -> StoreId {
+        self.id.clone()
     }
 
     #[inline]
