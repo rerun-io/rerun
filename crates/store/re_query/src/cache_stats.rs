@@ -8,7 +8,7 @@ use crate::{QueryCache, QueryCacheKey};
 
 /// Stats for all primary caches.
 ///
-/// Fetch them via [`Caches::stats`].
+/// Fetch them via [`QueryCache::stats`].
 #[derive(Default, Debug, Clone)]
 pub struct CachesStats {
     pub latest_at: BTreeMap<QueryCacheKey, CacheStats>,

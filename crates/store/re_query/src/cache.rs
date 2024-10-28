@@ -16,7 +16,7 @@ use crate::{LatestAtCache, RangeCache};
 
 // ---
 
-/// Uniquely identifies cached query results in the [`Caches`].
+/// Uniquely identifies cached query results in the [`QueryCache`].
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct QueryCacheKey {
     pub entity_path: EntityPath,

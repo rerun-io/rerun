@@ -538,7 +538,7 @@ impl LatestAtResults {
 
 // --- Cached implementation ---
 
-/// Caches the results of `LatestAt` queries for a given [`CacheKey`].
+/// Caches the results of `LatestAt` queries for a given [`QueryCacheKey`].
 pub struct LatestAtCache {
     /// For debugging purposes.
     pub cache_key: QueryCacheKey,
