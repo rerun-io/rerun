@@ -5,7 +5,7 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import pyarrow as pa
 from attrs import define, field
@@ -15,6 +15,7 @@ from .._baseclasses import (
     BaseBatch,
     BaseExtensionType,
 )
+from .utf8pair_ext import Utf8PairExt
 
 __all__ = ["Utf8Pair", "Utf8PairArrayLike", "Utf8PairBatch", "Utf8PairLike", "Utf8PairType"]
 
@@ -34,7 +35,7 @@ def _utf8pair__second__special_field_converter_override(x: datatypes.Utf8Like) -
 
 
 @define(init=False)
-class Utf8Pair:
+class Utf8Pair(Utf8PairExt):
     """**Datatype**: Stores a tuple of UTF-8 strings."""
 
     def __init__(self: Any, first: datatypes.Utf8Like, second: datatypes.Utf8Like):
@@ -64,7 +65,11 @@ class Utf8Pair:
     # (Docstring intentionally commented out to hide this field from the docs)
 
 
-Utf8PairLike = Utf8Pair
+if TYPE_CHECKING:
+    Utf8PairLike = Union[Utf8Pair, Sequence[datatypes.Utf8Like]]
+else:
+    Utf8PairLike = Any
+
 Utf8PairArrayLike = Union[
     Utf8Pair,
     Sequence[Utf8PairLike],
@@ -90,15 +95,4 @@ class Utf8PairBatch(BaseBatch[Utf8PairArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: Utf8PairArrayLike, data_type: pa.DataType) -> pa.Array:
-        from rerun.datatypes import Utf8Batch
-
-        if isinstance(data, Utf8Pair):
-            data = [data]
-
-        return pa.StructArray.from_arrays(
-            [
-                Utf8Batch([x.first for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-                Utf8Batch([x.second for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-            ],
-            fields=list(data_type),
-        )
+        return Utf8PairExt.native_to_pa_array_override(data, data_type)

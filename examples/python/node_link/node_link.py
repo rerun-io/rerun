@@ -45,10 +45,6 @@ levels = [
 ]
 
 
-def to_edge(e: tuple[str, str]) -> rr.components.GraphEdge:
-    return rr.components.GraphEdge(source=e[0], target=e[1])
-
-
 def main() -> None:
     rr.init("rerun_example_py_node_link", spawn=True)
 
@@ -69,10 +65,7 @@ def main() -> None:
         if len(level["edges"]) > 0:
             t = t + 1
             rr.set_time_seconds("stable_time", t)
-            rr.log(
-                "binary_tree",
-                rr.GraphEdges(list(map(to_edge, level["edges"]))),
-            )
+            rr.log("binary_tree", rr.GraphEdges(level["edges"]))
 
 
 if __name__ == "__main__":
