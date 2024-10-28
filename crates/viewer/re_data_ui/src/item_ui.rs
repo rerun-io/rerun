@@ -171,6 +171,7 @@ pub fn instance_path_icon(
         // It is an entity path
         if db
             .store()
+            .read()
             .all_components_on_timeline(timeline, &instance_path.entity_path)
             .is_some()
         {
@@ -337,6 +338,8 @@ fn entity_tree_stats_ui(
         " (excluding subtree)"
     };
 
+    let store = db.store().read();
+
     let (static_stats, timeline_stats) = if include_subtree {
         (
             db.subtree_stats_static(&tree.path),
@@ -344,8 +347,8 @@ fn entity_tree_stats_ui(
         )
     } else {
         (
-            db.store().entity_stats_static(&tree.path),
-            db.store().entity_stats_on_timeline(&tree.path, timeline),
+            store.entity_stats_static(&tree.path),
+            store.entity_stats_on_timeline(&tree.path, timeline),
         )
     };
 
@@ -380,7 +383,7 @@ fn entity_tree_stats_ui(
 
     if 0 < timeline_stats.total_size_bytes && 1 < num_temporal_rows {
         // Try to estimate data-rate:
-        if let Some(time_range) = db.store().entity_time_range(timeline, &tree.path) {
+        if let Some(time_range) = store.entity_time_range(timeline, &tree.path) {
             let min_time = time_range.min();
             let max_time = time_range.max();
             if min_time < max_time {
@@ -458,7 +461,7 @@ pub fn component_path_button_to(
     db: &re_entity_db::EntityDb,
 ) -> egui::Response {
     let item = Item::ComponentPath(component_path.clone());
-    let is_static = db.store().entity_has_static_component(
+    let is_static = db.store().read().entity_has_static_component(
         component_path.entity_path(),
         component_path.component_name(),
     );

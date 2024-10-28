@@ -8,7 +8,7 @@ use nohash_hasher::IntSet;
 use parking_lot::RwLock;
 
 use re_chunk::ChunkId;
-use re_chunk_store::{ChunkStore, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreSubscriber};
+use re_chunk_store::{ChunkStoreDiff, ChunkStoreEvent, ChunkStoreHandle, ChunkStoreSubscriber};
 use re_log_types::{EntityPath, ResolvedTimeRange, StoreId, TimeInt, Timeline};
 use re_types_core::{components::ClearIsRecursive, ComponentName, Loggable as _};
 
@@ -69,7 +69,10 @@ impl QueryCacheKey {
 }
 
 pub struct QueryCache {
-    /// The [`StoreId`] of the associated [`ChunkStore`].
+    /// Handle to the associated [`ChunkStoreHandle`].
+    pub(crate) store: ChunkStoreHandle,
+
+    /// The [`StoreId`] of the associated [`ChunkStoreHandle`].
     pub(crate) store_id: StoreId,
 
     /// Keeps track of which entities have had any `Clear`-related data on any timeline at any
@@ -91,6 +94,7 @@ impl std::fmt::Debug for QueryCache {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             store_id,
+            store: _,
             might_require_clearing,
             latest_at_per_cache_key,
             range_per_cache_key,
@@ -148,9 +152,11 @@ impl std::fmt::Debug for QueryCache {
 
 impl QueryCache {
     #[inline]
-    pub fn new(store: &ChunkStore) -> Self {
+    pub fn new(store: ChunkStoreHandle) -> Self {
+        let store_id = store.read().id();
         Self {
-            store_id: store.id().clone(),
+            store,
+            store_id,
             might_require_clearing: Default::default(),
             latest_at_per_cache_key: Default::default(),
             range_per_cache_key: Default::default(),
@@ -160,6 +166,7 @@ impl QueryCache {
     #[inline]
     pub fn clear(&self) {
         let Self {
+            store: _,
             store_id: _,
             might_require_clearing,
             latest_at_per_cache_key,

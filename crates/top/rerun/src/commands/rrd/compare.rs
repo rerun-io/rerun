@@ -122,6 +122,12 @@ fn compute_uber_table(
             .app_id()
             .cloned()
             .unwrap_or_else(re_log_types::ApplicationId::unknown),
-        store.store().iter_chunks().map(Arc::clone).collect_vec(),
+        store
+            .store()
+            // NOTE: using `read_arc` so the borrow checker can make sense of the partial borrow of `stores`.
+            .read_arc()
+            .iter_chunks()
+            .map(Arc::clone)
+            .collect_vec(),
     ))
 }

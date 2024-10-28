@@ -727,7 +727,7 @@ fn transforms_at(
     re_tracing::profile_function!();
 
     let potential_transform_components =
-        TransformComponentTracker::access(entity_db.store_id(), |tracker| {
+        TransformComponentTracker::access(&entity_db.store_id(), |tracker| {
             tracker.potential_transform_components(entity_path).cloned()
         })
         .flatten()

@@ -599,7 +599,7 @@ impl StoreHub {
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
         re_tracing::profile_function!();
 
-        let Some(store_id) = self.store_bundle.find_oldest_modified_recording().cloned() else {
+        let Some(store_id) = self.store_bundle.find_oldest_modified_recording() else {
             return;
         };
 
@@ -616,9 +616,11 @@ impl StoreHub {
             return; // unreachable
         };
 
-        let store_size_before = entity_db.store().stats().total().total_size_bytes;
+        // NOTE: Do NOT try and `read_arc()` the store here: `purge_fraction_of_ram` is going to
+        // access it mutably in all sorts of ways, it's a guaranteed deadlock.
+        let store_size_before = entity_db.store().read().stats().total().total_size_bytes;
         let store_events = entity_db.purge_fraction_of_ram(fraction_to_purge);
-        let store_size_after = entity_db.store().stats().total().total_size_bytes;
+        let store_size_after = entity_db.store().read().stats().total().total_size_bytes;
 
         if let Some(caches) = self.caches_per_recording.get_mut(&store_id) {
             caches.on_store_events(&store_events);
@@ -804,7 +806,7 @@ impl StoreHub {
             .and_then(|blueprint_id| self.store_bundle.get(blueprint_id));
 
         let blueprint_stats = blueprint
-            .map(|entity_db| entity_db.store().stats())
+            .map(|entity_db| entity_db.store().read().stats())
             .unwrap_or_default();
 
         let blueprint_cached_stats = blueprint
@@ -812,7 +814,7 @@ impl StoreHub {
             .unwrap_or_default();
 
         let blueprint_config = blueprint
-            .map(|entity_db| entity_db.store().config().clone())
+            .map(|entity_db| entity_db.store().read().config().clone())
             .unwrap_or_default();
 
         let recording = self
@@ -821,7 +823,7 @@ impl StoreHub {
             .and_then(|rec_id| self.store_bundle.get(rec_id));
 
         let recording_stats2 = recording
-            .map(|entity_db| entity_db.store().stats())
+            .map(|entity_db| entity_db.store().read().stats())
             .unwrap_or_default();
 
         let recording_cached_stats = recording
@@ -829,7 +831,7 @@ impl StoreHub {
             .unwrap_or_default();
 
         let recording_config2 = recording
-            .map(|entity_db| entity_db.store().config().clone())
+            .map(|entity_db| entity_db.store().read().config().clone())
             .unwrap_or_default();
 
         StoreHubStats {

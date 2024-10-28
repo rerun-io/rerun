@@ -193,12 +193,13 @@ fn active_defaults(
     // even if they are listed in `all_components`.
     ctx.blueprint_db()
         .store()
+        .read()
         .all_components_on_timeline(&blueprint_timeline(), &view.defaults_path)
         .unwrap_or_default()
         .into_iter()
         .filter(|c| {
             db.query_caches()
-                .latest_at(db.store(), query, &view.defaults_path, [*c])
+                .latest_at(query, &view.defaults_path, [*c])
                 .component_batch_raw(c)
                 .map_or(false, |data| !data.is_empty())
         })

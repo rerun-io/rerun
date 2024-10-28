@@ -162,11 +162,13 @@ impl QueryHandle<'_> {
     fn init_(&self) -> QueryHandleState {
         re_tracing::profile_scope!("init");
 
+        let store = self.engine.store.read();
+
         // The timeline doesn't matter if we're running in static-only mode.
         let filtered_index = self.query.filtered_index.unwrap_or_default();
 
         // 1. Compute the schema for the query.
-        let view_contents = self.engine.store.schema_for_query(&self.query);
+        let view_contents = store.schema_for_query(&self.query);
 
         // 2. Compute the schema of the selected contents.
         //
@@ -327,7 +329,6 @@ impl QueryHandle<'_> {
                             re_chunk::LatestAtQuery::new(Timeline::default(), TimeInt::STATIC);
 
                         let results = self.engine.cache.latest_at(
-                            self.engine.store,
                             &query,
                             &descr.entity_path,
                             [descr.component_name],
@@ -586,10 +587,7 @@ impl QueryHandle<'_> {
         //
         // TODO(cmc): Going through the cache is very useful in a Viewer context, but
         // not so much in an SDK context. Make it configurable.
-        let results =
-            self.engine
-                .cache
-                .range(self.engine.store, query, entity_path, component_names);
+        let results = self.engine.cache.range(query, entity_path, component_names);
 
         debug_assert!(
             results.components.len() <= 1,
@@ -997,7 +995,6 @@ impl QueryHandle<'_> {
                         re_chunk::LatestAtQuery::new(state.filtered_index, *cur_index_value);
 
                     let results = self.engine.cache.latest_at(
-                        self.engine.store,
                         &query,
                         &descr.entity_path,
                         [descr.component_name],

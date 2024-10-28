@@ -95,19 +95,19 @@ impl<'a> ViewerContext<'a> {
 
     /// The chunk store of the active recording.
     #[inline]
-    pub fn recording_store(&self) -> &re_chunk_store::ChunkStore {
+    pub fn recording_store(&self) -> &re_chunk_store::ChunkStoreHandle {
         self.store_context.recording.store()
     }
 
     /// The chunk store of the active blueprint.
     #[inline]
-    pub fn blueprint_store(&self) -> &re_chunk_store::ChunkStore {
+    pub fn blueprint_store(&self) -> &re_chunk_store::ChunkStoreHandle {
         self.store_context.blueprint.store()
     }
 
     /// The `StoreId` of the active recording.
     #[inline]
-    pub fn recording_id(&self) -> &re_log_types::StoreId {
+    pub fn recording_id(&self) -> re_log_types::StoreId {
         self.store_context.recording.store_id()
     }
 
@@ -177,21 +177,23 @@ impl<'a> ViewerContext<'a> {
         component: re_chunk::ComponentName,
     ) -> Box<dyn re_chunk::ArrowArray> {
         self.reflection.components.get(&component).and_then(|info| info.custom_placeholder.as_ref()).cloned()
-
-        .unwrap_or_else(||
-            {
-                // TODO(andreas): Is this operation common enough to cache the result? If so, here or in the reflection data?
-                // The nice thing about this would be that we could always give out references (but updating said cache wouldn't be easy in that case).
-        let datatype = self
-        .recording_store()
-        .lookup_datatype(&component)
-        .or_else(|| self.blueprint_store().lookup_datatype(&component))
-        .unwrap_or_else(|| {
-            re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
-            &re_chunk::external::arrow2::datatypes::DataType::Null
-        });
-            re_types::reflection::generic_placeholder_for_datatype(datatype)
-    })
+            .unwrap_or_else(|| {
+                // TODO(andreas): Is this operation common enough to cache the result? If so, here or in
+                // the reflection data?
+                // The nice thing about this would be that we could always give out references (but updating
+                // said cache wouldn't be easy in that case).
+                let datatype = self
+                    .recording_store()
+                    .read()
+                    .lookup_datatype(&component)
+                    .cloned()
+                    .or_else(|| self.blueprint_store().read().lookup_datatype(&component).cloned())
+                    .unwrap_or_else(|| {
+                        re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
+                        re_chunk::external::arrow2::datatypes::DataType::Null
+                    });
+                re_types::reflection::generic_placeholder_for_datatype(&datatype)
+            })
     }
 }
 
