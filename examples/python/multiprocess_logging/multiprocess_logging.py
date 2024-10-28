@@ -24,7 +24,7 @@ def task(child_index: int) -> None:
     rr.init("rerun_example_multiprocessing")
 
     # We then have to connect to the viewer instance.
-    rr.connect()
+    rr.connect_tcp()
 
     title = f"task_{child_index}"
     rr.log(

@@ -1,6 +1,6 @@
 ---
 title: Migrating from 0.14 to 0.15
-order: 150
+order: 995
 ---
 
 ## `InstanceKey` removed from our logging APIs
