@@ -1096,7 +1096,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     docstring_md : "A list of node IDs.", is_required : true, },
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.GraphType".into(), display_name : "Graph type",
-                    docstring_md : "Specifies if the graph is directed or undirected.",
+                    docstring_md :
+                    "Specifies if the graph is directed or undirected.\n\nIf no `GraphType` is provided, the graph is assumed to be undirected.",
                     is_required : false, },
                 ],
             },

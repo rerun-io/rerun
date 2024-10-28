@@ -10,11 +10,11 @@ A string-based ID representing a node in a graph.
 * id: [`Utf8`](../datatypes/utf8.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `GraphNode`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1GraphNode.html)
- * 🐍 [Python API docs for `GraphNode`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.GraphNode)
- * 🦀 [Rust API docs for `GraphNode`](https://docs.rs/rerun/latest/rerun/components/struct.GraphNode.html)
+ * 🌊 [C++ API docs for `GraphNode`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1GraphNode.html?speculative-link)
+ * 🐍 [Python API docs for `GraphNode`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.GraphNode)
+ * 🦀 [Rust API docs for `GraphNode`](https://docs.rs/rerun/latest/rerun/components/struct.GraphNode.html?speculative-link)
 
 
 ## Used by
 
-* [`GraphNodes`](../archetypes/graph_nodes.md)
+* [`GraphNodes`](../archetypes/graph_nodes.md?speculative-link)

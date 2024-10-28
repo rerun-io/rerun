@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use re_format::format_f32;
+use re_types::blueprint::components::VisualBounds2D;
 use re_ui::UiExt;
 use re_viewer_context::SpaceViewState;
 
@@ -17,10 +18,11 @@ pub struct GraphSpaceViewState {
 
     /// Indicates if the viewer should fit to the screen the next time it is rendered.
     pub should_fit_to_screen: bool,
-    pub should_tick: bool,
 
     /// Positions of the nodes in world space.
     pub layout: HashMap<NodeIndex, egui::Rect>,
+
+    pub visual_bounds_2d: Option<VisualBounds2D>,
 }
 
 impl GraphSpaceViewState {
@@ -29,10 +31,9 @@ impl GraphSpaceViewState {
             .on_hover_text("The bounding box encompassing all Entities in the view right now");
         ui.vertical(|ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-            if let Some(egui::Rect { min, max }) = bounding_rect_from_iter(self.layout.values()) {
-                ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
-                ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
-            }
+            let egui::Rect { min, max } = bounding_rect_from_iter(self.layout.values());
+            ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
+            ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
         });
         ui.end_row();
 
@@ -48,16 +49,6 @@ impl GraphSpaceViewState {
     pub fn debug_ui(&mut self, ui: &mut egui::Ui) {
         ui.re_checkbox(&mut self.viewer.show_debug, "Show debug information")
             .on_hover_text("Shows debug information for the current graph");
-        ui.end_row();
-    }
-
-    pub fn simulation_ui(&mut self, ui: &mut egui::Ui) {
-        ui.grid_left_hand_label("Simulation")
-            .on_hover_text("Control the simulation of the graph layout");
-        if ui.button("Tick").clicked() {
-            self.should_tick = true;
-        }
-
         ui.end_row();
     }
 }

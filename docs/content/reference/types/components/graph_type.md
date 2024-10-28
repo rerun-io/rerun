@@ -11,9 +11,9 @@ Specifies if a graph has directed or undirected edges.
 * Directed
 
 ## API reference links
- * 🌊 [C++ API docs for `GraphType`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
- * 🐍 [Python API docs for `GraphType`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.GraphType)
- * 🦀 [Rust API docs for `GraphType`](https://docs.rs/rerun/latest/rerun/components/enum.GraphType.html)
+ * 🌊 [C++ API docs for `GraphType`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html?speculative-link)
+ * 🐍 [Python API docs for `GraphType`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.GraphType)
+ * 🦀 [Rust API docs for `GraphType`](https://docs.rs/rerun/latest/rerun/components/enum.GraphType.html?speculative-link)
 
 
 ## Used by

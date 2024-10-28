@@ -15,7 +15,7 @@ use re_viewer_context::{
 
 use crate::{
     graph::{Graph, NodeIndex},
-    ui::{self, GraphSpaceViewState},
+    ui::{self, bounding_rect_from_iter, GraphSpaceViewState},
     visualizers::{EdgesVisualizer, NodeVisualizer},
 };
 
@@ -54,10 +54,32 @@ impl SpaceViewClass for GraphSpaceView {
         Box::<GraphSpaceViewState>::default()
     }
 
-    fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
-        // Prefer a square tile if possible.
-        Some(1.0)
+    fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32> {
+        state
+            .downcast_ref::<GraphSpaceViewState>()
+            .ok()
+            .map(|state| {
+                let (width, height) = state.visual_bounds_2d.map_or_else(
+                    || {
+                        let bbox = bounding_rect_from_iter(state.layout.values());
+                        (
+                            (bbox.max.x - bbox.min.x).abs(),
+                            (bbox.max.y - bbox.min.y).abs(),
+                        )
+                    },
+                    |bounds| {
+                        (
+                            bounds.x_range.abs_len() as f32,
+                            bounds.y_range.abs_len() as f32,
+                        )
+                    },
+                );
+
+                width / height
+            })
     }
+
+    // TODO(grtlr): implement `recommended_root_for_entities`
 
     fn layout_priority(&self) -> SpaceViewClassLayoutPriority {
         Default::default()
@@ -92,7 +114,6 @@ impl SpaceViewClass for GraphSpaceView {
         ui.selection_grid("graph_settings_ui").show(ui, |ui| {
             state.bounding_box_ui(ui);
             state.debug_ui(ui);
-            state.simulation_ui(ui);
         });
 
         Ok(())

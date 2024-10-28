@@ -60,18 +60,14 @@ impl ::re_types_core::SizeBytes for GraphNodes {
 static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.GraphNode".into()]);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.GraphNodesIndicator".into()]);
+
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Position2D".into(),
             "rerun.components.Color".into(),
-            "rerun.components.GraphNodesIndicator".into(),
-        ]
-    });
-
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
-    once_cell::sync::Lazy::new(|| {
-        [
             "rerun.components.Text".into(),
             "rerun.components.ShowLabels".into(),
         ]
@@ -81,16 +77,16 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.GraphNode".into(),
+            "rerun.components.GraphNodesIndicator".into(),
             "rerun.components.Position2D".into(),
             "rerun.components.Color".into(),
-            "rerun.components.GraphNodesIndicator".into(),
             "rerun.components.Text".into(),
             "rerun.components.ShowLabels".into(),
         ]
     });
 
 impl GraphNodes {
-    /// The total number of components in the archetype: 1 required, 3 recommended, 2 optional
+    /// The total number of components in the archetype: 1 required, 1 recommended, 4 optional
     pub const NUM_COMPONENTS: usize = 6usize;
 }
 

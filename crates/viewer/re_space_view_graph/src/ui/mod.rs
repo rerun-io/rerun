@@ -60,16 +60,6 @@ pub fn draw_entity(
 
 pub fn bounding_rect_from_iter<'a>(
     rectangles: impl Iterator<Item = &'a egui::Rect>,
-) -> Option<egui::Rect> {
-    // Start with `None` and gradually expand the bounding box.
-    let mut bounding_rect: Option<egui::Rect> = None;
-
-    for rect in rectangles {
-        bounding_rect = match bounding_rect {
-            Some(bounding) => Some(bounding.union(*rect)),
-            None => Some(*rect),
-        };
-    }
-
-    bounding_rect
+) -> egui::Rect {
+    rectangles.fold(egui::Rect::NOTHING, |acc, rect| acc.union(*rect))
 }

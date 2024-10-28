@@ -5,7 +5,7 @@ table Utf8Pair (
   "attr.docs.unreleased",
   "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
   "attr.rust.custom_clause":
-    'cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))',
+    'cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))'
 ) {
   /// The first string.
   first: rerun.datatypes.Utf8 (order: 100);

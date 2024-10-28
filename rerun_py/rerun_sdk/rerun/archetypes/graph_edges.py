@@ -37,6 +37,8 @@ class GraphEdges(Archetype):
         graph_type:
             Specifies if the graph is directed or undirected.
 
+            If no `GraphType` is provided, the graph is assumed to be undirected.
+
         """
 
         # You can define your own __init__ function as a member of GraphEdgesExt in graph_edges_ext.py
@@ -73,6 +75,8 @@ class GraphEdges(Archetype):
         converter=components.GraphTypeBatch._optional,  # type: ignore[misc]
     )
     # Specifies if the graph is directed or undirected.
+    #
+    # If no `GraphType` is provided, the graph is assumed to be undirected.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -7,6 +7,7 @@ mod graph;
 mod types;
 mod ui;
 mod view;
+mod properties;
 mod visualizers;
 
 pub use view::GraphSpaceView;
