@@ -174,3 +174,5 @@ facilitates the tool's discovery by other researchers.
 1. Download the correct `.whl` from [GitHub Releases](https://github.com/rerun-io/rerun/releases)
 2. Run `pip install rerun_sdk<…>.whl` (replace `<…>` with the actual filename)
 3. Test it: `rerun --version`
+
+Some changes
