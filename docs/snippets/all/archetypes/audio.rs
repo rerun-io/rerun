@@ -2,10 +2,10 @@
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     // let rec = rerun::RecordingStreamBuilder::new("rerun_example_audio").spawn()?;
-    let rec = rerun::RecordingStreamBuilder::new("rerun_example_audio").save("../audio2.rrd")?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_audio").save("../audio.rrd")?;
 
-    let audio = rerun::Audio::from_wav_bytes(include_bytes!("../../rerun-music.wav"))?;
-    rec.log("music", &audio)?;
+    //let audio = rerun::Audio::from_wav_bytes(include_bytes!("../../rerun-music.wav"))?;
+    //rec.log("music", &audio)?;
 
     let audio = rerun::Audio::from_wav_bytes(include_bytes!("../../icq.wav"))?;
 
