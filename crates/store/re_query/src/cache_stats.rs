@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use re_types_core::SizeBytes as _;
 
-use crate::{CacheKey, QueryCache};
+use crate::{QueryCache, QueryCacheKey};
 
 // ---
 
@@ -11,8 +11,8 @@ use crate::{CacheKey, QueryCache};
 /// Fetch them via [`Caches::stats`].
 #[derive(Default, Debug, Clone)]
 pub struct CachesStats {
-    pub latest_at: BTreeMap<CacheKey, CacheStats>,
-    pub range: BTreeMap<CacheKey, CacheStats>,
+    pub latest_at: BTreeMap<QueryCacheKey, CacheStats>,
+    pub range: BTreeMap<QueryCacheKey, CacheStats>,
 }
 
 impl CachesStats {

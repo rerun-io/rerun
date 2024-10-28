@@ -9,7 +9,7 @@ use re_chunk_store::{ChunkStore, RangeQuery, TimeInt};
 use re_log_types::{EntityPath, ResolvedTimeRange};
 use re_types_core::{ComponentName, DeserializationError, SizeBytes};
 
-use crate::{CacheKey, QueryCache};
+use crate::{QueryCache, QueryCacheKey};
 
 // --- Public API ---
 
@@ -38,7 +38,7 @@ impl QueryCache {
         });
 
         for component_name in component_names {
-            let key = CacheKey::new(entity_path.clone(), query.timeline(), component_name);
+            let key = QueryCacheKey::new(entity_path.clone(), query.timeline(), component_name);
 
             let cache = Arc::clone(
                 self.range_per_cache_key
@@ -130,7 +130,7 @@ impl RangeResults {
 /// Caches the results of `Range` queries for a given [`CacheKey`].
 pub struct RangeCache {
     /// For debugging purposes.
-    pub cache_key: CacheKey,
+    pub cache_key: QueryCacheKey,
 
     /// All the [`Chunk`]s currently cached.
     ///
@@ -148,7 +148,7 @@ pub struct RangeCache {
 
 impl RangeCache {
     #[inline]
-    pub fn new(cache_key: CacheKey) -> Self {
+    pub fn new(cache_key: QueryCacheKey) -> Self {
         Self {
             cache_key,
             chunks: HashMap::default(),

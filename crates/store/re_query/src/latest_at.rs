@@ -14,7 +14,7 @@ use re_types_core::{
     components::ClearIsRecursive, Component, ComponentName, Loggable as _, SizeBytes,
 };
 
-use crate::{CacheKey, QueryCache, QueryError};
+use crate::{QueryCache, QueryCacheKey, QueryError};
 
 // --- Public API ---
 
@@ -96,7 +96,7 @@ impl QueryCache {
                     continue;
                 }
 
-                let key = CacheKey::new(
+                let key = QueryCacheKey::new(
                     clear_entity_path.clone(),
                     query.timeline(),
                     ClearIsRecursive::name(),
@@ -144,7 +144,7 @@ impl QueryCache {
         }
 
         for component_name in component_names {
-            let key = CacheKey::new(entity_path.clone(), query.timeline(), component_name);
+            let key = QueryCacheKey::new(entity_path.clone(), query.timeline(), component_name);
 
             let cache = Arc::clone(
                 self.latest_at_per_cache_key
@@ -541,7 +541,7 @@ impl LatestAtResults {
 /// Caches the results of `LatestAt` queries for a given [`CacheKey`].
 pub struct LatestAtCache {
     /// For debugging purposes.
-    pub cache_key: CacheKey,
+    pub cache_key: QueryCacheKey,
 
     /// Organized by _query_ time.
     ///
@@ -562,7 +562,7 @@ pub struct LatestAtCache {
 
 impl LatestAtCache {
     #[inline]
-    pub fn new(cache_key: CacheKey) -> Self {
+    pub fn new(cache_key: QueryCacheKey) -> Self {
         Self {
             cache_key,
             per_query_time: Default::default(),
