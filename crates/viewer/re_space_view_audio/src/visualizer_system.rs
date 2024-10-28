@@ -135,7 +135,7 @@ impl VisualizerSystem for AudioSystem {
     }
 
     fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
-        todo!()
+        self
     }
 }
 
@@ -167,3 +167,5 @@ fn num_channels(shape: &[TensorDimension]) -> Option<u64> {
         _ => None,
     }
 }
+
+re_viewer_context::impl_component_fallback_provider!(AudioSystem => []);
