@@ -68,6 +68,52 @@ impl QueryCacheKey {
     }
 }
 
+/// A ref-counted, inner-mutable handle to a [`QueryCache`].
+///
+/// Cheap to clone.
+///
+/// It is possible to grab the lock behind this handle while _maintaining a static lifetime_, see:
+/// * [`QueryCacheHandle::read_arc`]
+/// * [`QueryCacheHandle::write_arc`]
+#[derive(Clone)]
+pub struct QueryCacheHandle(Arc<parking_lot::RwLock<QueryCache>>);
+
+impl QueryCacheHandle {
+    #[inline]
+    pub fn new(cache: QueryCache) -> Self {
+        Self(Arc::new(parking_lot::RwLock::new(cache)))
+    }
+
+    #[inline]
+    pub fn into_inner(self) -> Arc<parking_lot::RwLock<QueryCache>> {
+        self.0
+    }
+}
+
+impl QueryCacheHandle {
+    #[inline]
+    pub fn read(&self) -> parking_lot::RwLockReadGuard<'_, QueryCache> {
+        self.0.read()
+    }
+
+    #[inline]
+    pub fn write(&self) -> parking_lot::RwLockWriteGuard<'_, QueryCache> {
+        self.0.write()
+    }
+
+    #[inline]
+    pub fn read_arc(&self) -> parking_lot::ArcRwLockReadGuard<parking_lot::RawRwLock, QueryCache> {
+        parking_lot::RwLock::read_arc(&self.0)
+    }
+
+    #[inline]
+    pub fn write_arc(
+        &self,
+    ) -> parking_lot::ArcRwLockWriteGuard<parking_lot::RawRwLock, QueryCache> {
+        parking_lot::RwLock::write_arc(&self.0)
+    }
+}
+
 pub struct QueryCache {
     /// Handle to the associated [`ChunkStoreHandle`].
     pub(crate) store: ChunkStoreHandle,
