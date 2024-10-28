@@ -79,14 +79,7 @@ impl TransportMessageV0 {
                 let mut data: Vec<u8> = Vec::new();
                 MessageHader::RECORD_BATCH.encode(&mut data)?;
 
-                let options = write::WriteOptions { compression: None };
-                let mut sw = write::StreamWriter::new(&mut data, options);
-
-                sw.start(&chunk.schema, None)
-                    .map_err(CodecError::ArrowSerialization)?;
-                sw.write(&chunk.data, None)
-                    .map_err(CodecError::ArrowSerialization)?;
-                sw.finish().map_err(CodecError::ArrowSerialization)?;
+                write_arrow_to_bytes(&mut data, &chunk.schema, &chunk.data)?;
 
                 Ok(data)
             }
@@ -100,29 +93,14 @@ impl TransportMessageV0 {
         match header {
             MessageHader::NO_DATA => Ok(Self::NoData),
             MessageHader::RECORD_BATCH => {
-                let metadata = read::read_stream_metadata(&mut reader)
-                    .map_err(CodecError::ArrowSerialization)?;
-                let mut stream = read::StreamReader::new(&mut reader, metadata, None);
+                let (schema, data) = read_arrow_from_bytes(&mut reader)?;
 
-                let schema = stream.schema().clone();
-                // there should be at least one record batch in the stream
-                // TODO(zehiko) isn't there a "read one record batch from bytes" arrow2 function??
-                let stream_state = stream
-                    .next()
-                    .ok_or(CodecError::MissingRecordBatch)?
-                    .map_err(CodecError::ArrowSerialization)?;
+                let tc = TransportChunk {
+                    schema: schema.clone(),
+                    data,
+                };
 
-                match stream_state {
-                    read::StreamState::Waiting => Err(CodecError::UnexpectedStreamState),
-                    read::StreamState::Some(chunk) => {
-                        let tc = TransportChunk {
-                            schema: schema.clone(),
-                            data: chunk,
-                        };
-
-                        Ok(Self::RecordBatch(tc))
-                    }
-                }
+                Ok(Self::RecordBatch(tc))
             }
             _ => Err(CodecError::UnknownMessageHeader),
         }
@@ -160,7 +138,6 @@ pub fn decode(version: EncoderVersion, data: &[u8]) -> Result<Option<TransportCh
     }
 }
 
-// TODO(zehiko) extract common serialization logic
 impl RecordingMetadata {
     /// Create `RecordingMetadata` from arrow schema and arrow record batch
     pub fn try_from(
@@ -178,15 +155,7 @@ impl RecordingMetadata {
         match version {
             EncoderVersion::V0 => {
                 let mut data: Vec<u8> = Vec::new();
-
-                let options = write::WriteOptions { compression: None };
-                let mut sw = write::StreamWriter::new(&mut data, options);
-
-                sw.start(schema, None)
-                    .map_err(CodecError::ArrowSerialization)?;
-                sw.write(unit_batch, None)
-                    .map_err(CodecError::ArrowSerialization)?;
-                sw.finish().map_err(CodecError::ArrowSerialization)?;
+                write_arrow_to_bytes(&mut data, schema, unit_batch)?;
 
                 Ok(Self {
                     encoder_version: version as i32,
@@ -200,21 +169,52 @@ impl RecordingMetadata {
     pub fn data(&self) -> Result<(ArrowSchema, ArrowChunk<Box<dyn ArrowArray>>), CodecError> {
         let mut reader = std::io::Cursor::new(self.payload.clone());
 
-        let metadata =
-            read::read_stream_metadata(&mut reader).map_err(CodecError::ArrowSerialization)?;
-        let mut stream = read::StreamReader::new(&mut reader, metadata, None);
+        let encoder_version = EncoderVersion::try_from(self.encoder_version)
+            .map_err(|err| CodecError::InvalidArgument(err.to_string()))?;
 
-        let schema = stream.schema().clone();
-        // there should be at least one record batch in the stream
-        let stream_state = stream
-            .next()
-            .ok_or(CodecError::MissingRecordBatch)?
-            .map_err(CodecError::ArrowSerialization)?;
-
-        match stream_state {
-            read::StreamState::Waiting => Err(CodecError::UnexpectedStreamState),
-            read::StreamState::Some(chunk) => Ok((schema, chunk)),
+        match encoder_version {
+            EncoderVersion::V0 => read_arrow_from_bytes(&mut reader),
         }
+    }
+}
+
+/// Helper function that serializes given arrow schema and record batch into bytes
+/// using Arrow IPC format.
+fn write_arrow_to_bytes<W: std::io::Write>(
+    writer: &mut W,
+    schema: &ArrowSchema,
+    data: &ArrowChunk<Box<dyn ArrowArray>>,
+) -> Result<(), CodecError> {
+    let options = write::WriteOptions { compression: None };
+    let mut sw = write::StreamWriter::new(writer, options);
+
+    sw.start(schema, None)
+        .map_err(CodecError::ArrowSerialization)?;
+    sw.write(data, None)
+        .map_err(CodecError::ArrowSerialization)?;
+    sw.finish().map_err(CodecError::ArrowSerialization)?;
+
+    Ok(())
+}
+
+/// Helper function that deserializes raw bytes into arrow schema and record batch
+/// using Arrow IPC format.
+fn read_arrow_from_bytes<R: std::io::Read>(
+    reader: &mut R,
+) -> Result<(ArrowSchema, ArrowChunk<Box<dyn ArrowArray>>), CodecError> {
+    let metadata = read::read_stream_metadata(reader).map_err(CodecError::ArrowSerialization)?;
+    let mut stream = read::StreamReader::new(reader, metadata, None);
+
+    let schema = stream.schema().clone();
+    // there should be at least one record batch in the stream
+    let stream_state = stream
+        .next()
+        .ok_or(CodecError::MissingRecordBatch)?
+        .map_err(CodecError::ArrowSerialization)?;
+
+    match stream_state {
+        read::StreamState::Waiting => Err(CodecError::UnexpectedStreamState),
+        read::StreamState::Some(chunk) => Ok((schema, chunk)),
     }
 }
 
@@ -337,5 +337,26 @@ mod tests {
 
         assert_eq!(expected_schema, schema);
         assert_eq!(expected_chunk, chunk);
+    }
+
+    #[test]
+    fn test_recording_metadata_fails_with_non_unit_batch() {
+        let expected_schema = ArrowSchema::from(vec![Field::new(
+            "my_int",
+            arrow2::datatypes::DataType::Int32,
+            false,
+        )]);
+        // more than 1 row in the batch
+        let my_ints = Int32Array::from_slice([41, 42]);
+
+        let expected_chunk = ArrowChunk::new(vec![Box::new(my_ints) as _]);
+
+        let metadata =
+            RecordingMetadata::try_from(EncoderVersion::V0, &expected_schema, &expected_chunk);
+
+        assert!(matches!(
+            metadata.err().unwrap(),
+            CodecError::InvalidArgument(_)
+        ));
     }
 }
