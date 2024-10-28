@@ -4,9 +4,10 @@ namespace rerun.archetypes;
 
 /// A list of nodes in a graph with optional labels, colors, etc.
 table GraphNodes (
-  "attr.rust.derive": "PartialEq",
   "attr.docs.category": "Graph",
-  "attr.docs.view_types": "Graph View"
+  "attr.docs.unreleased",
+  "attr.docs.view_types": "Graph View",
+  "attr.rust.derive": "PartialEq",
 ) {
   // --- Required ---
 
@@ -16,10 +17,10 @@ table GraphNodes (
   // --- Optional ---
 
   /// Optional center positions of the nodes.
-  positions: [rerun.components.Position2D] ("attr.rerun.component_recommended", nullable, order: 3000);
+  positions: [rerun.components.Position2D] ("attr.rerun.component_optional", nullable, order: 3000);
 
   /// Optional colors for the boxes.
-  colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 3100);
+  colors: [rerun.components.Color] ("attr.rerun.component_optional", nullable, order: 3100);
 
   /// Optional text labels for the node.
   labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3200);

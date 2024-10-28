@@ -14,4 +14,3 @@ impl From<GraphNode> for String {
         value.as_str().to_owned()
     }
 }
-

@@ -17,4 +17,4 @@ An edge in a graph connecting two nodes.
 
 ## Used by
 
-* [`GraphEdges`](../archetypes/graph_edges.md)
+* [`GraphEdges`](../archetypes/graph_edges.md?speculative-link)

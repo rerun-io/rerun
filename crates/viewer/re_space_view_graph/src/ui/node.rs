@@ -60,6 +60,7 @@ pub fn draw_node(
     }
     .on_hover_text(format!(
         "Node ID: `{}` in `{}`",
-        instance.node_id.as_str(), instance.entity_path
+        instance.node_id.as_str(),
+        instance.entity_path
     ))
 }

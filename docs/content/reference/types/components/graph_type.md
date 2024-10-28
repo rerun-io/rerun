@@ -18,4 +18,4 @@ Specifies if a graph has directed or undirected edges.
 
 ## Used by
 
-* [`GraphEdges`](../archetypes/graph_edges.md)
+* [`GraphEdges`](../archetypes/graph_edges.md?speculative-link)

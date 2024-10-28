@@ -6,9 +6,10 @@ namespace rerun.archetypes;
 ///
 /// By default, edges are undirected.
 table GraphEdges (
-  "attr.rust.derive": "PartialEq, Eq",
   "attr.docs.category": "Graph",
-  "attr.docs.view_types": "Graph View"
+  "attr.docs.unreleased",
+  "attr.docs.view_types": "Graph View",
+  "attr.rust.derive": "PartialEq, Eq",
 ) {
   // --- Required ---
 
@@ -19,6 +20,8 @@ table GraphEdges (
   // --- Recommended ---
 
   /// Specifies if the graph is directed or undirected.
+  ///
+  /// If no `GraphType` is provided, the graph is assumed to be undirected.
   graph_type: rerun.components.GraphType ("attr.rerun.component_recommended", nullable, order: 2000);
 
 }
