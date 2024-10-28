@@ -64,7 +64,7 @@ Check out the blueprint API and `log_file_from_path` references to learn more:
 * [🦀 Rust `log_file_from_path`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log_file_from_path)
 * [🌊 C++ `log_file_from_path`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a20798d7ea74cce5c8174e5cacd0a2c47)
 
-You can learn more in our [dedicated page about blueprint re-use](../howto/visualization/reuse-blueprints).
+You can learn more in our [dedicated page about blueprint re-use](../howto/visualization/reuse-blueprints?speculative-link).
 
 
 ### Setting up dataframe view manually in the UI

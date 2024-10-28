@@ -3,7 +3,7 @@ title: Re-use blueprints across sessions and SDKs
 order: 150
 ---
 
-While the [blueprint APIs](configure-viewer-through-code) are currently only available through [🐍 Python](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/), blueprints can be saved to file and then re-logged as needed from any language our SDKs support.
+While the [blueprint APIs](configure-viewer-through-code?speculative-link) are currently only available through [🐍 Python](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/), blueprints can be saved to file and then re-logged as needed from any language our SDKs support.
 
 This enables you to re-use your saved blueprints both from any language we support as well as across different recordings that share a similar-enough structure, and makes it possible to share those blueprints with other users.
 
