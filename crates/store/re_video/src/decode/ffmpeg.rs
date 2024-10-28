@@ -54,9 +54,6 @@ struct FrameInfo {
 
 /// Decode H.264 video via ffmpeg over CLI
 pub struct FfmpegCliH264Decoder {
-    /// Monotonically increasing
-    frame_num: u32,
-
     /// How we send more data to the ffmpeg process
     ffmpeg_stdin: std::process::ChildStdin,
 
@@ -97,7 +94,7 @@ impl FfmpegCliH264Decoder {
                 .format("h264") // TODO(andreas): should we check ahead of time whether this is available?
                 //.fps_mode("0")
                 .input("-") // stdin is our input!
-                // h264 bitstreams doesn't have timestamp information. Whatever ffmpeg tries to make up about timestamp is wrong.
+                // h264 bitstreams doesn't have timestamp information. Whatever ffmpeg tries to make up about timing & framerates is wrong!
                 // If we don't tell it to just pass the frames through, variable framerate (VFR) video will just not play at all.
                 .fps_mode("passthrough")
                 // TODO(andreas): at least do `rgba`. But we could also do `yuv420p` for instance if that's what the video is specifying
@@ -129,7 +126,6 @@ impl FfmpegCliH264Decoder {
             .expect("Failed to spawn ffmpeg thread");
 
         Ok(Self {
-            frame_num: 0,
             ffmpeg_stdin,
             frame_info_tx,
             avcc,
@@ -193,8 +189,13 @@ fn read_ffmpeg_output(
             }
 
             // Usefuless info in these:
-            FfmpegEvent::ParsedInput(_) => {}
-            FfmpegEvent::ParsedOutput(_) => {}
+            FfmpegEvent::ParsedInput(input) => {
+                re_log::debug!("{input:?}");
+            }
+            FfmpegEvent::ParsedOutput(output) => {
+                re_log::debug!("{output:?}");
+            }
+
             FfmpegEvent::ParsedStreamMapping(_) => {}
 
             FfmpegEvent::ParsedInputStream(stream) => {
@@ -236,6 +237,7 @@ fn read_ffmpeg_output(
 
             FfmpegEvent::Progress(_) => {
                 // We can get out frame number etc here to know how far behind we are.
+                // By default this triggers every 0.5s.
             }
 
             FfmpegEvent::OutputFrame(frame) => {
@@ -322,9 +324,7 @@ impl AsyncDecoder for FfmpegCliH264Decoder {
             duration: chunk.duration,
         };
 
-        // NOTE: a 60 FPS video can go for two years before wrapping a u32.
-        self.frame_num = self.frame_num.wrapping_add(1);
-
+        // TODO: schedule this.
         if self.frame_info_tx.send(frame_info).is_err() {
             // The other thread must be down, e.g. because `ffmpeg` crashed.
             // It should already have reported that as an error - no need to repeat it here.
