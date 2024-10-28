@@ -94,15 +94,12 @@ impl FfmpegCliH264Decoder {
                     "0",
                 ])
                 // Keep in mind that all arguments that are about the input, need to go before!
-                .format("h264") // High risk here: What's is available?
+                .format("h264") // TODO(andreas): should we check ahead of time whether this is available?
+                //.fps_mode("0")
                 .input("-") // stdin is our input!
-                // TODO: Do we have to do this instead?
-                // Set constant frame rate.
-                // We can't properly handle variable frame rate since `rawvideo` output won't report timestamps.
-                // To work around this we'd first need to establish a mapping of frame numbers to timestamps.
-                // This isn't entirely trivial since individual chunks may have arbitrary composition & decode timestamps.
-                //.fps_mode(1)
-                //
+                // h264 bitstreams doesn't have timestamp information. Whatever ffmpeg tries to make up about timestamp is wrong.
+                // If we don't tell it to just pass the frames through, variable framerate (VFR) video will just not play at all.
+                .fps_mode("passthrough")
                 // TODO(andreas): at least do `rgba`. But we could also do `yuv420p` for instance if that's what the video is specifying
                 // (should be faster overall at no quality loss if the video is in this format).
                 // Check `ffmpeg -pix_fmts` for full list.
