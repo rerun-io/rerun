@@ -77,14 +77,12 @@
 //! supporting HDR content at which point more properties will be important!
 //!
 
-#[cfg(any(with_dav1d, with_ffmpeg))]
+#[cfg(with_dav1d)]
 mod async_decoder_wrapper;
 #[cfg(with_dav1d)]
 mod av1;
-
 #[cfg(with_ffmpeg)]
-pub mod ffmpeg;
-
+mod ffmpeg;
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
 
@@ -187,12 +185,12 @@ pub fn new_decoder(
 
         #[cfg(with_ffmpeg)]
         re_mp4::StsdBoxContent::Avc1(avc1_box) => {
+            // TODO: check if we have ffmpeg ONCE, and remember
             re_log::trace!("Decoding H.264…");
-            return Ok(Box::new(async_decoder_wrapper::AsyncDecoderWrapper::new(
-                debug_name.to_owned(),
-                Box::new(ffmpeg::FfmpegCliH264Decoder::new(avc1_box.clone())?),
+            Ok(Box::new(ffmpeg::FfmpegCliH264Decoder::new(
+                avc1_box.clone(),
                 on_output,
-            )));
+            )?))
         }
 
         _ => Err(Error::UnsupportedCodec(video.human_readable_codec_string())),
