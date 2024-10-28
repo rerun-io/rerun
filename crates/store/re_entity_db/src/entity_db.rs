@@ -65,7 +65,7 @@ pub struct EntityDb {
     data_store: ChunkStore,
 
     /// Query caches for the data in [`Self::data_store`].
-    query_caches: re_query::Caches,
+    query_caches: re_query::QueryCache,
 
     stats: IngestionStatistics,
 }
@@ -77,7 +77,7 @@ impl EntityDb {
 
     pub fn with_store_config(store_id: StoreId, store_config: ChunkStoreConfig) -> Self {
         let data_store = ChunkStore::new(store_id.clone(), store_config);
-        let query_caches = re_query::Caches::new(&data_store);
+        let query_caches = re_query::QueryCache::new(&data_store);
 
         Self {
             data_source: None,
@@ -117,7 +117,7 @@ impl EntityDb {
     }
 
     #[inline]
-    pub fn query_caches(&self) -> &re_query::Caches {
+    pub fn query_caches(&self) -> &re_query::QueryCache {
         &self.query_caches
     }
 

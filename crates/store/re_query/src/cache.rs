@@ -68,8 +68,7 @@ impl CacheKey {
     }
 }
 
-// TODO(cmc): this needs to be renamed to `QueryCache` as this will slowly become part of the public API now.
-pub struct Caches {
+pub struct QueryCache {
     /// The [`StoreId`] of the associated [`ChunkStore`].
     pub(crate) store_id: StoreId,
 
@@ -88,7 +87,7 @@ pub struct Caches {
     pub(crate) range_per_cache_key: RwLock<HashMap<CacheKey, Arc<RwLock<RangeCache>>>>,
 }
 
-impl std::fmt::Debug for Caches {
+impl std::fmt::Debug for QueryCache {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             store_id,
@@ -147,7 +146,7 @@ impl std::fmt::Debug for Caches {
     }
 }
 
-impl Caches {
+impl QueryCache {
     #[inline]
     pub fn new(store: &ChunkStore) -> Self {
         Self {
@@ -173,7 +172,7 @@ impl Caches {
     }
 }
 
-impl ChunkStoreSubscriber for Caches {
+impl ChunkStoreSubscriber for QueryCache {
     #[inline]
     fn name(&self) -> String {
         "rerun.store_subscribers.QueryCache".into()
