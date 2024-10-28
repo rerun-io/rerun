@@ -10,7 +10,10 @@ s = 3  # scaling factor for the positions
 # Potentially unbalanced and not sorted binary tree. :nerd_face:.
 # :warning: The nodes have to be unique, which is why we use `5_0`…
 
-nodes = {
+NodeId = str
+NodeInfo = dict[NodeId, str | tuple[float, float]]
+
+nodes: dict[NodeId, NodeInfo] = {
     "1": {"label": "1", "pos": (0 * s, 0 * s)},
     "7": {"label": "7", "pos": (-20 * s, 30 * s)},
     "2": {"label": "2", "pos": (-30 * s, 60 * s)},
@@ -22,7 +25,10 @@ nodes = {
     "5_1": {"label": "5", "pos": (20 * s, 90 * s)},
 }
 
-levels = [
+LevelInfo = dict[str, list[NodeId] | list[tuple[NodeId, NodeId]]]
+Levels = list[LevelInfo]
+
+levels: Levels = [
     {"nodes": ["1"], "edges": []},
     {"nodes": ["1", "7", "9_0"], "edges": [("1", "7"), ("1", "9_0")]},
     {
