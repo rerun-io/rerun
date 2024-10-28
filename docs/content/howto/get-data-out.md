@@ -1,6 +1,6 @@
 ---
-title: Get data out of Rerun
-order: 0
+title: Query data out of Rerun
+order: 100
 ---
 
 Rerun comes with a Dataframe API, which enables getting data out of Rerun from code. This page provides an overview of the API, as well as recipes to load the data in popular packages such as [Pandas](https://pandas.pydata.org), [Polars](https://pola.rs), and [DuckDB](https://duckdb.org).
