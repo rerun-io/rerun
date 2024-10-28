@@ -326,7 +326,7 @@ mod tests {
             arrow2::datatypes::DataType::Int32,
             false,
         )]);
-        let my_ints = Int32Array::from_slice(&[42]);
+        let my_ints = Int32Array::from_slice([42]);
         let expected_chunk = ArrowChunk::new(vec![Box::new(my_ints) as _]);
 
         let metadata =
