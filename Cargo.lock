@@ -5646,6 +5646,7 @@ dependencies = [
  "anyhow",
  "itertools 0.13.0",
  "nohash-hasher",
+ "parking_lot",
  "re_arrow2",
  "re_chunk",
  "re_chunk_store",

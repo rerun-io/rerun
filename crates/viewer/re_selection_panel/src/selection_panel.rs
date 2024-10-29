@@ -160,8 +160,8 @@ impl SelectionPanel {
 
                 let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
                 let is_static = db
+                    .storage_engine()
                     .store()
-                    .read()
                     .entity_has_static_component(entity_path, component_name);
 
                 ui.list_item_flat_noninteractive(
@@ -727,8 +727,8 @@ fn item_tile(
 
             let (_query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
             let is_static = db
+                .storage_engine()
                 .store()
-                .read()
                 .entity_has_static_component(entity_path, component_name);
 
             Some(

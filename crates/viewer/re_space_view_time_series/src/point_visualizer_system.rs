@@ -472,7 +472,7 @@ impl SeriesPointSystem {
                 &data_result.entity_path,
                 time_per_pixel,
                 points,
-                &ctx.recording_store().read(),
+                ctx.recording_engine().store(),
                 view_query,
                 series_name.into(),
                 // Aggregation for points is not supported.

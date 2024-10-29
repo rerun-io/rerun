@@ -22,6 +22,7 @@ pub use self::{
     versioned_instance_path::{VersionedInstancePath, VersionedInstancePathHash},
 };
 
+#[doc(no_inline)]
 pub use re_log_types::{EntityPath, EntityPathPart, TimeInt, Timeline};
 
 pub mod external {

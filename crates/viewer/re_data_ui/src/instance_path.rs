@@ -35,8 +35,8 @@ impl DataUi for InstancePath {
         } = self;
 
         let Some(components) = ctx
-            .recording_store()
-            .read()
+            .recording_engine()
+            .store()
             .all_components_on_timeline(&query.timeline(), entity_path)
         else {
             if ctx.recording().is_known_entity(entity_path) {
@@ -123,8 +123,8 @@ fn latest_at(
         .iter()
         .filter_map(|&component_name| {
             let mut results =
-                db.query_caches()
-                    .read()
+                db.storage_engine()
+                    .cache()
                     .latest_at(query, entity_path, [component_name]);
 
             // We ignore components that are unset at this point in time
@@ -174,8 +174,8 @@ fn component_list_ui(
 
             let component_path = ComponentPath::new(entity_path.clone(), component_name);
             let is_static = db
+                .storage_engine()
                 .store()
-                .read()
                 .entity_has_static_component(entity_path, &component_name);
             let icon = if is_static {
                 &re_ui::icons::COMPONENT_STATIC

@@ -84,10 +84,11 @@ impl DatastoreUi {
             } else {
                 self.chunk_store_ui(
                     ui,
-                    &*match self.store_kind {
-                        StoreKind::Recording => ctx.recording_store().read(),
-                        StoreKind::Blueprint => ctx.blueprint_store().read(),
-                    },
+                    match self.store_kind {
+                        StoreKind::Recording => ctx.recording_engine(),
+                        StoreKind::Blueprint => ctx.blueprint_engine(),
+                    }
+                    .store(),
                     datastore_ui_active,
                     time_zone,
                 );

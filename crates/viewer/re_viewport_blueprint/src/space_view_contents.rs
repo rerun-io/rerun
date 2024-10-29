@@ -381,7 +381,7 @@ impl DataQueryPropertyResolver<'_> {
         recursive_property_overrides: &IntMap<ComponentName, OverridePath>,
         handle: DataResultHandle,
     ) {
-        let blueprint_store = blueprint.store().read();
+        let blueprint_engine = blueprint.storage_engine();
 
         if let Some((child_handles, recursive_property_overrides)) =
             query_result.tree.lookup_node_mut(handle).map(|node| {
@@ -427,13 +427,14 @@ impl DataQueryPropertyResolver<'_> {
                 if let Some(recursive_override_subtree) =
                     blueprint.tree().subtree(&recursive_override_path)
                 {
-                    for component_name in blueprint_store
+                    for component_name in blueprint_engine
+                        .store()
                         .all_components_for_entity(&recursive_override_subtree.path)
                         .unwrap_or_default()
                     {
                         if let Some(component_data) = blueprint
-                            .query_caches()
-                            .read()
+                            .storage_engine()
+                            .cache()
                             .latest_at(blueprint_query, &recursive_override_path, [component_name])
                             .component_batch_raw(&component_name)
                         {
@@ -457,13 +458,14 @@ impl DataQueryPropertyResolver<'_> {
                 if let Some(individual_override_subtree) =
                     blueprint.tree().subtree(&individual_override_path)
                 {
-                    for component_name in blueprint_store
+                    for component_name in blueprint_engine
+                        .store()
                         .all_components_for_entity(&individual_override_subtree.path)
                         .unwrap_or_default()
                     {
                         if let Some(component_data) = blueprint
-                            .query_caches()
-                            .read()
+                            .storage_engine()
+                            .cache()
                             .latest_at(blueprint_query, &individual_override_path, [component_name])
                             .component_batch_raw(&component_name)
                         {

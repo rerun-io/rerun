@@ -616,11 +616,19 @@ impl StoreHub {
             return; // unreachable
         };
 
-        // NOTE: Do NOT try and `read_arc()` the store here: `purge_fraction_of_ram` is going to
-        // access it mutably in all sorts of ways, it's a guaranteed deadlock.
-        let store_size_before = entity_db.store().read().stats().total().total_size_bytes;
+        let store_size_before = entity_db
+            .storage_engine()
+            .store()
+            .stats()
+            .total()
+            .total_size_bytes;
         let store_events = entity_db.purge_fraction_of_ram(fraction_to_purge);
-        let store_size_after = entity_db.store().read().stats().total().total_size_bytes;
+        let store_size_after = entity_db
+            .storage_engine()
+            .store()
+            .stats()
+            .total()
+            .total_size_bytes;
 
         if let Some(caches) = self.caches_per_recording.get_mut(&store_id) {
             caches.on_store_events(&store_events);
@@ -802,35 +810,39 @@ impl StoreHub {
             .active_application_id
             .as_ref()
             .and_then(|app_id| self.active_blueprint_by_app_id.get(app_id))
-            .and_then(|blueprint_id| self.store_bundle.get(blueprint_id));
+            .and_then(|blueprint_id| self.store_bundle.get(blueprint_id))
+            .map(|entity_db| entity_db.storage_engine());
+        let blueprint = blueprint.as_ref();
 
         let blueprint_stats = blueprint
-            .map(|entity_db| entity_db.store().read().stats())
+            .map(|engine| engine.store().stats())
             .unwrap_or_default();
 
         let blueprint_cached_stats = blueprint
-            .map(|entity_db| entity_db.query_caches().read().stats())
+            .map(|engine| engine.cache().stats())
             .unwrap_or_default();
 
         let blueprint_config = blueprint
-            .map(|entity_db| entity_db.store().read().config().clone())
+            .map(|engine| engine.store().config().clone())
             .unwrap_or_default();
 
         let recording = self
             .active_rec_id
             .as_ref()
-            .and_then(|rec_id| self.store_bundle.get(rec_id));
+            .and_then(|rec_id| self.store_bundle.get(rec_id))
+            .map(|entity_db| entity_db.storage_engine());
+        let recording = recording.as_ref();
 
         let recording_stats2 = recording
-            .map(|entity_db| entity_db.store().read().stats())
+            .map(|engine| engine.store().stats())
             .unwrap_or_default();
 
         let recording_cached_stats = recording
-            .map(|entity_db| entity_db.query_caches().read().stats())
+            .map(|engine| engine.cache().stats())
             .unwrap_or_default();
 
         let recording_config2 = recording
-            .map(|entity_db| entity_db.store().read().config().clone())
+            .map(|engine| engine.store().config().clone())
             .unwrap_or_default();
 
         StoreHubStats {

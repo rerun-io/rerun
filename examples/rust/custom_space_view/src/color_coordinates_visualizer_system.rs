@@ -61,7 +61,7 @@ impl VisualizerSystem for InstanceColorSystem {
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             // …gather all colors and their instance ids.
 
-            let results = ctx.recording().query_caches().read().latest_at(
+            let results = ctx.recording_engine().cache().latest_at(
                 &ctx.current_query(),
                 &data_result.entity_path,
                 [Color::name()],

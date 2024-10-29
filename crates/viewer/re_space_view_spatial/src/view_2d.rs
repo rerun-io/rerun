@@ -283,8 +283,8 @@ fn count_non_nested_images_with_component(
     if image_dimensions.contains_key(&subtree.path) {
         // bool true -> 1
         entity_db
+            .storage_engine()
             .store()
-            .read()
             .entity_has_component(&subtree.path, component_name) as usize
     } else if !entity_bucket
         .iter()

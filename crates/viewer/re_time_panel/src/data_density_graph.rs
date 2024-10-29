@@ -707,7 +707,8 @@ fn visit_relevant_chunks(
 ) {
     re_tracing::profile_function!();
 
-    let store = db.store().read();
+    let engine = db.storage_engine();
+    let store = engine.store();
     let query = RangeQuery::new(timeline, time_range);
 
     if let Some(component_name) = component_name {

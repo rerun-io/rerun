@@ -62,7 +62,7 @@ impl ContainerBlueprint {
 
         // ----
 
-        let results = blueprint_db.query_caches().read().latest_at(
+        let results = blueprint_db.storage_engine().cache().latest_at(
             query,
             &id.as_entity_path(),
             blueprint_archetypes::ContainerBlueprint::all_components()

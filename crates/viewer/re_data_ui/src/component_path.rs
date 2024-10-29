@@ -18,14 +18,15 @@ impl DataUi for ComponentPath {
             component_name,
         } = self;
 
+        let engine = db.storage_engine();
+
         if let Some(archetype_name) = component_name.indicator_component_archetype() {
             ui.label(format!(
                 "Indicator component for the {archetype_name} archetype"
             ));
         } else {
-            let results = db
-                .query_caches()
-                .read()
+            let results = engine
+                .cache()
                 .latest_at(query, entity_path, [*component_name]);
             if let Some(unit) = results.components.get(component_name) {
                 crate::ComponentPathLatestAtResults {
@@ -34,7 +35,7 @@ impl DataUi for ComponentPath {
                 }
                 .data_ui(ctx, ui, ui_layout, query, db);
             } else if ctx.recording().tree().subtree(entity_path).is_some() {
-                if db.store().read().entity_has_component_on_timeline(
+                if engine.store().entity_has_component_on_timeline(
                     &query.timeline(),
                     entity_path,
                     component_name,

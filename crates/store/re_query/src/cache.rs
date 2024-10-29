@@ -210,6 +210,11 @@ impl QueryCache {
     }
 
     #[inline]
+    pub fn new_handle(store: ChunkStoreHandle) -> QueryCacheHandle {
+        QueryCacheHandle::new(Self::new(store))
+    }
+
+    #[inline]
     pub fn clear(&self) {
         let Self {
             store: _,

@@ -4,8 +4,9 @@ use ahash::HashSet;
 use nohash_hasher::IntMap;
 
 use re_chunk::RowId;
-use re_chunk_store::{ChunkStore, ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
+use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPath, EntityPathHash, EntityPathPart, TimeInt, Timeline};
+use re_query::StorageEngineReadGuard;
 use re_types_core::ComponentName;
 
 // ----------------------------------------------------------------------------
@@ -122,8 +123,8 @@ impl EntityTree {
     }
 
     /// Returns `true` if this entity has no children and no data.
-    pub fn is_empty(&self, chunk_store: &ChunkStore) -> bool {
-        self.children.is_empty() && !chunk_store.entity_has_data(&self.path)
+    pub fn is_empty(&self, engine: &StorageEngineReadGuard<'_>) -> bool {
+        self.children.is_empty() && !engine.store().entity_has_data(&self.path)
     }
 
     /// Updates the [`EntityTree`] by applying a batch of [`ChunkStoreEvent`]s,
@@ -156,7 +157,11 @@ impl EntityTree {
     }
 
     /// Updates the [`EntityTree`] by removing any entities which have no data and no children.
-    pub fn on_store_deletions(&mut self, data_store: &ChunkStore, events: &[ChunkStoreEvent]) {
+    pub fn on_store_deletions(
+        &mut self,
+        engine: &StorageEngineReadGuard<'_>,
+        events: &[ChunkStoreEvent],
+    ) {
         re_tracing::profile_function!();
 
         // We don't actually use the events for anything, we just want to
@@ -166,9 +171,9 @@ impl EntityTree {
 
         self.children.retain(|_, entity| {
             // this is placed first, because we'll only know if the child entity is empty after telling it to clear itself.
-            entity.on_store_deletions(data_store, events);
+            entity.on_store_deletions(engine, events);
 
-            !entity.is_empty(data_store)
+            !entity.is_empty(engine)
         });
     }
 

@@ -1,7 +1,12 @@
+use std::collections::BTreeMap;
+
 use re_chunk::{EntityPath, TransportChunk};
-use re_chunk_store::{ChunkStoreHandle, ColumnDescriptor, QueryExpression};
-use re_log_types::EntityPathFilter;
-use re_query::QueryCacheHandle;
+use re_chunk_store::{
+    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, QueryExpression,
+    VersionPolicy,
+};
+use re_log_types::{EntityPathFilter, StoreId};
+use re_query::{QueryCache, QueryCacheHandle, StorageEngine, StorageEngineLike};
 
 use crate::QueryHandle;
 
@@ -27,12 +32,45 @@ pub type RecordBatch = TransportChunk;
 /// * [`QueryEngine::schema`]: get the complete schema of the recording.
 /// * [`QueryEngine::query`]: execute a [`QueryExpression`] on the recording.
 #[derive(Clone)]
-pub struct QueryEngine {
-    pub store: ChunkStoreHandle,
-    pub cache: QueryCacheHandle,
+pub struct QueryEngine<E: StorageEngineLike> {
+    pub engine: E,
 }
 
-impl QueryEngine {
+impl QueryEngine<StorageEngine> {
+    #[inline]
+    pub fn new(store: ChunkStoreHandle, cache: QueryCacheHandle) -> Self {
+        // Safety: EntityDb's handles can never be accessed from the outside, therefore these
+        // handles had to have been constructed in an external context, outside of the main app.
+        #[allow(unsafe_code)]
+        let engine = unsafe { StorageEngine::new(store, cache) };
+
+        Self { engine }
+    }
+
+    /// This will automatically instantiate a new empty [`QueryCache`].
+    #[inline]
+    pub fn from_store(store: ChunkStoreHandle) -> Self {
+        Self::new(store.clone(), QueryCache::new_handle(store))
+    }
+
+    /// Like [`ChunkStore::from_rrd_filepath`], but automatically instantiates [`QueryEngine`]s
+    /// with new empty [`QueryCache`]s.
+    #[inline]
+    pub fn from_rrd_filepath(
+        store_config: &ChunkStoreConfig,
+        path_to_rrd: impl AsRef<std::path::Path>,
+        version_policy: VersionPolicy,
+    ) -> anyhow::Result<BTreeMap<StoreId, Self>> {
+        Ok(
+            ChunkStore::handle_from_rrd_filepath(store_config, path_to_rrd, version_policy)?
+                .into_iter()
+                .map(|(store_id, store)| (store_id, Self::from_store(store)))
+                .collect(),
+        )
+    }
+}
+
+impl<E: StorageEngineLike + Clone> QueryEngine<E> {
     /// Returns the full schema of the store.
     ///
     /// This will include a column descriptor for every timeline and every component on every
@@ -43,7 +81,7 @@ impl QueryEngine {
     /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
     #[inline]
     pub fn schema(&self) -> Vec<ColumnDescriptor> {
-        self.store.read().schema()
+        self.engine.with_store(|store| store.schema())
     }
 
     /// Returns the filtered schema for the given [`QueryExpression`].
@@ -53,13 +91,14 @@ impl QueryEngine {
     /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
     #[inline]
     pub fn schema_for_query(&self, query: &QueryExpression) -> Vec<ColumnDescriptor> {
-        self.store.read().schema_for_query(query)
+        self.engine
+            .with_store(|store| store.schema_for_query(query))
     }
 
     /// Starts a new query by instantiating a [`QueryHandle`].
     #[inline]
-    pub fn query(&self, query: QueryExpression) -> QueryHandle {
-        QueryHandle::new(self.clone(), query)
+    pub fn query(&self, query: QueryExpression) -> QueryHandle<E> {
+        QueryHandle::new(self.engine.clone(), query)
     }
 
     /// Returns an iterator over all the [`EntityPath`]s present in the database.
@@ -68,10 +107,11 @@ impl QueryEngine {
         &self,
         filter: &'a EntityPathFilter,
     ) -> impl Iterator<Item = EntityPath> + 'a {
-        self.store
-            .read()
-            .all_entities()
-            .into_iter()
-            .filter(|entity_path| filter.matches(entity_path))
+        self.engine.with_store(|store| {
+            store
+                .all_entities()
+                .into_iter()
+                .filter(|entity_path| filter.matches(entity_path))
+        })
     }
 }

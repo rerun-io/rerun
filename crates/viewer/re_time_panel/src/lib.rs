@@ -699,8 +699,11 @@ impl TimePanel {
         // ----------------------------------------------
 
         // show the data in the time area:
-        let tree_has_data_in_current_timeline =
-            entity_db.subtree_has_data_on_timeline(time_ctrl.timeline(), &tree.path);
+        let tree_has_data_in_current_timeline = entity_db.subtree_has_data_on_timeline(
+            &entity_db.storage_engine(),
+            time_ctrl.timeline(),
+            &tree.path,
+        );
         if is_visible && tree_has_data_in_current_timeline {
             let row_rect =
                 Rect::from_x_y_ranges(time_area_response.rect.x_range(), response_rect.y_range());
@@ -751,7 +754,8 @@ impl TimePanel {
             );
         }
 
-        let store = entity_db.store().read();
+        let engine = entity_db.storage_engine();
+        let store = engine.store();
 
         // If this is an entity:
         if let Some(components) = store.all_components_for_entity(&tree.path) {

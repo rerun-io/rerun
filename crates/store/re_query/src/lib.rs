@@ -4,6 +4,7 @@ mod cache;
 mod cache_stats;
 mod latest_at;
 mod range;
+mod storage_engine;
 
 pub mod clamped_zip;
 pub mod range_zip;
@@ -14,6 +15,10 @@ pub use self::clamped_zip::*;
 pub use self::latest_at::LatestAtResults;
 pub use self::range::RangeResults;
 pub use self::range_zip::*;
+pub use self::storage_engine::{
+    StorageEngine, StorageEngineArcReadGuard, StorageEngineLike, StorageEngineReadGuard,
+    StorageEngineWriteGuard,
+};
 
 pub(crate) use self::latest_at::LatestAtCache;
 pub(crate) use self::range::RangeCache;

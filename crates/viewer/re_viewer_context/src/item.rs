@@ -187,10 +187,11 @@ pub fn resolve_mono_instance_path(
     re_tracing::profile_function!();
 
     if instance.instance.get() == 0 {
+        let engine = entity_db.storage_engine();
+
         // NOTE: While we normally frown upon direct queries to the datastore, `all_components` is fine.
-        let Some(component_names) = entity_db
+        let Some(component_names) = engine
             .store()
-            .read()
             .all_components_on_timeline(&query.timeline(), &instance.entity_path)
         else {
             // No components at all, return unindexed entity.
@@ -198,9 +199,8 @@ pub fn resolve_mono_instance_path(
         };
 
         for component_name in component_names {
-            if let Some(array) = entity_db
-                .query_caches()
-                .read()
+            if let Some(array) = engine
+                .cache()
                 .latest_at(query, &instance.entity_path, [component_name])
                 .component_batch_raw(&component_name)
             {

@@ -4,10 +4,10 @@ use itertools::Itertools;
 
 use rerun::{
     dataframe::{
-        concatenate_record_batches, ChunkStoreHandle, EntityPathFilter, QueryCache,
-        QueryCacheHandle, QueryEngine, QueryExpression, SparseFillStrategy, Timeline,
+        concatenate_record_batches, EntityPathFilter, QueryEngine, QueryExpression,
+        SparseFillStrategy, Timeline,
     },
-    ChunkStore, ChunkStoreConfig, StoreKind, VersionPolicy,
+    ChunkStoreConfig, StoreKind, VersionPolicy,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -42,29 +42,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let entity_path_filter = EntityPathFilter::try_from(args.get(2).map_or("/**", |s| s.as_str()))?;
     let timeline = Timeline::log_time();
 
-    let stores = ChunkStore::from_rrd_filepath(
+    let engines = QueryEngine::from_rrd_filepath(
         &ChunkStoreConfig::DEFAULT,
         path_to_rrd,
         VersionPolicy::Warn,
-    )?
-    .into_iter()
-    .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)));
+    )?;
 
-    for (store_id, store) in stores {
+    for (store_id, engine) in engines {
         if store_id.kind != StoreKind::Recording {
             continue;
         }
 
-        let query_cache = QueryCacheHandle::new(QueryCache::new(store.clone()));
-        let query_engine = QueryEngine {
-            store: store.clone(),
-            cache: query_cache.clone(),
-        };
-
         let query = QueryExpression {
             filtered_index: Some(timeline),
             view_contents: Some(
-                query_engine
+                engine
                     .iter_entity_paths(&entity_path_filter)
                     .map(|entity_path| (entity_path, None))
                     .collect(),
@@ -73,7 +65,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             ..Default::default()
         };
 
-        let query_handle = query_engine.query(query.clone());
+        let query_handle = engine.query(query.clone());
         let record_batches = query_handle.batch_iter().take(10).collect_vec();
 
         let table = concatenate_record_batches(query_handle.schema().clone(), &record_batches)?;

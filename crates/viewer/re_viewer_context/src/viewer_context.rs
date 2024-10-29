@@ -3,6 +3,7 @@ use parking_lot::RwLock;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::entity_db::EntityDb;
+use re_query::StorageEngineArcReadGuard;
 
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicableEntities, ApplicationSelectionState,
@@ -93,16 +94,16 @@ impl<'a> ViewerContext<'a> {
         self.store_context.blueprint
     }
 
-    /// The chunk store of the active recording.
+    /// The `StorageEngine` for the active recording.
     #[inline]
-    pub fn recording_store(&self) -> &re_chunk_store::ChunkStoreHandle {
-        self.store_context.recording.store()
+    pub fn recording_engine(&self) -> StorageEngineArcReadGuard {
+        self.store_context.recording.storage_engine()
     }
 
-    /// The chunk store of the active blueprint.
+    /// The `StorageEngine` for the active blueprint.
     #[inline]
-    pub fn blueprint_store(&self) -> &re_chunk_store::ChunkStoreHandle {
-        self.store_context.blueprint.store()
+    pub fn blueprint_engine(&self) -> StorageEngineArcReadGuard {
+        self.store_context.blueprint.storage_engine()
     }
 
     /// The `StoreId` of the active recording.

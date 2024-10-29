@@ -405,7 +405,7 @@ fn latest_at_query_video_from_datastore(
 ) -> Option<(Arc<Result<Video, VideoLoadError>>, Blob)> {
     let query = ctx.current_query();
 
-    let results = ctx.recording().query_caches().read().latest_at(
+    let results = ctx.recording_engine().cache().latest_at(
         &query,
         entity_path,
         AssetVideo::all_components().iter().copied(),

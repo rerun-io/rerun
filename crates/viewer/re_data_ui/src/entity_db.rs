@@ -108,7 +108,7 @@ impl crate::DataUi for EntityDb {
                     chunk_max_bytes,
                     chunk_max_rows,
                     chunk_max_rows_if_unsorted,
-                } = self.store().read().config();
+                } = self.storage_engine().store().config();
 
                 ui.grid_left_hand_label("Compaction");
                 ui.label(format!(

@@ -12,7 +12,9 @@ use re_log_types::{
     ApplicationId, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF,
     SetStoreInfo, StoreId, StoreInfo, StoreKind, Timeline,
 };
-use re_query::{QueryCache, QueryCacheHandle};
+use re_query::{
+    QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineWriteGuard,
+};
 
 use crate::{Error, TimesPerTimeline};
 
@@ -62,11 +64,16 @@ pub struct EntityDb {
     /// A tree-view (split on path components) of the entities.
     tree: crate::EntityTree,
 
-    /// Stores all components for all entities for all timelines.
-    data_store: ChunkStoreHandle,
-
-    /// Query caches for the data in [`Self::data_store`].
-    query_caches: QueryCacheHandle,
+    /// The [`StorageEngine`] that backs this [`EntityDb`].
+    ///
+    /// This object and all its internal fields are **never** allowed to be publicly exposed,
+    /// whether that is directly or through methods, _even if that's just shared references_.
+    ///
+    /// The only way to get access to the [`StorageEngine`] from the outside is to use
+    /// [`EntityDb::storage_engine`], which returns a read-only guard.
+    /// The design statically guarantees the absence of deadlocks and race conditions that normally
+    /// results from letting store and cache handles arbitrarily loose all across the codebase.
+    storage_engine: StorageEngine,
 
     stats: IngestionStatistics,
 }
@@ -77,8 +84,12 @@ impl EntityDb {
     }
 
     pub fn with_store_config(store_id: StoreId, store_config: ChunkStoreConfig) -> Self {
-        let data_store = ChunkStoreHandle::new(ChunkStore::new(store_id.clone(), store_config));
-        let query_caches = QueryCacheHandle::new(QueryCache::new(data_store.clone()));
+        let store = ChunkStoreHandle::new(ChunkStore::new(store_id.clone(), store_config));
+        let cache = QueryCacheHandle::new(QueryCache::new(store.clone()));
+
+        // Safety: these handles are never going to be leaked outside of the `EntityDb`.
+        #[allow(unsafe_code)]
+        let storage_engine = unsafe { StorageEngine::new(store, cache) };
 
         Self {
             data_source: None,
@@ -89,8 +100,7 @@ impl EntityDb {
             times_per_timeline: Default::default(),
             tree: crate::EntityTree::root(),
             time_histogram_per_timeline: Default::default(),
-            data_store,
-            query_caches,
+            storage_engine,
             stats: IngestionStatistics::new(store_id),
         }
     }
@@ -98,6 +108,17 @@ impl EntityDb {
     #[inline]
     pub fn tree(&self) -> &crate::EntityTree {
         &self.tree
+    }
+
+    /// Returns a read-only guard to the backing [`StorageEngine`].
+    ///
+    /// That guard can be cloned at will and has a static lifetime.
+    ///
+    /// It is not possible to insert any more data in this [`EntityDb`] until the returned guard,
+    /// and any clones, have been dropped.
+    #[inline]
+    pub fn storage_engine(&self) -> StorageEngineArcReadGuard {
+        self.storage_engine.read_arc()
     }
 
     pub fn store_info_msg(&self) -> Option<&SetStoreInfo> {
@@ -112,19 +133,6 @@ impl EntityDb {
         self.store_info().map(|ri| &ri.application_id)
     }
 
-    #[inline]
-    pub fn query_caches(&self) -> &QueryCacheHandle {
-        &self.query_caches
-    }
-
-    #[inline]
-    pub fn query_engine(&self) -> re_dataframe::QueryEngine {
-        re_dataframe::QueryEngine {
-            store: self.store().clone(),
-            cache: self.query_caches().clone(),
-        }
-    }
-
     /// Queries for the given `component_names` using latest-at semantics.
     ///
     /// See [`re_query::LatestAtResults`] for more information about how to handle the results.
@@ -137,8 +145,9 @@ impl EntityDb {
         entity_path: &EntityPath,
         component_names: impl IntoIterator<Item = re_types_core::ComponentName>,
     ) -> re_query::LatestAtResults {
-        self.query_caches()
+        self.storage_engine
             .read()
+            .cache()
             .latest_at(query, entity_path, component_names)
     }
 
@@ -157,8 +166,9 @@ impl EntityDb {
         query: &re_chunk_store::LatestAtQuery,
     ) -> Option<((TimeInt, RowId), C)> {
         let results = self
-            .query_caches()
+            .storage_engine
             .read()
+            .cache()
             .latest_at(query, entity_path, [C::name()]);
         results
             .component_mono()
@@ -180,8 +190,9 @@ impl EntityDb {
         query: &re_chunk_store::LatestAtQuery,
     ) -> Option<((TimeInt, RowId), C)> {
         let results = self
-            .query_caches()
+            .storage_engine
             .read()
+            .cache()
             .latest_at(query, entity_path, [C::name()]);
         results
             .component_mono_quiet()
@@ -208,18 +219,13 @@ impl EntityDb {
     }
 
     #[inline]
-    pub fn store(&self) -> &ChunkStoreHandle {
-        &self.data_store
-    }
-
-    #[inline]
     pub fn store_kind(&self) -> StoreKind {
         self.store_id().kind
     }
 
     #[inline]
     pub fn store_id(&self) -> StoreId {
-        self.data_store.read().id()
+        self.storage_engine.read().store().id()
     }
 
     /// If this entity db is the result of a clone, which store was it cloned from?
@@ -264,14 +270,14 @@ impl EntityDb {
 
     #[inline]
     pub fn num_rows(&self) -> u64 {
-        self.data_store.read().stats().total().num_rows
+        self.storage_engine.read().store().stats().total().num_rows
     }
 
     /// Return the current `ChunkStoreGeneration`. This can be used to determine whether the
     /// database has been modified since the last time it was queried.
     #[inline]
     pub fn generation(&self) -> re_chunk_store::ChunkStoreGeneration {
-        self.data_store.read().generation()
+        self.storage_engine.read().store().generation()
     }
 
     #[inline]
@@ -350,12 +356,15 @@ impl EntityDb {
     }
 
     pub fn add_chunk(&mut self, chunk: &Arc<Chunk>) -> Result<Vec<ChunkStoreEvent>, Error> {
-        // NOTE: using `write_arc` so the borrow checker can make sense of the partial borrow of `self`.
-        let mut store = self.data_store.write_arc();
+        let mut engine = self.storage_engine.write();
+        let store_events = engine.store().insert_chunk(chunk)?;
+        engine.cache().on_events(&store_events);
 
-        let store_events = store.insert_chunk(chunk)?;
+        self.entity_path_from_hash
+            .entry(chunk.entity_path().hash())
+            .or_insert_with(|| chunk.entity_path().clone());
 
-        self.register_entity_path(chunk.entity_path());
+        let engine = engine.downgrade();
 
         if self.latest_row_id < chunk.row_id_range().map(|(_, row_id_max)| row_id_max) {
             self.latest_row_id = chunk.row_id_range().map(|(_, row_id_max)| row_id_max);
@@ -365,24 +374,17 @@ impl EntityDb {
             // Update our internal views by notifying them of resulting [`ChunkStoreEvent`]s.
             self.times_per_timeline.on_events(&store_events);
             self.time_histogram_per_timeline.on_events(&store_events);
-            self.query_caches.write().on_events(&store_events);
             self.tree.on_store_additions(&store_events);
 
             // It is possible for writes to trigger deletions: specifically in the case of
             // overwritten static data leading to dangling chunks.
-            self.tree.on_store_deletions(&store, &store_events);
+            self.tree.on_store_deletions(&engine, &store_events);
 
             // We inform the stats last, since it measures e2e latency.
             self.stats.on_events(&store_events);
         }
 
         Ok(store_events)
-    }
-
-    fn register_entity_path(&mut self, entity_path: &EntityPath) {
-        self.entity_path_from_hash
-            .entry(entity_path.hash())
-            .or_insert_with(|| entity_path.clone());
     }
 
     pub fn set_store_info(&mut self, store_info: SetStoreInfo) {
@@ -426,8 +428,9 @@ impl EntityDb {
             // to regain some space.
             // See <https://github.com/rerun-io/rerun/issues/7369#issuecomment-2335164098> for the
             // complete rationale.
-            self.query_caches
+            self.storage_engine
                 .write()
+                .cache()
                 .purge_fraction_of_ram(fraction_to_purge);
         }
 
@@ -437,10 +440,8 @@ impl EntityDb {
     fn gc(&mut self, gc_options: &GarbageCollectionOptions) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
-        // NOTE: using `write_arc` so the borrow checker can make sense of the partial borrow of `self`.
-        let mut store = self.data_store.write_arc();
-
-        let (store_events, stats_diff) = store.gc(gc_options);
+        let mut engine = self.storage_engine.write();
+        let (store_events, stats_diff) = engine.store().gc(gc_options);
 
         re_log::trace!(
             num_row_ids_dropped = store_events.len(),
@@ -448,7 +449,13 @@ impl EntityDb {
             "purged datastore"
         );
 
-        self.on_store_deletions(&store, &store_events);
+        Self::on_store_deletions(
+            &mut self.times_per_timeline,
+            &mut self.time_histogram_per_timeline,
+            &mut self.tree,
+            engine,
+            &store_events,
+        );
 
         store_events
     }
@@ -461,11 +468,19 @@ impl EntityDb {
         timeline: &Timeline,
         drop_range: ResolvedTimeRange,
     ) -> Vec<ChunkStoreEvent> {
-        // NOTE: using `write_arc` so the borrow checker can make sense of the partial borrow of `self`.
-        let mut store = self.data_store.write_arc();
+        re_tracing::profile_function!();
 
-        let store_events = store.drop_time_range(timeline, drop_range);
-        self.on_store_deletions(&store, &store_events);
+        let mut engine = self.storage_engine.write();
+
+        let store_events = engine.store().drop_time_range(timeline, drop_range);
+        Self::on_store_deletions(
+            &mut self.times_per_timeline,
+            &mut self.time_histogram_per_timeline,
+            &mut self.tree,
+            engine,
+            &store_events,
+        );
+
         store_events
     }
 
@@ -477,12 +492,16 @@ impl EntityDb {
     pub fn drop_entity_path(&mut self, entity_path: &EntityPath) {
         re_tracing::profile_function!();
 
-        // NOTE: using `write_arc` so the borrow checker can make sense of the partial borrow of `self`.
-        let mut store = self.data_store.write_arc();
+        let mut engine = self.storage_engine.write();
 
-        let store_events = store.drop_entity_path(entity_path);
-
-        self.on_store_deletions(&store, &store_events);
+        let store_events = engine.store().drop_entity_path(entity_path);
+        Self::on_store_deletions(
+            &mut self.times_per_timeline,
+            &mut self.time_histogram_per_timeline,
+            &mut self.tree,
+            engine,
+            &store_events,
+        );
     }
 
     /// Unconditionally drops all the data for a given [`EntityPath`] and all its children.
@@ -502,13 +521,23 @@ impl EntityDb {
         }
     }
 
-    fn on_store_deletions(&mut self, store: &ChunkStore, store_events: &[ChunkStoreEvent]) {
+    // NOTE: Parameters deconstructed instead of taking `self`, because borrowck cannot understand
+    // partial borrows on methods.
+    fn on_store_deletions(
+        times_per_timeline: &mut TimesPerTimeline,
+        time_histogram_per_timeline: &mut crate::TimeHistogramPerTimeline,
+        tree: &mut crate::EntityTree,
+        mut engine: StorageEngineWriteGuard<'_>,
+        store_events: &[ChunkStoreEvent],
+    ) {
         re_tracing::profile_function!();
 
-        self.times_per_timeline.on_events(store_events);
-        self.query_caches.write().on_events(store_events);
-        self.time_histogram_per_timeline.on_events(store_events);
-        self.tree.on_store_deletions(store, store_events);
+        engine.cache().on_events(store_events);
+        times_per_timeline.on_events(store_events);
+        time_histogram_per_timeline.on_events(store_events);
+
+        let engine = engine.downgrade();
+        tree.on_store_deletions(&engine, store_events);
     }
 
     /// Key used for sorting recordings in the UI.
@@ -527,7 +556,7 @@ impl EntityDb {
     ) -> impl Iterator<Item = ChunkResult<LogMsg>> + '_ {
         re_tracing::profile_function!();
 
-        let store = self.data_store.read();
+        let engine = self.storage_engine.read();
 
         let set_store_info_msg = self
             .store_info_msg()
@@ -541,7 +570,8 @@ impl EntityDb {
                 )
             });
 
-            let mut chunks: Vec<Arc<Chunk>> = store
+            let mut chunks: Vec<Arc<Chunk>> = engine
+                .store()
                 .iter_chunks()
                 .filter(move |chunk| {
                     let Some((timeline, time_range)) = time_filter else {
@@ -621,8 +651,8 @@ impl EntityDb {
             });
         }
 
-        let store = self.data_store.read();
-        for chunk in store.iter_chunks() {
+        let engine = self.storage_engine.read();
+        for chunk in engine.store().iter_chunks() {
             new_db.add_chunk(&Arc::clone(chunk))?;
         }
 
@@ -635,7 +665,11 @@ impl EntityDb {
     /// Returns the stats for the static store of the entity and all its children, recursively.
     ///
     /// This excludes temporal data.
-    pub fn subtree_stats_static(&self, entity_path: &EntityPath) -> ChunkStoreChunkStats {
+    pub fn subtree_stats_static(
+        &self,
+        engine: &StorageEngineArcReadGuard,
+        entity_path: &EntityPath,
+    ) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
 
         let Some(subtree) = self.tree.subtree(entity_path) else {
@@ -643,9 +677,8 @@ impl EntityDb {
         };
 
         let mut stats = ChunkStoreChunkStats::default();
-        let store = self.data_store.read();
         subtree.visit_children_recursively(|path| {
-            stats += store.entity_stats_static(path);
+            stats += engine.store().entity_stats_static(path);
         });
 
         stats
@@ -656,6 +689,7 @@ impl EntityDb {
     /// This excludes static data.
     pub fn subtree_stats_on_timeline(
         &self,
+        engine: &StorageEngineArcReadGuard,
         entity_path: &EntityPath,
         timeline: &Timeline,
     ) -> ChunkStoreChunkStats {
@@ -666,9 +700,8 @@ impl EntityDb {
         };
 
         let mut stats = ChunkStoreChunkStats::default();
-        let store = self.data_store.read();
         subtree.visit_children_recursively(|path| {
-            stats += store.entity_stats_on_timeline(path, timeline);
+            stats += engine.store().entity_stats_on_timeline(path, timeline);
         });
 
         stats
@@ -679,6 +712,7 @@ impl EntityDb {
     /// This includes static data.
     pub fn subtree_has_data_on_timeline(
         &self,
+        engine: &StorageEngineArcReadGuard,
         timeline: &Timeline,
         entity_path: &EntityPath,
     ) -> bool {
@@ -688,9 +722,10 @@ impl EntityDb {
             return false;
         };
 
-        let store = self.data_store.read();
         subtree
-            .find_first_child_recursive(|path| store.entity_has_data_on_timeline(timeline, path))
+            .find_first_child_recursive(|path| {
+                engine.store().entity_has_data_on_timeline(timeline, path)
+            })
             .is_some()
     }
 
@@ -699,6 +734,7 @@ impl EntityDb {
     /// This ignores static data.
     pub fn subtree_has_temporal_data_on_timeline(
         &self,
+        engine: &StorageEngineArcReadGuard,
         timeline: &Timeline,
         entity_path: &EntityPath,
     ) -> bool {
@@ -708,10 +744,11 @@ impl EntityDb {
             return false;
         };
 
-        let store = self.data_store.read();
         subtree
             .find_first_child_recursive(|path| {
-                store.entity_has_temporal_data_on_timeline(timeline, path)
+                engine
+                    .store()
+                    .entity_has_temporal_data_on_timeline(timeline, path)
             })
             .is_some()
     }
@@ -721,7 +758,12 @@ impl re_types_core::SizeBytes for EntityDb {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         // TODO(emilk): size of entire EntityDb, including secondary indices etc
-        self.data_store.read().stats().total().total_size_bytes
+        self.storage_engine
+            .read()
+            .store()
+            .stats()
+            .total()
+            .total_size_bytes
     }
 }
 

@@ -131,7 +131,7 @@ impl SpaceViewBlueprint {
     ) -> Option<Self> {
         re_tracing::profile_function!();
 
-        let results = blueprint_db.query_caches().read().latest_at(
+        let results = blueprint_db.storage_engine().cache().latest_at(
             query,
             &id.as_entity_path(),
             blueprint_archetypes::SpaceViewBlueprint::all_components()
@@ -240,6 +240,7 @@ impl SpaceViewBlueprint {
     pub fn duplicate(&self, store_context: &StoreContext<'_>, query: &LatestAtQuery) -> Self {
         let mut pending_writes = Vec::new();
         let blueprint = store_context.blueprint;
+        let blueprint_engine = blueprint.storage_engine();
 
         let current_path = self.entity_path();
         let new_id = SpaceViewId::random();
@@ -259,9 +260,8 @@ impl SpaceViewBlueprint {
                     .with_row(
                         RowId::new(),
                         store_context.blueprint_timepoint_for_writes(),
-                        blueprint
+                        blueprint_engine
                             .store()
-                            .read()
                             .all_components_on_timeline(&query.timeline(), path)
                             .into_iter()
                             .flat_map(|v| v.into_iter())
@@ -273,9 +273,8 @@ impl SpaceViewBlueprint {
                                         .contains(component)
                             })
                             .filter_map(|component_name| {
-                                let array = blueprint
-                                    .query_caches()
-                                    .read()
+                                let array = blueprint_engine
+                                    .cache()
                                     .latest_at(query, path, [component_name])
                                     .component_batch_raw(&component_name);
                                 array.map(|array| (component_name, array))

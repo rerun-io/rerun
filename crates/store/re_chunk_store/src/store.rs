@@ -320,6 +320,12 @@ pub struct ChunkStoreGeneration {
 #[derive(Clone)]
 pub struct ChunkStoreHandle(Arc<parking_lot::RwLock<ChunkStore>>);
 
+impl std::fmt::Display for ChunkStoreHandle {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.0.read()))
+    }
+}
+
 impl ChunkStoreHandle {
     #[inline]
     pub fn new(store: ChunkStore) -> Self {
@@ -519,6 +525,7 @@ impl ChunkStore {
     /// Instantiate a new empty `ChunkStore` with the given [`ChunkStoreConfig`].
     ///
     /// See also:
+    /// * [`ChunkStore::new`]
     /// * [`ChunkStore::from_rrd_filepath`]
     #[inline]
     pub fn new(id: StoreId, config: ChunkStoreConfig) -> Self {
@@ -540,6 +547,17 @@ impl ChunkStore {
             gc_id: 0,
             event_id: AtomicU64::new(0),
         }
+    }
+
+    /// Instantiate a new empty `ChunkStore` with the given [`ChunkStoreConfig`].
+    ///
+    /// Pre-wraps the result in a [`ChunkStoreHandle`].
+    ///
+    /// See also:
+    /// * [`ChunkStore::from_rrd_filepath`]
+    #[inline]
+    pub fn new_handle(id: StoreId, config: ChunkStoreConfig) -> ChunkStoreHandle {
+        ChunkStoreHandle::new(Self::new(id, config))
     }
 
     #[inline]
@@ -637,7 +655,7 @@ impl ChunkStore {
 impl ChunkStore {
     /// Instantiate a new `ChunkStore` with the given [`ChunkStoreConfig`].
     ///
-    /// The store will be prefilled using the data at the specified path.
+    /// The stores will be prefilled with the data at the specified path.
     ///
     /// See also:
     /// * [`ChunkStore::new`]
@@ -695,5 +713,26 @@ impl ChunkStore {
         }
 
         Ok(stores)
+    }
+
+    /// Instantiate a new `ChunkStore` with the given [`ChunkStoreConfig`].
+    ///
+    /// Wraps the results in [`ChunkStoreHandle`]s.
+    ///
+    /// The stores will be prefilled with the data at the specified path.
+    ///
+    /// See also:
+    /// * [`ChunkStore::new_handle`]
+    pub fn handle_from_rrd_filepath(
+        store_config: &ChunkStoreConfig,
+        path_to_rrd: impl AsRef<std::path::Path>,
+        version_policy: crate::VersionPolicy,
+    ) -> anyhow::Result<BTreeMap<StoreId, ChunkStoreHandle>> {
+        Ok(
+            Self::from_rrd_filepath(store_config, path_to_rrd, version_policy)?
+                .into_iter()
+                .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
+                .collect(),
+        )
     }
 }

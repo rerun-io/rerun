@@ -12,15 +12,16 @@ pub use self::external::arrow2::chunk::Chunk as ArrowChunk;
 pub use self::external::re_chunk::{util::concatenate_record_batches, TransportChunk};
 #[doc(no_inline)]
 pub use self::external::re_chunk_store::{
-    ChunkStoreHandle, ColumnSelector, ComponentColumnSelector, Index, IndexRange, IndexValue,
-    QueryExpression, SparseFillStrategy, TimeColumnSelector, ViewContentsSelector,
+    ChunkStoreConfig, ChunkStoreHandle, ColumnSelector, ComponentColumnSelector, Index, IndexRange,
+    IndexValue, QueryExpression, SparseFillStrategy, TimeColumnSelector, VersionPolicy,
+    ViewContentsSelector,
 };
 #[doc(no_inline)]
 pub use self::external::re_log_types::{
-    EntityPath, EntityPathFilter, ResolvedTimeRange, TimeInt, Timeline,
+    EntityPath, EntityPathFilter, ResolvedTimeRange, StoreKind, TimeInt, Timeline,
 };
 #[doc(no_inline)]
-pub use self::external::re_query::{QueryCache, QueryCacheHandle};
+pub use self::external::re_query::{QueryCache, QueryCacheHandle, StorageEngine};
 
 pub mod external {
     pub use re_chunk;
