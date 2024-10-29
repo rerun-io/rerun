@@ -239,7 +239,7 @@ Displays geospatial primitives on a map.
         if Some(map_memory.zoom()) != blueprint_zoom_level {
             map_zoom.save_blueprint_component(
                 ctx,
-                &ZoomLevel(re_types::datatypes::Float32(map_memory.zoom())),
+                &ZoomLevel(re_types::datatypes::Float64(map_memory.zoom())),
             );
         }
 

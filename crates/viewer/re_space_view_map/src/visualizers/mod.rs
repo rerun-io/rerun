@@ -39,13 +39,14 @@ impl GeoSpan {
         )
     }
 
-    pub fn zoom_for_screen_size(&self, screen_size: egui::Vec2) -> Option<f32> {
+    pub fn zoom_for_screen_size(&self, screen_size: egui::Vec2) -> Option<f64> {
         // Thanks, Claude: https://claude.site/artifacts/cb4f7f53-07a6-4ad0-bce3-eee3cb7e3177
 
         if self.min_latitude == self.max_latitude || self.min_longitude == self.max_longitude {
             return None;
         }
 
+        //TODO(ab): should use the actual tile size from the map provider (always 256 in practice)
         const TILE_SIZE: f64 = 256.0;
 
         // Convert latitude to y coordinate in mercator projection (scaled to 0..1)
@@ -68,7 +69,7 @@ impl GeoSpan {
         let zoom_y = (screen_size.y as f64 / tiles_y).ln() / 2.0_f64.ln();
 
         // Use the minimum zoom level to ensure the entire range fits
-        Some(zoom_x.min(zoom_y) as f32)
+        Some(zoom_x.min(zoom_y))
     }
 }
 
