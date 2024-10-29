@@ -73,7 +73,7 @@ pub fn run(args: &Args) -> anyhow::Result<()> {
             rec.set_time_seconds("stable_time", t as f64);
             let _ = rec.log(
                 "binary_tree",
-                &GraphNodes::new(level.nodes.iter().map(|&n| n))
+                &GraphNodes::new(level.nodes.iter().copied())
                     .with_labels(level.nodes.iter().map(|n| nodes[n].0))
                     .with_positions(level.nodes.iter().map(|n| nodes[n].1)),
             );
