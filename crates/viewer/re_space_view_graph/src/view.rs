@@ -138,10 +138,10 @@ impl SpaceViewClass for GraphSpaceView {
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        let node_system = system_output.view_systems.get::<NodeVisualizer>()?;
-        let edge_system = system_output.view_systems.get::<EdgesVisualizer>()?;
+        let node_data = &system_output.view_systems.get::<NodeVisualizer>()?.data;
+        let edge_data = &system_output.view_systems.get::<EdgesVisualizer>()?.data;
 
-        let graph = Graph::from_nodes_edges(&node_system.data, &edge_system.data);
+        let graph = Graph::from_nodes_edges(node_data, edge_data);
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
@@ -159,10 +159,8 @@ impl SpaceViewClass for GraphSpaceView {
             query.space_view_id,
         );
 
-        let bounds: blueprint::components::VisualBounds2D = bounds_property
-            .component_or_fallback(ctx, self, state)
-            .ok_or_log_error()
-            .unwrap_or_default();
+        let bounds: blueprint::components::VisualBounds2D =
+            bounds_property.component_or_fallback(ctx, self, state)?;
 
         state.world_bounds = Some(bounds);
         let bounds_rect: egui::Rect = bounds.into();
@@ -175,7 +173,7 @@ impl SpaceViewClass for GraphSpaceView {
         }
 
         let (new_world_bounds, response) = viewer.scene(ui, |mut scene| {
-            for data in &node_system.data {
+            for data in node_data {
                 let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
                 // We keep track of the size of the current entity.
@@ -221,13 +219,13 @@ impl SpaceViewClass for GraphSpaceView {
                 *current = response.rect;
             }
 
-            for data in &edge_system.data {
+            for data in edge_data {
                 let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
 
                 for edge in data.edges() {
                     if let (Some(source_pos), Some(target_pos)) = (
-                        state.layout.get(&edge.source_ix()),
-                        state.layout.get(&edge.target_ix()),
+                        state.layout.get(&edge.source_index()),
+                        state.layout.get(&edge.target_index()),
                     ) {
                         scene.edge(|ui| {
                             ui::draw_edge(

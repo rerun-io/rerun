@@ -12,7 +12,7 @@ pub(crate) mod scene;
 
 use crate::types::UnknownNodeInstance;
 
-pub fn draw_dummy(ui: &mut egui::Ui, instance: &UnknownNodeInstance<'_>) -> egui::Response {
+pub fn draw_dummy(ui: &mut egui::Ui, instance: &UnknownNodeInstance) -> egui::Response {
     let text = egui::RichText::new(format!(
         "{} @ {}",
         instance.node_id.as_str(),

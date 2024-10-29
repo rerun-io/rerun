@@ -46,34 +46,37 @@ pub struct EdgeInstance<'a> {
 }
 
 impl<'a> EdgeInstance<'a> {
-    pub fn source_ix(&self) -> NodeIndex {
+    pub fn source_index(&self) -> NodeIndex {
         NodeIndex::from_entity_node(self.entity_path, &self.source)
     }
 
-    pub fn target_ix(&self) -> NodeIndex {
+    pub fn target_index(&self) -> NodeIndex {
         NodeIndex::from_entity_node(self.entity_path, &self.target)
     }
 }
 
-pub struct UnknownNodeInstance<'a> {
-    pub node_id: &'a components::GraphNode,
-    pub entity_path: &'a EntityPath,
+/// This instance is used to represent nodes that were found in an edge but that were not specified explicitly in the [`GraphNodes`](crate::GraphNodes) archetype.
+pub struct UnknownNodeInstance {
+    pub node_id: components::GraphNode,
+
+    /// The entity path of the edge that contained this node.
+    pub entity_path: EntityPath,
 }
 
-impl<'a> From<&UnknownNodeInstance<'a>> for NodeIndex {
-    fn from(node: &UnknownNodeInstance<'a>) -> Self {
+impl From<&UnknownNodeInstance> for NodeIndex {
+    fn from(node: &UnknownNodeInstance) -> Self {
         Self {
             entity_hash: node.entity_path.hash(),
-            node_hash: node.node_id.into(),
+            node_hash: (&node.node_id).into(),
         }
     }
 }
 
-impl<'a> From<UnknownNodeInstance<'a>> for NodeIndex {
-    fn from(node: UnknownNodeInstance<'a>) -> Self {
+impl From<UnknownNodeInstance> for NodeIndex {
+    fn from(node: UnknownNodeInstance) -> Self {
         Self {
             entity_hash: node.entity_path.hash(),
-            node_hash: node.node_id.into(),
+            node_hash: (&node.node_id).into(),
         }
     }
 }

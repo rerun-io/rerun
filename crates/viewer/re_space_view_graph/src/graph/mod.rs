@@ -12,13 +12,13 @@ mod index;
 pub(crate) use index::NodeIndex;
 
 // TODO(grtlr): This struct should act as an abstraction over the graph in the future.
-pub(crate) struct Graph<'a> {
+pub(crate) struct Graph {
     /// Contains all nodes that are part mentioned in the edges but not part of the `nodes` list
-    unknown: ahash::HashSet<(&'a EntityPath, components::GraphNode)>,
+    unknown: ahash::HashSet<(EntityPath, components::GraphNode)>,
 }
 
-impl<'a> Graph<'a> {
-    pub fn from_nodes_edges(nodes: &'a [NodeData], edges: &'a [EdgeData]) -> Self {
+impl Graph {
+    pub fn from_nodes_edges(nodes: &[NodeData], edges: &[EdgeData]) -> Self {
         let seen = nodes
             .iter()
             .flat_map(|entity| entity.nodes())
@@ -32,7 +32,7 @@ impl<'a> Graph<'a> {
                     if seen.contains(&NodeIndex::from_entity_node(&entity.entity_path, node)) {
                         continue;
                     }
-                    unknown.insert((&entity.entity_path, node.clone()));
+                    unknown.insert((entity.entity_path.clone(), node.clone()));
                 }
             }
         }
@@ -40,12 +40,14 @@ impl<'a> Graph<'a> {
         Self { unknown }
     }
 
-    pub fn unknown_nodes(&'a self) -> impl Iterator<Item = UnknownNodeInstance<'a>> {
+    pub fn unknown_nodes(&self) -> Vec<UnknownNodeInstance> {
         self.unknown
             .iter()
+            .cloned()
             .map(|(entity_path, node_id)| UnknownNodeInstance {
                 entity_path,
                 node_id,
             })
+            .collect()
     }
 }
