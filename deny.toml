@@ -62,16 +62,16 @@ skip = [
   { name = "spin" },              # Old version used by rusttls
 ]
 skip-tree = [
-  { name = "async-io" },       # Old version via rfd
+  { name = "async-io" },       # Old version via old zbus.
   { name = "cargo-run-wasm" }, # Dev-tool
   { name = "criterion" },      # dev-dependency
-  { name = "objc2" },          # old version via accesskit
   { name = "prost-build" },    # only used in objectron example
   { name = "prost-derive" },   # only used in objectron example
   { name = "toml_edit" },      # Old version via egui-winit, newer used by rustdoc-json
-  { name = "windows" },        # Old version used by accesskit_windows, newer version used by wgpu
   { name = "tower" },          # tonic depends on 0.4.3, but also transitively (axum) on 0.5.1
   { name = "walkers" },        # TODO(#7876): suppress that when `walkers` is updated
+  { name = "windows" },        # Old version used by accesskit_windows, newer version used by wgpu
+  { name = "zbus" },           # Very tangled, part of the ecosystem uses zbus 3.x.x, part uses 4.x.x
 ]
 
 
