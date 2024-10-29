@@ -55,7 +55,9 @@ impl LoadedMesh {
         // Overwriting albedo_factor of CpuMesh if specified in the Asset3D
         if let Some(albedo_factor) = albedo_factor {
             for instance in &cpu_model.instances {
-                cpu_model.meshes[instance.mesh].materials[0].albedo_factor = albedo_factor.0.into();
+                for material in &mut cpu_model.meshes[instance.mesh].materials {
+                    material.albedo_factor = albedo_factor.0.into();
+                }
             }
         }
 
