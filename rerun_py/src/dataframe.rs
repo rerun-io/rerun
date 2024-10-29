@@ -23,7 +23,7 @@ use re_chunk_store::{
     ComponentColumnDescriptor, ComponentColumnSelector, QueryExpression, SparseFillStrategy,
     TimeColumnDescriptor, TimeColumnSelector, VersionPolicy, ViewContentsSelector,
 };
-use re_dataframe::QueryEngine;
+use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeType};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 
@@ -1140,11 +1140,13 @@ impl PyRecordingView {
 }
 
 impl PyRecording {
-    fn engine(&self) -> QueryEngine {
-        QueryEngine {
-            store: self.store.clone(),
-            cache: self.cache.clone(),
-        }
+    fn engine(&self) -> QueryEngine<StorageEngine> {
+        // Safety: this is all happening in the context of a python client using the dataframe API,
+        // there is no reason to worry about handle leakage whatsoever.
+        #[allow(unsafe_code)]
+        let engine = unsafe { StorageEngine::new(self.store.clone(), self.cache.clone()) };
+
+        QueryEngine { engine }
     }
 
     fn find_best_component(&self, entity_path: &EntityPath, component_name: &str) -> ComponentName {
