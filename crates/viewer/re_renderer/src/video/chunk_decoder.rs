@@ -86,7 +86,7 @@ impl VideoChunkDecoder {
     ///
     /// Drop all earlier frames to save memory.
     ///
-    /// Returns [`DecodingError::EmptyBuffer`] if the internal buffer is empty,
+    /// Returns [`VideoPlayerError::EmptyBuffer`] if the internal buffer is empty,
     /// which it is just after startup or after a call to [`Self::reset`].
     pub fn update_video_texture(
         &mut self,
