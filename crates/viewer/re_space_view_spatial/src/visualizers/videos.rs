@@ -159,7 +159,7 @@ impl VideoFrameReferenceVisualizer {
             return;
         };
 
-        let decode_stream_id = re_renderer::video::VideoPlayerStreamId(
+        let player_stream_id = re_renderer::video::VideoPlayerStreamId(
             Hash64::hash((entity_path.hash(), view_id)).hash64(),
         );
 
@@ -197,7 +197,7 @@ impl VideoFrameReferenceVisualizer {
 
                     match video.frame_at(
                         render_ctx,
-                        decode_stream_id,
+                        player_stream_id,
                         video_timestamp.as_seconds(),
                         video_data.as_slice(),
                     ) {

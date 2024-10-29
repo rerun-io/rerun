@@ -92,12 +92,12 @@ impl Video {
         data: Arc<VideoData>,
         decode_hw_acceleration: DecodeHardwareAcceleration,
     ) -> Self {
-        let decoders = Mutex::new(HashMap::default());
+        let players = Mutex::new(HashMap::default());
 
         Self {
             debug_name,
             data,
-            players: decoders,
+            players,
             decode_hw_acceleration,
         }
     }
@@ -130,7 +130,7 @@ impl Video {
     pub fn frame_at(
         &self,
         render_context: &RenderContext,
-        decoder_stream_id: VideoPlayerStreamId,
+        player_stream_id: VideoPlayerStreamId,
         presentation_timestamp_s: f64,
         video_data: &[u8],
     ) -> FrameDecodingResult {
@@ -143,18 +143,18 @@ impl Video {
         // Upgradable-reads exclude other upgradable-reads which means that if an element is not found,
         // we have to drop the unlock and relock with a write lock, during which new elements may be inserted.
         // This can be overcome by looping until successful, or instead we can just use a single Mutex lock and leave it there.
-        let mut decoders = self.players.lock();
-        let decoder_entry = match decoders.entry(decoder_stream_id) {
+        let mut players = self.players.lock();
+        let decoder_entry = match players.entry(player_stream_id) {
             Entry::Occupied(occupied_entry) => occupied_entry.into_mut(),
             Entry::Vacant(vacant_entry) => {
-                let new_decoder = player::VideoPlayer::new(
+                let new_player = player::VideoPlayer::new(
                     &self.debug_name,
                     render_context,
                     self.data.clone(),
                     self.decode_hw_acceleration,
                 )?;
                 vacant_entry.insert(PlayerEntry {
-                    player: new_decoder,
+                    player: new_player,
                     frame_index: global_frame_idx,
                 })
             }
@@ -174,7 +174,7 @@ impl Video {
             return;
         }
 
-        let mut decoders = self.players.lock();
-        decoders.retain(|_, decoder| decoder.frame_index >= active_frame_idx - 1);
+        let mut players = self.players.lock();
+        players.retain(|_, decoder| decoder.frame_index >= active_frame_idx - 1);
     }
 }
