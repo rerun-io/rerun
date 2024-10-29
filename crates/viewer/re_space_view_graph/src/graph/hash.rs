@@ -14,10 +14,12 @@ impl GraphNodeHash {
     }
 }
 
+// We implement `Hash` manually, because `nohash_hasher` requires a single call to `state.write_*`.
+// More info: https://crates.io/crates/nohash-hasher
 impl std::hash::Hash for GraphNodeHash {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.0.hash(state);
+        state.write_u64(self.hash64());
     }
 }
 

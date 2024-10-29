@@ -1817,15 +1817,13 @@ fn populate_space_view_class_registry_with_builtin(
     re_tracing::profile_function!();
     space_view_class_registry.add_class::<re_space_view_bar_chart::BarChartSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_dataframe::DataframeSpaceView>()?;
+    space_view_class_registry.add_class::<re_space_view_graph::GraphSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_spatial::SpatialSpaceView2D>()?;
     space_view_class_registry.add_class::<re_space_view_spatial::SpatialSpaceView3D>()?;
     space_view_class_registry.add_class::<re_space_view_tensor::TensorSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_text_document::TextDocumentSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_text_log::TextSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_time_series::TimeSeriesSpaceView>()?;
-
-    // The following are experimental views.
-    space_view_class_registry.add_class::<re_space_view_graph::GraphSpaceView>()?;
 
     Ok(())
 }

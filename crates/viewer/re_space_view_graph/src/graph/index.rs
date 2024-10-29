@@ -11,6 +11,8 @@ pub(crate) struct NodeIndex {
 
 impl nohash_hasher::IsEnabled for NodeIndex {}
 
+// We implement `Hash` manually, because `nohash_hasher` requires a single call to `state.write_*`.
+// More info: https://crates.io/crates/nohash-hasher
 impl std::hash::Hash for NodeIndex {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         // TODO(grtlr): Consider using `write_usize` here, to further decrease the risk of collision.
