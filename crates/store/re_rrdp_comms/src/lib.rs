@@ -13,7 +13,6 @@ use re_remote_store_types::{
         storage_node_client::StorageNodeClient, EncoderVersion, FetchRecordingRequest, RecordingId,
     },
 };
-use tokio_stream::StreamExt;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -94,7 +93,7 @@ pub fn stream_recording(
         re_smart_channel::SmartChannelSource::RrdpStream { url: url.clone() },
     );
 
-    tokio::spawn(async move {
+    spawn_future(async move {
         if let Err(err) = stream_recording_async(tx, address, on_msg).await {
             re_log::warn!(
                 "Failed to fetch whole recording from {url}: {}",
@@ -106,11 +105,29 @@ pub fn stream_recording(
     Ok(rx)
 }
 
+#[cfg(target_arch = "wasm32")]
+fn spawn_future<F>(future: F)
+where
+    F: std::future::Future<Output = ()> + 'static,
+{
+    wasm_bindgen_futures::spawn_local(future);
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn spawn_future<F>(future: F)
+where
+    F: std::future::Future<Output = ()> + 'static + Send,
+{
+    tokio::spawn(future);
+}
+
 async fn stream_recording_async(
     tx: re_smart_channel::Sender<LogMsg>,
     address: Address,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> anyhow::Result<()> {
+    use tokio_stream::StreamExt as _;
+
     let Address {
         addr_port,
         recording_id,
@@ -119,9 +136,17 @@ async fn stream_recording_async(
     let http_addr = format!("http://{addr_port}");
     re_log::debug!("Connecting to {http_addr}…");
 
-    let mut client = StorageNodeClient::connect(http_addr)
-        .await?
-        .max_decoding_message_size(1024 * 1024 * 1024);
+    #[cfg(target_arch = "wasm32")]
+    let mut client = StorageNodeClient::new(tonic_web_wasm_client::Client::new_with_options(
+        http_addr,
+        tonic_web_wasm_client::options::FetchOptions::new()
+            .mode(tonic_web_wasm_client::options::Mode::Cors), // TODO: is this needed?
+    ));
+
+    #[cfg(not(target_arch = "wasm32"))]
+    let mut client = StorageNodeClient::connect(http_addr).await?;
+
+    client = client.max_decoding_message_size(1024 * 1024 * 1024);
 
     re_log::debug!("Fetching {recording_id}…");
 

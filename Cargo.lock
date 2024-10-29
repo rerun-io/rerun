@@ -1103,9 +1103,9 @@ dependencies = [
 
 [[package]]
 name = "byteorder"
-version = "1.4.3"
+version = "1.5.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14c189c53d098945499cdfa7ecc63567cf3886b3332b312a5b4585d8d3a6a610"
+checksum = "1fd0f2584146f6f2ef48085050886acf353beff7305ebd1ae69500e27c67f64b"
 
 [[package]]
 name = "bytes"
@@ -5956,6 +5956,7 @@ dependencies = [
  "re_log_types",
  "thiserror",
  "tonic",
+ "tonic-web-wasm-client",
 ]
 
 [[package]]
@@ -6058,6 +6059,8 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-stream",
+ "tonic-web-wasm-client",
+ "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -6600,6 +6603,7 @@ dependencies = [
  "re_memory",
  "re_query",
  "re_renderer",
+ "re_rrdp_comms",
  "re_sdk_comms",
  "re_selection_panel",
  "re_smart_channel",
@@ -8337,7 +8341,6 @@ dependencies = [
  "libc",
  "mio 1.0.2",
  "pin-project-lite",
- "signal-hook-registry",
  "socket2 0.5.7",
  "tokio-macros",
  "windows-sys 0.52.0",
@@ -8476,6 +8479,31 @@ dependencies = [
  "prost-types 0.13.3",
  "quote",
  "syn 2.0.79",
+]
+
+[[package]]
+name = "tonic-web-wasm-client"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ef5ca6e7bdd0042c440d36b6df97c1436f1d45871ce18298091f114004b1beb4"
+dependencies = [
+ "base64 0.22.1",
+ "byteorder",
+ "bytes",
+ "futures-util",
+ "http 1.1.0",
+ "http-body 1.0.1",
+ "http-body-util",
+ "httparse",
+ "js-sys",
+ "pin-project",
+ "thiserror",
+ "tonic",
+ "tower-service",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "wasm-streams",
+ "web-sys",
 ]
 
 [[package]]
