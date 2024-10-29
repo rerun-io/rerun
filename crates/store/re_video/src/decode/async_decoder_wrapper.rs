@@ -5,7 +5,7 @@ use std::sync::{
 
 use crossbeam::channel::{unbounded, Receiver, Sender};
 
-use super::{AsyncDecoder, Chunk, Frame, OutputCallback, Result, SyncDecoder};
+use super::{AsyncDecoder, Chunk, Frame, OutputCallback, Result};
 
 enum Command {
     Chunk(Chunk),
@@ -32,8 +32,25 @@ impl Default for Comms {
     }
 }
 
+/// Blocking decoder of video chunks.
+#[cfg(with_dav1d)]
+pub trait SyncDecoder {
+    /// Submit some work and read the results.
+    ///
+    /// Stop early if `should_stop` is `true` or turns `true`.
+    fn submit_chunk(
+        &mut self,
+        should_stop: &std::sync::atomic::AtomicBool,
+        chunk: Chunk,
+        on_output: &OutputCallback,
+    );
+
+    /// Clear and reset everything
+    fn reset(&mut self) {}
+}
+
 /// Runs a [`SyncDecoder`] in a background thread, for non-blocking video decoding.
-pub(super) struct AsyncDecoderWrapper {
+pub struct AsyncDecoderWrapper {
     /// Where the decoding happens
     _thread: std::thread::JoinHandle<()>,
 

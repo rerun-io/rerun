@@ -78,13 +78,12 @@
 //!
 
 #[cfg(with_dav1d)]
-pub mod av1;
+mod async_decoder_wrapper;
+#[cfg(with_dav1d)]
+mod av1;
 
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
-
-#[cfg(with_dav1d)]
-pub mod async_decoder_wrapper;
 
 use crate::Time;
 
@@ -131,23 +130,6 @@ pub trait AsyncDecoder: Send + Sync {
     ///
     /// This does not block, all chunks sent to `decode` before this point will be discarded.
     fn reset(&mut self) -> Result<()>;
-}
-
-/// Blocking decoder of video chunks.
-#[cfg(not(target_arch = "wasm32"))]
-trait SyncDecoder {
-    /// Submit some work and read the results.
-    ///
-    /// Stop early if `should_stop` is `true` or turns `true`.
-    fn submit_chunk(
-        &mut self,
-        should_stop: &std::sync::atomic::AtomicBool,
-        chunk: Chunk,
-        on_output: &OutputCallback,
-    );
-
-    /// Clear and reset everything
-    fn reset(&mut self) {}
 }
 
 /// Creates a new async decoder for the given `video` data.
