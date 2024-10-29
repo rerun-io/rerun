@@ -1,7 +1,5 @@
 //! Communications with an RRDP GRPC server.
 
-#![allow(clippy::unwrap_used)] // TODO
-
 use std::str::FromStr;
 
 use anyhow::Context as _;
@@ -164,8 +162,12 @@ async fn stream_recording_async(
 
     re_log::info!("Starting to read...");
     while let Some(batch) = resp.next().await {
-        let raw = batch.unwrap();
-        let tc = decode(EncoderVersion::V0, &raw.payload).unwrap().unwrap();
+        let raw = batch.context("Bad batch")?;
+        let tc = decode(EncoderVersion::V0, &raw.payload).context("Failed to parse payload")?;
+
+        let Some(tc) = tc else {
+            anyhow::bail!("No TransportChunk in the payload");
+        };
 
         let chunk = Chunk::from_transport(&tc).context("Bad Chunk")?;
 
