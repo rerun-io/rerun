@@ -304,6 +304,9 @@ impl walkers::Plugin for GeoPointsPlugin<'_> {
         // Forth pass: draw the hovered entries
         //
 
+        // Note: usually, there only ever is a single hovered item, so we don't use the two-pass
+        // approach here.
+
         let hovered_entries_indices = self
             .visualizer
             .indices_for_item_collection(self.viewer_ctx.hovered(), self.view_id);
