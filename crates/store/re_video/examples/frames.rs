@@ -47,13 +47,18 @@ fn main() {
         }
     };
 
-    let mut decoder = re_video::decode::new_decoder(video_path.to_string(), &video, on_output)
-        .expect("Failed to create decoder");
+    let mut decoder = re_video::decode::new_decoder(
+        &video_path.to_string(),
+        &video,
+        re_video::decode::DecodeHardwareAcceleration::Auto,
+        on_output,
+    )
+    .expect("Failed to create decoder");
 
     let start = Instant::now();
     for sample in &video.samples {
         let chunk = sample.get(&video_blob).unwrap();
-        decoder.submit_chunk(chunk);
+        decoder.submit_chunk(chunk).expect("Failed to submit chunk");
     }
 
     let end = Instant::now();
