@@ -83,7 +83,7 @@ pub mod av1;
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
 
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(with_dav1d)]
 pub mod async_decoder_wrapper;
 
 use crate::Time;
@@ -124,7 +124,7 @@ pub type OutputCallback = dyn Fn(Result<Frame>) + Send + Sync;
 pub trait AsyncDecoder: Send + Sync {
     /// Submits a chunk for decoding in the background.
     ///
-    /// Chunks are expected to come in in the order of their decoding timestamp.
+    /// Chunks are expected to come in the order of their decoding timestamp.
     fn submit_chunk(&mut self, chunk: Chunk) -> Result<()>;
 
     /// Resets the decoder.
@@ -150,6 +150,7 @@ trait SyncDecoder {
     fn reset(&mut self) {}
 }
 
+/// Creates a new async decoder for the given `video` data.
 pub fn new_decoder(
     debug_name: &str,
     video: &crate::VideoData,
@@ -193,14 +194,6 @@ pub fn new_decoder(
                     )));
                 }
             }
-        }
-
-        #[cfg(feature = "ffmpeg")]
-        re_mp4::StsdBoxContent::Avc1(avc1_box) => {
-            // TODO: check if we have ffmpeg ONCE, and remember
-            Ok(Box::new(ffmpeg::FfmpegCliH264Decoder::new(
-                avc1_box.clone(),
-            )?))
         }
 
         _ => Err(Error::UnsupportedCodec(video.human_readable_codec_string())),
