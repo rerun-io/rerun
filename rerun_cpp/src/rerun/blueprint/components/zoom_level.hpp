@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "../../datatypes/float32.hpp"
+#include "../../datatypes/float64.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
@@ -13,34 +13,34 @@ namespace rerun::blueprint::components {
     /// **Component**: A zoom level determines how much of the world is visible on a map.
     struct ZoomLevel {
         /// Zoom level: 0 being the lowest zoom level (fully zoomed out) and 22 being the highest (fully zoomed in).
-        rerun::datatypes::Float32 zoom;
+        rerun::datatypes::Float64 zoom;
 
       public:
         ZoomLevel() = default;
 
-        ZoomLevel(rerun::datatypes::Float32 zoom_) : zoom(zoom_) {}
+        ZoomLevel(rerun::datatypes::Float64 zoom_) : zoom(zoom_) {}
 
-        ZoomLevel& operator=(rerun::datatypes::Float32 zoom_) {
+        ZoomLevel& operator=(rerun::datatypes::Float64 zoom_) {
             zoom = zoom_;
             return *this;
         }
 
-        ZoomLevel(float value_) : zoom(value_) {}
+        ZoomLevel(double value_) : zoom(value_) {}
 
-        ZoomLevel& operator=(float value_) {
+        ZoomLevel& operator=(double value_) {
             zoom = value_;
             return *this;
         }
 
-        /// Cast to the underlying Float32 datatype
-        operator rerun::datatypes::Float32() const {
+        /// Cast to the underlying Float64 datatype
+        operator rerun::datatypes::Float64() const {
             return zoom;
         }
     };
 } // namespace rerun::blueprint::components
 
 namespace rerun {
-    static_assert(sizeof(rerun::datatypes::Float32) == sizeof(blueprint::components::ZoomLevel));
+    static_assert(sizeof(rerun::datatypes::Float64) == sizeof(blueprint::components::ZoomLevel));
 
     /// \private
     template <>
@@ -49,7 +49,7 @@ namespace rerun {
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-            return Loggable<rerun::datatypes::Float32>::arrow_datatype();
+            return Loggable<rerun::datatypes::Float64>::arrow_datatype();
         }
 
         /// Serializes an array of `rerun::blueprint:: components::ZoomLevel` into an arrow array.
@@ -57,14 +57,14 @@ namespace rerun {
             const blueprint::components::ZoomLevel* instances, size_t num_instances
         ) {
             if (num_instances == 0) {
-                return Loggable<rerun::datatypes::Float32>::to_arrow(nullptr, 0);
+                return Loggable<rerun::datatypes::Float64>::to_arrow(nullptr, 0);
             } else if (instances == nullptr) {
                 return rerun::Error(
                     ErrorCode::UnexpectedNullArgument,
                     "Passed array instances is null when num_elements> 0."
                 );
             } else {
-                return Loggable<rerun::datatypes::Float32>::to_arrow(
+                return Loggable<rerun::datatypes::Float64>::to_arrow(
                     &instances->zoom,
                     num_instances
                 );

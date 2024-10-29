@@ -22,7 +22,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default)]
 pub struct ZoomLevel(
     /// Zoom level: 0 being the lowest zoom level (fully zoomed out) and 22 being the highest (fully zoomed in).
-    pub crate::datatypes::Float32,
+    pub crate::datatypes::Float64,
 );
 
 impl ::re_types_core::SizeBytes for ZoomLevel {
@@ -33,35 +33,35 @@ impl ::re_types_core::SizeBytes for ZoomLevel {
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::datatypes::Float32>::is_pod()
+        <crate::datatypes::Float64>::is_pod()
     }
 }
 
-impl<T: Into<crate::datatypes::Float32>> From<T> for ZoomLevel {
+impl<T: Into<crate::datatypes::Float64>> From<T> for ZoomLevel {
     fn from(v: T) -> Self {
         Self(v.into())
     }
 }
 
-impl std::borrow::Borrow<crate::datatypes::Float32> for ZoomLevel {
+impl std::borrow::Borrow<crate::datatypes::Float64> for ZoomLevel {
     #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float32 {
+    fn borrow(&self) -> &crate::datatypes::Float64 {
         &self.0
     }
 }
 
 impl std::ops::Deref for ZoomLevel {
-    type Target = crate::datatypes::Float32;
+    type Target = crate::datatypes::Float64;
 
     #[inline]
-    fn deref(&self) -> &crate::datatypes::Float32 {
+    fn deref(&self) -> &crate::datatypes::Float64 {
         &self.0
     }
 }
 
 impl std::ops::DerefMut for ZoomLevel {
     #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Float64 {
         &mut self.0
     }
 }
@@ -78,7 +78,7 @@ impl ::re_types_core::Loggable for ZoomLevel {
 
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
-        crate::datatypes::Float32::arrow_datatype()
+        crate::datatypes::Float64::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(
@@ -87,7 +87,7 @@ impl ::re_types_core::Loggable for ZoomLevel {
     where
         Self: Clone + 'a,
     {
-        crate::datatypes::Float32::to_arrow_opt(data.into_iter().map(|datum| {
+        crate::datatypes::Float64::to_arrow_opt(data.into_iter().map(|datum| {
             datum.map(|datum| match datum.into() {
                 ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
                 ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
@@ -101,7 +101,7 @@ impl ::re_types_core::Loggable for ZoomLevel {
     where
         Self: Sized,
     {
-        crate::datatypes::Float32::from_arrow_opt(arrow_data)
+        crate::datatypes::Float64::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 
@@ -110,6 +110,6 @@ impl ::re_types_core::Loggable for ZoomLevel {
     where
         Self: Sized,
     {
-        crate::datatypes::Float32::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
+        crate::datatypes::Float64::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
     }
 }
