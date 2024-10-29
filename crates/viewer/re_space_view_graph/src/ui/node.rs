@@ -1,10 +1,23 @@
+use re_log_types::EntityPath;
+use re_types::components::GraphNode;
 use re_viewer_context::{HoverHighlight, InteractionHighlight, SelectionHighlight};
 
 use crate::types::NodeInstance;
 
+pub fn draw_dummy(ui: &mut egui::Ui, entity_path: &EntityPath, node: &GraphNode) -> egui::Response {
+    let text = egui::RichText::new(format!(
+        "{} @ {}",
+        node.as_str(),
+        entity_path
+    ))
+    .color(ui.style().visuals.widgets.noninteractive.text_color());
+    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+    ui.add(egui::Button::new(text))
+}
+
 pub fn draw_node(
     ui: &mut egui::Ui,
-    instance: &NodeInstance<'_>,
+    instance: &NodeInstance,
     highlight: InteractionHighlight,
 ) -> egui::Response {
     let hcolor = match (
@@ -21,7 +34,7 @@ pub fn draw_node(
         HoverHighlight::Hovered => ui.style().visuals.widgets.hovered.bg_fill,
     };
 
-    if let (true, Some(label)) = (instance.show_labels, instance.label) {
+    if let Some(label) = &instance.label {
         let text = egui::RichText::new(label.to_string());
 
         egui::Frame::default()
@@ -57,9 +70,5 @@ pub fn draw_node(
             })
             .response
     }
-    .on_hover_text(format!(
-        "Node ID: `{}` in `{}`",
-        instance.node_id.as_str(),
-        instance.entity_path
-    ))
+    .on_hover_text(format!("Node: `{}`", instance.node.as_str(),))
 }

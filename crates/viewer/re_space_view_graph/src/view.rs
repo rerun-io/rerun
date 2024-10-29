@@ -1,8 +1,7 @@
-use std::collections::HashSet;
+use std::collections::{BTreeSet, HashSet};
 
 use egui::{self, Rect};
 
-use re_log::ResultExt as _;
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
 use re_types::{
@@ -20,7 +19,7 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
-    graph::{Graph, NodeIndex},
+    graph::{NodeIndex},
     ui::{self, bounding_rect_from_iter, scene::ViewBuilder, GraphSpaceViewState},
     visualizers::{EdgesVisualizer, NodeVisualizer},
 };
@@ -141,15 +140,10 @@ impl SpaceViewClass for GraphSpaceView {
         let node_data = &system_output.view_systems.get::<NodeVisualizer>()?.data;
         let edge_data = &system_output.view_systems.get::<EdgesVisualizer>()?.data;
 
-        let graph = Graph::from_nodes_edges(node_data, edge_data);
+        // We need to sort the entities to ensure that we are always drawing them in the right order.
+        let entities = node_data.keys().chain(edge_data.keys()).collect::<BTreeSet<_>>();
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
-
-        // We keep track of the nodes in the data to clean up the layout.
-        // TODO(grtlr): once we settle on a design, it might make sense to create a
-        // `Layout` struct that keeps track of the layout and the nodes that
-        // get added and removed and cleans up automatically (guard pattern).
-        let mut seen: HashSet<NodeIndex> = HashSet::new();
 
         let layout_was_empty = state.layout.is_empty();
 
@@ -172,72 +166,93 @@ impl SpaceViewClass for GraphSpaceView {
             viewer.show_debug();
         }
 
+        // We keep track of the nodes in the data to clean up the layout.
+        // TODO(grtlr): once we settle on a design, it might make sense to create a
+        // `Layout` struct that keeps track of the layout and the nodes that
+        // get added and removed and cleans up automatically (guard pattern).
+        let mut seen: HashSet<NodeIndex> = HashSet::new();
+
         let (new_world_bounds, response) = viewer.scene(ui, |mut scene| {
-            for data in node_data {
-                let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
+            // We store the offset to draw entities next to each other.
+            // This is a workaround and will probably be removed once we have auto-layout.
+            let mut entity_offset = egui::Vec2::ZERO;
+
+            for entity in entities {
+                let ent_highlight = query.highlights.entity_highlight(entity.hash());
 
                 // We keep track of the size of the current entity.
-                let mut entity_rect: Option<egui::Rect> = None;
+                let mut entity_rect = egui::Rect::NOTHING;
+                if let Some(data) = node_data.get(entity) {
+                    for node in &data.nodes {
+                        seen.insert(node.index);
+                        let current = state.layout.entry(node.index).or_insert(
+                            node.position
+                                .map_or(egui::Rect::ZERO.translate(entity_offset), |p| {
+                                    Rect::from_center_size(p.into(), egui::Vec2::ZERO)
+                                }),
+                        );
 
-                for node in data.nodes() {
-                    let ix = NodeIndex::from(&node);
-                    seen.insert(ix);
-                    let current = state.layout.entry(ix).or_insert(
-                        node.position.map_or(egui::Rect::ZERO, |p| {
-                            Rect::from_center_size(p.into(), egui::Vec2::ZERO)
-                        }),
-                    );
-
-                    let response = scene.node(current.min, |ui| {
-                        ui::draw_node(ui, &node, ent_highlight.index_highlight(node.instance))
-                    });
-
-                    let instance = InstancePath::instance(data.entity_path.clone(), node.instance);
-                    ctx.select_hovered_on_click(
-                        &response,
-                        Item::DataResult(query.space_view_id, instance),
-                    );
-
-                    *current = response.rect;
-                    entity_rect =
-                        entity_rect.map_or(Some(response.rect), |e| Some(e.union(response.rect)));
-                }
-
-                // TODO(grtlr): handle interactions
-                let _response = entity_rect.map(|rect| {
-                    scene.entity(rect.min, |ui| {
-                        ui::draw_entity(ui, rect, &data.entity_path, &query.highlights)
-                    })
-                });
-            }
-
-            for dummy in graph.unknown_nodes() {
-                let ix = NodeIndex::from(&dummy);
-                seen.insert(ix);
-                let current = state.layout.entry(ix).or_insert(Rect::ZERO);
-                let response = scene.node(current.min, |ui| ui::draw_dummy(ui, &dummy));
-                *current = response.rect;
-            }
-
-            for data in edge_data {
-                let ent_highlight = query.highlights.entity_highlight(data.entity_path.hash());
-
-                for edge in data.edges() {
-                    if let (Some(source_pos), Some(target_pos)) = (
-                        state.layout.get(&edge.source_index()),
-                        state.layout.get(&edge.target_index()),
-                    ) {
-                        scene.edge(|ui| {
-                            ui::draw_edge(
+                        let response = scene.node(current.min + entity_offset, |ui| {
+                            ui::draw_node(
                                 ui,
-                                None, // TODO(grtlr): change this back once we have edge colors
-                                source_pos,
-                                target_pos,
-                                ent_highlight.index_highlight(edge.instance),
-                                edge.edge_type == components::GraphType::Directed,
+                                &node,
+                                Default::default(), // TODO(grtlr): we currently don't have any highlighting
                             )
                         });
+
+                        // TODO(grtlr): ⚠️ This is hacky:
+                        // We need to undo the `entity_offset` otherwise the offset will increase each frame.
+                        *current = response.rect.translate(-entity_offset);
+                        entity_rect = entity_rect.union(response.rect);
                     }
+                }
+
+                if let Some(data) = edge_data.get(entity) {
+                    let unknown_nodes = data
+                        .edges
+                        .iter()
+                        .flat_map(|e| e.nodes())
+                        .filter(|n| !seen.contains(&NodeIndex::from_entity_node(entity, n)))
+                        .collect::<Vec<_>>();
+
+                    for node in unknown_nodes {
+                        let ix = NodeIndex::from_entity_node(entity, node);
+                        seen.insert(ix);
+                        let current = state.layout.entry(ix).or_insert(Rect::ZERO);
+                        let response =
+                            scene.node(current.min, |ui| ui::draw_dummy(ui, entity, node));
+                        *current = response.rect;
+                        entity_rect = entity_rect.union(response.rect);
+                    }
+
+                    for edge in &data.edges {
+                        if let (Some(source_pos), Some(target_pos)) = (
+                            state.layout.get(&edge.source_index),
+                            state.layout.get(&edge.target_index),
+                        ) {
+                            scene.edge(|ui| {
+                                ui::draw_edge(
+                                    ui,
+                                    None, // TODO(grtlr): change this back once we have edge colors
+                                    &source_pos.translate(entity_offset),
+                                    &target_pos.translate(entity_offset),
+                                    Default::default(), // TODO(grtlr): we currently don't have any highlighting
+                                    data.graph_type == components::GraphType::Directed,
+                                )
+                            });
+                        }
+                    }
+                }
+
+                if entity_rect.is_positive() {
+                    // TODO(grtlr): handle interactions
+                    let _response = scene.entity(entity_rect.min, |ui| {
+                        ui::draw_entity(ui, entity_rect, entity, &query.highlights)
+                    });
+
+                    // TODO(grtlr): Should take padding from `draw_entity` into account.
+                    let between_entities = 80.0;
+                    entity_offset.x += entity_rect.width() + between_entities;
                 }
             }
         });

@@ -1,57 +1,26 @@
-use re_log_types::{EntityPath, Instance};
-use re_types::{components, ArrowString};
+use re_log_types::{EntityPath};
+use re_types::{components::{self, GraphNode}, ArrowString};
 
 use crate::graph::NodeIndex;
 
-impl<'a> EdgeInstance<'a> {
-    pub fn nodes(&'a self) -> impl Iterator<Item = &components::GraphNode> {
-        [&self.source, &self.target].into_iter()
-    }
-}
-
-impl<'a> From<&NodeInstance<'a>> for NodeIndex {
-    fn from(node: &NodeInstance<'a>) -> Self {
-        Self {
-            entity_hash: node.entity_path.hash(),
-            node_hash: node.node_id.into(),
-        }
-    }
-}
-
-impl<'a> From<NodeInstance<'a>> for NodeIndex {
-    fn from(node: NodeInstance<'a>) -> Self {
-        Self {
-            entity_hash: node.entity_path.hash(),
-            node_hash: node.node_id.into(),
-        }
-    }
-}
-
-pub struct NodeInstance<'a> {
-    pub node_id: &'a components::GraphNode,
-    pub entity_path: &'a EntityPath,
-    pub instance: Instance,
-    pub label: Option<&'a ArrowString>,
-    pub show_labels: bool,
+pub struct NodeInstance {
+    pub node: components::GraphNode,
+    pub index: NodeIndex,
+    pub label: Option<ArrowString>,
     pub color: Option<egui::Color32>,
-    pub position: Option<[f32; 2]>,
+    pub position: Option<egui::Pos2>,
 }
 
-pub struct EdgeInstance<'a> {
-    pub source: components::GraphNode,
-    pub target: components::GraphNode,
-    pub entity_path: &'a re_log_types::EntityPath,
-    pub instance: Instance,
-    pub edge_type: components::GraphType,
+pub struct EdgeInstance {
+    pub source: GraphNode,
+    pub target: GraphNode,
+    pub source_index: NodeIndex,
+    pub target_index: NodeIndex,
 }
 
-impl<'a> EdgeInstance<'a> {
-    pub fn source_index(&self) -> NodeIndex {
-        NodeIndex::from_entity_node(self.entity_path, &self.source)
-    }
-
-    pub fn target_index(&self) -> NodeIndex {
-        NodeIndex::from_entity_node(self.entity_path, &self.target)
+impl EdgeInstance {
+    pub fn nodes(&self) -> impl Iterator<Item = &components::GraphNode> {
+        [&self.source, &self.target].into_iter()
     }
 }
 

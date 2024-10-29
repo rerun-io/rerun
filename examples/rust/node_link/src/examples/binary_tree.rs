@@ -1,4 +1,4 @@
-use rerun::{GraphEdges, GraphNodes};
+use rerun::{components::GraphType, GraphEdges, GraphNodes};
 
 use crate::Args;
 use std::collections::HashMap;
@@ -13,7 +13,12 @@ pub fn run(args: &Args) -> anyhow::Result<()> {
     // (label, position)
     type NodeInfo = (&'static str, (f32, f32));
 
-    let nodes: HashMap<&str, NodeInfo> = [
+    struct Level<'a> {
+        nodes: &'a [&'a str],
+        edges: &'a [(&'a str, &'a str)],
+    }
+
+    let nodes_unsorted: HashMap<&str, NodeInfo> = [
         ("1", ("1", (0.0 * s, 0.0 * s))),
         ("7", ("7", (-20.0 * s, 30.0 * s))),
         ("2", ("2", (-30.0 * s, 60.0 * s))),
@@ -27,12 +32,7 @@ pub fn run(args: &Args) -> anyhow::Result<()> {
     .into_iter()
     .collect();
 
-    struct Level<'a> {
-        nodes: &'a [&'a str],
-        edges: &'a [(&'a str, &'a str)],
-    }
-
-    let levels: Vec<Level> = vec![
+    let levels_unsorted: Vec<Level> = vec![
         Level {
             nodes: &["1"],
             edges: &[],
@@ -66,23 +66,67 @@ pub fn run(args: &Args) -> anyhow::Result<()> {
         },
     ];
 
+    let nodes_sorted: HashMap<&str, NodeInfo> = [
+        ("6", ("6", (0.0 * s, 0.0 * s))),
+        ("5_0", ("5", (-20.0 * s, 30.0 * s))),
+        ("9_0", ("9", (20.0 * s, 30.0 * s))),
+        // ("6", ("6", (-10.0 * s, 60.0 * s))),
+        // ("5_0", ("5", (-20.0 * s, 90.0 * s))),
+        // ("11", ("11", (0.0 * s, 90.0 * s))),
+        // ("9_0", ("9", (20.0 * s, 30.0 * s))),
+        // ("9_1", ("9", (30.0 * s, 60.0 * s))),
+        // ("5_1", ("5", (20.0 * s, 90.0 * s))),
+    ]
+    .into_iter()
+    .collect();
+
+    let levels_sorted: Vec<Level> = vec![
+        Level {
+            nodes: &["6"],
+            edges: &[],
+        },
+        Level {
+            nodes: &["6", "5_0", "9_0"],
+            edges: &[("6", "5_0"), ("6", "9_0")],
+        },
+    ];
+
     let mut t = 0;
-    for level in levels {
+    for level in levels_unsorted {
         if !level.nodes.is_empty() {
             t += 1;
             rec.set_time_seconds("stable_time", t as f64);
             let _ = rec.log(
-                "binary_tree",
+                "unsorted",
                 &GraphNodes::new(level.nodes.iter().copied())
-                    .with_labels(level.nodes.iter().map(|n| nodes[n].0))
-                    .with_positions(level.nodes.iter().map(|n| nodes[n].1)),
+                    .with_labels(level.nodes.iter().map(|n| nodes_unsorted[n].0))
+                    .with_positions(level.nodes.iter().map(|n| nodes_unsorted[n].1)),
             );
         }
 
         if !level.edges.is_empty() {
             t += 1;
             rec.set_time_seconds("stable_time", t as f64);
-            let _ = rec.log("binary_tree", &GraphEdges::new(level.edges));
+            let _ = rec.log("unsorted", &GraphEdges::new(level.edges));
+        }
+    }
+
+    for level in levels_sorted {
+        if !level.nodes.is_empty() {
+            t += 1;
+            rec.set_time_seconds("stable_time", t as f64);
+            let _ = rec.log(
+                "sorted",
+                &GraphNodes::new(level.nodes.iter().copied())
+                    .with_labels(level.nodes.iter().map(|n| nodes_sorted[n].0))
+                    .with_positions(level.nodes.iter().map(|n| nodes_sorted[n].1)),
+            );
+        }
+
+        if !level.edges.is_empty() {
+            t += 1;
+            rec.set_time_seconds("stable_time", t as f64);
+            let _ = rec.log("sorted", &GraphEdges::new(level.edges).with_graph_type(GraphType::Directed));
         }
     }
 

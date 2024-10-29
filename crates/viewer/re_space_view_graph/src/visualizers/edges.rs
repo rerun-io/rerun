@@ -1,43 +1,26 @@
-use re_chunk::{ChunkComponentIterItem, LatestAtQuery};
-use re_log_types::Instance;
-use re_query::{clamped_zip_2x1, range_zip_1x1};
+use re_chunk::LatestAtQuery;
+use re_log_types::EntityPath;
 use re_space_view::{DataResultQuery, RangeResultsExt};
-use re_types::{self, archetypes, components, Loggable as _};
+use re_types::{
+    self, archetypes,
+    components::{self, GraphEdge, GraphNode},
+    Loggable as _,
+};
 use re_viewer_context::{
     self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext, ViewContextCollection,
     ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::types::EdgeInstance;
+use crate::{graph::NodeIndex, types::EdgeInstance};
 
 #[derive(Default)]
 pub struct EdgesVisualizer {
-    pub data: Vec<EdgeData>,
+    pub data: ahash::HashMap<EntityPath, EdgeData>,
 }
 
 pub struct EdgeData {
-    pub entity_path: re_log_types::EntityPath,
     pub graph_type: components::GraphType,
-    edges: ChunkComponentIterItem<components::GraphEdge>,
-}
-
-impl EdgeData {
-    pub fn edges(&self) -> impl Iterator<Item = EdgeInstance<'_>> {
-        clamped_zip_2x1(
-            self.edges.iter(),
-            (0..).map(Instance::from),
-            // A placeholder for components that we will add in the future.
-            std::iter::repeat(None),
-            Option::<()>::default,
-        )
-        .map(|(edge, instance, _placeholder)| EdgeInstance {
-            source: edge.first.clone().into(),
-            target: edge.second.clone().into(),
-            entity_path: &self.entity_path,
-            instance,
-            edge_type: self.graph_type,
-        })
-    }
+    pub edges: Vec<EdgeInstance>,
 }
 
 impl IdentifiedViewSystem for EdgesVisualizer {
@@ -68,23 +51,35 @@ impl VisualizerSystem for EdgesVisualizer {
                 );
 
             let all_indexed_edges = results.iter_as(query.timeline, components::GraphEdge::name());
-            let all_graph_type = results.iter_as(query.timeline, components::GraphType::name());
+            let graph_type = results.get_mono_with_fallback::<components::GraphType>();
 
-            let data = range_zip_1x1(
-                all_indexed_edges.component::<components::GraphEdge>(),
-                all_graph_type.component::<components::GraphType>(),
-            );
+            for (_index, edges) in all_indexed_edges.component::<GraphEdge>() {
+                let edges = edges
+                    .iter()
+                    .map(|edge| {
+                        let source = GraphNode::from(edge.first.clone());
+                        let target = GraphNode::from(edge.second.clone());
 
-            for (_index, edges, graph_type) in data {
-                self.data.push(EdgeData {
-                    entity_path: data_result.entity_path.clone(),
-                    edges,
-                    graph_type: graph_type
-                        .unwrap_or_default()
-                        .first()
-                        .copied()
-                        .unwrap_or_default(),
-                });
+                        let entity_path = &data_result.entity_path;
+                        let source_index = NodeIndex::from_entity_node(entity_path, &source);
+                        let target_index = NodeIndex::from_entity_node(entity_path, &target);
+
+                        EdgeInstance {
+                            source,
+                            target,
+                            source_index,
+                            target_index,
+                        }
+                    })
+                    .collect();
+
+                self.data.insert(
+                    data_result.entity_path.clone(),
+                    EdgeData {
+                        edges,
+                        graph_type,
+                    },
+                );
             }
         }
 
