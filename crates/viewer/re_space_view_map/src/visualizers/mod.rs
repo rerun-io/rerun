@@ -84,7 +84,7 @@ pub struct PickedInstance {
     pixel_distance: f32,
 }
 
-/// Keep the closest instance.
+/// Update a picked instance with another one if it's closer.
 pub fn update_picked_instance(first: &mut Option<PickedInstance>, second: Option<PickedInstance>) {
     if let Some(second) = second {
         if let Some(first) = first {

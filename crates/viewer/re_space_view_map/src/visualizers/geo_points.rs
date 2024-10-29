@@ -172,7 +172,7 @@ impl GeoPointsVisualizer {
         } else {
             self.instances
                 .get(&instance_path.hash())
-                .map(|idx| std::slice::from_ref(idx))
+                .map(std::slice::from_ref)
         };
 
         indices.unwrap_or_default()
@@ -186,7 +186,7 @@ impl GeoPointsVisualizer {
     ) -> Vec<usize> {
         item_collection
             .iter()
-            .map(|(item, _)| {
+            .flat_map(|(item, _)| {
                 if let Item::DataResult(item_view_id, instance_path) = item {
                     if *item_view_id == view_id {
                         return self.indices_for_instance(instance_path);
@@ -196,8 +196,7 @@ impl GeoPointsVisualizer {
                 // empty slice
                 Default::default()
             })
-            .flatten()
-            .cloned()
+            .copied()
             .collect::<Vec<_>>()
     }
 }

@@ -252,12 +252,12 @@ Displays geospatial primitives on a map.
                     ctx.selection_state().set_selection(Item::DataResult(
                         query.space_view_id,
                         picked_instance.instance_path.entity_path.clone().into(),
-                    ))
+                    ));
                 }
             } else if map_response.clicked() {
                 // clicked elsewhere, select the view
                 ctx.selection_state()
-                    .set_selection(Item::SpaceView(query.space_view_id))
+                    .set_selection(Item::SpaceView(query.space_view_id));
             }
 
             if map_response.double_clicked() {
