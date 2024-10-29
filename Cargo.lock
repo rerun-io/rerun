@@ -4164,7 +4164,6 @@ version = "0.20.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
- "glam",
  "itertools 0.13.0",
  "rerun",
  "strum",
@@ -6200,7 +6199,6 @@ name = "re_space_view_graph"
 version = "0.20.0-alpha.1+dev"
 dependencies = [
  "ahash",
- "bytemuck",
  "egui",
  "nohash-hasher",
  "re_chunk",

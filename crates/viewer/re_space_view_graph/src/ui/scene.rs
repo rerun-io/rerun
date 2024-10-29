@@ -49,6 +49,8 @@ impl ViewBuilder {
     where
         F: for<'b> FnOnce(Scene<'b>),
     {
+        re_tracing::profile_function!();
+
         let (id, clip_rect_window) = ui.allocate_space(ui.available_size());
         let response = ui.interact(clip_rect_window, id, Sense::click_and_drag());
 
