@@ -65,7 +65,7 @@ pub struct EntityDb {
     data_store: ChunkStore,
 
     /// Query caches for the data in [`Self::data_store`].
-    query_caches: re_query::Caches,
+    query_caches: re_query::QueryCache,
 
     stats: IngestionStatistics,
 }
@@ -77,7 +77,7 @@ impl EntityDb {
 
     pub fn with_store_config(store_id: StoreId, store_config: ChunkStoreConfig) -> Self {
         let data_store = ChunkStore::new(store_id.clone(), store_config);
-        let query_caches = re_query::Caches::new(&data_store);
+        let query_caches = re_query::QueryCache::new(&data_store);
 
         Self {
             data_source: None,
@@ -117,7 +117,7 @@ impl EntityDb {
     }
 
     #[inline]
-    pub fn query_caches(&self) -> &re_query::Caches {
+    pub fn query_caches(&self) -> &re_query::QueryCache {
         &self.query_caches
     }
 
@@ -321,31 +321,35 @@ impl EntityDb {
         self.entity_path_from_hash.contains_key(&entity_path.hash())
     }
 
-    pub fn add(&mut self, msg: &LogMsg) -> Result<(), Error> {
+    pub fn add(&mut self, msg: &LogMsg) -> Result<Vec<ChunkStoreEvent>, Error> {
         re_tracing::profile_function!();
 
         debug_assert_eq!(msg.store_id(), self.store_id());
 
-        match &msg {
-            LogMsg::SetStoreInfo(msg) => self.set_store_info(msg.clone()),
+        let store_events = match &msg {
+            LogMsg::SetStoreInfo(msg) => {
+                self.set_store_info(msg.clone());
+                vec![]
+            }
 
             LogMsg::ArrowMsg(_, arrow_msg) => {
                 self.last_modified_at = web_time::Instant::now();
 
                 let mut chunk = re_chunk::Chunk::from_arrow_msg(arrow_msg)?;
                 chunk.sort_if_unsorted();
-                self.add_chunk(&Arc::new(chunk))?;
+                self.add_chunk(&Arc::new(chunk))?
             }
 
             LogMsg::BlueprintActivationCommand(_) => {
                 // Not for us to handle
+                vec![]
             }
-        }
+        };
 
-        Ok(())
+        Ok(store_events)
     }
 
-    pub fn add_chunk(&mut self, chunk: &Arc<Chunk>) -> Result<(), Error> {
+    pub fn add_chunk(&mut self, chunk: &Arc<Chunk>) -> Result<Vec<ChunkStoreEvent>, Error> {
         let store_events = self.data_store.insert_chunk(chunk)?;
 
         self.register_entity_path(chunk.entity_path());
@@ -361,11 +365,16 @@ impl EntityDb {
             self.query_caches.on_events(&store_events);
             self.tree.on_store_additions(&store_events);
 
+            // It is possible for writes to trigger deletions: specifically in the case of
+            // overwritten static data leading to dangling chunks.
+            self.tree
+                .on_store_deletions(&self.data_store, &store_events);
+
             // We inform the stats last, since it measures e2e latency.
             self.stats.on_events(&store_events);
         }
 
-        Ok(())
+        Ok(store_events)
     }
 
     fn register_entity_path(&mut self, entity_path: &EntityPath) {
@@ -378,36 +387,50 @@ impl EntityDb {
         self.set_store_info = Some(store_info);
     }
 
-    pub fn gc_everything_but_the_latest_row_on_non_default_timelines(&mut self) {
+    pub fn gc_everything_but_the_latest_row_on_non_default_timelines(
+        &mut self,
+    ) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
         self.gc(&GarbageCollectionOptions {
             target: GarbageCollectionTarget::Everything,
-            protect_latest: 1, // TODO(jleibs): Bump this after we have an undo buffer
+            protect_latest: 1,
             time_budget: DEFAULT_GC_TIME_BUDGET,
-        });
+            protected_time_ranges: Default::default(), // TODO(#3135): Use this for undo buffer
+        })
     }
 
     /// Free up some RAM by forgetting the older parts of all timelines.
-    pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
+    pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
         assert!((0.0..=1.0).contains(&fraction_to_purge));
-        if !self.gc(&GarbageCollectionOptions {
+
+        let store_events = self.gc(&GarbageCollectionOptions {
             target: GarbageCollectionTarget::DropAtLeastFraction(fraction_to_purge as _),
             protect_latest: 1,
             time_budget: DEFAULT_GC_TIME_BUDGET,
-        }) {
+
+            // TODO(emilk): we could protect the data that is currently being viewed
+            // (e.g. when paused in the live camera example).
+            // To be perfect it would need margins (because of latest-at), i.e. we would need to know
+            // exactly how far back the latest-at is of each component at the current time…
+            // …but maybe it doesn't have to be perfect.
+            protected_time_ranges: Default::default(),
+        });
+
+        if store_events.is_empty() {
             // If we weren't able to collect any data, then we need to GC the cache itself in order
             // to regain some space.
             // See <https://github.com/rerun-io/rerun/issues/7369#issuecomment-2335164098> for the
             // complete rationale.
             self.query_caches.purge_fraction_of_ram(fraction_to_purge);
         }
+
+        store_events
     }
 
-    /// Returns `true` if anything at all was actually GC'd.
-    pub fn gc(&mut self, gc_options: &GarbageCollectionOptions) -> bool {
+    fn gc(&mut self, gc_options: &GarbageCollectionOptions) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
         let (store_events, stats_diff) = self.data_store.gc(gc_options);
@@ -420,7 +443,20 @@ impl EntityDb {
 
         self.on_store_deletions(&store_events);
 
-        !store_events.is_empty()
+        store_events
+    }
+
+    /// Drop all events in the given time range from the given timeline.
+    ///
+    /// Used to implement undo (erase the last event from the blueprint db).
+    pub fn drop_time_range(
+        &mut self,
+        timeline: &Timeline,
+        drop_range: ResolvedTimeRange,
+    ) -> Vec<ChunkStoreEvent> {
+        let store_events = self.data_store.drop_time_range(timeline, drop_range);
+        self.on_store_deletions(&store_events);
+        store_events
     }
 
     /// Unconditionally drops all the data for a given [`EntityPath`] .

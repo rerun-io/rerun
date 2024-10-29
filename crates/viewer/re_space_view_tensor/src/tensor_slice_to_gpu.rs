@@ -1,17 +1,17 @@
 use re_chunk_store::RowId;
 use re_renderer::{
     renderer::ColormappedTexture,
-    resource_managers::{GpuTexture2D, Texture2DCreationDesc, TextureManager2DError},
+    resource_managers::{GpuTexture2D, ImageDataDesc, TextureManager2DError},
 };
 use re_types::{
     blueprint::archetypes::TensorSliceSelection,
-    components::{Colormap, GammaCorrection},
+    components::GammaCorrection,
     datatypes::TensorData,
     tensor_data::{TensorCastError, TensorDataType},
 };
 use re_viewer_context::{
-    gpu_bridge::{self, colormap_to_re_renderer, tensor_data_range_heuristic, RangeError},
-    TensorStats,
+    gpu_bridge::{self, colormap_to_re_renderer},
+    ColormapWithRange,
 };
 
 use crate::space_view_class::selected_tensor_slice;
@@ -23,35 +23,29 @@ pub enum TensorUploadError {
 
     #[error("Expected a 2D slice")]
     Not2D,
-
-    #[error(transparent)]
-    RangeError(#[from] RangeError),
 }
 
 pub fn colormapped_texture(
     render_ctx: &re_renderer::RenderContext,
     tensor_data_row_id: RowId,
     tensor: &TensorData,
-    tensor_stats: &TensorStats,
     slice_selection: &TensorSliceSelection,
-    colormap: Colormap,
+    colormap: &ColormapWithRange,
     gamma: GammaCorrection,
 ) -> Result<ColormappedTexture, TextureManager2DError<TensorUploadError>> {
     re_tracing::profile_function!();
 
-    let range = tensor_data_range_heuristic(tensor_stats, tensor.dtype())
-        .map_err(|err| TextureManager2DError::DataCreation(err.into()))?;
     let texture =
         upload_texture_slice_to_gpu(render_ctx, tensor_data_row_id, tensor, slice_selection)?;
 
     Ok(ColormappedTexture {
         texture,
-        range,
+        range: colormap.value_range,
         decode_srgb: false,
         multiply_rgb_with_alpha: false,
         gamma: *gamma.0,
         color_mapper: re_renderer::renderer::ColorMapper::Function(colormap_to_re_renderer(
-            colormap,
+            colormap.colormap,
         )),
         shader_decoding: None,
     })
@@ -73,7 +67,7 @@ fn upload_texture_slice_to_gpu(
 fn texture_desc_from_tensor(
     tensor: &TensorData,
     slice_selection: &TensorSliceSelection,
-) -> Result<Texture2DCreationDesc<'static>, TensorUploadError> {
+) -> Result<ImageDataDesc<'static>, TensorUploadError> {
     use wgpu::TextureFormat;
     re_tracing::profile_function!();
 
@@ -148,7 +142,7 @@ fn to_texture_desc<From: Copy, To: bytemuck::Pod>(
     slice_selection: &TensorSliceSelection,
     format: wgpu::TextureFormat,
     caster: impl Fn(From) -> To,
-) -> Result<Texture2DCreationDesc<'static>, TensorUploadError> {
+) -> Result<ImageDataDesc<'static>, TensorUploadError> {
     re_tracing::profile_function!();
 
     use ndarray::Dimension as _;
@@ -173,11 +167,10 @@ fn to_texture_desc<From: Copy, To: bytemuck::Pod>(
     }
 
     re_tracing::profile_scope!("pod_collect_to_vec");
-    Ok(Texture2DCreationDesc {
+    Ok(ImageDataDesc {
         label: "tensor_slice".into(),
         data: bytemuck::pod_collect_to_vec(&pixels).into(),
-        format,
-        width: width as u32,
-        height: height as u32,
+        format: format.into(),
+        width_height: [width as u32, height as u32],
     })
 }

@@ -1,3 +1,4 @@
+use egui::NumExt as _;
 use egui_tiles::ContainerKind;
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
@@ -542,8 +543,11 @@ fn entity_path_filter_ui(
             .clone()
     });
 
-    let response =
-        ui.add(egui::TextEdit::multiline(&mut filter_string).layouter(&mut text_layouter));
+    let response = ui.add(
+        egui::TextEdit::multiline(&mut filter_string)
+            .desired_width(ui.spacing().text_edit_width.at_least(ui.available_width()))
+            .layouter(&mut text_layouter),
+    );
 
     if response.has_focus() {
         ui.data_mut(|data| data.insert_temp::<String>(filter_text_id, filter_string.clone()));
@@ -928,12 +932,22 @@ fn view_top_level_properties(
     view: &re_viewport_blueprint::SpaceViewBlueprint,
 ) {
     ui.list_item_flat_noninteractive(PropertyContent::new("Name").value_fn(|ui, _| {
+        ui.spacing_mut().text_edit_width = ui
+            .spacing_mut()
+            .text_edit_width
+            .at_least(ui.available_width());
+
         let mut name = view.display_name.clone().unwrap_or_default();
         ui.add(egui::TextEdit::singleline(&mut name).hint_text("(default)"));
         view.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });
     }));
 
     ui.list_item_flat_noninteractive(PropertyContent::new("Space origin").value_fn(|ui, _| {
+        ui.spacing_mut().text_edit_width = ui
+            .spacing_mut()
+            .text_edit_width
+            .at_least(ui.available_width());
+
         super::space_view_space_origin_ui::space_view_space_origin_widget_ui(ui, ctx, view);
     }))
     .on_hover_text(
@@ -960,6 +974,11 @@ fn container_top_level_properties(
     };
 
     ui.list_item_flat_noninteractive(PropertyContent::new("Name").value_fn(|ui, _| {
+        ui.spacing_mut().text_edit_width = ui
+            .spacing_mut()
+            .text_edit_width
+            .at_least(ui.available_width());
+
         let mut name = container.display_name.clone().unwrap_or_default();
         ui.add(egui::TextEdit::singleline(&mut name));
         container.set_display_name(ctx, if name.is_empty() { None } else { Some(name) });

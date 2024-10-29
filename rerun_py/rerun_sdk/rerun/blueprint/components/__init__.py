@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from .active_tab import ActiveTab, ActiveTabBatch, ActiveTabType
+from .apply_latest_at import ApplyLatestAt, ApplyLatestAtBatch, ApplyLatestAtType
 from .auto_layout import AutoLayout, AutoLayoutBatch, AutoLayoutType
 from .auto_space_views import AutoSpaceViews, AutoSpaceViewsBatch, AutoSpaceViewsType
 from .background_kind import (
@@ -13,6 +14,11 @@ from .background_kind import (
     BackgroundKindType,
 )
 from .column_share import ColumnShare, ColumnShareBatch, ColumnShareType
+from .component_column_selector import (
+    ComponentColumnSelector,
+    ComponentColumnSelectorBatch,
+    ComponentColumnSelectorType,
+)
 from .container_kind import (
     ContainerKind,
     ContainerKindArrayLike,
@@ -21,23 +27,19 @@ from .container_kind import (
     ContainerKindType,
 )
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike, Corner2DType
+from .filter_by_range import FilterByRange, FilterByRangeBatch, FilterByRangeType
+from .filter_is_not_null import FilterIsNotNull, FilterIsNotNullBatch, FilterIsNotNullType
 from .grid_columns import GridColumns, GridColumnsBatch, GridColumnsType
 from .included_content import IncludedContent, IncludedContentBatch, IncludedContentType
 from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch, IncludedSpaceViewType
 from .interactive import Interactive, InteractiveBatch, InteractiveType
-from .latest_at_queries import (
-    LatestAtQueries,
-    LatestAtQueriesArrayLike,
-    LatestAtQueriesBatch,
-    LatestAtQueriesLike,
-    LatestAtQueriesType,
-)
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch, LockRangeDuringZoomType
+from .map_provider import MapProvider, MapProviderArrayLike, MapProviderBatch, MapProviderLike, MapProviderType
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike, PanelStateType
 from .query_expression import QueryExpression, QueryExpressionBatch, QueryExpressionType
-from .query_kind import QueryKind, QueryKindArrayLike, QueryKindBatch, QueryKindLike, QueryKindType
 from .root_container import RootContainer, RootContainerBatch, RootContainerType
 from .row_share import RowShare, RowShareBatch, RowShareType
+from .selected_columns import SelectedColumns, SelectedColumnsBatch, SelectedColumnsType
 from .space_view_class import SpaceViewClass, SpaceViewClassBatch, SpaceViewClassType
 from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch, SpaceViewMaximizedType
 from .space_view_origin import SpaceViewOrigin, SpaceViewOriginBatch, SpaceViewOriginType
@@ -45,13 +47,6 @@ from .tensor_dimension_index_slider import (
     TensorDimensionIndexSlider,
     TensorDimensionIndexSliderBatch,
     TensorDimensionIndexSliderType,
-)
-from .time_range_queries import (
-    TimeRangeQueries,
-    TimeRangeQueriesArrayLike,
-    TimeRangeQueriesBatch,
-    TimeRangeQueriesLike,
-    TimeRangeQueriesType,
 )
 from .timeline_name import TimelineName, TimelineNameBatch, TimelineNameType
 from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike, ViewFitType
@@ -64,11 +59,15 @@ from .visible import Visible, VisibleBatch, VisibleType
 from .visible_time_range import VisibleTimeRange, VisibleTimeRangeBatch, VisibleTimeRangeType
 from .visual_bounds2d import VisualBounds2D, VisualBounds2DBatch, VisualBounds2DType
 from .visualizer_overrides import VisualizerOverrides, VisualizerOverridesBatch, VisualizerOverridesType
+from .zoom_level import ZoomLevel, ZoomLevelBatch, ZoomLevelType
 
 __all__ = [
     "ActiveTab",
     "ActiveTabBatch",
     "ActiveTabType",
+    "ApplyLatestAt",
+    "ApplyLatestAtBatch",
+    "ApplyLatestAtType",
     "AutoLayout",
     "AutoLayoutBatch",
     "AutoLayoutType",
@@ -83,6 +82,9 @@ __all__ = [
     "ColumnShare",
     "ColumnShareBatch",
     "ColumnShareType",
+    "ComponentColumnSelector",
+    "ComponentColumnSelectorBatch",
+    "ComponentColumnSelectorType",
     "ContainerKind",
     "ContainerKindArrayLike",
     "ContainerKindBatch",
@@ -93,6 +95,12 @@ __all__ = [
     "Corner2DBatch",
     "Corner2DLike",
     "Corner2DType",
+    "FilterByRange",
+    "FilterByRangeBatch",
+    "FilterByRangeType",
+    "FilterIsNotNull",
+    "FilterIsNotNullBatch",
+    "FilterIsNotNullType",
     "GridColumns",
     "GridColumnsBatch",
     "GridColumnsType",
@@ -105,14 +113,14 @@ __all__ = [
     "Interactive",
     "InteractiveBatch",
     "InteractiveType",
-    "LatestAtQueries",
-    "LatestAtQueriesArrayLike",
-    "LatestAtQueriesBatch",
-    "LatestAtQueriesLike",
-    "LatestAtQueriesType",
     "LockRangeDuringZoom",
     "LockRangeDuringZoomBatch",
     "LockRangeDuringZoomType",
+    "MapProvider",
+    "MapProviderArrayLike",
+    "MapProviderBatch",
+    "MapProviderLike",
+    "MapProviderType",
     "PanelState",
     "PanelStateArrayLike",
     "PanelStateBatch",
@@ -121,17 +129,15 @@ __all__ = [
     "QueryExpression",
     "QueryExpressionBatch",
     "QueryExpressionType",
-    "QueryKind",
-    "QueryKindArrayLike",
-    "QueryKindBatch",
-    "QueryKindLike",
-    "QueryKindType",
     "RootContainer",
     "RootContainerBatch",
     "RootContainerType",
     "RowShare",
     "RowShareBatch",
     "RowShareType",
+    "SelectedColumns",
+    "SelectedColumnsBatch",
+    "SelectedColumnsType",
     "SpaceViewClass",
     "SpaceViewClassBatch",
     "SpaceViewClassType",
@@ -144,11 +150,6 @@ __all__ = [
     "TensorDimensionIndexSlider",
     "TensorDimensionIndexSliderBatch",
     "TensorDimensionIndexSliderType",
-    "TimeRangeQueries",
-    "TimeRangeQueriesArrayLike",
-    "TimeRangeQueriesBatch",
-    "TimeRangeQueriesLike",
-    "TimeRangeQueriesType",
     "TimelineName",
     "TimelineNameBatch",
     "TimelineNameType",
@@ -172,4 +173,7 @@ __all__ = [
     "VisualizerOverrides",
     "VisualizerOverridesBatch",
     "VisualizerOverridesType",
+    "ZoomLevel",
+    "ZoomLevelBatch",
+    "ZoomLevelType",
 ]

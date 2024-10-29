@@ -9,11 +9,11 @@ use re_chunk_store::{ChunkStore, RangeQuery, TimeInt};
 use re_log_types::{EntityPath, ResolvedTimeRange};
 use re_types_core::{ComponentName, DeserializationError, SizeBytes};
 
-use crate::{CacheKey, Caches};
+use crate::{QueryCache, QueryCacheKey};
 
 // --- Public API ---
 
-impl Caches {
+impl QueryCache {
     /// Queries for the given `component_names` using range semantics.
     ///
     /// See [`RangeResults`] for more information about how to handle the results.
@@ -38,7 +38,7 @@ impl Caches {
         });
 
         for component_name in component_names {
-            let key = CacheKey::new(entity_path.clone(), query.timeline(), component_name);
+            let key = QueryCacheKey::new(entity_path.clone(), query.timeline(), component_name);
 
             let cache = Arc::clone(
                 self.range_per_cache_key
@@ -127,10 +127,10 @@ impl RangeResults {
 
 // --- Cache implementation ---
 
-/// Caches the results of `Range` queries for a given [`CacheKey`].
+/// Caches the results of `Range` queries for a given [`QueryCacheKey`].
 pub struct RangeCache {
     /// For debugging purposes.
-    pub cache_key: CacheKey,
+    pub cache_key: QueryCacheKey,
 
     /// All the [`Chunk`]s currently cached.
     ///
@@ -148,7 +148,7 @@ pub struct RangeCache {
 
 impl RangeCache {
     #[inline]
-    pub fn new(cache_key: CacheKey) -> Self {
+    pub fn new(cache_key: QueryCacheKey) -> Self {
         Self {
             cache_key,
             chunks: HashMap::default(),
@@ -205,7 +205,7 @@ impl std::fmt::Debug for RangeCache {
 pub struct RangeCachedChunk {
     pub chunk: Chunk,
 
-    /// When a `Chunk` gets cached, it is pre-processed according to the current [`CacheKey`],
+    /// When a `Chunk` gets cached, it is pre-processed according to the current [`QueryCacheKey`],
     /// e.g. it is time-sorted on the appropriate timeline.
     ///
     /// In the happy case, pre-processing a `Chunk` is a no-op, and the cached `Chunk` is just a
@@ -264,7 +264,7 @@ impl RangeCache {
         // It's fine to run the query every time -- the index scan itself is not the costly part of a
         // range query.
         //
-        // For all relevant chunks that we find, we process them according to the [`CacheKey`], and
+        // For all relevant chunks that we find, we process them according to the [`QueryCacheKey`], and
         // cache them.
 
         let raw_chunks = store.range_relevant_chunks(query, entity_path, component_name);

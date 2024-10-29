@@ -130,6 +130,9 @@ impl DesignTokens {
         // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
         let floating_color = get_global_color(&self.json, "{Global.Color.Grey.250}");
 
+        // For table zebra stripes.
+        egui_style.visuals.faint_bg_color = get_global_color(&self.json, "{Global.Color.Grey.150}");
+
         // Used as the background of text edits, scroll bars and others things
         // that needs to look different from other interactive stuff.
         // We need this very dark, since the theme overall is very, very dark.
@@ -289,7 +292,7 @@ impl DesignTokens {
     }
 
     pub fn table_line_height() -> f32 {
-        16.0 // should be big enough to contain buttons, i.e. egui_style.spacing.interact_size.y
+        20.0 // should be big enough to contain buttons, i.e. egui_style.spacing.interact_size.y
     }
 
     pub fn table_header_height() -> f32 {

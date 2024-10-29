@@ -1,15 +1,35 @@
-use egui::Ui;
+use std::any::Any;
 
-use re_log_types::{EntityPath, EntityPathFilter, ResolvedTimeRange};
+use crate::{
+    dataframe_ui::dataframe_ui, expanded_rows::ExpandedRowsCache, view_query,
+    visualizer_system::EmptySystem,
+};
+use re_chunk_store::{ColumnDescriptor, SparseFillStrategy};
+use re_log_types::EntityPath;
 use re_types_core::SpaceViewClassIdentifier;
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState,
+    SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId, SpaceViewState, SpaceViewStateExt,
     SpaceViewSystemExecutionError, SystemExecutionOutput, ViewQuery, ViewerContext,
 };
-use re_viewport_blueprint::SpaceViewContents;
 
-use crate::dataframe_ui::dataframe_ui;
-use crate::{query_kind::QueryKind, visualizer_system::EmptySystem};
+#[derive(Default)]
+struct DataframeSpaceViewState {
+    /// Cache for the expanded rows.
+    expended_rows_cache: ExpandedRowsCache,
+
+    /// List of view columns for the current query, cached here for the column visibility UI.
+    view_columns: Option<Vec<ColumnDescriptor>>,
+}
+
+impl SpaceViewState for DataframeSpaceViewState {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+}
 
 #[derive(Default)]
 pub struct DataframeSpaceView;
@@ -57,7 +77,7 @@ mode sets the default time range to _everything_. You can override this in the s
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
-        Box::<()>::default()
+        Box::<DataframeSpaceViewState>::default()
     }
 
     fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
@@ -79,103 +99,84 @@ mode sets the default time range to _everything_. You can override this in the s
     fn selection_ui(
         &self,
         ctx: &ViewerContext<'_>,
-        ui: &mut Ui,
+        ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         space_view_id: SpaceViewId,
     ) -> Result<(), SpaceViewSystemExecutionError> {
-        crate::view_query::query_ui(ctx, ui, state, space_view_id)
+        let state = state.downcast_mut::<DataframeSpaceViewState>()?;
+        let view_query = view_query::Query::from_blueprint(ctx, space_view_id);
+        let Some(view_columns) = &state.view_columns else {
+            // Shouldn't happen, except maybe on the first frame, which is too early
+            // for the user to click the menu anyway.
+            return Ok(());
+        };
+        view_query.selection_panel_ui(ctx, ui, space_view_id, view_columns)
     }
 
     fn ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        _state: &mut dyn SpaceViewState,
+        state: &mut dyn SpaceViewState,
         query: &ViewQuery<'_>,
         _system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         re_tracing::profile_function!();
 
-        let view_query = super::view_query::Query::try_from_blueprint(ctx, query.space_view_id)?;
-        let timeline_name = view_query.timeline_name(ctx);
-        let query_mode = view_query.kind(ctx);
+        let state = state.downcast_mut::<DataframeSpaceViewState>()?;
+        let view_query = view_query::Query::from_blueprint(ctx, query.space_view_id);
 
-        let Some(timeline) = ctx
-            .recording()
-            .timelines()
-            .find(|t| t.name() == &timeline_name)
-        else {
-            re_log::warn_once!("Could not find timeline {:?}.", timeline_name.as_str());
-            //TODO(ab): we should have an error for that
-            return Ok(());
+        let query_engine = re_dataframe::QueryEngine {
+            store: ctx.recording().store(),
+            cache: ctx.recording().query_caches(),
         };
 
-        let query_engine = ctx.recording().query_engine();
+        let view_contents = query
+            .iter_all_entities()
+            .map(|entity| (entity.clone(), None))
+            .collect();
 
-        let entity_path_filter =
-            Self::entity_path_filter(ctx, query.space_view_id, query.space_origin);
-
-        match query_mode {
-            QueryKind::LatestAt { time } => {
-                let query = re_chunk_store::LatestAtQueryExpression {
-                    entity_path_filter,
-                    timeline: *timeline,
-                    at: time,
-                };
-
-                //TODO(ab): specify which columns
-                let query_handle = query_engine.latest_at(&query, None);
-
-                dataframe_ui(ctx, ui, query_handle);
-            }
-            QueryKind::Range {
-                pov_entity,
-                pov_component,
-                from,
-                to,
-            } => {
-                let query = re_chunk_store::RangeQueryExpression {
-                    entity_path_filter,
-                    timeline: *timeline,
-                    time_range: ResolvedTimeRange::new(from, to),
-                    //TODO(#7365): using ComponentColumnDescriptor to specify PoV needs to go
-                    pov: re_chunk_store::ComponentColumnDescriptor {
-                        entity_path: pov_entity.clone(),
-                        archetype_name: None,
-                        archetype_field_name: None,
-                        component_name: pov_component,
-                        // this is actually ignored:
-                        datatype: re_chunk_store::external::arrow2::datatypes::DataType::Null,
-                        is_static: false,
-                    },
-                };
-
-                //TODO(ab): specify which columns should be displayed or not
-                dataframe_ui(ctx, ui, query_engine.range(&query, None));
-            }
+        let sparse_fill_strategy = if view_query.latest_at_enabled()? {
+            SparseFillStrategy::LatestAtGlobal
+        } else {
+            SparseFillStrategy::None
         };
 
+        let mut dataframe_query = re_chunk_store::QueryExpression {
+            view_contents: Some(view_contents),
+            filtered_index: Some(view_query.timeline(ctx)?),
+            filtered_index_range: Some(view_query.filter_by_range()?),
+            filtered_is_not_null: view_query.filter_is_not_null()?,
+            sparse_fill_strategy,
+            selection: None,
+
+            // not yet unsupported by the dataframe view
+            filtered_index_values: None,
+            using_index_values: None,
+            include_semantically_empty_columns: false,
+            include_indicator_columns: false,
+            include_tombstone_columns: false,
+        };
+
+        let view_columns = query_engine.schema_for_query(&dataframe_query);
+        dataframe_query.selection =
+            view_query.apply_column_visibility_to_view_columns(ctx, &view_columns)?;
+
+        let query_handle = query_engine.query(dataframe_query);
+
+        let hide_column_actions = dataframe_ui(
+            ctx,
+            ui,
+            &query_handle,
+            &mut state.expended_rows_cache,
+            &query.space_view_id,
+        );
+
+        view_query.handle_hide_column_actions(ctx, &view_columns, hide_column_actions)?;
+
+        state.view_columns = Some(view_columns);
         Ok(())
-    }
-}
-
-impl DataframeSpaceView {
-    fn entity_path_filter(
-        ctx: &ViewerContext<'_>,
-        space_view_id: SpaceViewId,
-        space_origin: &EntityPath,
-    ) -> EntityPathFilter {
-        //TODO(ab): this feels a little bit hacky but there isn't currently another way to get to
-        //the original entity path filter.
-        SpaceViewContents::from_db_or_default(
-            space_view_id,
-            ctx.blueprint_db(),
-            ctx.blueprint_query,
-            Self::identifier(),
-            &re_log_types::EntityPathSubs::new_with_origin(space_origin),
-        )
-        .entity_path_filter
     }
 }
 

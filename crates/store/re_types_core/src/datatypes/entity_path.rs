@@ -19,7 +19,7 @@ use crate::{ComponentBatch, MaybeOwnedComponentBatch};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A path to an entity in the `ChunkStore`.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default, Hash)]
 #[repr(transparent)]
 pub struct EntityPath(pub crate::ArrowString);
 
@@ -73,6 +73,7 @@ impl crate::Loggable for EntityPath {
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
+        #![allow(clippy::manual_is_variant_and)]
         use crate::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({

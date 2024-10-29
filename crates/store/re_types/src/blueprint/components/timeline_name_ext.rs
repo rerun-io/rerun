@@ -15,6 +15,13 @@ impl From<&TimelineName> for re_log_types::TimelineName {
     }
 }
 
+impl TimelineName {
+    /// Create a [`Self`] from a [`re_log_types::Timeline`].
+    pub fn from_timeline(timeline: &re_log_types::Timeline) -> Self {
+        Self::from(timeline.name().as_str())
+    }
+}
+
 impl Default for TimelineName {
     fn default() -> Self {
         Self::from("log_time")

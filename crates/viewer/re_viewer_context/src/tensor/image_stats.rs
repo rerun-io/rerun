@@ -1,6 +1,6 @@
 use half::f16;
 
-use re_types::datatypes::{ChannelDatatype, PixelFormat};
+use re_types::datatypes::ChannelDatatype;
 
 use crate::ImageInfo;
 
@@ -14,8 +14,9 @@ pub struct ImageStats {
 
     /// Like `range`, but ignoring all `NaN`/inf values.
     ///
-    /// `None` if there are no finite values at all.
-    pub finite_range: Option<(f64, f64)>,
+    /// If no finite values are present, this takes the maximum finite range
+    /// of the underlying data type.
+    pub finite_range: (f64, f64),
 }
 
 impl ImageStats {
@@ -120,11 +121,14 @@ impl ImageStats {
         // ---------------------------
 
         let datatype = match image.format.pixel_format {
-            Some(PixelFormat::NV12 | PixelFormat::YUY2) => {
-                // We do the lazy thing here:
+            Some(_) => {
+                // We do the lazy thing here since we convert everything to RGB8 right now anyways.
+                // Note that this range is all about the format we're converting _to_.
+                // It would be nice if we can distininguish this better in the future:
+                // E.g. limited range YUV should have the correct limited range.
                 return Self {
                     range: Some((0.0, 255.0)),
-                    finite_range: Some((0.0, 255.0)),
+                    finite_range: (0.0, 255.0),
                 };
             }
             None => image.format.datatype(),
@@ -150,13 +154,13 @@ impl ImageStats {
             // Empty image
             return Self {
                 range: None,
-                finite_range: None,
+                finite_range: (datatype.min_value(), datatype.max_value()),
             };
         }
 
         let finite_range = if range.0.is_finite() && range.1.is_finite() {
             // Already finite
-            Some(range)
+            range
         } else {
             let finite_range = match datatype {
                 ChannelDatatype::U8
@@ -175,9 +179,9 @@ impl ImageStats {
 
             // Ensure it actually is finite:
             if finite_range.0.is_finite() && finite_range.1.is_finite() {
-                Some(finite_range)
+                finite_range
             } else {
-                None
+                (datatype.min_value(), datatype.max_value())
             }
         };
 

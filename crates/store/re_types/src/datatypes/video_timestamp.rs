@@ -18,27 +18,39 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Datatype**: Timestamp inside a [`archetypes::AssetVideo`][crate::archetypes::AssetVideo].
+/// **Datatype**: Presentation timestamp within a [`archetypes::AssetVideo`][crate::archetypes::AssetVideo].
 ///
-/// ⚠️ **This type is experimental and may be removed in future versions**
-#[derive(Clone, Debug, Copy, PartialEq, Eq)]
-pub struct VideoTimestamp {
-    /// Timestamp value, type defined by `time_mode`.
-    pub video_time: i64,
-
-    /// How to interpret `video_time`.
-    pub time_mode: crate::datatypes::VideoTimeMode,
-}
+/// Specified in nanoseconds.
+/// Presentation timestamps are typically measured as time since video start.
+#[derive(Clone, Debug, Default, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct VideoTimestamp(
+    /// Presentation timestamp value in nanoseconds.
+    pub i64,
+);
 
 impl ::re_types_core::SizeBytes for VideoTimestamp {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.video_time.heap_size_bytes() + self.time_mode.heap_size_bytes()
+        self.0.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
-        <i64>::is_pod() && <crate::datatypes::VideoTimeMode>::is_pod()
+        <i64>::is_pod()
+    }
+}
+
+impl From<i64> for VideoTimestamp {
+    #[inline]
+    fn from(timestamp_ns: i64) -> Self {
+        Self(timestamp_ns)
+    }
+}
+
+impl From<VideoTimestamp> for i64 {
+    #[inline]
+    fn from(value: VideoTimestamp) -> Self {
+        value.0
     }
 }
 
@@ -56,14 +68,7 @@ impl ::re_types_core::Loggable for VideoTimestamp {
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
-            Field::new("video_time", DataType::Int64, false),
-            Field::new(
-                "time_mode",
-                <crate::datatypes::VideoTimeMode>::arrow_datatype(),
-                false,
-            ),
-        ]))
+        DataType::Int64
     }
 
     fn to_arrow_opt<'a>(
@@ -73,64 +78,26 @@ impl ::re_types_core::Loggable for VideoTimestamp {
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
+        #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({
-            let (somes, data): (Vec<_>, Vec<_>) = data
+            let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
                     let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    let datum = datum.map(|datum| datum.into_owned().0);
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            StructArray::new(
+            PrimitiveArray::new(
                 Self::arrow_datatype(),
-                vec![
-                    {
-                        let (somes, video_time): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.video_time.clone());
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let video_time_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        PrimitiveArray::new(
-                            DataType::Int64,
-                            video_time
-                                .into_iter()
-                                .map(|v| v.unwrap_or_default())
-                                .collect(),
-                            video_time_bitmap,
-                        )
-                        .boxed()
-                    },
-                    {
-                        let (somes, time_mode): (Vec<_>, Vec<_>) = data
-                            .iter()
-                            .map(|datum| {
-                                let datum = datum.as_ref().map(|datum| datum.time_mode.clone());
-                                (datum.is_some(), datum)
-                            })
-                            .unzip();
-                        let time_mode_bitmap: Option<arrow2::bitmap::Bitmap> = {
-                            let any_nones = somes.iter().any(|some| !*some);
-                            any_nones.then(|| somes.into())
-                        };
-                        {
-                            _ = time_mode_bitmap;
-                            crate::datatypes::VideoTimeMode::to_arrow_opt(time_mode)?
-                        }
-                    },
-                ],
-                bitmap,
+                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
+                data0_bitmap,
             )
             .boxed()
         })
@@ -145,81 +112,51 @@ impl ::re_types_core::Loggable for VideoTimestamp {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
+        Ok(arrow_data
+            .as_any()
+            .downcast_ref::<Int64Array>()
+            .ok_or_else(|| {
+                let expected = Self::arrow_datatype();
+                let actual = arrow_data.data_type().clone();
+                DeserializationError::datatype_mismatch(expected, actual)
+            })
+            .with_context("rerun.datatypes.VideoTimestamp#timestamp_ns")?
+            .into_iter()
+            .map(|opt| opt.copied())
+            .map(|v| v.ok_or_else(DeserializationError::missing_data))
+            .map(|res| res.map(|v| Some(Self(v))))
+            .collect::<DeserializationResult<Vec<Option<_>>>>()
+            .with_context("rerun.datatypes.VideoTimestamp#timestamp_ns")
+            .with_context("rerun.datatypes.VideoTimestamp")?)
+    }
+
+    #[inline]
+    fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
+    where
+        Self: Sized,
+    {
+        #![allow(clippy::wildcard_imports)]
+        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow2::{array::*, buffer::*, datatypes::*};
+        if let Some(validity) = arrow_data.validity() {
+            if validity.unset_bits() != 0 {
+                return Err(DeserializationError::missing_data());
+            }
+        }
         Ok({
-            let arrow_data = arrow_data
+            let slice = arrow_data
                 .as_any()
-                .downcast_ref::<arrow2::array::StructArray>()
+                .downcast_ref::<Int64Array>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
+                    let expected = DataType::Int64;
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
-                .with_context("rerun.datatypes.VideoTimestamp")?;
-            if arrow_data.is_empty() {
-                Vec::new()
-            } else {
-                let (arrow_data_fields, arrow_data_arrays) =
-                    (arrow_data.fields(), arrow_data.values());
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data_fields
-                    .iter()
-                    .map(|field| field.name.as_str())
-                    .zip(arrow_data_arrays)
-                    .collect();
-                let video_time = {
-                    if !arrays_by_name.contains_key("video_time") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "video_time",
-                        ))
-                        .with_context("rerun.datatypes.VideoTimestamp");
-                    }
-                    let arrow_data = &**arrays_by_name["video_time"];
-                    arrow_data
-                        .as_any()
-                        .downcast_ref::<Int64Array>()
-                        .ok_or_else(|| {
-                            let expected = DataType::Int64;
-                            let actual = arrow_data.data_type().clone();
-                            DeserializationError::datatype_mismatch(expected, actual)
-                        })
-                        .with_context("rerun.datatypes.VideoTimestamp#video_time")?
-                        .into_iter()
-                        .map(|opt| opt.copied())
-                };
-                let time_mode = {
-                    if !arrays_by_name.contains_key("time_mode") {
-                        return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
-                            "time_mode",
-                        ))
-                        .with_context("rerun.datatypes.VideoTimestamp");
-                    }
-                    let arrow_data = &**arrays_by_name["time_mode"];
-                    crate::datatypes::VideoTimeMode::from_arrow_opt(arrow_data)
-                        .with_context("rerun.datatypes.VideoTimestamp#time_mode")?
-                        .into_iter()
-                };
-                arrow2::bitmap::utils::ZipValidity::new_with_validity(
-                    ::itertools::izip!(video_time, time_mode),
-                    arrow_data.validity(),
-                )
-                .map(|opt| {
-                    opt.map(|(video_time, time_mode)| {
-                        Ok(Self {
-                            video_time: video_time
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context(
-                                "rerun.datatypes.VideoTimestamp#video_time",
-                            )?,
-                            time_mode: time_mode
-                                .ok_or_else(DeserializationError::missing_data)
-                                .with_context("rerun.datatypes.VideoTimestamp#time_mode")?,
-                        })
-                    })
-                    .transpose()
-                })
-                .collect::<DeserializationResult<Vec<_>>>()
-                .with_context("rerun.datatypes.VideoTimestamp")?
+                .with_context("rerun.datatypes.VideoTimestamp#timestamp_ns")?
+                .values()
+                .as_slice();
+            {
+                slice.iter().copied().map(Self).collect::<Vec<_>>()
             }
         })
     }

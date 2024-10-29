@@ -1,21 +1,21 @@
-use super::{VideoTimeMode, VideoTimestamp};
+use super::VideoTimestamp;
 
 impl VideoTimestamp {
     /// Create new timestamp from nanoseconds since video start.
     #[inline]
-    pub fn from_nanoseconds(nanos: i64) -> Self {
-        Self {
-            video_time: nanos,
-            time_mode: VideoTimeMode::Nanoseconds,
-        }
+    pub fn from_nanos(nanos: i64) -> Self {
+        Self(nanos)
     }
-}
 
-impl Default for VideoTimestamp {
-    fn default() -> Self {
-        Self {
-            video_time: 0,
-            time_mode: VideoTimeMode::Nanoseconds,
-        }
+    /// Returns the timestamp as nanoseconds.
+    #[inline]
+    pub fn as_nanos(self) -> i64 {
+        self.0
+    }
+
+    /// Returns the timestamp as seconds.
+    #[inline]
+    pub fn as_seconds(self) -> f64 {
+        self.0 as f64 / 1e9
     }
 }

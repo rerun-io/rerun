@@ -130,7 +130,9 @@ exclude = [
 
   # Needs authentication
   'https://edge.meilisearch.com',
-  'https://eu.posthog.com/project/', # Requires to be logged in on PostHog.
+  'https://eu.posthog.com/project/',                      # Requires to be logged in on PostHog.
+  'https://github.com/rerun-io/internal-test-assets/\.*',
+  'https://github.com/google/mediapipe/issues/5188',      # For some reason that link has always failed.
 
   # Temporarily down or not accessible.
   'https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html',       # Nyud links are down every now and then.

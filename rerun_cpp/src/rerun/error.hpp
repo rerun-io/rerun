@@ -57,8 +57,12 @@ namespace rerun {
         ArrowFfiSchemaImportError,
         ArrowFfiArrayImportError,
 
+        // Utility errors.
+        _CategoryUtilities = 0x0001'0000,
+        VideoLoadError,
+
         // Errors relating to file IO.
-        _CategoryFileIO = 0x0001'0000,
+        _CategoryFileIO = 0x0010'0000,
         FileOpenFailure,
 
         // Errors directly translated from arrow::StatusCode.

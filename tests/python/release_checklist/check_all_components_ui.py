@@ -140,6 +140,7 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     ),
     "ImagePlaneDistanceBatch": TestCase(batch=[100.0, 200.0, 300.0]),
     "KeypointIdBatch": TestCase(batch=[5, 6, 7]),
+    "LatLonBatch": TestCase(batch=[(0, 1), (2, 3), (4, 5)]),
     "LineStrip2DBatch": TestCase(
         batch=[
             ((0, 0), (1, 1), (2, 2)),
@@ -216,9 +217,10 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     ),
     "Translation3DBatch": TestCase(batch=[(1, 2, 3), (4, 5, 6), (7, 8, 9)]),
     "TriangleIndicesBatch": TestCase(batch=[(0, 1, 2), (3, 4, 5), (6, 7, 8)]),
+    "ValueRangeBatch": TestCase((0, 5)),
     "Vector2DBatch": TestCase(batch=[(0, 1), (2, 3), (4, 5)]),
     "Vector3DBatch": TestCase(batch=[(0, 3, 4), (1, 4, 5), (2, 5, 6)]),
-    "VideoTimestampBatch": TestCase(rr.components.VideoTimestamp(0, rr.datatypes.VideoTimeMode.Nanoseconds)),
+    "VideoTimestampBatch": TestCase(rr.components.VideoTimestamp(seconds=0.0)),
     "ViewCoordinatesBatch": TestCase(rr.components.ViewCoordinates.LBD),
     "VisualizerOverridesBatch": TestCase(disabled=True),  # no Python-based serialization
 }

@@ -6,7 +6,7 @@ mod time;
 
 use std::{cmp::PartialOrd, fmt::Display};
 
-pub use time::next_grid_tick_magnitude_ns;
+pub use time::{format_timestamp_seconds, next_grid_tick_magnitude_ns, parse_timestamp_seconds};
 
 // --- Numbers ---
 
@@ -397,6 +397,20 @@ fn test_format_f64_custom() {
 /// Parses a number, ignoring whitespace (e.g. thousand separators),
 /// and treating the special minus character `MINUS` (−) as a minus sign.
 pub fn parse_f64(text: &str) -> Option<f64> {
+    let text: String = text
+        .chars()
+        // Ignore whitespace (trailing, leading, and thousands separators):
+        .filter(|c| !c.is_whitespace())
+        // Replace special minus character with normal minus (hyphen):
+        .map(|c| if c == '−' { '-' } else { c })
+        .collect();
+
+    text.parse().ok()
+}
+
+/// Parses a number, ignoring whitespace (e.g. thousand separators),
+/// and treating the special minus character `MINUS` (−) as a minus sign.
+pub fn parse_i64(text: &str) -> Option<i64> {
     let text: String = text
         .chars()
         // Ignore whitespace (trailing, leading, and thousands separators):

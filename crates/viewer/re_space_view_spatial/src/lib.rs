@@ -12,8 +12,10 @@ mod instance_hash_conversions;
 mod max_image_dimension_subscriber;
 mod mesh_cache;
 mod mesh_loader;
-mod pickable_image;
+mod pickable_textured_rect;
 mod picking;
+mod picking_ui;
+mod picking_ui_pixel;
 mod proc_mesh;
 mod scene_bounding_boxes;
 mod space_camera_3d;
@@ -22,7 +24,6 @@ mod transform_component_tracker;
 mod ui;
 mod ui_2d;
 mod ui_3d;
-mod video_cache;
 mod view_2d;
 mod view_2d_properties;
 mod view_3d;
@@ -32,7 +33,7 @@ mod visualizers;
 pub use view_2d::SpatialSpaceView2D;
 pub use view_3d::SpatialSpaceView3D;
 
-pub(crate) use pickable_image::PickableImageRect;
+pub(crate) use pickable_textured_rect::{PickableRectSourceData, PickableTexturedRect};
 
 // ---
 
@@ -82,9 +83,9 @@ fn resolution_of_image_at(
             .latest_at_component::<MediaType>(entity_path, query)
             .map(|(_, c)| c);
 
-        let image = ctx.cache.entry(|c: &mut ImageDecodeCache| {
-            c.entry(row_id, &blob, media_type.as_ref().map(|mt| mt.as_str()))
-        });
+        let image = ctx
+            .cache
+            .entry(|c: &mut ImageDecodeCache| c.entry(row_id, &blob, media_type.as_ref()));
 
         if let Ok(image) = image {
             return Some(Resolution::from([
@@ -156,7 +157,7 @@ fn query_pinhole_legacy(
 
 pub(crate) fn configure_background(
     ctx: &ViewerContext<'_>,
-    background: &ViewProperty<'_>,
+    background: &ViewProperty,
     render_ctx: &RenderContext,
     view_system: &dyn re_viewer_context::ComponentFallbackProvider,
     state: &dyn re_viewer_context::SpaceViewState,

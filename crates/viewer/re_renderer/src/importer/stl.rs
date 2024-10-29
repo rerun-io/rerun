@@ -2,7 +2,7 @@ use itertools::Itertools;
 use smallvec::smallvec;
 use tinystl::StlData;
 
-use crate::{mesh, renderer::MeshInstance, resource_managers::ResourceLifeTime, RenderContext};
+use crate::{mesh, CpuModel, RenderContext};
 
 #[derive(thiserror::Error, Debug)]
 pub enum StlImportError {
@@ -11,16 +11,13 @@ pub enum StlImportError {
 
     #[error(transparent)]
     MeshError(#[from] mesh::MeshError),
-
-    #[error(transparent)]
-    ResourceManagerError(#[from] crate::resource_managers::ResourceManagerError),
 }
 
 /// Load a [STL .stl file](https://en.wikipedia.org/wiki/STL_(file_format)) into the mesh manager.
 pub fn load_stl_from_buffer(
     buffer: &[u8],
     ctx: &RenderContext,
-) -> Result<Vec<MeshInstance>, StlImportError> {
+) -> Result<CpuModel, StlImportError> {
     re_tracing::profile_function!();
 
     let cursor = std::io::Cursor::new(buffer);
@@ -34,13 +31,13 @@ pub fn load_stl_from_buffer(
     let num_vertices = triangles.len() * 3;
 
     let material = mesh::Material {
-        label: "default material".into(),
+        label: name.clone().into(),
         index_range: 0..num_vertices as u32,
         albedo: ctx.texture_manager_2d.white_texture_unorm_handle().clone(),
         albedo_factor: crate::Rgba::WHITE,
     };
 
-    let mesh = mesh::Mesh {
+    let mesh = mesh::CpuMesh {
         label: name.into(),
         triangle_indices: (0..num_vertices as u32)
             .tuples::<(_, _, _)>()
@@ -67,14 +64,5 @@ pub fn load_stl_from_buffer(
 
     mesh.sanity_check()?;
 
-    let gpu_mesh = ctx
-        .mesh_manager
-        .write()
-        .create(ctx, &mesh, ResourceLifeTime::LongLived)?;
-
-    Ok(vec![MeshInstance {
-        gpu_mesh,
-        mesh: Some(std::sync::Arc::new(mesh)),
-        ..Default::default()
-    }])
+    Ok(CpuModel::from_single_mesh(mesh))
 }

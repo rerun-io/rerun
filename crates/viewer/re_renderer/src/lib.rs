@@ -58,11 +58,13 @@ pub use colormap::{
 pub use context::{adapter_info_summary, RenderContext, RenderContextError};
 pub use debug_label::DebugLabel;
 pub use depth_offset::DepthOffset;
+pub use importer::{CpuMeshInstance, CpuModel, CpuModelMeshKey};
 pub use line_drawable_builder::{LineDrawableBuilder, LineStripBuilder};
 pub use point_cloud_builder::{PointCloudBatchBuilder, PointCloudBuilder};
 pub use queueable_draw_data::QueueableDrawData;
 pub use rect::{RectF32, RectInt};
 pub use size::Size;
+pub use texture_info::Texture2DBufferInfo;
 pub use transform::RectTransform;
 pub use view_builder::ViewBuilder;
 pub use wgpu_resources::WgpuResourcePoolStatistics;
@@ -87,6 +89,7 @@ pub use self::file_server::FileServer;
 pub use ecolor::{Color32, Hsva, Rgba};
 
 pub mod external {
+    pub use re_video;
     pub use wgpu;
 }
 

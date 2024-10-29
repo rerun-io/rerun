@@ -34,6 +34,7 @@ armour = "armor"
 artefact = "artifact"
 authorise = "authorize"
 behaviour = "behavior"
+behavioural = "behavioral"
 British = "American"
 calibre = "caliber"
 # allow 'cancelled' since Arrow uses it.

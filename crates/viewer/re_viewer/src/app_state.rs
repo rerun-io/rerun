@@ -8,10 +8,9 @@ use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
 use re_ui::ContextExt as _;
 use re_viewer_context::{
-    blueprint_timeline, AppOptions, ApplicationSelectionState, Caches, CommandSender,
-    ComponentUiRegistry, PlayState, RecordingConfig, SpaceViewClassExt as _,
-    SpaceViewClassRegistry, StoreContext, StoreHub, SystemCommandSender as _, ViewStates,
-    ViewerContext,
+    blueprint_timeline, AppOptions, ApplicationSelectionState, CommandSender, ComponentUiRegistry,
+    PlayState, RecordingConfig, SpaceViewClassExt as _, SpaceViewClassRegistry, StoreContext,
+    StoreHub, SystemCommandSender as _, ViewStates, ViewerContext,
 };
 use re_viewport::Viewport;
 use re_viewport_blueprint::ui::add_space_view_or_container_modal_ui;
@@ -27,10 +26,6 @@ const WATERMARK: bool = false; // Nice for recording media material
 pub struct AppState {
     /// Global options for the whole viewer.
     pub(crate) app_options: AppOptions,
-
-    /// Things that need caching.
-    #[serde(skip)]
-    pub(crate) cache: Caches,
 
     /// Configuration for the current recording (found in [`EntityDb`]).
     recording_configs: HashMap<StoreId, RecordingConfig>,
@@ -73,7 +68,6 @@ impl Default for AppState {
     fn default() -> Self {
         Self {
             app_options: Default::default(),
-            cache: Default::default(),
             recording_configs: Default::default(),
             blueprint_cfg: Default::default(),
             selection_panel: Default::default(),
@@ -149,7 +143,6 @@ impl AppState {
 
         let Self {
             app_options,
-            cache,
             recording_configs,
             blueprint_cfg,
             selection_panel,
@@ -163,6 +156,9 @@ impl AppState {
             selection_state,
             focused_item,
         } = self;
+
+        // check state early, before the UI has a chance to close these popups
+        let is_any_popup_open = ui.memory(|m| m.any_popup_open());
 
         // Some of the mutations APIs of `ViewportBlueprints` are recorded as `Viewport::TreeAction`
         // and must be applied by `Viewport` at the end of the frame. We use a temporary channel for
@@ -209,10 +205,6 @@ impl AppState {
             )),
         );
 
-        if ui.input(|i| i.key_pressed(egui::Key::Escape)) {
-            selection_state.clear_selection();
-        }
-
         let applicable_entities_per_visualizer = space_view_class_registry
             .applicable_entities_for_visualizer_systems(recording.store_id());
         let indicated_entities_per_visualizer =
@@ -254,7 +246,7 @@ impl AppState {
         let egui_ctx = ui.ctx().clone();
         let ctx = ViewerContext {
             app_options,
-            cache,
+            cache: store_context.caches,
             space_view_class_registry,
             reflection,
             component_ui_registry,
@@ -321,7 +313,7 @@ impl AppState {
         // but it's just a bunch of refs so not really that big of a deal in practice.
         let ctx = ViewerContext {
             app_options,
-            cache,
+            cache: store_context.caches,
             space_view_class_registry,
             reflection,
             component_ui_registry,
@@ -476,6 +468,11 @@ impl AppState {
 
         // This must run after any ui code, or other code that tells egui to open an url:
         check_for_clicked_hyperlinks(&egui_ctx, ctx.selection_state);
+
+        // Deselect on ESC. Must happen after all other UI code to let them capture ESC if needed.
+        if ui.input(|i| i.key_pressed(egui::Key::Escape)) && !is_any_popup_open {
+            selection_state.clear_selection();
+        }
 
         // Reset the focused item.
         *focused_item = None;

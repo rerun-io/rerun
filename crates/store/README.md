@@ -1,1 +1,1 @@
-Creates related to storing, indexing, trasmitting, and handling data.
+Creates related to storing, indexing, transmitting, and handling data.

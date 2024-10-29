@@ -14,6 +14,8 @@ Whenever you log this archetype, it will write all components, even if you do no
 This means that if you first log a transform with only a translation, and then log one with only a rotation,
 it will be resolved to a transform with only a rotation.
 
+For transforms that affect only a single entity and do not propagate along the entity tree refer to [`archetypes.InstancePoses3D`](https://rerun.io/docs/reference/types/archetypes/instance_poses3d).
+
 ## Components
 
 **Optional**: [`Translation3D`](../components/translation3d.md), [`RotationAxisAngle`](../components/rotation_axis_angle.md), [`RotationQuat`](../components/rotation_quat.md), [`Scale3D`](../components/scale3d.md), [`TransformMat3x3`](../components/transform_mat3x3.md), [`TransformRelation`](../components/transform_relation.md), [`AxisLength`](../components/axis_length.md)
@@ -21,6 +23,7 @@ it will be resolved to a transform with only a rotation.
 ## Shown in
 * [Spatial3DView](../views/spatial3d_view.md)
 * [Spatial2DView](../views/spatial2d_view.md) (if logged above active projection)
+* [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `Transform3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Transform3D.html)

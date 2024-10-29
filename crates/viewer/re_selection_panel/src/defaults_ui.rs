@@ -138,7 +138,7 @@ fn active_default_ui(
                         component_name,
                         row_id,
                         Some(&*component_array),
-                        visualizer.as_fallback_provider(),
+                        visualizer.fallback_provider(),
                     );
                 };
 
@@ -290,18 +290,13 @@ fn add_popup_ui(
             // - Finally, fall back on the default value from the component registry.
 
             // TODO(jleibs): Is this the right place for fallbacks to come from?
-            let Some(initial_data) = ctx
-                .visualizer_collection
-                .get_by_identifier(viz)
-                .ok()
-                .and_then(|sys| sys.fallback_for(&query_context, component_name).ok())
-            else {
-                re_log::warn!(
-                    "Could not identify an initial value for: {}",
-                    component_name
-                );
+            let Ok(visualizer) = ctx.visualizer_collection.get_by_identifier(viz) else {
+                re_log::warn!("Could not find visualizer for: {}", viz);
                 return;
             };
+            let initial_data = visualizer
+                .fallback_provider()
+                .fallback_for(&query_context, component_name);
 
             match Chunk::builder(defaults_path.clone())
                 .with_row(

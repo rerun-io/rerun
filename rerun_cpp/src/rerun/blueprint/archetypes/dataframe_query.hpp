@@ -3,9 +3,10 @@
 
 #pragma once
 
-#include "../../blueprint/components/latest_at_queries.hpp"
-#include "../../blueprint/components/query_kind.hpp"
-#include "../../blueprint/components/time_range_queries.hpp"
+#include "../../blueprint/components/apply_latest_at.hpp"
+#include "../../blueprint/components/filter_by_range.hpp"
+#include "../../blueprint/components/filter_is_not_null.hpp"
+#include "../../blueprint/components/selected_columns.hpp"
 #include "../../blueprint/components/timeline_name.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
@@ -23,21 +24,22 @@ namespace rerun::blueprint::archetypes {
     struct DataframeQuery {
         /// The timeline for this query.
         ///
-        /// If unset, use the time panel's timeline and a latest-at query, ignoring all other components of this archetype.
+        /// If unset, the timeline currently active on the time panel is used.
         std::optional<rerun::blueprint::components::TimelineName> timeline;
 
-        /// Kind of query: latest-at or range.
-        std::optional<rerun::blueprint::components::QueryKind> kind;
-
-        /// Configuration for latest-at queries.
+        /// If provided, only rows whose timestamp is within this range will be shown.
         ///
-        /// Note: configuration as saved on a per-timeline basis.
-        std::optional<rerun::blueprint::components::LatestAtQueries> latest_at_queries;
+        /// Note: will be unset as soon as `timeline` is changed.
+        std::optional<rerun::blueprint::components::FilterByRange> filter_by_range;
 
-        /// Configuration for the time range queries.
-        ///
-        /// Note: configuration as saved on a per-timeline basis.
-        std::optional<rerun::blueprint::components::TimeRangeQueries> time_range_queries;
+        /// If provided, only show rows which contains a logged event for the specified component.
+        std::optional<rerun::blueprint::components::FilterIsNotNull> filter_is_not_null;
+
+        /// Should empty cells be filled with latest-at queries?
+        std::optional<rerun::blueprint::components::ApplyLatestAt> apply_latest_at;
+
+        /// Selected columns. If unset, all columns are selected.
+        std::optional<rerun::blueprint::components::SelectedColumns> select;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -52,38 +54,45 @@ namespace rerun::blueprint::archetypes {
 
         /// The timeline for this query.
         ///
-        /// If unset, use the time panel's timeline and a latest-at query, ignoring all other components of this archetype.
+        /// If unset, the timeline currently active on the time panel is used.
         DataframeQuery with_timeline(rerun::blueprint::components::TimelineName _timeline) && {
             timeline = std::move(_timeline);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Kind of query: latest-at or range.
-        DataframeQuery with_kind(rerun::blueprint::components::QueryKind _kind) && {
-            kind = std::move(_kind);
+        /// If provided, only rows whose timestamp is within this range will be shown.
+        ///
+        /// Note: will be unset as soon as `timeline` is changed.
+        DataframeQuery with_filter_by_range(
+            rerun::blueprint::components::FilterByRange _filter_by_range
+        ) && {
+            filter_by_range = std::move(_filter_by_range);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Configuration for latest-at queries.
-        ///
-        /// Note: configuration as saved on a per-timeline basis.
-        DataframeQuery with_latest_at_queries(
-            rerun::blueprint::components::LatestAtQueries _latest_at_queries
+        /// If provided, only show rows which contains a logged event for the specified component.
+        DataframeQuery with_filter_is_not_null(
+            rerun::blueprint::components::FilterIsNotNull _filter_is_not_null
         ) && {
-            latest_at_queries = std::move(_latest_at_queries);
+            filter_is_not_null = std::move(_filter_is_not_null);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Configuration for the time range queries.
-        ///
-        /// Note: configuration as saved on a per-timeline basis.
-        DataframeQuery with_time_range_queries(
-            rerun::blueprint::components::TimeRangeQueries _time_range_queries
+        /// Should empty cells be filled with latest-at queries?
+        DataframeQuery with_apply_latest_at(
+            rerun::blueprint::components::ApplyLatestAt _apply_latest_at
         ) && {
-            time_range_queries = std::move(_time_range_queries);
+            apply_latest_at = std::move(_apply_latest_at);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Selected columns. If unset, all columns are selected.
+        DataframeQuery with_select(rerun::blueprint::components::SelectedColumns _select) && {
+            select = std::move(_select);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

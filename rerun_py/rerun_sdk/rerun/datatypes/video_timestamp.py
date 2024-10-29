@@ -5,13 +5,13 @@
 
 from __future__ import annotations
 
-from typing import Any, Sequence, Union
+from typing import TYPE_CHECKING, Any, Sequence, Union
 
 import numpy as np
+import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
-from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
     BaseExtensionType,
@@ -26,51 +26,50 @@ __all__ = [
 ]
 
 
-def _video_timestamp__time_mode__special_field_converter_override(
-    x: datatypes.VideoTimeModeLike,
-) -> datatypes.VideoTimeMode:
-    if isinstance(x, datatypes.VideoTimeMode):
-        return x
-    else:
-        return datatypes.VideoTimeMode(x)
-
-
 @define(init=False)
 class VideoTimestamp:
     """
-    **Datatype**: Timestamp inside a [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo].
+    **Datatype**: Presentation timestamp within a [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo].
 
-    ⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
+    Specified in nanoseconds.
+    Presentation timestamps are typically measured as time since video start.
     """
 
-    def __init__(self: Any, video_time: int, time_mode: datatypes.VideoTimeModeLike):
+    def __init__(self: Any, timestamp_ns: VideoTimestampLike):
         """
         Create a new instance of the VideoTimestamp datatype.
 
         Parameters
         ----------
-        video_time:
-            Timestamp value, type defined by `time_mode`.
-        time_mode:
-            How to interpret `video_time`.
+        timestamp_ns:
+            Presentation timestamp value in nanoseconds.
 
         """
 
         # You can define your own __init__ function as a member of VideoTimestampExt in video_timestamp_ext.py
-        self.__attrs_init__(video_time=video_time, time_mode=time_mode)
+        self.__attrs_init__(timestamp_ns=timestamp_ns)
 
-    video_time: int = field(converter=int)
-    # Timestamp value, type defined by `time_mode`.
+    timestamp_ns: int = field(converter=int)
+    # Presentation timestamp value in nanoseconds.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    time_mode: datatypes.VideoTimeMode = field(converter=_video_timestamp__time_mode__special_field_converter_override)
-    # How to interpret `video_time`.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
+    def __array__(self, dtype: npt.DTypeLike = None) -> npt.NDArray[Any]:
+        # You can define your own __array__ function as a member of VideoTimestampExt in video_timestamp_ext.py
+        return np.asarray(self.timestamp_ns, dtype=dtype)
+
+    def __int__(self) -> int:
+        return int(self.timestamp_ns)
+
+    def __hash__(self) -> int:
+        return hash(self.timestamp_ns)
 
 
-VideoTimestampLike = VideoTimestamp
+if TYPE_CHECKING:
+    VideoTimestampLike = Union[VideoTimestamp, int]
+else:
+    VideoTimestampLike = Any
+
 VideoTimestampArrayLike = Union[
     VideoTimestamp,
     Sequence[VideoTimestampLike],
@@ -81,14 +80,7 @@ class VideoTimestampType(BaseExtensionType):
     _TYPE_NAME: str = "rerun.datatypes.VideoTimestamp"
 
     def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.struct([
-                pa.field("video_time", pa.int64(), nullable=False, metadata={}),
-                pa.field("time_mode", pa.uint8(), nullable=False, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
+        pa.ExtensionType.__init__(self, pa.int64(), self._TYPE_NAME)
 
 
 class VideoTimestampBatch(BaseBatch[VideoTimestampArrayLike]):
@@ -96,15 +88,5 @@ class VideoTimestampBatch(BaseBatch[VideoTimestampArrayLike]):
 
     @staticmethod
     def _native_to_pa_array(data: VideoTimestampArrayLike, data_type: pa.DataType) -> pa.Array:
-        from rerun.datatypes import VideoTimeModeBatch
-
-        if isinstance(data, VideoTimestamp):
-            data = [data]
-
-        return pa.StructArray.from_arrays(
-            [
-                pa.array(np.asarray([x.video_time for x in data], dtype=np.int64)),
-                VideoTimeModeBatch([x.time_mode for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-            ],
-            fields=list(data_type),
-        )
+        array = np.asarray(data, dtype=np.int64).flatten()
+        return pa.array(array, type=data_type)

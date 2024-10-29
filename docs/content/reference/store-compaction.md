@@ -1,6 +1,6 @@
 ---
 title: Datastore compaction
-order: 850
+order: 900
 ---
 
 
@@ -8,7 +8,7 @@ The Rerun datastore continuously compacts data as it comes in, in order find a s
 
 The compaction is triggered by both number of rows and number of bytes thresholds, whichever happens to trigger first.
 
-This is very similar to, and has many parallels with, the [micro-batching mechanism running on the SDK side](./sdk-micro-batching.md).
+This is very similar to, and has many parallels with, the [micro-batching mechanism running on the SDK side](./sdk/micro-batching.md).
 
 You can configure these thresholds using the following environment variables:
 

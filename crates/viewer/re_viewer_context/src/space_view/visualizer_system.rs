@@ -80,7 +80,7 @@ impl VisualizerQueryInfo {
 ///
 /// All visualizers are expected to be able to provide a fallback value for any component they're using
 /// via the [`ComponentFallbackProvider`] trait.
-pub trait VisualizerSystem: Send + Sync + ComponentFallbackProvider + 'static {
+pub trait VisualizerSystem: Send + Sync + 'static {
     // TODO(andreas): This should be able to list out the ContextSystems it needs.
 
     /// Information about which components are queried by the visualizer.
@@ -127,11 +127,12 @@ pub trait VisualizerSystem: Send + Sync + ComponentFallbackProvider + 'static {
 
     fn as_any(&self) -> &dyn std::any::Any;
 
-    /// Casts to a fallback provider.
+    /// Returns the fallback provider for this visualizer.
     ///
-    /// This is the same workaround as `as_any`:
-    /// It's not possible to cast &dyn [`VisualizerSystem`] to &dyn [`ComponentFallbackProvider`] otherwise.
-    fn as_fallback_provider(&self) -> &dyn ComponentFallbackProvider;
+    /// Visualizers should use this to report the fallback values they use when there is no data.
+    /// The Rerun viewer will display these fallback values to the user to convey what the
+    /// visualizer is doing.
+    fn fallback_provider(&self) -> &dyn ComponentFallbackProvider;
 }
 
 pub struct VisualizerCollection {
@@ -172,5 +173,16 @@ impl VisualizerCollection {
         &self,
     ) -> impl Iterator<Item = (ViewSystemIdentifier, &dyn VisualizerSystem)> {
         self.systems.iter().map(|s| (*s.0, s.1.as_ref()))
+    }
+
+    /// Iterate over all visualizer data that can be downcast to the given type.
+    pub fn iter_visualizer_data<SpecificData: 'static>(
+        &self,
+    ) -> impl Iterator<Item = &'_ SpecificData> {
+        self.iter().filter_map(|visualizer| {
+            visualizer
+                .data()
+                .and_then(|data| data.downcast_ref::<SpecificData>())
+        })
     }
 }

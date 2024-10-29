@@ -1,15 +1,27 @@
 use std::sync::Arc;
 
+use ahash::{HashMap, HashSet};
+
+use itertools::Either;
+use re_chunk_store::{ChunkStoreEvent, RowId};
 use re_entity_db::VersionedInstancePathHash;
 use re_log_types::hash::Hash64;
 use re_renderer::RenderContext;
-use re_types::components::MediaType;
+use re_types::{components::MediaType, Loggable as _};
 use re_viewer_context::Cache;
 
 use crate::mesh_loader::LoadedMesh;
 
 // ----------------------------------------------------------------------------
 
+/// Key used for caching [`LoadedMesh`]es.
+///
+/// Note that this is more complex than most other caches,
+/// since the cache key is not only used for mesh file blobs,
+/// but also for manually logged meshes.
+//
+// TODO(andreas): Maybe these should be different concerns?
+// Blobs need costly unpacking/reading/parsing, regular meshes don't.
 #[derive(Debug, PartialEq, Eq, Hash, Clone)]
 pub struct MeshCacheKey {
     pub versioned_instance_path_hash: VersionedInstancePathHash,
@@ -19,12 +31,14 @@ pub struct MeshCacheKey {
 
 /// Caches meshes based on their [`MeshCacheKey`].
 #[derive(Default)]
-pub struct MeshCache(ahash::HashMap<MeshCacheKey, Option<Arc<LoadedMesh>>>);
+pub struct MeshCache(HashMap<RowId, HashMap<MeshCacheKey, Option<Arc<LoadedMesh>>>>);
 
 /// Either a [`re_types::archetypes::Asset3D`] or [`re_types::archetypes::Mesh3D`] to be cached.
 #[derive(Debug, Clone, Copy)]
 pub enum AnyMesh<'a> {
-    Asset(&'a re_types::archetypes::Asset3D),
+    Asset {
+        asset: &'a re_types::archetypes::Asset3D,
+    },
     Mesh {
         mesh: &'a re_types::archetypes::Mesh3D,
 
@@ -45,6 +59,8 @@ impl MeshCache {
         re_tracing::profile_function!();
 
         self.0
+            .entry(key.versioned_instance_path_hash.row_id)
+            .or_default()
             .entry(key)
             .or_insert_with(|| {
                 re_log::debug!("Loading CPU mesh {name:?}…");
@@ -64,10 +80,41 @@ impl MeshCache {
 }
 
 impl Cache for MeshCache {
-    fn begin_frame(&mut self) {}
-
     fn purge_memory(&mut self) {
         self.0.clear();
+    }
+
+    fn on_store_events(&mut self, events: &[ChunkStoreEvent]) {
+        re_tracing::profile_function!();
+
+        let row_ids_removed: HashSet<RowId> = events
+            .iter()
+            .flat_map(|event| {
+                let is_deletion = || event.kind == re_chunk_store::ChunkStoreDiffKind::Deletion;
+                let contains_mesh_data = || {
+                    let contains_asset_blob = event
+                        .chunk
+                        .components()
+                        .contains_key(&re_types::components::Blob::name());
+
+                    let contains_vertex_positions = event
+                        .chunk
+                        .components()
+                        .contains_key(&re_types::components::Position3D::name());
+
+                    contains_asset_blob || contains_vertex_positions
+                };
+
+                if is_deletion() && contains_mesh_data() {
+                    Either::Left(event.chunk.row_ids())
+                } else {
+                    Either::Right(std::iter::empty())
+                }
+            })
+            .collect();
+
+        self.0
+            .retain(|row_id, _per_key| !row_ids_removed.contains(row_id));
     }
 
     fn as_any_mut(&mut self) -> &mut dyn std::any::Any {

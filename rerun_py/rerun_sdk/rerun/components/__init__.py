@@ -36,6 +36,8 @@ from .image_buffer import ImageBuffer, ImageBufferBatch, ImageBufferType
 from .image_format import ImageFormat, ImageFormatBatch, ImageFormatType
 from .image_plane_distance import ImagePlaneDistance, ImagePlaneDistanceBatch, ImagePlaneDistanceType
 from .keypoint_id import KeypointId, KeypointIdBatch, KeypointIdType
+from .lat_lon import LatLon, LatLonBatch, LatLonType
+from .length import Length, LengthBatch, LengthType
 from .line_strip2d import LineStrip2D, LineStrip2DArrayLike, LineStrip2DBatch, LineStrip2DLike, LineStrip2DType
 from .line_strip3d import LineStrip3D, LineStrip3DArrayLike, LineStrip3DBatch, LineStrip3DLike, LineStrip3DType
 from .magnification_filter import (
@@ -88,6 +90,7 @@ from .transform_relation import (
 )
 from .translation3d import Translation3D, Translation3DBatch, Translation3DType
 from .triangle_indices import TriangleIndices, TriangleIndicesBatch, TriangleIndicesType
+from .value_range import ValueRange, ValueRangeBatch, ValueRangeType
 from .vector2d import Vector2D, Vector2DBatch, Vector2DType
 from .vector3d import Vector3D, Vector3DBatch, Vector3DType
 from .video_timestamp import VideoTimestamp, VideoTimestampBatch, VideoTimestampType
@@ -168,6 +171,12 @@ __all__ = [
     "KeypointId",
     "KeypointIdBatch",
     "KeypointIdType",
+    "LatLon",
+    "LatLonBatch",
+    "LatLonType",
+    "Length",
+    "LengthBatch",
+    "LengthType",
     "LineStrip2D",
     "LineStrip2DArrayLike",
     "LineStrip2DBatch",
@@ -286,6 +295,9 @@ __all__ = [
     "TriangleIndices",
     "TriangleIndicesBatch",
     "TriangleIndicesType",
+    "ValueRange",
+    "ValueRangeBatch",
+    "ValueRangeType",
     "Vector2D",
     "Vector2DBatch",
     "Vector2DType",

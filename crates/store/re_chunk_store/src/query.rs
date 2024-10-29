@@ -430,9 +430,8 @@ impl ChunkStore {
         entity_path: &EntityPath,
         component_name: ComponentName,
     ) -> Vec<Arc<Chunk>> {
-        re_tracing::profile_function!(format!("{query:?}"));
-
-        self.query_id.fetch_add(1, Ordering::Relaxed);
+        // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
+        //re_tracing::profile_function!(format!("{query:?}"));
 
         // Reminder: if a chunk has been indexed for a given component, then it must contain at
         // least one non-null value for that column.
@@ -510,7 +509,8 @@ impl ChunkStore {
         query: &LatestAtQuery,
         temporal_chunk_ids_per_time: &ChunkIdSetPerTime,
     ) -> Option<Vec<Arc<Chunk>>> {
-        re_tracing::profile_function!();
+        // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
+        //re_tracing::profile_function!();
 
         let upper_bound = temporal_chunk_ids_per_time
             .per_start_time
@@ -698,6 +698,27 @@ impl ChunkStore {
                 } else {
                     query.range.max()
                 };
+
+                // Overlapped chunks
+                // =================
+                //
+                // To deal with potentially overlapping chunks, we keep track of the longest
+                // interval in the entire map, which gives us an upper bound on how much we
+                // would need to walk backwards in order to find all potential overlaps.
+                //
+                // This is a fairly simple solution that scales much better than interval-tree
+                // based alternatives, both in terms of complexity and performance, in the normal
+                // case where most chunks in a collection have similar lengths.
+                //
+                // The most degenerate case -- a single chunk overlaps everything else -- results
+                // in `O(n)` performance, which gets amortized by the query cache.
+                // If that turns out to be a problem in practice, we can experiment with more
+                // complex solutions then.
+                let query_min = TimeInt::new_temporal(
+                    query_min
+                        .as_i64()
+                        .saturating_sub(temporal_chunk_ids_per_time.max_interval_length as _),
+                );
 
                 let start_time = temporal_chunk_ids_per_time
                     .per_start_time

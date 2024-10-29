@@ -30,7 +30,7 @@ let app_id = "RobbyFischer";
 let rec_id = uuid::Uuid::new_v4().to_string();
 let rec = rerun::RecordingStreamBuilder::new(app_id)
     .recording_id(&rec_id)
-    .connect()
+    .connect_tcp()
     .unwrap();
 
 // …
@@ -323,7 +323,7 @@ parser.add_argument("--application-id", type=str)
 
 args = parser.parse_args()
 rr.init(args.application_id, recording_id=args.recording_id)
-rr.connect()
+rr.connect_tcp()
 rr.send_blueprint(blueprint)
 ```
 

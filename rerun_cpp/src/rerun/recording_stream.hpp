@@ -52,7 +52,7 @@ namespace rerun {
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
-    /// See [SDK Micro Batching](https://www.rerun.io/docs/reference/sdk-micro-batching) for
+    /// See [SDK Micro Batching](https://www.rerun.io/docs/reference/sdk/micro-batching) for
     /// more information.
     ///
     /// The data will be timestamped automatically based on the `RecordingStream`'s
@@ -143,8 +143,23 @@ namespace rerun {
         /// timeout, and can cause a call to `flush` to block indefinitely.
         ///
         /// This function returns immediately.
-        Error connect(std::string_view tcp_addr = "127.0.0.1:9876", float flush_timeout_sec = 2.0)
-            const;
+        [[deprecated("Use `connect_tcp` instead")]] Error connect(
+            std::string_view tcp_addr = "127.0.0.1:9876", float flush_timeout_sec = 2.0
+        ) const;
+
+        /// Connect to a remote Rerun Viewer on the given ip:port.
+        ///
+        /// Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
+        ///
+        /// flush_timeout_sec:
+        /// The minimum time the SDK will wait during a flush before potentially
+        /// dropping data if progress is not being made. Passing a negative value indicates no
+        /// timeout, and can cause a call to `flush` to block indefinitely.
+        ///
+        /// This function returns immediately.
+        Error connect_tcp(
+            std::string_view tcp_addr = "127.0.0.1:9876", float flush_timeout_sec = 2.0
+        ) const;
 
         /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
         /// over TCP.
@@ -173,6 +188,10 @@ namespace rerun {
         }
 
         /// Stream all log-data to a given `.rrd` file.
+        ///
+        /// The Rerun Viewer is able to read continuously from the resulting rrd file while it is being written.
+        /// However, depending on your OS and configuration, changes may not be immediately visible due to file caching.
+        /// This is a common issue on Windows and (to a lesser extent) on MacOS.
         ///
         /// This function returns immediately.
         Error save(std::string_view path) const;

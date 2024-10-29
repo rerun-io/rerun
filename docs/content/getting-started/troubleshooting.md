@@ -1,6 +1,6 @@
 ---
 title: Troubleshooting
-order: 600
+order: 800
 ---
 
 You can set `RUST_LOG=debug` before running to get some verbose logging output.
@@ -120,3 +120,17 @@ In both cases, forcing Vulkan to pick either the integrated or discrete GPU (try
 -   Force the discrete Nvidia GPU:
     -   Linux: `export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia.json`.
     -   Windows: `set VK_ICD_FILENAMES=\windows\system32\nv-vk64.json`.
+
+## Video stuttering
+
+On some browsers the default video decoder may cause stuttering.
+This has been for instance observed with Chrome 129 on Windows.
+
+To mitigate these issues, you can try to specify software decoding.
+This can be configured from the viewer's option menu. Alternatively, you can also override this setting on startup:
+* for the web viewer pass `&video_decoder=prefer_software` as a url parameter
+* for the native viewer & for starting the web viewer via command line (`--web-viewer` argument), pass `--video-decoder=prefer_software`
+
+TODO(#7532): Some stuttering that can't be mitigated this way has been observed with H.264 video on Linux Firefox v130.0.
+
+For more information about video decoding, see also the reference page on [video](../reference/video.md).

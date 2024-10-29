@@ -1,11 +1,11 @@
 ---
-title: Get data into Rerun
+title: Send data to Rerun
 order: 400
 ---
 
-This section talks about how to get data out of your application into Rerun.
+This section shows you how to send data to Rerun from either your running applications or existing files.
 
--   Streaming data from your code
+-   Sending data from your code
     -   [C++](./data-in/cpp.md)
     -   [Python](./data-in/python.md)
     -   [Rust](./data-in/rust.md)

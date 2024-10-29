@@ -21,7 +21,7 @@ fn main() -> anyhow::Result<()> {
     let query = RangeQuery::new(timeline, ResolvedTimeRange::EVERYTHING);
     eprintln!("query:{query:?}");
 
-    let caches = re_query::Caches::new(&store);
+    let caches = re_query::QueryCache::new(&store);
 
     // First, get the (potentially cached) results for this query.
     let results: RangeResults = caches.range(

@@ -29,4 +29,10 @@ impl ViewStates {
             .or_insert_with(|| view_class.new_state())
             .as_mut()
     }
+
+    pub fn ensure_state_exists(&mut self, view_id: SpaceViewId, view_class: &dyn SpaceViewClass) {
+        self.states
+            .entry(view_id)
+            .or_insert_with(|| view_class.new_state());
+    }
 }

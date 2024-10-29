@@ -20,19 +20,18 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A video binary.
 ///
-/// NOTE: Videos can only be viewed in the Rerun web viewer.
-/// Only MP4 containers with a limited number of codecs are currently supported, and not in all browsers.
-/// Follow <https://github.com/rerun-io/rerun/issues/7298> for updates on the native support.
+/// Only MP4 containers with AV1 are generally supported,
+/// though the web viewer supports more video codecs, depending on browser.
 ///
-/// In order to display a video, you need to log a [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference] for each frame.
+/// See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
 ///
-/// ⚠️ **This type is experimental and may be removed in future versions**
+/// In order to display a video, you also need to log a [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference] for each frame.
 ///
-/// ## Example
+/// ## Examples
 ///
-/// ### Video with explicit frames
+/// ### Video with automatically determined frames
 /// ```ignore
-/// use rerun::{external::anyhow, TimeColumn};
+/// use rerun::external::anyhow;
 ///
 /// fn main() -> anyhow::Result<()> {
 ///     let args = _args;
@@ -42,29 +41,32 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///     };
 ///
 ///     let rec =
-///         rerun::RecordingStreamBuilder::new("rerun_example_asset_video_manual_frames").spawn()?;
+///         rerun::RecordingStreamBuilder::new("rerun_example_asset_video_auto_frames").spawn()?;
 ///
 ///     // Log video asset which is referred to by frame references.
-///     rec.set_time_seconds("video_time", 0.0); // Make sure it's available on the timeline used for the frame references.
-///     rec.log("video", &rerun::AssetVideo::from_file_path(path)?)?;
+///     let video_asset = rerun::AssetVideo::from_file_path(path)?;
+///     rec.log_static("video", &video_asset)?;
 ///
-///     // Send frame references for every 0.1 seconds over a total of 10 seconds.
-///     // Naturally, this will result in a choppy playback and only makes sense if the video is 10 seconds or longer.
-///     // TODO(#7368): Point to example using `send_video_frames`.
-///     //
-///     // Use `send_columns` to send all frame references in a single call.
-///     let times = (0..(10 * 10)).map(|t| t as f64 * 0.1).collect::<Vec<_>>();
-///     let time_column = TimeColumn::new_seconds("video_time", times.iter().copied());
-///     let frame_reference_indicators =
-///         <rerun::VideoFrameReference as rerun::Archetype>::Indicator::new_array(times.len());
-///     let video_timestamps = times
-///         .into_iter()
-///         .map(rerun::components::VideoTimestamp::from_seconds)
+///     // Send automatically determined video frame timestamps.
+///     let frame_timestamps_ns = video_asset.read_frame_timestamps_ns()?;
+///     let video_timestamps_ns = frame_timestamps_ns
+///         .iter()
+///         .copied()
+///         .map(rerun::components::VideoTimestamp::from_nanoseconds)
 ///         .collect::<Vec<_>>();
+///     let time_column = rerun::TimeColumn::new_nanos(
+///         "video_time",
+///         // Note timeline values don't have to be the same as the video timestamps.
+///         frame_timestamps_ns,
+///     );
+///     let frame_reference_indicators =
+///         <rerun::VideoFrameReference as rerun::Archetype>::Indicator::new_array(
+///             time_column.num_rows(),
+///         );
 ///     rec.send_columns(
 ///         "video",
 ///         [time_column],
-///         [&frame_reference_indicators as _, &video_timestamps as _],
+///         [&frame_reference_indicators as _, &video_timestamps_ns as _],
 ///     )?;
 ///
 ///     Ok(())
@@ -77,6 +79,49 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1024w.png">
 ///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/1200w.png">
 ///   <img src="https://static.rerun.io/video_manual_frames/320a44e1e06b8b3a3161ecbbeae3e04d1ccb9589/full.png" width="640">
+/// </picture>
+/// </center>
+///
+/// ### Demonstrates manual use of video frame references
+/// ```ignore
+/// use rerun::external::anyhow;
+///
+/// fn main() -> anyhow::Result<()> {
+///     let args = _args;
+///     let Some(path) = args.get(1) else {
+///         // TODO(#7354): Only mp4 is supported for now.
+///         anyhow::bail!("Usage: {} <path_to_video.[mp4]>", args[0]);
+///     };
+///
+///     let rec =
+///         rerun::RecordingStreamBuilder::new("rerun_example_asset_video_manual_frames").spawn()?;
+///
+///     // Log video asset which is referred to by frame references.
+///     rec.log_static("video_asset", &rerun::AssetVideo::from_file_path(path)?)?;
+///
+///     // Create two entities, showing the same video frozen at different times.
+///     rec.log(
+///         "frame_1s",
+///         &rerun::VideoFrameReference::new(rerun::components::VideoTimestamp::from_seconds(1.0))
+///             .with_video_reference("video_asset"),
+///     )?;
+///     rec.log(
+///         "frame_2s",
+///         &rerun::VideoFrameReference::new(rerun::components::VideoTimestamp::from_seconds(2.0))
+///             .with_video_reference("video_asset"),
+///     )?;
+///
+///     // TODO(#5520): log blueprint once supported
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/1200w.png">
+///   <img src="https://static.rerun.io/video_manual_frames/9f41c00f84a98cc3f26875fba7c1d2fa2bad7151/full.png" width="640">
 /// </picture>
 /// </center>
 #[derive(Clone, Debug)]

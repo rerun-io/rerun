@@ -7,8 +7,8 @@ from uuid import UUID
 
 import numpy as np
 
-__version__ = "0.19.0-alpha.1+dev"
-__version_info__ = (0, 19, 0, "alpha.1")
+__version__ = "0.20.0-alpha.1+dev"
+__version_info__ = (0, 20, 0, "alpha.1")
 
 # =====================================
 # API RE-EXPORTS
@@ -19,6 +19,7 @@ import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 from . import (
     blueprint as blueprint,
+    dataframe as dataframe,
     experimental as experimental,
     notebook as notebook,
 )
@@ -58,11 +59,13 @@ from .archetypes import (
     BarChart as BarChart,
     Boxes2D as Boxes2D,
     Boxes3D as Boxes3D,
+    Capsules3D as Capsules3D,
     Clear as Clear,
     DepthImage as DepthImage,
     DisconnectedSpace as DisconnectedSpace,
     Ellipsoids3D as Ellipsoids3D,
     EncodedImage as EncodedImage,
+    GeoPoints as GeoPoints,
     Image as Image,
     InstancePoses3D as InstancePoses3D,
     LineStrips2D as LineStrips2D,
@@ -152,10 +155,12 @@ from .script_helpers import (
 )
 from .sinks import (
     connect as connect,
+    connect_tcp as connect_tcp,
     disconnect as disconnect,
     save as save,
     send_blueprint as send_blueprint,
     serve as serve,
+    serve_web as serve_web,
     spawn as spawn,
     stdout as stdout,
 )

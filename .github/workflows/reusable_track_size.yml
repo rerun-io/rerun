@@ -189,10 +189,13 @@ jobs:
           save-data-file: false
           auto-push: false
 
+      - uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          pixi-version: v0.34.0
+
       - name: Render benchmark result
         if: github.ref == 'refs/heads/main'
         run: |
-          python3 -m pip install google-cloud-storage==2.9.0
-          scripts/ci/render_bench.py sizes \
+          pixi run python scripts/ci/render_bench.py sizes \
             --after $(date -d"180 days ago" +%Y-%m-%d) \
             --output "gs://rerun-builds/graphs"

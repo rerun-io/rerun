@@ -19,7 +19,7 @@ mod gpu_data {
     use crate::wgpu_buffer_types;
 
     /// Keep in sync with `composite.wgsl`
-    #[repr(C, align(256))]
+    #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct CompositeUniformBuffer {
         pub outline_color_layer_a: wgpu_buffer_types::Vec4,
@@ -186,12 +186,12 @@ impl Renderer for Compositor {
         }
     }
 
-    fn draw<'a>(
+    fn draw(
         &self,
-        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
+        render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
-        pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &'a CompositorDrawData,
+        pass: &mut wgpu::RenderPass<'_>,
+        draw_data: &CompositorDrawData,
     ) -> Result<(), DrawError> {
         let pipeline_handle = match phase {
             DrawPhase::Compositing => self.render_pipeline_regular,

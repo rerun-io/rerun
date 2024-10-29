@@ -3,6 +3,7 @@ use re_types_core::LoggableBatch as _;
 use re_viewer_context::external::re_log_types::TimelineName;
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 
+//TODO(#7498): might be unneeded after the dataframe view update
 pub(crate) fn edit_timeline_name(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,

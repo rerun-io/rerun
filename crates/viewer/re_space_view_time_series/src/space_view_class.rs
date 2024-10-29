@@ -38,7 +38,7 @@ pub struct TimeSeriesSpaceViewState {
     /// Was the user dragging the cursor last frame?
     was_dragging_time_cursor: bool,
 
-    /// State of egui_plot's auto bounds before the user started dragging the time cursor.
+    /// State of `egui_plot`'s auto bounds before the user started dragging the time cursor.
     saved_auto_bounds: egui::Vec2b,
 
     /// The range of the scalar values currently on screen.

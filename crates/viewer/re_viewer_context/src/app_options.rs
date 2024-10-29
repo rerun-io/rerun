@@ -17,12 +17,6 @@ pub struct AppOptions {
     #[cfg(not(target_arch = "wasm32"))]
     pub experimental_space_view_screenshots: bool,
 
-    /// Enable experimental dataframe space views.
-    pub experimental_dataframe_space_view: bool,
-
-    /// Toggle query clamping for the plot visualizers.
-    pub plot_query_clamping: bool,
-
     /// Displays an overlay for debugging picking.
     pub show_picking_debug_overlay: bool,
 
@@ -35,6 +29,9 @@ pub struct AppOptions {
     /// What time zone to display timestamps in.
     #[serde(rename = "time_zone_for_timestamps")]
     pub time_zone: TimeZone,
+
+    /// Hardware acceleration settings for video decoding.
+    pub video_decoder_hw_acceleration: re_renderer::video::DecodeHardwareAcceleration,
 }
 
 impl Default for AppOptions {
@@ -50,10 +47,6 @@ impl Default for AppOptions {
             #[cfg(not(target_arch = "wasm32"))]
             experimental_space_view_screenshots: false,
 
-            experimental_dataframe_space_view: false,
-
-            plot_query_clamping: true,
-
             show_picking_debug_overlay: false,
 
             inspect_blueprint_timeline: false,
@@ -61,6 +54,8 @@ impl Default for AppOptions {
             blueprint_gc: true,
 
             time_zone: TimeZone::Utc,
+
+            video_decoder_hw_acceleration: Default::default(),
         }
     }
 }

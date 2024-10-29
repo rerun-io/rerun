@@ -28,7 +28,7 @@ mod gpu_data {
     }
 
     /// Keep in sync with `debug_overlay.wgsl`
-    #[repr(C, align(256))]
+    #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DebugOverlayUniformBuffer {
         pub screen_resolution: wgpu_buffer_types::Vec2,
@@ -223,12 +223,12 @@ impl Renderer for DebugOverlayRenderer {
         }
     }
 
-    fn draw<'a>(
+    fn draw(
         &self,
-        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
+        render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         _phase: DrawPhase,
-        pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &'a DebugOverlayDrawData,
+        pass: &mut wgpu::RenderPass<'_>,
+        draw_data: &DebugOverlayDrawData,
     ) -> Result<(), DrawError> {
         let pipeline = render_pipelines.get(self.render_pipeline)?;
 

@@ -11,6 +11,7 @@
 #![allow(clippy::redundant_closure)]
 #![allow(clippy::too_many_arguments)]
 #![allow(clippy::too_many_lines)]
+#![allow(non_camel_case_types)]
 
 use ::re_types_core::external::arrow2;
 use ::re_types_core::ComponentName;
@@ -164,6 +165,7 @@ impl ::re_types_core::Loggable for Colormap {
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
+        #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, datatypes::*};
         Ok({

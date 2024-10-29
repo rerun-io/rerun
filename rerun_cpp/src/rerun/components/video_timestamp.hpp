@@ -12,39 +12,28 @@
 
 namespace rerun::components {
     /// **Component**: Timestamp inside a `archetypes::AssetVideo`.
-    ///
-    /// ⚠ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
     struct VideoTimestamp {
         rerun::datatypes::VideoTimestamp timestamp;
 
       public: // START of extensions from video_timestamp_ext.cpp:
-        /// Creates a new `VideoTimestamp` component.
-        /// \param video_time Timestamp value, type defined by `time_mode`.
-        /// \param time_mode How to interpret `video_time`.
-        VideoTimestamp(int64_t video_time, rerun::datatypes::VideoTimeMode time_mode) {
-            timestamp.video_time = video_time;
-            timestamp.time_mode = time_mode;
+        /// Creates a new `VideoTimestamp` from a presentation timestamp as a chrono duration.
+        template <typename TRep, typename TPeriod>
+        VideoTimestamp(std::chrono::duration<TRep, TPeriod> time) {
+            timestamp.timestamp_ns =
+                std::chrono::duration_cast<std::chrono::nanoseconds>(time).count();
         }
 
-        /// Creates a new `VideoTimestamp` from time since video start.
-        template <typename TRep, typename TPeriod>
-        VideoTimestamp(std::chrono::duration<TRep, TPeriod> time)
-            : VideoTimestamp(
-                  std::chrono::duration_cast<std::chrono::nanoseconds>(time).count(),
-                  datatypes::VideoTimeMode::Nanoseconds
-              ) {}
-
-        /// Creates a new [`VideoTimestamp`] from seconds since video start.
+        /// Creates a new `VideoTimestamp` from a presentation timestamp in seconds.
         static VideoTimestamp from_seconds(double seconds) {
             return VideoTimestamp(std::chrono::duration<double>(seconds));
         }
 
-        /// Creates a new [`VideoTimestamp`] from milliseconds since video start.
+        /// Creates a new `VideoTimestamp` from a presentation timestamp in milliseconds.
         static VideoTimestamp from_milliseconds(double milliseconds) {
             return VideoTimestamp(std::chrono::duration<double, std::milli>(milliseconds));
         }
 
-        /// Creates a new [`VideoTimestamp`] from nanoseconds since video start.
+        /// Creates a new `VideoTimestamp` from a presentation timestamp in nanoseconds.
         static VideoTimestamp from_nanoseconds(int64_t nanoseconds) {
             return VideoTimestamp(std::chrono::nanoseconds(nanoseconds));
         }
@@ -58,6 +47,13 @@ namespace rerun::components {
 
         VideoTimestamp& operator=(rerun::datatypes::VideoTimestamp timestamp_) {
             timestamp = timestamp_;
+            return *this;
+        }
+
+        VideoTimestamp(int64_t timestamp_ns_) : timestamp(timestamp_ns_) {}
+
+        VideoTimestamp& operator=(int64_t timestamp_ns_) {
+            timestamp = timestamp_ns_;
             return *this;
         }
 

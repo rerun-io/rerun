@@ -42,6 +42,7 @@ impl DepthImage {
             meter: None,
             colormap: None,
             point_fill_ratio: None,
+            depth_range: None,
         })
     }
 }

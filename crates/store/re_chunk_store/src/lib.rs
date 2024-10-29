@@ -15,6 +15,7 @@
 //!
 
 mod dataframe;
+mod drop_time_range;
 mod events;
 mod gc;
 mod query;
@@ -24,14 +25,17 @@ mod subscribers;
 mod writes;
 
 pub use self::dataframe::{
-    ColumnDescriptor, ComponentColumnDescriptor, ControlColumnDescriptor, LatestAtQueryExpression,
-    QueryExpression, RangeQueryExpression, TimeColumnDescriptor,
+    ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector, Index,
+    IndexRange, IndexValue, QueryExpression, SparseFillStrategy, TimeColumnDescriptor,
+    TimeColumnSelector, ViewContentsSelector,
 };
 pub use self::events::{ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent};
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
 pub use self::stats::{ChunkStoreChunkStats, ChunkStoreStats};
-pub use self::store::{ChunkStore, ChunkStoreConfig, ChunkStoreGeneration};
+pub use self::store::{ChunkStore, ChunkStoreConfig, ChunkStoreGeneration, ColumnMetadata};
 pub use self::subscribers::{ChunkStoreSubscriber, ChunkStoreSubscriberHandle};
+
+pub(crate) use self::store::ColumnMetadataState;
 
 // Re-exports
 #[doc(no_inline)]

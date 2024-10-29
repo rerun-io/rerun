@@ -84,7 +84,7 @@ impl SerializationError {
 ///
 /// The motivation behind this type is that we often use code that can return a `arrow2::error::Error`
 /// inside functions that return a `SerializationError`. By wrapping it we can use the ? operator and simplify the code.
-/// Second, normally also `arrow2::error::Error` isn't clonable, but `SerializationError` is.
+/// Second, normally also `arrow2::error::Error` isn't cloneable, but `SerializationError` is.
 #[derive(Clone, Debug)]
 pub struct ArcArrowError(std::sync::Arc<arrow2::error::Error>);
 

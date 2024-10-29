@@ -35,6 +35,7 @@ from .class_description_map_elem import (
 )
 from .class_id import ClassId, ClassIdArrayLike, ClassIdBatch, ClassIdLike, ClassIdType
 from .color_model import ColorModel, ColorModelArrayLike, ColorModelBatch, ColorModelLike, ColorModelType
+from .dvec2d import DVec2D, DVec2DArrayLike, DVec2DBatch, DVec2DLike, DVec2DType
 from .entity_path import EntityPath, EntityPathArrayLike, EntityPathBatch, EntityPathLike, EntityPathType
 from .float32 import Float32, Float32ArrayLike, Float32Batch, Float32Like, Float32Type
 from .float64 import Float64, Float64ArrayLike, Float64Batch, Float64Like, Float64Type
@@ -98,13 +99,6 @@ from .uvec4d import UVec4D, UVec4DArrayLike, UVec4DBatch, UVec4DLike, UVec4DType
 from .vec2d import Vec2D, Vec2DArrayLike, Vec2DBatch, Vec2DLike, Vec2DType
 from .vec3d import Vec3D, Vec3DArrayLike, Vec3DBatch, Vec3DLike, Vec3DType
 from .vec4d import Vec4D, Vec4DArrayLike, Vec4DBatch, Vec4DLike, Vec4DType
-from .video_time_mode import (
-    VideoTimeMode,
-    VideoTimeModeArrayLike,
-    VideoTimeModeBatch,
-    VideoTimeModeLike,
-    VideoTimeModeType,
-)
 from .video_timestamp import (
     VideoTimestamp,
     VideoTimestampArrayLike,
@@ -173,6 +167,11 @@ __all__ = [
     "ColorModelBatch",
     "ColorModelLike",
     "ColorModelType",
+    "DVec2D",
+    "DVec2DArrayLike",
+    "DVec2DBatch",
+    "DVec2DLike",
+    "DVec2DType",
     "EntityPath",
     "EntityPathArrayLike",
     "EntityPathBatch",
@@ -338,11 +337,6 @@ __all__ = [
     "Vec4DBatch",
     "Vec4DLike",
     "Vec4DType",
-    "VideoTimeMode",
-    "VideoTimeModeArrayLike",
-    "VideoTimeModeBatch",
-    "VideoTimeModeLike",
-    "VideoTimeModeType",
     "VideoTimestamp",
     "VideoTimestampArrayLike",
     "VideoTimestampBatch",

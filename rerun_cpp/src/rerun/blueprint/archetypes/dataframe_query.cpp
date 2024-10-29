@@ -15,25 +15,30 @@ namespace rerun {
         ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(5);
+        cells.reserve(6);
 
         if (archetype.timeline.has_value()) {
             auto result = ComponentBatch::from_loggable(archetype.timeline.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.kind.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.kind.value());
+        if (archetype.filter_by_range.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.filter_by_range.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.latest_at_queries.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.latest_at_queries.value());
+        if (archetype.filter_is_not_null.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.filter_is_not_null.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.time_range_queries.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.time_range_queries.value());
+        if (archetype.apply_latest_at.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.apply_latest_at.value());
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        if (archetype.select.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.select.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

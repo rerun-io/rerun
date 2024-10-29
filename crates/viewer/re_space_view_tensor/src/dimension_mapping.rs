@@ -17,7 +17,7 @@ use re_viewport_blueprint::ViewProperty;
 /// * out of bounds dimensions and indices are clamped to valid
 /// * missing width/height is filled in if there's at least 2 dimensions.
 pub fn load_tensor_slice_selection_and_make_valid(
-    slice_selection: &ViewProperty<'_>,
+    slice_selection: &ViewProperty,
     shape: &[TensorDimension],
 ) -> Result<TensorSliceSelection, re_types::DeserializationError> {
     re_tracing::profile_function!();

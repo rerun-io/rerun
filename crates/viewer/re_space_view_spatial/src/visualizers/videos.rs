@@ -1,33 +1,37 @@
-use egui::mutex::Mutex;
+use std::sync::Arc;
 
-use re_log_types::EntityPath;
+use re_log_types::{hash::Hash64, EntityPath};
 use re_renderer::{
+    external::re_video::VideoLoadError,
     renderer::{
         ColormappedTexture, RectangleOptions, TextureFilterMag, TextureFilterMin, TexturedRect,
     },
-    video::{FrameDecodingResult, Video},
+    resource_managers::ImageDataDesc,
+    video::{Video, VideoFrameTexture},
 };
 use re_types::{
     archetypes::{AssetVideo, VideoFrameReference},
-    components::{Blob, EntityPath as EntityPathReferenceComponent, MediaType, VideoTimestamp},
-    datatypes::VideoTimeMode,
+    components::{Blob, MediaType, VideoTimestamp},
     Archetype, Loggable as _,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, SpaceViewClass as _, SpaceViewSystemExecutionError,
-    ViewContext, ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
+    ApplicableEntities, IdentifiedViewSystem, SpaceViewClass as _, SpaceViewId,
+    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, VideoCache, ViewContext,
+    ViewContextCollection, ViewQuery, ViewerContext, VisualizableEntities,
     VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::{
-    video_cache::{VideoCache, VideoCacheKey},
+    contexts::SpatialSceneEntityContext,
+    ui::SpatialSpaceViewState,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{entity_iterator, filter_visualizable_2d_entities},
-    SpatialSpaceView2D,
+    visualizers::{entity_iterator, filter_visualizable_2d_entities, LoadingSpinner},
+    PickableRectSourceData, PickableTexturedRect, SpatialSpaceView2D,
 };
 
-use super::bounding_box_for_textured_rect;
-use super::{entity_iterator::process_archetype, SpatialViewVisualizerData};
+use super::{
+    entity_iterator::process_archetype, SpatialViewVisualizerData, UiLabel, UiLabelTarget,
+};
 
 pub struct VideoFrameReferenceVisualizer {
     pub data: SpatialViewVisualizerData,
@@ -71,8 +75,6 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
 
-        let mut rectangles = Vec::new();
-
         process_archetype::<Self, VideoFrameReference, _>(
             ctx,
             view_query,
@@ -93,7 +95,7 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                     return Ok(());
                 };
                 let all_video_references =
-                    results.iter_as(timeline, EntityPathReferenceComponent::name());
+                    results.iter_as(timeline, re_types::components::EntityPath::name());
 
                 for (_index, video_timestamps, video_references) in re_query::range_zip_1x1(
                     entity_iterator::iter_component(
@@ -108,87 +110,24 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
                         continue;
                     };
 
-                    // Follow the reference to the video asset.
-                    let video_reference = video_references
-                        .and_then(|v| v.first().map(|e| e.as_str().into()))
-                        .unwrap_or_else(|| entity_path.clone());
-                    let Some(video) =
-                        latest_at_query_video_from_datastore(ctx.viewer_ctx, &video_reference)
-                    else {
-                        continue;
-                    };
-
-                    let timestamp_in_seconds = match video_timestamp.time_mode {
-                        VideoTimeMode::Nanoseconds => video_timestamp.video_time as f64 / 1e9,
-                    };
-
-                    let (texture_result, video_width, video_height) = {
-                        let mut video = video.lock(); // TODO(andreas): Interior mutability for re_renderer's video would be nice.
-                        (
-                            video.frame_at(timestamp_in_seconds),
-                            video.width(),
-                            video.height(),
-                        )
-                    };
-
-                    let texture = match texture_result {
-                        FrameDecodingResult::Ready(texture) => texture,
-                        FrameDecodingResult::Pending(texture) => {
-                            ctx.viewer_ctx.egui_ctx.request_repaint();
-                            texture
-                        }
-                        FrameDecodingResult::Error(err) => {
-                            // TODO(#7373): show this error in the ui
-                            re_log::error_once!(
-                                "Failed to decode video frame for {entity_path}: {err}"
-                            );
-                            continue;
-                        }
-                    };
-
-                    let world_from_entity =
-                        spatial_ctx.transform_info.single_entity_transform_required(
-                            ctx.target_entity_path,
-                            Self::identifier().as_str(),
-                        );
-                    let textured_rect = textured_rect_for_video_frame(
-                        world_from_entity,
-                        video_width,
-                        video_height,
-                        texture,
+                    self.process_video_frame(
+                        ctx,
+                        spatial_ctx,
+                        video_timestamp,
+                        video_references,
+                        entity_path,
+                        view_query.space_view_id,
                     );
-
-                    if spatial_ctx.space_view_class_identifier == SpatialSpaceView2D::identifier() {
-                        // Only update the bounding box if this is a 2D space view.
-                        // This is avoids a cyclic relationship where the image plane grows
-                        // the bounds which in turn influence the size of the image plane.
-                        // See: https://github.com/rerun-io/rerun/issues/3728
-                        self.data.add_bounding_box(
-                            entity_path.hash(),
-                            bounding_box_for_textured_rect(&textured_rect),
-                            world_from_entity,
-                        );
-                    }
-
-                    rectangles.push(textured_rect);
                 }
 
                 Ok(())
             },
         )?;
 
-        let mut draw_data_list = Vec::new();
-
-        match re_renderer::renderer::RectangleDrawData::new(render_ctx, &rectangles) {
-            Ok(draw_data) => {
-                draw_data_list.push(draw_data.into());
-            }
-            Err(err) => {
-                re_log::error_once!("Failed to create rectangle draw data from images: {err}");
-            }
-        }
-
-        Ok(draw_data_list)
+        Ok(vec![PickableTexturedRect::to_draw_data(
+            render_ctx,
+            &self.data.pickable_rects,
+        )?])
     }
 
     fn data(&self) -> Option<&dyn std::any::Any> {
@@ -199,30 +138,255 @@ impl VisualizerSystem for VideoFrameReferenceVisualizer {
         self
     }
 
-    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
         self
     }
 }
 
-fn textured_rect_for_video_frame(
-    world_from_entity: glam::Affine3A,
-    video_width: u32,
-    video_height: u32,
-    texture: re_renderer::resource_managers::GpuTexture2D,
-) -> TexturedRect {
-    TexturedRect {
-        top_left_corner_position: world_from_entity.transform_point3(glam::Vec3::ZERO),
-        // Make sure to use the video instead of texture size here,
-        // since it may be a placeholder which doesn't have the full size yet.
-        extent_u: world_from_entity.transform_vector3(glam::Vec3::X * video_width as f32),
-        extent_v: world_from_entity.transform_vector3(glam::Vec3::Y * video_height as f32),
+impl VideoFrameReferenceVisualizer {
+    fn process_video_frame(
+        &mut self,
+        ctx: &re_viewer_context::QueryContext<'_>,
+        spatial_ctx: &SpatialSceneEntityContext<'_>,
+        video_timestamp: &VideoTimestamp,
+        video_references: Option<Vec<re_types::ArrowString>>,
+        entity_path: &EntityPath,
+        view_id: SpaceViewId,
+    ) {
+        re_tracing::profile_function!();
 
-        colormapped_texture: ColormappedTexture::from_unorm_rgba(texture),
-        options: RectangleOptions {
-            texture_filter_magnification: TextureFilterMag::Nearest,
-            texture_filter_minification: TextureFilterMin::Linear,
-            ..Default::default()
-        },
+        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
+            return;
+        };
+
+        let decode_stream_id = re_renderer::video::VideoDecodingStreamId(
+            Hash64::hash((entity_path.hash(), view_id)).hash64(),
+        );
+
+        // Follow the reference to the video asset.
+        let video_reference: EntityPath = video_references
+            .and_then(|v| v.first().map(|e| e.as_str().into()))
+            .unwrap_or_else(|| self.fallback_for(ctx).as_str().into());
+        let query_result = latest_at_query_video_from_datastore(ctx.viewer_ctx, &video_reference);
+
+        let world_from_entity = spatial_ctx
+            .transform_info
+            .single_entity_transform_required(ctx.target_entity_path, Self::identifier().as_str());
+
+        // Note that we may or may not know the video size independently of error occurrence.
+        // (if it's just a decoding error we may still know the size from the container!)
+        // In case we haven error we want to center the message in the middle, so we need some area.
+        // Note that this area is also used for the bounding box which is important for the 2D view to determine default bounds.
+        let mut video_resolution = glam::vec2(1280.0, 720.0);
+
+        match query_result {
+            None => {
+                self.show_video_error(
+                    ctx,
+                    spatial_ctx,
+                    world_from_entity,
+                    format!("No video asset at {video_reference:?}"),
+                    video_resolution,
+                    entity_path,
+                );
+            }
+
+            Some((video, video_data)) => match video.as_ref() {
+                Ok(video) => {
+                    video_resolution = glam::vec2(video.width() as _, video.height() as _);
+
+                    match video.frame_at(
+                        render_ctx,
+                        decode_stream_id,
+                        video_timestamp.as_seconds(),
+                        video_data.as_slice(),
+                    ) {
+                        Ok(VideoFrameTexture {
+                            texture,
+                            time_range: _, // TODO(emilk): maybe add to `PickableTexturedRect` and `PickingHitType::TexturedRect` so we can show on hover?
+                            is_pending,
+                            show_spinner,
+                        }) => {
+                            // Make sure to use the video instead of texture size here,
+                            // since the texture may be a placeholder which doesn't have the full size yet.
+                            let top_left_corner_position =
+                                world_from_entity.transform_point3(glam::Vec3::ZERO);
+                            let extent_u = world_from_entity
+                                .transform_vector3(glam::Vec3::X * video_resolution.x);
+                            let extent_v = world_from_entity
+                                .transform_vector3(glam::Vec3::Y * video_resolution.y);
+
+                            if is_pending {
+                                // Keep polling for a fresh texture
+                                ctx.viewer_ctx.egui_ctx.request_repaint();
+                            }
+
+                            if show_spinner {
+                                // Show loading rectangle:
+                                self.data.loading_spinners.push(LoadingSpinner {
+                                    center: top_left_corner_position + 0.5 * (extent_u + extent_v),
+                                    half_extent_u: 0.5 * extent_u,
+                                    half_extent_v: 0.5 * extent_v,
+                                });
+                            }
+
+                            let textured_rect = TexturedRect {
+                                top_left_corner_position,
+                                extent_u,
+                                extent_v,
+                                colormapped_texture: ColormappedTexture::from_unorm_rgba(texture),
+                                options: RectangleOptions {
+                                    texture_filter_magnification: TextureFilterMag::Nearest,
+                                    texture_filter_minification: TextureFilterMin::Linear,
+                                    outline_mask: spatial_ctx.highlight.overall,
+                                    ..Default::default()
+                                },
+                            };
+                            self.data.pickable_rects.push(PickableTexturedRect {
+                                ent_path: entity_path.clone(),
+                                textured_rect,
+                                source_data: PickableRectSourceData::Video,
+                            });
+                        }
+
+                        Err(err) => {
+                            self.show_video_error(
+                                ctx,
+                                spatial_ctx,
+                                world_from_entity,
+                                err.to_string(),
+                                video_resolution,
+                                entity_path,
+                            );
+                        }
+                    }
+                }
+                Err(err) => {
+                    self.show_video_error(
+                        ctx,
+                        spatial_ctx,
+                        world_from_entity,
+                        err.to_string(),
+                        video_resolution,
+                        entity_path,
+                    );
+                }
+            },
+        }
+
+        if spatial_ctx.space_view_class_identifier == SpatialSpaceView2D::identifier() {
+            let bounding_box = re_math::BoundingBox::from_min_size(
+                world_from_entity.transform_point3(glam::Vec3::ZERO),
+                video_resolution.extend(0.0),
+            );
+            self.data
+                .add_bounding_box(entity_path.hash(), bounding_box, world_from_entity);
+        }
+    }
+
+    fn show_video_error(
+        &mut self,
+        ctx: &re_viewer_context::QueryContext<'_>,
+        spatial_ctx: &SpatialSceneEntityContext<'_>,
+        world_from_entity: glam::Affine3A,
+        error_string: String,
+        video_size: glam::Vec2,
+        entity_path: &EntityPath,
+    ) {
+        let Some(render_ctx) = ctx.viewer_ctx.render_ctx else {
+            return;
+        };
+
+        let video_error_texture_result = render_ctx
+            .texture_manager_2d
+            .get_or_try_create_with::<image::ImageError>(
+                Hash64::hash("video_error").hash64(),
+                render_ctx,
+                || {
+                    let mut reader = image::io::Reader::new(std::io::Cursor::new(
+                        re_ui::icons::VIDEO_ERROR.png_bytes,
+                    ));
+                    reader.set_format(image::ImageFormat::Png);
+                    let dynamic_image = reader.decode()?;
+
+                    Ok(ImageDataDesc {
+                        label: "video_error".into(),
+                        data: std::borrow::Cow::Owned(dynamic_image.to_rgba8().to_vec()),
+                        format: re_renderer::external::wgpu::TextureFormat::Rgba8UnormSrgb.into(),
+                        width_height: [dynamic_image.width(), dynamic_image.height()],
+                    })
+                },
+            );
+
+        let Ok(video_error_texture) = video_error_texture_result.inspect_err(|err| {
+            re_log::error_once!("Failed to show video error icon: {err}");
+        }) else {
+            return; // We failed at failing…
+        };
+
+        // Center the icon in the middle of the video rectangle.
+        // Don't ignore translation - if the user moved the video frame, we move the error message along.
+        // But do ignore any rotation/scale on this, gets complicated to center and weird generally.
+        let mut video_error_rect_size = glam::vec2(
+            video_error_texture.width() as _,
+            video_error_texture.height() as _,
+        );
+        // If we're in a 2D view, make the error rect take a fixed amount of view space.
+        // This makes it look a lot nicer for very small & very large videos.
+        if let Some(state) = ctx
+            .view_state
+            .as_any()
+            .downcast_ref::<SpatialSpaceViewState>()
+        {
+            if let Some(bounds) = state.visual_bounds_2d {
+                // Aim for 1/8 of the larger visual bounds axis.
+                let max_extent = bounds.x_range.abs_len().max(bounds.y_range.abs_len()) as f32;
+                if max_extent > 0.0 {
+                    let video_error_rect_aspect = video_error_rect_size.x / video_error_rect_size.y;
+                    let extent_x = max_extent / 8.0;
+                    let extent_y = extent_x / video_error_rect_aspect;
+                    video_error_rect_size = glam::vec2(extent_x, extent_y);
+                }
+            }
+        }
+
+        let center = glam::Vec3::from(world_from_entity.translation).truncate() + video_size * 0.5;
+        let top_left_corner_position = center - video_error_rect_size * 0.5;
+
+        // Add a label that annotates a rectangle that is a bit bigger than the error icon.
+        // This makes the label track the icon better than putting it at a point.
+        let label_target_rect = egui::Rect::from_min_size(
+            egui::pos2(
+                top_left_corner_position.x - video_error_rect_size.x,
+                top_left_corner_position.y,
+            ),
+            egui::vec2(video_error_rect_size.x * 3.0, video_error_rect_size.y),
+        );
+        self.data.ui_labels.push(UiLabel {
+            text: error_string,
+            color: egui::Color32::LIGHT_RED,
+            target: UiLabelTarget::Rect(label_target_rect),
+            labeled_instance: re_entity_db::InstancePathHash::entity_all(entity_path),
+        });
+
+        let error_rect = TexturedRect {
+            top_left_corner_position: top_left_corner_position.extend(0.0),
+            extent_u: glam::Vec3::X * video_error_rect_size.x,
+            extent_v: glam::Vec3::Y * video_error_rect_size.y,
+            colormapped_texture: ColormappedTexture::from_unorm_rgba(video_error_texture),
+            options: RectangleOptions {
+                texture_filter_magnification: TextureFilterMag::Linear,
+                texture_filter_minification: TextureFilterMin::Linear,
+                outline_mask: spatial_ctx.highlight.overall,
+                ..Default::default()
+            },
+        };
+
+        self.data.pickable_rects.push(PickableTexturedRect {
+            ent_path: entity_path.clone(),
+            textured_rect: error_rect,
+            source_data: PickableRectSourceData::ErrorPlaceholder,
+        });
     }
 }
 
@@ -230,10 +394,14 @@ fn textured_rect_for_video_frame(
 ///
 /// Note that this does *NOT* check the blueprint store at all.
 /// For this, we'd need a [`re_viewer_context::DataResult`] instead of merely a [`EntityPath`].
+///
+/// Returns `None` if there was no blob at the referenced path.
+/// Returns `Some(Err(_))` if there was a blob but it failed to load for some reason.
+/// Errors are cached as well so loading a failed video won't occur a high cost repeatedly.
 fn latest_at_query_video_from_datastore(
     ctx: &ViewerContext<'_>,
     entity_path: &EntityPath,
-) -> Option<std::sync::Arc<Mutex<Video>>> {
+) -> Option<(Arc<Result<Video, VideoLoadError>>, Blob)> {
     let query = ctx.current_query();
 
     let results = ctx.recording().query_caches().latest_at(
@@ -247,21 +415,28 @@ fn latest_at_query_video_from_datastore(
     let blob = results.component_instance::<Blob>(0)?;
     let media_type = results.component_instance::<MediaType>(0);
 
-    ctx.cache.entry(|c: &mut VideoCache| {
+    let video = ctx.cache.entry(|c: &mut VideoCache| {
+        let debug_name = entity_path.to_string();
         c.entry(
-            &entity_path.to_string(),
-            VideoCacheKey {
-                versioned_instance_path_hash: re_entity_db::InstancePathHash::entity_all(
-                    entity_path,
-                )
-                .versioned(blob_row_id),
-                media_type: media_type.clone(),
-            },
+            debug_name,
+            blob_row_id,
             &blob,
-            media_type.as_ref().map(|v| v.as_str()),
-            ctx.render_ctx?,
+            media_type.as_ref(),
+            ctx.app_options.video_decoder_hw_acceleration,
         )
-    })
+    });
+    Some((video, blob))
 }
 
-re_viewer_context::impl_component_fallback_provider!(VideoFrameReferenceVisualizer => []);
+impl TypedComponentFallbackProvider<re_types::components::EntityPath>
+    for VideoFrameReferenceVisualizer
+{
+    fn fallback_for(
+        &self,
+        ctx: &re_viewer_context::QueryContext<'_>,
+    ) -> re_types::components::EntityPath {
+        ctx.target_entity_path.to_string().into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(VideoFrameReferenceVisualizer => [re_types::components::EntityPath]);

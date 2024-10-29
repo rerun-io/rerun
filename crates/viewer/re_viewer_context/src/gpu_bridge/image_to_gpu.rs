@@ -7,18 +7,24 @@ use egui::{util::hash, Rangef};
 use wgpu::TextureFormat;
 
 use re_renderer::{
+    config::DeviceCaps,
     pad_rgb_to_rgba,
     renderer::{ColorMapper, ColormappedTexture, ShaderDecoding},
-    resource_managers::Texture2DCreationDesc,
+    resource_managers::{
+        ImageDataDesc, SourceImageDataFormat, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
+    },
     RenderContext,
 };
-use re_types::components::{ClassId, Colormap};
+use re_types::components::ClassId;
 use re_types::datatypes::{ChannelDatatype, ColorModel, ImageFormat, PixelFormat};
 use re_types::image::ImageKind;
 
-use crate::{gpu_bridge::colormap::colormap_to_re_renderer, Annotations, ImageInfo, ImageStats};
+use crate::{
+    gpu_bridge::colormap::colormap_to_re_renderer, image_info::ColormapWithRange, Annotations,
+    ImageInfo, ImageStats,
+};
 
-use super::{get_or_create_texture, RangeError};
+use super::get_or_create_texture;
 
 // ----------------------------------------------------------------------------
 
@@ -33,19 +39,19 @@ fn generate_texture_key(image: &ImageInfo) -> u64 {
 
         format,
         kind,
-
-        colormap: _, // No need to upload new texture when this changes
     } = image;
 
     hash((blob_row_id, format, kind))
 }
 
+/// `colormap` is currently only used for depth images.
 pub fn image_to_gpu(
     render_ctx: &RenderContext,
     debug_name: &str,
     image: &ImageInfo,
     image_stats: &ImageStats,
     annotations: &Annotations,
+    colormap: Option<&ColormapWithRange>,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
 
@@ -55,9 +61,14 @@ pub fn image_to_gpu(
         ImageKind::Color => {
             color_image_to_gpu(render_ctx, debug_name, texture_key, image, image_stats)
         }
-        ImageKind::Depth => {
-            depth_image_to_gpu(render_ctx, debug_name, texture_key, image, image_stats)
-        }
+        ImageKind::Depth => depth_image_to_gpu(
+            render_ctx,
+            debug_name,
+            texture_key,
+            image,
+            image_stats,
+            colormap,
+        ),
         ImageKind::Segmentation => segmentation_image_to_gpu(
             render_ctx,
             debug_name,
@@ -81,43 +92,38 @@ fn color_image_to_gpu(
     let image_format = image.format;
 
     let texture_handle = get_or_create_texture(render_ctx, texture_key, || {
-        texture_creation_desc_from_color_image(image, debug_name)
+        texture_creation_desc_from_color_image(render_ctx.device_caps(), image, debug_name)
     })
     .map_err(|err| anyhow::anyhow!("{err}"))?;
 
     let texture_format = texture_handle.format();
 
-    let shader_decoding = required_shader_decode(&image_format);
+    let shader_decoding = required_shader_decode(render_ctx.device_caps(), &image_format);
 
     // TODO(emilk): let the user specify the color space.
     let decode_srgb = texture_format == TextureFormat::Rgba8Unorm
-        || image_decode_srgb_gamma_heuristic(image_stats, image_format)?;
+        || image_decode_srgb_gamma_heuristic(image_stats, image_format);
 
     // Special casing for normalized textures used above:
     let range = if matches!(
         texture_format,
         TextureFormat::R8Unorm | TextureFormat::Rgba8Unorm | TextureFormat::Bgra8Unorm
     ) {
-        [0.0, 1.0]
+        emath::Rangef::new(0.0, 1.0)
     } else if texture_format == TextureFormat::R8Snorm {
-        [-1.0, 1.0]
+        emath::Rangef::new(-1.0, 1.0)
     } else if let Some(shader_decoding) = shader_decoding {
         match shader_decoding {
-            ShaderDecoding::Nv12 | ShaderDecoding::Yuy2 => [0.0, 1.0],
-            ShaderDecoding::Bgr => image_data_range_heuristic(image_stats, &image_format)
-                .map(|range| [range.min, range.max])?,
+            ShaderDecoding::Bgr => image_data_range_heuristic(image_stats, &image_format),
         }
     } else {
         image_data_range_heuristic(image_stats, &image_format)
-            .map(|range| [range.min, range.max])?
     };
 
     let color_mapper = if let Some(shader_decoding) = shader_decoding {
         match shader_decoding {
-            // We only have 1D color maps, therefore chroma downsampled and BGR formats can't have color maps.
-            ShaderDecoding::Bgr | ShaderDecoding::Nv12 | ShaderDecoding::Yuy2 => {
-                ColorMapper::OffRGB
-            }
+            // We only have 1D color maps, therefore BGR formats can't have color maps.
+            ShaderDecoding::Bgr => ColorMapper::OffRGB,
         }
     } else if texture_format.components() == 1 {
         // TODO(andreas): support colormap property
@@ -147,7 +153,7 @@ fn color_image_to_gpu(
 
     Ok(ColormappedTexture {
         texture: texture_handle,
-        range,
+        range: [range.min, range.max],
         decode_srgb,
         multiply_rgb_with_alpha,
         gamma,
@@ -157,12 +163,9 @@ fn color_image_to_gpu(
 }
 
 /// Get a valid, finite range for the gpu to use.
-// TODO(#2341): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
-pub fn image_data_range_heuristic(
-    image_stats: &ImageStats,
-    image_format: &ImageFormat,
-) -> Result<Rangef, RangeError> {
-    let (min, max) = image_stats.finite_range.ok_or(RangeError::MissingRange)?;
+// TODO(#4624): The range should be determined by a `DataRange` component. In absence this, heuristics apply.
+pub fn image_data_range_heuristic(image_stats: &ImageStats, image_format: &ImageFormat) -> Rangef {
+    let (min, max) = image_stats.finite_range;
 
     let min = min as f32;
     let max = max as f32;
@@ -171,41 +174,37 @@ pub fn image_data_range_heuristic(
     // (we ignore NaN/Inf values heres, since they are usually there by accident!)
     if image_format.is_float() && 0.0 <= min && max <= 1.0 {
         // Float values that are all between 0 and 1, assume that this is the range.
-        Ok(Rangef::new(0.0, 1.0))
+        Rangef::new(0.0, 1.0)
     } else if 0.0 <= min && max <= 255.0 {
         // If all values are between 0 and 255, assume this is the range.
         // (This is very common, independent of the data type)
-        Ok(Rangef::new(0.0, 255.0))
+        Rangef::new(0.0, 255.0)
     } else if min == max {
         // uniform range. This can explode the colormapping, so let's map all colors to the middle:
-        Ok(Rangef::new(min - 1.0, max + 1.0))
+        Rangef::new(min - 1.0, max + 1.0)
     } else {
         // Use range as is if nothing matches.
-        Ok(Rangef::new(min, max))
+        Rangef::new(min, max)
     }
 }
 
 /// Return whether an image should be assumed to be encoded in sRGB color space ("gamma space", no EOTF applied).
-fn image_decode_srgb_gamma_heuristic(
-    image_stats: &ImageStats,
-    image_format: ImageFormat,
-) -> Result<bool, RangeError> {
-    if let Some(pixel_format) = image_format.pixel_format {
-        match pixel_format {
-            PixelFormat::NV12 | PixelFormat::YUY2 => Ok(true),
-        }
+fn image_decode_srgb_gamma_heuristic(image_stats: &ImageStats, image_format: ImageFormat) -> bool {
+    if image_format.pixel_format.is_some() {
+        // Have to do the conversion because we don't use an `Srgb` texture format.
+        true
     } else {
-        let (min, max) = image_stats.finite_range.ok_or(RangeError::MissingRange)?;
+        let (min, max) = image_stats.finite_range;
 
         #[allow(clippy::if_same_then_else)]
         if 0.0 <= min && max <= 255.0 {
             // If the range is suspiciously reminding us of a "regular image", assume sRGB.
-            Ok(true)
+            true
         } else if image_format.datatype().is_float() && 0.0 <= min && max <= 1.0 {
             // Floating point images between 0 and 1 are often sRGB as well.
-            Ok(true)
+            true
         } else {
-            Ok(false)
+            false
         }
     }
 }
@@ -213,78 +212,123 @@ fn image_decode_srgb_gamma_heuristic(
 /// Determines if and how the shader needs to decode the image.
 ///
 /// Assumes creation as done by [`texture_creation_desc_from_color_image`].
-pub fn required_shader_decode(image_format: &ImageFormat) -> Option<ShaderDecoding> {
-    match image_format.pixel_format {
-        Some(PixelFormat::NV12) => Some(ShaderDecoding::Nv12),
-        Some(PixelFormat::YUY2) => Some(ShaderDecoding::Yuy2),
-        None => {
-            if image_format.datatype() == ChannelDatatype::U8 {
-                // U8 can be converted to RGBA without the shader's help since there's a format for it.
-                None
-            } else {
-                let color_model = image_format.color_model();
-                (color_model == ColorModel::BGR || color_model == ColorModel::BGRA)
-                    .then_some(ShaderDecoding::Bgr)
-            }
+pub fn required_shader_decode(
+    device_caps: &DeviceCaps,
+    image_format: &ImageFormat,
+) -> Option<ShaderDecoding> {
+    let color_model = image_format.color_model();
+
+    if image_format.pixel_format.is_none() && color_model == ColorModel::BGR
+        || color_model == ColorModel::BGRA
+    {
+        // U8 can be converted to RGBA without the shader's help since there's a format for it.
+        if image_format.datatype() == ChannelDatatype::U8 && device_caps.support_bgra_textures() {
+            None
+        } else {
+            Some(ShaderDecoding::Bgr)
         }
+    } else {
+        None
     }
 }
 
-/// Creates a [`Texture2DCreationDesc`] for creating a texture from an [`ImageInfo`].
+/// Creates a [`ImageDataDesc`] for creating a texture from an [`ImageInfo`].
 ///
 /// The resulting texture has requirements as describe by [`required_shader_decode`].
 ///
-/// TODO(andreas): The consumer needs to be aware of bgr and chroma downsampling conversions.
-/// It would be much better if we had a separate `re_renderer`/gpu driven conversion pipeline for this
-/// which would allow us to virtually extend over wgpu's texture formats.
-/// This would allow us to seamlessly support e.g. NV12 on meshes without the mesh shader having to be updated.
+/// TODO(andreas): The consumer needs to be aware of bgr conversions. Other conversions are already taken care of upon upload.
 pub fn texture_creation_desc_from_color_image<'a>(
+    device_caps: &DeviceCaps,
     image: &'a ImageInfo,
     debug_name: &'a str,
-) -> Texture2DCreationDesc<'a> {
+) -> ImageDataDesc<'a> {
     re_tracing::profile_function!();
 
-    if let Some(pixel_format) = image.format.pixel_format {
-        match pixel_format {
-            PixelFormat::NV12 => {
-                // Decoded in the shader, see [`required_shader_decode`].
-                return Texture2DCreationDesc {
-                    label: debug_name.into(),
-                    data: cast_slice_to_cow(image.buffer.as_slice()),
-                    format: TextureFormat::R8Uint,
-                    width: image.width(),
-                    height: image.height() + image.height() / 2, // !
-                };
+    // TODO(#7608): All image data ingestion conversions should all be handled by re_renderer!
+
+    let (data, format) = if let Some(pixel_format) = image.format.pixel_format {
+        let data = cast_slice_to_cow(image.buffer.as_slice());
+        let coefficients = match pixel_format.yuv_matrix_coefficients() {
+            re_types::image::YuvMatrixCoefficients::Bt601 => YuvMatrixCoefficients::Bt601,
+            re_types::image::YuvMatrixCoefficients::Bt709 => YuvMatrixCoefficients::Bt709,
+        };
+
+        let range = match pixel_format.is_limited_yuv_range() {
+            true => YuvRange::Limited,
+            false => YuvRange::Full,
+        };
+
+        let format = match pixel_format {
+            // For historical reasons, using Bt.709 for fully planar formats and Bt.601 for others.
+            //
+            // TODO(andreas): Investigate if there's underlying expectation for some of these (for instance I suspect that NV12 is "usually" BT601).
+            // TODO(andreas): Expose coefficients. It's probably still the better default (for instance that's what jpeg still uses),
+            // but should confirm & back that up!
+            //
+            PixelFormat::Y_U_V24_FullRange | PixelFormat::Y_U_V24_LimitedRange => {
+                SourceImageDataFormat::Yuv {
+                    layout: YuvPixelLayout::Y_U_V444,
+                    range,
+                    coefficients,
+                }
             }
 
-            PixelFormat::YUY2 => {
-                // Decoded in the shader, see [`required_shader_decode`].
-                return Texture2DCreationDesc {
-                    label: debug_name.into(),
-                    data: cast_slice_to_cow(image.buffer.as_slice()),
-                    format: TextureFormat::R8Uint,
-                    width: 2 * image.width(), // !
-                    height: image.height(),
-                };
+            PixelFormat::Y_U_V16_FullRange | PixelFormat::Y_U_V16_LimitedRange => {
+                SourceImageDataFormat::Yuv {
+                    layout: YuvPixelLayout::Y_U_V422,
+                    range,
+                    coefficients,
+                }
             }
-        }
+
+            PixelFormat::Y_U_V12_FullRange | PixelFormat::Y_U_V12_LimitedRange => {
+                SourceImageDataFormat::Yuv {
+                    layout: YuvPixelLayout::Y_U_V420,
+                    range,
+                    coefficients,
+                }
+            }
+
+            PixelFormat::Y8_FullRange | PixelFormat::Y8_LimitedRange => {
+                SourceImageDataFormat::Yuv {
+                    layout: YuvPixelLayout::Y400,
+                    range,
+                    coefficients,
+                }
+            }
+
+            PixelFormat::NV12 => SourceImageDataFormat::Yuv {
+                layout: YuvPixelLayout::Y_UV420,
+                range,
+                coefficients,
+            },
+
+            PixelFormat::YUY2 => SourceImageDataFormat::Yuv {
+                layout: YuvPixelLayout::YUYV422,
+                range,
+                coefficients,
+            },
+        };
+
+        (data, format)
     } else {
         let color_model = image.format.color_model();
         let datatype = image.format.datatype();
 
-        let (data, format) = match (color_model, datatype) {
+        match (color_model, datatype) {
             // sRGB(A) handling is done by `ColormappedTexture`.
             // Why not use `Rgba8UnormSrgb`? Because premul must happen _before_ sRGB decode, so we can't
             // use a "Srgb-aware" texture like `Rgba8UnormSrgb` for RGBA.
             (ColorModel::RGB, ChannelDatatype::U8) => (
                 pad_rgb_to_rgba(&image.buffer, u8::MAX).into(),
-                TextureFormat::Rgba8Unorm,
+                SourceImageDataFormat::WgpuCompatible(TextureFormat::Rgba8Unorm),
             ),
-            (ColorModel::RGBA, ChannelDatatype::U8) => {
-                (cast_slice_to_cow(&image.buffer), TextureFormat::Rgba8Unorm)
-            }
+            (ColorModel::RGBA, ChannelDatatype::U8) => (
+                cast_slice_to_cow(&image.buffer),
+                SourceImageDataFormat::WgpuCompatible(TextureFormat::Rgba8Unorm),
+            ),
 
-            // Make use of wgpu's BGR(A)8 formats.
+            // Make use of wgpu's BGR(A)8 formats if possible.
             //
             // From the pov of our on-the-fly decoding textured rect shader this is just a strange special case
             // given that it already has to deal with other BGR(A) formats.
@@ -297,12 +341,30 @@ pub fn texture_creation_desc_from_color_image<'a>(
             // and caches the result alongside with the source data)
             //
             // See also [`required_shader_decode`] which lists this case as a format that does not need to be decoded.
-            (ColorModel::BGR, ChannelDatatype::U8) => (
-                pad_rgb_to_rgba(&image.buffer, u8::MAX).into(),
-                TextureFormat::Bgra8Unorm,
-            ),
+            (ColorModel::BGR, ChannelDatatype::U8) => {
+                let padded_data = pad_rgb_to_rgba(&image.buffer, u8::MAX).into();
+                let texture_format = if required_shader_decode(device_caps, &image.format).is_some()
+                {
+                    TextureFormat::Rgba8Unorm
+                } else {
+                    TextureFormat::Bgra8Unorm
+                };
+                (
+                    padded_data,
+                    SourceImageDataFormat::WgpuCompatible(texture_format),
+                )
+            }
             (ColorModel::BGRA, ChannelDatatype::U8) => {
-                (cast_slice_to_cow(&image.buffer), TextureFormat::Bgra8Unorm)
+                let texture_format = if required_shader_decode(device_caps, &image.format).is_some()
+                {
+                    TextureFormat::Rgba8Unorm
+                } else {
+                    TextureFormat::Bgra8Unorm
+                };
+                (
+                    cast_slice_to_cow(&image.buffer),
+                    SourceImageDataFormat::WgpuCompatible(texture_format),
+                )
             }
 
             _ => {
@@ -314,15 +376,14 @@ pub fn texture_creation_desc_from_color_image<'a>(
                     datatype,
                 );
             }
-        };
-
-        Texture2DCreationDesc {
-            label: debug_name.into(),
-            data,
-            format,
-            width: image.width(),
-            height: image.height(),
         }
+    };
+
+    ImageDataDesc {
+        label: debug_name.into(),
+        data,
+        format,
+        width_height: image.width_height(),
     }
 }
 
@@ -332,6 +393,7 @@ fn depth_image_to_gpu(
     texture_key: u64,
     image: &ImageInfo,
     image_stats: &ImageStats,
+    colormap_with_range: Option<&ColormapWithRange>,
 ) -> anyhow::Result<ColormappedTexture> {
     re_tracing::profile_function!();
 
@@ -348,7 +410,12 @@ fn depth_image_to_gpu(
 
     let datatype = image.format.datatype();
 
-    let range = data_range(image_stats, datatype);
+    let ColormapWithRange {
+        value_range,
+        colormap,
+    } = colormap_with_range
+        .cloned()
+        .unwrap_or_else(|| ColormapWithRange::default_for_depth_images(image_stats));
 
     let texture = get_or_create_texture(render_ctx, texture_key, || {
         general_texture_creation_desc_from_image(debug_name, image, ColorModel::L, datatype)
@@ -357,13 +424,11 @@ fn depth_image_to_gpu(
 
     Ok(ColormappedTexture {
         texture,
-        range,
+        range: value_range,
         decode_srgb: false,
         multiply_rgb_with_alpha: false,
         gamma: 1.0,
-        color_mapper: ColorMapper::Function(colormap_to_re_renderer(
-            image.colormap.unwrap_or(Colormap::Turbo),
-        )),
+        color_mapper: ColorMapper::Function(colormap_to_re_renderer(colormap)),
         shader_decoding: None,
     })
 }
@@ -419,12 +484,11 @@ fn segmentation_image_to_gpu(
             })
             .collect();
 
-        Texture2DCreationDesc {
+        ImageDataDesc {
             label: "class_id_colormap".into(),
             data: data.into(),
-            format: TextureFormat::Rgba8UnormSrgb,
-            width: colormap_width as u32,
-            height: colormap_height as u32,
+            format: SourceImageDataFormat::WgpuCompatible(TextureFormat::Rgba8UnormSrgb),
+            width_height: [colormap_width as u32, colormap_height as u32],
         }
     })
     .context("Failed to create class_id_colormap.")?;
@@ -445,34 +509,6 @@ fn segmentation_image_to_gpu(
     })
 }
 
-fn data_range(image_stats: &ImageStats, datatype: ChannelDatatype) -> [f32; 2] {
-    let default_min = 0.0;
-    let default_max = if datatype.is_float() {
-        1.0
-    } else {
-        datatype.max_value()
-    };
-
-    let range = image_stats
-        .finite_range
-        .unwrap_or((default_min, default_max));
-    let (mut min, mut max) = range;
-
-    if !min.is_finite() {
-        min = default_min;
-    }
-    if !max.is_finite() {
-        max = default_max;
-    }
-
-    if max <= min {
-        min = default_min;
-        max = default_max;
-    }
-
-    [min as f32, max as f32]
-}
-
 /// Uploads the image to a texture in a format that closely resembled the input.
 /// Uses no `Unorm/Snorm` formats.
 fn general_texture_creation_desc_from_image<'a>(
@@ -480,11 +516,8 @@ fn general_texture_creation_desc_from_image<'a>(
     image: &'a ImageInfo,
     color_model: ColorModel,
     datatype: ChannelDatatype,
-) -> Texture2DCreationDesc<'a> {
+) -> ImageDataDesc<'a> {
     re_tracing::profile_function!();
-
-    let width = image.width();
-    let height = image.height();
 
     let buf: &[u8] = image.buffer.as_ref();
 
@@ -592,12 +625,11 @@ fn general_texture_creation_desc_from_image<'a>(
         }
     };
 
-    Texture2DCreationDesc {
+    ImageDataDesc {
         label: debug_name.into(),
         data,
-        format,
-        width,
-        height,
+        format: SourceImageDataFormat::WgpuCompatible(format),
+        width_height: image.width_height(),
     }
 }
 

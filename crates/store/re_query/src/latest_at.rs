@@ -14,7 +14,7 @@ use re_types_core::{
     components::ClearIsRecursive, Component, ComponentName, Loggable as _, SizeBytes,
 };
 
-use crate::{CacheKey, Caches, QueryError};
+use crate::{QueryCache, QueryCacheKey, QueryError};
 
 // --- Public API ---
 
@@ -35,7 +35,7 @@ fn compare_indices(lhs: (TimeInt, RowId), rhs: (TimeInt, RowId)) -> std::cmp::Or
     }
 }
 
-impl Caches {
+impl QueryCache {
     /// Queries for the given `component_names` using latest-at semantics.
     ///
     /// See [`LatestAtResults`] for more information about how to handle the results.
@@ -96,7 +96,7 @@ impl Caches {
                     continue;
                 }
 
-                let key = CacheKey::new(
+                let key = QueryCacheKey::new(
                     clear_entity_path.clone(),
                     query.timeline(),
                     ClearIsRecursive::name(),
@@ -144,7 +144,7 @@ impl Caches {
         }
 
         for component_name in component_names {
-            let key = CacheKey::new(entity_path.clone(), query.timeline(), component_name);
+            let key = QueryCacheKey::new(entity_path.clone(), query.timeline(), component_name);
 
             let cache = Arc::clone(
                 self.latest_at_per_cache_key
@@ -538,10 +538,10 @@ impl LatestAtResults {
 
 // --- Cached implementation ---
 
-/// Caches the results of `LatestAt` queries for a given [`CacheKey`].
+/// Caches the results of `LatestAt` queries for a given [`QueryCacheKey`].
 pub struct LatestAtCache {
     /// For debugging purposes.
-    pub cache_key: CacheKey,
+    pub cache_key: QueryCacheKey,
 
     /// Organized by _query_ time.
     ///
@@ -562,7 +562,7 @@ pub struct LatestAtCache {
 
 impl LatestAtCache {
     #[inline]
-    pub fn new(cache_key: CacheKey) -> Self {
+    pub fn new(cache_key: QueryCacheKey) -> Self {
         Self {
             cache_key,
             per_query_time: Default::default(),
@@ -649,7 +649,8 @@ impl LatestAtCache {
         entity_path: &EntityPath,
         component_name: ComponentName,
     ) -> Option<UnitChunkShared> {
-        re_tracing::profile_scope!("latest_at", format!("{component_name} @ {query:?}"));
+        // Don't do a profile scope here, this can have a lot of overhead when executing many small queries.
+        //re_tracing::profile_scope!("latest_at", format!("{component_name} @ {query:?}"));
 
         debug_assert_eq!(query.timeline(), self.cache_key.timeline);
 
@@ -682,7 +683,9 @@ impl LatestAtCache {
             })
             .clone();
 
-        if query.at() != data_time {
+        // NOTE: Queries that return static data are much cheaper to run, and polluting the query-time cache
+        // just to point to the static tables again and again is very wasteful.
+        if query.at() != data_time && !data_time.is_static() {
             per_query_time
                 .entry(query.at())
                 .or_insert_with(|| LatestAtCachedChunk {

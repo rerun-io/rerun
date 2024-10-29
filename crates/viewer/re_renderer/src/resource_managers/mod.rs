@@ -6,14 +6,12 @@
 //! This is in contrast to the pools in `crate::wgpu_resources` which are exclusively concerned with
 //! low level gpu resources and their efficient allocation.
 
-mod mesh_manager;
-pub use mesh_manager::{GpuMeshHandle, MeshManager};
-
+mod image_data_to_texture;
 mod texture_manager;
-pub use texture_manager::{
-    GpuTexture2D, Texture2DCreationDesc, TextureCreationError, TextureManager2D,
-    TextureManager2DError,
-};
+mod yuv_converter;
 
-mod resource_manager;
-pub use resource_manager::{ResourceHandle, ResourceLifeTime, ResourceManagerError};
+pub use image_data_to_texture::{
+    transfer_image_data_to_texture, ImageDataDesc, ImageDataToTextureError, SourceImageDataFormat,
+};
+pub use texture_manager::{GpuTexture2D, TextureManager2D, TextureManager2DError};
+pub use yuv_converter::{YuvMatrixCoefficients, YuvPixelLayout, YuvRange};

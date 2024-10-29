@@ -18,7 +18,7 @@ use crate::{
     allocator::create_and_fill_uniform_buffer_batch,
     draw_phases::{DrawPhase, OutlineMaskProcessor},
     include_shader_module,
-    resource_managers::{GpuTexture2D, ResourceManagerError},
+    resource_managers::GpuTexture2D,
     view_builder::ViewBuilder,
     wgpu_resources::{
         BindGroupDesc, BindGroupEntry, BindGroupLayoutDesc, GpuBindGroup, GpuBindGroupLayoutHandle,
@@ -44,7 +44,7 @@ mod gpu_data {
     const SAMPLE_TYPE_SINT: u32 = 2;
     const SAMPLE_TYPE_UINT: u32 = 3;
 
-    #[repr(C, align(256))]
+    #[repr(C)]
     #[derive(Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
     pub struct DepthCloudInfoUBO {
         /// The extrinsics of the camera used for the projection.
@@ -62,20 +62,20 @@ mod gpu_data {
         /// Point radius is calculated as world-space depth times this value.
         pub point_radius_from_world_depth: f32,
 
-        /// The maximum depth value in world-space, for use with the colormap.
-        pub max_depth_in_world: f32,
+        /// The minimum and maximum depth value in world-space, for use with the colormap.
+        pub min_max_depth_in_world: [f32; 2],
 
+        // ---
         /// Which colormap should be used.
         pub colormap: u32,
 
-        // ---
         /// One of `SAMPLE_TYPE_*`.
         pub sample_type: u32,
 
         /// Changes over different draw-phases.
         pub radius_boost_in_ui_points: f32,
 
-        pub _row_padding: [f32; 2],
+        pub _row_padding: [f32; 1],
 
         // ---
         pub _end_padding: [wgpu_buffer_types::PaddingRow; 16 - 4 - 3 - 1 - 1 - 1],
@@ -91,7 +91,7 @@ mod gpu_data {
                 depth_camera_intrinsics,
                 world_depth_from_texture_depth,
                 point_radius_from_world_depth,
-                max_depth_in_world,
+                min_max_depth_in_world,
                 depth_dimensions: _,
                 depth_texture,
                 colormap,
@@ -117,7 +117,7 @@ mod gpu_data {
                 outline_mask_id: outline_mask_id.0.unwrap_or_default().into(),
                 world_depth_from_texture_depth: *world_depth_from_texture_depth,
                 point_radius_from_world_depth: *point_radius_from_world_depth,
-                max_depth_in_world: *max_depth_in_world,
+                min_max_depth_in_world: *min_max_depth_in_world,
                 colormap: *colormap as u32,
                 sample_type,
                 radius_boost_in_ui_points,
@@ -145,8 +145,8 @@ pub struct DepthCloud {
     /// Point radius is calculated as world-space depth times this value.
     pub point_radius_from_world_depth: f32,
 
-    /// The maximum depth value in world-space, for use with the colormap.
-    pub max_depth_in_world: f32,
+    /// The minimum and maximum depth value in world-space, for use with the colormap.
+    pub min_max_depth_in_world: [f32; 2],
 
     /// The dimensions of the depth texture in pixels.
     pub depth_dimensions: glam::UVec2,
@@ -168,8 +168,11 @@ pub struct DepthCloud {
 
 impl DepthCloud {
     /// World-space bounding-box.
+    ///
+    /// Assumes max extent to be the maximum depth used for colormapping
+    /// but ignores the minimum depth, using the frustum's origin instead.
     pub fn world_space_bbox(&self) -> re_math::BoundingBox {
-        let max_depth = self.max_depth_in_world;
+        let max_depth = self.min_max_depth_in_world[1];
         let w = self.depth_dimensions.x as f32;
         let h = self.depth_dimensions.y as f32;
         let corners = [
@@ -223,9 +226,6 @@ impl DrawData for DepthCloudDrawData {
 pub enum DepthCloudDrawDataError {
     #[error("Texture format not supported: {0:?} - use float or integer textures instead.")]
     TextureFormatNotSupported(wgpu::TextureFormat),
-
-    #[error(transparent)]
-    ResourceManagerError(#[from] ResourceManagerError),
 }
 
 impl DepthCloudDrawData {
@@ -473,12 +473,12 @@ impl Renderer for DepthCloudRenderer {
         }
     }
 
-    fn draw<'a>(
+    fn draw(
         &self,
-        render_pipelines: &'a GpuRenderPipelinePoolAccessor<'a>,
+        render_pipelines: &GpuRenderPipelinePoolAccessor<'_>,
         phase: DrawPhase,
-        pass: &mut wgpu::RenderPass<'a>,
-        draw_data: &'a Self::RendererDrawData,
+        pass: &mut wgpu::RenderPass<'_>,
+        draw_data: &Self::RendererDrawData,
     ) -> Result<(), DrawError> {
         re_tracing::profile_function!();
         if draw_data.instances.is_empty() {

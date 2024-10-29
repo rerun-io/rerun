@@ -35,6 +35,8 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`ImageFormat`](components/image_format.md): The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).
 * [`ImagePlaneDistance`](components/image_plane_distance.md): The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.
 * [`KeypointId`](components/keypoint_id.md): A 16-bit ID representing a type of semantic keypoint within a class.
+* [`LatLon`](components/lat_lon.md): A geographical position expressed in EPSG:4326 latitude and longitude.
+* [`Length`](components/length.md): Length, or one-dimensional size.
 * [`LineStrip2D`](components/line_strip2d.md): A line strip in 2D space.
 * [`LineStrip3D`](components/line_strip3d.md): A line strip in 3D space.
 * [`MagnificationFilter`](components/magnification_filter.md): Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.
@@ -71,8 +73,9 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`TransformRelation`](components/transform_relation.md): Specifies relation a spatial transform describes.
 * [`Translation3D`](components/translation3d.md): A translation vector in 3D space.
 * [`TriangleIndices`](components/triangle_indices.md): The three indices of a triangle in a triangle mesh.
+* [`ValueRange`](components/value_range.md): Range of expected or valid values, specifying a lower and upper bound.
 * [`Vector2D`](components/vector2d.md): A vector in 2D space.
 * [`Vector3D`](components/vector3d.md): A vector in 3D space.
-* [`VideoTimestamp`](components/video_timestamp.md): Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).
+* [`VideoTimestamp`](components/video_timestamp.md): Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).
 * [`ViewCoordinates`](components/view_coordinates.md): How we interpret the coordinate system of an entity/space.
 

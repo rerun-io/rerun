@@ -3,7 +3,7 @@ title: What is Rerun for?
 order: 100
 ---
 
-Rerun is built to help you understand complex processes that include rich multimodal data, like 2D, 3D, text, time series, tensors, etc.
+Rerun is built to help you understand and improve complex processes that include rich multimodal data, like 2D, 3D, text, time series, tensors, etc.
 It is used in many industries, including robotics, simulation, computer vision,
 or anything that involves a lot of sensors or other signals that evolve over time.
 
@@ -27,4 +27,8 @@ Maybe it turns out that a glare from the sun hit one of the sensors in the wrong
 
 But seeing the world from the point of the view of the robot is not just for debugging - it will also give you ideas on how to improve the algorithms, new test cases to set up, or datasets to collect. It will also let you explain the brains of the robot to your colleagues, boss, and customers. And so on. Seeing is believing, and an image is worth a thousand words, and multimodal temporal logging is worth a thousand images :)
 
-Of course, Rerun is useful for much more than just robots. Any time you have any form of sensors, or 2D or 3D state evolving over time, Rerun would be a great tool.
+While seeing and understanding your data is core to making progress in robotics, there is one more thing:
+You can also use the data you collected for visualization to create new datasets for training and evaluating the models and algorithms that run on your robot.
+Rerun provides query APIs to make it easy to extract clean datasets from your recording for exactly that purpose.
+
+Of course, Rerun is useful for much more than just robots. Any time you have any form of sensors, or 2D or 3D state evolving over time, Rerun is a great tool.

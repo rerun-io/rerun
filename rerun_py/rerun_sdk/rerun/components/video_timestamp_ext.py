@@ -1,18 +1,50 @@
 from __future__ import annotations
 
+from typing import Any, Union
+
 import numpy as np
 import numpy.typing as npt
 
-from .. import components, datatypes
+from rerun.error_utils import catch_and_log_exceptions
+
+from .. import components
 
 
 class VideoTimestampExt:
     """Extension for [VideoTimestamp][rerun.components.VideoTimestamp]."""
 
-    # Implementation note:
-    # We could add an init method that deals with seconds/milliseconds/nanoseconds etc.
-    # However, this would require _a lot_ of slow parameter validation on a per timestamp basis.
-    # When in actuallity, this data practically always comes in homogeneous batches.
+    def __init__(
+        self: Any,
+        *,
+        nanoseconds: Union[int, None] = None,
+        seconds: Union[float, None] = None,
+    ):
+        """
+        Create a new instance of the VideoTimestamp component.
+
+        Parameters
+        ----------
+        nanoseconds:
+            Presentation timestamp in nanoseconds.
+            Mutually exclusive with `seconds`.
+        seconds:
+            Presentation timestamp in seconds.
+            Mutually exclusive with `nanoseconds`.
+
+        """
+
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            if seconds is not None:
+                if nanoseconds is not None:
+                    raise ValueError("Cannot specify both `seconds` and `nanoseconds`.")
+                nanoseconds = int(seconds * 1e9 + 0.5)
+            elif nanoseconds is None:
+                raise ValueError("Either `seconds` or `nanoseconds` must be specified.")
+
+            self.__attrs_init__(timestamp_ns=nanoseconds)
+            return
+
+        self.__attrs_clear__()
 
     @staticmethod
     def seconds(
@@ -59,7 +91,4 @@ class VideoTimestampExt:
         """
         nanoseconds = np.asarray(nanoseconds, dtype=np.int64)
 
-        return components.VideoTimestampBatch([
-            components.VideoTimestamp(video_time=ns, time_mode=datatypes.VideoTimeMode.Nanoseconds)
-            for ns in nanoseconds
-        ])
+        return components.VideoTimestampBatch([components.VideoTimestamp(nanoseconds=ns) for ns in nanoseconds])

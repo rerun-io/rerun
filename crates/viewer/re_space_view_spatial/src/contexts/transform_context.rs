@@ -135,7 +135,7 @@ pub struct TransformContext {
     /// All unreachable descendant paths of `reference_path`.
     unreachable_descendants: Vec<(EntityPath, UnreachableTransformReason)>,
 
-    /// The first parent of reference_path that is no longer reachable.
+    /// The first parent of `reference_path` that is no longer reachable.
     first_unreachable_parent: Option<(EntityPath, UnreachableTransformReason)>,
 }
 
@@ -529,16 +529,8 @@ fn query_and_resolve_tree_transform_at_entity(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
+    transform3d_components: impl Iterator<Item = re_types::ComponentName>,
 ) -> Option<glam::Affine3A> {
-    let Some(transform3d_components) =
-        TransformComponentTracker::access(entity_db.store_id(), |tracker| {
-            tracker.transform3d_components(entity_path).cloned()
-        })
-        .flatten()
-    else {
-        return None;
-    };
-
     // TODO(#6743): Doesn't take into account overrides.
     let result = entity_db.latest_at(query, entity_path, transform3d_components);
     if result.components.is_empty() {
@@ -575,16 +567,8 @@ fn query_and_resolve_instance_poses_at_entity(
     entity_path: &EntityPath,
     entity_db: &EntityDb,
     query: &LatestAtQuery,
+    pose3d_components: impl Iterator<Item = re_types::ComponentName>,
 ) -> Vec<glam::Affine3A> {
-    let Some(pose3d_components) =
-        TransformComponentTracker::access(entity_db.store_id(), |tracker| {
-            tracker.pose3d_components(entity_path).cloned()
-        })
-        .flatten()
-    else {
-        return Vec::new();
-    };
-
     // TODO(#6743): Doesn't take into account overrides.
     let result = entity_db.latest_at(query, entity_path, pose3d_components);
 
@@ -726,6 +710,7 @@ fn query_and_resolve_obj_from_pinhole_image_plane(
 }
 
 /// Resolved transforms at an entity.
+#[derive(Default)]
 struct TransformsAtEntity {
     parent_from_entity_tree_transform: Option<glam::Affine3A>,
     entity_from_instance_poses: Vec<glam::Affine3A>,
@@ -741,23 +726,49 @@ fn transforms_at(
 ) -> Result<TransformsAtEntity, UnreachableTransformReason> {
     re_tracing::profile_function!();
 
-    let transforms_at_entity = TransformsAtEntity {
-        parent_from_entity_tree_transform: query_and_resolve_tree_transform_at_entity(
+    let potential_transform_components =
+        TransformComponentTracker::access(entity_db.store_id(), |tracker| {
+            tracker.potential_transform_components(entity_path).cloned()
+        })
+        .flatten()
+        .unwrap_or_default();
+
+    let parent_from_entity_tree_transform = if potential_transform_components.transform3d.is_empty()
+    {
+        None
+    } else {
+        query_and_resolve_tree_transform_at_entity(
             entity_path,
             entity_db,
             query,
-        ),
-        entity_from_instance_poses: query_and_resolve_instance_poses_at_entity(
+            potential_transform_components.transform3d.iter().copied(),
+        )
+    };
+    let entity_from_instance_poses = if potential_transform_components.pose3d.is_empty() {
+        Vec::new()
+    } else {
+        query_and_resolve_instance_poses_at_entity(
             entity_path,
             entity_db,
             query,
-        ),
-        instance_from_pinhole_image_plane: query_and_resolve_obj_from_pinhole_image_plane(
+            potential_transform_components.pose3d.iter().copied(),
+        )
+    };
+    let instance_from_pinhole_image_plane = if potential_transform_components.pinhole {
+        query_and_resolve_obj_from_pinhole_image_plane(
             entity_path,
             entity_db,
             query,
             pinhole_image_plane_distance,
-        ),
+        )
+    } else {
+        None
+    };
+
+    let transforms_at_entity = TransformsAtEntity {
+        parent_from_entity_tree_transform,
+        entity_from_instance_poses,
+        instance_from_pinhole_image_plane,
     };
 
     // Handle pinhole encounters.
@@ -773,13 +784,16 @@ fn transforms_at(
     }
 
     // If there is any other transform, we ignore `DisconnectedSpace`.
-    if transforms_at_entity
+    let no_other_transforms = transforms_at_entity
         .parent_from_entity_tree_transform
         .is_none()
         && transforms_at_entity.entity_from_instance_poses.is_empty()
         && transforms_at_entity
             .instance_from_pinhole_image_plane
-            .is_none()
+            .is_none();
+
+    if no_other_transforms
+        && potential_transform_components.disconnected_space
         && entity_db
             .latest_at_component::<DisconnectedSpace>(entity_path, query)
             .map_or(false, |(_index, res)| **res)

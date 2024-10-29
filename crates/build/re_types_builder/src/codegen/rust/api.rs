@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 use anyhow::Context as _;
 use camino::{Utf8Path, Utf8PathBuf};
@@ -57,6 +57,7 @@ impl CodeGenerator for RustCodeGenerator {
         arrow_registry: &ArrowRegistry,
     ) -> BTreeMap<Utf8PathBuf, String> {
         let mut files_to_write: BTreeMap<Utf8PathBuf, String> = Default::default();
+        let mut extension_contents_for_fqname: HashMap<String, String> = Default::default();
 
         for object_kind in ObjectKind::ALL {
             self.generate_folder(
@@ -65,11 +66,17 @@ impl CodeGenerator for RustCodeGenerator {
                 arrow_registry,
                 object_kind,
                 &mut files_to_write,
+                &mut extension_contents_for_fqname,
             );
         }
 
         generate_blueprint_validation(reporter, objects, &mut files_to_write);
-        generate_reflection(reporter, objects, &mut files_to_write);
+        generate_reflection(
+            reporter,
+            objects,
+            &extension_contents_for_fqname,
+            &mut files_to_write,
+        );
 
         files_to_write
     }
@@ -83,6 +90,7 @@ impl RustCodeGenerator {
         arrow_registry: &ArrowRegistry,
         object_kind: ObjectKind,
         files_to_write: &mut BTreeMap<Utf8PathBuf, String>,
+        extension_contents_for_fqname: &mut HashMap<String, String>,
     ) {
         let crates_root_path = self.workspace_path.join("crates");
 
@@ -104,8 +112,13 @@ impl RustCodeGenerator {
             let filename = format!("{filename_stem}.rs");
 
             let filepath = module_path.join(filename);
-
             let mut code = generate_object_file(reporter, objects, arrow_registry, obj, &filepath);
+
+            if let Ok(extension_contents) =
+                std::fs::read_to_string(module_path.join(format!("{filename_stem}_ext.rs")))
+            {
+                extension_contents_for_fqname.insert(obj.fqname.clone(), extension_contents);
+            }
 
             if crate_name == "re_types_core" {
                 code = code.replace("::re_types_core", "crate");
@@ -159,6 +172,11 @@ fn generate_object_file(
     code.push_str("#![allow(clippy::too_many_lines)]\n");
     if obj.deprecation_notice().is_some() {
         code.push_str("#![allow(deprecated)]\n");
+    }
+
+    if obj.is_enum() {
+        // Needed for PixelFormat. Should we limit this via attribute to just that?
+        code.push_str("#![allow(non_camel_case_types)]\n");
     }
 
     code.push_str("\n\n");
@@ -975,6 +993,7 @@ fn quote_trait_impls_for_datatype_or_component(
                 // re_tracing::profile_function!();
 
                 #![allow(clippy::wildcard_imports)]
+                #![allow(clippy::manual_is_variant_and)]
                 use arrow2::{datatypes::*, array::*};
                 use ::re_types_core::{Loggable as _, ResultExt as _};
 

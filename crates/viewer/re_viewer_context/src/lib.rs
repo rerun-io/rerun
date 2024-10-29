@@ -6,7 +6,7 @@ mod annotations;
 mod app_options;
 mod blueprint_helpers;
 mod blueprint_id;
-mod caches;
+mod cache;
 mod collapsed_id;
 mod command_sender;
 mod component_fallbacks;
@@ -40,7 +40,7 @@ pub use annotations::{
 pub use app_options::AppOptions;
 pub use blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes};
 pub use blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, SpaceViewId};
-pub use caches::{Cache, Caches};
+pub use cache::{Cache, Caches, ImageDecodeCache, ImageStatsCache, TensorStatsCache, VideoCache};
 pub use collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
 pub use command_sender::{
     command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
@@ -51,7 +51,7 @@ pub use component_fallbacks::{
 };
 pub use component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, UiLayout};
 pub use contents::{blueprint_id_to_tile_id, Contents, ContentsName};
-pub use image_info::ImageInfo;
+pub use image_info::{ColormapWithRange, ImageInfo};
 pub use item::Item;
 pub use maybe_mut_ref::MaybeMutRef;
 pub use query_context::{
@@ -64,11 +64,12 @@ pub use selection_state::{
     ItemSpaceContext, SelectionHighlight,
 };
 pub use space_view::{
-    DataResult, IdentifiedViewSystem, OverridePath, PerSystemDataResults, PerSystemEntities,
-    PropertyOverrides, RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass, SpaceViewClassExt,
-    SpaceViewClassLayoutPriority, SpaceViewClassRegistry, SpaceViewClassRegistryError,
-    SpaceViewEntityHighlight, SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewSpawnHeuristics,
-    SpaceViewState, SpaceViewStateExt, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
+    DataResult, IdentifiedViewSystem, OptionalSpaceViewEntityHighlight, OverridePath,
+    PerSystemDataResults, PerSystemEntities, PropertyOverrides, RecommendedSpaceView,
+    SmallVisualizerSet, SpaceViewClass, SpaceViewClassExt, SpaceViewClassLayoutPriority,
+    SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewEntityHighlight,
+    SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewSpawnHeuristics, SpaceViewState,
+    SpaceViewStateExt, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
     SystemExecutionOutput, ViewContext, ViewContextCollection, ViewContextSystem, ViewQuery,
     ViewStates, ViewSystemIdentifier, VisualizableFilterContext,
     VisualizerAdditionalApplicabilityFilter, VisualizerCollection, VisualizerQueryInfo,
@@ -76,7 +77,7 @@ pub use space_view::{
 };
 pub use store_context::StoreContext;
 pub use store_hub::StoreHub;
-pub use tensor::{ImageDecodeCache, ImageStats, ImageStatsCache, TensorStats, TensorStatsCache};
+pub use tensor::{ImageStats, TensorStats};
 pub use time_control::{Looping, PlayState, TimeControl, TimeView};
 pub use time_drag_value::TimeDragValue;
 pub use typed_entity_collections::{

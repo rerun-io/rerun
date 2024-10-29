@@ -1,12 +1,16 @@
 use nohash_hasher::IntSet;
 
-use re_chunk_store::{LatestAtQuery, RangeQuery, RowId};
-use re_log_types::TimeInt;
+use crate::{
+    results_ext::{HybridLatestAtResults, HybridRangeResults},
+    HybridResults,
+};
+use re_chunk_store::{external::re_chunk::ArrowArray, LatestAtQuery, RangeQuery, RowId};
+use re_log_types::{TimeInt, Timeline};
 use re_query::LatestAtResults;
-use re_types_core::ComponentName;
-use re_viewer_context::{DataResult, ViewContext, ViewerContext};
-
-use crate::results_ext::{HybridLatestAtResults, HybridRangeResults};
+use re_types_core::{Archetype, ComponentName};
+use re_viewer_context::{
+    DataResult, QueryContext, QueryRange, ViewContext, ViewQuery, ViewerContext,
+};
 
 // ---
 
@@ -122,6 +126,48 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     }
 }
 
+pub fn query_archetype_with_history<'a>(
+    ctx: &'a ViewContext<'a>,
+    timeline: &Timeline,
+    timeline_cursor: TimeInt,
+    query_range: &QueryRange,
+    component_names: impl IntoIterator<Item = ComponentName>,
+    data_result: &'a re_viewer_context::DataResult,
+) -> HybridResults<'a> {
+    match query_range {
+        QueryRange::TimeRange(time_range) => {
+            let range_query = RangeQuery::new(
+                *timeline,
+                re_log_types::ResolvedTimeRange::from_relative_time_range(
+                    time_range,
+                    timeline_cursor,
+                ),
+            );
+            let results = range_with_blueprint_resolved_data(
+                ctx,
+                None,
+                &range_query,
+                data_result,
+                component_names,
+            );
+            (range_query, results).into()
+        }
+        QueryRange::LatestAt => {
+            let latest_query = LatestAtQuery::new(*timeline, timeline_cursor);
+            let query_shadowed_defaults = false;
+            let results = latest_at_with_blueprint_resolved_data(
+                ctx,
+                None,
+                &latest_query,
+                data_result,
+                component_names,
+                query_shadowed_defaults,
+            );
+            (latest_query, results).into()
+        }
+    }
+}
+
 fn query_overrides<'a>(
     ctx: &ViewerContext<'_>,
     data_result: &re_viewer_context::DataResult,
@@ -194,11 +240,18 @@ pub trait DataResultQuery {
         latest_at_query: &'a LatestAtQuery,
     ) -> HybridLatestAtResults<'a>;
 
+    fn query_archetype_with_history<'a, A: re_types_core::Archetype>(
+        &'a self,
+        ctx: &'a ViewContext<'a>,
+        view_query: &ViewQuery<'_>,
+    ) -> HybridResults<'a>;
+
     fn best_fallback_for<'a>(
         &self,
-        ctx: &'a ViewContext<'a>,
+        query_ctx: &'a QueryContext<'a>,
+        visualizer_collection: &'a re_viewer_context::VisualizerCollection,
         component: re_types_core::ComponentName,
-    ) -> Option<&'a dyn re_viewer_context::ComponentFallbackProvider>;
+    ) -> Box<dyn ArrowArray>;
 }
 
 impl DataResultQuery for DataResult {
@@ -218,22 +271,38 @@ impl DataResultQuery for DataResult {
         )
     }
 
+    fn query_archetype_with_history<'a, A: Archetype>(
+        &'a self,
+        ctx: &'a ViewContext<'a>,
+        view_query: &ViewQuery<'_>,
+    ) -> HybridResults<'a> {
+        query_archetype_with_history(
+            ctx,
+            &view_query.timeline,
+            view_query.latest_at,
+            self.query_range(),
+            A::all_components().iter().copied(),
+            self,
+        )
+    }
+
     fn best_fallback_for<'a>(
         &self,
-        ctx: &'a ViewContext<'a>,
+        query_ctx: &'a QueryContext<'a>,
+        visualizer_collection: &'a re_viewer_context::VisualizerCollection,
         component: re_types_core::ComponentName,
-    ) -> Option<&'a dyn re_viewer_context::ComponentFallbackProvider> {
+    ) -> Box<dyn ArrowArray> {
         // TODO(jleibs): This should be cached somewhere
         for vis in &self.visualizers {
-            let Ok(vis) = ctx.visualizer_collection.get_by_identifier(*vis) else {
+            let Ok(vis) = visualizer_collection.get_by_identifier(*vis) else {
                 continue;
             };
 
             if vis.visualizer_query_info().queried.contains(&component) {
-                return Some(vis.as_fallback_provider());
+                return vis.fallback_provider().fallback_for(query_ctx, component);
             }
         }
 
-        None
+        query_ctx.viewer_ctx.placeholder_for(component)
     }
 }

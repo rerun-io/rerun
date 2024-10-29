@@ -1,6 +1,5 @@
 use itertools::izip;
 use re_chunk_store::ResolvedTimeRange;
-use re_chunk_store::RowId;
 use re_entity_db::EntityPath;
 use re_log_types::TimeInt;
 use re_log_types::TimePoint;
@@ -18,7 +17,6 @@ use re_viewer_context::{
 
 #[derive(Debug, Clone)]
 pub struct Entry {
-    pub row_id: RowId,
     pub entity_path: EntityPath,
     pub time: TimeInt,
     pub timepoint: TimePoint,
@@ -73,7 +71,7 @@ impl VisualizerSystem for TextLogSystem {
         self
     }
 
-    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
         self
     }
 }
@@ -119,7 +117,7 @@ impl TextLogSystem {
 
         let all_frames = izip!(all_timepoints, all_frames);
 
-        for (timepoint, ((data_time, row_id), bodies, levels, colors)) in all_frames {
+        for (timepoint, ((data_time, _row_id), bodies, levels, colors)) in all_frames {
             let levels = levels.as_deref().unwrap_or(&[]).iter().cloned().map(Some);
             let colors = colors
                 .unwrap_or(&[])
@@ -136,7 +134,6 @@ impl TextLogSystem {
 
             for (text, level, color) in results {
                 self.entries.push(Entry {
-                    row_id,
                     entity_path: data_result.entity_path.clone(),
                     time: data_time,
                     timepoint: timepoint.clone(),

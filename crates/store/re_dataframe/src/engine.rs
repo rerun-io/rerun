@@ -1,10 +1,9 @@
-use re_chunk::TransportChunk;
-use re_chunk_store::{
-    ChunkStore, ColumnDescriptor, LatestAtQueryExpression, QueryExpression, RangeQueryExpression,
-};
-use re_query::Caches;
+use re_chunk::{EntityPath, TransportChunk};
+use re_chunk_store::{ChunkStore, ColumnDescriptor, QueryExpression};
+use re_log_types::EntityPathFilter;
+use re_query::QueryCache;
 
-use crate::{LatestAtQueryHandle, RangeQueryHandle};
+use crate::QueryHandle;
 
 // Used all over in docstrings.
 #[allow(unused_imports)]
@@ -19,42 +18,20 @@ use re_chunk_store::ComponentColumnDescriptor;
 // TODO(cmc): add an `arrow` feature to transportchunk in a follow-up pr and call it a day.
 pub type RecordBatch = TransportChunk;
 
-/// A generic handle to a query that is ready to be executed.
-pub enum QueryHandle<'a> {
-    LatestAt(LatestAtQueryHandle<'a>),
-    Range(RangeQueryHandle<'a>),
-}
-
-impl<'a> From<LatestAtQueryHandle<'a>> for QueryHandle<'a> {
-    #[inline]
-    fn from(query: LatestAtQueryHandle<'a>) -> Self {
-        Self::LatestAt(query)
-    }
-}
-
-impl<'a> From<RangeQueryHandle<'a>> for QueryHandle<'a> {
-    #[inline]
-    fn from(query: RangeQueryHandle<'a>) -> Self {
-        Self::Range(query)
-    }
-}
-
 // --- Queries ---
 
 /// A handle to our user-facing query engine.
 ///
 /// See the following methods:
 /// * [`QueryEngine::schema`]: get the complete schema of the recording.
-/// * [`QueryEngine::latest_at`]: get a snapshot of the latest state of a dataset at specific point in time.
-/// * [`QueryEngine::range`]: get successive dense snapshots of the latest state of a dataset over
-///   a range of time.
+/// * [`QueryEngine::query`]: execute a [`QueryExpression`] on the recording.
 //
 // TODO(cmc): This needs to be a refcounted type that can be easily be passed around: the ref has
 // got to go. But for that we need to generally introduce `ChunkStoreHandle` and `QueryCacheHandle`
 // first, and this is not as straightforward as it seems.
 pub struct QueryEngine<'a> {
     pub store: &'a ChunkStore,
-    pub cache: &'a Caches,
+    pub cache: &'a QueryCache,
 }
 
 impl QueryEngine<'_> {
@@ -64,111 +41,38 @@ impl QueryEngine<'_> {
     /// entity that has been written to the store so far.
     ///
     /// The order of the columns to guaranteed to be in a specific order:
-    /// * first, the control columns in lexical order (`RowId`);
-    /// * second, the time columns in lexical order (`frame_nr`, `log_time`, ...);
-    /// * third, the component columns in lexical order (`Color`, `Radius, ...`).
+    /// * first, the time columns in lexical order (`frame_nr`, `log_time`, ...);
+    /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
     #[inline]
     pub fn schema(&self) -> Vec<ColumnDescriptor> {
         self.store.schema()
     }
 
-    /// Returns the filtered schema for the given query expression.
-    ///
-    /// This will only include columns which may contain non-empty values from the perspective of
-    /// the query semantics.
+    /// Returns the filtered schema for the given [`QueryExpression`].
     ///
     /// The order of the columns is guaranteed to be in a specific order:
-    /// * first, the control columns in lexical order (`RowId`);
-    /// * second, the time columns in lexical order (`frame_nr`, `log_time`, ...);
-    /// * third, the component columns in lexical order (`Color`, `Radius, ...`).
-    ///
-    /// This does not run a full-blown query, but rather just inspects `Chunk`-level metadata,
-    /// which can lead to false positives, but makes this very cheap to compute.
+    /// * first, the time columns in lexical order (`frame_nr`, `log_time`, ...);
+    /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
     #[inline]
     pub fn schema_for_query(&self, query: &QueryExpression) -> Vec<ColumnDescriptor> {
         self.store.schema_for_query(query)
     }
 
-    /// Creates a new appropriate [`QueryHandle`].
-    ///
-    /// This is simply a helper for:
-    /// * [`Self::latest_at`]
-    /// * [`Self::range`]
+    /// Starts a new query by instantiating a [`QueryHandle`].
     #[inline]
-    pub fn query(
-        &self,
-        query: &QueryExpression,
-        columns: Option<Vec<ColumnDescriptor>>,
-    ) -> QueryHandle<'_> {
-        match query {
-            QueryExpression::LatestAt(query) => self.latest_at(query, columns).into(),
-            QueryExpression::Range(query) => self.range(query, columns).into(),
-        }
+    pub fn query(&self, query: QueryExpression) -> QueryHandle<'_> {
+        QueryHandle::new(self, query)
     }
 
-    /// Creates a new [`LatestAtQueryHandle`], which can be used to perform a latest-at query.
-    ///
-    /// Creating a handle is very cheap as it doesn't perform any kind of querying.
-    ///
-    /// If `columns` is specified, the schema of the result will strictly follow this specification.
-    /// [`ComponentColumnDescriptor::datatype`] and [`ComponentColumnDescriptor::is_static`] are ignored.
-    ///
-    /// Any provided [`ColumnDescriptor`]s that don't match a column in the result will still be included, but the
-    /// data will be null for the entire column.
-    /// If `columns` is left unspecified, the schema of the returned result will correspond to what's returned by
-    /// [`Self::schema_for_query`].
-    /// Seel also [`LatestAtQueryHandle::schema`].
-    ///
-    /// Because data is often logged concurrently across multiple timelines, the non-primary timelines
-    /// are still valid data-columns to include in the result. So a user could, for example, query
-    /// for a range of data on the `frame` timeline, but still include the `log_time` timeline in
-    /// the result.
-    //
-    // TODO(#7365): We need to stop using `ComponentColumnDescriptor` as input to the dataframe APIs.
-    // It's fundamentally flawed: there is no way to guarantee that passed-in schema will match the
-    // returned schema.
-    // E.g. what are we supposed to do if the user pass in a non-nullable datatype, and the
-    // column does not exist? Or its state only starts halfway through the time range? Then we
-    // need to insert null values but the datatype is non-nullable…
+    /// Returns an iterator over all the [`EntityPath`]s present in the database.
     #[inline]
-    pub fn latest_at(
+    pub fn iter_entity_paths<'a>(
         &self,
-        query: &LatestAtQueryExpression,
-        columns: Option<Vec<ColumnDescriptor>>,
-    ) -> LatestAtQueryHandle<'_> {
-        LatestAtQueryHandle::new(self, query.clone(), columns)
-    }
-
-    /// Creates a new [`RangeQueryHandle`], which can be used to perform a range query.
-    ///
-    /// Creating a handle is very cheap as it doesn't perform any kind of querying.
-    ///
-    /// If `columns` is specified, the schema of the result will strictly follow this specification.
-    /// [`ComponentColumnDescriptor::datatype`] and [`ComponentColumnDescriptor::is_static`] are ignored.
-    ///
-    /// Any provided [`ColumnDescriptor`]s that don't match a column in the result will still be included, but the
-    /// data will be null for the entire column.
-    /// If `columns` is left unspecified, the schema of the returned result will correspond to what's returned by
-    /// [`Self::schema_for_query`].
-    /// Seel also [`RangeQueryHandle::schema`].
-    ///
-    /// Because data is often logged concurrently across multiple timelines, the non-primary timelines
-    /// are still valid data-columns to include in the result. So a user could, for example, query
-    /// for a range of data on the `frame` timeline, but still include the `log_time` timeline in
-    /// the result.
-    //
-    // TODO(#7365): We need to stop using `ComponentColumnDescriptor` as input to the dataframe APIs.
-    // It's fundamentally flawed: there is no way to guarantee that passed-in schema will match the
-    // returned schema.
-    // E.g. what are we supposed to do if the user pass in a non-nullable datatype, and the
-    // column does not exist? Or its state only starts halfway through the time range? Then we
-    // need to insert null values but the datatype is non-nullable…
-    #[inline]
-    pub fn range(
-        &self,
-        query: &RangeQueryExpression,
-        columns: Option<Vec<ColumnDescriptor>>,
-    ) -> RangeQueryHandle<'_> {
-        RangeQueryHandle::new(self, query.clone(), columns)
+        filter: &'a EntityPathFilter,
+    ) -> impl Iterator<Item = EntityPath> + 'a {
+        self.store
+            .all_entities()
+            .into_iter()
+            .filter(|entity_path| filter.matches(entity_path))
     }
 }

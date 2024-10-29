@@ -1,29 +1,6 @@
 namespace rerun.blueprint.archetypes;
 
 
-// Rationale behind the present data modelling:
-// - Avoid using `union` at all cost.
-// - An explicit "mode" enum maps well with a UI toggle and API parameter, and enabled a hard disambiguation when
-//   settings are present for both the latest-at and range modes.
-// - Timestamps are hard-invalidated by a change of timeline. So we keep them on a per-timeline basis.
-
-// TODO(#7067): add visible components (maybe in another archetype?)
-// TODO(#7072): add (optional) PoV components
-// Note: component list should be modelled as:
-//     component PovComponents {
-//        datatype ComponentNames {
-//            value: [string];
-//        }
-//     }
-//
-// Motivation:
-// - Chances are high that the user prefers to have their pov components _not_ invalidated by a changeof timeline.
-// - That is even though a component might _technically_ be soft-invalidated by a change of timeline (e.g. if it was
-//   not logged on that particular timeline). But we have to deal regardless with potentially invalid component, so this
-//   doesn't change the story much.
-
-// --
-
 /// The query for the dataframe view.
 table DataframeQuery (
     "attr.rerun.scope": "blueprint"
@@ -32,20 +9,21 @@ table DataframeQuery (
 
     /// The timeline for this query.
     ///
-    /// If unset, use the time panel's timeline and a latest-at query, ignoring all other components of this archetype.
+    /// If unset, the timeline currently active on the time panel is used.
     timeline: rerun.blueprint.components.TimelineName ("attr.rerun.component_optional", nullable, order: 100);
 
-    /// Kind of query: latest-at or range.
-    kind: rerun.blueprint.components.QueryKind ("attr.rerun.component_optional", nullable,order: 200);
-
-    /// Configuration for latest-at queries.
+    /// If provided, only rows whose timestamp is within this range will be shown.
     ///
-    /// Note: configuration as saved on a per-timeline basis.
-    latest_at_queries: rerun.blueprint.components.LatestAtQueries ("attr.rerun.component_optional", nullable,order: 400);
+    /// Note: will be unset as soon as `timeline` is changed.
+    filter_by_range: rerun.blueprint.components.FilterByRange ("attr.rerun.component_optional", nullable, order: 200);
 
-    /// Configuration for the time range queries.
-    ///
-    /// Note: configuration as saved on a per-timeline basis.
-    time_range_queries: rerun.blueprint.components.TimeRangeQueries ("attr.rerun.component_optional", nullable,order: 500);
+    /// If provided, only show rows which contains a logged event for the specified component.
+    filter_is_not_null: rerun.blueprint.components.FilterIsNotNull ("attr.rerun.component_optional", nullable, order: 300);
+
+    /// Should empty cells be filled with latest-at queries?
+    apply_latest_at: rerun.blueprint.components.ApplyLatestAt ("attr.rerun.component_optional", nullable, order: 400);
+
+    /// Selected columns. If unset, all columns are selected.
+    select: rerun.blueprint.components.SelectedColumns ("attr.rerun.component_optional", nullable, order: 500);
 }
 

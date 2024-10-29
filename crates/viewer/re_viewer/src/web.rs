@@ -316,6 +316,7 @@ pub struct AppOptions {
     url: Option<StringOrStringArray>,
     manifest_url: Option<String>,
     render_backend: Option<String>,
+    video_decoder: Option<String>,
     hide_welcome_screen: Option<bool>,
     panel_state_overrides: Option<PanelStateOverrides>,
     fullscreen: Option<FullscreenOptions>,
@@ -362,20 +363,46 @@ fn create_app(
     let app_env = crate::AppEnvironment::Web {
         url: cc.integration_info.web_info.location.url.clone(),
     };
-    let enable_history = app_options.enable_history.unwrap_or(false);
+
+    let AppOptions {
+        url,
+        manifest_url,
+        render_backend,
+        video_decoder,
+        hide_welcome_screen,
+        panel_state_overrides,
+        fullscreen,
+        enable_history,
+
+        notebook,
+        persist,
+    } = app_options;
+
+    let enable_history = enable_history.unwrap_or(false);
+
+    let video_decoder_hw_acceleration = video_decoder.and_then(|s| match s.parse() {
+        Err(()) => {
+            re_log::warn_once!("Failed to parse --video-decoder value: {s}. Ignoring.");
+            None
+        }
+        Ok(hw_accell) => Some(hw_accell),
+    });
+
     let startup_options = crate::StartupOptions {
         memory_limit: re_memory::MemoryLimit {
             // On wasm32 we only have 4GB of memory to play around with.
             max_bytes: Some(2_500_000_000),
         },
         location: Some(cc.integration_info.web_info.location.clone()),
-        persist_state: app_options.persist.unwrap_or(true),
-        is_in_notebook: app_options.notebook.unwrap_or(false),
+        persist_state: persist.unwrap_or(true),
+        is_in_notebook: notebook.unwrap_or(false),
         expect_data_soon: None,
-        force_wgpu_backend: None,
-        hide_welcome_screen: app_options.hide_welcome_screen.unwrap_or(false),
-        fullscreen_options: app_options.fullscreen.clone(),
-        panel_state_overrides: app_options.panel_state_overrides.unwrap_or_default().into(),
+        force_wgpu_backend: render_backend.clone(),
+        video_decoder_hw_acceleration,
+        hide_welcome_screen: hide_welcome_screen.unwrap_or(false),
+        fullscreen_options: fullscreen.clone(),
+        panel_state_overrides: panel_state_overrides.unwrap_or_default().into(),
+
         enable_history,
     };
     crate::customize_eframe_and_setup_renderer(cc)?;
@@ -392,11 +419,11 @@ fn create_app(
         install_popstate_listener(&mut app).ok_or_log_js_error();
     }
 
-    if let Some(manifest_url) = app_options.manifest_url {
+    if let Some(manifest_url) = manifest_url {
         app.set_examples_manifest_url(manifest_url);
     }
 
-    if let Some(urls) = app_options.url {
+    if let Some(urls) = url {
         let follow_if_http = false;
         for url in urls.into_inner() {
             if let Some(receiver) =

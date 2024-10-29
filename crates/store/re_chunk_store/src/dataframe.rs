@@ -1,24 +1,17 @@
 //! All the APIs used specifically for `re_dataframe`.
 
-use std::collections::BTreeSet;
+use std::collections::{BTreeMap, BTreeSet};
 
-use ahash::HashSet;
 use arrow2::{
     array::ListArray as ArrowListArray,
     datatypes::{DataType as ArrowDatatype, Field as ArrowField},
 };
-use itertools::Itertools as _;
 
-use re_chunk::LatestAtQuery;
-use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_log_types::{EntityPathFilter, ResolvedTimeRange};
-use re_types_core::{ArchetypeName, ComponentName, Loggable as _};
+use re_chunk::TimelineName;
+use re_log_types::{ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, Timeline};
+use re_types_core::{ArchetypeName, ComponentName};
 
-use crate::ChunkStore;
-
-// Used all over in docstrings.
-#[allow(unused_imports)]
-use crate::RowId;
+use crate::{ChunkStore, ColumnMetadata};
 
 // --- Descriptors ---
 
@@ -29,12 +22,10 @@ use crate::RowId;
 // Describes any kind of column.
 //
 // See:
-// * [`ControlColumnDescriptor`]
 // * [`TimeColumnDescriptor`]
 // * [`ComponentColumnDescriptor`]
 #[derive(Debug, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum ColumnDescriptor {
-    Control(ControlColumnDescriptor),
     Time(TimeColumnDescriptor),
     Component(ComponentColumnDescriptor),
 }
@@ -43,24 +34,22 @@ impl ColumnDescriptor {
     #[inline]
     pub fn entity_path(&self) -> Option<&EntityPath> {
         match self {
+            Self::Time(_) => None,
             Self::Component(descr) => Some(&descr.entity_path),
-            Self::Control(_) | Self::Time(_) => None,
         }
     }
 
     #[inline]
-    pub fn datatype(&self) -> &ArrowDatatype {
+    pub fn datatype(&self) -> ArrowDatatype {
         match self {
-            Self::Control(descr) => &descr.datatype,
-            Self::Component(descr) => &descr.datatype,
-            Self::Time(descr) => &descr.datatype,
+            Self::Time(descr) => descr.datatype.clone(),
+            Self::Component(descr) => descr.returned_datatype(),
         }
     }
 
     #[inline]
     pub fn to_arrow_field(&self) -> ArrowField {
         match self {
-            Self::Control(descr) => descr.to_arrow_field(),
             Self::Time(descr) => descr.to_arrow_field(),
             Self::Component(descr) => descr.to_arrow_field(),
         }
@@ -69,56 +58,17 @@ impl ColumnDescriptor {
     #[inline]
     pub fn short_name(&self) -> String {
         match self {
-            Self::Control(descr) => descr.component_name.short_name().to_owned(),
             Self::Time(descr) => descr.timeline.name().to_string(),
             Self::Component(descr) => descr.component_name.short_name().to_owned(),
         }
     }
-}
 
-/// Describes a column used to control Rerun's behavior, such as `RowId`.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct ControlColumnDescriptor {
-    /// Semantic name associated with this data.
-    ///
-    /// Example: `RowId::name()`.
-    pub component_name: ComponentName,
-
-    /// The Arrow datatype of the column.
-    pub datatype: ArrowDatatype,
-}
-
-impl PartialOrd for ControlColumnDescriptor {
     #[inline]
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.cmp(other))
-    }
-}
-
-impl Ord for ControlColumnDescriptor {
-    #[inline]
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        let Self {
-            component_name,
-            datatype: _,
-        } = self;
-        component_name.cmp(&other.component_name)
-    }
-}
-
-impl ControlColumnDescriptor {
-    #[inline]
-    pub fn to_arrow_field(&self) -> ArrowField {
-        let Self {
-            component_name,
-            datatype,
-        } = self;
-
-        ArrowField::new(
-            component_name.to_string(),
-            datatype.clone(),
-            false, /* nullable */
-        )
+    pub fn is_static(&self) -> bool {
+        match self {
+            Self::Time(_) => false,
+            Self::Component(descr) => descr.is_static,
+        }
     }
 }
 
@@ -152,12 +102,13 @@ impl Ord for TimeColumnDescriptor {
 
 impl TimeColumnDescriptor {
     #[inline]
+    // Time column must be nullable since static data doesn't have a time.
     pub fn to_arrow_field(&self) -> ArrowField {
         let Self { timeline, datatype } = self;
         ArrowField::new(
             timeline.name().to_string(),
             datatype.clone(),
-            false, /* nullable */
+            true, /* nullable */
         )
     }
 }
@@ -193,11 +144,26 @@ pub struct ComponentColumnDescriptor {
     /// Example: `rerun.components.Position3D`.
     pub component_name: ComponentName,
 
-    /// The Arrow datatype of the column.
-    pub datatype: ArrowDatatype,
+    /// The Arrow datatype of the stored column.
+    ///
+    /// This is the log-time datatype corresponding to how this data is encoded
+    /// in a chunk. Currently this will always be an [`ArrowListArray`], but as
+    /// we introduce mono-type optimization, this might be a native type instead.
+    pub store_datatype: ArrowDatatype,
 
     /// Whether this column represents static data.
     pub is_static: bool,
+
+    /// Whether this column represents an indicator component.
+    pub is_indicator: bool,
+
+    /// Whether this column represents a [`Clear`]-related components.
+    ///
+    /// [`Clear`]: re_types_core::archetypes::Clear
+    pub is_tombstone: bool,
+
+    /// Whether this column contains either no data or only contains null and/or empty values (`[]`).
+    pub is_semantically_empty: bool,
 }
 
 impl PartialOrd for ComponentColumnDescriptor {
@@ -215,8 +181,11 @@ impl Ord for ComponentColumnDescriptor {
             archetype_name,
             archetype_field_name,
             component_name,
-            datatype: _,
+            store_datatype: _,
             is_static: _,
+            is_indicator: _,
+            is_tombstone: _,
+            is_semantically_empty: _,
         } = self;
 
         entity_path
@@ -234,8 +203,11 @@ impl std::fmt::Display for ComponentColumnDescriptor {
             archetype_name,
             archetype_field_name,
             component_name,
-            datatype: _,
+            store_datatype: _,
             is_static,
+            is_indicator: _,
+            is_tombstone: _,
+            is_semantically_empty: _,
         } = self;
 
         let s = match (archetype_name, component_name, archetype_field_name) {
@@ -265,190 +237,390 @@ impl std::fmt::Display for ComponentColumnDescriptor {
 }
 
 impl ComponentColumnDescriptor {
-    #[inline]
-    pub fn new<C: re_types_core::Component>(entity_path: EntityPath) -> Self {
-        Self {
-            entity_path,
-            archetype_name: None,
-            archetype_field_name: None,
-            component_name: C::name(),
-            // NOTE: The data is always a at least a list, whether it's latest-at or range.
-            // It might be wrapped further in e.g. a dict, but at the very least
-            // it's a list.
-            // TODO(#7365): user-specified datatypes have got to go.
-            datatype: ArrowListArray::<i32>::default_datatype(C::arrow_datatype()),
-            is_static: false,
+    pub fn component_path(&self) -> ComponentPath {
+        ComponentPath {
+            entity_path: self.entity_path.clone(),
+            component_name: self.component_name,
         }
     }
 
     #[inline]
-    pub fn to_arrow_field(&self) -> ArrowField {
+    pub fn matches(&self, entity_path: &EntityPath, component_name: &str) -> bool {
+        &self.entity_path == entity_path && self.component_name.matches(component_name)
+    }
+
+    fn metadata(&self) -> arrow2::datatypes::Metadata {
         let Self {
             entity_path,
             archetype_name,
             archetype_field_name,
             component_name,
-            datatype,
+            store_datatype: _,
             is_static,
+            is_indicator,
+            is_tombstone,
+            is_semantically_empty,
         } = self;
 
+        [
+            (*is_static).then_some(("sorbet.is_static".to_owned(), "yes".to_owned())),
+            (*is_indicator).then_some(("sorbet.is_indicator".to_owned(), "yes".to_owned())),
+            (*is_tombstone).then_some(("sorbet.is_tombstone".to_owned(), "yes".to_owned())),
+            (*is_semantically_empty)
+                .then_some(("sorbet.is_semantically_empty".to_owned(), "yes".to_owned())),
+            Some(("sorbet.path".to_owned(), entity_path.to_string())),
+            Some((
+                "sorbet.semantic_type".to_owned(),
+                component_name.short_name().to_owned(),
+            )),
+            archetype_name.map(|name| {
+                (
+                    "sorbet.semantic_family".to_owned(),
+                    name.short_name().to_owned(),
+                )
+            }),
+            archetype_field_name
+                .as_ref()
+                .map(|name| ("sorbet.logical_type".to_owned(), name.to_owned())),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
+    #[inline]
+    pub fn returned_datatype(&self) -> ArrowDatatype {
+        self.store_datatype.clone()
+    }
+
+    #[inline]
+    pub fn to_arrow_field(&self) -> ArrowField {
         ArrowField::new(
-            component_name.short_name().to_owned(),
-            datatype.clone(),
-            false, /* nullable */
+            format!(
+                "{}:{}",
+                self.entity_path,
+                self.component_name.short_name().to_owned()
+            ),
+            self.returned_datatype(),
+            true, /* nullable */
         )
         // TODO(#6889): This needs some proper sorbetization -- I just threw these names randomly.
-        .with_metadata(
-            [
-                (*is_static).then_some(("sorbet.is_static".to_owned(), "yes".to_owned())),
-                Some(("sorbet.path".to_owned(), entity_path.to_string())),
-                Some((
-                    "sorbet.semantic_type".to_owned(),
-                    component_name.short_name().to_owned(),
-                )),
-                archetype_name.map(|name| {
-                    (
-                        "sorbet.semantic_family".to_owned(),
-                        name.short_name().to_owned(),
-                    )
-                }),
-                archetype_field_name
-                    .as_ref()
-                    .map(|name| ("sorbet.logical_type".to_owned(), name.to_owned())),
-            ]
-            .into_iter()
-            .flatten()
-            .collect(),
-        )
+        .with_metadata(self.metadata())
     }
 }
 
-// --- Queries ---
+// --- Selectors ---
 
+/// Describes a column selection to return as part of a query.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum QueryExpression {
-    LatestAt(LatestAtQueryExpression),
-    Range(RangeQueryExpression),
+pub enum ColumnSelector {
+    Time(TimeColumnSelector),
+    Component(ComponentColumnSelector),
+    //TODO(jleibs): Add support for archetype-based component selection.
+    //ArchetypeField(ArchetypeFieldColumnSelector),
 }
 
-impl From<LatestAtQueryExpression> for QueryExpression {
+impl From<ColumnDescriptor> for ColumnSelector {
     #[inline]
-    fn from(query: LatestAtQueryExpression) -> Self {
-        Self::LatestAt(query)
-    }
-}
-
-impl From<RangeQueryExpression> for QueryExpression {
-    #[inline]
-    fn from(query: RangeQueryExpression) -> Self {
-        Self::Range(query)
-    }
-}
-
-impl QueryExpression {
-    #[inline]
-    pub fn entity_path_filter(&self) -> &EntityPathFilter {
-        match self {
-            Self::LatestAt(query) => &query.entity_path_filter,
-            Self::Range(query) => &query.entity_path_filter,
+    fn from(desc: ColumnDescriptor) -> Self {
+        match desc {
+            ColumnDescriptor::Time(desc) => Self::Time(desc.into()),
+            ColumnDescriptor::Component(desc) => Self::Component(desc.into()),
         }
     }
 }
 
-impl std::fmt::Display for QueryExpression {
+impl From<TimeColumnSelector> for ColumnSelector {
     #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::LatestAt(query) => query.fmt(f),
-            Self::Range(query) => query.fmt(f),
+    fn from(desc: TimeColumnSelector) -> Self {
+        Self::Time(desc)
+    }
+}
+
+impl From<ComponentColumnSelector> for ColumnSelector {
+    #[inline]
+    fn from(desc: ComponentColumnSelector) -> Self {
+        Self::Component(desc)
+    }
+}
+
+/// Select a time column.
+//
+// TODO(cmc): This shouldn't be specific to time, this should be an `IndexColumnSelector` or smth.
+// Particularly unfortunate that this one already leaks into the public API…
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct TimeColumnSelector {
+    /// The name of the timeline.
+    pub timeline: TimelineName,
+}
+
+impl From<TimeColumnDescriptor> for TimeColumnSelector {
+    #[inline]
+    fn from(desc: TimeColumnDescriptor) -> Self {
+        Self {
+            timeline: *desc.timeline.name(),
         }
     }
 }
 
+/// Select a component based on its `EntityPath` and `ComponentName`.
+///
+/// Note, that in the future when Rerun supports duplicate tagged components
+/// on the same entity, this selector may be ambiguous. In this case, the
+/// query result will return an Error if it cannot determine a single selected
+/// component.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct LatestAtQueryExpression {
-    /// The entity path expression to query.
-    ///
-    /// Example: `world/camera/**`
-    pub entity_path_filter: EntityPathFilter,
+pub struct ComponentColumnSelector {
+    /// The path of the entity.
+    pub entity_path: EntityPath,
 
-    /// The timeline to query.
+    /// Semantic name associated with this data.
     ///
-    /// Example: `frame`.
-    pub timeline: Timeline,
-
-    /// The time at which to query.
-    ///
-    /// Example: `18`.
-    pub at: TimeInt,
+    /// This string will be flexibly matched against the available component names.
+    /// Valid matches are case invariant matches of either the full name or the short name.
+    pub component_name: String,
 }
 
-impl std::fmt::Display for LatestAtQueryExpression {
+impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
     #[inline]
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let Self {
-            entity_path_filter,
-            timeline,
-            at,
-        } = self;
-
-        f.write_fmt(format_args!(
-            "latest state for '{}' at {} on {:?}",
-            entity_path_filter.iter_expressions().join(", "),
-            timeline.typ().format_utc(*at),
-            timeline.name(),
-        ))
+    fn from(desc: ComponentColumnDescriptor) -> Self {
+        Self {
+            entity_path: desc.entity_path.clone(),
+            component_name: desc.component_name.to_string(),
+        }
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct RangeQueryExpression {
-    /// The entity path expression to query.
-    ///
-    /// Example: `world/camera/**`
-    pub entity_path_filter: EntityPathFilter,
+impl ComponentColumnSelector {
+    /// Select a component of a given type, based on its  [`EntityPath`]
+    #[inline]
+    pub fn new<C: re_types_core::Component>(entity_path: EntityPath) -> Self {
+        Self {
+            entity_path,
+            component_name: C::name().to_string(),
+        }
+    }
 
-    /// The timeline to query.
-    ///
-    /// Example `frame`
-    pub timeline: Timeline,
-
-    /// The time range to query.
-    pub time_range: ResolvedTimeRange,
-
-    /// The point-of-view of the query, as described by its [`ComponentColumnDescriptor`].
-    ///
-    /// In a range query results, each non-null value of the point-of-view component column
-    /// will generate a row in the result.
-    ///
-    /// Note that a component can be logged multiple times at the same timestamp (e.g. something
-    /// happened multiple times during a single frame), in which case the results will contain
-    /// multiple rows at a given timestamp.
-    //
-    // TODO(cmc): issue for multi-pov support
-    pub pov: ComponentColumnDescriptor,
-    //
-    // TODO(cmc): custom join policy support
+    /// Select a component based on its [`EntityPath`] and [`ComponentName`].
+    #[inline]
+    pub fn new_for_component_name(entity_path: EntityPath, component_name: ComponentName) -> Self {
+        Self {
+            entity_path,
+            component_name: component_name.to_string(),
+        }
+    }
 }
 
-impl std::fmt::Display for RangeQueryExpression {
-    #[inline]
+impl std::fmt::Display for ComponentColumnSelector {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
-            entity_path_filter,
-            timeline,
-            time_range,
-            pov,
+            entity_path,
+            component_name,
         } = self;
 
-        f.write_fmt(format_args!(
-            "{} ranging {}..={} on {:?} as seen from {pov}",
-            entity_path_filter.iter_expressions().join(", "),
-            timeline.typ().format_utc(time_range.min()),
-            timeline.typ().format_utc(time_range.max()),
-            timeline.name(),
-        ))
+        f.write_fmt(format_args!("{entity_path}:{component_name}"))
     }
+}
+
+// TODO(jleibs): Add support for archetype-based column selection.
+/*
+/// Select a component based on its `Archetype` and field.
+pub struct ArchetypeFieldColumnSelector {
+    /// The path of the entity.
+    entity_path: EntityPath,
+
+    /// Name of the `Archetype` associated with this data.
+    archetype: ArchetypeName,
+
+    /// The field within the `Archetype` associated with this data.
+    field: String,
+}
+*/
+
+// --- Queries v2 ---
+
+/// Specifies how null values should be filled in the returned dataframe.
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
+pub enum SparseFillStrategy {
+    /// No sparse filling. Nulls stay nulls.
+    #[default]
+    None,
+
+    /// Fill null values using global-scope latest-at semantics.
+    ///
+    /// The latest-at semantics are applied on the entire dataset as opposed to just the current
+    /// view contents: it is possible to end up with values from outside the view!
+    LatestAtGlobal,
+    //
+    // TODO(cmc): `LatestAtView`?
+}
+
+impl std::fmt::Display for SparseFillStrategy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::None => f.write_str("none"),
+            Self::LatestAtGlobal => f.write_str("latest-at (global)"),
+        }
+    }
+}
+
+/// The view contents specify which subset of the database (i.e., which columns) the query runs on,
+/// expressed as a set of [`EntityPath`]s and their associated [`ComponentName`]s.
+///
+/// Setting an entity's components to `None` means: everything.
+///
+// TODO(cmc): we need to be able to build that easily in a command-line context, otherwise it's just
+// very annoying. E.g. `--with /world/points:[rr.Position3D, rr.Radius] --with /cam:[rr.Pinhole]`.
+pub type ViewContentsSelector = BTreeMap<EntityPath, Option<BTreeSet<ComponentName>>>;
+
+// TODO(cmc): Ultimately, this shouldn't be hardcoded to `Timeline`, but to a generic `I: Index`.
+//            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).
+pub type Index = Timeline;
+
+// TODO(cmc): Ultimately, this shouldn't be hardcoded to `TimeInt`, but to a generic `I: Index`.
+//            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).
+pub type IndexValue = TimeInt;
+
+// TODO(cmc): Ultimately, this shouldn't be hardcoded to `ResolvedTimeRange`, but to a generic `I: Index`.
+//            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).
+pub type IndexRange = ResolvedTimeRange;
+
+/// Describes a complete query for Rerun's dataframe API.
+///
+/// ## Terminology: view vs. selection vs. filtering vs. sampling
+///
+/// * The view contents specify which subset of the database (i.e., which columns) the query runs on,
+///   expressed as a set of [`EntityPath`]s and their associated [`ComponentName`]s.
+///
+/// * The filters filter out _rows_ of data from the view contents.
+///   A filter cannot possibly introduce new rows, it can only remove existing ones from the view contents.
+///
+/// * The samplers sample _rows_ of data from the view contents at user-specified values.
+///   Samplers don't necessarily return existing rows: they might introduce new ones if the sampled value
+///   isn't present in the view contents in the first place.
+///
+/// * The selection applies last and samples _columns_ of data from the filtered/sampled view contents.
+///   Selecting a column that isn't present in the view contents results in an empty column in the
+///   final dataframe (null array).
+///
+/// A very rough mental model, in SQL terms:
+/// ```text
+/// SELECT <Self::selection> FROM <Self::view_contents> WHERE <Self::filtered_*>
+/// ```
+//
+// TODO(cmc): ideally we'd like this to be the same type as the one used in the blueprint, possibly?
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct QueryExpression {
+    /// The subset of the database that the query will run on: a set of [`EntityPath`]s and their
+    /// associated [`ComponentName`]s.
+    ///
+    /// Defaults to `None`, which means: everything.
+    ///
+    /// Example (pseudo-code):
+    /// ```text
+    /// view_contents = {
+    ///   "world/points": [rr.Position3D, rr.Radius],
+    ///   "metrics": [rr.Scalar]
+    /// }
+    /// ```
+    pub view_contents: Option<ViewContentsSelector>,
+
+    /// Whether the `view_contents` should ignore semantically empty columns.
+    ///
+    /// A semantically empty column is a column that either contains no data at all, or where all
+    /// values are either nulls or empty arrays (`[]`).
+    ///
+    /// `view_contents`: [`QueryExpression::view_contents`]
+    pub include_semantically_empty_columns: bool,
+
+    /// Whether the `view_contents` should ignore columns corresponding to indicator components.
+    ///
+    /// Indicator components are marker components, generally automatically inserted by Rerun, that
+    /// helps keep track of the original context in which a piece of data was logged/sent.
+    ///
+    /// `view_contents`: [`QueryExpression::view_contents`]
+    pub include_indicator_columns: bool,
+
+    /// Whether the `view_contents` should ignore columns corresponding to `Clear`-related components.
+    ///
+    /// `view_contents`: [`QueryExpression::view_contents`]
+    /// `Clear`: [`re_types_core::archetypes::Clear`]
+    pub include_tombstone_columns: bool,
+
+    /// The index used to filter out _rows_ from the view contents.
+    ///
+    /// Only rows where at least 1 column contains non-null data at that index will be kept in the
+    /// final dataset.
+    ///
+    /// If left unspecified, the results will only contain static data.
+    ///
+    /// Examples: `Some(Timeline("frame"))`, `None` (only static data).
+    //
+    // TODO(cmc): this has to be a selector otherwise this is a horrible UX.
+    pub filtered_index: Option<Index>,
+
+    /// The range of index values used to filter out _rows_ from the view contents.
+    ///
+    /// Only rows where at least 1 of the view-contents contains non-null data within that range will be kept in
+    /// the final dataset.
+    ///
+    /// * This has no effect if `filtered_index` isn't set.
+    /// * This has no effect if [`QueryExpression::using_index_values`] is set.
+    ///
+    /// Example: `ResolvedTimeRange(10, 20)`.
+    pub filtered_index_range: Option<IndexRange>,
+
+    /// The specific index values used to filter out _rows_ from the view contents.
+    ///
+    /// Only rows where at least 1 column contains non-null data at these specific values will be kept
+    /// in the final dataset.
+    ///
+    /// * This has no effect if `filtered_index` isn't set.
+    /// * This has no effect if [`QueryExpression::using_index_values`] is set.
+    /// * Using [`TimeInt::STATIC`] as index value has no effect.
+    ///
+    /// Example: `[TimeInt(12), TimeInt(14)]`.
+    pub filtered_index_values: Option<BTreeSet<IndexValue>>,
+
+    /// The specific index values used to sample _rows_ from the view contents.
+    ///
+    /// The final dataset will contain one row per sampled index value, regardless of whether data
+    /// existed for that index value in the view contents.
+    /// The semantics of the query are consistent with all other settings: the results will be
+    /// sorted on the `filtered_index`, and only contain unique index values.
+    ///
+    /// * This has no effect if `filtered_index` isn't set.
+    /// * If set, this overrides both [`QueryExpression::filtered_index_range`] and
+    ///   [`QueryExpression::filtered_index_values`].
+    /// * Using [`TimeInt::STATIC`] as index value has no effect.
+    ///
+    /// Example: `[TimeInt(12), TimeInt(14)]`.
+    pub using_index_values: Option<BTreeSet<IndexValue>>,
+
+    /// The component column used to filter out _rows_ from the view contents.
+    ///
+    /// Only rows where this column contains non-null data be kept in the final dataset.
+    ///
+    /// Example: `ComponentColumnSelector("rerun.components.Position3D")`.
+    //
+    // TODO(cmc): multi-pov support
+    pub filtered_is_not_null: Option<ComponentColumnSelector>,
+
+    /// Specifies how null values should be filled in the returned dataframe.
+    ///
+    /// Defaults to [`SparseFillStrategy::None`].
+    pub sparse_fill_strategy: SparseFillStrategy,
+
+    /// The specific _columns_ to sample from the final view contents.
+    ///
+    /// The order of the samples will be respected in the final result.
+    ///
+    /// Defaults to `None`, which means: everything.
+    ///
+    /// Example: `[ColumnSelector(Time("log_time")), ColumnSelector(Component("rerun.components.Position3D"))]`.
+    //
+    // TODO(cmc): the selection has to be on the QueryHandle, otherwise it's hell to use.
+    pub selection: Option<Vec<ColumnSelector>>,
 }
 
 // ---
@@ -460,16 +632,10 @@ impl ChunkStore {
     /// entity that has been written to the store so far.
     ///
     /// The order of the columns is guaranteed to be in a specific order:
-    /// * first, the control columns in lexical order (`RowId`);
-    /// * second, the time columns in lexical order (`frame_nr`, `log_time`, ...);
-    /// * third, the component columns in lexical order (`Color`, `Radius, ...`).
+    /// * first, the time columns in lexical order (`frame_nr`, `log_time`, ...);
+    /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
     pub fn schema(&self) -> Vec<ColumnDescriptor> {
         re_tracing::profile_function!();
-
-        let controls = std::iter::once(ColumnDescriptor::Control(ControlColumnDescriptor {
-            component_name: RowId::name(),
-            datatype: RowId::arrow_datatype(),
-        }));
 
         let timelines = self.all_timelines().into_iter().map(|timeline| {
             ColumnDescriptor::Time(TimeColumnDescriptor {
@@ -478,130 +644,206 @@ impl ChunkStore {
             })
         });
 
-        let static_components =
-            self.static_chunk_ids_per_entity
-                .iter()
-                .flat_map(|(entity_path, per_component)| {
-                    // TODO(#6889): Fill `archetype_name`/`archetype_field_name` (or whatever their
-                    // final name ends up being) once we generate tags.
-                    per_component.keys().filter_map(|component_name| {
-                        self.lookup_datatype(component_name).map(|datatype| {
-                            ColumnDescriptor::Component(ComponentColumnDescriptor {
-                                entity_path: entity_path.clone(),
-                                archetype_name: None,
-                                archetype_field_name: None,
-                                component_name: *component_name,
-                                datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
-                                is_static: true,
-                            })
-                        })
-                    })
-                });
-
-        // TODO(cmc): Opportunities for parallelization, if it proves to be a net positive in practice.
-        let temporal_components = self
-            .temporal_chunk_ids_per_entity_per_component
+        let components = self
+            .per_column_metadata
             .iter()
-            .flat_map(|(entity_path, per_timeline)| {
-                per_timeline
-                    .iter()
-                    .map(move |(timeline, per_component)| (entity_path, timeline, per_component))
+            .flat_map(|(entity_path, per_component)| {
+                per_component
+                    .keys()
+                    .map(move |component_name| (entity_path, component_name))
             })
-            .flat_map(|(entity_path, _timeline, per_component)| {
+            .filter_map(|(entity_path, component_name)| {
+                let metadata = self.lookup_column_metadata(entity_path, component_name)?;
+                let datatype = self.lookup_datatype(component_name)?;
+
+                Some(((entity_path, component_name), (metadata, datatype)))
+            })
+            .map(|((entity_path, component_name), (metadata, datatype))| {
+                let ColumnMetadata {
+                    is_static,
+                    is_indicator,
+                    is_tombstone,
+                    is_semantically_empty,
+                } = metadata;
+
                 // TODO(#6889): Fill `archetype_name`/`archetype_field_name` (or whatever their
                 // final name ends up being) once we generate tags.
-                per_component.keys().filter_map(|component_name| {
-                    self.lookup_datatype(component_name).map(|datatype| {
-                        ColumnDescriptor::Component(ComponentColumnDescriptor {
-                            entity_path: entity_path.clone(),
-                            archetype_name: None,
-                            archetype_field_name: None,
-                            component_name: *component_name,
-                            // NOTE: The data is always a at least a list, whether it's latest-at or range.
-                            // It might be wrapped further in e.g. a dict, but at the very least
-                            // it's a list.
-                            datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
-                            // NOTE: This will make it so shadowed temporal data automatically gets
-                            // discarded from the schema.
-                            is_static: self
-                                .static_chunk_ids_per_entity
-                                .get(entity_path)
-                                .map_or(false, |per_component| {
-                                    per_component.contains_key(component_name)
-                                }),
-                        })
-                    })
+                ColumnDescriptor::Component(ComponentColumnDescriptor {
+                    entity_path: entity_path.clone(),
+                    archetype_name: None,
+                    archetype_field_name: None,
+                    component_name: *component_name,
+                    // NOTE: The data is always a at least a list, whether it's latest-at or range.
+                    // It might be wrapped further in e.g. a dict, but at the very least
+                    // it's a list.
+                    store_datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
+                    is_static,
+                    is_indicator,
+                    is_tombstone,
+                    is_semantically_empty,
                 })
             });
 
-        let components = static_components
-            .chain(temporal_components)
-            .collect::<BTreeSet<_>>();
-
-        controls.chain(timelines).chain(components).collect()
+        timelines.chain(components).collect()
     }
 
-    /// Returns the filtered schema for the given query expression.
+    /// Given a [`TimeColumnSelector`], returns the corresponding [`TimeColumnDescriptor`].
+    pub fn resolve_time_selector(&self, selector: &TimeColumnSelector) -> TimeColumnDescriptor {
+        let timelines = self.all_timelines();
+
+        let timeline = timelines
+            .iter()
+            .find(|timeline| timeline.name() == &selector.timeline)
+            .copied()
+            .unwrap_or_else(|| Timeline::new_temporal(selector.timeline));
+
+        TimeColumnDescriptor {
+            timeline,
+            datatype: timeline.datatype(),
+        }
+    }
+
+    /// Given a [`ComponentColumnSelector`], returns the corresponding [`ComponentColumnDescriptor`].
     ///
-    /// This will only include columns which may contain non-empty values from the perspective of
-    /// the query semantics.
+    /// If the component is not found in the store, a default descriptor is returned with a null datatype.
+    pub fn resolve_component_selector(
+        &self,
+        selector: &ComponentColumnSelector,
+    ) -> ComponentColumnDescriptor {
+        // Happy path if this string is a valid component
+        // TODO(#7699) This currently interns every string ever queried which could be wasteful, especially
+        // in long-running servers. In practice this probably doesn't matter.
+        let direct_component = ComponentName::from(selector.component_name.clone());
+
+        let component_name = if self.all_components().contains(&direct_component) {
+            direct_component
+        } else {
+            self.all_components_for_entity(&selector.entity_path)
+                // First just check on the entity since this is the most likely place to find it.
+                .and_then(|components| {
+                    components
+                        .into_iter()
+                        .find(|component_name| component_name.matches(&selector.component_name))
+                })
+                // Fall back on matching any component in the store
+                .or_else(|| {
+                    self.all_components()
+                        .into_iter()
+                        .find(|component_name| component_name.matches(&selector.component_name))
+                })
+                // Finally fall back on the direct component name
+                .unwrap_or(direct_component)
+        };
+
+        let ColumnMetadata {
+            is_static,
+            is_indicator,
+            is_tombstone,
+            is_semantically_empty,
+        } = self
+            .lookup_column_metadata(&selector.entity_path, &component_name)
+            .unwrap_or(ColumnMetadata {
+                is_static: false,
+                is_indicator: false,
+                is_tombstone: false,
+                is_semantically_empty: false,
+            });
+
+        let datatype = self
+            .lookup_datatype(&component_name)
+            .cloned()
+            .unwrap_or_else(|| ArrowDatatype::Null);
+
+        ComponentColumnDescriptor {
+            entity_path: selector.entity_path.clone(),
+            archetype_name: None,
+            archetype_field_name: None,
+            component_name,
+            store_datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
+            is_static,
+            is_indicator,
+            is_tombstone,
+            is_semantically_empty,
+        }
+    }
+
+    /// Given a set of [`ColumnSelector`]s, returns the corresponding [`ColumnDescriptor`]s.
+    pub fn resolve_selectors(
+        &self,
+        selectors: impl IntoIterator<Item = impl Into<ColumnSelector>>,
+    ) -> Vec<ColumnDescriptor> {
+        // TODO(jleibs): When, if ever, should this return an error?
+        selectors
+            .into_iter()
+            .map(|selector| {
+                let selector = selector.into();
+                match selector {
+                    ColumnSelector::Time(selector) => {
+                        ColumnDescriptor::Time(self.resolve_time_selector(&selector))
+                    }
+
+                    ColumnSelector::Component(selector) => {
+                        ColumnDescriptor::Component(self.resolve_component_selector(&selector))
+                    }
+                }
+            })
+            .collect()
+    }
+
+    /// Returns the filtered schema for the given [`QueryExpression`].
     ///
     /// The order of the columns is guaranteed to be in a specific order:
-    /// * first, the control columns in lexical order (`RowId`);
-    /// * second, the time columns in lexical order (`frame_nr`, `log_time`, ...);
-    /// * third, the component columns in lexical order (`Color`, `Radius, ...`).
-    ///
-    /// This does not run a full-blown query, but rather just inspects `Chunk`-level metadata,
-    /// which can lead to false positives, but makes this very cheap to compute.
+    /// * first, the time columns in lexical order (`frame_nr`, `log_time`, ...);
+    /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
     pub fn schema_for_query(&self, query: &QueryExpression) -> Vec<ColumnDescriptor> {
-        re_tracing::profile_function!(format!("{query:?}"));
+        re_tracing::profile_function!();
 
-        // First, grab the full schema and filters out every entity path that isn't covered by the query.
-        let schema = self
-            .schema()
-            .into_iter()
-            .filter(|descr| {
-                descr.entity_path().map_or(true, |entity_path| {
-                    query.entity_path_filter().matches(entity_path)
+        let QueryExpression {
+            view_contents,
+            include_semantically_empty_columns,
+            include_indicator_columns,
+            include_tombstone_columns,
+            filtered_index: _,
+            filtered_index_range: _,
+            filtered_index_values: _,
+            using_index_values: _,
+            filtered_is_not_null: _,
+            sparse_fill_strategy: _,
+            selection: _,
+        } = query;
+
+        let filter = |column: &ComponentColumnDescriptor| {
+            let is_part_of_view_contents = || {
+                view_contents.as_ref().map_or(true, |view_contents| {
+                    view_contents
+                        .get(&column.entity_path)
+                        .map_or(false, |components| {
+                            components.as_ref().map_or(true, |components| {
+                                components.contains(&column.component_name)
+                            })
+                        })
                 })
-            })
-            .collect_vec();
-
-        // Then, discard any column descriptor which cannot possibly have data for the given query.
-        //
-        // TODO(cmc): Opportunities for parallelization, if it proves to be a net positive in practice.
-        let mut filtered_out = HashSet::default();
-        for column_descr in &schema {
-            let ColumnDescriptor::Component(descr) = column_descr else {
-                continue;
             };
 
-            match query {
-                QueryExpression::LatestAt(query) => {
-                    let q = LatestAtQuery::new(query.timeline, query.at);
-                    if self
-                        .latest_at_relevant_chunks(&q, &descr.entity_path, descr.component_name)
-                        .is_empty()
-                    {
-                        filtered_out.insert(column_descr.clone());
-                    }
-                }
+            let passes_semantically_empty_check =
+                || *include_semantically_empty_columns || !column.is_semantically_empty;
 
-                QueryExpression::Range(query) => {
-                    let q = LatestAtQuery::new(query.timeline, query.time_range.max());
-                    if self
-                        .latest_at_relevant_chunks(&q, &descr.entity_path, descr.component_name)
-                        .is_empty()
-                    {
-                        filtered_out.insert(column_descr.clone());
-                    }
-                }
-            }
-        }
+            let passes_indicator_check = || *include_indicator_columns || !column.is_indicator;
 
-        schema
+            let passes_tombstone_check = || *include_tombstone_columns || !column.is_tombstone;
+
+            is_part_of_view_contents()
+                && passes_semantically_empty_check()
+                && passes_indicator_check()
+                && passes_tombstone_check()
+        };
+
+        self.schema()
             .into_iter()
-            .filter(|descr| !filtered_out.contains(descr))
+            .filter(|column| match column {
+                ColumnDescriptor::Time(_) => true,
+                ColumnDescriptor::Component(column) => filter(column),
+            })
             .collect()
     }
 }

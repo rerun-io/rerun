@@ -7,9 +7,25 @@ use re_chunk_store::{
     ChunkStoreSubscriberHandle,
 };
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
-use re_types::ComponentName;
+use re_types::{ComponentName, Loggable as _};
 
 // ---
+
+/// Set of components that an entity ever had over its known lifetime.
+#[derive(Default, Clone)]
+pub struct PotentialTransformComponentSet {
+    /// All transform components ever present.
+    pub transform3d: IntSet<ComponentName>,
+
+    /// All pose transform components ever present.
+    pub pose3d: IntSet<ComponentName>,
+
+    /// Whether the entity ever had a pinhole camera.
+    pub pinhole: bool,
+
+    /// Whether the entity ever had a disconnected space component.
+    pub disconnected_space: bool,
+}
 
 /// Keeps track of which entities have had any `Transform3D`-related data on any timeline at any
 /// point in time.
@@ -20,13 +36,7 @@ use re_types::ComponentName;
 /// This is a huge performance improvement in practice, especially in recordings with many entities.
 #[derive(Default)]
 pub struct TransformComponentTracker {
-    /// Which entities have had any `Transform3D` component at any point in time, and which
-    /// components they actually make use of.
-    transform3d_entities: IntMap<EntityPathHash, IntSet<ComponentName>>,
-
-    /// Which entities have had any `InstancePoses3D` components at any point in time, and
-    /// which components they actually make use of.
-    pose3d_entities: IntMap<EntityPathHash, IntSet<ComponentName>>,
+    components_per_entity: IntMap<EntityPathHash, PotentialTransformComponentSet>,
 }
 
 impl TransformComponentTracker {
@@ -42,17 +52,11 @@ impl TransformComponentTracker {
         .flatten()
     }
 
-    #[inline]
-    pub fn transform3d_components(
+    pub fn potential_transform_components(
         &self,
         entity_path: &EntityPath,
-    ) -> Option<&IntSet<ComponentName>> {
-        self.transform3d_entities.get(&entity_path.hash())
-    }
-
-    #[inline]
-    pub fn pose3d_components(&self, entity_path: &EntityPath) -> Option<&IntSet<ComponentName>> {
-        self.pose3d_entities.get(&entity_path.hash())
+    ) -> Option<&PotentialTransformComponentSet> {
+        self.components_per_entity.get(&entity_path.hash())
     }
 }
 
@@ -123,36 +127,54 @@ impl ChunkStoreSubscriber for TransformComponentTrackerStoreSubscriber {
 
             let entity_path_hash = event.chunk.entity_path().hash();
 
+            let contains_non_zero_component_array = |component_name| {
+                event
+                    .chunk
+                    .components()
+                    .get(&component_name)
+                    .map_or(false, |list_array| {
+                        list_array.offsets().lengths().any(|len| len > 0)
+                    })
+            };
+
             for component_name in event.chunk.component_names() {
                 if self.transform_components.contains(&component_name)
-                    && event
-                        .chunk
-                        .components()
-                        .get(&component_name)
-                        .map_or(false, |list_array| {
-                            list_array.offsets().lengths().any(|len| len > 0)
-                        })
+                    && contains_non_zero_component_array(component_name)
                 {
                     transform_component_tracker
-                        .transform3d_entities
+                        .components_per_entity
                         .entry(entity_path_hash)
                         .or_default()
+                        .transform3d
                         .insert(component_name);
                 }
                 if self.pose_components.contains(&component_name)
-                    && event
-                        .chunk
-                        .components()
-                        .get(&component_name)
-                        .map_or(false, |list_array| {
-                            list_array.offsets().lengths().any(|len| len > 0)
-                        })
+                    && contains_non_zero_component_array(component_name)
                 {
                     transform_component_tracker
-                        .pose3d_entities
+                        .components_per_entity
                         .entry(entity_path_hash)
                         .or_default()
+                        .pose3d
                         .insert(component_name);
+                }
+                if component_name == re_types::components::PinholeProjection::name()
+                    && contains_non_zero_component_array(component_name)
+                {
+                    transform_component_tracker
+                        .components_per_entity
+                        .entry(entity_path_hash)
+                        .or_default()
+                        .pinhole = true;
+                }
+                if component_name == re_types::components::DisconnectedSpace::name()
+                    && contains_non_zero_component_array(component_name)
+                {
+                    transform_component_tracker
+                        .components_per_entity
+                        .entry(entity_path_hash)
+                        .or_default()
+                        .disconnected_space = true;
                 }
             }
         }

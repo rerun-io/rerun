@@ -1,3 +1,4 @@
+use egui::Rangef;
 use nohash_hasher::IntMap;
 
 use re_chunk_store::UnitChunkShared;
@@ -11,8 +12,8 @@ use re_types::{
 };
 use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
-    gpu_bridge::image_data_range_heuristic, HoverHighlight, ImageInfo, ImageStatsCache, Item,
-    UiLayout, ViewerContext,
+    gpu_bridge::image_data_range_heuristic, ColormapWithRange, HoverHighlight, ImageInfo,
+    ImageStatsCache, Item, UiLayout, ViewerContext,
 };
 
 use crate::{blob::blob_preview_and_save_ui, image::image_preview_ui};
@@ -287,40 +288,58 @@ fn preview_if_image_ui(
         ImageKind::Color
     };
 
-    let colormap = component_map
-        .get(&components::Colormap::name())
-        .and_then(|colormap| {
-            colormap
-                .component_mono::<components::Colormap>()
-                .transpose()
-                .ok()
-                .flatten()
-        });
-
     let image = ImageInfo {
         buffer_row_id,
         buffer: image_buffer.0,
         format: image_format.0,
         kind,
-        colormap,
     };
+    let image_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
 
-    image_preview_ui(ctx, ui, ui_layout, query, entity_path, &image);
+    let colormap = component_map
+        .get(&components::Colormap::name())
+        .and_then(|colormap| colormap.component_mono::<components::Colormap>()?.ok());
+    let value_range = component_map
+        .get(&components::Range1D::name())
+        .and_then(|colormap| colormap.component_mono::<components::ValueRange>()?.ok());
+    let colormap_with_range = colormap.map(|colormap| ColormapWithRange {
+        colormap,
+        value_range: value_range
+            .map(|r| [r.start() as _, r.end() as _])
+            .unwrap_or_else(|| {
+                if kind == ImageKind::Depth {
+                    ColormapWithRange::default_range_for_depth_images(&image_stats)
+                } else {
+                    let (min, max) = image_stats.finite_range;
+                    [min as _, max as _]
+                }
+            }),
+    });
+
+    image_preview_ui(
+        ctx,
+        ui,
+        ui_layout,
+        query,
+        entity_path,
+        &image,
+        colormap_with_range.as_ref(),
+    );
 
     if ui_layout.is_single_line() || ui_layout == UiLayout::Tooltip {
         return Some(()); // no more ui
     }
 
-    let image_stats = ctx.cache.entry(|c: &mut ImageStatsCache| c.entry(&image));
+    let data_range = value_range.map_or_else(
+        || image_data_range_heuristic(&image_stats, &image.format),
+        |r| Rangef::new(r.start() as _, r.end() as _),
+    );
+    ui.horizontal(|ui| {
+        image_download_button_ui(ctx, ui, entity_path, &image, data_range);
 
-    if let Ok(data_range) = image_data_range_heuristic(&image_stats, &image.format) {
-        ui.horizontal(|ui| {
-            image_download_button_ui(ctx, ui, entity_path, &image, data_range);
-
-            #[cfg(not(target_arch = "wasm32"))]
-            crate::image::copy_image_button_ui(ui, &image, data_range);
-        });
-    }
+        #[cfg(not(target_arch = "wasm32"))]
+        crate::image::copy_image_button_ui(ui, &image, data_range);
+    });
 
     // TODO(emilk): we should really support histograms for all types of images
     if image.format.pixel_format.is_none()
@@ -441,7 +460,12 @@ fn preview_if_blob_ui(
     let blob = blob.component_mono::<components::Blob>()?.ok()?;
     let media_type = component_map
         .get(&components::MediaType::name())
-        .and_then(|unit| unit.component_mono::<components::MediaType>()?.ok());
+        .and_then(|unit| unit.component_mono::<components::MediaType>()?.ok())
+        .or_else(|| components::MediaType::guess_from_data(&blob));
+
+    let video_timestamp = component_map
+        .get(&components::VideoTimestamp::name())
+        .and_then(|unit| unit.component_mono::<components::VideoTimestamp>()?.ok());
 
     blob_preview_and_save_ui(
         ctx,
@@ -452,6 +476,7 @@ fn preview_if_blob_ui(
         blob_row_id,
         &blob,
         media_type.as_ref(),
+        video_timestamp,
     );
 
     Some(())

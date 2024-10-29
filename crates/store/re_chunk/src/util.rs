@@ -10,7 +10,31 @@ use arrow2::{
 };
 use itertools::Itertools;
 
+use crate::TransportChunk;
+
 // ---
+
+/// Returns true if the given `list_array` is semantically empty.
+///
+/// Semantic emptiness is defined as either one of these:
+/// * The list is physically empty (literally no data).
+/// * The list only contains null entries, or empty arrays, or a mix of both.
+pub fn is_list_array_semantically_empty(list_array: &ArrowListArray<i32>) -> bool {
+    let is_physically_empty = || list_array.is_empty();
+
+    let is_all_nulls = || {
+        list_array
+            .validity()
+            .map_or(false, |bitmap| bitmap.unset_bits() == list_array.len())
+    };
+
+    let is_all_empties = || list_array.offsets().lengths().all(|len| len == 0);
+
+    let is_a_mix_of_nulls_and_empties =
+        || list_array.iter().flatten().all(|array| array.is_empty());
+
+    is_physically_empty() || is_all_nulls() || is_all_empties() || is_a_mix_of_nulls_and_empties()
+}
 
 /// Create a sparse list-array out of an array of arrays.
 ///
@@ -41,7 +65,8 @@ pub fn arrays_to_list_array(
     let data = if arrays_dense.is_empty() {
         arrow2::array::new_empty_array(array_datatype.clone())
     } else {
-        arrow2::compute::concatenate::concatenate(&arrays_dense)
+        re_tracing::profile_scope!("concatenate", arrays_dense.len().to_string());
+        concat_arrays(&arrays_dense)
             .map_err(|err| {
                 re_log::warn_once!("failed to concatenate arrays: {err}");
                 err
@@ -82,7 +107,7 @@ pub fn arrays_to_list_array(
 // TODO(cmc): A possible improvement would be to pick the smallest key datatype possible based
 // on the cardinality of the input arrays.
 pub fn arrays_to_dictionary<Idx: Copy + Eq>(
-    array_datatype: ArrowDatatype,
+    array_datatype: &ArrowDatatype,
     arrays: &[Option<(Idx, &dyn ArrowArray)>],
 ) -> Option<ArrowDictionaryArray<i32>> {
     // Dedupe the input arrays based on the given primary key.
@@ -115,33 +140,29 @@ pub fn arrays_to_dictionary<Idx: Copy + Eq>(
     };
 
     // Concatenate the underlying data as usual, except only the _unique_ values!
+    // We still need the underlying data to be a list-array, so the dictionary's keys can index
+    // into this list-array.
     let data = if arrays_dense_deduped.is_empty() {
         arrow2::array::new_empty_array(array_datatype.clone())
     } else {
-        arrow2::compute::concatenate::concatenate(&arrays_dense_deduped)
+        let values = concat_arrays(&arrays_dense_deduped)
             .map_err(|err| {
                 re_log::warn_once!("failed to concatenate arrays: {err}");
                 err
             })
-            .ok()?
-    };
-
-    // We still need the underlying data to be a list-array, so the dictionary's keys can index
-    // into this list-array.
-    let data = {
-        let datatype = ArrowListArray::<i32>::default_datatype(array_datatype);
+            .ok()?;
 
         #[allow(clippy::unwrap_used)] // yes, these are indeed lengths
         let offsets =
             ArrowOffsets::try_from_lengths(arrays_dense_deduped.iter().map(|array| array.len()))
                 .unwrap();
 
-        ArrowListArray::<i32>::new(datatype, offsets.into(), data, None)
+        ArrowListArray::<i32>::new(array_datatype.clone(), offsets.into(), values, None).to_boxed()
     };
 
     let datatype = ArrowDatatype::Dictionary(
         arrow2::datatypes::IntegerType::Int32,
-        std::sync::Arc::new(data.data_type().clone()),
+        std::sync::Arc::new(array_datatype.clone()),
         true, // is_sorted
     );
 
@@ -284,12 +305,62 @@ pub fn pad_list_array_front(
     ArrowListArray::new(datatype, offsets.into(), values, Some(validity))
 }
 
-/// Applies a filter kernel to the given `array`.
+/// Returns a new [`ArrowListArray`] with len `entries`.
+///
+/// Each entry will be an empty array of the given `child_datatype`.
+pub fn new_list_array_of_empties(child_datatype: ArrowDatatype, len: usize) -> ArrowListArray<i32> {
+    let empty_array = arrow2::array::new_empty_array(child_datatype);
+
+    #[allow(clippy::unwrap_used)] // yes, these are indeed lengths
+    let offsets = ArrowOffsets::try_from_lengths(std::iter::repeat(0).take(len)).unwrap();
+
+    ArrowListArray::<i32>::new(
+        ArrowListArray::<i32>::default_datatype(empty_array.data_type().clone()),
+        offsets.into(),
+        empty_array.to_boxed(),
+        None,
+    )
+}
+
+/// Applies a [concatenate] kernel to the given `arrays`.
+///
+/// Early outs where it makes sense (e.g. `arrays.len() == 1`).
+///
+/// Returns an error if the arrays don't share the exact same datatype.
+///
+/// [concatenate]: arrow2::compute::concatenate::concatenate
+pub fn concat_arrays(arrays: &[&dyn ArrowArray]) -> arrow2::error::Result<Box<dyn ArrowArray>> {
+    if arrays.len() == 1 {
+        return Ok(arrays[0].to_boxed());
+    }
+
+    #[allow(clippy::disallowed_methods)] // that's the whole point
+    arrow2::compute::concatenate::concatenate(arrays)
+}
+
+/// Applies a [filter] kernel to the given `array`.
+///
+/// Panics iff the length of the filter doesn't match the length of the array.
+///
+/// In release builds, filters are allowed to have null entries (they will be interpreted as `false`).
+/// In debug builds, null entries will panic.
+///
+/// Note: a `filter` kernel _copies_ the data in order to make the resulting arrays contiguous in memory.
 ///
 /// Takes care of up- and down-casting the data back and forth on behalf of the caller.
+///
+/// [filter]: arrow2::compute::filter::filter
 pub fn filter_array<A: ArrowArray + Clone>(array: &A, filter: &ArrowBooleanArray) -> A {
-    debug_assert!(filter.validity().is_none()); // just for good measure
+    assert_eq!(
+        array.len(), filter.len(),
+        "the length of the filter must match the length of the array (the underlying kernel will panic otherwise)",
+    );
+    debug_assert!(
+        filter.validity().is_none(),
+        "filter masks with validity bits are technically valid, but generally a sign that something went wrong",
+    );
 
+    #[allow(clippy::disallowed_methods)] // that's the whole point
     #[allow(clippy::unwrap_used)]
     arrow2::compute::filter::filter(array, filter)
         // Unwrap: this literally cannot fail.
@@ -299,4 +370,98 @@ pub fn filter_array<A: ArrowArray + Clone>(array: &A, filter: &ArrowBooleanArray
         // Unwrap: that's initial type that we got.
         .unwrap()
         .clone()
+}
+
+/// Applies a [take] kernel to the given `array`.
+///
+/// In release builds, indices are allowed to have null entries (they will be taken as `null`s).
+/// In debug builds, null entries will panic.
+///
+/// Note: a `take` kernel _copies_ the data in order to make the resulting arrays contiguous in memory.
+///
+/// Takes care of up- and down-casting the data back and forth on behalf of the caller.
+///
+/// [take]: arrow2::compute::take::take
+//
+// TODO(cmc): in an ideal world, a `take` kernel should merely _slice_ the data and avoid any allocations/copies
+// where possible (e.g. list-arrays).
+// That is not possible with vanilla `ListArray`s since they don't expose any way to encode optional lengths,
+// in addition to offsets.
+// For internal stuff, we could perhaps provide a custom implementation that returns a `DictionaryArray` instead?
+pub fn take_array<A: ArrowArray + Clone, O: arrow2::types::Index>(
+    array: &A,
+    indices: &ArrowPrimitiveArray<O>,
+) -> A {
+    debug_assert!(
+        indices.validity().is_none(),
+        "index arrays with validity bits are technically valid, but generally a sign that something went wrong",
+    );
+
+    if indices.len() == array.len() {
+        let indices = indices.values().as_slice();
+
+        let starts_at_zero = || indices[0] == O::zero();
+        let is_consecutive = || {
+            indices
+                .windows(2)
+                .all(|values| values[1] == values[0] + O::one())
+        };
+
+        if starts_at_zero() && is_consecutive() {
+            #[allow(clippy::unwrap_used)]
+            return array
+                .clone()
+                .as_any()
+                .downcast_ref::<A>()
+                // Unwrap: that's initial type that we got.
+                .unwrap()
+                .clone();
+        }
+    }
+
+    #[allow(clippy::disallowed_methods)] // that's the whole point
+    #[allow(clippy::unwrap_used)]
+    arrow2::compute::take::take(array, indices)
+        // Unwrap: this literally cannot fail.
+        .unwrap()
+        .as_any()
+        .downcast_ref::<A>()
+        // Unwrap: that's initial type that we got.
+        .unwrap()
+        .clone()
+}
+
+// ---
+
+use arrow2::{chunk::Chunk as ArrowChunk, datatypes::Schema as ArrowSchema};
+
+/// Concatenate multiple [`TransportChunk`]s into one.
+///
+/// This is a temporary method that we use while waiting to migrate towards `arrow-rs`.
+/// * `arrow2` doesn't have a `RecordBatch` type, therefore we emulate that using our `TransportChunk`s.
+/// * `arrow-rs` does have one, and it natively supports concatenation.
+pub fn concatenate_record_batches(
+    schema: ArrowSchema,
+    batches: &[TransportChunk],
+) -> anyhow::Result<TransportChunk> {
+    assert!(batches.iter().map(|batch| &batch.schema).all_equal());
+
+    let mut arrays = Vec::new();
+
+    if !batches.is_empty() {
+        for (i, _field) in schema.fields.iter().enumerate() {
+            let array = concat_arrays(
+                &batches
+                    .iter()
+                    .map(|batch| &*batch.data[i] as &dyn ArrowArray)
+                    .collect_vec(),
+            )?;
+            arrays.push(array);
+        }
+    }
+
+    Ok(TransportChunk {
+        schema,
+        data: ArrowChunk::new(arrays),
+    })
 }

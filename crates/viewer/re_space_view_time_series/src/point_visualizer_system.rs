@@ -61,7 +61,7 @@ impl VisualizerSystem for SeriesPointSystem {
         self
     }
 
-    fn as_fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
+    fn fallback_provider(&self) -> &dyn re_viewer_context::ComponentFallbackProvider {
         self
     }
 }
@@ -202,13 +202,8 @@ impl SeriesPointSystem {
             .view_state
             .downcast_ref::<TimeSeriesSpaceViewState>()
             .map_or(0, |state| state.time_offset);
-        let time_range = determine_time_range(
-            view_query.latest_at,
-            time_offset,
-            data_result,
-            plot_mem,
-            ctx.viewer_ctx.app_options.plot_query_clamping,
-        );
+        let time_range =
+            determine_time_range(view_query.latest_at, time_offset, data_result, plot_mem);
 
         {
             use re_space_view::RangeResultsExt as _;

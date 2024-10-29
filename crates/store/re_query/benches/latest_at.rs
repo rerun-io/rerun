@@ -10,7 +10,7 @@ use re_chunk::{Chunk, RowId};
 use re_chunk_store::{ChunkStore, ChunkStoreSubscriber, LatestAtQuery};
 use re_log_types::{entity_path, EntityPath, TimeInt, TimeType, Timeline};
 use re_query::clamped_zip_1x1;
-use re_query::{Caches, LatestAtResults};
+use re_query::{LatestAtResults, QueryCache};
 use re_types::{
     archetypes::Points2D,
     components::{Color, Position2D, Text},
@@ -245,12 +245,12 @@ fn build_strings_chunks(paths: &[EntityPath], num_strings: usize) -> Vec<Arc<Chu
         .collect()
 }
 
-fn insert_chunks<'a>(msgs: impl Iterator<Item = &'a Arc<Chunk>>) -> (Caches, ChunkStore) {
+fn insert_chunks<'a>(msgs: impl Iterator<Item = &'a Arc<Chunk>>) -> (QueryCache, ChunkStore) {
     let mut store = ChunkStore::new(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(&store);
 
     msgs.for_each(|chunk| {
         caches.on_events(&store.insert_chunk(chunk).unwrap());
@@ -265,7 +265,7 @@ struct SavePoint {
 }
 
 fn query_and_visit_points(
-    caches: &Caches,
+    caches: &QueryCache,
     store: &ChunkStore,
     paths: &[EntityPath],
 ) -> Vec<SavePoint> {
@@ -303,7 +303,7 @@ struct SaveString {
 }
 
 fn query_and_visit_strings(
-    caches: &Caches,
+    caches: &QueryCache,
     store: &ChunkStore,
     paths: &[EntityPath],
 ) -> Vec<SaveString> {

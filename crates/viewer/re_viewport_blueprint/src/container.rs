@@ -35,6 +35,22 @@ pub struct ContainerBlueprint {
     pub grid_columns: Option<u32>,
 }
 
+impl Default for ContainerBlueprint {
+    fn default() -> Self {
+        Self {
+            id: ContainerId::random(),
+            container_kind: egui_tiles::ContainerKind::Grid,
+            display_name: None,
+            contents: vec![],
+            col_shares: vec![],
+            row_shares: vec![],
+            active_tab: None,
+            visible: true,
+            grid_columns: None,
+        }
+    }
+}
+
 impl ContainerBlueprint {
     /// Attempt to load a [`ContainerBlueprint`] from the blueprint store.
     pub fn try_from_db(

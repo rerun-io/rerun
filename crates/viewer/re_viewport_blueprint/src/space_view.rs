@@ -50,7 +50,7 @@ pub struct SpaceViewBlueprint {
     /// True if this space view is visible in the UI.
     pub visible: bool,
 
-    /// Path where these space_views defaults can be found.
+    /// Path where these space views defaults can be found.
     pub defaults_path: EntityPath,
 
     /// Pending blueprint writes for nested components from duplicate.
@@ -770,6 +770,7 @@ mod tests {
             default_blueprint: None,
             recording: &test_ctx.recording_store,
             bundle: &Default::default(),
+            caches: &Default::default(),
             hub: &re_viewer_context::StoreHub::test_hub(),
         };
 

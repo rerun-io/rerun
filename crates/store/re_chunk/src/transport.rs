@@ -30,7 +30,7 @@ use crate::{Chunk, ChunkError, ChunkId, ChunkResult, RowId, TimeColumn};
 /// This means we have to be very careful when checking the validity of the data: slipping corrupt
 /// data into the store could silently break all the index search logic (e.g. think of a chunk
 /// claiming to be sorted while it is in fact not).
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct TransportChunk {
     /// The schema of the dataframe, and all chunk-level and field-level metadata.
     ///
@@ -246,8 +246,7 @@ impl TransportChunk {
     pub fn is_sorted(&self) -> bool {
         self.schema
             .metadata
-            .get(Self::CHUNK_METADATA_MARKER_IS_SORTED_BY_ROW_ID)
-            .is_some()
+            .contains_key(Self::CHUNK_METADATA_MARKER_IS_SORTED_BY_ROW_ID)
     }
 
     /// Iterates all columns of the specified `kind`.
@@ -531,8 +530,7 @@ impl Chunk {
 
                 let is_sorted = field
                     .metadata
-                    .get(TransportChunk::FIELD_METADATA_MARKER_IS_SORTED_BY_TIME)
-                    .is_some();
+                    .contains_key(TransportChunk::FIELD_METADATA_MARKER_IS_SORTED_BY_TIME);
 
                 let time_column = TimeColumn::new(
                     is_sorted.then_some(true),
@@ -720,18 +718,15 @@ mod tests {
 
             for _ in 0..3 {
                 let chunk_in_transport = chunk_before.to_transport()?;
-                let chunk_roundtrip;
                 #[cfg(feature = "arrow")]
-                {
+                let chunk_after = {
                     let chunk_in_record_batch = chunk_in_transport.try_to_arrow_record_batch()?;
-                    chunk_roundtrip =
+                    let chunk_roundtrip =
                         TransportChunk::from_arrow_record_batch(&chunk_in_record_batch);
-                }
+                    Chunk::from_transport(&chunk_roundtrip)?
+                };
                 #[cfg(not(feature = "arrow"))]
-                {
-                    chunk_roundtrip = &chunk_in_transport;
-                }
-                let chunk_after = Chunk::from_transport(&chunk_roundtrip)?;
+                let chunk_after = { Chunk::from_transport(&chunk_in_transport)? };
 
                 assert_eq!(
                     chunk_in_transport.entity_path()?,

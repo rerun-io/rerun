@@ -17,7 +17,7 @@ pub fn edit_f32_zero_to_max(
     edit_f32_float_raw_impl(ui, &mut value, 0.0..=f32::MAX)
 }
 
-/// Generic editor for a  [`re_types::datatypes::Float32`] value from min to max float.
+/// Generic editor for a [`re_types::datatypes::Float32`] value from min to max float.
 pub fn edit_f32_min_to_max_float(
     _ctx: &re_viewer_context::ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -36,11 +36,21 @@ pub fn edit_f32_float_raw_impl(
     value: &mut MaybeMutRef<'_, f32>,
     range: RangeInclusive<f32>,
 ) -> egui::Response {
+    let speed = (value.abs() * 0.01).at_least(0.001);
+    edit_f32_float_raw_with_speed_impl(ui, value, range, speed)
+}
+
+/// Non monomorphized implementation for f32 float editing with a given speed.
+pub fn edit_f32_float_raw_with_speed_impl(
+    ui: &mut egui::Ui,
+    value: &mut MaybeMutRef<'_, f32>,
+    range: RangeInclusive<f32>,
+    speed: f32,
+) -> egui::Response {
     if let Some(value) = value.as_mut() {
-        let speed = (value.abs() * 0.01).at_least(0.001);
         ui.add(
             egui::DragValue::new(value)
-                .clamp_to_range(false)
+                .clamp_existing_to_range(false)
                 .range(range)
                 .speed(speed),
         )
@@ -67,7 +77,7 @@ fn edit_f32_zero_to_one_raw(ui: &mut egui::Ui, value: &mut MaybeMutRef<'_, f32>)
     if let Some(value) = value.as_mut() {
         ui.add(
             egui::DragValue::new(value)
-                .clamp_to_range(false)
+                .clamp_existing_to_range(false)
                 .range(0.0..=1.0)
                 .speed(0.005)
                 .fixed_decimals(2),

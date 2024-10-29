@@ -18,7 +18,7 @@ from os import listdir
 from os.path import isfile, join
 
 sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/../scripts/")
-from roundtrip_utils import cmake_build, cmake_configure, cpp_build_dir, roundtrip_env, run, run_comparison  # noqa
+from roundtrip_utils import cpp_build_dir, roundtrip_env, run, run_comparison  # noqa
 
 ARCHETYPES_PATHS = [
     "crates/store/re_types/definitions/rerun/archetypes",
@@ -95,12 +95,11 @@ def main() -> None:
         print("Skipping cmake configure & build - assuming all tests are already built and up-to-date!")
     else:
         print("----------------------------------------------------------")
-        print("Build roundtrips for C++…")
+        print("Build rerun_c & roundtrips for C++…")
         start_time = time.time()
-        cmake_configure(args.release, build_env)
-        cmake_build("roundtrips", args.release)
+        run(["pixi", "run", "-e", "cpp", "cpp-build-roundtrips"])
         elapsed = time.time() - start_time
-        print(f"C++ roundtrips built in {elapsed:.1f} seconds")
+        print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
         print("")
 
     print("----------------------------------------------------------")
@@ -154,7 +153,7 @@ def main() -> None:
 
 def run_roundtrips(arch: str, language: str, args: argparse.Namespace) -> None:
     if language == "cpp":
-        run_roundtrip_cpp(arch, args.release)
+        run_roundtrip_cpp(arch)
     elif language == "python":
         run_roundtrip_python(arch)
     elif language == "rust":
@@ -201,7 +200,7 @@ def run_roundtrip_rust(arch: str, release: bool, target: str | None, target_dir:
     return output_path
 
 
-def run_roundtrip_cpp(arch: str, release: bool) -> str:
+def run_roundtrip_cpp(arch: str) -> str:
     target_name = f"roundtrip_{arch}"
     output_path = f"tests/cpp/roundtrips/{arch}/out.rrd"
 

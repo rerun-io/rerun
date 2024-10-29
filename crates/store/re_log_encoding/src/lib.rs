@@ -153,10 +153,13 @@ impl FileHeader {
 
 #[cfg(any(feature = "encoder", feature = "decoder"))]
 #[derive(Clone, Copy)]
-pub(crate) struct MessageHeader {
-    /// `compressed_len` is equal to `uncompressed_len` for uncompressed streams
-    pub compressed_len: u32,
-    pub uncompressed_len: u32,
+pub(crate) enum MessageHeader {
+    Data {
+        /// `compressed_len` is equal to `uncompressed_len` for uncompressed streams
+        compressed_len: u32,
+        uncompressed_len: u32,
+    },
+    EndOfStream,
 }
 
 #[cfg(any(feature = "encoder", feature = "decoder"))]
@@ -166,12 +169,24 @@ impl MessageHeader {
 
     #[cfg(feature = "encoder")]
     pub fn encode(&self, write: &mut impl std::io::Write) -> Result<(), encoder::EncodeError> {
-        write
-            .write_all(&self.compressed_len.to_le_bytes())
-            .map_err(encoder::EncodeError::Write)?;
-        write
-            .write_all(&self.uncompressed_len.to_le_bytes())
-            .map_err(encoder::EncodeError::Write)?;
+        match self {
+            Self::Data {
+                compressed_len,
+                uncompressed_len,
+            } => {
+                write
+                    .write_all(&compressed_len.to_le_bytes())
+                    .map_err(encoder::EncodeError::Write)?;
+                write
+                    .write_all(&uncompressed_len.to_le_bytes())
+                    .map_err(encoder::EncodeError::Write)?;
+            }
+            Self::EndOfStream => {
+                write
+                    .write_all(&0_u64.to_le_bytes())
+                    .map_err(encoder::EncodeError::Write)?;
+            }
+        }
         Ok(())
     }
 
@@ -184,11 +199,16 @@ impl MessageHeader {
         let mut buffer = [0_u8; Self::SIZE];
         read.read_exact(&mut buffer)
             .map_err(decoder::DecodeError::Read)?;
-        let compressed = u32_from_le_slice(&buffer[0..4]);
-        let uncompressed = u32_from_le_slice(&buffer[4..]);
-        Ok(Self {
-            compressed_len: compressed,
-            uncompressed_len: uncompressed,
-        })
+
+        if u32_from_le_slice(&buffer[0..4]) == 0 && u32_from_le_slice(&buffer[4..]) == 0 {
+            Ok(Self::EndOfStream)
+        } else {
+            let compressed = u32_from_le_slice(&buffer[0..4]);
+            let uncompressed = u32_from_le_slice(&buffer[4..]);
+            Ok(Self::Data {
+                compressed_len: compressed,
+                uncompressed_len: uncompressed,
+            })
+        }
     }
 }
