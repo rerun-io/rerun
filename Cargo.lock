@@ -4631,9 +4631,9 @@ dependencies = [
 
 [[package]]
 name = "ordered-float"
-version = "4.2.0"
+version = "4.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a76df7075c7d4d01fdcb46c912dd17fba5b60c78ea480b475f2b6ab6f666584e"
+checksum = "83e7ccb95e240b7c9506a3d544f10d935e142cc90b0a1d56954fb44d89ad6b97"
 dependencies = [
  "num-traits",
 ]
@@ -6217,6 +6217,7 @@ dependencies = [
  "mimalloc",
  "nohash-hasher",
  "once_cell",
+ "ordered-float",
  "re_arrow2",
  "re_chunk_store",
  "re_data_ui",
@@ -6237,6 +6238,7 @@ dependencies = [
  "re_viewport_blueprint",
  "serde",
  "smallvec",
+ "thiserror",
  "vec1",
  "web-time",
 ]
