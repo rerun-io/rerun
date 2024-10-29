@@ -12,7 +12,7 @@ use re_types::{
     SpaceViewClassIdentifier, View,
 };
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
+    Item, SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
     SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
     ViewerContext,
@@ -214,20 +214,30 @@ Displays geospatial primitives on a map.
             Err(err) => return Err(err),
         };
         egui::Frame::default().show(ui, |ui| {
+            let mut picked_instance = None;
+
             let some_tiles_manager: Option<&mut dyn Tiles> = Some(tiles);
-            let map_widget = ui.add(
-                Map::new(some_tiles_manager, map_memory, default_center_position)
-                    .with_plugin(geo_points_visualizer.plugin()),
+            let map_response = ui.add(
+                Map::new(some_tiles_manager, map_memory, default_center_position).with_plugin(
+                    geo_points_visualizer.plugin(ctx, query.space_view_id, &mut picked_instance),
+                ),
             );
 
-            if map_widget.double_clicked() {
+            if let Some(picked_instance) = picked_instance {
+                ctx.select_hovered_on_click(
+                    &map_response,
+                    Item::DataResult(query.space_view_id, picked_instance.instance.clone()),
+                );
+            }
+
+            if map_response.double_clicked() {
                 map_memory.follow_my_position();
                 if let Some(zoom_level) = default_zoom_level {
                     let _ = map_memory.set_zoom(zoom_level);
                 }
             }
 
-            let map_rect = map_widget.rect;
+            let map_rect = map_response.rect;
             map_overlays::zoom_buttons_overlay(ui, &map_rect, map_memory);
             map_overlays::acknowledgement_overlay(ui, &map_rect, &tiles.attribution());
         });

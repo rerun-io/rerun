@@ -19,6 +19,7 @@ workspace = true
 all-features = true
 
 [dependencies]
+re_entity_db.workspace = true
 re_log.workspace = true
 re_log_types.workspace = true
 re_query.workspace = true
@@ -29,6 +30,7 @@ re_ui.workspace = true
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
 
+ahash.workspace = true
 egui.workspace = true
 itertools.workspace = true
 walkers = "0.26.0"         # TODO(#7876): move to workspace
