@@ -61,7 +61,7 @@ native_viewer = ["rerun/native_viewer"]
 map_view = ["rerun/map_view"]
 
 ## Enable the rrdp data source.
-rrdp = ["rerun/rrdp"]
+rrdp = ["rerun/rrdp", "dep:tokio"]
 
 ## Support serving a web viewer over HTTP.
 ##
@@ -87,6 +87,8 @@ rerun = { workspace = true, features = [
 
 document-features.workspace = true
 mimalloc = "0.1.43"
+
+tokio = { workspace = true, optional = true, features = ["macros"] }
 
 
 [build-dependencies]

@@ -20,15 +20,11 @@ pub fn stream_recording(
     url: String,
     _on_msg: Option<Box<dyn Fn() + Send + Sync>>,
 ) -> re_smart_channel::Receiver<LogMsg> {
-    // TODO(jleibs): Where should we actually be creating this
-    let rt = tokio::runtime::Runtime::new().unwrap();
 
     let (tx, rx) = re_smart_channel::smart_channel(
         re_smart_channel::SmartMessageSource::RrdpStream { url: url.clone() },
         re_smart_channel::SmartChannelSource::RrdpStream { url: url.clone() },
     );
-
-    rt.spawn(stream_recording_async(tx, url));
 
     std::mem::forget(rt);
 
