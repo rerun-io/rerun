@@ -1,13 +1,11 @@
-use std::{process::Output, sync::Arc};
+use std::sync::Arc;
 
 use js_sys::{Function, Uint8Array};
-use parking_lot::Mutex;
 use wasm_bindgen::{closure::Closure, JsCast as _};
 use web_sys::{
     EncodedVideoChunk, EncodedVideoChunkInit, EncodedVideoChunkType, VideoDecoderConfig,
     VideoDecoderInit,
 };
-use web_time::Instant;
 
 use super::{
     AsyncDecoder, Chunk, DecodeHardwareAcceleration, Frame, OutputCallback, PixelFormat, Result,

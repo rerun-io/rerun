@@ -1,22 +1,16 @@
-#[cfg(target_arch = "wasm32")]
-mod web;
-
-#[cfg(not(target_arch = "wasm32"))]
-mod native_chunk_decoder;
-
 use std::{ops::Range, sync::Arc, time::Duration};
 
 use web_time::Instant;
 
-use re_video::{Chunk, Time};
+use re_video::{decode::DecodeHardwareAcceleration, Time};
 
+use super::{chunk_decoder::VideoChunkDecoder, VideoFrameTexture};
 use crate::{
     resource_managers::GpuTexture2D,
+    video::VideoPlayerError,
     wgpu_resources::{GpuTexturePool, TextureDesc},
     RenderContext,
 };
-
-use super::{DecodeHardwareAcceleration, VideoFrameTexture, VideoPlayerError};
 
 /// Ignore hickups lasting shorter than this.
 ///
@@ -26,15 +20,13 @@ use super::{DecodeHardwareAcceleration, VideoFrameTexture, VideoPlayerError};
 /// Same with showing a spinner: if we show it too fast, it is annoying.
 const DECODING_GRACE_DELAY: Duration = Duration::from_millis(400);
 
-#[allow(unused)] // Unused for certain build flags
 #[derive(Debug)]
-struct TimedDecodingError {
+pub struct TimedDecodingError {
     time_of_first_error: Instant,
-    latest_error: VideoPlayerError,
+    pub latest_error: VideoPlayerError,
 }
 
 impl TimedDecodingError {
-    #[allow(unused)] // Unused for certain build flags
     pub fn new(latest_error: VideoPlayerError) -> Self {
         Self {
             time_of_first_error: Instant::now(),
@@ -44,47 +36,19 @@ impl TimedDecodingError {
 }
 
 /// A texture of a specific video frame.
-struct VideoTexture {
+pub struct VideoTexture {
     pub texture: GpuTexture2D,
 
     /// What part of the video this video frame covers.
     pub time_range: Range<Time>,
 }
 
-/// Decode video to a texture.
+/// Decode video to a texture, optimized for extracting successive frames over time.
 ///
-/// If you want to sample multiple points in a video simultaneously, use multiple decoders.
-trait VideoChunkDecoder: 'static + Send {
-    /// Start decoding the given chunk.
-    fn decode(&mut self, chunk: Chunk, is_keyframe: bool) -> Result<(), VideoPlayerError>;
-
-    /// Get the latest decoded frame at the given time
-    /// and copy it to the given texture.
-    ///
-    /// Drop all earlier frames to save memory.
-    ///
-    /// Returns [`DecodingError::EmptyBuffer`] if the internal buffer is empty,
-    /// which it is just after startup or after a call to [`Self::reset`].
-    fn update_video_texture(
-        &mut self,
-        render_ctx: &RenderContext,
-        video_texture: &mut VideoTexture,
-        presentation_timestamp: Time,
-    ) -> Result<(), VideoPlayerError>;
-
-    /// Reset the video decoder and discard all frames.
-    fn reset(&mut self) -> Result<(), VideoPlayerError>;
-
-    /// Return and clear the latest error that happened during decoding.
-    fn take_error(&mut self) -> Option<TimedDecodingError>;
-}
-
-/// Decode video to a texture.
-///
-/// If you want to sample multiple points in a video simultaneously, use multiple decoders.
+/// If you want to sample multiple points in a video simultaneously, use multiple video players.
 pub struct VideoPlayer {
     data: Arc<re_video::VideoData>,
-    chunk_decoder: Box<dyn VideoChunkDecoder>,
+    chunk_decoder: VideoChunkDecoder,
 
     video_texture: VideoTexture,
 
@@ -104,14 +68,6 @@ impl VideoPlayer {
         data: Arc<re_video::VideoData>,
         hw_acceleration: DecodeHardwareAcceleration,
     ) -> Result<Self, VideoPlayerError> {
-        // We need these allows due to `cfg_if`
-        #![allow(
-            clippy::needless_pass_by_value,
-            clippy::needless_return,
-            clippy::unnecessary_wraps,
-            unused
-        )]
-
         let debug_name = format!(
             "{debug_name}, codec: {}",
             data.human_readable_codec_string()
@@ -126,27 +82,10 @@ impl VideoPlayer {
             }
         }
 
-        cfg_if::cfg_if! {
-            if #[cfg(target_arch = "wasm32")] {
-                // Web
-                let decoder = web::WebVideoDecoder::new(data.clone(), hw_acceleration)?;
-            } else {
-                // Native
-                let decoder = native_chunk_decoder::NativeDecoder::new(debug_name.clone(), |on_output| {
-                    re_video::decode::new_decoder(debug_name, &data, hw_acceleration, on_output)
-                })?;
-            }
-        };
+        let chunk_decoder = VideoChunkDecoder::new(debug_name.clone(), |on_output| {
+            re_video::decode::new_decoder(&debug_name, &data, hw_acceleration, on_output)
+        })?;
 
-        Ok(Self::from_chunk_decoder(render_ctx, data, decoder))
-    }
-
-    #[allow(unused)] // Unused for certain build flags
-    fn from_chunk_decoder(
-        render_ctx: &RenderContext,
-        data: Arc<re_video::VideoData>,
-        chunk_decoder: impl VideoChunkDecoder,
-    ) -> Self {
         let texture = alloc_video_frame_texture(
             &render_ctx.device,
             &render_ctx.gpu_resources.textures,
@@ -154,9 +93,9 @@ impl VideoPlayer {
             data.config.coded_height as u32,
         );
 
-        Self {
+        Ok(Self {
             data,
-            chunk_decoder: Box::new(chunk_decoder),
+            chunk_decoder,
 
             video_texture: VideoTexture {
                 texture,
@@ -167,7 +106,7 @@ impl VideoPlayer {
             current_sample_idx: usize::MAX,
 
             last_error: None,
-        }
+        })
     }
 
     /// Get the video frame at the given time stamp.
@@ -464,8 +403,7 @@ fn clear_texture(render_ctx: &RenderContext, texture: &GpuTexture2D) {
 /// - The index of `needle` in `v`, if it exists
 /// - The index of the first element in `v` that is lesser than `needle`, if it exists
 /// - `None`, if `v` is empty OR `needle` is greater than all elements in `v`
-#[allow(unused)] // For some feature flags
-fn latest_at_idx<T, K: Ord>(v: &[T], key: impl Fn(&T) -> K, needle: &K) -> Option<usize> {
+pub fn latest_at_idx<T, K: Ord>(v: &[T], key: impl Fn(&T) -> K, needle: &K) -> Option<usize> {
     if v.is_empty() {
         return None;
     }

@@ -7,16 +7,13 @@ use re_video::{Chunk, Frame, Time};
 use parking_lot::Mutex;
 
 use crate::{
-    resource_managers::{
-        transfer_image_data_to_texture, ImageDataDesc, SourceImageDataFormat,
-        YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
+    video::{
+        player::{latest_at_idx, TimedDecodingError, VideoTexture},
+        VideoPlayerError,
     },
-    video::VideoPlayerError,
     wgpu_resources::GpuTexture,
     RenderContext,
 };
-
-use super::{latest_at_idx, TimedDecodingError, VideoChunkDecoder, VideoTexture};
 
 #[derive(Default)]
 struct DecoderOutput {
@@ -26,13 +23,14 @@ struct DecoderOutput {
     error: Option<TimedDecodingError>,
 }
 
-/// Native video decoder
-pub struct NativeDecoder {
+/// Internal implementation detail of the [`super::player::VideoPlayer`].
+// TODO(andreas): Meld this into `super::player::VideoPlayer`.
+pub struct VideoChunkDecoder {
     decoder: Box<dyn re_video::decode::AsyncDecoder>,
     decoder_output: Arc<Mutex<DecoderOutput>>,
 }
 
-impl NativeDecoder {
+impl VideoChunkDecoder {
     pub fn new(
         debug_name: String,
         make_decoder: impl FnOnce(
@@ -66,29 +64,28 @@ impl NativeDecoder {
             }
         };
 
-        let decoder = make_decoder(Box::new(on_output)).map_err(|err| match err {
-            re_video::decode::Error::NoNativeAv1Debug => VideoPlayerError::NoNativeAv1Debug,
-            re_video::decode::Error::UnsupportedCodec(codec) => {
-                VideoPlayerError::UnsupportedCodec { codec }
-            }
-            _ => VideoPlayerError::DecoderSetupFailure(err.to_string()),
-        })?;
+        let decoder = make_decoder(Box::new(on_output))?;
 
         Ok(Self {
             decoder,
             decoder_output,
         })
     }
-}
 
-impl VideoChunkDecoder for NativeDecoder {
     /// Start decoding the given chunk.
-    fn decode(&mut self, chunk: Chunk, _is_keyframe: bool) -> Result<(), VideoPlayerError> {
+    pub fn decode(&mut self, chunk: Chunk, _is_keyframe: bool) -> Result<(), VideoPlayerError> {
         self.decoder.submit_chunk(chunk)?;
         Ok(())
     }
 
-    fn update_video_texture(
+    /// Get the latest decoded frame at the given time
+    /// and copy it to the given texture.
+    ///
+    /// Drop all earlier frames to save memory.
+    ///
+    /// Returns [`DecodingError::EmptyBuffer`] if the internal buffer is empty,
+    /// which it is just after startup or after a call to [`Self::reset`].
+    pub fn update_video_texture(
         &mut self,
         render_ctx: &RenderContext,
         video_texture: &mut VideoTexture,
@@ -119,7 +116,11 @@ impl VideoChunkDecoder for NativeDecoder {
         if frame_time_range.contains(&presentation_timestamp)
             && video_texture.time_range != frame_time_range
         {
-            copy_video_frame_to_texture(render_ctx, frame, &video_texture.texture)?;
+            #[cfg(target_arch = "wasm32")]
+            copy_web_video_frame_to_texture(render_ctx, frame, &video_texture.texture)?;
+            #[cfg(not(target_arch = "wasm32"))]
+            copy_native_video_frame_to_texture(render_ctx, frame, &video_texture.texture)?;
+
             video_texture.time_range = frame_time_range;
         }
 
@@ -127,7 +128,7 @@ impl VideoChunkDecoder for NativeDecoder {
     }
 
     /// Reset the video decoder and discard all frames.
-    fn reset(&mut self) -> Result<(), VideoPlayerError> {
+    pub fn reset(&mut self) -> Result<(), VideoPlayerError> {
         self.decoder.reset()?;
 
         let mut decoder_output = self.decoder_output.lock();
@@ -138,20 +139,86 @@ impl VideoChunkDecoder for NativeDecoder {
     }
 
     /// Return and clear the latest error that happened during decoding.
-    fn take_error(&mut self) -> Option<TimedDecodingError> {
+    pub fn take_error(&mut self) -> Option<TimedDecodingError> {
         self.decoder_output.lock().error.take()
     }
 }
 
-fn copy_video_frame_to_texture(
+#[cfg(target_arch = "wasm32")]
+fn copy_web_video_frame_to_texture(
     ctx: &RenderContext,
     frame: &Frame,
     target_texture: &GpuTexture,
 ) -> Result<(), VideoPlayerError> {
+    let size = wgpu::Extent3d {
+        width: frame.data.display_width(),
+        height: frame.data.display_height(),
+        depth_or_array_layers: 1,
+    };
+    let frame: &web_sys::VideoFrame = &frame.data;
+
+    let source = {
+        // TODO(jan): The wgpu version we're using doesn't support `VideoFrame` yet.
+        // This got fixed in https://github.com/gfx-rs/wgpu/pull/6170 but hasn't shipped yet.
+        // So instead, we just pretend this is a `HtmlVideoElement` instead.
+        // SAFETY: Depends on the fact that `wgpu` passes the object through as-is,
+        // and doesn't actually inspect it in any way. The browser then does its own
+        // typecheck that doesn't care what kind of image source wgpu gave it.
+        #[allow(unsafe_code)]
+        let frame = unsafe {
+            std::mem::transmute::<web_sys::VideoFrame, web_sys::HtmlVideoElement>(
+                frame.clone().expect("Failed to clone the video frame"),
+            )
+        };
+        // Fake width & height to work around wgpu validating this as if it was a `HtmlVideoElement`.
+        // Since it thinks this is a `HtmlVideoElement`, it will want to call `videoWidth` and `videoHeight`
+        // on it to validate the size.
+        // We simply redirect `displayWidth`/`displayHeight` to `videoWidth`/`videoHeight` to make it work!
+        let display_width = js_sys::Reflect::get(&frame, &"displayWidth".into())
+            .expect("Failed to get displayWidth property from VideoFrame.");
+        js_sys::Reflect::set(&frame, &"videoWidth".into(), &display_width)
+            .expect("Failed to set videoWidth property.");
+        let display_height = js_sys::Reflect::get(&frame, &"displayHeight".into())
+            .expect("Failed to get displayHeight property from VideoFrame.");
+        js_sys::Reflect::set(&frame, &"videoHeight".into(), &display_height)
+            .expect("Failed to set videoHeight property.");
+
+        wgpu_types::ImageCopyExternalImage {
+            source: wgpu_types::ExternalImageSource::HTMLVideoElement(frame),
+            origin: wgpu_types::Origin2d { x: 0, y: 0 },
+            flip_y: false,
+        }
+    };
+    let dest = wgpu::ImageCopyTextureTagged {
+        texture: &target_texture.texture,
+        mip_level: 0,
+        origin: wgpu::Origin3d { x: 0, y: 0, z: 0 },
+        aspect: wgpu::TextureAspect::All,
+        color_space: wgpu::PredefinedColorSpace::Srgb,
+        premultiplied_alpha: false,
+    };
+
+    ctx.queue
+        .copy_external_image_to_texture(&source, dest, size);
+
+    Ok(())
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn copy_native_video_frame_to_texture(
+    ctx: &RenderContext,
+    frame: &Frame,
+    target_texture: &GpuTexture,
+) -> Result<(), VideoPlayerError> {
+    use crate::resource_managers::{
+        transfer_image_data_to_texture, ImageDataDesc, SourceImageDataFormat,
+        YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
+    };
+
     let format = match frame.format {
         re_video::PixelFormat::Rgb8Unorm => {
             // TODO(andreas): `ImageDataDesc` should have RGB handling!
-            return copy_video_frame_to_texture(
+            return copy_native_video_frame_to_texture(
                 ctx,
                 &Frame {
                     data: crate::pad_rgb_to_rgba(&frame.data, 255_u8),

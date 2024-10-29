@@ -1,3 +1,4 @@
+mod chunk_decoder;
 mod player;
 
 use std::{collections::hash_map::Entry, ops::Range, sync::Arc};
@@ -12,26 +13,11 @@ use crate::{resource_managers::GpuTexture2D, RenderContext};
 /// Error that can occur during playing videos.
 #[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
 pub enum VideoPlayerError {
-    #[error("Failed to start decoder")]
-    StartDecoder(String),
-
     #[error("The decoder is lagging behind")]
     EmptyBuffer,
 
-    #[error("Failed to create VideoDecoder: {0}")]
-    DecoderSetupFailure(String),
-
     #[error("Video seems to be empty, no segments have beem found.")]
     EmptyVideo,
-
-    #[error("The current segment is empty.")]
-    EmptySegment,
-
-    #[error("Failed to reset the decoder: {0}")]
-    ResetFailure(String),
-
-    #[error("Failed to configure the video decoder: {0}")]
-    ConfigureFailure(String),
 
     /// e.g. unsupported codec
     #[error("Failed to create video chunk: {0}")]
@@ -51,14 +37,6 @@ pub enum VideoPlayerError {
     /// e.g. bad mp4, or bug in mp4 parse
     #[error("Bad data.")]
     BadData,
-
-    #[cfg(not(target_arch = "wasm32"))]
-    #[error("Unsupported codec: {codec:?}. Only AV1 is currently supported on native.")]
-    UnsupportedCodec { codec: String },
-
-    #[cfg(not(target_arch = "wasm32"))]
-    #[error("Native AV1 video decoding not supported in debug builds.")]
-    NoNativeAv1Debug,
 
     #[error("Failed to create gpu texture from decoded video data: {0}")]
     ImageDataToTextureError(#[from] crate::resource_managers::ImageDataToTextureError),

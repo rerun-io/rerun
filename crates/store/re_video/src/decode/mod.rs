@@ -86,8 +86,6 @@ mod webcodecs;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod async_decoder_wrapper;
 
-use std::sync::atomic::AtomicBool;
-
 use crate::Time;
 
 #[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
@@ -136,18 +134,24 @@ pub trait AsyncDecoder: Send + Sync {
 }
 
 /// Blocking decoder of video chunks.
+#[cfg(not(target_arch = "wasm32"))]
 trait SyncDecoder {
     /// Submit some work and read the results.
     ///
     /// Stop early if `should_stop` is `true` or turns `true`.
-    fn submit_chunk(&mut self, should_stop: &AtomicBool, chunk: Chunk, on_output: &OutputCallback);
+    fn submit_chunk(
+        &mut self,
+        should_stop: &std::sync::atomic::AtomicBool,
+        chunk: Chunk,
+        on_output: &OutputCallback,
+    );
 
     /// Clear and reset everything
     fn reset(&mut self) {}
 }
 
 pub fn new_decoder(
-    debug_name: String,
+    debug_name: &str,
     video: &crate::VideoData,
     hw_acceleration: DecodeHardwareAcceleration,
     on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
@@ -183,8 +187,8 @@ pub fn new_decoder(
                 } else {
                     re_log::trace!("Decoding AV1…");
                     return Ok(Box::new(async_decoder_wrapper::AsyncDecoderWrapper::new(
-                        debug_name.clone(),
-                        Box::new(av1::SyncDav1dDecoder::new(debug_name)?),
+                        debug_name.to_owned(),
+                        Box::new(av1::SyncDav1dDecoder::new(debug_name.to_owned())?),
                         on_output,
                     )));
                 }
