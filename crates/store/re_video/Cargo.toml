@@ -81,7 +81,6 @@ web-sys = { workspace = true, features = [
   "VideoDecoderInit",
   "VideoFrame",
 ] }
-web-time.workspace = true
 
 [dev-dependencies]
 indicatif.workspace = true
