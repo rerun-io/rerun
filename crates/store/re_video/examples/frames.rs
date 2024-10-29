@@ -34,18 +34,6 @@ fn main() {
         video.config.coded_height
     );
 
-    let mut decoder = re_video::decode::new_decoder(video_path.to_string(), &video)
-        .expect("Failed to create decoder");
-
-    write_video_frames(&video, &video_blob, decoder.as_mut(), &output_dir);
-}
-
-fn write_video_frames(
-    video: &re_video::VideoData,
-    video_blob: &[u8],
-    decoder: &mut dyn re_video::decode::SyncDecoder,
-    output_dir: &PathBuf,
-) {
     let progress = ProgressBar::new(video.samples.len() as u64).with_message("Decoding video");
     progress.enable_steady_tick(Duration::from_millis(100));
 
@@ -59,11 +47,18 @@ fn write_video_frames(
         }
     };
 
+    let mut decoder = re_video::decode::new_decoder(
+        &video_path.to_string(),
+        &video,
+        re_video::decode::DecodeHardwareAcceleration::Auto,
+        on_output,
+    )
+    .expect("Failed to create decoder");
+
     let start = Instant::now();
     for sample in &video.samples {
-        let should_stop = std::sync::atomic::AtomicBool::new(false);
-        let chunk = sample.get(video_blob).unwrap();
-        decoder.submit_chunk(&should_stop, chunk, &on_output);
+        let chunk = sample.get(&video_blob).unwrap();
+        decoder.submit_chunk(chunk).expect("Failed to submit chunk");
     }
 
     let end = Instant::now();
@@ -78,7 +73,7 @@ fn write_video_frames(
     );
 
     println!("Writing frames to {}", output_dir.display());
-    std::fs::create_dir_all(output_dir).expect("failed to create output directory");
+    std::fs::create_dir_all(&output_dir).expect("failed to create output directory");
 
     let width = num_digits(frames.len());
     for (i, frame) in frames.iter().enumerate() {

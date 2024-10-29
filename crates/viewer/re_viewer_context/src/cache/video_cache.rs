@@ -6,15 +6,14 @@ use std::sync::{
 use ahash::{HashMap, HashSet};
 use itertools::Either;
 
-use crate::Cache;
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
-use re_renderer::{
-    external::re_video::VideoLoadError,
-    video::{DecodeHardwareAcceleration, Video},
-};
+use re_renderer::{external::re_video::VideoLoadError, video::Video};
 use re_types::{components::MediaType, Loggable as _};
+use re_video::decode::DecodeHardwareAcceleration;
+
+use crate::Cache;
 
 // ----------------------------------------------------------------------------
 
