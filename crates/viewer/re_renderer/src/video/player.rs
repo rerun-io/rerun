@@ -9,7 +9,7 @@ use re_video::{
 
 use super::{chunk_decoder::VideoChunkDecoder, VideoFrameTexture};
 use crate::{
-    resource_managers::GpuTexture2D,
+    resource_managers::{GpuTexture2D, SourceImageDataFormat},
     video::VideoPlayerError,
     wgpu_resources::{GpuTexturePool, TextureDesc},
     RenderContext,
@@ -42,6 +42,7 @@ impl TimedDecodingError {
 pub struct VideoTexture {
     pub texture: GpuTexture2D,
     pub frame_info: FrameInfo,
+    pub source_pixel_format: SourceImageDataFormat,
 }
 
 /// Decode video to a texture, optimized for extracting successive frames over time.
@@ -101,6 +102,9 @@ impl VideoPlayer {
             video_texture: VideoTexture {
                 texture,
                 frame_info: FrameInfo::default(),
+                source_pixel_format: SourceImageDataFormat::WgpuCompatible(
+                    wgpu::TextureFormat::Rgba8Unorm,
+                ),
             },
 
             current_gop_idx: usize::MAX,
@@ -169,6 +173,7 @@ impl VideoPlayer {
                     is_pending,
                     show_spinner,
                     frame_info: self.video_texture.frame_info.clone(),
+                    source_pixel_format: self.video_texture.source_pixel_format,
                 })
             }
 

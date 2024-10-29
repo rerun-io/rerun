@@ -206,6 +206,7 @@ impl VideoFrameReferenceVisualizer {
                             is_pending,
                             show_spinner,
                             frame_info: _, // TODO(emilk): maybe add to `PickableTexturedRect` and `PickingHitType::TexturedRect` so we can show on hover?
+                            source_pixel_format: _,
                         }) => {
                             // Make sure to use the video instead of texture size here,
                             // since the texture may be a placeholder which doesn't have the full size yet.

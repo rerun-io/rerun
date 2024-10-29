@@ -8,7 +8,10 @@ use parking_lot::Mutex;
 
 use re_video::{decode::DecodeHardwareAcceleration, VideoData};
 
-use crate::{resource_managers::GpuTexture2D, RenderContext};
+use crate::{
+    resource_managers::{GpuTexture2D, SourceImageDataFormat},
+    RenderContext,
+};
 
 /// Error that can occur during playing videos.
 #[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
@@ -54,6 +57,11 @@ pub struct VideoFrameTexture {
 
     /// If true, this texture is so out-dated that it should have a loading spinner on top of it.
     pub show_spinner: bool,
+
+    /// Format information about the original data from the video decoder.
+    ///
+    /// The texture is already converted to something the renderer can use directly.
+    pub source_pixel_format: SourceImageDataFormat,
 
     /// Meta information about the decoded frame.
     pub frame_info: re_video::decode::FrameInfo,

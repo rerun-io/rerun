@@ -240,7 +240,7 @@ pub struct Frame {
     pub info: FrameInfo,
 }
 
-/// Pixel format/layout used by [`Frame::data`].
+/// Pixel format/layout used by [`FrameContent::data`].
 #[derive(Debug)]
 pub enum PixelFormat {
     Rgb8Unorm,

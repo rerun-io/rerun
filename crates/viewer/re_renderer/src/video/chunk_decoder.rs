@@ -7,6 +7,7 @@ use re_video::{decode::FrameContent, Chunk, Frame, Time};
 use parking_lot::Mutex;
 
 use crate::{
+    resource_managers::SourceImageDataFormat,
     video::{
         player::{latest_at_idx, TimedDecodingError, VideoTexture},
         VideoPlayerError,
@@ -119,9 +120,21 @@ impl VideoChunkDecoder {
             && video_texture.frame_info.time_range() != frame_time_range
         {
             #[cfg(target_arch = "wasm32")]
-            copy_web_video_frame_to_texture(render_ctx, &frame.content, &video_texture.texture)?;
+            {
+                video_texture.source_pixel_format = copy_web_video_frame_to_texture(
+                    render_ctx,
+                    &frame.content,
+                    &video_texture.texture,
+                )?;
+            }
             #[cfg(not(target_arch = "wasm32"))]
-            copy_native_video_frame_to_texture(render_ctx, &frame.content, &video_texture.texture)?;
+            {
+                video_texture.source_pixel_format = copy_native_video_frame_to_texture(
+                    render_ctx,
+                    &frame.content,
+                    &video_texture.texture,
+                )?;
+            }
 
             video_texture.frame_info = frame.info.clone();
         }
@@ -151,7 +164,7 @@ fn copy_web_video_frame_to_texture(
     ctx: &RenderContext,
     frame: &FrameContent,
     target_texture: &GpuTexture,
-) -> Result<(), VideoPlayerError> {
+) -> Result<SourceImageDataFormat, VideoPlayerError> {
     let size = wgpu::Extent3d {
         width: frame.display_width(),
         height: frame.display_height(),
@@ -203,7 +216,9 @@ fn copy_web_video_frame_to_texture(
     ctx.queue
         .copy_external_image_to_texture(&source, dest, size);
 
-    Ok(())
+    Ok(SourceImageDataFormat::WgpuCompatible(
+        target_texture.creation_desc.format,
+    ))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -211,7 +226,7 @@ fn copy_native_video_frame_to_texture(
     ctx: &RenderContext,
     frame: &FrameContent,
     target_texture: &GpuTexture,
-) -> Result<(), VideoPlayerError> {
+) -> Result<SourceImageDataFormat, VideoPlayerError> {
     use crate::resource_managers::{
         transfer_image_data_to_texture, ImageDataDesc, SourceImageDataFormat,
         YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
@@ -282,5 +297,5 @@ fn copy_native_video_frame_to_texture(
         target_texture,
     )?;
 
-    Ok(())
+    Ok(format)
 }

@@ -1,6 +1,10 @@
-use re_renderer::{external::re_video::VideoLoadError, video::VideoFrameTexture};
+use re_renderer::{
+    external::re_video::VideoLoadError, resource_managers::SourceImageDataFormat,
+    video::VideoFrameTexture,
+};
 use re_types::components::{Blob, MediaType, VideoTimestamp};
 use re_ui::{list_item::PropertyContent, UiExt};
+use re_video::decode::FrameInfo;
 use re_viewer_context::UiLayout;
 
 use crate::{image::image_preview_ui, EntityDataUi};
@@ -209,7 +213,7 @@ fn show_video_blob_info(
                     // Don't show subsampling mode for monochrome, doesn't make sense usually.
                     if data.is_monochrome() != Some(true) {
                         ui.list_item_flat_noninteractive(
-                            PropertyContent::new("Subsampling mode")
+                            PropertyContent::new("Subsampling")
                                 .value_text(subsampling_mode.to_string()),
                         );
                     }
@@ -275,6 +279,7 @@ fn show_video_blob_info(
                             is_pending,
                             show_spinner,
                             frame_info,
+                            source_pixel_format,
                         }) => {
                             let response = crate::image::texture_preview_ui(
                                 render_ctx,
@@ -297,23 +302,12 @@ fn show_video_blob_info(
                                 egui::Spinner::new().paint_at(ui, smaller_rect);
                             }
 
-                            response.on_hover_ui(|ui| {
-                                // Prevent `Area` auto-sizing from shrinking tooltips with dynamic content.
-                                // See https://github.com/emilk/egui/issues/5167
-                                ui.set_max_width(ui.spacing().tooltip_width);
-
-                                let timescale = video.data().timescale;
-                                let time_range = frame_info.time_range();
-                                ui.label(format!(
-                                    "Frame at {} - {}",
-                                    re_format::format_timestamp_seconds(
-                                        time_range.start.into_secs(timescale),
-                                    ),
-                                    re_format::format_timestamp_seconds(
-                                        time_range.end.into_secs(timescale),
-                                    ),
-                                ));
-                            });
+                            decoded_frame_ui(
+                                ui,
+                                &frame_info,
+                                video.data().timescale,
+                                &source_pixel_format,
+                            );
                         }
 
                         Err(err) => {
@@ -341,4 +335,67 @@ fn show_video_blob_info(
             }
         }
     }
+}
+
+fn decoded_frame_ui(
+    ui: &mut egui::Ui,
+    frame_info: &FrameInfo,
+    timescale: re_video::Timescale,
+    source_image_format: &SourceImageDataFormat,
+) {
+    re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
+        let default_open = false;
+        ui.list_item_collapsible_noninteractive_label("Decoder frame info", default_open, |ui| {
+            frame_info_ui(ui, frame_info, timescale);
+            source_image_data_format_ui(ui, source_image_format);
+        });
+    });
+}
+
+fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, timescale: re_video::Timescale) {
+    let time_range = frame_info.time_range();
+    ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
+        "{} - {}",
+        re_format::format_timestamp_seconds(time_range.start.into_secs(timescale),),
+        re_format::format_timestamp_seconds(time_range.end.into_secs(timescale),),
+    )));
+
+    ui.list_item_flat_noninteractive(
+        PropertyContent::new("PTS").value_text(format!("{}", frame_info.presentation_timestamp.0)),
+    )
+    .on_hover_text("Presentation timestamp");
+}
+
+fn source_image_data_format_ui(ui: &mut egui::Ui, format: &SourceImageDataFormat) {
+    let label = "Output format";
+
+    match format {
+        SourceImageDataFormat::WgpuCompatible(format) => {
+            ui.list_item_flat_noninteractive(PropertyContent::new(label).value_text(format!("{format:?}")))
+                // This is true for YUV outputs as well, but for RGB/RGBA there was almost certainly some postprocessing involved,
+                // whereas it would very surprising for YUV.
+                .on_hover_text("Pixel format as returned from the decoder.
+Decoders may do arbitrary post processing, so this is not necessarily the format that is actually encoded in the video data!"
+            );
+        }
+
+        SourceImageDataFormat::Yuv {
+            layout,
+            range,
+            coefficients,
+        } => {
+            let default_open = true;
+            ui.list_item_collapsible_noninteractive_label(label, default_open, |ui| {
+                ui.list_item_flat_noninteractive(
+                    PropertyContent::new("Data layout").value_text(layout.to_string()),
+                );
+                ui.list_item_flat_noninteractive(
+                    PropertyContent::new("Range").value_text(range.to_string()),
+                );
+                ui.list_item_flat_noninteractive(
+                    PropertyContent::new("Yuv Coefficients").value_text(coefficients.to_string()),
+                );
+            });
+        }
+    };
 }
