@@ -32,8 +32,7 @@ re_ui.workspace = true
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
 
+ahash.workspace = true
 egui.workspace = true
-
-thiserror = "1.0"
-ahash = "0.8"
-nohash-hasher = "0.2"
+nohash-hasher.workspace = true
+thiserror.workspace = true
