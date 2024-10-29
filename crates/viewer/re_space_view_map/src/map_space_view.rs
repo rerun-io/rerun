@@ -1,4 +1,6 @@
 use egui::{Context, NumExt as _};
+use walkers::{HttpTiles, Map, MapMemory, Tiles};
+
 use re_data_ui::{item_ui, DataUi};
 use re_log_types::EntityPath;
 use re_space_view::suggest_space_view_for_each_entity;
@@ -18,7 +20,6 @@ use re_viewer_context::{
     ViewQuery, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
-use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
 use crate::map_overlays;
 use crate::visualizers::geo_points::GeoPointsVisualizer;
