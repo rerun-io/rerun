@@ -6059,6 +6059,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tokio-stream",
+ "tonic",
  "tonic-web-wasm-client",
  "wasm-bindgen-futures",
 ]

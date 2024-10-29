@@ -20,7 +20,7 @@ pub fn generate_rust_code(
         .out_dir(output_dir.as_ref())
         .build_client(true)
         .build_server(true)
-        .build_transport(true)
+        .build_transport(false) // Small convenience, but doesn't work on web
         .compile_protos(proto_paths, &[definitions_dir])
         .unwrap();
 }
