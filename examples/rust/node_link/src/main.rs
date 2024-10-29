@@ -2,7 +2,7 @@
 //!
 //! Usage:
 //! ```
-//!  cargo run -p node_link_graph -- --connect
+//!  cargo run -p node_link -- --connect
 //! ```
 
 use rerun::external::{log, re_log};
@@ -12,12 +12,14 @@ mod examples;
 
 #[derive(Copy, Clone, Debug, clap::ValueEnum, strum_macros::EnumIter)]
 enum Example {
+    BinaryTree,
     Lattice,
 }
 
 impl Example {
     fn run(&self, args: &Args) -> anyhow::Result<()> {
         match self {
+            Example::BinaryTree => examples::binary_tree::run(args),
             Example::Lattice => examples::lattice::run(args, 10),
         }
     }

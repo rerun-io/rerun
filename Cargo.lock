@@ -3852,8 +3852,8 @@ dependencies = [
 ]
 
 [[package]]
-name = "node_link_graph"
-version = "0.19.0-alpha.1+dev"
+name = "node_link"
+version = "0.20.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "clap",
