@@ -4,9 +4,7 @@ namespace rerun.datatypes;
 table Utf8Pair (
   "attr.docs.unreleased",
   "attr.python.aliases": "Sequence[datatypes.Utf8Like]",
-  "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
-  "attr.rust.custom_clause":
-    'cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))'
+  "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord"
 ) {
   /// The first string.
   first: rerun.datatypes.Utf8 (order: 100);

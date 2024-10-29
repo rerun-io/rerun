@@ -21,7 +21,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: An edge in a graph connecting two nodes.
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(transparent)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct GraphEdge(pub crate::datatypes::Utf8Pair);
 
 impl ::re_types_core::SizeBytes for GraphEdge {

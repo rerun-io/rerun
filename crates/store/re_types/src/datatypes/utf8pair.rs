@@ -20,7 +20,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Stores a tuple of UTF-8 strings.
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct Utf8Pair {
     /// The first string.
     pub first: crate::datatypes::Utf8,

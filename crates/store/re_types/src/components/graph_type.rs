@@ -21,7 +21,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Specifies if a graph has directed or undirected edges.
 #[derive(Clone, Copy, Debug, Hash, PartialEq, Eq, Default)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 #[repr(u8)]
 pub enum GraphType {
     /// The graph has undirected edges.

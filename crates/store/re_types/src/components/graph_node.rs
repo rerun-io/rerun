@@ -21,7 +21,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Component**: A string-based ID representing a node in a graph.
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
-#[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct GraphNode(pub crate::datatypes::Utf8);
 
 impl ::re_types_core::SizeBytes for GraphNode {

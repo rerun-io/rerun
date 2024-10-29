@@ -8,9 +8,7 @@ table GraphNode (
   "attr.python.aliases": "str",
   "attr.python.array_aliases": "str, Sequence[str]",
   "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord, Hash",
-  "attr.rust.repr": "transparent",
-  "attr.rust.custom_clause":
-    'cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))'
+  "attr.rust.repr": "transparent"
 ) {
   id: rerun.datatypes.Utf8 (order: 100);
 }
