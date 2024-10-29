@@ -25,6 +25,54 @@ class Capsules3D(Capsules3DExt, Archetype):
     at (0, 0, 0) and (0, 0, length), that is, extending along the positive direction of the Z axis.
     Capsules in other orientations may be produced by applying a rotation to the entity or
     instances.
+
+    Example
+    -------
+    ### Batch of capsules:
+    ```python
+    import rerun as rr
+
+    rr.init("rerun_example_capsule3d_batch", spawn=True)
+
+    rr.log(
+        "capsules",
+        rr.Capsules3D(
+            lengths=[0.0, 2.0, 4.0, 6.0, 8.0],
+            radii=[1.0, 0.5, 0.5, 0.5, 1.0],
+            colors=[
+                (255, 0, 0),
+                (188, 188, 0),
+                (0, 255, 0),
+                (0, 188, 188),
+                (0, 0, 255),
+            ],
+            translations=[
+                (0.0, 0.0, 0.0),
+                (2.0, 0.0, 0.0),
+                (4.0, 0.0, 0.0),
+                (6.0, 0.0, 0.0),
+                (8.0, 0.0, 0.0),
+            ],
+            rotation_axis_angles=[
+                rr.RotationAxisAngle(
+                    [1.0, 0.0, 0.0],
+                    rr.Angle(deg=float(i) * -22.5),
+                )
+                for i in range(0, 5)
+            ],
+        ),
+    )
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/1200w.png">
+      <img src="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/full.png" width="640">
+    </picture>
+    </center>
+
     """
 
     # __init__ can be found in capsules3d_ext.py

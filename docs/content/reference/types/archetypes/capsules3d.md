@@ -28,3 +28,17 @@ instances.
  * 🐍 [Python API docs for `Capsules3D`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.Capsules3D)
  * 🦀 [Rust API docs for `Capsules3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Capsules3D.html?speculative-link)
 
+## Example
+
+### Batch of capsules
+
+snippet: archetypes/capsule3d_batch
+
+<picture data-inline-viewer="snippets/capsule3d_batch">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/1200w.png">
+  <img src="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/full.png">
+</picture>
+
