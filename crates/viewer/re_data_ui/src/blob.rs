@@ -345,7 +345,7 @@ fn decoded_frame_ui(
 ) {
     re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
         let default_open = false;
-        ui.list_item_collapsible_noninteractive_label("Decoder frame info", default_open, |ui| {
+        ui.list_item_collapsible_noninteractive_label("Decoded frame info", default_open, |ui| {
             frame_info_ui(ui, frame_info, timescale);
             source_image_data_format_ui(ui, source_image_format);
         });
@@ -358,12 +358,14 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, timescale: re_video:
         "{} - {}",
         re_format::format_timestamp_seconds(time_range.start.into_secs(timescale),),
         re_format::format_timestamp_seconds(time_range.end.into_secs(timescale),),
-    )));
+    )))
+    .on_hover_text("Time range in which this frame is valid.");
 
     ui.list_item_flat_noninteractive(
         PropertyContent::new("PTS").value_text(format!("{}", frame_info.presentation_timestamp.0)),
     )
-    .on_hover_text("Presentation timestamp");
+    .on_hover_text("Raw presentation timestamp prior to applying the timescale.
+This specifies the time at which the frame should be shown relative to the start of a video stream.");
 }
 
 fn source_image_data_format_ui(ui: &mut egui::Ui, format: &SourceImageDataFormat) {
@@ -388,13 +390,16 @@ Decoders may do arbitrary post processing, so this is not necessarily the format
             ui.list_item_collapsible_noninteractive_label(label, default_open, |ui| {
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Data layout").value_text(layout.to_string()),
-                );
+                )
+                .on_hover_text("Subsampling ratio & layout of the pixel data.");
                 ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Range").value_text(range.to_string()),
-                );
+                    PropertyContent::new("Color range").value_text(range.to_string()),
+                )
+                .on_hover_text("Valid range of the pixel data values.");
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Yuv Coefficients").value_text(coefficients.to_string()),
-                );
+                )
+                .on_hover_text("Matrix coefficients used to convert the pixel data to RGB.");
             });
         }
     };
