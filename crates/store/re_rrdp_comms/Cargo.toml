@@ -21,10 +21,13 @@ all-features = true
 
 [dependencies]
 re_chunk.workspace = true
-re_log.workspace = true
+re_error.workspace = true
 re_log_types.workspace = true
+re_log.workspace = true
 re_remote_store_types.workspace = true
 re_smart_channel.workspace = true
 
+anyhow.workspace = true
+thiserror.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread", "macros", "signal"] }
 tokio-stream = { workspace = true }

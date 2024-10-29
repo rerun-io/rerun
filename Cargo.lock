@@ -6048,11 +6048,14 @@ dependencies = [
 name = "re_rrdp_comms"
 version = "0.20.0-alpha.1+dev"
 dependencies = [
+ "anyhow",
  "re_chunk",
+ "re_error",
  "re_log",
  "re_log_types",
  "re_remote_store_types",
  "re_smart_channel",
+ "thiserror",
  "tokio",
  "tokio-stream",
 ]
@@ -6964,6 +6967,7 @@ dependencies = [
  "re_log",
  "re_memory",
  "rerun",
+ "tokio",
 ]
 
 [[package]]

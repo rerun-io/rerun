@@ -244,7 +244,9 @@ impl DataSource {
             }
 
             #[cfg(feature = "rrdp")]
-            Self::RrdpUrl { url } => Ok(re_rrdp_comms::stream_recording(url, on_msg)),
+            Self::RrdpUrl { url } => {
+                re_rrdp_comms::stream_recording(url, on_msg).map_err(|err| err.into())
+            }
         }
     }
 }
