@@ -49,14 +49,21 @@ pub struct VideoFrameTexture {
     /// The texture to show.
     pub texture: GpuTexture2D,
 
-    /// What part of the video this video frame covers.
-    pub time_range: Range<re_video::Time>,
-
     /// If true, the texture is outdated. Keep polling for a fresh one.
     pub is_pending: bool,
 
     /// If true, this texture is so out-dated that it should have a loading spinner on top of it.
     pub show_spinner: bool,
+
+    /// Meta information about the decoded frame.
+    pub frame_info: re_video::decode::FrameInfo,
+}
+
+impl VideoFrameTexture {
+    pub fn time_range(&self) -> Range<re_video::Time> {
+        self.frame_info.presentation_timestamp
+            ..self.frame_info.presentation_timestamp + self.frame_info.duration
+    }
 }
 
 /// Identifier for an independent video decoding stream.

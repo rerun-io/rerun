@@ -198,20 +198,46 @@ pub struct Chunk {
     pub duration: Time,
 }
 
+/// Data for a decoded frame on native targets.
 #[cfg(not(target_arch = "wasm32"))]
-pub type FrameData = Vec<u8>;
-
-#[cfg(target_arch = "wasm32")]
-pub type FrameData = webcodecs::WebVideoFrame;
-
-/// One decoded video frame.
-pub struct Frame {
-    pub data: FrameData,
+pub struct FrameContent {
+    pub data: Vec<u8>,
     pub width: u32,
     pub height: u32,
     pub format: PixelFormat,
+}
+
+/// Data for a decoded frame on the web.
+#[cfg(target_arch = "wasm32")]
+pub type FrameContent = webcodecs::WebVideoFrame;
+
+/// Meta information about a decoded video frame, as reported by the decoder.
+#[derive(Debug, Clone)]
+pub struct FrameInfo {
     pub presentation_timestamp: Time,
     pub duration: Time,
+}
+
+impl Default for FrameInfo {
+    fn default() -> Self {
+        Self {
+            presentation_timestamp: Time::MAX,
+            duration: Time::MAX,
+        }
+    }
+}
+
+impl FrameInfo {
+    /// Presentation timestamp range in which this frame is valid.
+    pub fn time_range(&self) -> std::ops::Range<Time> {
+        self.presentation_timestamp..self.presentation_timestamp + self.duration
+    }
+}
+
+/// One decoded video frame.
+pub struct Frame {
+    pub content: FrameContent,
+    pub info: FrameInfo,
 }
 
 /// Pixel format/layout used by [`Frame::data`].

@@ -272,9 +272,9 @@ fn show_video_blob_info(
                     ) {
                         Ok(VideoFrameTexture {
                             texture,
-                            time_range,
                             is_pending,
                             show_spinner,
+                            frame_info,
                         }) => {
                             let response = crate::image::texture_preview_ui(
                                 render_ctx,
@@ -303,6 +303,7 @@ fn show_video_blob_info(
                                 ui.set_max_width(ui.spacing().tooltip_width);
 
                                 let timescale = video.data().timescale;
+                                let time_range = frame_info.time_range();
                                 ui.label(format!(
                                     "Frame at {} - {}",
                                     re_format::format_timestamp_seconds(
