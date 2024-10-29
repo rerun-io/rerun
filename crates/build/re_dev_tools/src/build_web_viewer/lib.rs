@@ -120,8 +120,7 @@ pub fn build(
             "wasm32-unknown-unknown",
             "--target-dir",
             target_wasm_dir.as_str(),
-            "--no-default-features",
-            "--features=analytics",
+            // We use default features
         ]);
         if profile == Profile::Release {
             cmd.arg("--release");
