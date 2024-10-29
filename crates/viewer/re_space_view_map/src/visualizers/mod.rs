@@ -78,7 +78,7 @@ impl GeoSpan {
 /// A picked instance.
 #[derive(Debug, Clone)]
 pub struct PickedInstance {
-    pub instance: InstancePath,
+    pub instance_path: InstancePath,
 
     /// Keep track of the mouse distance from the object's center, so we can arbitrate.
     pixel_distance: f32,

@@ -1,6 +1,5 @@
 use egui::{Context, NumExt as _};
-use walkers::{HttpTiles, Map, MapMemory, Tiles};
-
+use re_data_ui::{item_ui, DataUi};
 use re_log_types::EntityPath;
 use re_space_view::suggest_space_view_for_each_entity;
 use re_types::{
@@ -11,13 +10,15 @@ use re_types::{
     },
     SpaceViewClassIdentifier, View,
 };
+use re_ui::list_item;
 use re_viewer_context::{
     Item, SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
-    ViewerContext,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, UiLayout,
+    ViewQuery, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
+use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
 use crate::map_overlays;
 use crate::visualizers::geo_points::GeoPointsVisualizer;
@@ -224,10 +225,39 @@ Displays geospatial primitives on a map.
             );
 
             if let Some(picked_instance) = picked_instance {
+                map_response.clone().on_hover_ui_at_pointer(|ui| {
+                    list_item::list_item_scope(ui, "map_hover", |ui| {
+                        item_ui::instance_path_button(
+                            ctx,
+                            &query.latest_at_query(),
+                            ctx.recording(),
+                            ui,
+                            Some(query.space_view_id),
+                            &picked_instance.instance_path,
+                        );
+                        picked_instance
+                            .instance_path
+                            .data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                    });
+                });
+
                 ctx.select_hovered_on_click(
                     &map_response,
-                    Item::DataResult(query.space_view_id, picked_instance.instance.clone()),
+                    Item::DataResult(query.space_view_id, picked_instance.instance_path.clone()),
                 );
+
+                // double click selects the entire entity
+                if map_response.double_clicked() {
+                    // Select the entire entity
+                    ctx.selection_state().set_selection(Item::DataResult(
+                        query.space_view_id,
+                        picked_instance.instance_path.entity_path.clone().into(),
+                    ))
+                }
+            } else if map_response.clicked() {
+                // clicked elsewhere, select the view
+                ctx.selection_state()
+                    .set_selection(Item::SpaceView(query.space_view_id))
             }
 
             if map_response.double_clicked() {

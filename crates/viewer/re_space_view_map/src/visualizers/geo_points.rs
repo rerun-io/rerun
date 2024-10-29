@@ -1,5 +1,5 @@
 use re_entity_db::{InstancePath, InstancePathHash};
-use re_log_types::{EntityPathHash, Instance};
+use re_log_types::EntityPathHash;
 use re_space_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_types::{
     archetypes::GeoPoints,
@@ -7,8 +7,8 @@ use re_types::{
     Loggable as _,
 };
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, Item, QueryContext, SpaceViewId,
-    SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    auto_color_for_entity_path, IdentifiedViewSystem, Item, ItemCollection, QueryContext,
+    SpaceViewId, SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
     ViewContextCollection, ViewQuery, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
@@ -177,6 +177,29 @@ impl GeoPointsVisualizer {
 
         indices.unwrap_or_default()
     }
+
+    /// Returns entry indices corresponding to the provided item collection.
+    fn indices_for_item_collection(
+        &self,
+        item_collection: &ItemCollection,
+        view_id: SpaceViewId,
+    ) -> Vec<usize> {
+        item_collection
+            .iter()
+            .map(|(item, _)| {
+                if let Item::DataResult(item_view_id, instance_path) = item {
+                    if *item_view_id == view_id {
+                        return self.indices_for_instance(instance_path);
+                    }
+                }
+
+                // empty slice
+                Default::default()
+            })
+            .flatten()
+            .cloned()
+            .collect::<Vec<_>>()
+    }
 }
 
 impl TypedComponentFallbackProvider<Color> for GeoPointsVisualizer {
@@ -234,7 +257,7 @@ impl walkers::Plugin for GeoPointsPlugin<'_> {
                     update_picked_instance(
                         self.picked_instance,
                         Some(PickedInstance {
-                            instance: entry.instance_path.clone(),
+                            instance_path: entry.instance_path.clone(),
                             pixel_distance,
                         }),
                     );
@@ -249,22 +272,8 @@ impl walkers::Plugin for GeoPointsPlugin<'_> {
         //
 
         let selected_entries_indices = self
-            .viewer_ctx
-            .selection()
-            .iter()
-            .map(|(item, _)| {
-                if let Item::DataResult(view_id, instance_path) = item {
-                    if *view_id == self.view_id {
-                        return self.visualizer.indices_for_instance(instance_path);
-                    }
-                }
-
-                // empty slice
-                Default::default()
-            })
-            .flatten()
-            .cloned()
-            .collect::<Vec<_>>();
+            .visualizer
+            .indices_for_item_collection(self.viewer_ctx.selection(), self.view_id);
 
         //
         // Second pass: draw highlights for everything that is selected
@@ -290,6 +299,33 @@ impl walkers::Plugin for GeoPointsPlugin<'_> {
             let position = projected_position[index];
 
             painter.circle_filled(position, entry.radius, entry.color);
+        }
+
+        //
+        // Forth pass: draw the hovered entries
+        //
+
+        let hovered_entries_indices = self
+            .visualizer
+            .indices_for_item_collection(self.viewer_ctx.hovered(), self.view_id);
+
+        for index in &hovered_entries_indices {
+            let entry = &self.visualizer.map_entries[*index];
+            let position = projected_position[*index];
+
+            painter.circle_stroke(
+                position,
+                entry.radius,
+                egui::Stroke::new(
+                    2.0,
+                    ui.style()
+                        .visuals
+                        .widgets
+                        .active
+                        .text_color()
+                        .gamma_multiply(0.5),
+                ),
+            );
         }
     }
 }
