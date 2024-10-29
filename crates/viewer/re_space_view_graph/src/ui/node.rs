@@ -20,7 +20,6 @@ pub fn draw_node(
         HoverHighlight::None => ui.style().visuals.widgets.noninteractive.bg_fill,
         HoverHighlight::Hovered => ui.style().visuals.widgets.hovered.bg_fill,
     };
-    // ui.style().visuals.faint_bg_color
 
     if let (true, Some(label)) = (instance.show_labels, instance.label) {
         let text = egui::RichText::new(label.to_string());
