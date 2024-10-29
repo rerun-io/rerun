@@ -1,5 +1,5 @@
 ---
-title: Get data out of Rerun
+title: Query data out of Rerun
 order: 450
 ---
 

@@ -137,14 +137,14 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // sinks
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(binary_stream, m)?)?;
-    m.add_function(wrap_pyfunction!(connect, m)?)?;
-    m.add_function(wrap_pyfunction!(connect_blueprint, m)?)?;
+    m.add_function(wrap_pyfunction!(connect_tcp, m)?)?;
+    m.add_function(wrap_pyfunction!(connect_tcp_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(save, m)?)?;
     m.add_function(wrap_pyfunction!(save_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(stdout, m)?)?;
     m.add_function(wrap_pyfunction!(memory_recording, m)?)?;
     m.add_function(wrap_pyfunction!(set_callback_sink, m)?)?;
-    m.add_function(wrap_pyfunction!(serve, m)?)?;
+    m.add_function(wrap_pyfunction!(serve_web, m)?)?;
     m.add_function(wrap_pyfunction!(disconnect, m)?)?;
     m.add_function(wrap_pyfunction!(flush, m)?)?;
 
@@ -573,7 +573,7 @@ fn spawn(
 
 #[pyfunction]
 #[pyo3(signature = (addr = None, flush_timeout_sec=re_sdk::default_flush_timeout().expect("always Some()").as_secs_f32(), default_blueprint = None, recording = None))]
-fn connect(
+fn connect_tcp(
     addr: Option<String>,
     flush_timeout_sec: Option<f32>,
     default_blueprint: Option<&PyMemorySinkStorage>,
@@ -619,7 +619,7 @@ fn connect(
 #[pyfunction]
 #[pyo3(signature = (addr, make_active, make_default, blueprint_stream))]
 /// Special binding for directly sending a blueprint stream to a connection.
-fn connect_blueprint(
+fn connect_tcp_blueprint(
     addr: Option<String>,
     make_active: bool,
     make_default: bool,
@@ -945,7 +945,7 @@ impl PyBinarySinkStorage {
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
 #[pyo3(signature = (open_browser, web_port, ws_port, server_memory_limit, default_blueprint = None, recording = None))]
-fn serve(
+fn serve_web(
     open_browser: bool,
     web_port: Option<u16>,
     ws_port: Option<u16>,

@@ -36,6 +36,9 @@ default = ["analytics"]
 ## Enable telemetry using our analytics SDK.
 analytics = ["dep:re_analytics"]
 
+## Enable the map view
+map_view = ["dep:re_space_view_map"]
+
 
 [dependencies]
 # Internal:
@@ -85,6 +88,7 @@ re_ws_comms = { workspace = true, features = ["client"] }
 
 # Internal (optional):
 re_analytics = { workspace = true, optional = true }
+re_space_view_map = { workspace = true, optional = true }
 
 
 # External

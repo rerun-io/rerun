@@ -1,5 +1,5 @@
 ---
-title: Blueprint
+title: Blueprints
 order: 600
 ---
 

@@ -209,15 +209,63 @@ impl SparseFillStrategy {
         }
     }
 }
+/// Error codes for application level errors
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
+#[repr(i32)]
+pub enum ErrorCode {
+    /// unused
+    Unused = 0,
+    /// object store access error
+    ObjectStoreError = 1,
+    /// metadata database access error
+    MetadataDbError = 2,
+}
+impl ErrorCode {
+    /// String value of the enum field names used in the ProtoBuf definition.
+    ///
+    /// The values are not transformed in any way and thus are considered stable
+    /// (if the ProtoBuf definition does not change) and safe for programmatic use.
+    pub fn as_str_name(&self) -> &'static str {
+        match self {
+            Self::Unused => "_UNUSED",
+            Self::ObjectStoreError => "OBJECT_STORE_ERROR",
+            Self::MetadataDbError => "METADATA_DB_ERROR",
+        }
+    }
+    /// Creates an enum from field names used in the ProtoBuf definition.
+    pub fn from_str_name(value: &str) -> ::core::option::Option<Self> {
+        match value {
+            "_UNUSED" => Some(Self::Unused),
+            "OBJECT_STORE_ERROR" => Some(Self::ObjectStoreError),
+            "METADATA_DB_ERROR" => Some(Self::MetadataDbError),
+            _ => None,
+        }
+    }
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterRecordingsRequest {
+    /// human readable description of the recording
     #[prost(string, tag = "1")]
     pub description: ::prost::alloc::string::String,
+    /// information about recording's backing storage
+    /// TODO(zehiko) add separate info about the "source" recording
     #[prost(message, optional, tag = "2")]
     pub obj_storage: ::core::option::Option<ObjectStorage>,
-    /// TODO(zehiko) should this be auto-discoverable?
+    /// type of recording
     #[prost(enumeration = "RecordingType", tag = "3")]
     pub typ: i32,
+    /// (optional) any additional metadata that should be associated with the recording
+    /// You can associate any arbtrirary number of columns with a specific recording
+    #[prost(message, optional, tag = "4")]
+    pub metadata: ::core::option::Option<RecordingMetadata>,
+}
+/// Recording metadata is single row arrow record batch
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RecordingMetadata {
+    #[prost(enumeration = "EncoderVersion", tag = "1")]
+    pub encoder_version: i32,
+    #[prost(bytes = "vec", tag = "2")]
+    pub payload: ::prost::alloc::vec::Vec<u8>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ObjectStorage {
@@ -235,6 +283,19 @@ pub struct RegisterRecordingsResponse {
     #[prost(message, repeated, tag = "2")]
     pub metadata: ::prost::alloc::vec::Vec<RecordingMetadata>,
 }
+/// Server can include details about the error as part of gRPC error (Status)
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RegistrationError {
+    /// error code
+    #[prost(enumeration = "ErrorCode", tag = "1")]
+    pub code: i32,
+    /// url of the recording that failed to register
+    #[prost(string, tag = "2")]
+    pub url: ::prost::alloc::string::String,
+    /// human readable details about the error
+    #[prost(string, tag = "3")]
+    pub message: ::prost::alloc::string::String,
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetRecordingMetadataRequest {
     #[prost(message, optional, tag = "1")]
@@ -243,16 +304,9 @@ pub struct GetRecordingMetadataRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetRecordingMetadataResponse {
     #[prost(message, optional, tag = "1")]
-    pub metadata: ::core::option::Option<RecordingMetadata>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RecordingMetadata {
-    #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<RecordingId>,
     #[prost(message, optional, tag = "2")]
-    pub schema: ::core::option::Option<Schema>,
-    #[prost(message, repeated, tag = "3")]
-    pub time_metadata: ::prost::alloc::vec::Vec<TimeMetadata>,
+    pub metadata: ::core::option::Option<RecordingMetadata>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TimeMetadata {

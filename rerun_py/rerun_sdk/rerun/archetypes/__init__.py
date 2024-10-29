@@ -15,6 +15,7 @@ from .depth_image import DepthImage
 from .disconnected_space import DisconnectedSpace
 from .ellipsoids3d import Ellipsoids3D
 from .encoded_image import EncodedImage
+from .geo_points import GeoPoints
 from .graph_edges import GraphEdges
 from .graph_nodes import GraphNodes
 from .image import Image
@@ -50,6 +51,7 @@ __all__ = [
     "DisconnectedSpace",
     "Ellipsoids3D",
     "EncodedImage",
+    "GeoPoints",
     "GraphEdges",
     "GraphNodes",
     "Image",

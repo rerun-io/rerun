@@ -48,7 +48,7 @@ snippet: reference/dataframe_view_query
 
 #### Aside: re-using blueprint files from other SDKs
 
-While the blueprint APIs are currently only available in Python, blueprints can be saved and re-logged as needed from any language our SDKs support.
+While the blueprint APIs are currently only available through Python, blueprints can be saved and re-logged as needed from any language our SDKs support.
 
 First, save the blueprint to a file (`.rbl` by convention) using either the viewer (`Menu > Save blueprint`) or the python API:
 
@@ -63,6 +63,8 @@ Check out the blueprint API and `log_file_from_path` references to learn more:
 * [🐍 Python `log_file_from_path`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log_file_from_path)
 * [🦀 Rust `log_file_from_path`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log_file_from_path)
 * [🌊 C++ `log_file_from_path`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a20798d7ea74cce5c8174e5cacd0a2c47)
+
+You can learn more in our [dedicated page about blueprint re-use](../howto/visualization/reuse-blueprints.md).
 
 
 ### Setting up dataframe view manually in the UI

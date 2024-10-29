@@ -1,5 +1,5 @@
 ---
-title: Log arbitrary data
+title: Send user-defined data
 order: 200
 description: How to use Rerun with custom data
 ---

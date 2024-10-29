@@ -25,6 +25,7 @@ include "./components/image_buffer.fbs";
 include "./components/image_format.fbs";
 include "./components/image_plane_distance.fbs";
 include "./components/keypoint_id.fbs";
+include "./components/latlon.fbs";
 include "./components/line_strip2d.fbs";
 include "./components/line_strip3d.fbs";
 include "./components/magnification_filter.fbs";

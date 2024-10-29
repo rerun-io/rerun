@@ -13,6 +13,7 @@ depth_image.rs linguist-generated=true
 disconnected_space.rs linguist-generated=true
 ellipsoids3d.rs linguist-generated=true
 encoded_image.rs linguist-generated=true
+geo_points.rs linguist-generated=true
 graph_edges.rs linguist-generated=true
 graph_nodes.rs linguist-generated=true
 image.rs linguist-generated=true

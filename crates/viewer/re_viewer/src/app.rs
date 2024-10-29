@@ -1818,6 +1818,8 @@ fn populate_space_view_class_registry_with_builtin(
     space_view_class_registry.add_class::<re_space_view_bar_chart::BarChartSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_dataframe::DataframeSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_graph::GraphSpaceView>()?;
+    #[cfg(feature = "map_view")]
+    space_view_class_registry.add_class::<re_space_view_map::MapSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_spatial::SpatialSpaceView2D>()?;
     space_view_class_registry.add_class::<re_space_view_spatial::SpatialSpaceView3D>()?;
     space_view_class_registry.add_class::<re_space_view_tensor::TensorSpaceView>()?;

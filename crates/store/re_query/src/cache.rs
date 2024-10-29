@@ -16,15 +16,15 @@ use crate::{LatestAtCache, RangeCache};
 
 // ---
 
-/// Uniquely identifies cached query results in the [`Caches`].
+/// Uniquely identifies cached query results in the [`QueryCache`].
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct CacheKey {
+pub struct QueryCacheKey {
     pub entity_path: EntityPath,
     pub timeline: Timeline,
     pub component_name: ComponentName,
 }
 
-impl re_types_core::SizeBytes for CacheKey {
+impl re_types_core::SizeBytes for QueryCacheKey {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         let Self {
@@ -38,7 +38,7 @@ impl re_types_core::SizeBytes for CacheKey {
     }
 }
 
-impl std::fmt::Debug for CacheKey {
+impl std::fmt::Debug for QueryCacheKey {
     #[inline]
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
@@ -53,7 +53,7 @@ impl std::fmt::Debug for CacheKey {
     }
 }
 
-impl CacheKey {
+impl QueryCacheKey {
     #[inline]
     pub fn new(
         entity_path: impl Into<EntityPath>,
@@ -68,8 +68,7 @@ impl CacheKey {
     }
 }
 
-// TODO(cmc): this needs to be renamed to `QueryCache` as this will slowly become part of the public API now.
-pub struct Caches {
+pub struct QueryCache {
     /// The [`StoreId`] of the associated [`ChunkStore`].
     pub(crate) store_id: StoreId,
 
@@ -82,13 +81,13 @@ pub struct Caches {
     pub(crate) might_require_clearing: RwLock<IntSet<EntityPath>>,
 
     // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
-    pub(crate) latest_at_per_cache_key: RwLock<HashMap<CacheKey, Arc<RwLock<LatestAtCache>>>>,
+    pub(crate) latest_at_per_cache_key: RwLock<HashMap<QueryCacheKey, Arc<RwLock<LatestAtCache>>>>,
 
     // NOTE: `Arc` so we can cheaply free the top-level lock early when needed.
-    pub(crate) range_per_cache_key: RwLock<HashMap<CacheKey, Arc<RwLock<RangeCache>>>>,
+    pub(crate) range_per_cache_key: RwLock<HashMap<QueryCacheKey, Arc<RwLock<RangeCache>>>>,
 }
 
-impl std::fmt::Debug for Caches {
+impl std::fmt::Debug for QueryCache {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let Self {
             store_id,
@@ -147,7 +146,7 @@ impl std::fmt::Debug for Caches {
     }
 }
 
-impl Caches {
+impl QueryCache {
     #[inline]
     pub fn new(store: &ChunkStore) -> Self {
         Self {
@@ -173,7 +172,7 @@ impl Caches {
     }
 }
 
-impl ChunkStoreSubscriber for Caches {
+impl ChunkStoreSubscriber for QueryCache {
     #[inline]
     fn name(&self) -> String {
         "rerun.store_subscribers.QueryCache".into()
@@ -195,8 +194,8 @@ impl ChunkStoreSubscriber for Caches {
         #[derive(Default, Debug)]
         struct CompactedEvents {
             static_: HashMap<(EntityPath, ComponentName), BTreeSet<ChunkId>>,
-            temporal_latest_at: HashMap<CacheKey, TimeInt>,
-            temporal_range: HashMap<CacheKey, BTreeSet<ChunkId>>,
+            temporal_latest_at: HashMap<QueryCacheKey, TimeInt>,
+            temporal_range: HashMap<QueryCacheKey, BTreeSet<ChunkId>>,
         }
 
         let mut compacted_events = CompactedEvents::default();
@@ -244,8 +243,11 @@ impl ChunkStoreSubscriber for Caches {
 
                 for (timeline, per_component) in chunk.time_range_per_component() {
                     for (component_name, time_range) in per_component {
-                        let key =
-                            CacheKey::new(chunk.entity_path().clone(), timeline, component_name);
+                        let key = QueryCacheKey::new(
+                            chunk.entity_path().clone(),
+                            timeline,
+                            component_name,
+                        );
 
                         // latest-at
                         {

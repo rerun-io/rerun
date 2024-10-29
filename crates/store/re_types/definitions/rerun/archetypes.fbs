@@ -13,6 +13,7 @@ include "./archetypes/depth_image.fbs";
 include "./archetypes/disconnected_space.fbs";
 include "./archetypes/ellipsoids3d.fbs";
 include "./archetypes/encoded_image.fbs";
+include "./archetypes/geo_points.fbs";
 include "./archetypes/graph_edges.fbs";
 include "./archetypes/graph_nodes.fbs";
 include "./archetypes/image.fbs";

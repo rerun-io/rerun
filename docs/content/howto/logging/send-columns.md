@@ -1,5 +1,5 @@
 ---
-title: Log entire timeseries at once
+title: Send entire timeseries at once
 order: 0
 description: How to use the Rerun SDK to log big chunks of data in one call
 ---
