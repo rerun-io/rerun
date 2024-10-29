@@ -333,7 +333,7 @@ fn options_menu_ui(
     );
 
     {
-        use re_renderer::video::DecodeHardwareAcceleration;
+        use re_video::decode::DecodeHardwareAcceleration;
 
         let hardware_acceleration = &mut app_options.video_decoder_hw_acceleration;
 

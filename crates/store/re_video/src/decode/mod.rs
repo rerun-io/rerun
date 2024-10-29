@@ -78,19 +78,16 @@
 //!
 
 #[cfg(with_dav1d)]
-pub mod av1;
+mod async_decoder_wrapper;
+#[cfg(with_dav1d)]
+mod av1;
 
-#[cfg(not(target_arch = "wasm32"))]
-pub mod async_decoder;
-
-#[cfg(not(target_arch = "wasm32"))]
-pub use async_decoder::AsyncDecoder;
-
-use std::sync::atomic::AtomicBool;
+#[cfg(target_arch = "wasm32")]
+mod webcodecs;
 
 use crate::Time;
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
 pub enum Error {
     #[error("Unsupported codec: {0}")]
     UnsupportedCodec(String),
@@ -110,28 +107,38 @@ pub enum Error {
     #[error("Rerun does not yet support native AV1 decoding on Linux ARM64. See https://github.com/rerun-io/rerun/issues/7755")]
     #[cfg(linux_arm64)]
     NoDav1dOnLinuxArm64,
+
+    #[cfg(target_arch = "wasm32")]
+    #[error(transparent)]
+    WebDecoderError(#[from] webcodecs::Error),
 }
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
 
 pub type OutputCallback = dyn Fn(Result<Frame>) + Send + Sync;
 
-/// Blocking decoder of video chunks.
-pub trait SyncDecoder {
-    /// Submit some work and read the results.
+/// Interface for an asynchronous video decoder.
+///
+/// Output callback is passed in on creation of a concrete type.
+pub trait AsyncDecoder: Send + Sync {
+    /// Submits a chunk for decoding in the background.
     ///
-    /// Stop early if `should_stop` is `true` or turns `true`.
-    fn submit_chunk(&mut self, should_stop: &AtomicBool, chunk: Chunk, on_output: &OutputCallback);
+    /// Chunks are expected to come in the order of their decoding timestamp.
+    fn submit_chunk(&mut self, chunk: Chunk) -> Result<()>;
 
-    /// Clear and reset everything
-    fn reset(&mut self) {}
+    /// Resets the decoder.
+    ///
+    /// This does not block, all chunks sent to `decode` before this point will be discarded.
+    fn reset(&mut self) -> Result<()>;
 }
 
-#[cfg(not(target_arch = "wasm32"))]
+/// Creates a new async decoder for the given `video` data.
 pub fn new_decoder(
-    debug_name: String,
+    debug_name: &str,
     video: &crate::VideoData,
-) -> Result<Box<dyn SyncDecoder + Send + 'static>> {
+    hw_acceleration: DecodeHardwareAcceleration,
+    on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
+) -> Result<Box<dyn AsyncDecoder>> {
     #![allow(unused_variables, clippy::needless_return)] // With some feature flags
 
     re_log::trace!(
@@ -139,6 +146,15 @@ pub fn new_decoder(
         video.human_readable_codec_string()
     );
 
+    #[cfg(target_arch = "wasm32")]
+    return Ok(Box::new(webcodecs::WebVideoDecoder::new(
+        video.config.clone(),
+        video.timescale,
+        hw_acceleration,
+        on_output,
+    )?));
+
+    #[cfg(not(target_arch = "wasm32"))]
     match &video.config.stsd.contents {
         #[cfg(feature = "av1")]
         re_mp4::StsdBoxContent::Av01(_av01_box) => {
@@ -153,7 +169,11 @@ pub fn new_decoder(
                     return Err(Error::NoNativeAv1Debug); // because debug builds of rav1d is EXTREMELY slow
                 } else {
                     re_log::trace!("Decoding AV1…");
-                    return Ok(Box::new(av1::SyncDav1dDecoder::new(debug_name)?));
+                    return Ok(Box::new(async_decoder_wrapper::AsyncDecoderWrapper::new(
+                        debug_name.to_owned(),
+                        Box::new(av1::SyncDav1dDecoder::new(debug_name.to_owned())?),
+                        on_output,
+                    )));
                 }
             }
         }
@@ -178,13 +198,19 @@ pub struct Chunk {
     pub duration: Time,
 }
 
+#[cfg(not(target_arch = "wasm32"))]
+pub type FrameData = Vec<u8>;
+
+#[cfg(target_arch = "wasm32")]
+pub type FrameData = webcodecs::WebVideoFrame;
+
 /// One decoded video frame.
 pub struct Frame {
-    pub data: Vec<u8>,
+    pub data: FrameData,
     pub width: u32,
     pub height: u32,
     pub format: PixelFormat,
-    pub timestamp: Time,
+    pub presentation_timestamp: Time,
     pub duration: Time,
 }
 
@@ -235,4 +261,52 @@ pub enum YuvMatrixCoefficients {
     Bt601,
 
     Bt709,
+}
+
+/// How the video should be decoded.
+///
+/// Depending on the decoder backend, these settings are merely hints and may be ignored.
+/// However, they can be useful in some situations to work around issues.
+///
+/// On the web this directly corresponds to
+/// <https://www.w3.org/TR/webcodecs/#hardware-acceleration>
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub enum DecodeHardwareAcceleration {
+    /// May use hardware acceleration if available and compatible with the codec.
+    #[default]
+    Auto,
+
+    /// Should use a software decoder even if hardware acceleration is available.
+    ///
+    /// If no software decoder is present, this may cause decoding to fail.
+    PreferSoftware,
+
+    /// Should use a hardware decoder.
+    ///
+    /// If no hardware decoder is present, this may cause decoding to fail.
+    PreferHardware,
+}
+
+impl std::fmt::Display for DecodeHardwareAcceleration {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Auto => write!(f, "Auto"),
+            Self::PreferSoftware => write!(f, "Prefer software"),
+            Self::PreferHardware => write!(f, "Prefer hardware"),
+        }
+    }
+}
+
+impl std::str::FromStr for DecodeHardwareAcceleration {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.trim().to_lowercase().replace('-', "_").as_str() {
+            "auto" => Ok(Self::Auto),
+            "prefer_software" | "software" => Ok(Self::PreferSoftware),
+            "prefer_hardware" | "hardware" => Ok(Self::PreferHardware),
+            _ => Err(()),
+        }
+    }
 }

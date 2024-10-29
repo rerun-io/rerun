@@ -260,13 +260,13 @@ fn show_video_blob_info(
                         ui.input(|i| i.time) % video.data().duration().as_secs_f64()
                     };
 
-                    let decode_stream_id = re_renderer::video::VideoDecodingStreamId(
+                    let player_stream_id = re_renderer::video::VideoPlayerStreamId(
                         ui.id().with("video_player").value(),
                     );
 
                     match video.frame_at(
                         render_ctx,
-                        decode_stream_id,
+                        player_stream_id,
                         timestamp_in_seconds,
                         blob.as_slice(),
                     ) {
