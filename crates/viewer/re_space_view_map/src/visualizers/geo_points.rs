@@ -37,7 +37,7 @@ pub struct GeoPointsVisualizer {
     map_entries: Vec<GeoPointEntry>,
 
     /// Indices into `map_entries` corresponding to a given entity.
-    entities: ahash::HashMap<EntityPathHash, Vec<usize>>,
+    entities: nohash_hasher::IntMap<EntityPathHash, Vec<usize>>,
 
     /// Indices into `map_entries` corresponding to specific instances.
     instances: ahash::HashMap<InstancePathHash, usize>,
