@@ -364,8 +364,8 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, timescale: re_video:
     ui.list_item_flat_noninteractive(
         PropertyContent::new("PTS").value_text(format!("{}", frame_info.presentation_timestamp.0)),
     )
-    .on_hover_text("Raw presentation timestamp prior to applying the timescale.
-This specifies the time at which the frame should be shown relative to the start of a video stream.");
+    .on_hover_text("Raw presentation timestamp prior to applying the timescale.\n\
+                    This specifies the time at which the frame should be shown relative to the start of a video stream.");
 }
 
 fn source_image_data_format_ui(ui: &mut egui::Ui, format: &SourceImageDataFormat) {
@@ -376,8 +376,8 @@ fn source_image_data_format_ui(ui: &mut egui::Ui, format: &SourceImageDataFormat
             ui.list_item_flat_noninteractive(PropertyContent::new(label).value_text(format!("{format:?}")))
                 // This is true for YUV outputs as well, but for RGB/RGBA there was almost certainly some postprocessing involved,
                 // whereas it would very surprising for YUV.
-                .on_hover_text("Pixel format as returned from the decoder.
-Decoders may do arbitrary post processing, so this is not necessarily the format that is actually encoded in the video data!"
+                .on_hover_text("Pixel format as returned from the decoder.\n\
+                                Decoders may do arbitrary post processing, so this is not necessarily the format that is actually encoded in the video data!"
             );
         }
 
