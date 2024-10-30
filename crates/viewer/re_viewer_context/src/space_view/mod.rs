@@ -23,6 +23,7 @@ pub use highlights::{
     SpaceViewOutlineMasks,
 };
 pub use named_system::{IdentifiedViewSystem, PerSystemEntities, ViewSystemIdentifier};
+use re_types::SpaceViewClassIdentifier;
 pub use space_view_class::{
     SpaceViewClass, SpaceViewClassExt, SpaceViewClassLayoutPriority, SpaceViewState,
     SpaceViewStateExt, VisualizableFilterContext,
@@ -51,6 +52,18 @@ pub enum SpaceViewSystemExecutionError {
 
     #[error("View part system {0} not found")]
     VisualizerSystemNotFound(&'static str),
+
+    #[error("View part system {identifier} failed with error: {error}")]
+    VisualizerSystemError {
+        identifier: ViewSystemIdentifier,
+        error: Box<dyn std::error::Error>,
+    },
+
+    #[error("View class {identifier} failed with error: {error}")]
+    SpaceViewClassError {
+        identifier: SpaceViewClassIdentifier,
+        error: Box<dyn std::error::Error>,
+    },
 
     #[error(transparent)]
     QueryError2(#[from] re_query::QueryError),
