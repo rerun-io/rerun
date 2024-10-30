@@ -2,7 +2,6 @@
 //!
 //! A Space View that shows a graph (node-link diagram).
 
-mod error;
 mod graph;
 mod properties;
 mod types;
