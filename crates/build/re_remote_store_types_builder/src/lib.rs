@@ -7,7 +7,7 @@
 
 use std::path::Path;
 
-/// Generate rust from from protobuf definitions. We rely on `tonic_build` to do the heavy lifting.
+/// Generate rust from protobuf definitions. We rely on `tonic_build` to do the heavy lifting.
 /// `tonic_build` relies on `prost` which itself relies on `protoc`.
 ///
 /// Note: make sure to invoke this via `pixi run codegen-rstore` in order to use the right `protoc` version.
