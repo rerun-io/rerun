@@ -244,28 +244,13 @@ impl ErrorCode {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterRecordingsRequest {
-    /// human readable description of the recording
     #[prost(string, tag = "1")]
     pub description: ::prost::alloc::string::String,
-    /// information about recording's backing storage
-    /// TODO(zehiko) add separate info about the "source" recording
     #[prost(message, optional, tag = "2")]
     pub obj_storage: ::core::option::Option<ObjectStorage>,
-    /// type of recording
+    /// TODO(zehiko) should this be auto-discoverable?
     #[prost(enumeration = "RecordingType", tag = "3")]
     pub typ: i32,
-    /// (optional) any additional metadata that should be associated with the recording
-    /// You can associate any arbtrirary number of columns with a specific recording
-    #[prost(message, optional, tag = "4")]
-    pub metadata: ::core::option::Option<RecordingMetadata>,
-}
-/// Recording metadata is single row arrow record batch
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RecordingMetadata {
-    #[prost(enumeration = "EncoderVersion", tag = "1")]
-    pub encoder_version: i32,
-    #[prost(bytes = "vec", tag = "2")]
-    pub payload: ::prost::alloc::vec::Vec<u8>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ObjectStorage {
@@ -304,9 +289,16 @@ pub struct GetRecordingMetadataRequest {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetRecordingMetadataResponse {
     #[prost(message, optional, tag = "1")]
+    pub metadata: ::core::option::Option<RecordingMetadata>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RecordingMetadata {
+    #[prost(message, optional, tag = "1")]
     pub id: ::core::option::Option<RecordingId>,
     #[prost(message, optional, tag = "2")]
-    pub metadata: ::core::option::Option<RecordingMetadata>,
+    pub schema: ::core::option::Option<Schema>,
+    #[prost(message, repeated, tag = "3")]
+    pub time_metadata: ::prost::alloc::vec::Vec<TimeMetadata>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct TimeMetadata {
