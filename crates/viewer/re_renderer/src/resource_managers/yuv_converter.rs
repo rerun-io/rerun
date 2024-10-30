@@ -172,6 +172,19 @@ pub enum YuvPixelLayout {
     Y400 = 300,
 }
 
+impl std::fmt::Display for YuvPixelLayout {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Y_U_V444 => write!(f, "4:4:4 (planar)"),
+            Self::Y_U_V422 => write!(f, "4:2:2 (planar)"),
+            Self::Y_U_V420 => write!(f, "4:2:0 (planar)"),
+            Self::Y_UV420 => write!(f, "4:2:0 (semi-planar)"),
+            Self::YUYV422 => write!(f, "4:2:2 (interleaved"),
+            Self::Y400 => write!(f, "4:0:0"),
+        }
+    }
+}
+
 /// Yuv matrix coefficients that determine how a YUV image is meant to be converted to RGB.
 ///
 /// A rigorious definition of the yuv conversion matrix would still require to define
@@ -217,6 +230,16 @@ pub enum YuvMatrixCoefficients {
     // BT2020_NonConstantLuminance,
 }
 
+impl std::fmt::Display for YuvMatrixCoefficients {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Identity => write!(f, "identity"),
+            Self::Bt601 => write!(f, "BT.601"),
+            Self::Bt709 => write!(f, "BT.709"),
+        }
+    }
+}
+
 /// Expected range of YUV values.
 ///
 /// Keep indices in sync with `yuv_converter.wgsl`
@@ -233,6 +256,15 @@ pub enum YuvRange {
 
     /// Use full range YUV with all components ranging from 0 to 255 for 8bit or higher otherwise.
     Full = 1,
+}
+
+impl std::fmt::Display for YuvRange {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Limited => write!(f, "limited"),
+            Self::Full => write!(f, "full"),
+        }
+    }
 }
 
 impl YuvPixelLayout {

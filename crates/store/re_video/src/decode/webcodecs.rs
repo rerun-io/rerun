@@ -8,7 +8,7 @@ use web_sys::{
 };
 
 use super::{
-    AsyncDecoder, Chunk, DecodeHardwareAcceleration, Frame, OutputCallback, PixelFormat, Result,
+    AsyncDecoder, Chunk, DecodeHardwareAcceleration, Frame, FrameInfo, OutputCallback, Result,
 };
 use crate::{Config, Time, Timescale};
 
@@ -179,17 +179,12 @@ fn init_video_decoder(
                 Time::from_micros(frame.timestamp().unwrap_or(0.0), timescale);
             let duration = Time::from_micros(frame.duration().unwrap_or(0.0), timescale);
 
-            let frame = WebVideoFrame(frame);
-            let width = frame.display_width();
-            let height = frame.display_height();
-
             on_output(Ok(Frame {
-                data: frame,
-                width,
-                height,
-                presentation_timestamp,
-                format: PixelFormat::Rgba8Unorm,
-                duration,
+                content: WebVideoFrame(frame),
+                info: FrameInfo {
+                    presentation_timestamp,
+                    duration,
+                },
             }));
         }) as Box<dyn Fn(web_sys::VideoFrame)>)
     };
