@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: How many columns a grid container should have.
@@ -25,44 +25,10 @@ pub struct GridColumns(
     pub crate::datatypes::UInt32,
 );
 
-impl ::re_types_core::SizeBytes for GridColumns {
+impl ::re_types_core::Component for GridColumns {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::UInt32>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::UInt32>> From<T> for GridColumns {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::UInt32> for GridColumns {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::UInt32 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for GridColumns {
-    type Target = crate::datatypes::UInt32;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::UInt32 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for GridColumns {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::UInt32 {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.GridColumns")
     }
 }
 
@@ -107,9 +73,43 @@ impl ::re_types_core::Loggable for GridColumns {
     }
 }
 
-impl ::re_types_core::Component for GridColumns {
+impl<T: Into<crate::datatypes::UInt32>> From<T> for GridColumns {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::UInt32> for GridColumns {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.GridColumns".into()
+    fn borrow(&self) -> &crate::datatypes::UInt32 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for GridColumns {
+    type Target = crate::datatypes::UInt32;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::UInt32 {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for GridColumns {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::UInt32 {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for GridColumns {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::UInt32>::is_pod()
     }
 }

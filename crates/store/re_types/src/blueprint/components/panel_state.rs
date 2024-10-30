@@ -14,9 +14,9 @@
 #![allow(non_camel_case_types)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Tri-state for panel controls.
@@ -34,41 +34,10 @@ pub enum PanelState {
     Expanded = 3,
 }
 
-impl ::re_types_core::reflection::Enum for PanelState {
+impl ::re_types_core::Component for PanelState {
     #[inline]
-    fn variants() -> &'static [Self] {
-        &[Self::Hidden, Self::Collapsed, Self::Expanded]
-    }
-
-    #[inline]
-    fn docstring_md(self) -> &'static str {
-        match self {
-            Self::Hidden => "Completely hidden.",
-            Self::Collapsed => "Visible, but as small as possible on its shorter axis.",
-            Self::Expanded => "Fully expanded.",
-        }
-    }
-}
-
-impl ::re_types_core::SizeBytes for PanelState {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl std::fmt::Display for PanelState {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Hidden => write!(f, "Hidden"),
-            Self::Collapsed => write!(f, "Collapsed"),
-            Self::Expanded => write!(f, "Expanded"),
-        }
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.PanelState")
     }
 }
 
@@ -159,9 +128,40 @@ impl ::re_types_core::Loggable for PanelState {
     }
 }
 
-impl ::re_types_core::Component for PanelState {
+impl std::fmt::Display for PanelState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Hidden => write!(f, "Hidden"),
+            Self::Collapsed => write!(f, "Collapsed"),
+            Self::Expanded => write!(f, "Expanded"),
+        }
+    }
+}
+
+impl ::re_types_core::reflection::Enum for PanelState {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.PanelState".into()
+    fn variants() -> &'static [Self] {
+        &[Self::Hidden, Self::Collapsed, Self::Expanded]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::Hidden => "Completely hidden.",
+            Self::Collapsed => "Visible, but as small as possible on its shorter axis.",
+            Self::Expanded => "Fully expanded.",
+        }
+    }
+}
+
+impl ::re_types_core::SizeBytes for PanelState {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }

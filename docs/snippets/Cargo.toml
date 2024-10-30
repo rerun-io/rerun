@@ -6,19 +6,26 @@ rust-version.workspace = true
 license.workspace = true
 publish = false
 
+
 [lints]
 workspace = true
 
+
 [dependencies]
+rerun = { path = "../../crates/top/rerun" }
+
 ndarray.workspace = true
 rand = { workspace = true, features = ["std", "std_rng"] }
 rand_distr = { workspace = true, features = ["std"] }
-rerun = { path = "../../crates/top/rerun" }
+similar-asserts.workspace = true
+
 
 [build-dependencies]
-itertools.workspace = true
 re_build_tools.workspace = true
+
+itertools.workspace = true
 rust-format.workspace = true
+
 
 [package.metadata.cargo-machete]
 # false positives because they aren't used until codegen is run:

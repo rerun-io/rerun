@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The active tab in a tabbed container.
@@ -27,44 +27,10 @@ pub struct ActiveTab(
     pub crate::datatypes::EntityPath,
 );
 
-impl ::re_types_core::SizeBytes for ActiveTab {
+impl ::re_types_core::Component for ActiveTab {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::EntityPath>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::EntityPath>> From<T> for ActiveTab {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::EntityPath> for ActiveTab {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::EntityPath {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ActiveTab {
-    type Target = crate::datatypes::EntityPath;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::EntityPath {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ActiveTab {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::EntityPath {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.ActiveTab")
     }
 }
 
@@ -101,9 +67,43 @@ impl ::re_types_core::Loggable for ActiveTab {
     }
 }
 
-impl ::re_types_core::Component for ActiveTab {
+impl<T: Into<crate::datatypes::EntityPath>> From<T> for ActiveTab {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::EntityPath> for ActiveTab {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.ActiveTab".into()
+    fn borrow(&self) -> &crate::datatypes::EntityPath {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for ActiveTab {
+    type Target = crate::datatypes::EntityPath;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::EntityPath {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ActiveTab {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::EntityPath {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for ActiveTab {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::EntityPath>::is_pod()
     }
 }

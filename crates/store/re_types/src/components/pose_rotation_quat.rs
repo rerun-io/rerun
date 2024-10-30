@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A 3D rotation expressed as a quaternion that doesn't propagate in the transform hierarchy.
@@ -26,44 +26,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct PoseRotationQuat(pub crate::datatypes::Quaternion);
 
-impl ::re_types_core::SizeBytes for PoseRotationQuat {
+impl ::re_types_core::Component for PoseRotationQuat {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Quaternion>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Quaternion>> From<T> for PoseRotationQuat {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Quaternion> for PoseRotationQuat {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Quaternion {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for PoseRotationQuat {
-    type Target = crate::datatypes::Quaternion;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Quaternion {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for PoseRotationQuat {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Quaternion {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.PoseRotationQuat")
     }
 }
 
@@ -108,9 +74,43 @@ impl ::re_types_core::Loggable for PoseRotationQuat {
     }
 }
 
-impl ::re_types_core::Component for PoseRotationQuat {
+impl<T: Into<crate::datatypes::Quaternion>> From<T> for PoseRotationQuat {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Quaternion> for PoseRotationQuat {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.PoseRotationQuat".into()
+    fn borrow(&self) -> &crate::datatypes::Quaternion {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for PoseRotationQuat {
+    type Target = crate::datatypes::Quaternion;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Quaternion {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for PoseRotationQuat {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Quaternion {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for PoseRotationQuat {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Quaternion>::is_pod()
     }
 }

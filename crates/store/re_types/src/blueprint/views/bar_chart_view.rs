@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **View**: A bar chart view.
@@ -25,15 +25,10 @@ pub struct BarChartView {
     pub plot_legend: crate::blueprint::archetypes::PlotLegend,
 }
 
-impl ::re_types_core::SizeBytes for BarChartView {
+impl ::re_types_core::View for BarChartView {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.plot_legend.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::archetypes::PlotLegend>::is_pod()
+    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+        "BarChart".into()
     }
 }
 
@@ -68,9 +63,14 @@ impl std::ops::DerefMut for BarChartView {
     }
 }
 
-impl ::re_types_core::View for BarChartView {
+impl ::re_types_core::SizeBytes for BarChartView {
     #[inline]
-    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
-        "BarChart".into()
+    fn heap_size_bytes(&self) -> u64 {
+        self.plot_legend.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::blueprint::archetypes::PlotLegend>::is_pod()
     }
 }

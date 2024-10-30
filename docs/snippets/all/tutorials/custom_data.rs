@@ -3,7 +3,7 @@
 use rerun::{
     demo_util::grid,
     external::{arrow2, glam, re_types},
-    ComponentName,
+    ComponentBatch,
 };
 
 // ---
@@ -26,9 +26,17 @@ impl rerun::AsComponents for CustomPoints3D {
             .chain(
                 [
                     Some(indicator.to_batch()),
-                    self.confidences
-                        .as_ref()
-                        .map(|v| (v as &dyn rerun::ComponentBatch).into()),
+                    self.confidences.as_ref().map(|batch| {
+                        rerun::MaybeOwnedComponentBatch::new(batch as &dyn rerun::ComponentBatch)
+                            // Optionally override the descriptor with extra information.
+                            .with_descriptor_override(
+                                batch
+                                    .descriptor()
+                                    .into_owned()
+                                    .or_with_archetype_name(|| "user.CustomPoints3D".into())
+                                    .or_with_archetype_field_name(|| "confidences".into()),
+                            )
+                    }),
                 ]
                 .into_iter()
                 .flatten(),
@@ -75,8 +83,8 @@ impl rerun::Loggable for Confidence {
 
 impl rerun::Component for Confidence {
     #[inline]
-    fn name() -> ComponentName {
-        "user.Confidence".into()
+    fn descriptor() -> rerun::ComponentDescriptor {
+        rerun::ComponentDescriptor::new("user.Confidence")
     }
 }
 

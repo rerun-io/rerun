@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A 3D triangle mesh as specified by its per-mesh and per-vertex properties.
@@ -145,71 +145,125 @@ pub struct Mesh3D {
     pub class_ids: Option<Vec<crate::components::ClassId>>,
 }
 
-impl ::re_types_core::SizeBytes for Mesh3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.vertex_positions.heap_size_bytes()
-            + self.triangle_indices.heap_size_bytes()
-            + self.vertex_normals.heap_size_bytes()
-            + self.vertex_colors.heap_size_bytes()
-            + self.vertex_texcoords.heap_size_bytes()
-            + self.albedo_factor.heap_size_bytes()
-            + self.albedo_texture_buffer.heap_size_bytes()
-            + self.albedo_texture_format.heap_size_bytes()
-            + self.class_ids.heap_size_bytes()
-    }
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+            component_name: "rerun.components.Position3D".into(),
+            archetype_field_name: Some("vertex_positions".into()),
+        }]
+    });
 
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::components::Position3D>>::is_pod()
-            && <Option<Vec<crate::components::TriangleIndices>>>::is_pod()
-            && <Option<Vec<crate::components::Vector3D>>>::is_pod()
-            && <Option<Vec<crate::components::Color>>>::is_pod()
-            && <Option<Vec<crate::components::Texcoord2D>>>::is_pod()
-            && <Option<crate::components::AlbedoFactor>>::is_pod()
-            && <Option<crate::components::ImageBuffer>>::is_pod()
-            && <Option<crate::components::ImageFormat>>::is_pod()
-            && <Option<Vec<crate::components::ClassId>>>::is_pod()
-    }
-}
-
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.Position3D".into()]);
-
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.TriangleIndices".into(),
-            "rerun.components.Vector3D".into(),
-            "rerun.components.Mesh3DIndicator".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                component_name: "rerun.components.TriangleIndices".into(),
+                archetype_field_name: Some("triangle_indices".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                component_name: "rerun.components.Vector3D".into(),
+                archetype_field_name: Some("vertex_normals".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                component_name: "Mesh3DIndicator".into(),
+                archetype_field_name: None,
+            },
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Color".into(),
-            "rerun.components.Texcoord2D".into(),
-            "rerun.components.AlbedoFactor".into(),
-            "rerun.components.ImageBuffer".into(),
-            "rerun.components.ImageFormat".into(),
-            "rerun.components.ClassId".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                component_name: "rerun.components.Color".into(),
+                archetype_field_name: Some("vertex_colors".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                component_name: "rerun.components.Texcoord2D".into(),
+                archetype_field_name: Some("vertex_texcoords".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                component_name: "rerun.components.AlbedoFactor".into(),
+                archetype_field_name: Some("albedo_factor".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                component_name: "rerun.components.ImageBuffer".into(),
+                archetype_field_name: Some("albedo_texture_buffer".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                component_name: "rerun.components.ImageFormat".into(),
+                archetype_field_name: Some("albedo_texture_format".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                component_name: "rerun.components.ClassId".into(),
+                archetype_field_name: Some("class_ids".into()),
+            },
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 10usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 10usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Position3D".into(),
-            "rerun.components.TriangleIndices".into(),
-            "rerun.components.Vector3D".into(),
-            "rerun.components.Mesh3DIndicator".into(),
-            "rerun.components.Color".into(),
-            "rerun.components.Texcoord2D".into(),
-            "rerun.components.AlbedoFactor".into(),
-            "rerun.components.ImageBuffer".into(),
-            "rerun.components.ImageFormat".into(),
-            "rerun.components.ClassId".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                component_name: "rerun.components.Position3D".into(),
+                archetype_field_name: Some("vertex_positions".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                component_name: "rerun.components.TriangleIndices".into(),
+                archetype_field_name: Some("triangle_indices".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                component_name: "rerun.components.Vector3D".into(),
+                archetype_field_name: Some("vertex_normals".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                component_name: "Mesh3DIndicator".into(),
+                archetype_field_name: None,
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                component_name: "rerun.components.Color".into(),
+                archetype_field_name: Some("vertex_colors".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                component_name: "rerun.components.Texcoord2D".into(),
+                archetype_field_name: Some("vertex_texcoords".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                component_name: "rerun.components.AlbedoFactor".into(),
+                archetype_field_name: Some("albedo_factor".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                component_name: "rerun.components.ImageBuffer".into(),
+                archetype_field_name: Some("albedo_texture_buffer".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                component_name: "rerun.components.ImageFormat".into(),
+                archetype_field_name: Some("albedo_texture_format".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                component_name: "rerun.components.ClassId".into(),
+                archetype_field_name: Some("class_ids".into()),
+            },
         ]
     });
 
@@ -237,26 +291,26 @@ impl ::re_types_core::Archetype for Mesh3D {
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: Mesh3DIndicator = Mesh3DIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -394,31 +448,112 @@ impl ::re_types_core::AsComponents for Mesh3D {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.vertex_positions as &dyn ComponentBatch).into()),
-            self.triangle_indices
+            (Some(&self.vertex_positions as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                        archetype_field_name: Some(("vertex_positions").into()),
+                        component_name: ("rerun.components.Position3D").into(),
+                    }),
+                }
+            }),
+            (self
+                .triangle_indices
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.vertex_normals
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                    archetype_field_name: Some(("triangle_indices").into()),
+                    component_name: ("rerun.components.TriangleIndices").into(),
+                }),
+            }),
+            (self
+                .vertex_normals
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.vertex_colors
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                    archetype_field_name: Some(("vertex_normals").into()),
+                    component_name: ("rerun.components.Vector3D").into(),
+                }),
+            }),
+            (self
+                .vertex_colors
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.vertex_texcoords
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                    archetype_field_name: Some(("vertex_colors").into()),
+                    component_name: ("rerun.components.Color").into(),
+                }),
+            }),
+            (self
+                .vertex_texcoords
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.albedo_factor
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                    archetype_field_name: Some(("vertex_texcoords").into()),
+                    component_name: ("rerun.components.Texcoord2D").into(),
+                }),
+            }),
+            (self
+                .albedo_factor
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.albedo_texture_buffer
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                    archetype_field_name: Some(("albedo_factor").into()),
+                    component_name: ("rerun.components.AlbedoFactor").into(),
+                }),
+            }),
+            (self
+                .albedo_texture_buffer
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.albedo_texture_format
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                    archetype_field_name: Some(("albedo_texture_buffer").into()),
+                    component_name: ("rerun.components.ImageBuffer").into(),
+                }),
+            }),
+            (self
+                .albedo_texture_format
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.class_ids
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                    archetype_field_name: Some(("albedo_texture_format").into()),
+                    component_name: ("rerun.components.ImageFormat").into(),
+                }),
+            }),
+            (self
+                .class_ids
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.Mesh3D".into()),
+                    archetype_field_name: Some(("class_ids").into()),
+                    component_name: ("rerun.components.ClassId").into(),
+                }),
+            }),
         ]
         .into_iter()
         .flatten()
@@ -532,5 +667,33 @@ impl Mesh3D {
     ) -> Self {
         self.class_ids = Some(class_ids.into_iter().map(Into::into).collect());
         self
+    }
+}
+
+impl ::re_types_core::SizeBytes for Mesh3D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.vertex_positions.heap_size_bytes()
+            + self.triangle_indices.heap_size_bytes()
+            + self.vertex_normals.heap_size_bytes()
+            + self.vertex_colors.heap_size_bytes()
+            + self.vertex_texcoords.heap_size_bytes()
+            + self.albedo_factor.heap_size_bytes()
+            + self.albedo_texture_buffer.heap_size_bytes()
+            + self.albedo_texture_format.heap_size_bytes()
+            + self.class_ids.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<crate::components::Position3D>>::is_pod()
+            && <Option<Vec<crate::components::TriangleIndices>>>::is_pod()
+            && <Option<Vec<crate::components::Vector3D>>>::is_pod()
+            && <Option<Vec<crate::components::Color>>>::is_pod()
+            && <Option<Vec<crate::components::Texcoord2D>>>::is_pod()
+            && <Option<crate::components::AlbedoFactor>>::is_pod()
+            && <Option<crate::components::ImageBuffer>>::is_pod()
+            && <Option<crate::components::ImageFormat>>::is_pod()
+            && <Option<Vec<crate::components::ClassId>>>::is_pod()
     }
 }

@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A buffer that is known to store image data.
@@ -25,44 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct ImageBuffer(pub crate::datatypes::Blob);
 
-impl ::re_types_core::SizeBytes for ImageBuffer {
+impl ::re_types_core::Component for ImageBuffer {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Blob>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Blob>> From<T> for ImageBuffer {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Blob> for ImageBuffer {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Blob {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ImageBuffer {
-    type Target = crate::datatypes::Blob;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Blob {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ImageBuffer {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Blob {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.ImageBuffer")
     }
 }
 
@@ -99,9 +65,43 @@ impl ::re_types_core::Loggable for ImageBuffer {
     }
 }
 
-impl ::re_types_core::Component for ImageBuffer {
+impl<T: Into<crate::datatypes::Blob>> From<T> for ImageBuffer {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Blob> for ImageBuffer {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.ImageBuffer".into()
+    fn borrow(&self) -> &crate::datatypes::Blob {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for ImageBuffer {
+    type Target = crate::datatypes::Blob;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Blob {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ImageBuffer {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Blob {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for ImageBuffer {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Blob>::is_pod()
     }
 }

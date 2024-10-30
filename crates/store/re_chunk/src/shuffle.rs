@@ -259,7 +259,10 @@ impl Chunk {
         // Reminder: these are all `ListArray`s.
         re_tracing::profile_scope!("components (offsets & data)");
         {
-            for original in components.values_mut() {
+            for original in components
+                .values_mut()
+                .flat_map(|per_desc| per_desc.values_mut())
+            {
                 let sorted_arrays = swaps
                     .iter()
                     .copied()
@@ -359,32 +362,32 @@ mod tests {
                     RowId::new(),
                     [(timeline1, 1000), (timeline2, 42)],
                     [
-                        (MyPoint::name(), Some(&points1 as _)),
-                        (MyColor::name(), Some(&colors1 as _)),
+                        (MyPoint::descriptor(), Some(&points1 as _)),
+                        (MyColor::descriptor(), Some(&colors1 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     RowId::new(),
                     [(timeline1, 1001), (timeline2, 43)],
                     [
-                        (MyPoint::name(), None),
-                        (MyColor::name(), Some(&colors2 as _)),
+                        (MyPoint::descriptor(), None),
+                        (MyColor::descriptor(), Some(&colors2 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     RowId::new(),
                     [(timeline1, 1002), (timeline2, 44)],
                     [
-                        (MyPoint::name(), Some(&points3 as _)),
-                        (MyColor::name(), None),
+                        (MyPoint::descriptor(), Some(&points3 as _)),
+                        (MyColor::descriptor(), None),
                     ],
                 )
                 .with_sparse_component_batches(
                     RowId::new(),
                     [(timeline1, 1003), (timeline2, 45)],
                     [
-                        (MyPoint::name(), Some(&points4 as _)),
-                        (MyColor::name(), Some(&colors4 as _)),
+                        (MyPoint::descriptor(), Some(&points4 as _)),
+                        (MyColor::descriptor(), Some(&colors4 as _)),
                     ],
                 )
                 .build()?;
@@ -460,32 +463,32 @@ mod tests {
                     row_id1,
                     [(timeline1, 1000), (timeline2, 45)],
                     [
-                        (MyPoint::name(), Some(&points1 as _)),
-                        (MyColor::name(), Some(&colors1 as _)),
+                        (MyPoint::descriptor(), Some(&points1 as _)),
+                        (MyColor::descriptor(), Some(&colors1 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id2,
                     [(timeline1, 1001), (timeline2, 44)],
                     [
-                        (MyPoint::name(), None),
-                        (MyColor::name(), Some(&colors2 as _)),
+                        (MyPoint::descriptor(), None),
+                        (MyColor::descriptor(), Some(&colors2 as _)),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id3,
                     [(timeline1, 1002), (timeline2, 43)],
                     [
-                        (MyPoint::name(), Some(&points3 as _)),
-                        (MyColor::name(), None),
+                        (MyPoint::descriptor(), Some(&points3 as _)),
+                        (MyColor::descriptor(), None),
                     ],
                 )
                 .with_sparse_component_batches(
                     row_id4,
                     [(timeline1, 1003), (timeline2, 42)],
                     [
-                        (MyPoint::name(), Some(&points4 as _)),
-                        (MyColor::name(), Some(&colors4 as _)),
+                        (MyPoint::descriptor(), Some(&points4 as _)),
+                        (MyColor::descriptor(), Some(&colors4 as _)),
                     ],
                 )
                 .build()?;
@@ -553,32 +556,32 @@ mod tests {
                         row_id4,
                         [(timeline1, 1003), (timeline2, 42)],
                         [
-                            (MyPoint::name(), Some(&points4 as _)),
-                            (MyColor::name(), Some(&colors4 as _)),
+                            (MyPoint::descriptor(), Some(&points4 as _)),
+                            (MyColor::descriptor(), Some(&colors4 as _)),
                         ],
                     )
                     .with_sparse_component_batches(
                         row_id3,
                         [(timeline1, 1002), (timeline2, 43)],
                         [
-                            (MyPoint::name(), Some(&points3 as _)),
-                            (MyColor::name(), None),
+                            (MyPoint::descriptor(), Some(&points3 as _)),
+                            (MyColor::descriptor(), None),
                         ],
                     )
                     .with_sparse_component_batches(
                         row_id2,
                         [(timeline1, 1001), (timeline2, 44)],
                         [
-                            (MyPoint::name(), None),
-                            (MyColor::name(), Some(&colors2 as _)),
+                            (MyPoint::descriptor(), None),
+                            (MyColor::descriptor(), Some(&colors2 as _)),
                         ],
                     )
                     .with_sparse_component_batches(
                         row_id1,
                         [(timeline1, 1000), (timeline2, 45)],
                         [
-                            (MyPoint::name(), Some(&points1 as _)),
-                            (MyColor::name(), Some(&colors1 as _)),
+                            (MyPoint::descriptor(), Some(&points1 as _)),
+                            (MyColor::descriptor(), Some(&colors1 as _)),
                         ],
                     )
                     .build()?;

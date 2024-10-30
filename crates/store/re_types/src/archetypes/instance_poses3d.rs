@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: One or more transforms between the current entity and its parent. Unlike [`archetypes::Transform3D`][crate::archetypes::Transform3D], it is *not* propagated in the transform hierarchy.
@@ -108,52 +108,82 @@ pub struct InstancePoses3D {
     pub mat3x3: Option<Vec<crate::components::PoseTransformMat3x3>>,
 }
 
-impl ::re_types_core::SizeBytes for InstancePoses3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.translations.heap_size_bytes()
-            + self.rotation_axis_angles.heap_size_bytes()
-            + self.quaternions.heap_size_bytes()
-            + self.scales.heap_size_bytes()
-            + self.mat3x3.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<Vec<crate::components::PoseTranslation3D>>>::is_pod()
-            && <Option<Vec<crate::components::PoseRotationAxisAngle>>>::is_pod()
-            && <Option<Vec<crate::components::PoseRotationQuat>>>::is_pod()
-            && <Option<Vec<crate::components::PoseScale3D>>>::is_pod()
-            && <Option<Vec<crate::components::PoseTransformMat3x3>>>::is_pod()
-    }
-}
-
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.InstancePoses3DIndicator".into()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+            component_name: "InstancePoses3DIndicator".into(),
+            archetype_field_name: None,
+        }]
+    });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.PoseTranslation3D".into(),
-            "rerun.components.PoseRotationAxisAngle".into(),
-            "rerun.components.PoseRotationQuat".into(),
-            "rerun.components.PoseScale3D".into(),
-            "rerun.components.PoseTransformMat3x3".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+                component_name: "rerun.components.PoseTranslation3D".into(),
+                archetype_field_name: Some("translations".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+                component_name: "rerun.components.PoseRotationAxisAngle".into(),
+                archetype_field_name: Some("rotation_axis_angles".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+                component_name: "rerun.components.PoseRotationQuat".into(),
+                archetype_field_name: Some("quaternions".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+                component_name: "rerun.components.PoseScale3D".into(),
+                archetype_field_name: Some("scales".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+                component_name: "rerun.components.PoseTransformMat3x3".into(),
+                archetype_field_name: Some("mat3x3".into()),
+            },
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.InstancePoses3DIndicator".into(),
-            "rerun.components.PoseTranslation3D".into(),
-            "rerun.components.PoseRotationAxisAngle".into(),
-            "rerun.components.PoseRotationQuat".into(),
-            "rerun.components.PoseScale3D".into(),
-            "rerun.components.PoseTransformMat3x3".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+                component_name: "InstancePoses3DIndicator".into(),
+                archetype_field_name: None,
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+                component_name: "rerun.components.PoseTranslation3D".into(),
+                archetype_field_name: Some("translations".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+                component_name: "rerun.components.PoseRotationAxisAngle".into(),
+                archetype_field_name: Some("rotation_axis_angles".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+                component_name: "rerun.components.PoseRotationQuat".into(),
+                archetype_field_name: Some("quaternions".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+                component_name: "rerun.components.PoseScale3D".into(),
+                archetype_field_name: Some("scales".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+                component_name: "rerun.components.PoseTransformMat3x3".into(),
+                archetype_field_name: Some("mat3x3".into()),
+            },
         ]
     });
 
@@ -181,26 +211,26 @@ impl ::re_types_core::Archetype for InstancePoses3D {
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: InstancePoses3DIndicator = InstancePoses3DIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -294,21 +324,66 @@ impl ::re_types_core::AsComponents for InstancePoses3D {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            self.translations
+            (self
+                .translations
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.rotation_axis_angles
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+                    archetype_field_name: Some(("translations").into()),
+                    component_name: ("rerun.components.PoseTranslation3D").into(),
+                }),
+            }),
+            (self
+                .rotation_axis_angles
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.quaternions
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+                    archetype_field_name: Some(("rotation_axis_angles").into()),
+                    component_name: ("rerun.components.PoseRotationAxisAngle").into(),
+                }),
+            }),
+            (self
+                .quaternions
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.scales
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+                    archetype_field_name: Some(("quaternions").into()),
+                    component_name: ("rerun.components.PoseRotationQuat").into(),
+                }),
+            }),
+            (self
+                .scales
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.mat3x3
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+                    archetype_field_name: Some(("scales").into()),
+                    component_name: ("rerun.components.PoseScale3D").into(),
+                }),
+            }),
+            (self
+                .mat3x3
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.InstancePoses3D".into()),
+                    archetype_field_name: Some(("mat3x3").into()),
+                    component_name: ("rerun.components.PoseTransformMat3x3").into(),
+                }),
+            }),
         ]
         .into_iter()
         .flatten()
@@ -382,5 +457,25 @@ impl InstancePoses3D {
     ) -> Self {
         self.mat3x3 = Some(mat3x3.into_iter().map(Into::into).collect());
         self
+    }
+}
+
+impl ::re_types_core::SizeBytes for InstancePoses3D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.translations.heap_size_bytes()
+            + self.rotation_axis_angles.heap_size_bytes()
+            + self.quaternions.heap_size_bytes()
+            + self.scales.heap_size_bytes()
+            + self.mat3x3.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<Vec<crate::components::PoseTranslation3D>>>::is_pod()
+            && <Option<Vec<crate::components::PoseRotationAxisAngle>>>::is_pod()
+            && <Option<Vec<crate::components::PoseRotationQuat>>>::is_pod()
+            && <Option<Vec<crate::components::PoseScale3D>>>::is_pod()
+            && <Option<Vec<crate::components::PoseTransformMat3x3>>>::is_pod()
     }
 }

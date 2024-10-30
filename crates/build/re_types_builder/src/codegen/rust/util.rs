@@ -50,25 +50,6 @@ pub fn is_tuple_struct_from_obj(obj: &Object) -> bool {
     is_tuple_struct
 }
 
-pub fn iter_archetype_components<'a>(
-    obj: &'a Object,
-    requirement_attr_value: &'static str,
-) -> impl Iterator<Item = String> + 'a {
-    assert_eq!(ObjectKind::Archetype, obj.kind);
-
-    obj.fields.iter().filter_map(move |field| {
-        field
-            .try_get_attr::<String>(requirement_attr_value)
-            .map(|_| {
-                if let Some(fqname) = field.typ.fqname() {
-                    fqname.to_owned()
-                } else {
-                    panic!("Archetype field must be an object/union or an array/vector of such")
-                }
-            })
-    })
-}
-
 pub fn string_from_quoted(
     reporter: &Reporter,
     acc: &TokenStream,

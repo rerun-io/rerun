@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **View**: For viewing spatial 3D data.
@@ -31,6 +31,13 @@ pub struct Spatial3DView {
     pub time_ranges: crate::blueprint::archetypes::VisibleTimeRanges,
 }
 
+impl ::re_types_core::View for Spatial3DView {
+    #[inline]
+    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+        "3D".into()
+    }
+}
+
 impl ::re_types_core::SizeBytes for Spatial3DView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
@@ -41,12 +48,5 @@ impl ::re_types_core::SizeBytes for Spatial3DView {
     fn is_pod() -> bool {
         <crate::blueprint::archetypes::Background>::is_pod()
             && <crate::blueprint::archetypes::VisibleTimeRanges>::is_pod()
-    }
-}
-
-impl ::re_types_core::View for Spatial3DView {
-    #[inline]
-    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
-        "3D".into()
     }
 }

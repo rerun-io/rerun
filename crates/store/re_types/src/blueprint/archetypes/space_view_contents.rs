@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The contents of a `SpaceView`.
@@ -64,32 +64,40 @@ pub struct SpaceViewContents {
     pub query: Vec<crate::blueprint::components::QueryExpression>,
 }
 
-impl ::re_types_core::SizeBytes for SpaceViewContents {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.query.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::blueprint::components::QueryExpression>>::is_pod()
-    }
-}
-
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.SpaceViewContentsIndicator".into()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.SpaceViewContents".into()),
+            component_name: "SpaceViewContentsIndicator".into(),
+            archetype_field_name: None,
+        }]
+    });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.QueryExpression".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.SpaceViewContents".into()),
+            component_name: "rerun.blueprint.components.QueryExpression".into(),
+            archetype_field_name: Some("query".into()),
+        }]
+    });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.SpaceViewContentsIndicator".into(),
-            "rerun.blueprint.components.QueryExpression".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.SpaceViewContents".into()),
+                component_name: "SpaceViewContentsIndicator".into(),
+                archetype_field_name: None,
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.SpaceViewContents".into()),
+                component_name: "rerun.blueprint.components.QueryExpression".into(),
+                archetype_field_name: Some("query".into()),
+            },
         ]
     });
 
@@ -117,26 +125,26 @@ impl ::re_types_core::Archetype for SpaceViewContents {
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: SpaceViewContentsIndicator = SpaceViewContentsIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -172,7 +180,16 @@ impl ::re_types_core::AsComponents for SpaceViewContents {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.query as &dyn ComponentBatch).into()),
+            (Some(&self.query as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.blueprint.archetypes.SpaceViewContents".into()),
+                        archetype_field_name: Some(("query").into()),
+                        component_name: ("rerun.blueprint.components.QueryExpression").into(),
+                    }),
+                }
+            }),
         ]
         .into_iter()
         .flatten()
@@ -191,5 +208,17 @@ impl SpaceViewContents {
         Self {
             query: query.into_iter().map(Into::into).collect(),
         }
+    }
+}
+
+impl ::re_types_core::SizeBytes for SpaceViewContents {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.query.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<crate::blueprint::components::QueryExpression>>::is_pod()
     }
 }

@@ -28,7 +28,7 @@ use re_chunk_store::{
 };
 use re_log_types::ResolvedTimeRange;
 use re_query::{QueryCache, StorageEngineLike};
-use re_types_core::components::ClearIsRecursive;
+use re_types_core::{components::ClearIsRecursive, ComponentDescriptor};
 
 use crate::RecordBatch;
 
@@ -251,7 +251,11 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         #[allow(clippy::unwrap_used)]
                         chunk
                             .add_component(
-                                descr.component_name,
+                                re_types_core::ComponentDescriptor {
+                                    component_name: descr.component_name,
+                                    archetype_name: descr.archetype_name,
+                                    archetype_field_name: descr.archetype_field_name,
+                                },
                                 re_chunk::util::new_list_array_of_empties(
                                     child_datatype,
                                     chunk.num_rows(),
@@ -330,8 +334,11 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                         let query =
                             re_chunk::LatestAtQuery::new(Timeline::default(), TimeInt::STATIC);
 
-                        let results =
-                            cache.latest_at(&query, &descr.entity_path, [descr.component_name]);
+                        let results = cache.latest_at(
+                            &query,
+                            &descr.entity_path,
+                            [ComponentDescriptor::from(descr)],
+                        );
 
                         results.components.get(&descr.component_name).cloned()
                     }
@@ -457,13 +464,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                 ColumnDescriptor::Component(column) => {
                     let chunks = self
-                        .fetch_chunks(
-                            store,
-                            cache,
-                            query,
-                            &column.entity_path,
-                            [column.component_name],
-                        )
+                        .fetch_chunks(store, cache, query, &column.entity_path, [&column.into()])
                         .unwrap_or_default();
 
                     if let Some(pov) = self.query.filtered_is_not_null.as_ref() {
@@ -513,7 +514,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         /// Returns `None` if the chunk either doesn't contain a `ClearIsRecursive` column or if
         /// the end result is an empty chunk.
         fn chunk_filter_recursive_only(chunk: &Chunk) -> Option<Chunk> {
-            let list_array = chunk.components().get(&ClearIsRecursive::name())?;
+            let list_array = chunk
+                .components()
+                .get_descriptor(&ClearIsRecursive::descriptor())?;
 
             let values = list_array
                 .values()
@@ -536,7 +539,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         }
 
         use re_types_core::Component as _;
-        let component_names = [re_types_core::components::ClearIsRecursive::name()];
+        let component_descrs = [&ComponentDescriptor::new(ClearIsRecursive::name())];
 
         // All unique entity paths present in the view contents.
         let entity_paths: IntSet<EntityPath> = view_contents
@@ -553,7 +556,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                 // For the entity itself, any chunk that contains clear data is relevant, recursive or not.
                 // Just fetch everything we find.
                 let flat_chunks = self
-                    .fetch_chunks(store, cache, query, entity_path, component_names)
+                    .fetch_chunks(store, cache, query, entity_path, component_descrs)
                     .map(|chunks| {
                         chunks
                             .into_iter()
@@ -564,7 +567,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                 let recursive_chunks =
                     entity_path_ancestors(entity_path).flat_map(|ancestor_path| {
-                        self.fetch_chunks(store, cache, query, &ancestor_path, component_names)
+                        self.fetch_chunks(store, cache, query, &ancestor_path, component_descrs)
                             .into_iter() // option
                             .flat_map(|chunks| chunks.into_iter().map(|(_cursor, chunk)| chunk))
                             // NOTE: Ancestors' chunks are only relevant for the rows where `ClearIsRecursive=true`.
@@ -584,13 +587,13 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .collect()
     }
 
-    fn fetch_chunks<const N: usize>(
+    fn fetch_chunks<'a>(
         &self,
         _store: &ChunkStore,
         cache: &QueryCache,
         query: &RangeQuery,
         entity_path: &EntityPath,
-        component_names: [ComponentName; N],
+        component_descrs: impl IntoIterator<Item = &'a ComponentDescriptor>,
     ) -> Option<Vec<(AtomicU64, Chunk)>> {
         // NOTE: Keep in mind that the range APIs natively make sure that we will
         // either get a bunch of relevant _static_ chunks, or a bunch of relevant
@@ -598,7 +601,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         //
         // TODO(cmc): Going through the cache is very useful in a Viewer context, but
         // not so much in an SDK context. Make it configurable.
-        let results = cache.range(query, entity_path, component_names);
+        let results = cache.range(query, entity_path, component_descrs);
 
         debug_assert!(
             results.components.len() <= 1,
@@ -1061,8 +1064,11 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     let query =
                         re_chunk::LatestAtQuery::new(state.filtered_index, *cur_index_value);
 
-                    let results =
-                        cache.latest_at(&query, &descr.entity_path, [descr.component_name]);
+                    let results = cache.latest_at(
+                        &query,
+                        &descr.entity_path,
+                        [ComponentDescriptor::from(descr)],
+                    );
 
                     *streaming_state = results
                         .components
@@ -1159,24 +1165,28 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     let list_array = match streaming_state {
                         StreamingJoinState::StreamingJoinState(s) => {
                             debug_assert!(
-                                s.chunk.components().len() <= 1,
+                                s.chunk.components().iter_flattened().count() <= 1,
                                 "cannot possibly get more than one component with this query"
                             );
 
                             s.chunk
                                 .components()
-                                .iter()
+                                .iter_flattened()
                                 .next()
                                 .map(|(_, list_array)| list_array.sliced(s.cursor as usize, 1))
 
                         }
 
                         StreamingJoinState::Retrofilled(unit) => {
-                            let component_name = state.view_contents.get(view_idx).and_then(|col| match col {
-                                ColumnDescriptor::Component(descr) => Some(descr.component_name),
+                            let component_desc = state.view_contents.get(view_idx).and_then(|col| match col {
+                                ColumnDescriptor::Component(descr) => Some(re_types_core::ComponentDescriptor {
+                                    component_name: descr.component_name,
+                                    archetype_name: descr.archetype_name,
+                                    archetype_field_name: descr.archetype_field_name,
+                                }),
                                 ColumnDescriptor::Time(_) => None,
                             })?;
-                            unit.components().get(&component_name).map(|list_array| list_array.to_boxed())
+                            unit.components().get_descriptor(&component_desc).map(|list_array| list_array.to_boxed())
                         }
                     };
 
@@ -2698,41 +2708,41 @@ mod tests {
                 row_id1_1,
                 [build_frame_nr(frame1), build_log_time(frame1.into())],
                 [
-                    (MyPoint::name(), Some(&points1 as _)),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), Some(&labels1 as _)), // shadowed by static
+                    (MyPoint::descriptor(), Some(&points1 as _)),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), Some(&labels1 as _)), // shadowed by static
                 ],
             )
             .with_sparse_component_batches(
                 row_id1_3,
                 [build_frame_nr(frame3), build_log_time(frame3.into())],
                 [
-                    (MyPoint::name(), Some(&points3 as _)),
-                    (MyColor::name(), Some(&colors3 as _)),
+                    (MyPoint::descriptor(), Some(&points3 as _)),
+                    (MyColor::descriptor(), Some(&colors3 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id1_5,
                 [build_frame_nr(frame5), build_log_time(frame5.into())],
                 [
-                    (MyPoint::name(), Some(&points5 as _)),
-                    (MyColor::name(), None),
+                    (MyPoint::descriptor(), Some(&points5 as _)),
+                    (MyColor::descriptor(), None),
                 ],
             )
             .with_sparse_component_batches(
                 row_id1_7_1,
                 [build_frame_nr(frame7), build_log_time(frame7.into())],
-                [(MyPoint::name(), Some(&points7_1 as _))],
+                [(MyPoint::descriptor(), Some(&points7_1 as _))],
             )
             .with_sparse_component_batches(
                 row_id1_7_2,
                 [build_frame_nr(frame7), build_log_time(frame7.into())],
-                [(MyPoint::name(), Some(&points7_2 as _))],
+                [(MyPoint::descriptor(), Some(&points7_2 as _))],
             )
             .with_sparse_component_batches(
                 row_id1_7_3,
                 [build_frame_nr(frame7), build_log_time(frame7.into())],
-                [(MyPoint::name(), Some(&points7_3 as _))],
+                [(MyPoint::descriptor(), Some(&points7_3 as _))],
             )
             .build()?;
 
@@ -2750,20 +2760,20 @@ mod tests {
             .with_sparse_component_batches(
                 row_id2_2,
                 [build_frame_nr(frame2)],
-                [(MyPoint::name(), Some(&points2 as _))],
+                [(MyPoint::descriptor(), Some(&points2 as _))],
             )
             .with_sparse_component_batches(
                 row_id2_3,
                 [build_frame_nr(frame3)],
                 [
-                    (MyPoint::name(), Some(&points3 as _)),
-                    (MyColor::name(), Some(&colors3 as _)),
+                    (MyPoint::descriptor(), Some(&points3 as _)),
+                    (MyColor::descriptor(), Some(&colors3 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id2_4,
                 [build_frame_nr(frame4)],
-                [(MyPoint::name(), Some(&points4 as _))],
+                [(MyPoint::descriptor(), Some(&points4 as _))],
             )
             .build()?;
 
@@ -2777,17 +2787,17 @@ mod tests {
             .with_sparse_component_batches(
                 row_id3_2,
                 [build_frame_nr(frame2)],
-                [(MyPoint::name(), Some(&points2 as _))],
+                [(MyPoint::descriptor(), Some(&points2 as _))],
             )
             .with_sparse_component_batches(
                 row_id3_4,
                 [build_frame_nr(frame4)],
-                [(MyPoint::name(), Some(&points4 as _))],
+                [(MyPoint::descriptor(), Some(&points4 as _))],
             )
             .with_sparse_component_batches(
                 row_id3_6,
                 [build_frame_nr(frame6)],
-                [(MyPoint::name(), Some(&points6 as _))],
+                [(MyPoint::descriptor(), Some(&points6 as _))],
             )
             .build()?;
 
@@ -2801,17 +2811,17 @@ mod tests {
             .with_sparse_component_batches(
                 row_id4_4,
                 [build_frame_nr(frame4)],
-                [(MyColor::name(), Some(&colors4 as _))],
+                [(MyColor::descriptor(), Some(&colors4 as _))],
             )
             .with_sparse_component_batches(
                 row_id4_5,
                 [build_frame_nr(frame5)],
-                [(MyColor::name(), Some(&colors5 as _))],
+                [(MyColor::descriptor(), Some(&colors5 as _))],
             )
             .with_sparse_component_batches(
                 row_id4_7,
                 [build_frame_nr(frame7)],
-                [(MyColor::name(), Some(&colors7 as _))],
+                [(MyColor::descriptor(), Some(&colors7 as _))],
             )
             .build()?;
 
@@ -2823,7 +2833,7 @@ mod tests {
             .with_sparse_component_batches(
                 row_id5_1,
                 TimePoint::default(),
-                [(MyLabel::name(), Some(&labels2 as _))],
+                [(MyLabel::descriptor(), Some(&labels2 as _))],
             )
             .build()?;
 
@@ -2835,7 +2845,7 @@ mod tests {
             .with_sparse_component_batches(
                 row_id6_1,
                 TimePoint::default(),
-                [(MyLabel::name(), Some(&labels3 as _))],
+                [(MyLabel::descriptor(), Some(&labels3 as _))],
             )
             .build()?;
 
@@ -2863,7 +2873,7 @@ mod tests {
             .with_sparse_component_batches(
                 row_id1_1,
                 TimePoint::default(),
-                [(ClearIsRecursive::name(), Some(&clear_flat as _))],
+                [(ClearIsRecursive::descriptor(), Some(&clear_flat as _))],
             )
             .build()?;
 
@@ -2885,7 +2895,7 @@ mod tests {
             .with_sparse_component_batches(
                 row_id2_1,
                 [build_frame_nr(frame35), build_log_time(frame35.into())],
-                [(ClearIsRecursive::name(), Some(&clear_recursive as _))],
+                [(ClearIsRecursive::descriptor(), Some(&clear_recursive as _))],
             )
             .build()?;
 
@@ -2897,17 +2907,17 @@ mod tests {
             .with_sparse_component_batches(
                 row_id3_1,
                 [build_frame_nr(frame55), build_log_time(frame55.into())],
-                [(ClearIsRecursive::name(), Some(&clear_flat as _))],
+                [(ClearIsRecursive::descriptor(), Some(&clear_flat as _))],
             )
             .with_sparse_component_batches(
                 row_id3_1,
                 [build_frame_nr(frame60), build_log_time(frame60.into())],
-                [(ClearIsRecursive::name(), Some(&clear_recursive as _))],
+                [(ClearIsRecursive::descriptor(), Some(&clear_recursive as _))],
             )
             .with_sparse_component_batches(
                 row_id3_1,
                 [build_frame_nr(frame65), build_log_time(frame65.into())],
-                [(ClearIsRecursive::name(), Some(&clear_flat as _))],
+                [(ClearIsRecursive::descriptor(), Some(&clear_flat as _))],
             )
             .build()?;
 
@@ -2919,7 +2929,7 @@ mod tests {
             .with_sparse_component_batches(
                 row_id4_1,
                 [build_frame_nr(frame60), build_log_time(frame60.into())],
-                [(ClearIsRecursive::name(), Some(&clear_flat as _))],
+                [(ClearIsRecursive::descriptor(), Some(&clear_flat as _))],
             )
             .build()?;
 
@@ -2931,7 +2941,7 @@ mod tests {
             .with_sparse_component_batches(
                 row_id5_1,
                 [build_frame_nr(frame65), build_log_time(frame65.into())],
-                [(ClearIsRecursive::name(), Some(&clear_recursive as _))],
+                [(ClearIsRecursive::descriptor(), Some(&clear_recursive as _))],
             )
             .build()?;
 

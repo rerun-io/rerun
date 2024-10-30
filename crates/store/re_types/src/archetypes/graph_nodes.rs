@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A list of nodes in a graph with optional labels, colors, etc.
@@ -42,55 +42,93 @@ pub struct GraphNodes {
     pub radii: Option<Vec<crate::components::Radius>>,
 }
 
-impl ::re_types_core::SizeBytes for GraphNodes {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.node_ids.heap_size_bytes()
-            + self.positions.heap_size_bytes()
-            + self.colors.heap_size_bytes()
-            + self.labels.heap_size_bytes()
-            + self.show_labels.heap_size_bytes()
-            + self.radii.heap_size_bytes()
-    }
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+            component_name: "rerun.components.GraphNode".into(),
+            archetype_field_name: Some("node_ids".into()),
+        }]
+    });
 
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::components::GraphNode>>::is_pod()
-            && <Option<Vec<crate::components::Position2D>>>::is_pod()
-            && <Option<Vec<crate::components::Color>>>::is_pod()
-            && <Option<Vec<crate::components::Text>>>::is_pod()
-            && <Option<crate::components::ShowLabels>>::is_pod()
-            && <Option<Vec<crate::components::Radius>>>::is_pod()
-    }
-}
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+            component_name: "GraphNodesIndicator".into(),
+            archetype_field_name: None,
+        }]
+    });
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.GraphNode".into()]);
-
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.GraphNodesIndicator".into()]);
-
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Position2D".into(),
-            "rerun.components.Color".into(),
-            "rerun.components.Text".into(),
-            "rerun.components.ShowLabels".into(),
-            "rerun.components.Radius".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+                component_name: "rerun.components.Position2D".into(),
+                archetype_field_name: Some("positions".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+                component_name: "rerun.components.Color".into(),
+                archetype_field_name: Some("colors".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+                component_name: "rerun.components.Text".into(),
+                archetype_field_name: Some("labels".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+                component_name: "rerun.components.ShowLabels".into(),
+                archetype_field_name: Some("show_labels".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+                component_name: "rerun.components.Radius".into(),
+                archetype_field_name: Some("radii".into()),
+            },
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.GraphNode".into(),
-            "rerun.components.GraphNodesIndicator".into(),
-            "rerun.components.Position2D".into(),
-            "rerun.components.Color".into(),
-            "rerun.components.Text".into(),
-            "rerun.components.ShowLabels".into(),
-            "rerun.components.Radius".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+                component_name: "rerun.components.GraphNode".into(),
+                archetype_field_name: Some("node_ids".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+                component_name: "GraphNodesIndicator".into(),
+                archetype_field_name: None,
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+                component_name: "rerun.components.Position2D".into(),
+                archetype_field_name: Some("positions".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+                component_name: "rerun.components.Color".into(),
+                archetype_field_name: Some("colors".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+                component_name: "rerun.components.Text".into(),
+                archetype_field_name: Some("labels".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+                component_name: "rerun.components.ShowLabels".into(),
+                archetype_field_name: Some("show_labels".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+                component_name: "rerun.components.Radius".into(),
+                archetype_field_name: Some("radii".into()),
+            },
         ]
     });
 
@@ -118,26 +156,26 @@ impl ::re_types_core::Archetype for GraphNodes {
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: GraphNodesIndicator = GraphNodesIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -237,22 +275,76 @@ impl ::re_types_core::AsComponents for GraphNodes {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.node_ids as &dyn ComponentBatch).into()),
-            self.positions
+            (Some(&self.node_ids as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+                        archetype_field_name: Some(("node_ids").into()),
+                        component_name: ("rerun.components.GraphNode").into(),
+                    }),
+                }
+            }),
+            (self
+                .positions
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.colors
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+                    archetype_field_name: Some(("positions").into()),
+                    component_name: ("rerun.components.Position2D").into(),
+                }),
+            }),
+            (self
+                .colors
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.labels
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+                    archetype_field_name: Some(("colors").into()),
+                    component_name: ("rerun.components.Color").into(),
+                }),
+            }),
+            (self
+                .labels
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.show_labels
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+                    archetype_field_name: Some(("labels").into()),
+                    component_name: ("rerun.components.Text").into(),
+                }),
+            }),
+            (self
+                .show_labels
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.radii
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+                    archetype_field_name: Some(("show_labels").into()),
+                    component_name: ("rerun.components.ShowLabels").into(),
+                }),
+            }),
+            (self
+                .radii
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.GraphNodes".into()),
+                    archetype_field_name: Some(("radii").into()),
+                    component_name: ("rerun.components.Radius").into(),
+                }),
+            }),
         ]
         .into_iter()
         .flatten()
@@ -326,5 +418,27 @@ impl GraphNodes {
     ) -> Self {
         self.radii = Some(radii.into_iter().map(Into::into).collect());
         self
+    }
+}
+
+impl ::re_types_core::SizeBytes for GraphNodes {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.node_ids.heap_size_bytes()
+            + self.positions.heap_size_bytes()
+            + self.colors.heap_size_bytes()
+            + self.labels.heap_size_bytes()
+            + self.show_labels.heap_size_bytes()
+            + self.radii.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<crate::components::GraphNode>>::is_pod()
+            && <Option<Vec<crate::components::Position2D>>>::is_pod()
+            && <Option<Vec<crate::components::Color>>>::is_pod()
+            && <Option<Vec<crate::components::Text>>>::is_pod()
+            && <Option<crate::components::ShowLabels>>::is_pod()
+            && <Option<Vec<crate::components::Radius>>>::is_pod()
     }
 }

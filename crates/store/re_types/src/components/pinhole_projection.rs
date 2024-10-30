@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Camera projection, from image coordinates to view coordinates.
@@ -32,44 +32,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd)]
 pub struct PinholeProjection(pub crate::datatypes::Mat3x3);
 
-impl ::re_types_core::SizeBytes for PinholeProjection {
+impl ::re_types_core::Component for PinholeProjection {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Mat3x3>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Mat3x3>> From<T> for PinholeProjection {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Mat3x3> for PinholeProjection {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Mat3x3 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for PinholeProjection {
-    type Target = crate::datatypes::Mat3x3;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Mat3x3 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for PinholeProjection {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Mat3x3 {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.PinholeProjection")
     }
 }
 
@@ -114,9 +80,43 @@ impl ::re_types_core::Loggable for PinholeProjection {
     }
 }
 
-impl ::re_types_core::Component for PinholeProjection {
+impl<T: Into<crate::datatypes::Mat3x3>> From<T> for PinholeProjection {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Mat3x3> for PinholeProjection {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.PinholeProjection".into()
+    fn borrow(&self) -> &crate::datatypes::Mat3x3 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for PinholeProjection {
+    type Target = crate::datatypes::Mat3x3;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Mat3x3 {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for PinholeProjection {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Mat3x3 {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for PinholeProjection {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Mat3x3>::is_pod()
     }
 }

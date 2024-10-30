@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **View**: A graph view to display time-variying, directed or undirected graph visualization.
@@ -27,15 +27,10 @@ pub struct GraphView {
     pub visual_bounds: crate::blueprint::archetypes::VisualBounds2D,
 }
 
-impl ::re_types_core::SizeBytes for GraphView {
+impl ::re_types_core::View for GraphView {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.visual_bounds.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::archetypes::VisualBounds2D>::is_pod()
+    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+        "Graph".into()
     }
 }
 
@@ -70,9 +65,14 @@ impl std::ops::DerefMut for GraphView {
     }
 }
 
-impl ::re_types_core::View for GraphView {
+impl ::re_types_core::SizeBytes for GraphView {
     #[inline]
-    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
-        "Graph".into()
+    fn heap_size_bytes(&self) -> u64 {
+        self.visual_bounds.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::blueprint::archetypes::VisualBounds2D>::is_pod()
     }
 }

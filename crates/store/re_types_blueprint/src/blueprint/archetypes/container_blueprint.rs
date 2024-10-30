@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The description of a container.
@@ -62,65 +62,113 @@ pub struct ContainerBlueprint {
     pub grid_columns: Option<crate::blueprint::components::GridColumns>,
 }
 
-impl ::re_types_core::SizeBytes for ContainerBlueprint {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.container_kind.heap_size_bytes()
-            + self.display_name.heap_size_bytes()
-            + self.contents.heap_size_bytes()
-            + self.col_shares.heap_size_bytes()
-            + self.row_shares.heap_size_bytes()
-            + self.active_tab.heap_size_bytes()
-            + self.visible.heap_size_bytes()
-            + self.grid_columns.heap_size_bytes()
-    }
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component_name: "rerun.blueprint.components.ContainerKind".into(),
+            archetype_field_name: Some("container_kind".into()),
+        }]
+    });
 
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::components::ContainerKind>::is_pod()
-            && <Option<crate::components::Name>>::is_pod()
-            && <Option<Vec<crate::blueprint::components::IncludedContent>>>::is_pod()
-            && <Option<Vec<crate::blueprint::components::ColumnShare>>>::is_pod()
-            && <Option<Vec<crate::blueprint::components::RowShare>>>::is_pod()
-            && <Option<crate::blueprint::components::ActiveTab>>::is_pod()
-            && <Option<crate::blueprint::components::Visible>>::is_pod()
-            && <Option<crate::blueprint::components::GridColumns>>::is_pod()
-    }
-}
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+            component_name: "ContainerBlueprintIndicator".into(),
+            archetype_field_name: None,
+        }]
+    });
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.ContainerKind".into()]);
-
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(
-        || ["rerun.blueprint.components.ContainerBlueprintIndicator".into()],
-    );
-
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Name".into(),
-            "rerun.blueprint.components.IncludedContent".into(),
-            "rerun.blueprint.components.ColumnShare".into(),
-            "rerun.blueprint.components.RowShare".into(),
-            "rerun.blueprint.components.ActiveTab".into(),
-            "rerun.blueprint.components.Visible".into(),
-            "rerun.blueprint.components.GridColumns".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component_name: "rerun.components.Name".into(),
+                archetype_field_name: Some("display_name".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.IncludedContent".into(),
+                archetype_field_name: Some("contents".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.ColumnShare".into(),
+                archetype_field_name: Some("col_shares".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.RowShare".into(),
+                archetype_field_name: Some("row_shares".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.ActiveTab".into(),
+                archetype_field_name: Some("active_tab".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.Visible".into(),
+                archetype_field_name: Some("visible".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.GridColumns".into(),
+                archetype_field_name: Some("grid_columns".into()),
+            },
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 9usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.ContainerKind".into(),
-            "rerun.blueprint.components.ContainerBlueprintIndicator".into(),
-            "rerun.components.Name".into(),
-            "rerun.blueprint.components.IncludedContent".into(),
-            "rerun.blueprint.components.ColumnShare".into(),
-            "rerun.blueprint.components.RowShare".into(),
-            "rerun.blueprint.components.ActiveTab".into(),
-            "rerun.blueprint.components.Visible".into(),
-            "rerun.blueprint.components.GridColumns".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.ContainerKind".into(),
+                archetype_field_name: Some("container_kind".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component_name: "ContainerBlueprintIndicator".into(),
+                archetype_field_name: None,
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component_name: "rerun.components.Name".into(),
+                archetype_field_name: Some("display_name".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.IncludedContent".into(),
+                archetype_field_name: Some("contents".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.ColumnShare".into(),
+                archetype_field_name: Some("col_shares".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.RowShare".into(),
+                archetype_field_name: Some("row_shares".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.ActiveTab".into(),
+                archetype_field_name: Some("active_tab".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.Visible".into(),
+                archetype_field_name: Some("visible".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.GridColumns".into(),
+                archetype_field_name: Some("grid_columns".into()),
+            },
         ]
     });
 
@@ -149,26 +197,26 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: ContainerBlueprintIndicator = ContainerBlueprintIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -292,28 +340,102 @@ impl ::re_types_core::AsComponents for ContainerBlueprint {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.container_kind as &dyn ComponentBatch).into()),
-            self.display_name
+            (Some(&self.container_kind as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some(
+                            "rerun.blueprint.archetypes.ContainerBlueprint".into(),
+                        ),
+                        archetype_field_name: Some(("container_kind").into()),
+                        component_name: ("rerun.blueprint.components.ContainerKind").into(),
+                    }),
+                }
+            }),
+            (self
+                .display_name
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.contents
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                    archetype_field_name: Some(("display_name").into()),
+                    component_name: ("rerun.components.Name").into(),
+                }),
+            }),
+            (self
+                .contents
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.col_shares
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                    archetype_field_name: Some(("contents").into()),
+                    component_name: ("rerun.blueprint.components.IncludedContent").into(),
+                }),
+            }),
+            (self
+                .col_shares
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.row_shares
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                    archetype_field_name: Some(("col_shares").into()),
+                    component_name: ("rerun.blueprint.components.ColumnShare").into(),
+                }),
+            }),
+            (self
+                .row_shares
                 .as_ref()
-                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
-            self.active_tab
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                    archetype_field_name: Some(("row_shares").into()),
+                    component_name: ("rerun.blueprint.components.RowShare").into(),
+                }),
+            }),
+            (self
+                .active_tab
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.visible
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                    archetype_field_name: Some(("active_tab").into()),
+                    component_name: ("rerun.blueprint.components.ActiveTab").into(),
+                }),
+            }),
+            (self
+                .visible
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.grid_columns
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                    archetype_field_name: Some(("visible").into()),
+                    component_name: ("rerun.blueprint.components.Visible").into(),
+                }),
+            }),
+            (self
+                .grid_columns
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.ContainerBlueprint".into()),
+                    archetype_field_name: Some(("grid_columns").into()),
+                    component_name: ("rerun.blueprint.components.GridColumns").into(),
+                }),
+            }),
         ]
         .into_iter()
         .flatten()
@@ -420,5 +542,31 @@ impl ContainerBlueprint {
     ) -> Self {
         self.grid_columns = Some(grid_columns.into());
         self
+    }
+}
+
+impl ::re_types_core::SizeBytes for ContainerBlueprint {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.container_kind.heap_size_bytes()
+            + self.display_name.heap_size_bytes()
+            + self.contents.heap_size_bytes()
+            + self.col_shares.heap_size_bytes()
+            + self.row_shares.heap_size_bytes()
+            + self.active_tab.heap_size_bytes()
+            + self.visible.heap_size_bytes()
+            + self.grid_columns.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::blueprint::components::ContainerKind>::is_pod()
+            && <Option<crate::components::Name>>::is_pod()
+            && <Option<Vec<crate::blueprint::components::IncludedContent>>>::is_pod()
+            && <Option<Vec<crate::blueprint::components::ColumnShare>>>::is_pod()
+            && <Option<Vec<crate::blueprint::components::RowShare>>>::is_pod()
+            && <Option<crate::blueprint::components::ActiveTab>>::is_pod()
+            && <Option<crate::blueprint::components::Visible>>::is_pod()
+            && <Option<crate::blueprint::components::GridColumns>>::is_pod()
     }
 }

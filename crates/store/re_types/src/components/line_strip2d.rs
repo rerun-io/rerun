@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A line strip in 2D space.
@@ -33,21 +33,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct LineStrip2D(pub Vec<crate::datatypes::Vec2D>);
 
-impl ::re_types_core::SizeBytes for LineStrip2D {
+impl ::re_types_core::Component for LineStrip2D {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::datatypes::Vec2D>>::is_pod()
-    }
-}
-
-impl<I: Into<crate::datatypes::Vec2D>, T: IntoIterator<Item = I>> From<T> for LineStrip2D {
-    fn from(v: T) -> Self {
-        Self(v.into_iter().map(|v| v.into()).collect())
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.LineStrip2D")
     }
 }
 
@@ -270,9 +259,20 @@ impl ::re_types_core::Loggable for LineStrip2D {
     }
 }
 
-impl ::re_types_core::Component for LineStrip2D {
+impl<I: Into<crate::datatypes::Vec2D>, T: IntoIterator<Item = I>> From<T> for LineStrip2D {
+    fn from(v: T) -> Self {
+        Self(v.into_iter().map(|v| v.into()).collect())
+    }
+}
+
+impl ::re_types_core::SizeBytes for LineStrip2D {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.LineStrip2D".into()
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<crate::datatypes::Vec2D>>::is_pod()
     }
 }

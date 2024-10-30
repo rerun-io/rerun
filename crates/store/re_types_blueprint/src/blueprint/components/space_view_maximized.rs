@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Whether a space view is maximized.
@@ -23,44 +23,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct SpaceViewMaximized(pub crate::datatypes::Uuid);
 
-impl ::re_types_core::SizeBytes for SpaceViewMaximized {
+impl ::re_types_core::Component for SpaceViewMaximized {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Uuid>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Uuid>> From<T> for SpaceViewMaximized {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Uuid> for SpaceViewMaximized {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Uuid {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for SpaceViewMaximized {
-    type Target = crate::datatypes::Uuid;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Uuid {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for SpaceViewMaximized {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Uuid {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.SpaceViewMaximized")
     }
 }
 
@@ -105,9 +71,43 @@ impl ::re_types_core::Loggable for SpaceViewMaximized {
     }
 }
 
-impl ::re_types_core::Component for SpaceViewMaximized {
+impl<T: Into<crate::datatypes::Uuid>> From<T> for SpaceViewMaximized {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Uuid> for SpaceViewMaximized {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.SpaceViewMaximized".into()
+    fn borrow(&self) -> &crate::datatypes::Uuid {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for SpaceViewMaximized {
+    type Target = crate::datatypes::Uuid;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Uuid {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for SpaceViewMaximized {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Uuid {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for SpaceViewMaximized {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Uuid>::is_pod()
     }
 }

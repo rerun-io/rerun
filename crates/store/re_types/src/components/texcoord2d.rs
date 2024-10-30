@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A 2D texture UV coordinate.
@@ -38,44 +38,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct Texcoord2D(pub crate::datatypes::Vec2D);
 
-impl ::re_types_core::SizeBytes for Texcoord2D {
+impl ::re_types_core::Component for Texcoord2D {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Vec2D>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Vec2D>> From<T> for Texcoord2D {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Vec2D> for Texcoord2D {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Vec2D {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Texcoord2D {
-    type Target = crate::datatypes::Vec2D;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Vec2D {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Texcoord2D {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec2D {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.Texcoord2D")
     }
 }
 
@@ -120,9 +86,43 @@ impl ::re_types_core::Loggable for Texcoord2D {
     }
 }
 
-impl ::re_types_core::Component for Texcoord2D {
+impl<T: Into<crate::datatypes::Vec2D>> From<T> for Texcoord2D {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Vec2D> for Texcoord2D {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.Texcoord2D".into()
+    fn borrow(&self) -> &crate::datatypes::Vec2D {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for Texcoord2D {
+    type Target = crate::datatypes::Vec2D;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Vec2D {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for Texcoord2D {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec2D {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for Texcoord2D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Vec2D>::is_pod()
     }
 }

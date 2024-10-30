@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Describe a component column to be selected in the dataframe view.
@@ -23,44 +23,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct SelectedColumns(pub crate::blueprint::datatypes::SelectedColumns);
 
-impl ::re_types_core::SizeBytes for SelectedColumns {
+impl ::re_types_core::Component for SelectedColumns {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::datatypes::SelectedColumns>::is_pod()
-    }
-}
-
-impl<T: Into<crate::blueprint::datatypes::SelectedColumns>> From<T> for SelectedColumns {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::blueprint::datatypes::SelectedColumns> for SelectedColumns {
-    #[inline]
-    fn borrow(&self) -> &crate::blueprint::datatypes::SelectedColumns {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for SelectedColumns {
-    type Target = crate::blueprint::datatypes::SelectedColumns;
-
-    #[inline]
-    fn deref(&self) -> &crate::blueprint::datatypes::SelectedColumns {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for SelectedColumns {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::blueprint::datatypes::SelectedColumns {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.SelectedColumns")
     }
 }
 
@@ -97,9 +63,43 @@ impl ::re_types_core::Loggable for SelectedColumns {
     }
 }
 
-impl ::re_types_core::Component for SelectedColumns {
+impl<T: Into<crate::blueprint::datatypes::SelectedColumns>> From<T> for SelectedColumns {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::blueprint::datatypes::SelectedColumns> for SelectedColumns {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.SelectedColumns".into()
+    fn borrow(&self) -> &crate::blueprint::datatypes::SelectedColumns {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for SelectedColumns {
+    type Target = crate::blueprint::datatypes::SelectedColumns;
+
+    #[inline]
+    fn deref(&self) -> &crate::blueprint::datatypes::SelectedColumns {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for SelectedColumns {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::blueprint::datatypes::SelectedColumns {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for SelectedColumns {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::blueprint::datatypes::SelectedColumns>::is_pod()
     }
 }

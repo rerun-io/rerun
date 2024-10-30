@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A transform between two 3D spaces, i.e. a pose.
@@ -193,60 +193,102 @@ pub struct Transform3D {
     pub axis_length: Option<crate::components::AxisLength>,
 }
 
-impl ::re_types_core::SizeBytes for Transform3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.translation.heap_size_bytes()
-            + self.rotation_axis_angle.heap_size_bytes()
-            + self.quaternion.heap_size_bytes()
-            + self.scale.heap_size_bytes()
-            + self.mat3x3.heap_size_bytes()
-            + self.relation.heap_size_bytes()
-            + self.axis_length.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::components::Translation3D>>::is_pod()
-            && <Option<crate::components::RotationAxisAngle>>::is_pod()
-            && <Option<crate::components::RotationQuat>>::is_pod()
-            && <Option<crate::components::Scale3D>>::is_pod()
-            && <Option<crate::components::TransformMat3x3>>::is_pod()
-            && <Option<crate::components::TransformRelation>>::is_pod()
-            && <Option<crate::components::AxisLength>>::is_pod()
-    }
-}
-
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.Transform3DIndicator".into()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Transform3D".into()),
+            component_name: "Transform3DIndicator".into(),
+            archetype_field_name: None,
+        }]
+    });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Translation3D".into(),
-            "rerun.components.RotationAxisAngle".into(),
-            "rerun.components.RotationQuat".into(),
-            "rerun.components.Scale3D".into(),
-            "rerun.components.TransformMat3x3".into(),
-            "rerun.components.TransformRelation".into(),
-            "rerun.components.AxisLength".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                component_name: "rerun.components.Translation3D".into(),
+                archetype_field_name: Some("translation".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                component_name: "rerun.components.RotationAxisAngle".into(),
+                archetype_field_name: Some("rotation_axis_angle".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                component_name: "rerun.components.RotationQuat".into(),
+                archetype_field_name: Some("quaternion".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                component_name: "rerun.components.Scale3D".into(),
+                archetype_field_name: Some("scale".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                component_name: "rerun.components.TransformMat3x3".into(),
+                archetype_field_name: Some("mat3x3".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                component_name: "rerun.components.TransformRelation".into(),
+                archetype_field_name: Some("relation".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                component_name: "rerun.components.AxisLength".into(),
+                archetype_field_name: Some("axis_length".into()),
+            },
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Transform3DIndicator".into(),
-            "rerun.components.Translation3D".into(),
-            "rerun.components.RotationAxisAngle".into(),
-            "rerun.components.RotationQuat".into(),
-            "rerun.components.Scale3D".into(),
-            "rerun.components.TransformMat3x3".into(),
-            "rerun.components.TransformRelation".into(),
-            "rerun.components.AxisLength".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                component_name: "Transform3DIndicator".into(),
+                archetype_field_name: None,
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                component_name: "rerun.components.Translation3D".into(),
+                archetype_field_name: Some("translation".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                component_name: "rerun.components.RotationAxisAngle".into(),
+                archetype_field_name: Some("rotation_axis_angle".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                component_name: "rerun.components.RotationQuat".into(),
+                archetype_field_name: Some("quaternion".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                component_name: "rerun.components.Scale3D".into(),
+                archetype_field_name: Some("scale".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                component_name: "rerun.components.TransformMat3x3".into(),
+                archetype_field_name: Some("mat3x3".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                component_name: "rerun.components.TransformRelation".into(),
+                archetype_field_name: Some("relation".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                component_name: "rerun.components.AxisLength".into(),
+                archetype_field_name: Some("axis_length".into()),
+            },
         ]
     });
 
@@ -274,26 +316,26 @@ impl ::re_types_core::Archetype for Transform3D {
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: Transform3DIndicator = Transform3DIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -391,13 +433,76 @@ impl ::re_types_core::AsComponents for Transform3D {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.translation as &dyn ComponentBatch).into()),
-            Some((&self.rotation_axis_angle as &dyn ComponentBatch).into()),
-            Some((&self.quaternion as &dyn ComponentBatch).into()),
-            Some((&self.scale as &dyn ComponentBatch).into()),
-            Some((&self.mat3x3 as &dyn ComponentBatch).into()),
-            Some((&self.relation as &dyn ComponentBatch).into()),
-            Some((&self.axis_length as &dyn ComponentBatch).into()),
+            (Some(&self.translation as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                        archetype_field_name: Some(("translation").into()),
+                        component_name: ("rerun.components.Translation3D").into(),
+                    }),
+                }
+            }),
+            (Some(&self.rotation_axis_angle as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                        archetype_field_name: Some(("rotation_axis_angle").into()),
+                        component_name: ("rerun.components.RotationAxisAngle").into(),
+                    }),
+                }
+            }),
+            (Some(&self.quaternion as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                        archetype_field_name: Some(("quaternion").into()),
+                        component_name: ("rerun.components.RotationQuat").into(),
+                    }),
+                }
+            }),
+            (Some(&self.scale as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                        archetype_field_name: Some(("scale").into()),
+                        component_name: ("rerun.components.Scale3D").into(),
+                    }),
+                }
+            }),
+            (Some(&self.mat3x3 as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                        archetype_field_name: Some(("mat3x3").into()),
+                        component_name: ("rerun.components.TransformMat3x3").into(),
+                    }),
+                }
+            }),
+            (Some(&self.relation as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                        archetype_field_name: Some(("relation").into()),
+                        component_name: ("rerun.components.TransformRelation").into(),
+                    }),
+                }
+            }),
+            (Some(&self.axis_length as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.Transform3D".into()),
+                        archetype_field_name: Some(("axis_length").into()),
+                        component_name: ("rerun.components.AxisLength").into(),
+                    }),
+                }
+            }),
         ]
         .into_iter()
         .flatten()
@@ -487,5 +592,29 @@ impl Transform3D {
     ) -> Self {
         self.axis_length = Some(axis_length.into());
         self
+    }
+}
+
+impl ::re_types_core::SizeBytes for Transform3D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.translation.heap_size_bytes()
+            + self.rotation_axis_angle.heap_size_bytes()
+            + self.quaternion.heap_size_bytes()
+            + self.scale.heap_size_bytes()
+            + self.mat3x3.heap_size_bytes()
+            + self.relation.heap_size_bytes()
+            + self.axis_length.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::components::Translation3D>>::is_pod()
+            && <Option<crate::components::RotationAxisAngle>>::is_pod()
+            && <Option<crate::components::RotationQuat>>::is_pod()
+            && <Option<crate::components::Scale3D>>::is_pod()
+            && <Option<crate::components::TransformMat3x3>>::is_pod()
+            && <Option<crate::components::TransformRelation>>::is_pod()
+            && <Option<crate::components::AxisLength>>::is_pod()
     }
 }

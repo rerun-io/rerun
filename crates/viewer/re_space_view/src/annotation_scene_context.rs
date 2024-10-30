@@ -17,7 +17,7 @@ impl ViewContextSystem for AnnotationSceneContext {
         vec![
             AnnotationContext::required_components()
                 .iter()
-                .map(ToOwned::to_owned)
+                .map(|descr| descr.component_name)
                 .collect(), //
         ]
     }

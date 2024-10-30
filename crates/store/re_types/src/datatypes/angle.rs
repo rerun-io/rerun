@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Angle in radians.
@@ -24,32 +24,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub struct Angle {
     /// Angle in radians. One turn is equal to 2π (or τ) radians.
     pub radians: f32,
-}
-
-impl ::re_types_core::SizeBytes for Angle {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.radians.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <f32>::is_pod()
-    }
-}
-
-impl From<f32> for Angle {
-    #[inline]
-    fn from(radians: f32) -> Self {
-        Self { radians }
-    }
-}
-
-impl From<Angle> for f32 {
-    #[inline]
-    fn from(value: Angle) -> Self {
-        value.radians
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(Angle);
@@ -164,5 +138,31 @@ impl ::re_types_core::Loggable for Angle {
                     .collect::<Vec<_>>()
             }
         })
+    }
+}
+
+impl From<f32> for Angle {
+    #[inline]
+    fn from(radians: f32) -> Self {
+        Self { radians }
+    }
+}
+
+impl From<Angle> for f32 {
+    #[inline]
+    fn from(value: Angle) -> Self {
+        value.radians
+    }
+}
+
+impl ::re_types_core::SizeBytes for Angle {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.radians.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <f32>::is_pod()
     }
 }

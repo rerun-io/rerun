@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: An N-dimensional array of numbers.
@@ -67,34 +67,51 @@ pub struct Tensor {
     pub value_range: Option<crate::components::ValueRange>,
 }
 
-impl ::re_types_core::SizeBytes for Tensor {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.data.heap_size_bytes() + self.value_range.heap_size_bytes()
-    }
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Tensor".into()),
+            component_name: "rerun.components.TensorData".into(),
+            archetype_field_name: Some("data".into()),
+        }]
+    });
 
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::components::TensorData>::is_pod()
-            && <Option<crate::components::ValueRange>>::is_pod()
-    }
-}
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Tensor".into()),
+            component_name: "TensorIndicator".into(),
+            archetype_field_name: None,
+        }]
+    });
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.TensorData".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Tensor".into()),
+            component_name: "rerun.components.ValueRange".into(),
+            archetype_field_name: Some("value_range".into()),
+        }]
+    });
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.TensorIndicator".into()]);
-
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.ValueRange".into()]);
-
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.TensorData".into(),
-            "rerun.components.TensorIndicator".into(),
-            "rerun.components.ValueRange".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Tensor".into()),
+                component_name: "rerun.components.TensorData".into(),
+                archetype_field_name: Some("data".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Tensor".into()),
+                component_name: "TensorIndicator".into(),
+                archetype_field_name: None,
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Tensor".into()),
+                component_name: "rerun.components.ValueRange".into(),
+                archetype_field_name: Some("value_range".into()),
+            },
         ]
     });
 
@@ -122,26 +139,26 @@ impl ::re_types_core::Archetype for Tensor {
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: TensorIndicator = TensorIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -187,10 +204,28 @@ impl ::re_types_core::AsComponents for Tensor {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.data as &dyn ComponentBatch).into()),
-            self.value_range
+            (Some(&self.data as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.Tensor".into()),
+                        archetype_field_name: Some(("data").into()),
+                        component_name: ("rerun.components.TensorData").into(),
+                    }),
+                }
+            }),
+            (self
+                .value_range
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.Tensor".into()),
+                    archetype_field_name: Some(("value_range").into()),
+                    component_name: ("rerun.components.ValueRange").into(),
+                }),
+            }),
         ]
         .into_iter()
         .flatten()
@@ -228,5 +263,18 @@ impl Tensor {
     ) -> Self {
         self.value_range = Some(value_range.into());
         self
+    }
+}
+
+impl ::re_types_core::SizeBytes for Tensor {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.data.heap_size_bytes() + self.value_range.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::TensorData>::is_pod()
+            && <Option<crate::components::ValueRange>>::is_pod()
     }
 }
