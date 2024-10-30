@@ -117,7 +117,6 @@ impl TimeColumnDescriptor {
 //
 // TODO(#6889): Fully sorbetize this thing? `ArchetypeName` and such don't make sense in that
 // context. And whatever `archetype_field_name` ends up being, it needs interning.
-// TODO: use the actual ComponentDescriptor in here?
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct ComponentColumnDescriptor {
     /// The path of the entity.

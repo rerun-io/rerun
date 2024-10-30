@@ -1,5 +1,6 @@
 use crate::{
-    result::_Backtrace, DeserializationResult, ResultExt as _, SerializationResult, SizeBytes,
+    result::_Backtrace, ComponentDescriptor, DeserializationResult, ResultExt as _,
+    SerializationResult, SizeBytes,
 };
 
 #[allow(unused_imports)] // used in docstrings
@@ -22,6 +23,8 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     type Name: std::fmt::Display;
 
     /// The fully-qualified name of this loggable, e.g. `rerun.datatypes.Vec2D`.
+    //
+    // TODO(#6889): Get rid of this.
     fn name() -> Self::Name;
 
     /// The underlying [`arrow2::datatypes::DataType`], excluding datatype extensions.
@@ -91,7 +94,12 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
 ///
 /// Any [`Loggable`] with a [`Loggable::Name`] set to [`ComponentName`] automatically implements
 /// [`Component`].
-pub trait Component: Loggable<Name = ComponentName> {}
+pub trait Component: Loggable<Name = ComponentName> {
+    #[inline]
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new(Self::name())
+    }
+}
 
 impl<L: Loggable<Name = ComponentName>> Component for L {}
 

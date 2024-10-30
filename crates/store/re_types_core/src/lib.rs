@@ -51,6 +51,18 @@ pub trait AsComponents {
     // depending on their presence (or lack thereof) at runtime anyway.
     fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>>;
 
+    // TODO: doc
+    // TODO: when can we remove the standard one?
+    fn as_described_component_batches(&self) -> Vec<MaybeOwnedComponentBatchWithDescriptor<'_>> {
+        self.as_component_batches()
+            .into_iter()
+            .map(|batch| {
+                let descriptor = batch.descriptor();
+                MaybeOwnedComponentBatchWithDescriptor { batch, descriptor }
+            })
+            .collect()
+    }
+
     // ---
 
     /// Serializes all non-null [`Component`]s of this bundle into Arrow arrays.
@@ -112,7 +124,10 @@ pub use self::{
     arrow_string::ArrowString,
     component_descriptor::ComponentDescriptor,
     loggable::{Component, ComponentName, ComponentNameSet, DatatypeName, Loggable},
-    loggable_batch::{ComponentBatch, LoggableBatch, MaybeOwnedComponentBatch},
+    loggable_batch::{
+        ComponentBatch, LoggableBatch, MaybeOwnedComponentBatch,
+        MaybeOwnedComponentBatchWithDescriptor,
+    },
     result::{
         DeserializationError, DeserializationResult, ResultExt, SerializationError,
         SerializationResult, _Backtrace,
