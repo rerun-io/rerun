@@ -4,6 +4,7 @@ use std::{collections::BTreeMap, io::Write, sync::Arc};
 
 use crossbeam::channel::{Receiver, Sender};
 use ffmpeg_sidecar::{
+    child::FfmpegChild,
     command::FfmpegCommand,
     event::{FfmpegEvent, LogLevel},
 };
@@ -35,8 +36,14 @@ pub enum Error {
     #[error("FFMPEG error: {0}")]
     Ffmpeg(String),
 
+    #[error("FFMPEG fatal error: {0}")]
+    FfmpegFatal(String),
+
     #[error("FFMPEG IPC error: {0}")]
     FfmpegSidecar(String),
+
+    #[error("Failed to send video frame info to the ffmpeg read thread.")]
+    BrokenFrameInfoChannel,
 }
 
 impl From<Error> for super::Error {
@@ -46,6 +53,7 @@ impl From<Error> for super::Error {
 }
 
 /// ffmpeg does not tell us the timestamp/duration of a given frame, so we need to remember it.
+#[derive(Clone)]
 struct PendingFrameInfo {
     presentation_timestamp: Time,
     duration: Time,
@@ -54,6 +62,10 @@ struct PendingFrameInfo {
 
 /// Decode H.264 video via ffmpeg over CLI
 pub struct FfmpegCliH264Decoder {
+    debug_name: String,
+
+    ffmpeg: FfmpegChild,
+
     /// How we send more data to the ffmpeg process
     ffmpeg_stdin: std::process::ChildStdin,
 
@@ -67,9 +79,8 @@ pub struct FfmpegCliH264Decoder {
 }
 
 impl FfmpegCliH264Decoder {
-    // TODO: make this robust against `pkill ffmpeg` somehow.
-    // Maybe `AsyncDecoder` can auto-restart us, or we wrap ourselves in a new struct that restarts us on certain errors?
     pub fn new(
+        debug_name: String,
         avcc: re_mp4::Avc1Box,
         on_output: impl Fn(super::Result<Frame>) + Send + Sync + 'static,
     ) -> Result<Self, Error> {
@@ -78,9 +89,12 @@ impl FfmpegCliH264Decoder {
         let on_output = Arc::new(on_output);
         let (frame_info_tx, frame_info_rx) = crossbeam::channel::unbounded();
 
-        let ffmpeg_stdin = start_ffmpeg_process(on_output.clone(), frame_info_rx.clone())?;
+        let mut ffmpeg = start_ffmpeg_process(on_output.clone(), frame_info_rx.clone())?;
+        let ffmpeg_stdin = ffmpeg.take_stdin().ok_or(Error::NoStdin)?;
 
         Ok(Self {
+            debug_name,
+            ffmpeg,
             ffmpeg_stdin,
             frame_info_tx,
             avcc,
@@ -93,38 +107,36 @@ impl FfmpegCliH264Decoder {
 fn start_ffmpeg_process(
     on_output: Arc<OutputCallback>,
     frame_info_rx: Receiver<PendingFrameInfo>,
-) -> Result<std::process::ChildStdin, Error> {
-    let mut ffmpeg = {
-        re_tracing::profile_scope!("spawn-ffmpeg");
+) -> Result<FfmpegChild, Error> {
+    re_tracing::profile_function!();
 
-        FfmpegCommand::new()
-            .hide_banner()
-            // "Reduce the latency introduced by buffering during initial input streams analysis."
-            //.arg("-fflags nobuffer")
-            //
-            // .. instead use these more aggressive options found here
-            // https://stackoverflow.com/a/49273163
-            .args([
-                "-probesize",
-                "32", // 32 bytes is the minimum probe size.
-                "-analyzeduration",
-                "0",
-            ])
-            // Keep in mind that all arguments that are about the input, need to go before!
-            .format("h264") // TODO(andreas): should we check ahead of time whether this is available?
-            //.fps_mode("0")
-            .input("-") // stdin is our input!
-            // h264 bitstreams doesn't have timestamp information. Whatever ffmpeg tries to make up about timing & framerates is wrong!
-            // If we don't tell it to just pass the frames through, variable framerate (VFR) video will just not play at all.
-            .fps_mode("passthrough")
-            // TODO(andreas): at least do `rgba`. But we could also do `yuv420p` for instance if that's what the video is specifying
-            // (should be faster overall at no quality loss if the video is in this format).
-            // Check `ffmpeg -pix_fmts` for full list.
-            .rawvideo() // Output rgb24 on stdout.
-            .spawn()
-            .map_err(Error::FailedToStartFfmpeg)?
-    };
-    let ffmpeg_stdin = ffmpeg.take_stdin().ok_or(Error::NoStdin)?;
+    let mut ffmpeg = FfmpegCommand::new()
+        .hide_banner()
+        // "Reduce the latency introduced by buffering during initial input streams analysis."
+        //.arg("-fflags nobuffer")
+        //
+        // .. instead use these more aggressive options found here
+        // https://stackoverflow.com/a/49273163
+        .args([
+            "-probesize",
+            "32", // 32 bytes is the minimum probe size.
+            "-analyzeduration",
+            "0",
+        ])
+        // Keep in mind that all arguments that are about the input, need to go before!
+        .format("h264") // TODO(andreas): should we check ahead of time whether this is available?
+        //.fps_mode("0")
+        .input("-") // stdin is our input!
+        // h264 bitstreams doesn't have timestamp information. Whatever ffmpeg tries to make up about timing & framerates is wrong!
+        // If we don't tell it to just pass the frames through, variable framerate (VFR) video will just not play at all.
+        .fps_mode("passthrough")
+        // TODO(andreas): at least do `rgba`. But we could also do `yuv420p` for instance if that's what the video is specifying
+        // (should be faster overall at no quality loss if the video is in this format).
+        // Check `ffmpeg -pix_fmts` for full list.
+        .rawvideo() // Output rgb24 on stdout.
+        .spawn()
+        .map_err(Error::FailedToStartFfmpeg)?;
+
     let ffmpeg_iterator = ffmpeg
         .iter()
         .map_err(|err| Error::NoIterator(err.to_string()))?;
@@ -136,7 +148,7 @@ fn start_ffmpeg_process(
         })
         .expect("Failed to spawn ffmpeg thread");
 
-    Ok(ffmpeg_stdin)
+    Ok(ffmpeg)
 }
 
 fn read_ffmpeg_output(
@@ -150,8 +162,11 @@ fn read_ffmpeg_output(
             "Duration: N/A, bitrate: N/A",
             "frame=    0 fps=0.0 q=0.0 size=       0kB time=N/A bitrate=N/A speed=N/A",
             "Metadata:",
+            // TODO(andreas): we should just handle yuv420p directly!
             "No accelerated colorspace conversion found from yuv420p to rgb24",
             "Stream mapping:",
+            // We actually don't even want it to estimate a framerate!
+            "not enough frames to estimate rate",
         ];
 
         for pattern in patterns {
@@ -172,7 +187,7 @@ fn read_ffmpeg_output(
         match event {
             FfmpegEvent::Log(LogLevel::Info, msg) => {
                 if !should_ignore_log_msg(&msg) {
-                    re_log::debug!("{msg}");
+                    re_log::trace!("{msg}");
                 }
             }
 
@@ -186,6 +201,22 @@ fn read_ffmpeg_output(
                 on_output(Err(Error::Ffmpeg(msg).into()));
             }
 
+            FfmpegEvent::Log(LogLevel::Fatal, msg) => {
+                on_output(Err(Error::FfmpegFatal(msg).into()));
+                return;
+            }
+
+            FfmpegEvent::Log(LogLevel::Unknown, msg) => {
+                if msg.contains("system signals, hard exiting") {
+                    // That was probably us, killing the process.
+                    re_log::debug!("ffmpeg process was killed");
+                    return;
+                }
+                if !should_ignore_log_msg(&msg) {
+                    re_log::debug!("{msg}");
+                }
+            }
+
             FfmpegEvent::LogEOF => {
                 // This event proceeds `FfmpegEvent::Done`.
                 // This happens on `pkill ffmpeg`, for instance.
@@ -197,10 +228,10 @@ fn read_ffmpeg_output(
 
             // Usefuless info in these:
             FfmpegEvent::ParsedInput(input) => {
-                re_log::debug!("{input:?}");
+                re_log::trace!("{input:?}");
             }
             FfmpegEvent::ParsedOutput(output) => {
-                re_log::debug!("{output:?}");
+                re_log::trace!("{output:?}");
             }
 
             FfmpegEvent::ParsedStreamMapping(_) => {}
@@ -234,8 +265,7 @@ fn read_ffmpeg_output(
                     fps,
                     ..
                 } = stream;
-
-                re_log::debug!(
+                re_log::trace!(
                     "Output: {stream_type} {format} {pix_fmt} {width}x{height} @ {fps} FPS"
                 );
 
@@ -271,11 +301,11 @@ fn read_ffmpeg_output(
                             return;
                         };
 
-                        debug_assert!(
-                            frame_info.decode_timestamp > highest_dts,
-                            "Decode timestamps are expected to increase monotonically"
-                        );
+                        // If the decodetimestamp did not increase, we're probably seeking backwards!
+                        // We'd expect the video player to do a reset prior to that, but we may not have noticed that in here yet!
+                        // In any case, we'll have to just run with this as the new highest timestamp, not much else we can do.
                         highest_dts = frame_info.decode_timestamp;
+
                         pending_frame_infos.insert(frame_info.presentation_timestamp, frame_info);
                     } else {
                         // There must be an element here, otherwise we wouldn't be in this branch.
@@ -344,18 +374,35 @@ impl AsyncDecoder for FfmpegCliH264Decoder {
         };
 
         // TODO: schedule this in a thread.
-        if self.frame_info_tx.send(frame_info).is_err() {
-            // The other thread must be down, e.g. because `ffmpeg` crashed.
-            // It should already have reported that as an error - no need to repeat it here.
+        if self.frame_info_tx.send(frame_info.clone()).is_err() {
+            // This should never happen, even if the write thread dies
+            // since we keep a copy of both sides of the channel.
+            return Err(Error::BrokenFrameInfoChannel.into());
         } else {
             // Write chunk to ffmpeg:
             let mut state = NaluStreamState::default(); // TODO: remove state?
-            if let Err(err) = write_avc_chunk_to_nalu_stream(
+            let mut write_result = write_avc_chunk_to_nalu_stream(
                 &self.avcc,
                 &mut self.ffmpeg_stdin,
                 &chunk,
                 &mut state,
-            ) {
+            );
+            // The other thread must be down, e.g. because `ffmpeg` crashed.
+            // It should already have reported that as an error - no need to repeat it here.
+            //
+            // Reset and try again.
+            // Note that if we're in the middle of a GOP, this might get glitchy, but that's fine for this case.
+            if matches!(write_result, Err(Error::FailedToWriteToFfmpeg(_))) {
+                self.reset()?;
+                write_result = write_avc_chunk_to_nalu_stream(
+                    &self.avcc,
+                    &mut self.ffmpeg_stdin,
+                    &chunk,
+                    &mut state,
+                );
+            }
+
+            if let Err(err) = write_result {
                 (self.on_output)(Err(err.into()));
             }
 
@@ -366,18 +413,27 @@ impl AsyncDecoder for FfmpegCliH264Decoder {
     }
 
     fn reset(&mut self) -> super::Result<()> {
-        re_log::debug!("Resetting ffmpeg decoder");
-        // TODO: ensure previous ffmpeg process is dead and thread has stopped.
-        self.ffmpeg_stdin =
-            start_ffmpeg_process(self.on_output.clone(), self.frame_info_rx.clone())?;
+        re_log::debug!("Resetting ffmpeg decoder {}", self.debug_name);
+        re_tracing::profile_function!();
+
+        // Either we drain the frame info channel, message the thread
+        // and hope that ffmpeg is well behaved after receiving an IDR frame (no matter what was in flight so far).
+        // ... or we just kill ffmpeg & start a new process & thread.
+        self.ffmpeg.kill().ok(); // Don't care if it was already dead.
+        self.ffmpeg = start_ffmpeg_process(self.on_output.clone(), self.frame_info_rx.clone())?;
+        self.ffmpeg_stdin = self.ffmpeg.take_stdin().ok_or(Error::NoStdin)?;
+
         Ok(())
     }
 }
 
 impl Drop for FfmpegCliH264Decoder {
     fn drop(&mut self) {
-        re_log::debug!("Dropping ffmpeg decoder");
-        // TODO: stop ffmpeg thread
+        re_log::debug!("Dropping ffmpeg decoder {}", self.debug_name);
+        self.ffmpeg.kill().ok(); // Don't care if it's already dead.
+
+        // Read thread should stop by itself.
+        // We could wait for that, but that doesn't really matter.
     }
 }
 

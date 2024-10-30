@@ -188,6 +188,7 @@ pub fn new_decoder(
             // TODO: check if we have ffmpeg ONCE, and remember
             re_log::trace!("Decoding H.264…");
             Ok(Box::new(ffmpeg::FfmpegCliH264Decoder::new(
+                debug_name.to_owned(),
                 avc1_box.clone(),
                 on_output,
             )?))
