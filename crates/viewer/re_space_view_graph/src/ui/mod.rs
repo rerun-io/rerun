@@ -32,7 +32,7 @@ pub fn draw_entity(
     };
 
     let padded = rect.expand(10.0);
-    let tc = ui.ctx().style().visuals.text_color();
+
     ui.painter().rect(
         padded,
         0.0,

@@ -19,7 +19,7 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
-    graph::{NodeIndex},
+    graph::NodeIndex,
     ui::{self, bounding_rect_from_iter, scene::ViewBuilder, GraphSpaceViewState},
     visualizers::{EdgesVisualizer, NodeVisualizer},
 };
@@ -141,7 +141,10 @@ impl SpaceViewClass for GraphSpaceView {
         let edge_data = &system_output.view_systems.get::<EdgesVisualizer>()?.data;
 
         // We need to sort the entities to ensure that we are always drawing them in the right order.
-        let entities = node_data.keys().chain(edge_data.keys()).collect::<BTreeSet<_>>();
+        let entities = node_data
+            .keys()
+            .chain(edge_data.keys())
+            .collect::<BTreeSet<_>>();
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
@@ -245,12 +248,19 @@ impl SpaceViewClass for GraphSpaceView {
                 }
 
                 if entity_rect.is_positive() {
-                    // TODO(grtlr): handle interactions
-                    let _response = scene.entity(entity_rect.min, |ui| {
+                    let response = scene.entity(entity_rect.min, |ui| {
                         ui::draw_entity(ui, entity_rect, entity, &query.highlights)
                     });
 
+                    let instance_path = InstancePath::entity_all(entity.clone());
+                    ctx.select_hovered_on_click(
+                        &response,
+                        vec![(Item::DataResult(query.space_view_id, instance_path), None)]
+                            .into_iter(),
+                    );
+
                     // TODO(grtlr): Should take padding from `draw_entity` into account.
+                    // It's very likely that this part of the code is going to change once we introduce auto-layout.
                     let between_entities = 80.0;
                     entity_offset.x += entity_rect.width() + between_entities;
                 }
