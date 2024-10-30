@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The query for the dataframe view.
@@ -41,52 +41,82 @@ pub struct DataframeQuery {
     pub select: Option<crate::blueprint::components::SelectedColumns>,
 }
 
-impl ::re_types_core::SizeBytes for DataframeQuery {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.timeline.heap_size_bytes()
-            + self.filter_by_range.heap_size_bytes()
-            + self.filter_is_not_null.heap_size_bytes()
-            + self.apply_latest_at.heap_size_bytes()
-            + self.select.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::blueprint::components::TimelineName>>::is_pod()
-            && <Option<crate::blueprint::components::FilterByRange>>::is_pod()
-            && <Option<crate::blueprint::components::FilterIsNotNull>>::is_pod()
-            && <Option<crate::blueprint::components::ApplyLatestAt>>::is_pod()
-            && <Option<crate::blueprint::components::SelectedColumns>>::is_pod()
-    }
-}
-
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.DataframeQueryIndicator".into()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+            component_name: "DataframeQueryIndicator".into(),
+            archetype_field_name: None,
+        }]
+    });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.TimelineName".into(),
-            "rerun.blueprint.components.FilterByRange".into(),
-            "rerun.blueprint.components.FilterIsNotNull".into(),
-            "rerun.blueprint.components.ApplyLatestAt".into(),
-            "rerun.blueprint.components.SelectedColumns".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component_name: "rerun.blueprint.components.TimelineName".into(),
+                archetype_field_name: Some("timeline".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component_name: "rerun.blueprint.components.FilterByRange".into(),
+                archetype_field_name: Some("filter_by_range".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component_name: "rerun.blueprint.components.FilterIsNotNull".into(),
+                archetype_field_name: Some("filter_is_not_null".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component_name: "rerun.blueprint.components.ApplyLatestAt".into(),
+                archetype_field_name: Some("apply_latest_at".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component_name: "rerun.blueprint.components.SelectedColumns".into(),
+                archetype_field_name: Some("select".into()),
+            },
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.DataframeQueryIndicator".into(),
-            "rerun.blueprint.components.TimelineName".into(),
-            "rerun.blueprint.components.FilterByRange".into(),
-            "rerun.blueprint.components.FilterIsNotNull".into(),
-            "rerun.blueprint.components.ApplyLatestAt".into(),
-            "rerun.blueprint.components.SelectedColumns".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component_name: "DataframeQueryIndicator".into(),
+                archetype_field_name: None,
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component_name: "rerun.blueprint.components.TimelineName".into(),
+                archetype_field_name: Some("timeline".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component_name: "rerun.blueprint.components.FilterByRange".into(),
+                archetype_field_name: Some("filter_by_range".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component_name: "rerun.blueprint.components.FilterIsNotNull".into(),
+                archetype_field_name: Some("filter_is_not_null".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component_name: "rerun.blueprint.components.ApplyLatestAt".into(),
+                archetype_field_name: Some("apply_latest_at".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                component_name: "rerun.blueprint.components.SelectedColumns".into(),
+                archetype_field_name: Some("select".into()),
+            },
         ]
     });
 
@@ -114,26 +144,26 @@ impl ::re_types_core::Archetype for DataframeQuery {
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: DataframeQueryIndicator = DataframeQueryIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -213,21 +243,66 @@ impl ::re_types_core::AsComponents for DataframeQuery {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            self.timeline
+            (self
+                .timeline
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.filter_by_range
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                    archetype_field_name: Some(("timeline").into()),
+                    component_name: ("rerun.blueprint.components.TimelineName").into(),
+                }),
+            }),
+            (self
+                .filter_by_range
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.filter_is_not_null
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                    archetype_field_name: Some(("filter_by_range").into()),
+                    component_name: ("rerun.blueprint.components.FilterByRange").into(),
+                }),
+            }),
+            (self
+                .filter_is_not_null
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.apply_latest_at
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                    archetype_field_name: Some(("filter_is_not_null").into()),
+                    component_name: ("rerun.blueprint.components.FilterIsNotNull").into(),
+                }),
+            }),
+            (self
+                .apply_latest_at
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.select
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                    archetype_field_name: Some(("apply_latest_at").into()),
+                    component_name: ("rerun.blueprint.components.ApplyLatestAt").into(),
+                }),
+            }),
+            (self
+                .select
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.DataframeQuery".into()),
+                    archetype_field_name: Some(("select").into()),
+                    component_name: ("rerun.blueprint.components.SelectedColumns").into(),
+                }),
+            }),
         ]
         .into_iter()
         .flatten()
@@ -302,5 +377,25 @@ impl DataframeQuery {
     ) -> Self {
         self.select = Some(select.into());
         self
+    }
+}
+
+impl ::re_types_core::SizeBytes for DataframeQuery {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.timeline.heap_size_bytes()
+            + self.filter_by_range.heap_size_bytes()
+            + self.filter_is_not_null.heap_size_bytes()
+            + self.apply_latest_at.heap_size_bytes()
+            + self.select.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::blueprint::components::TimelineName>>::is_pod()
+            && <Option<crate::blueprint::components::FilterByRange>>::is_pod()
+            && <Option<crate::blueprint::components::FilterIsNotNull>>::is_pod()
+            && <Option<crate::blueprint::components::ApplyLatestAt>>::is_pod()
+            && <Option<crate::blueprint::components::SelectedColumns>>::is_pod()
     }
 }

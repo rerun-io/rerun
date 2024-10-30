@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Selection of a single tensor dimension.
@@ -26,18 +26,6 @@ pub struct TensorDimensionSelection {
 
     /// Invert the direction of the dimension.
     pub invert: bool,
-}
-
-impl ::re_types_core::SizeBytes for TensorDimensionSelection {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.dimension.heap_size_bytes() + self.invert.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <u32>::is_pod() && <bool>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(TensorDimensionSelection);
@@ -231,5 +219,17 @@ impl ::re_types_core::Loggable for TensorDimensionSelection {
                 .with_context("rerun.datatypes.TensorDimensionSelection")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for TensorDimensionSelection {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.dimension.heap_size_bytes() + self.invert.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <u32>::is_pod() && <bool>::is_pod()
     }
 }

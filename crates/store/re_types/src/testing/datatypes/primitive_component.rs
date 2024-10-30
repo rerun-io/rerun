@@ -13,40 +13,14 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct PrimitiveComponent(pub u32);
-
-impl ::re_types_core::SizeBytes for PrimitiveComponent {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <u32>::is_pod()
-    }
-}
-
-impl From<u32> for PrimitiveComponent {
-    #[inline]
-    fn from(value: u32) -> Self {
-        Self(value)
-    }
-}
-
-impl From<PrimitiveComponent> for u32 {
-    #[inline]
-    fn from(value: PrimitiveComponent) -> Self {
-        value.0
-    }
-}
 
 ::re_types_core::macros::impl_into_cow!(PrimitiveComponent);
 
@@ -156,5 +130,31 @@ impl ::re_types_core::Loggable for PrimitiveComponent {
                 slice.iter().copied().map(Self).collect::<Vec<_>>()
             }
         })
+    }
+}
+
+impl From<u32> for PrimitiveComponent {
+    #[inline]
+    fn from(value: u32) -> Self {
+        Self(value)
+    }
+}
+
+impl From<PrimitiveComponent> for u32 {
+    #[inline]
+    fn from(value: PrimitiveComponent) -> Self {
+        value.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for PrimitiveComponent {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <u32>::is_pod()
     }
 }

@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Whether the container, view, entity or instance is currently visible.
@@ -23,44 +23,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct Visible(pub crate::datatypes::Bool);
 
-impl ::re_types_core::SizeBytes for Visible {
+impl ::re_types_core::Component for Visible {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Bool>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Bool>> From<T> for Visible {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Bool> for Visible {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Bool {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Visible {
-    type Target = crate::datatypes::Bool;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Bool {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Visible {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Bool {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.Visible")
     }
 }
 
@@ -97,9 +63,43 @@ impl ::re_types_core::Loggable for Visible {
     }
 }
 
-impl ::re_types_core::Component for Visible {
+impl<T: Into<crate::datatypes::Bool>> From<T> for Visible {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Bool> for Visible {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.Visible".into()
+    fn borrow(&self) -> &crate::datatypes::Bool {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for Visible {
+    type Target = crate::datatypes::Bool;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Bool {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for Visible {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Bool {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for Visible {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Bool>::is_pod()
     }
 }

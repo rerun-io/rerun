@@ -14,9 +14,9 @@
 #![allow(non_camel_case_types)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The type of the background in a view.
@@ -38,45 +38,10 @@ pub enum BackgroundKind {
     SolidColor = 3,
 }
 
-impl ::re_types_core::reflection::Enum for BackgroundKind {
+impl ::re_types_core::Component for BackgroundKind {
     #[inline]
-    fn variants() -> &'static [Self] {
-        &[Self::GradientDark, Self::GradientBright, Self::SolidColor]
-    }
-
-    #[inline]
-    fn docstring_md(self) -> &'static str {
-        match self {
-            Self::GradientDark => {
-                "A dark gradient.\n\nIn 3D views it changes depending on the direction of the view."
-            }
-            Self::GradientBright => {
-                "A bright gradient.\n\nIn 3D views it changes depending on the direction of the view."
-            }
-            Self::SolidColor => "Simple uniform color.",
-        }
-    }
-}
-
-impl ::re_types_core::SizeBytes for BackgroundKind {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl std::fmt::Display for BackgroundKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::GradientDark => write!(f, "GradientDark"),
-            Self::GradientBright => write!(f, "GradientBright"),
-            Self::SolidColor => write!(f, "SolidColor"),
-        }
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.BackgroundKind")
     }
 }
 
@@ -167,9 +132,44 @@ impl ::re_types_core::Loggable for BackgroundKind {
     }
 }
 
-impl ::re_types_core::Component for BackgroundKind {
+impl std::fmt::Display for BackgroundKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::GradientDark => write!(f, "GradientDark"),
+            Self::GradientBright => write!(f, "GradientBright"),
+            Self::SolidColor => write!(f, "SolidColor"),
+        }
+    }
+}
+
+impl ::re_types_core::reflection::Enum for BackgroundKind {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.BackgroundKind".into()
+    fn variants() -> &'static [Self] {
+        &[Self::GradientDark, Self::GradientBright, Self::SolidColor]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::GradientDark => {
+                "A dark gradient.\n\nIn 3D views it changes depending on the direction of the view."
+            }
+            Self::GradientBright => {
+                "A bright gradient.\n\nIn 3D views it changes depending on the direction of the view."
+            }
+            Self::SolidColor => "Simple uniform color.",
+        }
+    }
+}
+
+impl ::re_types_core::SizeBytes for BackgroundKind {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }

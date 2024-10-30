@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The annotation context provides additional information on how to display entities.
@@ -31,23 +31,10 @@ pub struct AnnotationContext(
     pub Vec<crate::datatypes::ClassDescriptionMapElem>,
 );
 
-impl ::re_types_core::SizeBytes for AnnotationContext {
+impl ::re_types_core::Component for AnnotationContext {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::datatypes::ClassDescriptionMapElem>>::is_pod()
-    }
-}
-
-impl<I: Into<crate::datatypes::ClassDescriptionMapElem>, T: IntoIterator<Item = I>> From<T>
-    for AnnotationContext
-{
-    fn from(v: T) -> Self {
-        Self(v.into_iter().map(|v| v.into()).collect())
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.AnnotationContext")
     }
 }
 
@@ -189,9 +176,22 @@ impl ::re_types_core::Loggable for AnnotationContext {
     }
 }
 
-impl ::re_types_core::Component for AnnotationContext {
+impl<I: Into<crate::datatypes::ClassDescriptionMapElem>, T: IntoIterator<Item = I>> From<T>
+    for AnnotationContext
+{
+    fn from(v: T) -> Self {
+        Self(v.into_iter().map(|v| v.into()).collect())
+    }
+}
+
+impl ::re_types_core::SizeBytes for AnnotationContext {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.AnnotationContext".into()
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<crate::datatypes::ClassDescriptionMapElem>>::is_pod()
     }
 }

@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Override the visualizers for an entity.
@@ -58,44 +58,10 @@ pub struct VisualizerOverrides(
     pub crate::blueprint::datatypes::Utf8List,
 );
 
-impl ::re_types_core::SizeBytes for VisualizerOverrides {
+impl ::re_types_core::Component for VisualizerOverrides {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::datatypes::Utf8List>::is_pod()
-    }
-}
-
-impl<T: Into<crate::blueprint::datatypes::Utf8List>> From<T> for VisualizerOverrides {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::blueprint::datatypes::Utf8List> for VisualizerOverrides {
-    #[inline]
-    fn borrow(&self) -> &crate::blueprint::datatypes::Utf8List {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for VisualizerOverrides {
-    type Target = crate::blueprint::datatypes::Utf8List;
-
-    #[inline]
-    fn deref(&self) -> &crate::blueprint::datatypes::Utf8List {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for VisualizerOverrides {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::blueprint::datatypes::Utf8List {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.VisualizerOverrides")
     }
 }
 
@@ -132,9 +98,43 @@ impl ::re_types_core::Loggable for VisualizerOverrides {
     }
 }
 
-impl ::re_types_core::Component for VisualizerOverrides {
+impl<T: Into<crate::blueprint::datatypes::Utf8List>> From<T> for VisualizerOverrides {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::blueprint::datatypes::Utf8List> for VisualizerOverrides {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.VisualizerOverrides".into()
+    fn borrow(&self) -> &crate::blueprint::datatypes::Utf8List {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for VisualizerOverrides {
+    type Target = crate::blueprint::datatypes::Utf8List;
+
+    #[inline]
+    fn deref(&self) -> &crate::blueprint::datatypes::Utf8List {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for VisualizerOverrides {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::blueprint::datatypes::Utf8List {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for VisualizerOverrides {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::blueprint::datatypes::Utf8List>::is_pod()
     }
 }

@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The layout share of a column in the container.
@@ -25,44 +25,10 @@ pub struct ColumnShare(
     pub crate::datatypes::Float32,
 );
 
-impl ::re_types_core::SizeBytes for ColumnShare {
+impl ::re_types_core::Component for ColumnShare {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float32>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Float32>> From<T> for ColumnShare {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Float32> for ColumnShare {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ColumnShare {
-    type Target = crate::datatypes::Float32;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ColumnShare {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.ColumnShare")
     }
 }
 
@@ -108,9 +74,43 @@ impl ::re_types_core::Loggable for ColumnShare {
     }
 }
 
-impl ::re_types_core::Component for ColumnShare {
+impl<T: Into<crate::datatypes::Float32>> From<T> for ColumnShare {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Float32> for ColumnShare {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.ColumnShare".into()
+    fn borrow(&self) -> &crate::datatypes::Float32 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for ColumnShare {
+    type Target = crate::datatypes::Float32;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Float32 {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ColumnShare {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for ColumnShare {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Float32>::is_pod()
     }
 }

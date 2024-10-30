@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Defines a slider for the index of some dimension.
@@ -23,32 +23,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub struct TensorDimensionIndexSlider {
     /// The dimension number.
     pub dimension: u32,
-}
-
-impl ::re_types_core::SizeBytes for TensorDimensionIndexSlider {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.dimension.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <u32>::is_pod()
-    }
-}
-
-impl From<u32> for TensorDimensionIndexSlider {
-    #[inline]
-    fn from(dimension: u32) -> Self {
-        Self { dimension }
-    }
-}
-
-impl From<TensorDimensionIndexSlider> for u32 {
-    #[inline]
-    fn from(value: TensorDimensionIndexSlider) -> Self {
-        value.dimension
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(TensorDimensionIndexSlider);
@@ -195,5 +169,31 @@ impl ::re_types_core::Loggable for TensorDimensionIndexSlider {
                 .with_context("rerun.blueprint.datatypes.TensorDimensionIndexSlider")?
             }
         })
+    }
+}
+
+impl From<u32> for TensorDimensionIndexSlider {
+    #[inline]
+    fn from(dimension: u32) -> Self {
+        Self { dimension }
+    }
+}
+
+impl From<TensorDimensionIndexSlider> for u32 {
+    #[inline]
+    fn from(value: TensorDimensionIndexSlider) -> Self {
+        value.dimension
+    }
+}
+
+impl ::re_types_core::SizeBytes for TensorDimensionIndexSlider {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.dimension.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <u32>::is_pod()
     }
 }

@@ -24,7 +24,7 @@ fn query_latest_component<C: re_types_core::Component>(
     let results = db
         .storage_engine()
         .cache()
-        .latest_at(query, entity_path, [C::name()]);
+        .latest_at(query, entity_path, [C::descriptor()]);
 
     let (data_time, row_id) = results.index();
     let data = results.component_mono::<C>()?;
@@ -125,7 +125,10 @@ fn clears() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id,
                 timepoint,
-                clear.as_component_batches().iter().map(|b| b.as_ref()),
+                clear
+                    .as_component_batches()
+                    .iter()
+                    .map(|b| b as &dyn re_types_core::ComponentBatch),
             )
             .build()?;
 
@@ -163,7 +166,10 @@ fn clears() -> anyhow::Result<()> {
             .with_component_batches(
                 row_id,
                 timepoint,
-                clear.as_component_batches().iter().map(|b| b.as_ref()),
+                clear
+                    .as_component_batches()
+                    .iter()
+                    .map(|b| b as &dyn re_types_core::ComponentBatch),
             )
             .build()?;
 
@@ -348,7 +354,10 @@ fn clears_respect_index_order() -> anyhow::Result<()> {
         .with_component_batches(
             row_id1, // older row id!
             timepoint.clone(),
-            clear.as_component_batches().iter().map(|b| b.as_ref()),
+            clear
+                .as_component_batches()
+                .iter()
+                .map(|b| b as &dyn re_types_core::ComponentBatch),
         )
         .build()?;
 
@@ -372,7 +381,10 @@ fn clears_respect_index_order() -> anyhow::Result<()> {
         .with_component_batches(
             row_id3, // newer row id!
             timepoint.clone(),
-            clear.as_component_batches().iter().map(|b| b.as_ref()),
+            clear
+                .as_component_batches()
+                .iter()
+                .map(|b| b as &dyn re_types_core::ComponentBatch),
         )
         .build()?;
 

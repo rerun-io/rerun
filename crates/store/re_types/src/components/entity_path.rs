@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A path to an entity, usually to reference some data that is part of the target entity.
@@ -23,44 +23,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct EntityPath(pub crate::datatypes::EntityPath);
 
-impl ::re_types_core::SizeBytes for EntityPath {
+impl ::re_types_core::Component for EntityPath {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::EntityPath>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::EntityPath>> From<T> for EntityPath {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::EntityPath> for EntityPath {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::EntityPath {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for EntityPath {
-    type Target = crate::datatypes::EntityPath;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::EntityPath {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for EntityPath {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::EntityPath {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.EntityPath")
     }
 }
 
@@ -97,9 +63,43 @@ impl ::re_types_core::Loggable for EntityPath {
     }
 }
 
-impl ::re_types_core::Component for EntityPath {
+impl<T: Into<crate::datatypes::EntityPath>> From<T> for EntityPath {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::EntityPath> for EntityPath {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.EntityPath".into()
+    fn borrow(&self) -> &crate::datatypes::EntityPath {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for EntityPath {
+    type Target = crate::datatypes::EntityPath;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::EntityPath {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for EntityPath {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::EntityPath {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for EntityPath {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::EntityPath>::is_pod()
     }
 }

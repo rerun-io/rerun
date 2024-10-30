@@ -1,6 +1,8 @@
+use std::borrow::Cow;
+
 use crate::{
-    ComponentBatch, ComponentName, DeserializationResult, MaybeOwnedComponentBatch,
-    SerializationResult, _Backtrace,
+    ComponentBatch, ComponentDescriptor, ComponentName, DeserializationResult,
+    MaybeOwnedComponentBatch, SerializationResult, _Backtrace,
 };
 
 #[allow(unused_imports)] // used in docstrings
@@ -40,12 +42,10 @@ pub trait Archetype {
     /// The fully-qualified name of this archetype, e.g. `rerun.archetypes.Points2D`.
     fn name() -> ArchetypeName;
 
-    /// Readable name for displaying in ui.
+    /// Readable name for displaying in UI.
     fn display_name() -> &'static str;
 
     // ---
-
-    // TODO(cmc): Should we also generate and return static IntSets?
 
     /// Creates a [`ComponentBatch`] out of the associated [`Self::Indicator`] component.
     ///
@@ -53,36 +53,35 @@ pub trait Archetype {
     /// Check out the `manual_indicator` API example to see what's possible.
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
-        MaybeOwnedComponentBatch::Owned(Box::<<Self as Archetype>::Indicator>::default())
+        MaybeOwnedComponentBatch::new(
+            Box::<<Self as Archetype>::Indicator>::default() as Box<dyn ComponentBatch>
+        )
     }
 
-    /// Returns the names of all components that _must_ be provided by the user when constructing
-    /// this archetype.
-    fn required_components() -> std::borrow::Cow<'static, [ComponentName]>;
+    /// Returns all component descriptors that _must_ be provided by the user when constructing this archetype.
+    fn required_components() -> std::borrow::Cow<'static, [ComponentDescriptor]>;
 
-    /// Returns the names of all components that _should_ be provided by the user when constructing
-    /// this archetype.
+    /// Returns all component descriptors that _should_ be provided by the user when constructing this archetype.
     #[inline]
-    fn recommended_components() -> std::borrow::Cow<'static, [ComponentName]> {
-        std::borrow::Cow::Owned(vec![Self::indicator().name()])
+    fn recommended_components() -> std::borrow::Cow<'static, [ComponentDescriptor]> {
+        std::borrow::Cow::Owned(vec![Self::indicator().descriptor().into_owned()])
     }
 
-    /// Returns the names of all components that _may_ be provided by the user when constructing
-    /// this archetype.
+    /// Returns all component descriptors that _may_ be provided by the user when constructing this archetype.
     #[inline]
-    fn optional_components() -> std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> std::borrow::Cow<'static, [ComponentDescriptor]> {
         std::borrow::Cow::Borrowed(&[])
     }
 
-    /// Returns the names of all components that must, should and may be provided by the user when
-    /// constructing this archetype.
+    /// Returns all component descriptors that must, should and may be provided by the user when constructing
+    /// this archetype.
     ///
     /// The default implementation always does the right thing, at the cost of some runtime
     /// allocations.
-    /// If you know all your components statically, you can override this method to get rid of the
+    /// If you know all your component descriptors statically, you can override this method to get rid of the
     /// extra allocations.
     #[inline]
-    fn all_components() -> std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> std::borrow::Cow<'static, [ComponentDescriptor]> {
         [
             Self::required_components().into_owned(),
             Self::recommended_components().into_owned(),
@@ -176,6 +175,27 @@ impl ArchetypeName {
     }
 }
 
+impl crate::SizeBytes for ArchetypeName {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
+// ---
+
+re_string_interner::declare_new_type!(
+    /// The name of an [`Archetype`]'s field, e.g. `positions`.
+    pub struct ArchetypeFieldName;
+);
+
+impl crate::SizeBytes for ArchetypeFieldName {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 // ---
 
 /// A generic [indicator component] that can be specialized for any [`Archetype`].
@@ -224,10 +244,15 @@ impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponent<A> {
 
 impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponent<A> {
     #[inline]
-    fn name(&self) -> ComponentName {
-        format!("{}Indicator", A::name().full_name())
-            .replace("archetypes", "components")
-            .into()
+    fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
+        let component_name =
+            format!("{}Indicator", A::name().full_name()).replace("archetypes", "components");
+        ComponentDescriptor {
+            archetype_name: Some(A::name()),
+            archetype_field_name: None,
+            component_name: component_name.into(),
+        }
+        .into()
     }
 }
 
@@ -255,8 +280,8 @@ impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponentArray<A> {
 
 impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponentArray<A> {
     #[inline]
-    fn name(&self) -> ComponentName {
-        GenericIndicatorComponent::<A>::DEFAULT.name()
+    fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
+        ComponentDescriptor::new(GenericIndicatorComponent::<A>::DEFAULT.name()).into()
     }
 }
 
@@ -271,12 +296,12 @@ pub struct NamedIndicatorComponent(pub ComponentName);
 impl NamedIndicatorComponent {
     #[inline]
     pub fn as_batch(&self) -> MaybeOwnedComponentBatch<'_> {
-        MaybeOwnedComponentBatch::Ref(self)
+        MaybeOwnedComponentBatch::new(self as &dyn crate::ComponentBatch)
     }
 
     #[inline]
     pub fn to_batch(self) -> MaybeOwnedComponentBatch<'static> {
-        MaybeOwnedComponentBatch::Owned(Box::new(self))
+        MaybeOwnedComponentBatch::new(Box::new(self) as Box<dyn crate::ComponentBatch>)
     }
 }
 
@@ -290,7 +315,7 @@ impl crate::LoggableBatch for NamedIndicatorComponent {
 
 impl crate::ComponentBatch for NamedIndicatorComponent {
     #[inline]
-    fn name(&self) -> ComponentName {
-        self.0
+    fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
+        ComponentDescriptor::new(self.0).into()
     }
 }

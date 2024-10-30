@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configuration for the 3D line grid.
@@ -49,52 +49,82 @@ pub struct LineGrid3D {
     pub color: Option<crate::components::Color>,
 }
 
-impl ::re_types_core::SizeBytes for LineGrid3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.visible.heap_size_bytes()
-            + self.spacing.heap_size_bytes()
-            + self.plane.heap_size_bytes()
-            + self.stroke_width.heap_size_bytes()
-            + self.color.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::blueprint::components::Visible>>::is_pod()
-            && <Option<crate::blueprint::components::GridSpacing>>::is_pod()
-            && <Option<crate::components::Plane3D>>::is_pod()
-            && <Option<crate::components::StrokeWidth>>::is_pod()
-            && <Option<crate::components::Color>>::is_pod()
-    }
-}
-
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.LineGrid3DIndicator".into()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+            component_name: "LineGrid3DIndicator".into(),
+            archetype_field_name: None,
+        }]
+    });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.Visible".into(),
-            "rerun.blueprint.components.GridSpacing".into(),
-            "rerun.components.Plane3D".into(),
-            "rerun.components.StrokeWidth".into(),
-            "rerun.components.Color".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component_name: "rerun.blueprint.components.Visible".into(),
+                archetype_field_name: Some("visible".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component_name: "rerun.blueprint.components.GridSpacing".into(),
+                archetype_field_name: Some("spacing".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component_name: "rerun.components.Plane3D".into(),
+                archetype_field_name: Some("plane".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component_name: "rerun.components.StrokeWidth".into(),
+                archetype_field_name: Some("stroke_width".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component_name: "rerun.components.Color".into(),
+                archetype_field_name: Some("color".into()),
+            },
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.LineGrid3DIndicator".into(),
-            "rerun.blueprint.components.Visible".into(),
-            "rerun.blueprint.components.GridSpacing".into(),
-            "rerun.components.Plane3D".into(),
-            "rerun.components.StrokeWidth".into(),
-            "rerun.components.Color".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component_name: "LineGrid3DIndicator".into(),
+                archetype_field_name: None,
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component_name: "rerun.blueprint.components.Visible".into(),
+                archetype_field_name: Some("visible".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component_name: "rerun.blueprint.components.GridSpacing".into(),
+                archetype_field_name: Some("spacing".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component_name: "rerun.components.Plane3D".into(),
+                archetype_field_name: Some("plane".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component_name: "rerun.components.StrokeWidth".into(),
+                archetype_field_name: Some("stroke_width".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                component_name: "rerun.components.Color".into(),
+                archetype_field_name: Some("color".into()),
+            },
         ]
     });
 
@@ -122,26 +152,26 @@ impl ::re_types_core::Archetype for LineGrid3D {
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: LineGrid3DIndicator = LineGrid3DIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -218,21 +248,66 @@ impl ::re_types_core::AsComponents for LineGrid3D {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            self.visible
+            (self
+                .visible
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.spacing
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                    archetype_field_name: Some(("visible").into()),
+                    component_name: ("rerun.blueprint.components.Visible").into(),
+                }),
+            }),
+            (self
+                .spacing
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.plane
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                    archetype_field_name: Some(("spacing").into()),
+                    component_name: ("rerun.blueprint.components.GridSpacing").into(),
+                }),
+            }),
+            (self
+                .plane
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.stroke_width
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                    archetype_field_name: Some(("plane").into()),
+                    component_name: ("rerun.components.Plane3D").into(),
+                }),
+            }),
+            (self
+                .stroke_width
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.color
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                    archetype_field_name: Some(("stroke_width").into()),
+                    component_name: ("rerun.components.StrokeWidth").into(),
+                }),
+            }),
+            (self
+                .color
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.LineGrid3D".into()),
+                    archetype_field_name: Some(("color").into()),
+                    component_name: ("rerun.components.Color").into(),
+                }),
+            }),
         ]
         .into_iter()
         .flatten()
@@ -309,5 +384,25 @@ impl LineGrid3D {
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = Some(color.into());
         self
+    }
+}
+
+impl ::re_types_core::SizeBytes for LineGrid3D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.visible.heap_size_bytes()
+            + self.spacing.heap_size_bytes()
+            + self.plane.heap_size_bytes()
+            + self.stroke_width.heap_size_bytes()
+            + self.color.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::blueprint::components::Visible>>::is_pod()
+            && <Option<crate::blueprint::components::GridSpacing>>::is_pod()
+            && <Option<crate::components::Plane3D>>::is_pod()
+            && <Option<crate::components::StrokeWidth>>::is_pod()
+            && <Option<crate::components::Color>>::is_pod()
     }
 }

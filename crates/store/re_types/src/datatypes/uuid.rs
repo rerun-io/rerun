@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A 16-byte UUID.
@@ -24,32 +24,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 pub struct Uuid {
     /// The raw bytes representing the UUID.
     pub bytes: [u8; 16usize],
-}
-
-impl ::re_types_core::SizeBytes for Uuid {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.bytes.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <[u8; 16usize]>::is_pod()
-    }
-}
-
-impl From<[u8; 16usize]> for Uuid {
-    #[inline]
-    fn from(bytes: [u8; 16usize]) -> Self {
-        Self { bytes }
-    }
-}
-
-impl From<Uuid> for [u8; 16usize] {
-    #[inline]
-    fn from(value: Uuid) -> Self {
-        value.bytes
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(Uuid);
@@ -252,5 +226,31 @@ impl ::re_types_core::Loggable for Uuid {
                     .collect::<Vec<_>>()
             }
         })
+    }
+}
+
+impl From<[u8; 16usize]> for Uuid {
+    #[inline]
+    fn from(bytes: [u8; 16usize]) -> Self {
+        Self { bytes }
+    }
+}
+
+impl From<Uuid> for [u8; 16usize] {
+    #[inline]
+    fn from(value: Uuid) -> Self {
+        value.bytes
+    }
+}
+
+impl ::re_types_core::SizeBytes for Uuid {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.bytes.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <[u8; 16usize]>::is_pod()
     }
 }

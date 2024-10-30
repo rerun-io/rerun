@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: List of selected columns in a dataframe.
@@ -26,19 +26,6 @@ pub struct SelectedColumns {
 
     /// The component columns to include
     pub component_columns: Vec<crate::blueprint::datatypes::ComponentColumnSelector>,
-}
-
-impl ::re_types_core::SizeBytes for SelectedColumns {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.time_columns.heap_size_bytes() + self.component_columns.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Vec<crate::datatypes::Utf8>>::is_pod()
-            && <Vec<crate::blueprint::datatypes::ComponentColumnSelector>>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(SelectedColumns);
@@ -467,5 +454,18 @@ impl ::re_types_core::Loggable for SelectedColumns {
                 .with_context("rerun.blueprint.datatypes.SelectedColumns")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for SelectedColumns {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.time_columns.heap_size_bytes() + self.component_columns.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Vec<crate::datatypes::Utf8>>::is_pod()
+            && <Vec<crate::blueprint::datatypes::ComponentColumnSelector>>::is_pod()
     }
 }

@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Configuration for the filter is not null feature of the dataframe view.
@@ -26,19 +26,6 @@ pub struct FilterIsNotNull {
 
     /// The column used when the filter by event feature is used.
     pub column: crate::blueprint::datatypes::ComponentColumnSelector,
-}
-
-impl ::re_types_core::SizeBytes for FilterIsNotNull {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.active.heap_size_bytes() + self.column.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Bool>::is_pod()
-            && <crate::blueprint::datatypes::ComponentColumnSelector>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(FilterIsNotNull);
@@ -230,5 +217,18 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
                 .with_context("rerun.blueprint.datatypes.FilterIsNotNull")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for FilterIsNotNull {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.active.heap_size_bytes() + self.column.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Bool>::is_pod()
+            && <crate::blueprint::datatypes::ComponentColumnSelector>::is_pod()
     }
 }

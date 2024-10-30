@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A log entry in a text log, comprised of a text body and its log level.
@@ -72,41 +72,63 @@ pub struct TextLog {
     pub color: Option<crate::components::Color>,
 }
 
-impl ::re_types_core::SizeBytes for TextLog {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.text.heap_size_bytes() + self.level.heap_size_bytes() + self.color.heap_size_bytes()
-    }
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.TextLog".into()),
+            component_name: "rerun.components.Text".into(),
+            archetype_field_name: Some("text".into()),
+        }]
+    });
 
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::components::Text>::is_pod()
-            && <Option<crate::components::TextLogLevel>>::is_pod()
-            && <Option<crate::components::Color>>::is_pod()
-    }
-}
-
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.Text".into()]);
-
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.TextLogLevel".into(),
-            "rerun.components.TextLogIndicator".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.TextLog".into()),
+                component_name: "rerun.components.TextLogLevel".into(),
+                archetype_field_name: Some("level".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.TextLog".into()),
+                component_name: "TextLogIndicator".into(),
+                archetype_field_name: None,
+            },
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.Color".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.TextLog".into()),
+            component_name: "rerun.components.Color".into(),
+            archetype_field_name: Some("color".into()),
+        }]
+    });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Text".into(),
-            "rerun.components.TextLogLevel".into(),
-            "rerun.components.TextLogIndicator".into(),
-            "rerun.components.Color".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.TextLog".into()),
+                component_name: "rerun.components.Text".into(),
+                archetype_field_name: Some("text".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.TextLog".into()),
+                component_name: "rerun.components.TextLogLevel".into(),
+                archetype_field_name: Some("level".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.TextLog".into()),
+                component_name: "TextLogIndicator".into(),
+                archetype_field_name: None,
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.TextLog".into()),
+                component_name: "rerun.components.Color".into(),
+                archetype_field_name: Some("color".into()),
+            },
         ]
     });
 
@@ -134,26 +156,26 @@ impl ::re_types_core::Archetype for TextLog {
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: TextLogIndicator = TextLogIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -208,13 +230,40 @@ impl ::re_types_core::AsComponents for TextLog {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.text as &dyn ComponentBatch).into()),
-            self.level
+            (Some(&self.text as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.TextLog".into()),
+                        archetype_field_name: Some(("text").into()),
+                        component_name: ("rerun.components.Text").into(),
+                    }),
+                }
+            }),
+            (self
+                .level
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.color
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.TextLog".into()),
+                    archetype_field_name: Some(("level").into()),
+                    component_name: ("rerun.components.TextLogLevel").into(),
+                }),
+            }),
+            (self
+                .color
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.TextLog".into()),
+                    archetype_field_name: Some(("color").into()),
+                    component_name: ("rerun.components.Color").into(),
+                }),
+            }),
         ]
         .into_iter()
         .flatten()
@@ -249,5 +298,19 @@ impl TextLog {
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = Some(color.into());
         self
+    }
+}
+
+impl ::re_types_core::SizeBytes for TextLog {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.text.heap_size_bytes() + self.level.heap_size_bytes() + self.color.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::Text>::is_pod()
+            && <Option<crate::components::TextLogLevel>>::is_pod()
+            && <Option<crate::components::Color>>::is_pod()
     }
 }

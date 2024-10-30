@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The annotation context provides additional information on how to display entities.
@@ -75,32 +75,40 @@ pub struct AnnotationContext {
     pub context: crate::components::AnnotationContext,
 }
 
-impl ::re_types_core::SizeBytes for AnnotationContext {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.context.heap_size_bytes()
-    }
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.AnnotationContext".into()),
+            component_name: "rerun.components.AnnotationContext".into(),
+            archetype_field_name: Some("context".into()),
+        }]
+    });
 
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::components::AnnotationContext>::is_pod()
-    }
-}
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.AnnotationContext".into()),
+            component_name: "AnnotationContextIndicator".into(),
+            archetype_field_name: None,
+        }]
+    });
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.AnnotationContext".into()]);
-
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.AnnotationContextIndicator".into()]);
-
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.AnnotationContext".into(),
-            "rerun.components.AnnotationContextIndicator".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.AnnotationContext".into()),
+                component_name: "rerun.components.AnnotationContext".into(),
+                archetype_field_name: Some("context".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.AnnotationContext".into()),
+                component_name: "AnnotationContextIndicator".into(),
+                archetype_field_name: None,
+            },
         ]
     });
 
@@ -128,26 +136,26 @@ impl ::re_types_core::Archetype for AnnotationContext {
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: AnnotationContextIndicator = AnnotationContextIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -184,7 +192,16 @@ impl ::re_types_core::AsComponents for AnnotationContext {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.context as &dyn ComponentBatch).into()),
+            (Some(&self.context as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.AnnotationContext".into()),
+                        archetype_field_name: Some(("context").into()),
+                        component_name: ("rerun.components.AnnotationContext").into(),
+                    }),
+                }
+            }),
         ]
         .into_iter()
         .flatten()
@@ -201,5 +218,17 @@ impl AnnotationContext {
         Self {
             context: context.into(),
         }
+    }
+}
+
+impl ::re_types_core::SizeBytes for AnnotationContext {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.context.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::AnnotationContext>::is_pod()
     }
 }

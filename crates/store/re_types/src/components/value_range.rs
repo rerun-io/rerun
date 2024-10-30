@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Range of expected or valid values, specifying a lower and upper bound.
@@ -23,44 +23,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct ValueRange(pub crate::datatypes::Range1D);
 
-impl ::re_types_core::SizeBytes for ValueRange {
+impl ::re_types_core::Component for ValueRange {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Range1D>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Range1D>> From<T> for ValueRange {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Range1D> for ValueRange {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Range1D {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ValueRange {
-    type Target = crate::datatypes::Range1D;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Range1D {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ValueRange {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Range1D {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.ValueRange")
     }
 }
 
@@ -105,9 +71,43 @@ impl ::re_types_core::Loggable for ValueRange {
     }
 }
 
-impl ::re_types_core::Component for ValueRange {
+impl<T: Into<crate::datatypes::Range1D>> From<T> for ValueRange {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Range1D> for ValueRange {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.ValueRange".into()
+    fn borrow(&self) -> &crate::datatypes::Range1D {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for ValueRange {
+    type Target = crate::datatypes::Range1D;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Range1D {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ValueRange {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Range1D {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for ValueRange {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Range1D>::is_pod()
     }
 }

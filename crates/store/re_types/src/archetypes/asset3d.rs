@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
@@ -78,43 +78,63 @@ pub struct Asset3D {
     pub albedo_factor: Option<crate::components::AlbedoFactor>,
 }
 
-impl ::re_types_core::SizeBytes for Asset3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.blob.heap_size_bytes()
-            + self.media_type.heap_size_bytes()
-            + self.albedo_factor.heap_size_bytes()
-    }
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Asset3D".into()),
+            component_name: "rerun.components.Blob".into(),
+            archetype_field_name: Some("blob".into()),
+        }]
+    });
 
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::components::Blob>::is_pod()
-            && <Option<crate::components::MediaType>>::is_pod()
-            && <Option<crate::components::AlbedoFactor>>::is_pod()
-    }
-}
-
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.Blob".into()]);
-
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.MediaType".into(),
-            "rerun.components.Asset3DIndicator".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Asset3D".into()),
+                component_name: "rerun.components.MediaType".into(),
+                archetype_field_name: Some("media_type".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Asset3D".into()),
+                component_name: "Asset3DIndicator".into(),
+                archetype_field_name: None,
+            },
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.AlbedoFactor".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Asset3D".into()),
+            component_name: "rerun.components.AlbedoFactor".into(),
+            archetype_field_name: Some("albedo_factor".into()),
+        }]
+    });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Blob".into(),
-            "rerun.components.MediaType".into(),
-            "rerun.components.Asset3DIndicator".into(),
-            "rerun.components.AlbedoFactor".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Asset3D".into()),
+                component_name: "rerun.components.Blob".into(),
+                archetype_field_name: Some("blob".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Asset3D".into()),
+                component_name: "rerun.components.MediaType".into(),
+                archetype_field_name: Some("media_type".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Asset3D".into()),
+                component_name: "Asset3DIndicator".into(),
+                archetype_field_name: None,
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Asset3D".into()),
+                component_name: "rerun.components.AlbedoFactor".into(),
+                archetype_field_name: Some("albedo_factor".into()),
+            },
         ]
     });
 
@@ -142,26 +162,26 @@ impl ::re_types_core::Archetype for Asset3D {
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: Asset3DIndicator = Asset3DIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -221,13 +241,40 @@ impl ::re_types_core::AsComponents for Asset3D {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.blob as &dyn ComponentBatch).into()),
-            self.media_type
+            (Some(&self.blob as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.Asset3D".into()),
+                        archetype_field_name: Some(("blob").into()),
+                        component_name: ("rerun.components.Blob").into(),
+                    }),
+                }
+            }),
+            (self
+                .media_type
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.albedo_factor
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.Asset3D".into()),
+                    archetype_field_name: Some(("media_type").into()),
+                    component_name: ("rerun.components.MediaType").into(),
+                }),
+            }),
+            (self
+                .albedo_factor
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.Asset3D".into()),
+                    archetype_field_name: Some(("albedo_factor").into()),
+                    component_name: ("rerun.components.AlbedoFactor").into(),
+                }),
+            }),
         ]
         .into_iter()
         .flatten()
@@ -275,5 +322,21 @@ impl Asset3D {
     ) -> Self {
         self.albedo_factor = Some(albedo_factor.into());
         self
+    }
+}
+
+impl ::re_types_core::SizeBytes for Asset3D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.blob.heap_size_bytes()
+            + self.media_type.heap_size_bytes()
+            + self.albedo_factor.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::Blob>::is_pod()
+            && <Option<crate::components::MediaType>>::is_pod()
+            && <Option<crate::components::AlbedoFactor>>::is_pod()
     }
 }

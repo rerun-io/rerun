@@ -409,7 +409,7 @@ fn latest_at_query_video_from_datastore(
     let results = ctx.recording_engine().cache().latest_at(
         &query,
         entity_path,
-        AssetVideo::all_components().iter().copied(),
+        AssetVideo::all_components().iter(),
     );
 
     let blob_row_id = results.component_row_id(&Blob::name())?;

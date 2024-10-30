@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The three indices of a triangle in a triangle mesh.
@@ -23,44 +23,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct TriangleIndices(pub crate::datatypes::UVec3D);
 
-impl ::re_types_core::SizeBytes for TriangleIndices {
+impl ::re_types_core::Component for TriangleIndices {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::UVec3D>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::UVec3D>> From<T> for TriangleIndices {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::UVec3D> for TriangleIndices {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::UVec3D {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for TriangleIndices {
-    type Target = crate::datatypes::UVec3D;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::UVec3D {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for TriangleIndices {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::UVec3D {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.TriangleIndices")
     }
 }
 
@@ -105,9 +71,43 @@ impl ::re_types_core::Loggable for TriangleIndices {
     }
 }
 
-impl ::re_types_core::Component for TriangleIndices {
+impl<T: Into<crate::datatypes::UVec3D>> From<T> for TriangleIndices {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::UVec3D> for TriangleIndices {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.TriangleIndices".into()
+    fn borrow(&self) -> &crate::datatypes::UVec3D {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for TriangleIndices {
+    type Target = crate::datatypes::UVec3D;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::UVec3D {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for TriangleIndices {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::UVec3D {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for TriangleIndices {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::UVec3D>::is_pod()
     }
 }

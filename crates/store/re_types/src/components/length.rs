@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Length, or one-dimensional size.
@@ -26,44 +26,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct Length(pub crate::datatypes::Float32);
 
-impl ::re_types_core::SizeBytes for Length {
+impl ::re_types_core::Component for Length {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float32>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Float32>> From<T> for Length {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Float32> for Length {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Length {
-    type Target = crate::datatypes::Float32;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Length {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.Length")
     }
 }
 
@@ -108,9 +74,43 @@ impl ::re_types_core::Loggable for Length {
     }
 }
 
-impl ::re_types_core::Component for Length {
+impl<T: Into<crate::datatypes::Float32>> From<T> for Length {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Float32> for Length {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.Length".into()
+    fn borrow(&self) -> &crate::datatypes::Float32 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for Length {
+    type Target = crate::datatypes::Float32;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Float32 {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for Length {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for Length {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Float32>::is_pod()
     }
 }

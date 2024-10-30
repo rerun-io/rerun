@@ -13,40 +13,14 @@
 #![allow(clippy::too_many_lines)]
 
 use crate::external::arrow2;
-use crate::ComponentName;
 use crate::SerializationResult;
 use crate::{ComponentBatch, MaybeOwnedComponentBatch};
+use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A 16bit unsigned integer.
 #[derive(Clone, Debug, Default, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct UInt16(pub u16);
-
-impl crate::SizeBytes for UInt16 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <u16>::is_pod()
-    }
-}
-
-impl From<u16> for UInt16 {
-    #[inline]
-    fn from(value: u16) -> Self {
-        Self(value)
-    }
-}
-
-impl From<UInt16> for u16 {
-    #[inline]
-    fn from(value: UInt16) -> Self {
-        value.0
-    }
-}
 
 crate::macros::impl_into_cow!(UInt16);
 
@@ -156,5 +130,31 @@ impl crate::Loggable for UInt16 {
                 slice.iter().copied().map(Self).collect::<Vec<_>>()
             }
         })
+    }
+}
+
+impl From<u16> for UInt16 {
+    #[inline]
+    fn from(value: u16) -> Self {
+        Self(value)
+    }
+}
+
+impl From<UInt16> for u16 {
+    #[inline]
+    fn from(value: UInt16) -> Self {
+        value.0
+    }
+}
+
+impl crate::SizeBytes for UInt16 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <u16>::is_pod()
     }
 }

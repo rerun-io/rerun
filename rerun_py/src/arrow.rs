@@ -17,7 +17,7 @@ use pyo3::{
 
 use re_chunk::{Chunk, ChunkError, ChunkId, PendingRow, RowId, TimeColumn};
 use re_log_types::TimePoint;
-use re_sdk::{external::nohash_hasher::IntMap, ComponentName, EntityPath, Timeline};
+use re_sdk::{external::nohash_hasher::IntMap, ComponentDescriptor, EntityPath, Timeline};
 
 /// Perform conversion between a pyarrow array to arrow2 types.
 ///
@@ -59,7 +59,7 @@ pub fn build_row_from_components(
     let components = arrays
         .into_iter()
         .zip(fields)
-        .map(|(value, field)| (field.name.into(), value))
+        .map(|(value, field)| (ComponentDescriptor::new(field.name), value))
         .collect();
 
     Ok(PendingRow {
@@ -149,11 +149,11 @@ pub fn build_chunk_from_components(
                 )?
             };
 
-            Ok((field.name.into(), batch))
+            Ok((ComponentDescriptor::new(field.name), batch))
         })
         .collect();
 
-    let components: IntMap<ComponentName, ListArray<i32>> = components
+    let components = components
         .map_err(|err| PyRuntimeError::new_err(format!("Error converting component data: {err}")))?
         .into_iter()
         .collect();

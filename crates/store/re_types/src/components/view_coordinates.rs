@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: How we interpret the coordinate system of an entity/space.
@@ -43,44 +43,10 @@ pub struct ViewCoordinates(
     pub crate::datatypes::ViewCoordinates,
 );
 
-impl ::re_types_core::SizeBytes for ViewCoordinates {
+impl ::re_types_core::Component for ViewCoordinates {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::ViewCoordinates>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::ViewCoordinates>> From<T> for ViewCoordinates {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::ViewCoordinates> for ViewCoordinates {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::ViewCoordinates {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ViewCoordinates {
-    type Target = crate::datatypes::ViewCoordinates;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::ViewCoordinates {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ViewCoordinates {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::ViewCoordinates {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.ViewCoordinates")
     }
 }
 
@@ -125,9 +91,43 @@ impl ::re_types_core::Loggable for ViewCoordinates {
     }
 }
 
-impl ::re_types_core::Component for ViewCoordinates {
+impl<T: Into<crate::datatypes::ViewCoordinates>> From<T> for ViewCoordinates {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::ViewCoordinates> for ViewCoordinates {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.ViewCoordinates".into()
+    fn borrow(&self) -> &crate::datatypes::ViewCoordinates {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for ViewCoordinates {
+    type Target = crate::datatypes::ViewCoordinates;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::ViewCoordinates {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ViewCoordinates {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::ViewCoordinates {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for ViewCoordinates {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::ViewCoordinates>::is_pod()
     }
 }

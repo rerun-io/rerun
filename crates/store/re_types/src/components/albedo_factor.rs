@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A color multiplier, usually applied to a whole entity, e.g. a mesh.
@@ -25,44 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct AlbedoFactor(pub crate::datatypes::Rgba32);
 
-impl ::re_types_core::SizeBytes for AlbedoFactor {
+impl ::re_types_core::Component for AlbedoFactor {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Rgba32>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Rgba32>> From<T> for AlbedoFactor {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Rgba32> for AlbedoFactor {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Rgba32 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for AlbedoFactor {
-    type Target = crate::datatypes::Rgba32;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Rgba32 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for AlbedoFactor {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Rgba32 {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.AlbedoFactor")
     }
 }
 
@@ -107,9 +73,43 @@ impl ::re_types_core::Loggable for AlbedoFactor {
     }
 }
 
-impl ::re_types_core::Component for AlbedoFactor {
+impl<T: Into<crate::datatypes::Rgba32>> From<T> for AlbedoFactor {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Rgba32> for AlbedoFactor {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.AlbedoFactor".into()
+    fn borrow(&self) -> &crate::datatypes::Rgba32 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for AlbedoFactor {
+    type Target = crate::datatypes::Rgba32;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Rgba32 {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for AlbedoFactor {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Rgba32 {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for AlbedoFactor {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Rgba32>::is_pod()
     }
 }

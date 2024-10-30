@@ -13,41 +13,15 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A uint32 vector in 3D space.
 #[derive(Clone, Debug, Default, Copy, PartialEq, Eq, Hash, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(C)]
 pub struct UVec3D(pub [u32; 3usize]);
-
-impl ::re_types_core::SizeBytes for UVec3D {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <[u32; 3usize]>::is_pod()
-    }
-}
-
-impl From<[u32; 3usize]> for UVec3D {
-    #[inline]
-    fn from(xyz: [u32; 3usize]) -> Self {
-        Self(xyz)
-    }
-}
-
-impl From<UVec3D> for [u32; 3usize] {
-    #[inline]
-    fn from(value: UVec3D) -> Self {
-        value.0
-    }
-}
 
 ::re_types_core::macros::impl_into_cow!(UVec3D);
 
@@ -245,5 +219,31 @@ impl ::re_types_core::Loggable for UVec3D {
                 slice.iter().copied().map(Self).collect::<Vec<_>>()
             }
         })
+    }
+}
+
+impl From<[u32; 3usize]> for UVec3D {
+    #[inline]
+    fn from(xyz: [u32; 3usize]) -> Self {
+        Self(xyz)
+    }
+}
+
+impl From<UVec3D> for [u32; 3usize] {
+    #[inline]
+    fn from(value: UVec3D) -> Self {
+        value.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for UVec3D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <[u32; 3usize]>::is_pod()
     }
 }

@@ -14,9 +14,9 @@
 #![allow(non_camel_case_types)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Determines whether an image or texture should be scaled to fit the viewport.
@@ -34,47 +34,10 @@ pub enum ViewFit {
     FillKeepAspectRatio = 3,
 }
 
-impl ::re_types_core::reflection::Enum for ViewFit {
+impl ::re_types_core::Component for ViewFit {
     #[inline]
-    fn variants() -> &'static [Self] {
-        &[Self::Original, Self::Fill, Self::FillKeepAspectRatio]
-    }
-
-    #[inline]
-    fn docstring_md(self) -> &'static str {
-        match self {
-            Self::Original => {
-                "No scaling, pixel size will match the image's width/height dimensions in pixels."
-            }
-            Self::Fill => {
-                "Scale the image for the largest possible fit in the view's container."
-            }
-            Self::FillKeepAspectRatio => {
-                "Scale the image for the largest possible fit in the view's container, but keep the original aspect ratio."
-            }
-        }
-    }
-}
-
-impl ::re_types_core::SizeBytes for ViewFit {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl std::fmt::Display for ViewFit {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Original => write!(f, "Original"),
-            Self::Fill => write!(f, "Fill"),
-            Self::FillKeepAspectRatio => write!(f, "FillKeepAspectRatio"),
-        }
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.ViewFit")
     }
 }
 
@@ -165,9 +128,46 @@ impl ::re_types_core::Loggable for ViewFit {
     }
 }
 
-impl ::re_types_core::Component for ViewFit {
+impl std::fmt::Display for ViewFit {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Original => write!(f, "Original"),
+            Self::Fill => write!(f, "Fill"),
+            Self::FillKeepAspectRatio => write!(f, "FillKeepAspectRatio"),
+        }
+    }
+}
+
+impl ::re_types_core::reflection::Enum for ViewFit {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.ViewFit".into()
+    fn variants() -> &'static [Self] {
+        &[Self::Original, Self::Fill, Self::FillKeepAspectRatio]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::Original => {
+                "No scaling, pixel size will match the image's width/height dimensions in pixels."
+            }
+            Self::Fill => {
+                "Scale the image for the largest possible fit in the view's container."
+            }
+            Self::FillKeepAspectRatio => {
+                "Scale the image for the largest possible fit in the view's container, but keep the original aspect ratio."
+            }
+        }
+    }
+}
+
+impl ::re_types_core::SizeBytes for ViewFit {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }

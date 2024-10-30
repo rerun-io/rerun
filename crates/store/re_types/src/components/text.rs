@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A string of text, e.g. for labels and text documents.
@@ -23,44 +23,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct Text(pub crate::datatypes::Utf8);
 
-impl ::re_types_core::SizeBytes for Text {
+impl ::re_types_core::Component for Text {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Utf8>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Utf8>> From<T> for Text {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Utf8> for Text {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Utf8 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Text {
-    type Target = crate::datatypes::Utf8;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Utf8 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Text {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.Text")
     }
 }
 
@@ -97,9 +63,43 @@ impl ::re_types_core::Loggable for Text {
     }
 }
 
-impl ::re_types_core::Component for Text {
+impl<T: Into<crate::datatypes::Utf8>> From<T> for Text {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Utf8> for Text {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.Text".into()
+    fn borrow(&self) -> &crate::datatypes::Utf8 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for Text {
+    type Target = crate::datatypes::Utf8;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Utf8 {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for Text {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for Text {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Utf8>::is_pod()
     }
 }

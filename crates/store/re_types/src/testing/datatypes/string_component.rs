@@ -13,40 +13,14 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, Eq, PartialEq)]
 #[repr(transparent)]
 pub struct StringComponent(pub ::re_types_core::ArrowString);
-
-impl ::re_types_core::SizeBytes for StringComponent {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <::re_types_core::ArrowString>::is_pod()
-    }
-}
-
-impl From<::re_types_core::ArrowString> for StringComponent {
-    #[inline]
-    fn from(value: ::re_types_core::ArrowString) -> Self {
-        Self(value)
-    }
-}
-
-impl From<StringComponent> for ::re_types_core::ArrowString {
-    #[inline]
-    fn from(value: StringComponent) -> Self {
-        value.0
-    }
-}
 
 ::re_types_core::macros::impl_into_cow!(StringComponent);
 
@@ -158,5 +132,31 @@ impl ::re_types_core::Loggable for StringComponent {
         .collect::<DeserializationResult<Vec<Option<_>>>>()
         .with_context("rerun.testing.datatypes.StringComponent#value")
         .with_context("rerun.testing.datatypes.StringComponent")?)
+    }
+}
+
+impl From<::re_types_core::ArrowString> for StringComponent {
+    #[inline]
+    fn from(value: ::re_types_core::ArrowString) -> Self {
+        Self(value)
+    }
+}
+
+impl From<StringComponent> for ::re_types_core::ArrowString {
+    #[inline]
+    fn from(value: StringComponent) -> Self {
+        value.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for StringComponent {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <::re_types_core::ArrowString>::is_pod()
     }
 }

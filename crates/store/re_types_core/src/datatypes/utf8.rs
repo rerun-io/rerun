@@ -13,41 +13,15 @@
 #![allow(clippy::too_many_lines)]
 
 use crate::external::arrow2;
-use crate::ComponentName;
 use crate::SerializationResult;
 use crate::{ComponentBatch, MaybeOwnedComponentBatch};
+use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A string of text, encoded as UTF-8.
 #[derive(Clone, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[repr(transparent)]
 pub struct Utf8(pub crate::ArrowString);
-
-impl crate::SizeBytes for Utf8 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::ArrowString>::is_pod()
-    }
-}
-
-impl From<crate::ArrowString> for Utf8 {
-    #[inline]
-    fn from(value: crate::ArrowString) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Utf8> for crate::ArrowString {
-    #[inline]
-    fn from(value: Utf8) -> Self {
-        value.0
-    }
-}
 
 crate::macros::impl_into_cow!(Utf8);
 
@@ -159,5 +133,31 @@ impl crate::Loggable for Utf8 {
         .collect::<DeserializationResult<Vec<Option<_>>>>()
         .with_context("rerun.datatypes.Utf8#value")
         .with_context("rerun.datatypes.Utf8")?)
+    }
+}
+
+impl From<crate::ArrowString> for Utf8 {
+    #[inline]
+    fn from(value: crate::ArrowString) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Utf8> for crate::ArrowString {
+    #[inline]
+    fn from(value: Utf8) -> Self {
+        value.0
+    }
+}
+
+impl crate::SizeBytes for Utf8 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::ArrowString>::is_pod()
     }
 }
