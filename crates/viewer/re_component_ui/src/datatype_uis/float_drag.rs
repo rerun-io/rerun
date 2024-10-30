@@ -86,3 +86,24 @@ fn edit_f32_zero_to_one_raw(ui: &mut egui::Ui, value: &mut MaybeMutRef<'_, f32>)
         ui.label(re_format::format_f32(**value))
     }
 }
+
+// ---
+
+/// Non monomorphized implementation for f64 float editing with a given speed.
+pub fn edit_f64_float_raw_with_speed_impl(
+    ui: &mut egui::Ui,
+    value: &mut MaybeMutRef<'_, f64>,
+    range: RangeInclusive<f64>,
+    speed: f64,
+) -> egui::Response {
+    if let Some(value) = value.as_mut() {
+        ui.add(
+            egui::DragValue::new(value)
+                .clamp_existing_to_range(false)
+                .range(range)
+                .speed(speed),
+        )
+    } else {
+        ui.label(re_format::format_f64(**value))
+    }
+}

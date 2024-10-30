@@ -84,7 +84,12 @@ fn main() {
                 .truncate(true)
                 .open(output_dir.join(format!("{i:0width$}.ppm")))
                 .expect("failed to open file");
-            write_binary_ppm(&mut file, frame.width, frame.height, &frame.data);
+            write_binary_ppm(
+                &mut file,
+                frame.content.width,
+                frame.content.height,
+                &frame.content.data,
+            );
         }
     }
 }

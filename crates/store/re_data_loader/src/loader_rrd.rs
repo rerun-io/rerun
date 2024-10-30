@@ -87,14 +87,11 @@ impl crate::DataLoader for RrdLoader {
                     .name(format!("decode_and_stream({filepath:?})"))
                     .spawn({
                         let filepath = filepath.clone();
-                        let settings = settings.clone();
                         move || {
                             decode_and_stream(
-                                &filepath,
-                                &tx,
-                                decoder,
-                                settings.opened_application_id.as_ref(),
-                                settings.opened_store_id.as_ref(),
+                                &filepath, &tx, decoder,
+                                // Never use import semantics for .rrd files
+                                None, None,
                             );
                         }
                     })

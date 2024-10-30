@@ -219,6 +219,9 @@ pub struct ComponentReflection {
     /// Typically, this is only used when `FallbackProvider`s are not available.
     /// If there's no custom placeholder, a placeholder can be derived from the arrow datatype.
     pub custom_placeholder: Option<Box<dyn arrow2::array::Array>>,
+
+    /// Datatype of the component.
+    pub datatype: arrow2::datatypes::DataType,
 }
 
 /// Runtime reflection about archetypes.

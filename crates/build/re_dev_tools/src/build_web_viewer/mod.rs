@@ -34,6 +34,14 @@ pub struct Args {
     /// set the output directory. This is a path relative to the cargo workspace root.
     #[argh(option, short = 'o', long = "out")]
     build_dir: Option<Utf8PathBuf>,
+
+    /// comma-separated list of features to pass on to `re_viewer`
+    #[argh(option, short = 'F', long = "features", default = "default_features()")]
+    features: String,
+}
+
+fn default_features() -> String {
+    "analytics".to_owned()
 }
 
 pub fn main(args: Args) -> anyhow::Result<()> {
@@ -49,5 +57,11 @@ pub fn main(args: Args) -> anyhow::Result<()> {
 
     let build_dir = args.build_dir.unwrap_or_else(default_build_dir);
 
-    build(profile, args.debug_symbols, args.target, &build_dir)
+    build(
+        profile,
+        args.debug_symbols,
+        args.target,
+        &build_dir,
+        &args.features,
+    )
 }
