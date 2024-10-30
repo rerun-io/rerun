@@ -161,7 +161,13 @@ impl Renderer for Compositor {
                 .shader_modules
                 .get_or_create(ctx, &include_shader_module!("../../shader/composite.wgsl")),
             vertex_buffers: smallvec![],
-            render_targets: smallvec![Some(ctx.config.output_format_color.into())],
+            // TODO: create two versions of this pipeline one with blending and one without
+            // and then use the correct one based on some view builder configuration.
+            render_targets: smallvec![Some(wgpu::ColorTargetState {
+                format: ctx.config.output_format_color,
+                blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
             primitive: wgpu::PrimitiveState::default(),
             depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),

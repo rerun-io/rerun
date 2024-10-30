@@ -25,7 +25,8 @@ fn main(in: FragmentInput) -> @location(0) vec4f {
     // Note that we can't use a simple textureLoad using @builtin(position) here despite the lack of filtering.
     // The issue is that positions provided by @builtin(position) are not dependent on the set viewport,
     // but are about the location of the texel in the target texture.
-    var color = textureSample(color_texture, nearest_sampler, in.texcoord).rgb;
+    var color = textureSample(color_texture, nearest_sampler, in.texcoord);
+    //color = vec4f(color.rgb * color.a, color.a); // TODO: maybe this because it's not premultiplied alpha yet? uhm. yeah let's try it out.
 
     // Outlines
     {
@@ -46,12 +47,12 @@ fn main(in: FragmentInput) -> @location(0) vec4f {
             // Normal blending with premul alpha.
             // Problem: things that are both hovered and selected will get double outlines,
             // which can look really ugly if e.g. the selection is dark blue and the hover is bright white.
-            color = color * (1.0 - outline_color_a.a) + outline_color_a.rgb;
-            color = color * (1.0 - outline_color_b.a) + outline_color_b.rgb;
+            color = color * (1.0 - outline_color_a.a) + outline_color_a;
+            color = color * (1.0 - outline_color_b.a) + outline_color_b;
         } else {
             // Add the two outline colors, then blend that in:
             let outline_color_sum = saturate(outline_color_a + outline_color_b);
-            color = color * (1.0 - outline_color_sum.a) + outline_color_sum.rgb;
+            color = color * (1.0 - outline_color_sum.a) + outline_color_sum;
         }
 
         // Show only the outline. Useful for debugging.
@@ -64,5 +65,5 @@ fn main(in: FragmentInput) -> @location(0) vec4f {
     color = saturate(color); // TODO(andreas): Do something meaningful with values above 1
 
     // Apply srgb gamma curve - this is necessary since the final eframe output does *not* have an srgb format.
-    return vec4f(srgb_from_linear(color), 1.0);
+    return srgba_from_linear(color);
 }

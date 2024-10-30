@@ -1,8 +1,10 @@
 use egui::{Context, NumExt as _};
+use re_entity_db::InstancePathHash;
+use re_renderer::OutlineConfig;
 use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
 use re_data_ui::{item_ui, DataUi};
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, EntityPathHash, Instance};
 use re_space_view::suggest_space_view_for_each_entity;
 use re_types::{
     blueprint::{
@@ -12,10 +14,10 @@ use re_types::{
     },
     SpaceViewClassIdentifier, View,
 };
-use re_ui::list_item;
+use re_ui::{list_item, ContextExt as _};
 use re_viewer_context::{
-    Item, SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
+    gpu_bridge, Item, SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError,
+    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
     SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, UiLayout,
     ViewQuery, ViewerContext,
 };
@@ -29,6 +31,8 @@ pub struct MapSpaceViewState {
     tiles: Option<HttpTiles>,
     map_memory: MapMemory,
     selected_provider: MapProvider,
+
+    last_gpu_picking_result: Option<InstancePathHash>,
 }
 
 impl MapSpaceViewState {
@@ -215,63 +219,62 @@ Displays geospatial primitives on a map.
             Ok(refs) => refs,
             Err(err) => return Err(err),
         };
-        egui::Frame::default().show(ui, |ui| {
-            let mut picked_instance = None;
 
-            let some_tiles_manager: Option<&mut dyn Tiles> = Some(tiles);
-            let mut map_response = ui.add(
-                Map::new(some_tiles_manager, map_memory, default_center_position).with_plugin(
-                    geo_points_visualizer.plugin(ctx, query.space_view_id, &mut picked_instance),
-                ),
-            );
-            let map_rect = map_response.rect;
+        let mut picked_instance = None;
 
-            if let Some(picked_instance) = picked_instance {
-                map_response = map_response.on_hover_ui_at_pointer(|ui| {
-                    list_item::list_item_scope(ui, "map_hover", |ui| {
-                        item_ui::instance_path_button(
-                            ctx,
-                            &query.latest_at_query(),
-                            ctx.recording(),
-                            ui,
-                            Some(query.space_view_id),
-                            &picked_instance.instance_path,
-                        );
-                        picked_instance
-                            .instance_path
-                            .data_ui_recording(ctx, ui, UiLayout::Tooltip);
-                    });
+        let some_tiles_manager: Option<&mut dyn Tiles> = Some(tiles);
+        let mut map_response = ui.add(
+            Map::new(some_tiles_manager, map_memory, default_center_position).with_plugin(
+                geo_points_visualizer.plugin(ctx, query.space_view_id, &mut picked_instance),
+            ),
+        );
+        let map_rect = map_response.rect;
+
+        if let Some(picked_instance) = picked_instance {
+            map_response = map_response.on_hover_ui_at_pointer(|ui| {
+                list_item::list_item_scope(ui, "map_hover", |ui| {
+                    item_ui::instance_path_button(
+                        ctx,
+                        &query.latest_at_query(),
+                        ctx.recording(),
+                        ui,
+                        Some(query.space_view_id),
+                        &picked_instance.instance_path,
+                    );
+                    picked_instance
+                        .instance_path
+                        .data_ui_recording(ctx, ui, UiLayout::Tooltip);
                 });
+            });
 
-                ctx.select_hovered_on_click(
-                    &map_response,
-                    Item::DataResult(query.space_view_id, picked_instance.instance_path.clone()),
-                );
+            ctx.select_hovered_on_click(
+                &map_response,
+                Item::DataResult(query.space_view_id, picked_instance.instance_path.clone()),
+            );
 
-                // double click selects the entire entity
-                if map_response.double_clicked() {
-                    // Select the entire entity
-                    ctx.selection_state().set_selection(Item::DataResult(
-                        query.space_view_id,
-                        picked_instance.instance_path.entity_path.clone().into(),
-                    ));
-                }
-            } else if map_response.clicked() {
-                // clicked elsewhere, select the view
-                ctx.selection_state()
-                    .set_selection(Item::SpaceView(query.space_view_id));
-            }
-
+            // double click selects the entire entity
             if map_response.double_clicked() {
-                map_memory.follow_my_position();
-                if let Some(zoom_level) = default_zoom_level {
-                    let _ = map_memory.set_zoom(zoom_level);
-                }
+                // Select the entire entity
+                ctx.selection_state().set_selection(Item::DataResult(
+                    query.space_view_id,
+                    picked_instance.instance_path.entity_path.clone().into(),
+                ));
             }
+        } else if map_response.clicked() {
+            // clicked elsewhere, select the view
+            ctx.selection_state()
+                .set_selection(Item::SpaceView(query.space_view_id));
+        }
 
-            map_overlays::zoom_buttons_overlay(ui, &map_rect, map_memory);
-            map_overlays::acknowledgement_overlay(ui, &map_rect, &tiles.attribution());
-        });
+        if map_response.double_clicked() {
+            map_memory.follow_my_position();
+            if let Some(zoom_level) = default_zoom_level {
+                let _ = map_memory.set_zoom(zoom_level);
+            }
+        }
+
+        map_overlays::zoom_buttons_overlay(ui, &map_rect, map_memory);
+        map_overlays::acknowledgement_overlay(ui, &map_rect, &tiles.attribution());
 
         //
         // Save Blueprint
@@ -284,7 +287,148 @@ Displays geospatial primitives on a map.
             );
         }
 
+        // ---------------------------------------------------------------------------
+
+        let Some(render_ctx) = ctx.render_ctx else {
+            return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+        };
+        let painter = ui.painter();
+
+        let resolution_in_pixel =
+            gpu_bridge::viewport_resolution_in_pixels(map_rect, ui.ctx().pixels_per_point());
+
+        let pixels_from_ui_points = re_renderer::RectTransform {
+            region: re_renderer::RectF32 {
+                min: glam::Vec2::ZERO,
+                extent: glam::vec2(resolution_in_pixel[0] as _, resolution_in_pixel[1] as _),
+            },
+            region_of_interest: re_renderer::RectF32 {
+                min: glam::vec2(map_rect.min.x, map_rect.min.y),
+                extent: glam::vec2(map_rect.width(), map_rect.height()),
+            },
+        };
+
+        let mut view_builder = re_renderer::ViewBuilder::new(
+            // TODO: make this a util
+            render_ctx,
+            re_renderer::view_builder::TargetConfiguration {
+                name: "MapView".into(),
+                resolution_in_pixel,
+                view_from_world: Default::default(),
+                projection_from_view: re_renderer::view_builder::Projection::Orthographic {
+                    camera_mode:
+                        re_renderer::view_builder::OrthographicCameraMode::TopLeftCornerAndExtendZ,
+                    vertical_world_size: resolution_in_pixel[1] as f32,
+                    far_plane_distance: 1000.0,
+                },
+                viewport_transformation: pixels_from_ui_points,
+                pixels_per_point: ui.ctx().pixels_per_point(),
+                //outline_config: query
+                //    .highlights
+                //    .any_outlines()
+                //    .then(|| outline_config(ui.ctx())),
+                outline_config: Some(outline_config(ui.ctx())),
+            },
+        );
+
+        // TODO: populate view builder with the things it should draw.
+        let mut points = re_renderer::PointCloudBuilder::new(render_ctx);
+        points
+            .batch("Antoine")
+            .picking_object_id(re_renderer::PickingLayerObjectId(321)) // Entity path.
+            //.outline_mask_ids(outline_mask_ids) // Entire thing
+            .push_additional_outline_mask_ids_for_range(
+                0..1, // Instances 0 to 1, that is order they're added.
+                re_renderer::OutlineMaskPreference::some(0, 1),
+            )
+            .add_points_2d(
+                &[glam::vec3(map_rect.center().x, map_rect.center().y, 0.0)],
+                &[re_renderer::Size::ONE_UI_POINT * 10.0],
+                &[re_renderer::Color32::LIGHT_RED],
+                &[re_renderer::PickingLayerInstanceId(1234)], // picking instance id == index
+            );
+        view_builder.queue_draw(points.into_draw_data()?);
+
+        // ---------------------------------------------------------------------------
+
+        let picking_readback_identifier = 123; // TODO: should be unique per view (NOT view type)
+
+        if let Some(pointer_in_ui) = map_response.hover_pos() {
+            let mut pointer_in_pixel = pointer_in_ui.to_vec2();
+            pointer_in_pixel -= map_rect.min.to_vec2();
+            pointer_in_pixel *= ui.ctx().pixels_per_point();
+
+            let picking_result = picking_gpu(
+                render_ctx,
+                picking_readback_identifier,
+                glam::vec2(pointer_in_pixel.x, pointer_in_pixel.y),
+                &mut state.last_gpu_picking_result,
+            );
+            re_log::debug!("Picking result: {picking_result:?}"); // TODO:
+
+            // ------
+            // TODO: more wonky c&p
+
+            /// Radius in which cursor interactions may snap to the nearest object even if the cursor
+            /// does not hover it directly.
+            ///
+            /// Note that this needs to be scaled when zooming is applied by the virtual->visible ui rect transform.
+            pub const UI_INTERACTION_RADIUS: f32 = 5.0;
+
+            let picking_rect_size = UI_INTERACTION_RADIUS * ui.ctx().pixels_per_point();
+            // Make the picking rect bigger than necessary so we can use it to counter-act delays.
+            // (by the time the picking rectangle is read back, the cursor may have moved on).
+            let picking_rect_size = (picking_rect_size * 2.0)
+                .ceil()
+                .at_least(8.0)
+                .at_most(128.0) as u32;
+            // ------
+
+            view_builder
+                .schedule_picking_rect(
+                    render_ctx,
+                    re_renderer::RectInt::from_middle_and_extent(
+                        glam::ivec2(pointer_in_pixel.x as _, pointer_in_pixel.y as _),
+                        glam::uvec2(picking_rect_size, picking_rect_size),
+                    ),
+                    picking_readback_identifier,
+                    (),
+                    true, // TODO: debug overlay, put to app settings.
+                )
+                .expect("antoine do something");
+        } else {
+            // TODO: should we keep flushing out the gpu picking results? Does spatial view do this?
+
+            state.last_gpu_picking_result = None;
+        }
+
+        // ---------------------------------------------------------------------------
+
+        painter.add(gpu_bridge::new_renderer_callback(
+            view_builder,
+            painter.clip_rect(),
+            re_renderer::Rgba::TRANSPARENT,
+        ));
+
         Ok(())
+    }
+}
+
+// TODO: we have sinned here. this is a c&p from re_space_view_spatial. we should make this a util.
+pub fn outline_config(gui_ctx: &egui::Context) -> re_renderer::OutlineConfig {
+    // Use the exact same colors we have in the ui!
+    let hover_outline = gui_ctx.hover_stroke();
+    let selection_outline = gui_ctx.selection_stroke();
+
+    // See also: SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES
+
+    let outline_radius_ui_pts = 0.5 * f32::max(hover_outline.width, selection_outline.width);
+    let outline_radius_pixel = (gui_ctx.pixels_per_point() * outline_radius_ui_pts).at_least(0.5);
+
+    OutlineConfig {
+        outline_radius_pixel,
+        color_layer_a: re_renderer::Rgba::from(hover_outline.color),
+        color_layer_b: re_renderer::Rgba::from(selection_outline.color),
     }
 }
 
@@ -323,3 +467,89 @@ fn get_tile_manager(provider: MapProvider, egui_ctx: &Context) -> HttpTiles {
 }
 
 re_viewer_context::impl_component_fallback_provider!(MapSpaceView => []);
+
+// TODO:
+fn picking_gpu(
+    render_ctx: &re_renderer::RenderContext,
+    gpu_readback_identifier: u64,
+    pointer_in_pixel: glam::Vec2,
+    last_gpu_picking_result: &mut Option<InstancePathHash>,
+) -> Option<InstancePathHash> {
+    re_tracing::profile_function!();
+
+    // Only look at newest available result, discard everything else.
+    let mut gpu_picking_result = None;
+    while let Some(picking_result) = re_renderer::PickingLayerProcessor::next_readback_result::<()>(
+        render_ctx,
+        gpu_readback_identifier,
+    ) {
+        gpu_picking_result = Some(picking_result);
+    }
+
+    if let Some(gpu_picking_result) = gpu_picking_result {
+        // TODO: the block inside this particular branch is so reusable, it should probably live on re_renderer! (on picking result?)
+
+        // First, figure out where on the rect the cursor is by now.
+        // (for simplicity, we assume the screen hasn't been resized)
+        let pointer_on_picking_rect = pointer_in_pixel - gpu_picking_result.rect.min.as_vec2();
+        // The cursor might have moved outside of the rect. Clamp it back in.
+        let pointer_on_picking_rect = pointer_on_picking_rect.clamp(
+            glam::Vec2::ZERO,
+            (gpu_picking_result.rect.extent - glam::UVec2::ONE).as_vec2(),
+        );
+
+        // Find closest non-zero pixel to the cursor.
+        let mut picked_id = re_renderer::PickingLayerId::default();
+        let mut picked_on_picking_rect = glam::Vec2::ZERO;
+        let mut closest_rect_distance_sq = f32::INFINITY;
+
+        for (i, id) in gpu_picking_result.picking_id_data.iter().enumerate() {
+            if id.object.0 != 0 {
+                let current_pos_on_picking_rect = glam::uvec2(
+                    i as u32 % gpu_picking_result.rect.extent.x,
+                    i as u32 / gpu_picking_result.rect.extent.x,
+                )
+                .as_vec2()
+                    + glam::vec2(0.5, 0.5); // Use pixel center for distances.
+                let distance_sq =
+                    current_pos_on_picking_rect.distance_squared(pointer_on_picking_rect);
+                if distance_sq < closest_rect_distance_sq {
+                    picked_on_picking_rect = current_pos_on_picking_rect;
+                    closest_rect_distance_sq = distance_sq;
+                    picked_id = *id;
+                }
+            }
+        }
+
+        let new_result = if picked_id == re_renderer::PickingLayerId::default() {
+            // Nothing found.
+            None
+        } else {
+            Some(instance_path_hash_from_picking_layer_id(picked_id))
+        };
+
+        *last_gpu_picking_result = new_result;
+        new_result
+    } else {
+        // It is possible that some frames we don't get a picking result and the frame after we get several.
+        // We need to cache the last picking result and use it until we get a new one or the mouse leaves the screen.
+        // (Andreas: On my mac this *actually* happens in very simple scenes, I get occasional frames with 0 and then with 2 picking results!)
+        *last_gpu_picking_result
+    }
+}
+
+// TODO: again this is verbatim copy pasted from re_space_view_spatial. we should make this a util.
+#[inline]
+pub fn instance_path_hash_from_picking_layer_id(
+    value: re_renderer::PickingLayerId,
+) -> InstancePathHash {
+    InstancePathHash {
+        entity_path_hash: EntityPathHash::from_u64(value.object.0),
+        // `PickingLayerId` uses `u64::MAX` to mean "hover and/or select all instances".
+        instance: if value.instance.0 == u64::MAX {
+            Instance::ALL
+        } else {
+            Instance::from(value.instance.0)
+        },
+    }
+}

@@ -34,6 +34,7 @@ re_viewport_blueprint.workspace = true
 
 ahash.workspace = true
 egui.workspace = true
+glam.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 walkers = "0.26.0"             # TODO(#7876): move to workspace
