@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configures how a selected tensor slice is shown on screen.
@@ -52,6 +52,30 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
             "rerun.blueprint.components.TensorViewFitIndicator".into(),
             "rerun.blueprint.components.ViewFit".into(),
         ]
+    });
+
+static REQUIRED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
+
+static RECOMMENDED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
+
+static OPTIONAL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("TensorViewFit".into()),
+            component_name: "rerun.blueprint.components.ViewFit".into(),
+            archetype_field_name: Some("scaling".into()),
+        }]
+    });
+
+static ALL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("TensorViewFit".into()),
+            component_name: "rerun.blueprint.components.ViewFit".into(),
+            archetype_field_name: Some("scaling".into()),
+        }]
     });
 
 impl TensorViewFit {
@@ -99,6 +123,26 @@ impl ::re_types_core::Archetype for TensorViewFit {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
+    }
+
+    #[inline]
+    fn required_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        REQUIRED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn recommended_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        RECOMMENDED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn optional_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        OPTIONAL_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn all_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        ALL_COMPONENT_DESCRIPTORS.as_slice().into()
     }
 
     #[inline]

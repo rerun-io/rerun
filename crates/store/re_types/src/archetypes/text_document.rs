@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A text element intended to be displayed in its own text box.
@@ -132,6 +132,43 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
+static REQUIRED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("TextDocument".into()),
+            component_name: "rerun.components.Text".into(),
+            archetype_field_name: Some("text".into()),
+        }]
+    });
+
+static RECOMMENDED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
+
+static OPTIONAL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("TextDocument".into()),
+            component_name: "rerun.components.MediaType".into(),
+            archetype_field_name: Some("media_type".into()),
+        }]
+    });
+
+static ALL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("TextDocument".into()),
+                component_name: "rerun.components.Text".into(),
+                archetype_field_name: Some("text".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("TextDocument".into()),
+                component_name: "rerun.components.MediaType".into(),
+                archetype_field_name: Some("media_type".into()),
+            },
+        ]
+    });
+
 impl TextDocument {
     /// The total number of components in the archetype: 1 required, 1 recommended, 1 optional
     pub const NUM_COMPONENTS: usize = 3usize;
@@ -177,6 +214,26 @@ impl ::re_types_core::Archetype for TextDocument {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
+    }
+
+    #[inline]
+    fn required_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        REQUIRED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn recommended_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        RECOMMENDED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn optional_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        OPTIONAL_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn all_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        ALL_COMPONENT_DESCRIPTORS.as_slice().into()
     }
 
     #[inline]

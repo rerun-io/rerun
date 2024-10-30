@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: One or more transforms between the current entity and its parent. Unlike [`archetypes::Transform3D`][crate::archetypes::Transform3D], it is *not* propagated in the transform hierarchy.
@@ -157,6 +157,74 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
         ]
     });
 
+static REQUIRED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
+
+static RECOMMENDED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
+
+static OPTIONAL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("InstancePoses3D".into()),
+                component_name: "rerun.components.PoseTranslation3D".into(),
+                archetype_field_name: Some("translations".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("InstancePoses3D".into()),
+                component_name: "rerun.components.PoseRotationAxisAngle".into(),
+                archetype_field_name: Some("rotation_axis_angles".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("InstancePoses3D".into()),
+                component_name: "rerun.components.PoseRotationQuat".into(),
+                archetype_field_name: Some("quaternions".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("InstancePoses3D".into()),
+                component_name: "rerun.components.PoseScale3D".into(),
+                archetype_field_name: Some("scales".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("InstancePoses3D".into()),
+                component_name: "rerun.components.PoseTransformMat3x3".into(),
+                archetype_field_name: Some("mat3x3".into()),
+            },
+        ]
+    });
+
+static ALL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("InstancePoses3D".into()),
+                component_name: "rerun.components.PoseTranslation3D".into(),
+                archetype_field_name: Some("translations".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("InstancePoses3D".into()),
+                component_name: "rerun.components.PoseRotationAxisAngle".into(),
+                archetype_field_name: Some("rotation_axis_angles".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("InstancePoses3D".into()),
+                component_name: "rerun.components.PoseRotationQuat".into(),
+                archetype_field_name: Some("quaternions".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("InstancePoses3D".into()),
+                component_name: "rerun.components.PoseScale3D".into(),
+                archetype_field_name: Some("scales".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("InstancePoses3D".into()),
+                component_name: "rerun.components.PoseTransformMat3x3".into(),
+                archetype_field_name: Some("mat3x3".into()),
+            },
+        ]
+    });
+
 impl InstancePoses3D {
     /// The total number of components in the archetype: 0 required, 1 recommended, 5 optional
     pub const NUM_COMPONENTS: usize = 6usize;
@@ -202,6 +270,26 @@ impl ::re_types_core::Archetype for InstancePoses3D {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
+    }
+
+    #[inline]
+    fn required_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        REQUIRED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn recommended_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        RECOMMENDED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn optional_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        OPTIONAL_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn all_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        ALL_COMPONENT_DESCRIPTORS.as_slice().into()
     }
 
     #[inline]

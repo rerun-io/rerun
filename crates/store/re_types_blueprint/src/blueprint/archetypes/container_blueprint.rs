@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The description of a container.
@@ -124,6 +124,105 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 9usize]> =
         ]
     });
 
+static REQUIRED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("ContainerBlueprint".into()),
+            component_name: "rerun.blueprint.components.ContainerKind".into(),
+            archetype_field_name: Some("container_kind".into()),
+        }]
+    });
+
+static RECOMMENDED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
+
+static OPTIONAL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("ContainerBlueprint".into()),
+                component_name: "rerun.components.Name".into(),
+                archetype_field_name: Some("display_name".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.IncludedContent".into(),
+                archetype_field_name: Some("contents".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.ColumnShare".into(),
+                archetype_field_name: Some("col_shares".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.RowShare".into(),
+                archetype_field_name: Some("row_shares".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.ActiveTab".into(),
+                archetype_field_name: Some("active_tab".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.Visible".into(),
+                archetype_field_name: Some("visible".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.GridColumns".into(),
+                archetype_field_name: Some("grid_columns".into()),
+            },
+        ]
+    });
+
+static ALL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 8usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.ContainerKind".into(),
+                archetype_field_name: Some("container_kind".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("ContainerBlueprint".into()),
+                component_name: "rerun.components.Name".into(),
+                archetype_field_name: Some("display_name".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.IncludedContent".into(),
+                archetype_field_name: Some("contents".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.ColumnShare".into(),
+                archetype_field_name: Some("col_shares".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.RowShare".into(),
+                archetype_field_name: Some("row_shares".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.ActiveTab".into(),
+                archetype_field_name: Some("active_tab".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.Visible".into(),
+                archetype_field_name: Some("visible".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("ContainerBlueprint".into()),
+                component_name: "rerun.blueprint.components.GridColumns".into(),
+                archetype_field_name: Some("grid_columns".into()),
+            },
+        ]
+    });
+
 impl ContainerBlueprint {
     /// The total number of components in the archetype: 1 required, 1 recommended, 7 optional
     pub const NUM_COMPONENTS: usize = 9usize;
@@ -170,6 +269,26 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
+    }
+
+    #[inline]
+    fn required_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        REQUIRED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn recommended_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        RECOMMENDED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn optional_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        OPTIONAL_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn all_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        ALL_COMPONENT_DESCRIPTORS.as_slice().into()
     }
 
     #[inline]

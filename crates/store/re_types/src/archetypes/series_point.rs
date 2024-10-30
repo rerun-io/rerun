@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Define the style properties for a point series in a chart.
@@ -133,6 +133,64 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
         ]
     });
 
+static REQUIRED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
+
+static RECOMMENDED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
+
+static OPTIONAL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("SeriesPoint".into()),
+                component_name: "rerun.components.Color".into(),
+                archetype_field_name: Some("color".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("SeriesPoint".into()),
+                component_name: "rerun.components.MarkerShape".into(),
+                archetype_field_name: Some("marker".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("SeriesPoint".into()),
+                component_name: "rerun.components.Name".into(),
+                archetype_field_name: Some("name".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("SeriesPoint".into()),
+                component_name: "rerun.components.MarkerSize".into(),
+                archetype_field_name: Some("marker_size".into()),
+            },
+        ]
+    });
+
+static ALL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("SeriesPoint".into()),
+                component_name: "rerun.components.Color".into(),
+                archetype_field_name: Some("color".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("SeriesPoint".into()),
+                component_name: "rerun.components.MarkerShape".into(),
+                archetype_field_name: Some("marker".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("SeriesPoint".into()),
+                component_name: "rerun.components.Name".into(),
+                archetype_field_name: Some("name".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("SeriesPoint".into()),
+                component_name: "rerun.components.MarkerSize".into(),
+                archetype_field_name: Some("marker_size".into()),
+            },
+        ]
+    });
+
 impl SeriesPoint {
     /// The total number of components in the archetype: 0 required, 1 recommended, 4 optional
     pub const NUM_COMPONENTS: usize = 5usize;
@@ -178,6 +236,26 @@ impl ::re_types_core::Archetype for SeriesPoint {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
+    }
+
+    #[inline]
+    fn required_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        REQUIRED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn recommended_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        RECOMMENDED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn optional_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        OPTIONAL_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn all_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        ALL_COMPONENT_DESCRIPTORS.as_slice().into()
     }
 
     #[inline]

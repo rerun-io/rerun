@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configures how tensor scalars are mapped to color.
@@ -82,6 +82,54 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
         ]
     });
 
+static REQUIRED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
+
+static RECOMMENDED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
+
+static OPTIONAL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("TensorScalarMapping".into()),
+                component_name: "rerun.components.MagnificationFilter".into(),
+                archetype_field_name: Some("mag_filter".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("TensorScalarMapping".into()),
+                component_name: "rerun.components.Colormap".into(),
+                archetype_field_name: Some("colormap".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("TensorScalarMapping".into()),
+                component_name: "rerun.components.GammaCorrection".into(),
+                archetype_field_name: Some("gamma".into()),
+            },
+        ]
+    });
+
+static ALL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("TensorScalarMapping".into()),
+                component_name: "rerun.components.MagnificationFilter".into(),
+                archetype_field_name: Some("mag_filter".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("TensorScalarMapping".into()),
+                component_name: "rerun.components.Colormap".into(),
+                archetype_field_name: Some("colormap".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("TensorScalarMapping".into()),
+                component_name: "rerun.components.GammaCorrection".into(),
+                archetype_field_name: Some("gamma".into()),
+            },
+        ]
+    });
+
 impl TensorScalarMapping {
     /// The total number of components in the archetype: 0 required, 1 recommended, 3 optional
     pub const NUM_COMPONENTS: usize = 4usize;
@@ -128,6 +176,26 @@ impl ::re_types_core::Archetype for TensorScalarMapping {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
+    }
+
+    #[inline]
+    fn required_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        REQUIRED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn recommended_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        RECOMMENDED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn optional_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        OPTIONAL_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn all_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        ALL_COMPONENT_DESCRIPTORS.as_slice().into()
     }
 
     #[inline]

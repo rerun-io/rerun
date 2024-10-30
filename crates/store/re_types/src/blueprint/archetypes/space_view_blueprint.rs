@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The description of a single view.
@@ -88,6 +88,65 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
         ]
     });
 
+static REQUIRED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("SpaceViewBlueprint".into()),
+            component_name: "rerun.blueprint.components.SpaceViewClass".into(),
+            archetype_field_name: Some("class_identifier".into()),
+        }]
+    });
+
+static RECOMMENDED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
+
+static OPTIONAL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("SpaceViewBlueprint".into()),
+                component_name: "rerun.components.Name".into(),
+                archetype_field_name: Some("display_name".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("SpaceViewBlueprint".into()),
+                component_name: "rerun.blueprint.components.SpaceViewOrigin".into(),
+                archetype_field_name: Some("space_origin".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("SpaceViewBlueprint".into()),
+                component_name: "rerun.blueprint.components.Visible".into(),
+                archetype_field_name: Some("visible".into()),
+            },
+        ]
+    });
+
+static ALL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("SpaceViewBlueprint".into()),
+                component_name: "rerun.blueprint.components.SpaceViewClass".into(),
+                archetype_field_name: Some("class_identifier".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("SpaceViewBlueprint".into()),
+                component_name: "rerun.components.Name".into(),
+                archetype_field_name: Some("display_name".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("SpaceViewBlueprint".into()),
+                component_name: "rerun.blueprint.components.SpaceViewOrigin".into(),
+                archetype_field_name: Some("space_origin".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("SpaceViewBlueprint".into()),
+                component_name: "rerun.blueprint.components.Visible".into(),
+                archetype_field_name: Some("visible".into()),
+            },
+        ]
+    });
+
 impl SpaceViewBlueprint {
     /// The total number of components in the archetype: 1 required, 1 recommended, 3 optional
     pub const NUM_COMPONENTS: usize = 5usize;
@@ -134,6 +193,26 @@ impl ::re_types_core::Archetype for SpaceViewBlueprint {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
+    }
+
+    #[inline]
+    fn required_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        REQUIRED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn recommended_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        RECOMMENDED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn optional_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        OPTIONAL_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn all_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        ALL_COMPONENT_DESCRIPTORS.as_slice().into()
     }
 
     #[inline]

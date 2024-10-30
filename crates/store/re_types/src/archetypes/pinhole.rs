@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Camera perspective projection (a.k.a. intrinsics).
@@ -184,6 +184,66 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
         ]
     });
 
+static REQUIRED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("Pinhole".into()),
+            component_name: "rerun.components.PinholeProjection".into(),
+            archetype_field_name: Some("image_from_camera".into()),
+        }]
+    });
+
+static RECOMMENDED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("Pinhole".into()),
+            component_name: "rerun.components.Resolution".into(),
+            archetype_field_name: Some("resolution".into()),
+        }]
+    });
+
+static OPTIONAL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("Pinhole".into()),
+                component_name: "rerun.components.ViewCoordinates".into(),
+                archetype_field_name: Some("camera_xyz".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Pinhole".into()),
+                component_name: "rerun.components.ImagePlaneDistance".into(),
+                archetype_field_name: Some("image_plane_distance".into()),
+            },
+        ]
+    });
+
+static ALL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("Pinhole".into()),
+                component_name: "rerun.components.PinholeProjection".into(),
+                archetype_field_name: Some("image_from_camera".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Pinhole".into()),
+                component_name: "rerun.components.Resolution".into(),
+                archetype_field_name: Some("resolution".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Pinhole".into()),
+                component_name: "rerun.components.ViewCoordinates".into(),
+                archetype_field_name: Some("camera_xyz".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("Pinhole".into()),
+                component_name: "rerun.components.ImagePlaneDistance".into(),
+                archetype_field_name: Some("image_plane_distance".into()),
+            },
+        ]
+    });
+
 impl Pinhole {
     /// The total number of components in the archetype: 1 required, 2 recommended, 2 optional
     pub const NUM_COMPONENTS: usize = 5usize;
@@ -229,6 +289,26 @@ impl ::re_types_core::Archetype for Pinhole {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
+    }
+
+    #[inline]
+    fn required_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        REQUIRED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn recommended_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        RECOMMENDED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn optional_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        OPTIONAL_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn all_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        ALL_COMPONENT_DESCRIPTORS.as_slice().into()
     }
 
     #[inline]

@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A depth image, i.e. as captured by a depth camera.
@@ -174,6 +174,97 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 8usize]> =
         ]
     });
 
+static REQUIRED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("DepthImage".into()),
+                component_name: "rerun.components.ImageBuffer".into(),
+                archetype_field_name: Some("buffer".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("DepthImage".into()),
+                component_name: "rerun.components.ImageFormat".into(),
+                archetype_field_name: Some("format".into()),
+            },
+        ]
+    });
+
+static RECOMMENDED_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
+    once_cell::sync::Lazy::new(|| []);
+
+static OPTIONAL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("DepthImage".into()),
+                component_name: "rerun.components.DepthMeter".into(),
+                archetype_field_name: Some("meter".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("DepthImage".into()),
+                component_name: "rerun.components.Colormap".into(),
+                archetype_field_name: Some("colormap".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("DepthImage".into()),
+                component_name: "rerun.components.ValueRange".into(),
+                archetype_field_name: Some("depth_range".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("DepthImage".into()),
+                component_name: "rerun.components.FillRatio".into(),
+                archetype_field_name: Some("point_fill_ratio".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("DepthImage".into()),
+                component_name: "rerun.components.DrawOrder".into(),
+                archetype_field_name: Some("draw_order".into()),
+            },
+        ]
+    });
+
+static ALL_COMPONENT_DESCRIPTORS: once_cell::sync::Lazy<[ComponentDescriptor; 7usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            ComponentDescriptor {
+                archetype_name: Some("DepthImage".into()),
+                component_name: "rerun.components.ImageBuffer".into(),
+                archetype_field_name: Some("buffer".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("DepthImage".into()),
+                component_name: "rerun.components.ImageFormat".into(),
+                archetype_field_name: Some("format".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("DepthImage".into()),
+                component_name: "rerun.components.DepthMeter".into(),
+                archetype_field_name: Some("meter".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("DepthImage".into()),
+                component_name: "rerun.components.Colormap".into(),
+                archetype_field_name: Some("colormap".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("DepthImage".into()),
+                component_name: "rerun.components.ValueRange".into(),
+                archetype_field_name: Some("depth_range".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("DepthImage".into()),
+                component_name: "rerun.components.FillRatio".into(),
+                archetype_field_name: Some("point_fill_ratio".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("DepthImage".into()),
+                component_name: "rerun.components.DrawOrder".into(),
+                archetype_field_name: Some("draw_order".into()),
+            },
+        ]
+    });
+
 impl DepthImage {
     /// The total number of components in the archetype: 2 required, 1 recommended, 5 optional
     pub const NUM_COMPONENTS: usize = 8usize;
@@ -219,6 +310,26 @@ impl ::re_types_core::Archetype for DepthImage {
     #[inline]
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
+    }
+
+    #[inline]
+    fn required_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        REQUIRED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn recommended_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        RECOMMENDED_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn optional_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        OPTIONAL_COMPONENT_DESCRIPTORS.as_slice().into()
+    }
+
+    #[inline]
+    fn all_component_descriptors() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        ALL_COMPONENT_DESCRIPTORS.as_slice().into()
     }
 
     #[inline]
