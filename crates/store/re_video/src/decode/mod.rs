@@ -214,7 +214,17 @@ pub type FrameContent = webcodecs::WebVideoFrame;
 /// Meta information about a decoded video frame, as reported by the decoder.
 #[derive(Debug, Clone)]
 pub struct FrameInfo {
+    /// The presentation timestamp of the frame.
+    ///
+    /// Decoders are required to report this.
+    /// A timestamp of [`Time::MAX`] indicates that the frame is invalid or not yet available.
     pub presentation_timestamp: Time,
+
+    /// How long the frame is valid.
+    ///
+    /// Decoders are required to report this.
+    /// A duration of [`Time::MAX`] indicates that the frame is invalid or not yet available.
+    // Implementation note: unlike with presentation timestamp we may be able fine with making this optional.
     pub duration: Time,
 }
 
