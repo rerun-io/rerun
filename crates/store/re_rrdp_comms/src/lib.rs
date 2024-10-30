@@ -163,6 +163,8 @@ async fn stream_recording_async(
         .map_err(TonicStatusError)?
         .into_inner();
 
+    drop(client);
+
     // TODO(jleibs): Does this come from RDP?
     let store_id = StoreId::from_string(StoreKind::Recording, recording_id.clone());
 
