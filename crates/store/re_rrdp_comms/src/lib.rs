@@ -1,5 +1,11 @@
 //! Communications with an RRDP GRPC server.
 
+mod address;
+
+pub use address::{Address, InvalidAddressError};
+
+// ----------------------------------------------------------------------------
+
 use std::{error::Error, str::FromStr};
 
 use re_chunk::Chunk;
@@ -12,64 +18,6 @@ use re_remote_store_types::{
         storage_node_client::StorageNodeClient, EncoderVersion, FetchRecordingRequest, RecordingId,
     },
 };
-
-// ----------------------------------------------------------------------------
-
-/// The given url is not a valid Rerun storage node URL.
-#[derive(thiserror::Error, Debug)]
-#[error("URL {url:?} should follow rrdp://addr:port/recording/12721")]
-pub struct InvalidAddressError {
-    url: String,
-    msg: String,
-}
-
-/// Parsed `rrdp://addr:port/recording/12721`
-struct Address {
-    addr_port: String,
-    recording_id: String,
-}
-
-impl std::str::FromStr for Address {
-    type Err = InvalidAddressError;
-
-    fn from_str(url: &str) -> Result<Self, Self::Err> {
-        let Some(stripped_url) = url.strip_prefix("rrdp://") else {
-            return Err(InvalidAddressError {
-                url: url.to_owned(),
-                msg: "Missing rrdp://".to_owned(),
-            });
-        };
-
-        let parts = stripped_url.split('/').collect::<Vec<_>>();
-        if parts.len() < 3 {
-            return Err(InvalidAddressError {
-                url: url.to_owned(),
-                msg: "Too few slashes".to_owned(),
-            });
-        }
-        if parts.len() > 3 {
-            return Err(InvalidAddressError {
-                url: url.to_owned(),
-                msg: "Too many slashes".to_owned(),
-            });
-        }
-
-        if parts[1] != "recording" {
-            return Err(InvalidAddressError {
-                url: url.to_owned(),
-                msg: "Not a recording".to_owned(),
-            });
-        }
-
-        let addr_port = parts[0].to_owned();
-        let recording_id = parts[2].to_owned();
-
-        Ok(Self {
-            addr_port,
-            recording_id,
-        })
-    }
-}
 
 // ----------------------------------------------------------------------------
 
@@ -177,6 +125,10 @@ async fn stream_recording_async(
         addr_port,
         recording_id,
     } = address;
+
+    if addr_port.starts_with("0.0.0.0:") {
+        re_log::warn!("Attempting to connect to IP 0.0.0.0. This will often fail. You likely you want connect to 127.0.0.1 instead.");
+    }
 
     let http_addr = format!("http://{addr_port}");
     re_log::debug!("Connecting to {http_addr}…");
