@@ -80,15 +80,15 @@ impl GeoSpan {
 pub struct PickedInstance {
     pub instance_path: InstancePath,
 
-    /// Keep track of the mouse distance from the object's center, so we can arbitrate.
-    pixel_distance: f32,
+    /// Keep track of the mouse distance from the object's center in ui points, so we can arbitrate.
+    ui_point_distance: f32,
 }
 
 /// Update a picked instance with another one if it's closer.
 pub fn update_picked_instance(first: &mut Option<PickedInstance>, second: Option<PickedInstance>) {
     if let Some(second) = second {
         if let Some(first) = first {
-            if second.pixel_distance < first.pixel_distance {
+            if second.ui_point_distance < first.ui_point_distance {
                 *first = second;
             }
         } else {

@@ -219,11 +219,12 @@ Displays geospatial primitives on a map.
             let mut picked_instance = None;
 
             let some_tiles_manager: Option<&mut dyn Tiles> = Some(tiles);
-            let map_response = ui.add(
+            let mut map_response = ui.add(
                 Map::new(some_tiles_manager, map_memory, default_center_position).with_plugin(
                     geo_points_visualizer.plugin(ctx, query.space_view_id, &mut picked_instance),
                 ),
             );
+            let map_rect = map_response.rect;
 
             if let Some(picked_instance) = picked_instance {
                 map_response = map_response.on_hover_ui_at_pointer(|ui| {
@@ -268,7 +269,6 @@ Displays geospatial primitives on a map.
                 }
             }
 
-            let map_rect = map_response.rect;
             map_overlays::zoom_buttons_overlay(ui, &map_rect, map_memory);
             map_overlays::acknowledgement_overlay(ui, &map_rect, &tiles.attribution());
         });

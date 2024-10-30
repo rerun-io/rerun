@@ -19,7 +19,7 @@ struct GeoPointEntry {
     /// Position.
     position: walkers::Position,
 
-    /// Display radius in pixels
+    /// Display radius in ui points
     //TODO(#7872): support for radius in meter
     radius: f32,
 
@@ -229,6 +229,8 @@ impl walkers::Plugin for GeoPointsPlugin<'_> {
         response: &egui::Response,
         projector: &walkers::Projector,
     ) {
+        re_tracing::profile_function!();
+
         let painter = ui.painter();
 
         // let's avoid computing that twice
@@ -251,13 +253,13 @@ impl walkers::Plugin for GeoPointsPlugin<'_> {
             .zip(projected_position.iter())
         {
             if let Some(hover_position) = hover_position {
-                let pixel_distance = hover_position.distance(*position);
-                if pixel_distance < entry.radius {
+                let ui_point_distance = hover_position.distance(*position);
+                if ui_point_distance < entry.radius {
                     update_picked_instance(
                         self.picked_instance,
                         Some(PickedInstance {
                             instance_path: entry.instance_path.clone(),
-                            pixel_distance,
+                            ui_point_distance,
                         }),
                     );
                 }

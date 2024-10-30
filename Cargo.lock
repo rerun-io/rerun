@@ -6197,6 +6197,7 @@ dependencies = [
  "re_query",
  "re_renderer",
  "re_space_view",
+ "re_tracing",
  "re_types",
  "re_ui",
  "re_viewer_context",
