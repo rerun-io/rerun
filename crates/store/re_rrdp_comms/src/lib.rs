@@ -1,33 +1,27 @@
 //! Communications with an RRDP GRPC server.
 
-use std::str::FromStr;
+use std::{error::Error, str::FromStr};
 
-use anyhow::Context as _;
 use re_chunk::Chunk;
 use re_log_types::{
     ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
 };
 use re_remote_store_types::{
-    codec::decode,
+    codec::{decode, CodecError},
     v0::{
         storage_node_client::StorageNodeClient, EncoderVersion, FetchRecordingRequest, RecordingId,
     },
 };
 
-#[derive(thiserror::Error, Debug)]
-pub enum Error {
-    #[error(transparent)]
-    InvalidAddressError(#[from] InvalidAddressError),
-}
+// ----------------------------------------------------------------------------
 
+/// The given url is not a valid Rerun storage node URL.
 #[derive(thiserror::Error, Debug)]
 #[error("URL {url:?} should follow rrdp://addr:port/recording/12721")]
 pub struct InvalidAddressError {
     url: String,
     msg: String,
 }
-
-type Result<T = (), E = Error> = std::result::Result<T, E>;
 
 /// Parsed `rrdp://addr:port/recording/12721`
 struct Address {
@@ -77,13 +71,64 @@ impl std::str::FromStr for Address {
     }
 }
 
+// ----------------------------------------------------------------------------
+
+/// Wrapper with a nicer error message
+#[derive(Debug)]
+struct TonicStatusError(tonic::Status);
+
+impl std::fmt::Display for TonicStatusError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let status = &self.0;
+        write!(f, "gRPC error, status: '{}'", status.code())?;
+        if !status.message().is_empty() {
+            write!(f, ", message: {:?}", status.message())?;
+        }
+        if !status.details().is_empty() {
+            write!(f, ", details: {:?}", status.details())?;
+        }
+        if !status.metadata().is_empty() {
+            write!(f, ", metadata: {:?}", status.metadata())?;
+        }
+        Ok(())
+    }
+}
+
+impl Error for TonicStatusError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        self.0.source()
+    }
+}
+
+#[derive(thiserror::Error, Debug)]
+enum StreamError {
+    /// Native connection error
+    #[cfg(not(target_arch = "wasm32"))]
+    #[error(transparent)]
+    Transport(#[from] tonic::transport::Error),
+
+    #[error(transparent)]
+    TonicStatus(#[from] TonicStatusError),
+
+    #[error("Missing TransportChunk")]
+    MissingTransportChunk,
+
+    #[error(transparent)]
+    CodecError(#[from] CodecError),
+
+    #[error(transparent)]
+    ChunkError(#[from] re_chunk::ChunkError),
+}
+
+// ----------------------------------------------------------------------------
+
 /// Stream an rrd file from an RRDP server.
 ///
 /// `on_msg` can be used to wake up the UI thread on Wasm.
 pub fn stream_recording(
     url: String,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-) -> Result<re_smart_channel::Receiver<LogMsg>> {
+) -> Result<re_smart_channel::Receiver<LogMsg>, InvalidAddressError> {
     re_log::debug!("Loading {url}…");
 
     let address = Address::from_str(&url)?;
@@ -96,8 +141,8 @@ pub fn stream_recording(
     spawn_future(async move {
         if let Err(err) = stream_recording_async(tx, address, on_msg).await {
             re_log::warn!(
-                "Failed to fetch whole recording from {url}: {}",
-                re_error::format(err)
+                "Error while streaming {url}: {}",
+                re_error::format_ref(&err)
             );
         }
     });
@@ -125,7 +170,7 @@ async fn stream_recording_async(
     tx: re_smart_channel::Sender<LogMsg>,
     address: Address,
     on_msg: Option<Box<dyn Fn() + Send + Sync>>,
-) -> anyhow::Result<()> {
+) -> Result<(), StreamError> {
     use tokio_stream::StreamExt as _;
 
     let Address {
@@ -163,7 +208,7 @@ async fn stream_recording_async(
             }),
         })
         .await
-        .context("fetch_recording failed")?
+        .map_err(TonicStatusError)?
         .into_inner();
 
     // TODO(jleibs): Does this come from RDP?
@@ -192,21 +237,18 @@ async fn stream_recording_async(
     }
 
     re_log::info!("Starting to read...");
-    while let Some(batch) = resp.next().await {
-        let raw = batch.context("Bad batch")?;
-        let tc = decode(EncoderVersion::V0, &raw.payload).context("Failed to parse payload")?;
+    while let Some(result) = resp.next().await {
+        let response = result.map_err(TonicStatusError)?;
+        let tc = decode(EncoderVersion::V0, &response.payload)?;
 
         let Some(tc) = tc else {
-            anyhow::bail!("No TransportChunk in the payload");
+            return Err(StreamError::MissingTransportChunk);
         };
 
-        let chunk = Chunk::from_transport(&tc).context("Bad Chunk")?;
+        let chunk = Chunk::from_transport(&tc)?;
 
         if tx
-            .send(LogMsg::ArrowMsg(
-                store_id.clone(),
-                chunk.to_arrow_msg().context("to_arrow_msg")?,
-            ))
+            .send(LogMsg::ArrowMsg(store_id.clone(), chunk.to_arrow_msg()?))
             .is_err()
         {
             re_log::debug!("Receiver disconnected");

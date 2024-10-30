@@ -6049,7 +6049,6 @@ dependencies = [
 name = "re_rrdp_comms"
 version = "0.20.0-alpha.1+dev"
 dependencies = [
- "anyhow",
  "re_chunk",
  "re_error",
  "re_log",
