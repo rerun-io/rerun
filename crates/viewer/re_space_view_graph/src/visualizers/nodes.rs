@@ -1,6 +1,6 @@
 use re_chunk::LatestAtQuery;
 use re_log_types::EntityPath;
-use re_query::{clamped_zip_1x3, range_zip_1x4};
+use re_query::{clamped_zip_1x3, range_zip_1x3};
 use re_space_view::{DataResultQuery, RangeResultsExt};
 use re_types::components::Color;
 use re_types::{
@@ -56,22 +56,16 @@ impl VisualizerSystem for NodeVisualizer {
             let all_colors = results.iter_as(query.timeline, components::Color::name());
             let all_positions = results.iter_as(query.timeline, components::Position2D::name());
             let all_labels = results.iter_as(query.timeline, components::Text::name());
-            let all_show_labels = results.iter_as(query.timeline, components::ShowLabels::name());
+            let show_labels =  results.get_mono::<components::ShowLabels>().map_or(true, bool::from);
 
-            let data = range_zip_1x4(
+            let data = range_zip_1x3(
                 all_indexed_nodes.component::<components::GraphNode>(),
                 all_colors.component::<components::Color>(),
                 all_positions.primitive_array::<2, f32>(),
                 all_labels.string(),
-                all_show_labels.component::<components::ShowLabels>(),
             );
 
-            for (_index, nodes, colors, positions, labels, show_labels) in data {
-                let show_labels = show_labels
-                    .unwrap_or_default()
-                    .first()
-                    .copied()
-                    .map_or(true, bool::from);
+            for (_index, nodes, colors, positions, labels) in data {
 
                 let nodes = clamped_zip_1x3(
                     nodes.iter(),
