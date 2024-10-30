@@ -25,3 +25,8 @@ You can learn more about Rerun's application model and the different servers and
 `re_query::Caches` has been renamed `re_query::QueryCache`, and similarly for `re_query::CacheKey`.
 
 Note that this doesn't affect `re_dataframe`, where this type was already re-exported as `QueryCache`.
+
+## ❗ Deprecations
+
+Support for Python 3.8 is being deprecated. Python 3.8 is past end-of-life. See: https://devguide.python.org/versions/
+In the next release, we will fully drop support and switch to Python 3.9 as the minimum supported version.
