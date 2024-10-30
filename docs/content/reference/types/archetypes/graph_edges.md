@@ -22,3 +22,29 @@ By default, edges are undirected.
  * 🐍 [Python API docs for `GraphEdges`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.GraphEdges)
  * 🦀 [Rust API docs for `GraphEdges`](https://docs.rs/rerun/latest/rerun/archetypes/struct.GraphEdges.html?speculative-link)
 
+## Examples
+
+### Simple undirected graph
+
+snippet: archetypes/graph_undirected
+
+<picture data-inline-viewer="snippets/graph_undirected">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1200w.png">
+  <img src="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/full.png">
+</picture>
+
+### Simple directed graph
+
+snippet: archetypes/graph_directed
+
+<picture data-inline-viewer="snippets/graph_directed">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/1200w.png">
+  <img src="https://static.rerun.io/point3d_simple/32fb3e9b65bea8bd7ffff95ad839f2f8a157a933/full.png">
+</picture>
+

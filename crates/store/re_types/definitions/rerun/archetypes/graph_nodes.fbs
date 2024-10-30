@@ -2,7 +2,12 @@ namespace rerun.archetypes;
 
 // ---
 
+// TODO(ab): Add images to snippets.
+
 /// A list of nodes in a graph with optional labels, colors, etc.
+///
+/// \example archetypes/graph_undirected !api title="Simple undirected graph" image=""
+/// \example archetypes/graph_directed !api title="Simple directed graph" image=""
 table GraphNodes (
   "attr.docs.category": "Graph",
   "attr.docs.unreleased",

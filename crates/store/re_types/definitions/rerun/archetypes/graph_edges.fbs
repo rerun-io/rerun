@@ -2,9 +2,14 @@ namespace rerun.archetypes;
 
 // ---
 
+// TODO(ab): Add images to snippets.
+
 /// A list of edges in a graph.
 ///
 /// By default, edges are undirected.
+///
+/// \example archetypes/graph_undirected !api title="Simple undirected graph" image=""
+/// \example archetypes/graph_directed !api title="Simple directed graph" image=""
 table GraphEdges (
   "attr.docs.category": "Graph",
   "attr.docs.unreleased",

@@ -23,6 +23,7 @@ mod encoded_image;
 mod encoded_image_ext;
 mod geo_points;
 mod graph_edges;
+mod graph_edges_ext;
 mod graph_nodes;
 mod image;
 mod image_ext;
