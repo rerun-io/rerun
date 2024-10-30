@@ -1,18 +1,33 @@
-use re_log_types::EntityPath;
 use re_types::components::GraphNode;
 use re_viewer_context::{HoverHighlight, InteractionHighlight, SelectionHighlight};
 
 use crate::types::NodeInstance;
 
-pub fn draw_dummy(ui: &mut egui::Ui, entity_path: &EntityPath, node: &GraphNode) -> egui::Response {
-    let text = egui::RichText::new(format!(
-        "{} @ {}",
-        node.as_str(),
-        entity_path
-    ))
-    .color(ui.style().visuals.widgets.noninteractive.text_color());
-    ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-    ui.add(egui::Button::new(text))
+fn draw_circle_node(
+    ui: &mut egui::Ui,
+    fill_color: egui::Color32,
+    stroke: egui::Stroke,
+) -> egui::Response {
+    egui::Frame::default()
+        .show(ui, |ui| {
+            let r = 4.0;
+            ui.add(|ui: &mut egui::Ui| {
+                let (rect, response) =
+                    ui.allocate_at_least(egui::Vec2::new(2.0 * r, 2.0 * r), egui::Sense::drag()); // Frame size
+                ui.painter().circle(rect.center(), r, fill_color, stroke);
+                response
+            })
+        })
+        .response
+}
+
+pub fn draw_dummy(ui: &mut egui::Ui, node: &GraphNode) -> egui::Response {
+    draw_circle_node(
+        ui,
+        ui.style().visuals.gray_out(ui.style().visuals.text_color()),
+        egui::Stroke::NONE,
+    )
+    .on_hover_text(format!("Implicit Node: `{}`", node.as_str(),))
 }
 
 pub fn draw_node(
@@ -52,23 +67,11 @@ pub fn draw_node(
             })
             .response
     } else {
-        egui::Frame::default()
-            .show(ui, |ui| {
-                let r = 4.0;
-                ui.add(|ui: &mut egui::Ui| {
-                    let (rect, response) = ui
-                        .allocate_at_least(egui::Vec2::new(2.0 * r, 2.0 * r), egui::Sense::drag()); // Frame size
-                    ui.painter().circle(
-                        rect.center(),
-                        // pos + egui::Vec2::new(r, r),
-                        r,
-                        instance.color.unwrap_or(ui.style().visuals.text_color()),
-                        hcolor.map_or(egui::Stroke::NONE, |c| egui::Stroke::new(2.0, c)),
-                    );
-                    response
-                })
-            })
-            .response
+        draw_circle_node(
+            ui,
+            instance.color.unwrap_or(ui.style().visuals.text_color()),
+            hcolor.map_or(egui::Stroke::NONE, |c| egui::Stroke::new(2.0, c)),
+        )
     }
     .on_hover_text(format!("Node: `{}`", instance.node.as_str(),))
 }

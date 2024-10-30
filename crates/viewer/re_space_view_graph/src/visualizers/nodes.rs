@@ -2,15 +2,14 @@ use re_chunk::LatestAtQuery;
 use re_log_types::EntityPath;
 use re_query::{clamped_zip_1x3, range_zip_1x3};
 use re_space_view::{DataResultQuery, RangeResultsExt};
-use re_types::components::Color;
+use re_types::components::{Color, ShowLabels};
 use re_types::{
     self, archetypes,
     components::{self},
     ArrowString, Loggable as _,
 };
 use re_viewer_context::{
-    self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext, ViewContextCollection,
-    ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
+    self, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem
 };
 
 use crate::graph::NodeIndex;
@@ -109,4 +108,10 @@ impl VisualizerSystem for NodeVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(NodeVisualizer => []);
+impl TypedComponentFallbackProvider<ShowLabels> for NodeVisualizer {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> ShowLabels {
+        true.into()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(NodeVisualizer => [ShowLabels]);

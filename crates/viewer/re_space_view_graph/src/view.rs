@@ -1,6 +1,6 @@
 use std::collections::{BTreeSet, HashSet};
 
-use egui::{self, Rect};
+use egui::{self, Rect, Vec2};
 
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
@@ -181,8 +181,6 @@ impl SpaceViewClass for GraphSpaceView {
             let mut entity_offset = egui::Vec2::ZERO;
 
             for entity in entities {
-                let ent_highlight = query.highlights.entity_highlight(entity.hash());
-
                 // We keep track of the size of the current entity.
                 let mut entity_rect = egui::Rect::NOTHING;
                 if let Some(data) = node_data.get(entity) {
@@ -191,14 +189,14 @@ impl SpaceViewClass for GraphSpaceView {
                         let current = state.layout.entry(node.index).or_insert(
                             node.position
                                 .map_or(egui::Rect::ZERO.translate(entity_offset), |p| {
-                                    Rect::from_center_size(p.into(), egui::Vec2::ZERO)
+                                    Rect::from_center_size(p, egui::Vec2::ZERO)
                                 }),
                         );
 
                         let response = scene.node(current.min + entity_offset, |ui| {
                             ui::draw_node(
                                 ui,
-                                &node,
+                                node,
                                 Default::default(), // TODO(grtlr): we currently don't have any highlighting
                             )
                         });
@@ -211,21 +209,25 @@ impl SpaceViewClass for GraphSpaceView {
                 }
 
                 if let Some(data) = edge_data.get(entity) {
-                    let unknown_nodes = data
+                    // An implicit node is a node that is not explicitly specified in the `GraphNodes` archetype.
+                    let implicit_nodes = data
                         .edges
                         .iter()
                         .flat_map(|e| e.nodes())
                         .filter(|n| !seen.contains(&NodeIndex::from_entity_node(entity, n)))
                         .collect::<Vec<_>>();
 
-                    for node in unknown_nodes {
+                    // TODO(grtlr): The following logic is quite hacky, because we have to place the implicit nodes somewhere.
+                    let mut current_implicit_offset = Vec2::new(entity_rect.min.x, entity_rect.height() + 40.0);
+                    for node in implicit_nodes {
                         let ix = NodeIndex::from_entity_node(entity, node);
                         seen.insert(ix);
-                        let current = state.layout.entry(ix).or_insert(Rect::ZERO);
+                        let current = state.layout.entry(ix).or_insert(egui::Rect::ZERO.translate(entity_offset).translate(current_implicit_offset));
                         let response =
-                            scene.node(current.min, |ui| ui::draw_dummy(ui, entity, node));
-                        *current = response.rect;
-                        entity_rect = entity_rect.union(response.rect);
+                            scene.node(current.min, |ui| ui::draw_dummy(ui, node));
+                        *current = response.rect.translate(-entity_offset);
+                        // entity_rect = entity_rect.union(response.rect);
+                        current_implicit_offset.x +=  10.0;
                     }
 
                     for edge in &data.edges {

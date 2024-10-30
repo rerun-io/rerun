@@ -1,5 +1,5 @@
 mod edges;
 mod nodes;
 
-pub use edges::{EdgeData, EdgesVisualizer};
-pub use nodes::{NodeData, NodeVisualizer};
+pub use edges::EdgesVisualizer;
+pub use nodes::NodeVisualizer;
