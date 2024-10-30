@@ -45,9 +45,9 @@ pub fn draw_node(
             .show(ui, |ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 if let Some(color) = instance.color {
-                    ui.add(egui::Button::new(text.color(color)));
+                    ui.add(egui::Label::new(text.color(color)));
                 } else {
-                    ui.add(egui::Button::new(text));
+                    ui.add(egui::Label::new(text));
                 }
             })
             .response

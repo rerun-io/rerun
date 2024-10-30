@@ -25,7 +25,7 @@ pub struct EdgeData {
 
 impl IdentifiedViewSystem for EdgesVisualizer {
     fn identifier() -> ViewSystemIdentifier {
-        "GraphEdgesDirected".into()
+        "GraphEdges".into()
     }
 }
 
