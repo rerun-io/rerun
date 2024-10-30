@@ -390,7 +390,7 @@ cpp-build-all-shared-libs = { cmd = "cmake --build build/debug --config Debug --
   "cpp-prepare-shared-libs",
 ] }
 cpp-clean = "rm -rf build CMakeCache.txt CMakeFiles"
-cpp-build-tests = { cmd = "cmake --build build/debug --config Release --target rerun_sdk_tests", depends_on = [
+cpp-build-tests = { cmd = "cmake --build build/debug --config Debug --target rerun_sdk_tests", depends_on = [
   "cpp-prepare",
 ] }
 cpp-build-roundtrips = { cmd = "cmake --build build/debug --config Debug --target roundtrips", depends_on = [
