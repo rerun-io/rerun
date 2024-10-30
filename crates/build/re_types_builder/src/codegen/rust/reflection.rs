@@ -142,8 +142,8 @@ fn generate_component_reflection(
         let quoted_reflection = quote! {
             ComponentReflection {
                 docstring_md: #docstring_md,
-
                 custom_placeholder: #custom_placeholder,
+                datatype: #type_name::arrow_datatype(),
             }
         };
         quoted_pairs.push(quote! { (#quoted_name, #quoted_reflection) });
