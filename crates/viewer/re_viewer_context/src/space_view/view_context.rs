@@ -3,7 +3,7 @@ use std::sync::Arc;
 use re_chunk::ArrowArray;
 use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, TimePoint};
-use re_query::StorageEngineArcReadGuard;
+use re_query::StorageEngineReadGuard;
 use re_types::{AsComponents, ComponentBatch, ComponentName};
 
 use crate::{DataQueryResult, DataResult, QueryContext, SpaceViewId};
@@ -48,7 +48,7 @@ impl<'a> ViewContext<'a> {
 
     /// The `StorageEngine` for the active recording.
     #[inline]
-    pub fn recording_engine(&self) -> StorageEngineArcReadGuard {
+    pub fn recording_engine(&self) -> StorageEngineReadGuard<'_> {
         self.viewer_ctx.recording_engine()
     }
 

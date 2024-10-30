@@ -13,7 +13,8 @@ use re_log_types::{
     SetStoreInfo, StoreId, StoreInfo, StoreKind, Timeline,
 };
 use re_query::{
-    QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineWriteGuard,
+    QueryCache, QueryCacheHandle, StorageEngine, StorageEngineArcReadGuard, StorageEngineReadGuard,
+    StorageEngineWriteGuard,
 };
 
 use crate::{Error, TimesPerTimeline};
@@ -111,13 +112,19 @@ impl EntityDb {
     }
 
     /// Returns a read-only guard to the backing [`StorageEngine`].
+    #[inline]
+    pub fn storage_engine(&self) -> StorageEngineReadGuard<'_> {
+        self.storage_engine.read()
+    }
+
+    /// Returns a read-only guard to the backing [`StorageEngine`].
     ///
     /// That guard can be cloned at will and has a static lifetime.
     ///
     /// It is not possible to insert any more data in this [`EntityDb`] until the returned guard,
     /// and any clones, have been dropped.
     #[inline]
-    pub fn storage_engine(&self) -> StorageEngineArcReadGuard {
+    pub fn storage_engine_arc(&self) -> StorageEngineArcReadGuard {
         self.storage_engine.read_arc()
     }
 
@@ -667,7 +674,7 @@ impl EntityDb {
     /// This excludes temporal data.
     pub fn subtree_stats_static(
         &self,
-        engine: &StorageEngineArcReadGuard,
+        engine: &StorageEngineReadGuard<'_>,
         entity_path: &EntityPath,
     ) -> ChunkStoreChunkStats {
         re_tracing::profile_function!();
@@ -689,7 +696,7 @@ impl EntityDb {
     /// This excludes static data.
     pub fn subtree_stats_on_timeline(
         &self,
-        engine: &StorageEngineArcReadGuard,
+        engine: &StorageEngineReadGuard<'_>,
         entity_path: &EntityPath,
         timeline: &Timeline,
     ) -> ChunkStoreChunkStats {
@@ -712,7 +719,7 @@ impl EntityDb {
     /// This includes static data.
     pub fn subtree_has_data_on_timeline(
         &self,
-        engine: &StorageEngineArcReadGuard,
+        engine: &StorageEngineReadGuard<'_>,
         timeline: &Timeline,
         entity_path: &EntityPath,
     ) -> bool {
@@ -734,7 +741,7 @@ impl EntityDb {
     /// This ignores static data.
     pub fn subtree_has_temporal_data_on_timeline(
         &self,
-        engine: &StorageEngineArcReadGuard,
+        engine: &StorageEngineReadGuard<'_>,
         timeline: &Timeline,
         entity_path: &EntityPath,
     ) -> bool {
