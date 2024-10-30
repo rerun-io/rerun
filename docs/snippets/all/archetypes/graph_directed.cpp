@@ -1,9 +1,9 @@
-//! Log a simple undirected graph.
+//! Log a simple directed graph.
 
 #include <rerun.hpp>
 
 int main() {
-    const auto rec = rerun::RecordingStream("rerun_example_graph_undirected");
+    const auto rec = rerun::RecordingStream("rerun_example_graph_directed");
     rec.spawn().exit_on_failure();
 
     rec.log(
@@ -22,7 +22,6 @@ int main() {
     rec.log(
         "simple",
         rerun::GraphEdges({edge_1, edge_2, edge_3})
-            // Optional: graphs are undirected by default.
-            .with_graph_type(rerun::components::GraphType::Undirected)
+            .with_graph_type(rerun::components::GraphType::Directed)
     );
 }
