@@ -313,6 +313,7 @@ fn read_ffmpeg_output(
                     info: super::FrameInfo {
                         presentation_timestamp: frame_info.presentation_timestamp,
                         duration: frame_info.duration,
+                        latest_decode_timestamp: Some(frame_info.decode_timestamp),
                     },
                 }));
             }

@@ -249,6 +249,11 @@ pub struct FrameInfo {
     /// A duration of [`Time::MAX`] indicates that the frame is invalid or not yet available.
     // Implementation note: unlike with presentation timestamp we may be able fine with making this optional.
     pub duration: Time,
+
+    /// The decode timestamp of the last chunk that was needed to decode this frame.
+    ///
+    /// None indicates that the information is not available.
+    pub latest_decode_timestamp: Option<Time>,
 }
 
 impl Default for FrameInfo {
@@ -256,6 +261,7 @@ impl Default for FrameInfo {
         Self {
             presentation_timestamp: Time::MAX,
             duration: Time::MAX,
+            latest_decode_timestamp: None,
         }
     }
 }

@@ -237,6 +237,7 @@ fn output_picture(
         info: FrameInfo {
             presentation_timestamp: Time(picture.timestamp().unwrap_or(0)),
             duration: Time(picture.duration()),
+            ..Default::default()
         },
     };
     on_output(Ok(frame));

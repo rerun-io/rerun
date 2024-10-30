@@ -195,10 +195,18 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, timescale: re_video:
     .on_hover_text("Time range in which this frame is valid.");
 
     ui.list_item_flat_noninteractive(
-        PropertyContent::new("PTS").value_text(format!("{}", frame_info.presentation_timestamp.0)),
+        PropertyContent::new("PTS").value_text(frame_info.presentation_timestamp.0.to_string()),
     )
     .on_hover_text("Raw presentation timestamp prior to applying the timescale.\n\
                     This specifies the time at which the frame should be shown relative to the start of a video stream.");
+
+    if let Some(dts) = frame_info.latest_decode_timestamp {
+        ui.list_item_flat_noninteractive(
+            PropertyContent::new("DTS").value_text(dts.0.to_string()),
+        )
+        .on_hover_text("Raw decode timestamp prior to applying the timescale.\n\
+                        If a frame is made up of multiple chunks, this is the last decode timestamp that was needed to decode the frame.");
+    }
 }
 
 fn source_image_data_format_ui(ui: &mut egui::Ui, format: &SourceImageDataFormat) {
