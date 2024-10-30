@@ -176,22 +176,25 @@ impl<'a> ViewerContext<'a> {
         &self,
         component: re_chunk::ComponentName,
     ) -> Box<dyn re_chunk::ArrowArray> {
-        self.reflection.components.get(&component).and_then(|info| info.custom_placeholder.as_ref()).cloned()
+        let datatype = if let Some(reflection) = self.reflection.components.get(&component) {
+            // It's a builtin type with reflection. We either have custom place holder, or can rely on the known datatype.
+            if let Some(placeholder) = reflection.custom_placeholder.as_ref() {
+                return placeholder.clone();
+            }
+            &reflection.datatype
+        } else {
+            self.recording_store()
+                .lookup_datatype(&component)
+                .or_else(|| self.blueprint_store().lookup_datatype(&component))
+                .unwrap_or_else(|| {
+                    re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
+                    &re_chunk::external::arrow2::datatypes::DataType::Null
+                })
+        };
 
-        .unwrap_or_else(||
-            {
-                // TODO(andreas): Is this operation common enough to cache the result? If so, here or in the reflection data?
-                // The nice thing about this would be that we could always give out references (but updating said cache wouldn't be easy in that case).
-        let datatype = self
-        .recording_store()
-        .lookup_datatype(&component)
-        .or_else(|| self.blueprint_store().lookup_datatype(&component))
-        .unwrap_or_else(|| {
-            re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
-            &re_chunk::external::arrow2::datatypes::DataType::Null
-        });
-            re_types::reflection::generic_placeholder_for_datatype(datatype)
-    })
+        // TODO(andreas): Is this operation common enough to cache the result? If so, here or in the reflection data?
+        // The nice thing about this would be that we could always give out references (but updating said cache wouldn't be easy in that case).
+        re_types::reflection::generic_placeholder_for_datatype(datatype)
     }
 }
 
