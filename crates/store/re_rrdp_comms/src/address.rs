@@ -1,12 +1,12 @@
 /// The given url is not a valid Rerun storage node URL.
 #[derive(thiserror::Error, Debug)]
-#[error("URL {url:?} should follow rrdp://addr:port/recording/12721")]
+#[error("URL {url:?} should follow rrdp://addr:port/recording/12345")]
 pub struct InvalidAddressError {
     url: String,
     msg: String,
 }
 
-/// Parsed `rrdp://addr:port/recording/12721`
+/// Parsed `rrdp://addr:port/recording/12345`
 pub struct Address {
     pub addr_port: String,
     pub recording_id: String,
