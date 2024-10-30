@@ -138,7 +138,7 @@ async fn stream_recording_async(
         let tonic_client = tonic_web_wasm_client::Client::new_with_options(
             http_addr,
             tonic_web_wasm_client::options::FetchOptions::new()
-                .mode(tonic_web_wasm_client::options::Mode::Cors), // TODO: is this needed?
+                .mode(tonic_web_wasm_client::options::Mode::Cors), // I'm not 100% sure this is needed, but it felt right.
         );
 
         #[cfg(not(target_arch = "wasm32"))]
