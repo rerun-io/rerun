@@ -170,7 +170,7 @@ fn copy_web_video_frame_to_texture(
         height: frame.display_height(),
         depth_or_array_layers: 1,
     };
-    let frame: &web_sys::VideoFrame = &frame;
+    let frame: &web_sys::VideoFrame = frame;
 
     let source = {
         // TODO(jan): The wgpu version we're using doesn't support `VideoFrame` yet.
