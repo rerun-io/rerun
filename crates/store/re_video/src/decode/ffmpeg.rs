@@ -46,10 +46,10 @@ impl From<Error> for super::Error {
 }
 
 /// ffmpeg does not tell us the timestamp/duration of a given frame, so we need to remember it.
-struct FrameInfo {
-    decode_timestamp: Time,
+struct PendingFrameInfo {
     presentation_timestamp: Time,
     duration: Time,
+    decode_timestamp: Time,
 }
 
 /// Decode H.264 video via ffmpeg over CLI
@@ -58,8 +58,8 @@ pub struct FfmpegCliH264Decoder {
     ffmpeg_stdin: std::process::ChildStdin,
 
     /// For sending frame timestamps to the decoder thread
-    frame_info_tx: Sender<FrameInfo>,
-    frame_info_rx: Receiver<FrameInfo>,
+    frame_info_tx: Sender<PendingFrameInfo>,
+    frame_info_rx: Receiver<PendingFrameInfo>,
 
     avcc: re_mp4::Avc1Box,
 
@@ -92,7 +92,7 @@ impl FfmpegCliH264Decoder {
 
 fn start_ffmpeg_process(
     on_output: Arc<OutputCallback>,
-    frame_info_rx: Receiver<FrameInfo>,
+    frame_info_rx: Receiver<PendingFrameInfo>,
 ) -> Result<std::process::ChildStdin, Error> {
     let mut ffmpeg = {
         re_tracing::profile_scope!("spawn-ffmpeg");
@@ -141,7 +141,7 @@ fn start_ffmpeg_process(
 
 fn read_ffmpeg_output(
     ffmpeg_iterator: ffmpeg_sidecar::iter::FfmpegIterator,
-    frame_info_rx: &Receiver<FrameInfo>,
+    frame_info_rx: &Receiver<PendingFrameInfo>,
     on_output: &OutputCallback,
 ) {
     /// Ignore some common output from ffmpeg:
@@ -304,12 +304,16 @@ fn read_ffmpeg_output(
                 debug_assert_eq!(width as usize * height as usize * 3, data.len());
 
                 on_output(Ok(super::Frame {
-                    width,
-                    height,
-                    data,
-                    format: crate::PixelFormat::Rgb8Unorm,
-                    presentation_timestamp: frame_info.presentation_timestamp,
-                    duration: frame_info.duration,
+                    content: super::FrameContent {
+                        data,
+                        width,
+                        height,
+                        format: crate::PixelFormat::Rgb8Unorm,
+                    },
+                    info: super::FrameInfo {
+                        presentation_timestamp: frame_info.presentation_timestamp,
+                        duration: frame_info.duration,
+                    },
                 }));
             }
 
@@ -332,7 +336,7 @@ impl AsyncDecoder for FfmpegCliH264Decoder {
         // We send the information about this chunk first.
         // This assumes each sample/chunk will result in exactly one frame.
         // If this assumption is not held, we will get weird errors, like videos playing to slowly.
-        let frame_info = FrameInfo {
+        let frame_info = PendingFrameInfo {
             presentation_timestamp: chunk.presentation_timestamp,
             decode_timestamp: chunk.decode_timestamp,
             duration: chunk.duration,

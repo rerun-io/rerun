@@ -91,14 +91,6 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
 ///
 /// Any [`Loggable`] with a [`Loggable::Name`] set to [`ComponentName`] automatically implements
 /// [`Component`].
-///
-/// All built-in components should implement the [`Default`] trait, so that the Viewer has a placeholder
-/// value that it can display for ui editors in absence of a value.
-/// In absence of an obvious default value, they should be implemented such that they are versatile
-/// and informative for the user when using the viewer.
-///
-/// This is not enforced via a trait bound, since it's only necessary for components known to the Rerun Viewer.
-/// It is not a hard requirement for custom components that are only used on the SDK side.
 pub trait Component: Loggable<Name = ComponentName> {}
 
 impl<L: Loggable<Name = ComponentName>> Component for L {}

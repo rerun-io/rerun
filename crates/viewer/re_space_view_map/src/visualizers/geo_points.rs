@@ -149,15 +149,16 @@ struct GeoPointsPlugin<'a> {
 
 impl walkers::Plugin for GeoPointsPlugin<'_> {
     fn run(
-        &mut self,
+        self: Box<Self>,
+        ui: &mut egui::Ui,
         _response: &egui::Response,
-        painter: egui::Painter,
         projector: &walkers::Projector,
     ) {
         for entry in self.map_entries {
             // Project it into the position on the screen.
             let position = projector.project(entry.position).to_pos2();
-            painter.circle_filled(position, entry.radius, entry.color);
+            ui.painter()
+                .circle_filled(position, entry.radius, entry.color);
         }
     }
 }

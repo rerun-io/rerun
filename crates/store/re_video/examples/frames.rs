@@ -86,6 +86,8 @@ fn main() {
                 .truncate(true)
                 .open(output_dir.join(format!("{i:0width$}.ppm")))
                 .expect("failed to oformatpen file");
+
+            let frame = &frame.content;
             match frame.format {
                 re_video::PixelFormat::Rgb8Unorm => {
                     write_ppm_rgb24(&mut file, frame.width, frame.height, &frame.data);

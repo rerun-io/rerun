@@ -1,12 +1,15 @@
-use std::{ops::Range, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
 use web_time::Instant;
 
-use re_video::{decode::DecodeHardwareAcceleration, Time};
+use re_video::{
+    decode::{DecodeHardwareAcceleration, FrameInfo},
+    Time,
+};
 
 use super::{chunk_decoder::VideoChunkDecoder, VideoFrameTexture};
 use crate::{
-    resource_managers::GpuTexture2D,
+    resource_managers::{GpuTexture2D, SourceImageDataFormat},
     video::VideoPlayerError,
     wgpu_resources::{GpuTexturePool, TextureDesc},
     RenderContext,
@@ -38,9 +41,8 @@ impl TimedDecodingError {
 /// A texture of a specific video frame.
 pub struct VideoTexture {
     pub texture: GpuTexture2D,
-
-    /// What part of the video this video frame covers.
-    pub time_range: Range<Time>,
+    pub frame_info: FrameInfo,
+    pub source_pixel_format: SourceImageDataFormat,
 }
 
 /// Decode video to a texture, optimized for extracting successive frames over time.
@@ -99,7 +101,10 @@ impl VideoPlayer {
 
             video_texture: VideoTexture {
                 texture,
-                time_range: Time::MAX..Time::MAX,
+                frame_info: FrameInfo::default(),
+                source_pixel_format: SourceImageDataFormat::WgpuCompatible(
+                    wgpu::TextureFormat::Rgba8Unorm,
+                ),
             },
 
             current_gop_idx: usize::MAX,
@@ -132,7 +137,8 @@ impl VideoPlayer {
             Ok(()) => {
                 let is_active_frame = self
                     .video_texture
-                    .time_range
+                    .frame_info
+                    .time_range()
                     .contains(&presentation_timestamp);
 
                 let is_pending = !is_active_frame;
@@ -142,16 +148,17 @@ impl VideoPlayer {
                     // benign errors like DecodingError::NegativeTimestamp.
                     // If we don't do this, we see the last valid texture which can look really weird.
                     clear_texture(render_ctx, &self.video_texture.texture);
-                    self.video_texture.time_range = Time::MAX..Time::MAX;
+                    self.video_texture.frame_info = FrameInfo::default();
                 }
 
-                let show_spinner = if presentation_timestamp < self.video_texture.time_range.start {
+                let time_range = self.video_texture.frame_info.time_range();
+                let show_spinner = if presentation_timestamp < time_range.start {
                     // We're seeking backwards and somehow forgot to reset.
                     true
-                } else if presentation_timestamp < self.video_texture.time_range.end {
+                } else if presentation_timestamp < time_range.end {
                     false // it is an active frame
                 } else {
-                    let how_outdated = presentation_timestamp - self.video_texture.time_range.end;
+                    let how_outdated = presentation_timestamp - time_range.end;
                     if how_outdated.into_secs(self.data.timescale)
                         < DECODING_GRACE_DELAY.as_secs_f64()
                     {
@@ -163,9 +170,10 @@ impl VideoPlayer {
 
                 Ok(VideoFrameTexture {
                     texture: self.video_texture.texture.clone(),
-                    time_range: self.video_texture.time_range.clone(),
                     is_pending,
                     show_spinner,
+                    frame_info: self.video_texture.frame_info.clone(),
+                    source_pixel_format: self.video_texture.source_pixel_format,
                 })
             }
 

@@ -6,8 +6,8 @@ use crate::Time;
 use dav1d::{PixelLayout, PlanarImageComponent};
 
 use super::{
-    async_decoder_wrapper::SyncDecoder, Chunk, Error, Frame, OutputCallback, PixelFormat, Result,
-    YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
+    async_decoder_wrapper::SyncDecoder, Chunk, Error, Frame, FrameContent, FrameInfo,
+    OutputCallback, PixelFormat, Result, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
 };
 
 pub struct SyncDav1dDecoder {
@@ -228,12 +228,16 @@ fn output_picture(
     };
 
     let frame = Frame {
-        data,
-        width: picture.width(),
-        height: picture.height(),
-        format,
-        presentation_timestamp: Time(picture.timestamp().unwrap_or(0)),
-        duration: Time(picture.duration()),
+        content: FrameContent {
+            data,
+            width: picture.width(),
+            height: picture.height(),
+            format,
+        },
+        info: FrameInfo {
+            presentation_timestamp: Time(picture.timestamp().unwrap_or(0)),
+            duration: Time(picture.duration()),
+        },
     };
     on_output(Ok(frame));
 }

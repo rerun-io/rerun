@@ -2,11 +2,12 @@
 
 use std::sync::Arc;
 
-use re_video::{Chunk, Frame, Time};
+use re_video::{decode::FrameContent, Chunk, Frame, Time};
 
 use parking_lot::Mutex;
 
 use crate::{
+    resource_managers::SourceImageDataFormat,
     video::{
         player::{latest_at_idx, TimedDecodingError, VideoTexture},
         VideoPlayerError,
@@ -46,7 +47,7 @@ impl VideoChunkDecoder {
             let decoder_output = decoder_output.clone();
             move |frame: re_video::decode::Result<Frame>| match frame {
                 Ok(frame) => {
-                    re_log::trace!("Decoded frame at {:?}", frame.presentation_timestamp);
+                    re_log::trace!("Decoded frame at {:?}", frame.info.presentation_timestamp);
                     let mut output = decoder_output.lock();
                     output.frames.push(frame);
                     output.error = None; // We successfully decoded a frame, reset the error state.
@@ -99,7 +100,7 @@ impl VideoChunkDecoder {
 
         let Some(frame_idx) = latest_at_idx(
             frames,
-            |frame| frame.presentation_timestamp,
+            |frame| frame.info.presentation_timestamp,
             &presentation_timestamp,
         ) else {
             return Err(VideoPlayerError::EmptyBuffer);
@@ -113,18 +114,29 @@ impl VideoChunkDecoder {
         let frame_idx = 0;
         let frame = &frames[frame_idx];
 
-        let frame_time_range =
-            frame.presentation_timestamp..frame.presentation_timestamp + frame.duration;
+        let frame_time_range = frame.info.time_range();
 
         if frame_time_range.contains(&presentation_timestamp)
-            && video_texture.time_range != frame_time_range
+            && video_texture.frame_info.time_range() != frame_time_range
         {
             #[cfg(target_arch = "wasm32")]
-            copy_web_video_frame_to_texture(render_ctx, frame, &video_texture.texture)?;
+            {
+                video_texture.source_pixel_format = copy_web_video_frame_to_texture(
+                    render_ctx,
+                    &frame.content,
+                    &video_texture.texture,
+                )?;
+            }
             #[cfg(not(target_arch = "wasm32"))]
-            copy_native_video_frame_to_texture(render_ctx, frame, &video_texture.texture)?;
+            {
+                video_texture.source_pixel_format = copy_native_video_frame_to_texture(
+                    render_ctx,
+                    &frame.content,
+                    &video_texture.texture,
+                )?;
+            }
 
-            video_texture.time_range = frame_time_range;
+            video_texture.frame_info = frame.info.clone();
         }
 
         Ok(())
@@ -150,15 +162,15 @@ impl VideoChunkDecoder {
 #[cfg(target_arch = "wasm32")]
 fn copy_web_video_frame_to_texture(
     ctx: &RenderContext,
-    frame: &Frame,
+    frame: &FrameContent,
     target_texture: &GpuTexture,
-) -> Result<(), VideoPlayerError> {
+) -> Result<SourceImageDataFormat, VideoPlayerError> {
     let size = wgpu::Extent3d {
-        width: frame.data.display_width(),
-        height: frame.data.display_height(),
+        width: frame.display_width(),
+        height: frame.display_height(),
         depth_or_array_layers: 1,
     };
-    let frame: &web_sys::VideoFrame = &frame.data;
+    let frame: &web_sys::VideoFrame = frame;
 
     let source = {
         // TODO(jan): The wgpu version we're using doesn't support `VideoFrame` yet.
@@ -204,15 +216,17 @@ fn copy_web_video_frame_to_texture(
     ctx.queue
         .copy_external_image_to_texture(&source, dest, size);
 
-    Ok(())
+    Ok(SourceImageDataFormat::WgpuCompatible(
+        target_texture.creation_desc.format,
+    ))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 fn copy_native_video_frame_to_texture(
     ctx: &RenderContext,
-    frame: &Frame,
+    frame: &FrameContent,
     target_texture: &GpuTexture,
-) -> Result<(), VideoPlayerError> {
+) -> Result<SourceImageDataFormat, VideoPlayerError> {
     use crate::resource_managers::{
         transfer_image_data_to_texture, ImageDataDesc, SourceImageDataFormat,
         YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
@@ -223,7 +237,7 @@ fn copy_native_video_frame_to_texture(
             // TODO(andreas): `ImageDataDesc` should have RGB handling!
             return copy_native_video_frame_to_texture(
                 ctx,
-                &Frame {
+                &FrameContent {
                     data: crate::pad_rgb_to_rgba(&frame.data, 255_u8),
                     format: re_video::PixelFormat::Rgba8Unorm,
                     ..*frame
@@ -283,5 +297,5 @@ fn copy_native_video_frame_to_texture(
         target_texture,
     )?;
 
-    Ok(())
+    Ok(format)
 }
