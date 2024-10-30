@@ -6186,13 +6186,18 @@ dependencies = [
 name = "re_space_view_map"
 version = "0.20.0-alpha.1+dev"
 dependencies = [
+ "ahash",
  "egui",
  "itertools 0.13.0",
+ "nohash-hasher",
+ "re_data_ui",
+ "re_entity_db",
  "re_log",
  "re_log_types",
  "re_query",
  "re_renderer",
  "re_space_view",
+ "re_tracing",
  "re_types",
  "re_ui",
  "re_viewer_context",
