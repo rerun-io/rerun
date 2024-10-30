@@ -94,6 +94,7 @@ impl<C: Component> AsComponents for C {
 mod archetype;
 mod arrow_buffer;
 mod arrow_string;
+mod component_descriptor;
 mod loggable;
 mod loggable_batch;
 pub mod reflection;
@@ -109,6 +110,7 @@ pub use self::{
     },
     arrow_buffer::ArrowBuffer,
     arrow_string::ArrowString,
+    component_descriptor::ComponentDescriptor,
     loggable::{Component, ComponentName, ComponentNameSet, DatatypeName, Loggable},
     loggable_batch::{ComponentBatch, LoggableBatch, MaybeOwnedComponentBatch},
     result::{

@@ -176,6 +176,13 @@ impl ArchetypeName {
     }
 }
 
+impl crate::SizeBytes for ArchetypeName {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+}
+
 // ---
 
 /// A generic [indicator component] that can be specialized for any [`Archetype`].
