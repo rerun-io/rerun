@@ -37,4 +37,5 @@ egui.workspace = true
 glam.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
+re_math.workspace = true
 walkers = "0.26.0"             # TODO(#7876): move to workspace

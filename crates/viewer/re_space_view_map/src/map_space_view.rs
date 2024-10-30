@@ -297,31 +297,28 @@ Displays geospatial primitives on a map.
         let resolution_in_pixel =
             gpu_bridge::viewport_resolution_in_pixels(map_rect, ui.ctx().pixels_per_point());
 
-        let pixels_from_ui_points = re_renderer::RectTransform {
-            region: re_renderer::RectF32 {
-                min: glam::Vec2::ZERO,
-                extent: glam::vec2(resolution_in_pixel[0] as _, resolution_in_pixel[1] as _),
-            },
-            region_of_interest: re_renderer::RectF32 {
-                min: glam::vec2(map_rect.min.x, map_rect.min.y),
-                extent: glam::vec2(map_rect.width(), map_rect.height()),
-            },
-        };
-
         let mut view_builder = re_renderer::ViewBuilder::new(
             // TODO: make this a util
             render_ctx,
             re_renderer::view_builder::TargetConfiguration {
                 name: "MapView".into(),
                 resolution_in_pixel,
-                view_from_world: Default::default(),
+
+                // Camera looking at a ui coordinate world.
+                view_from_world: re_math::IsoTransform::from_translation(-glam::vec3(
+                    map_rect.left(),
+                    map_rect.top(),
+                    0.0,
+                )),
                 projection_from_view: re_renderer::view_builder::Projection::Orthographic {
                     camera_mode:
                         re_renderer::view_builder::OrthographicCameraMode::TopLeftCornerAndExtendZ,
-                    vertical_world_size: resolution_in_pixel[1] as f32,
-                    far_plane_distance: 1000.0,
+                    vertical_world_size: map_rect.height(),
+                    far_plane_distance: 100.0,
                 },
-                viewport_transformation: pixels_from_ui_points,
+                // No transform after view/projection needed.
+                viewport_transformation: re_renderer::RectTransform::IDENTITY,
+
                 pixels_per_point: ui.ctx().pixels_per_point(),
                 //outline_config: query
                 //    .highlights

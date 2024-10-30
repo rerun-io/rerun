@@ -375,8 +375,8 @@ impl ViewBuilder {
                 ..
             } => {
                 glam::vec2(
-                    vertical_world_size,
                     vertical_world_size * resolution.x / resolution.y,
+                    vertical_world_size,
                 ) / resolution
             }
         };
