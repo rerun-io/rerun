@@ -226,7 +226,7 @@ Displays geospatial primitives on a map.
             );
 
             if let Some(picked_instance) = picked_instance {
-                map_response.clone().on_hover_ui_at_pointer(|ui| {
+                map_response = map_response.on_hover_ui_at_pointer(|ui| {
                     list_item::list_item_scope(ui, "map_hover", |ui| {
                         item_ui::instance_path_button(
                             ctx,
