@@ -185,7 +185,6 @@ pub fn new_decoder(
 
         #[cfg(with_ffmpeg)]
         re_mp4::StsdBoxContent::Avc1(avc1_box) => {
-            // TODO: check if we have ffmpeg ONCE, and remember
             re_log::trace!("Decoding H.264…");
             Ok(Box::new(ffmpeg::FfmpegCliH264Decoder::new(
                 debug_name.to_owned(),

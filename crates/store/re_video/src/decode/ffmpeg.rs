@@ -73,6 +73,7 @@ struct FfmpegProcessAndListener {
 
     /// For sending frame timestamps to the ffmpeg listener thread.
     frame_info_tx: Sender<FfmpegFrameInfo>,
+
     /// For sending chunks to the ffmpeg write thread.
     frame_data_tx: Sender<FfmpegFrameData>,
 
@@ -89,7 +90,6 @@ impl FfmpegProcessAndListener {
         re_tracing::profile_function!();
 
         let mut ffmpeg = FfmpegCommand::new()
-            .hide_banner()
             // "Reduce the latency introduced by buffering during initial input streams analysis."
             //.arg("-fflags nobuffer")
             //
@@ -335,15 +335,12 @@ fn read_ffmpeg_output(
             }
 
             FfmpegEvent::OutputFrame(frame) => {
-                // DTS <= PTS
-                // chunk sorted by DTS
-
-                // Frames come in in PTS order, but "frame info" comes in in DTS order!
+                // Frames come in PTS order, but "frame info" comes in DTS order!
                 //
                 // Whenever the highest known DTS is behind the PTS, we need to wait until the DTS catches up.
                 // Otherwise, we'd assign the wrong PTS to the frame that just came in.
                 //
-                // Example how how presentation timestamps and decode timestamps
+                // Example how presentation timestamps and decode timestamps
                 // can play out in the presence of B-frames to illustrate this:
                 //    PTS: 1 4 2 3
                 //    DTS: 1 2 3 4
@@ -416,8 +413,26 @@ fn read_ffmpeg_output(
                 return;
             }
 
-            // TODO: handle all events
-            event => re_log::debug!("{debug_name} event: {event:?}"),
+            FfmpegEvent::ParsedVersion(ffmpeg_version) => {
+                re_log::debug_once!("ffmpeg version is: {}", ffmpeg_version.version);
+            }
+
+            FfmpegEvent::ParsedConfiguration(ffmpeg_configuration) => {
+                re_log::debug_once!(
+                    "ffmpeg configuration: {:?}",
+                    ffmpeg_configuration.configuration
+                );
+            }
+
+            FfmpegEvent::ParsedDuration(ffmpeg_duration) => {
+                re_log::debug!("ffmpeg duration: {:?}", ffmpeg_duration);
+            }
+
+            FfmpegEvent::OutputChunk(_) => {
+                // Something went seriously wrong if we end up here.
+                re_log::error!("Unexpected ffmpeg output chunk for {debug_name}");
+                return;
+            }
         }
     }
 }

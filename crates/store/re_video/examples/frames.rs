@@ -96,7 +96,7 @@ fn main() {
                     write_ppm_rgba32(&mut file, frame.width, frame.height, &frame.data);
                 }
                 re_video::PixelFormat::Yuv { .. } => {
-                    re_log::error_once!("YUV frame writing is not not supported");
+                    re_log::error_once!("YUV frame writing is not supported");
                 }
             }
         }
