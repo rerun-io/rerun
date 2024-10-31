@@ -341,7 +341,7 @@ impl ChunkStoreHandle {
 impl ChunkStoreHandle {
     #[inline]
     pub fn read(&self) -> parking_lot::RwLockReadGuard<'_, ChunkStore> {
-        self.0.read()
+        self.0.read_recursive()
     }
 
     #[inline]
@@ -351,7 +351,7 @@ impl ChunkStoreHandle {
 
     #[inline]
     pub fn read_arc(&self) -> parking_lot::ArcRwLockReadGuard<parking_lot::RawRwLock, ChunkStore> {
-        parking_lot::RwLock::read_arc(&self.0)
+        parking_lot::RwLock::read_arc_recursive(&self.0)
     }
 
     #[inline]
