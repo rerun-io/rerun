@@ -532,7 +532,6 @@ fn write_avc_chunk_to_nalu_stream(
 
     // Append SPS (Sequence Parameter Set) & PPS (Picture Parameter Set) NAL unit whenever encountering
     // an IDR frame unless the previous frame was an IDR frame.
-    // TODO(andreas): Should we detect this rather from the NALU stream rather than the samples?
     if chunk.is_sync && !state.previous_frame_was_idr {
         for sps in &avcc.sequence_parameter_sets {
             nalu_stream
