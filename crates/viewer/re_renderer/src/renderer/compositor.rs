@@ -42,7 +42,11 @@ pub struct CompositorDrawData {
     /// a uniform buffer for describing a tonemapper/compositor configuration.
     bind_group: GpuBindGroup,
 
-    /// If true, the compositor will blend the image with pre-multiplied alpha blending.
+    /// If true, the compositor will blend with the image.
+    ///
+    /// Note that this assumes that the incoming image does *not* have pre-multiplied alpha.
+    /// This makes it a lot easier to handles MSAA on a transparent background, since MSAA resolve
+    /// will not multiply the result with resulting alpha value (it just averages samples in a pixel unaware of channel information).
     enable_blending: bool,
 }
 

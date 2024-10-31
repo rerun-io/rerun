@@ -26,7 +26,10 @@ fn main(in: FragmentInput) -> @location(0) vec4f {
     // The issue is that positions provided by @builtin(position) are not dependent on the set viewport,
     // but are about the location of the texel in the target texture.
     var color = textureSample(color_texture, nearest_sampler, in.texcoord);
-    //color = vec4f(color.rgb * color.a, color.a); // TODO: maybe this because it's not premultiplied alpha yet? uhm. yeah let's try it out.
+
+    // We assume that the color from the texture does *not* have pre-multiplied alpha.
+    // Transparency caused by anti-aliasing  very much behaves like this, so it's important to multiply with alpha here.
+    color = vec4f(color.rgb * color.a, color.a);
 
     // Outlines
     {
