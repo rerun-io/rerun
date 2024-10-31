@@ -453,7 +453,9 @@ impl App {
                 // That's the case of `SmartChannelSource::RrdHttpStream`.
                 // TODO(emilk): exactly what things get kept and what gets cleared?
                 self.rx.retain(|r| match r.source() {
-                    SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => false,
+                    SmartChannelSource::File(_)
+                    | SmartChannelSource::RrdHttpStream { .. }
+                    | SmartChannelSource::RrdpStream { .. } => false,
 
                     SmartChannelSource::WsClient { .. }
                     | SmartChannelSource::JsChannel { .. }
@@ -1419,6 +1421,7 @@ impl App {
             match &*source {
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
+                | SmartChannelSource::RrdpStream { .. }
                 | SmartChannelSource::Stdin
                 | SmartChannelSource::RrdWebEventListener
                 | SmartChannelSource::Sdk
