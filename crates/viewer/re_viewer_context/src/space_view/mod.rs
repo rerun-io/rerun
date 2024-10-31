@@ -75,6 +75,9 @@ pub enum SpaceViewSystemExecutionError {
 
     #[error(transparent)]
     ComponentFallbackError(#[from] crate::ComponentFallbackError),
+
+    #[error(transparent)]
+    ViewBuilderError(#[from] re_renderer::view_builder::ViewBuilderError),
 }
 
 // Convenience conversions for some re_renderer error types since these are so frequent.

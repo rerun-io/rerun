@@ -1,9 +1,10 @@
-use egui::{Context, NumExt as _, Response};
+use egui::{Context, NumExt as _, Rect, Response};
 use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
 use re_data_ui::{item_ui, DataUi};
 use re_entity_db::InstancePathHash;
 use re_log_types::EntityPath;
+use re_renderer::{RenderContext, ViewBuilder};
 use re_space_view::suggest_space_view_for_each_entity;
 use re_types::{
     blueprint::{
@@ -16,9 +17,9 @@ use re_types::{
 use re_ui::list_item;
 use re_viewer_context::{
     gpu_bridge, Item, SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError,
-    SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, UiLayout,
-    ViewQuery, ViewerContext,
+    SpaceViewHighlights, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
+    SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
+    SystemExecutionOutput, UiLayout, ViewQuery, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -220,6 +221,7 @@ Displays geospatial primitives on a map.
             Ok(refs) => refs,
             Err(err) => return Err(err),
         };
+        let attribution = tiles.attribution();
 
         let some_tiles_manager: Option<&mut dyn Tiles> = Some(tiles);
         let map_response = ui.add(Map::new(
@@ -236,9 +238,6 @@ Displays geospatial primitives on a map.
                 let _ = map_memory.set_zoom(zoom_level);
             }
         }
-
-        map_overlays::zoom_buttons_overlay(ui, &map_rect, map_memory);
-        map_overlays::acknowledgement_overlay(ui, &map_rect, &tiles.attribution());
 
         //
         // Save Blueprint
@@ -258,40 +257,9 @@ Displays geospatial primitives on a map.
         let Some(render_ctx) = ctx.render_ctx else {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
         };
-        let painter = ui.painter();
 
-        let resolution_in_pixel =
-            gpu_bridge::viewport_resolution_in_pixels(map_rect, ui.ctx().pixels_per_point());
-
-        let mut view_builder = re_renderer::ViewBuilder::new(
-            // TODO: make this a util
-            render_ctx,
-            re_renderer::view_builder::TargetConfiguration {
-                name: "MapView".into(),
-                resolution_in_pixel,
-
-                // Camera looking at a ui coordinate world.
-                view_from_world: re_math::IsoTransform::from_translation(-glam::vec3(
-                    map_rect.left(),
-                    map_rect.top(),
-                    0.0,
-                )),
-                projection_from_view: re_renderer::view_builder::Projection::Orthographic {
-                    camera_mode:
-                        re_renderer::view_builder::OrthographicCameraMode::TopLeftCornerAndExtendZ,
-                    vertical_world_size: map_rect.height(),
-                    far_plane_distance: 100.0,
-                },
-                // No transform after view/projection needed.
-                viewport_transformation: re_renderer::RectTransform::IDENTITY,
-
-                pixels_per_point: ui.ctx().pixels_per_point(),
-                outline_config: query
-                    .highlights
-                    .any_outlines()
-                    .then(|| gpu_bridge::outline_config(ui.ctx())),
-            },
-        );
+        let mut view_builder =
+            create_view_builder(&render_ctx, ui.ctx(), map_rect, &query.highlights);
 
         //
         // Queue draw data
@@ -342,34 +310,81 @@ Displays geospatial primitives on a map.
                 .at_most(128.0) as u32;
             // ------
 
-            view_builder
-                .schedule_picking_rect(
-                    render_ctx,
-                    re_renderer::RectInt::from_middle_and_extent(
-                        glam::ivec2(pointer_in_pixel.x as _, pointer_in_pixel.y as _),
-                        glam::uvec2(picking_rect_size, picking_rect_size),
-                    ),
-                    picking_readback_identifier,
-                    (),
-                    ctx.app_options.show_picking_debug_overlay,
-                )
-                .expect("antoine do something");
+            view_builder.schedule_picking_rect(
+                render_ctx,
+                re_renderer::RectInt::from_middle_and_extent(
+                    glam::ivec2(pointer_in_pixel.x as _, pointer_in_pixel.y as _),
+                    glam::uvec2(picking_rect_size, picking_rect_size),
+                ),
+                picking_readback_identifier,
+                (),
+                ctx.app_options.show_picking_debug_overlay,
+            )?;
         } else {
-            // TODO: should we keep flushing out the gpu picking results? Does spatial view do this?
-
+            // TODO(andreas): should we keep flushing out the gpu picking results? Does spatial view do this?
             state.last_gpu_picking_result = None;
         }
 
-        // ---------------------------------------------------------------------------
+        //
+        // Register the callback
+        //
 
-        painter.add(gpu_bridge::new_renderer_callback(
+        ui.painter().add(gpu_bridge::new_renderer_callback(
             view_builder,
-            painter.clip_rect(),
+            map_rect,
             re_renderer::Rgba::TRANSPARENT,
         ));
 
+        //
+        // Attribution overlay
+        //
+
+        map_overlays::acknowledgement_overlay(ui, &map_rect, &attribution);
+
         Ok(())
     }
+}
+
+/// Create a view builder mapped to the provided rectangle.
+///
+/// The scene coordinates are 1:1 mapped to egui UI points.
+//TODO(ab): this utility potentially has more general usefulness.
+fn create_view_builder(
+    render_ctx: &RenderContext,
+    egui_ctx: &egui::Context,
+    view_rect: Rect,
+    highlights: &SpaceViewHighlights,
+) -> ViewBuilder {
+    let pixels_per_point = egui_ctx.pixels_per_point();
+    let resolution_in_pixel =
+        gpu_bridge::viewport_resolution_in_pixels(view_rect, pixels_per_point);
+
+    re_renderer::ViewBuilder::new(
+        render_ctx,
+        re_renderer::view_builder::TargetConfiguration {
+            name: "MapView".into(),
+            resolution_in_pixel,
+
+            // Camera looking at a ui coordinate world.
+            view_from_world: re_math::IsoTransform::from_translation(-glam::vec3(
+                view_rect.left(),
+                view_rect.top(),
+                0.0,
+            )),
+            projection_from_view: re_renderer::view_builder::Projection::Orthographic {
+                camera_mode:
+                    re_renderer::view_builder::OrthographicCameraMode::TopLeftCornerAndExtendZ,
+                vertical_world_size: view_rect.height(),
+                far_plane_distance: 100.0,
+            },
+            // No transform after view/projection needed.
+            viewport_transformation: re_renderer::RectTransform::IDENTITY,
+            pixels_per_point,
+            outline_config: highlights
+                .any_outlines()
+                .then(|| gpu_bridge::outline_config(egui_ctx)),
+        },
+    )
 }
 
 /// Handle all UI interactions based on the currently picked instance (if any).
