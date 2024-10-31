@@ -20,12 +20,17 @@ workspace = true
 all-features = true
 
 
+[features]
+## Enable puffin profiling.
+tracing = ["re_tracing/server"]
+
+
 [dependencies]
 re_build_tools.workspace = true
 re_case.workspace = true
 re_error.workspace = true
 re_log = { workspace = true, features = ["setup"] }
-re_tracing = { workspace = true, features = ["server"] }
+re_tracing.workspace = true
 
 # External
 anyhow.workspace = true
