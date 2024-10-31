@@ -858,9 +858,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             Retrofilled(UnitChunkShared),
         }
 
-        // That's a synchronous lock, so make sure we barely lock it.
-        let state = self.init_(store, cache);
-        let state = self.state.get_or_init(move || state);
+        // Although that's a synchronous lock, we probably don't need to worry about it until
+        // there is proof to the contrary: we are in a specific `QueryHandle` after all, there's
+        // really no good reason to be contending here in the first place.
+        let state = self.state.get_or_init(move || self.init_(store, cache));
 
         let row_idx = state.cur_row.fetch_add(1, Ordering::Relaxed);
         let cur_index_value = state.unique_index_values.get(row_idx as usize)?;
