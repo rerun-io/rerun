@@ -44,6 +44,7 @@ pub mod v0 {
     }
 
     impl From<re_log_types::StoreId> for RecordingId {
+        #[inline]
         fn from(value: re_log_types::StoreId) -> Self {
             Self {
                 id: value.id.to_string(),
