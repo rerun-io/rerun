@@ -1077,12 +1077,6 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
     ));
     let num_all = num_required + num_recommended + num_optional;
 
-    let quoted_field_names = obj
-        .fields
-        .iter()
-        .map(|field| format_ident!("{}", field.name))
-        .collect::<Vec<_>>();
-
     let all_component_batches = {
         std::iter::once(quote!{
             Some(Self::indicator())
@@ -1128,84 +1122,6 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
                 quote!{ Some((&self.#field_name as &dyn ComponentBatch).into()) }
             }
         }))
-    };
-
-    let all_deserializers = {
-        obj.fields.iter().map(|obj_field| {
-            let obj_field_fqname = obj_field.fqname.as_str();
-            let field_typ_fqname_str = obj_field.typ.fqname().unwrap();
-            let field_name = format_ident!("{}", obj_field.name);
-
-            let is_plural = obj_field.typ.is_plural();
-            let is_nullable = obj_field.is_nullable;
-
-            // NOTE: unwrapping is safe since the field must point to a component.
-            let component = quote_fqname_as_type_path(obj_field.typ.fqname().unwrap());
-
-            let quoted_collection = if is_plural {
-                quote! {
-                    .into_iter()
-                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
-                    .collect::<DeserializationResult<Vec<_>>>()
-                    .with_context(#obj_field_fqname)?
-                }
-            } else {
-                quote! {
-                    .into_iter()
-                    .next()
-                    .flatten()
-                    .ok_or_else(DeserializationError::missing_data)
-                    .with_context(#obj_field_fqname)?
-                }
-            };
-
-
-            // NOTE: An archetype cannot have overlapped component types by definition, so use the
-            // component's fqname to do the mapping.
-            let quoted_deser = if is_nullable && !is_plural{
-                // For a nullable mono-component, it's valid for data to be missing
-                // after a clear.
-                let quoted_collection =
-                    quote! {
-                        .into_iter()
-                        .next()
-                        .flatten()
-                    };
-
-                quote! {
-                    if let Some(array) = arrays_by_name.get(#field_typ_fqname_str) {
-                        <#component>::from_arrow_opt(&**array)
-                            .with_context(#obj_field_fqname)?
-                            #quoted_collection
-                    } else {
-                        None
-                    }
-                }
-            } else if is_nullable {
-                quote! {
-                    if let Some(array) = arrays_by_name.get(#field_typ_fqname_str) {
-                        Some({
-                            <#component>::from_arrow_opt(&**array)
-                                .with_context(#obj_field_fqname)?
-                                #quoted_collection
-                        })
-                    } else {
-                        None
-                    }
-                }
-            } else {
-                quote! {{
-                    let array = arrays_by_name
-                        .get(#field_typ_fqname_str)
-                        .ok_or_else(DeserializationError::missing_data)
-                        .with_context(#obj_field_fqname)?;
-
-                    <#component>::from_arrow_opt(&**array).with_context(#obj_field_fqname)? #quoted_collection
-                }}
-            };
-
-            quote!(let #field_name = #quoted_deser;)
-        })
     };
 
     quote! {
@@ -1267,31 +1183,6 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
             #[inline]
             fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]>  {
                 ALL_COMPONENTS.as_slice().into()
-            }
-
-            #[inline]
-            fn from_arrow_components(
-                arrow_data: impl IntoIterator<Item = (
-                    ComponentName,
-                    Box<dyn arrow2::array::Array>,
-                )>,
-            ) -> DeserializationResult<Self> {
-                re_tracing::profile_function!();
-
-                use ::re_types_core::{Loggable as _, ResultExt as _};
-
-                // NOTE: Even though ComponentName is an InternedString, we must
-                // convert to &str here because the .get("component.name") accessors
-                // will fail otherwise.
-                let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-                    .into_iter()
-                    .map(|(name, array)| (name.full_name(), array)).collect();
-
-                #(#all_deserializers;)*
-
-                Ok(Self {
-                    #(#quoted_field_names,)*
-                })
             }
         }
 
