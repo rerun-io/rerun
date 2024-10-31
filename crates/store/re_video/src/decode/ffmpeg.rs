@@ -725,9 +725,6 @@ impl NalHeader {
     }
 
     /// Ref idc is a value from 0-3 that tells us how "important" the frame/sample is.
-    ///
-    /// For details see:
-    /// <https://yumichan.net/video-processing/video-compression/breif-description-of-nal_ref_idc-value-in-h-246-nalu/>
     pub fn ref_idc(self) -> u8 {
         (self.0 >> 5) & 0b11
     }
