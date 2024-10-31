@@ -136,7 +136,7 @@ fn size_from_blob(blob: &dyn Array, media_type: Option<&dyn Array>) -> Option<[u
 
         let image_bytes = blob.0.as_slice();
 
-        let mut reader = image::io::Reader::new(std::io::Cursor::new(image_bytes));
+        let mut reader = image::ImageReader::new(std::io::Cursor::new(image_bytes));
 
         if let Some(format) = image::ImageFormat::from_mime_type(&media_type.0) {
             reader.set_format(format);
