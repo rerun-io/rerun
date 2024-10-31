@@ -1269,6 +1269,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
                 ALL_COMPONENTS.as_slice().into()
             }
 
+            #[cfg(test)] // Quite a lot of code that is only used for tests
             #[inline]
             fn from_arrow_components(
                 arrow_data: impl IntoIterator<Item = (
