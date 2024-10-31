@@ -182,21 +182,22 @@ impl<'a> ViewerContext<'a> {
             if let Some(placeholder) = reflection.custom_placeholder.as_ref() {
                 return placeholder.clone();
             }
-            &reflection.datatype
+            reflection.datatype.clone()
         } else {
             self.recording_engine()
                 .store()
                 .lookup_datatype(&component)
-                .or_else(|| self.blueprint_store().lookup_datatype(&component))
+                .cloned()
+                .or_else(|| self.blueprint_engine().store().lookup_datatype(&component).cloned())
                 .unwrap_or_else(|| {
                     re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
-                    &re_chunk::external::arrow2::datatypes::DataType::Null
+                    re_chunk::external::arrow2::datatypes::DataType::Null
                 })
         };
 
         // TODO(andreas): Is this operation common enough to cache the result? If so, here or in the reflection data?
         // The nice thing about this would be that we could always give out references (but updating said cache wouldn't be easy in that case).
-        re_types::reflection::generic_placeholder_for_datatype(datatype)
+        re_types::reflection::generic_placeholder_for_datatype(&datatype)
     }
 }
 
