@@ -4,7 +4,6 @@ use walkers::{HttpTiles, Map, MapMemory, Tiles};
 use re_data_ui::{item_ui, DataUi};
 use re_entity_db::InstancePathHash;
 use re_log_types::EntityPath;
-use re_renderer::OutlineConfig;
 use re_space_view::suggest_space_view_for_each_entity;
 use re_types::{
     blueprint::{
@@ -14,7 +13,7 @@ use re_types::{
     },
     SpaceViewClassIdentifier, View,
 };
-use re_ui::{list_item, ContextExt as _};
+use re_ui::list_item;
 use re_viewer_context::{
     gpu_bridge, Item, SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError,
     SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
@@ -290,7 +289,7 @@ Displays geospatial primitives on a map.
                 outline_config: query
                     .highlights
                     .any_outlines()
-                    .then(|| outline_config(ui.ctx())),
+                    .then(|| gpu_bridge::outline_config(ui.ctx())),
             },
         );
 
@@ -413,24 +412,6 @@ fn handle_ui_interactions(
         // clicked elsewhere, select the view
         ctx.selection_state()
             .set_selection(Item::SpaceView(query.space_view_id));
-    }
-}
-
-// TODO: we have sinned here. this is a c&p from re_space_view_spatial. we should make this a util.
-pub fn outline_config(gui_ctx: &egui::Context) -> re_renderer::OutlineConfig {
-    // Use the exact same colors we have in the ui!
-    let hover_outline = gui_ctx.hover_stroke();
-    let selection_outline = gui_ctx.selection_stroke();
-
-    // See also: SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES
-
-    let outline_radius_ui_pts = 0.5 * f32::max(hover_outline.width, selection_outline.width);
-    let outline_radius_pixel = (gui_ctx.pixels_per_point() * outline_radius_ui_pts).at_least(0.5);
-
-    OutlineConfig {
-        outline_radius_pixel,
-        color_layer_a: re_renderer::Rgba::from(hover_outline.color),
-        color_layer_b: re_renderer::Rgba::from(selection_outline.color),
     }
 }
 

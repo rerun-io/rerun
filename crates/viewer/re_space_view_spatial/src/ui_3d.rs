@@ -24,7 +24,7 @@ use re_viewport_blueprint::ViewProperty;
 use crate::{
     scene_bounding_boxes::SceneBoundingBoxes,
     space_camera_3d::SpaceCamera3D,
-    ui::{create_labels, outline_config, screenshot_context_menu, SpatialSpaceViewState},
+    ui::{create_labels, screenshot_context_menu, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
     visualizers::{
         collect_ui_labels, image_view_coordinates, CamerasVisualizer,
@@ -479,7 +479,7 @@ impl SpatialSpaceView3D {
             outline_config: query
                 .highlights
                 .any_outlines()
-                .then(|| outline_config(ui.ctx())),
+                .then(|| gpu_bridge::outline_config(ui.ctx())),
         };
 
         let Some(render_ctx) = ctx.render_ctx else {

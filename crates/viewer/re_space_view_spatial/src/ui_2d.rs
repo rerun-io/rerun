@@ -25,11 +25,8 @@ use super::{
     ui::{create_labels, screenshot_context_menu},
 };
 use crate::{
-    query_pinhole_legacy,
-    ui::{outline_config, SpatialSpaceViewState},
-    view_kind::SpatialSpaceViewKind,
-    visualizers::collect_ui_labels,
-    SpatialSpaceView2D,
+    query_pinhole_legacy, ui::SpatialSpaceViewState, view_kind::SpatialSpaceViewKind,
+    visualizers::collect_ui_labels, SpatialSpaceView2D,
 };
 
 // ---
@@ -407,7 +404,7 @@ fn setup_target_config(
             projection_from_view,
             viewport_transformation,
             pixels_per_point,
-            outline_config: any_outlines.then(|| outline_config(egui_painter.ctx())),
+            outline_config: any_outlines.then(|| gpu_bridge::outline_config(egui_painter.ctx())),
         }
     })
 }
