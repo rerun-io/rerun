@@ -237,7 +237,7 @@ quote = "1.0"
 rand = { version = "0.8", default-features = false }
 rand_distr = { version = "0.4", default-features = false }
 rayon = "1.7"
-rfd = { version = "0.12", default-features = false, features = ["xdg-portal"] }
+rfd = { version = "0.15", default-features = false, features = ["xdg-portal"] }
 rmp-serde = "1"
 ron = "0.8.0"
 rust-format = "0.3"
