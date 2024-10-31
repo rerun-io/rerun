@@ -85,7 +85,7 @@ enum EndpointCategory {
     /// Could be a link to either an `.rrd` recording or a `.rbl` blueprint.
     HttpRrd(String),
 
-    /// gRPC Rerun DataPlatform URL, e.g. `rrdp://ip:port/recording/1234`
+    /// gRPC Rerun Data Platform URL, e.g. `rrdp://ip:port/recording/1234`
     DataPlatform(String),
 
     /// A remote Rerun server.
@@ -137,8 +137,14 @@ pub fn url_to_receiver(
                 Some(ui_waker),
             ),
         ),
+
+        #[cfg(feature = "rrdp")]
         EndpointCategory::DataPlatform(url) => {
             re_rrdp_comms::stream_recording(url, Some(ui_waker)).map_err(|err| err.into())
+        }
+        #[cfg(not(feature = "rrdp"))]
+        EndpointCategory::DataPlatform(url) => {
+            anyhow::bail!("Missing 'rrdp' feature flag");
         }
         EndpointCategory::WebEventListener(url) => {
             // Process an rrd when it's posted via `window.postMessage`
