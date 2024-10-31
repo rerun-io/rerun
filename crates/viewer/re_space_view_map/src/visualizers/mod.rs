@@ -1,5 +1,3 @@
-use re_entity_db::InstancePath;
-
 pub mod geo_points;
 
 /// Helper to track an area span in latitude and longitude.
@@ -72,28 +70,6 @@ impl GeoSpan {
 
         // Use the minimum zoom level to ensure the entire range fits
         Some(zoom_x.min(zoom_y))
-    }
-}
-
-/// A picked instance.
-#[derive(Debug, Clone)]
-pub struct PickedInstance {
-    pub instance_path: InstancePath,
-
-    /// Keep track of the mouse distance from the object's center in ui points, so we can arbitrate.
-    ui_point_distance: f32,
-}
-
-/// Update a picked instance with another one if it's closer.
-pub fn update_picked_instance(first: &mut Option<PickedInstance>, second: Option<PickedInstance>) {
-    if let Some(second) = second {
-        if let Some(first) = first {
-            if second.ui_point_distance < first.ui_point_distance {
-                *first = second;
-            }
-        } else {
-            *first = Some(second);
-        }
     }
 }
 

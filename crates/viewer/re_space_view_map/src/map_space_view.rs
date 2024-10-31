@@ -220,51 +220,14 @@ Displays geospatial primitives on a map.
             Err(err) => return Err(err),
         };
 
-        let mut picked_instance = None;
-
         let some_tiles_manager: Option<&mut dyn Tiles> = Some(tiles);
-        let mut map_response = ui.add(
-            Map::new(some_tiles_manager, map_memory, default_center_position).with_plugin(
-                geo_points_visualizer.plugin(ctx, query.space_view_id, &mut picked_instance),
-            ),
-        );
+        let mut map_response = ui.add(Map::new(
+            some_tiles_manager,
+            map_memory,
+            default_center_position,
+        ));
         let map_rect = map_response.rect;
-
-        if let Some(picked_instance) = picked_instance {
-            map_response = map_response.on_hover_ui_at_pointer(|ui| {
-                list_item::list_item_scope(ui, "map_hover", |ui| {
-                    item_ui::instance_path_button(
-                        ctx,
-                        &query.latest_at_query(),
-                        ctx.recording(),
-                        ui,
-                        Some(query.space_view_id),
-                        &picked_instance.instance_path,
-                    );
-                    picked_instance
-                        .instance_path
-                        .data_ui_recording(ctx, ui, UiLayout::Tooltip);
-                });
-            });
-
-            ctx.select_hovered_on_click(
-                &map_response,
-                Item::DataResult(query.space_view_id, picked_instance.instance_path.clone()),
-            );
-
-            // double click selects the entire entity
-            if map_response.double_clicked() {
-                // Select the entire entity
-                ctx.selection_state().set_selection(Item::DataResult(
-                    query.space_view_id,
-                    picked_instance.instance_path.entity_path.clone().into(),
-                ));
-            }
-        } else if map_response.clicked() {
-            // clicked elsewhere, select the view
-            ctx.selection_state()
-                .set_selection(Item::SpaceView(query.space_view_id));
-        }
+        let projector = walkers::Projector::new(map_rect, map_memory, default_center_position);
 
         if map_response.double_clicked() {
             map_memory.follow_my_position();
@@ -287,7 +250,9 @@ Displays geospatial primitives on a map.
             );
         }
 
-        // ---------------------------------------------------------------------------
+        //
+        // Setup the ViewBuilder
+        //
 
         let Some(render_ctx) = ctx.render_ctx else {
             return Err(SpaceViewSystemExecutionError::NoRenderContextError);
@@ -320,35 +285,29 @@ Displays geospatial primitives on a map.
                 viewport_transformation: re_renderer::RectTransform::IDENTITY,
 
                 pixels_per_point: ui.ctx().pixels_per_point(),
-                //outline_config: query
-                //    .highlights
-                //    .any_outlines()
-                //    .then(|| outline_config(ui.ctx())),
-                outline_config: Some(outline_config(ui.ctx())),
+                outline_config: query
+                    .highlights
+                    .any_outlines()
+                    .then(|| outline_config(ui.ctx())),
             },
         );
 
-        // TODO: populate view builder with the things it should draw.
-        let mut points = re_renderer::PointCloudBuilder::new(render_ctx);
-        points
-            .batch("Antoine")
-            .picking_object_id(re_renderer::PickingLayerObjectId(321)) // Entity path.
-            //.outline_mask_ids(outline_mask_ids) // Entire thing
-            .push_additional_outline_mask_ids_for_range(
-                0..1, // Instances 0 to 1, that is order they're added.
-                re_renderer::OutlineMaskPreference::some(0, 1),
-            )
-            .add_points_2d(
-                &[glam::vec3(map_rect.center().x, map_rect.center().y, 0.0)],
-                &[re_renderer::Size::ONE_UI_POINT * 10.0],
-                &[re_renderer::Color32::LIGHT_RED],
-                &[re_renderer::PickingLayerInstanceId(1234)], // picking instance id == index
-            );
-        view_builder.queue_draw(points.into_draw_data()?);
+        //
+        // Queue draw data
+        //
 
-        // ---------------------------------------------------------------------------
+        geo_points_visualizer.queue_draw_data(
+            render_ctx,
+            &mut view_builder,
+            &projector,
+            &query.highlights,
+        )?;
 
-        let picking_readback_identifier = 123; // TODO: should be unique per view (NOT view type)
+        //
+        // Handle picking
+        //
+
+        let picking_readback_identifier = query.space_view_id.hash();
 
         if let Some(pointer_in_ui) = map_response.hover_pos() {
             let mut pointer_in_pixel = pointer_in_ui.to_vec2();
@@ -361,7 +320,43 @@ Displays geospatial primitives on a map.
                 glam::vec2(pointer_in_pixel.x, pointer_in_pixel.y),
                 &mut state.last_gpu_picking_result,
             );
-            re_log::debug!("Picking result: {picking_result:?}"); // TODO:
+
+            if let Some(instance_path) =
+                picking_result.and_then(|hash| hash.resolve(ctx.recording()))
+            {
+                map_response = map_response.on_hover_ui_at_pointer(|ui| {
+                    list_item::list_item_scope(ui, "map_hover", |ui| {
+                        item_ui::instance_path_button(
+                            ctx,
+                            &query.latest_at_query(),
+                            ctx.recording(),
+                            ui,
+                            Some(query.space_view_id),
+                            &instance_path,
+                        );
+
+                        instance_path.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                    });
+                });
+
+                ctx.select_hovered_on_click(
+                    &map_response,
+                    Item::DataResult(query.space_view_id, instance_path.clone()),
+                );
+
+                // double click selects the entire entity
+                if map_response.double_clicked() {
+                    // Select the entire entity
+                    ctx.selection_state().set_selection(Item::DataResult(
+                        query.space_view_id,
+                        instance_path.entity_path.clone().into(),
+                    ));
+                }
+            } else if map_response.clicked() {
+                // clicked elsewhere, select the view
+                ctx.selection_state()
+                    .set_selection(Item::SpaceView(query.space_view_id));
+            }
 
             // ------
             // TODO: more wonky c&p
@@ -390,7 +385,7 @@ Displays geospatial primitives on a map.
                     ),
                     picking_readback_identifier,
                     (),
-                    true, // TODO: debug overlay, put to app settings.
+                    ctx.app_options.show_picking_debug_overlay,
                 )
                 .expect("antoine do something");
         } else {
@@ -497,7 +492,6 @@ fn picking_gpu(
 
         // Find closest non-zero pixel to the cursor.
         let mut picked_id = re_renderer::PickingLayerId::default();
-        let mut picked_on_picking_rect = glam::Vec2::ZERO;
         let mut closest_rect_distance_sq = f32::INFINITY;
 
         for (i, id) in gpu_picking_result.picking_id_data.iter().enumerate() {
@@ -511,7 +505,6 @@ fn picking_gpu(
                 let distance_sq =
                     current_pos_on_picking_rect.distance_squared(pointer_on_picking_rect);
                 if distance_sq < closest_rect_distance_sq {
-                    picked_on_picking_rect = current_pos_on_picking_rect;
                     closest_rect_distance_sq = distance_sq;
                     picked_id = *id;
                 }
