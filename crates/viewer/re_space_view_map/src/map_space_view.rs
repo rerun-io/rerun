@@ -274,7 +274,7 @@ Displays geospatial primitives on a map.
             ui,
             &mut view_builder,
             query,
-            &state,
+            state,
             map_response,
             map_rect,
         )?;
@@ -339,12 +339,12 @@ fn create_view_builder(
 
 /// Handle picking and related ui interactions.
 fn handle_picking_and_ui_interactions(
-    ctx: &ViewerContext,
+    ctx: &ViewerContext<'_>,
     render_ctx: &RenderContext,
     ui: &mut Ui,
     view_builder: &mut ViewBuilder,
-    query: &ViewQuery,
-    state: &&mut MapSpaceViewState,
+    query: &ViewQuery<'_>,
+    state: &mut MapSpaceViewState,
     map_response: Response,
     map_rect: Rect,
 ) -> Result<(), SpaceViewSystemExecutionError> {
