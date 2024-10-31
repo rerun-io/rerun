@@ -439,6 +439,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <GeoLineString as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A geospatial line string expressed in EPSG:4326 latitude and longitude.",
+                custom_placeholder: Some(GeoLineString::default().to_arrow()?),
+                datatype: GeoLineString::arrow_datatype(),
+            },
+        ),
+        (
             <HalfSize2D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Half-size (radius) of a 2D box.\n\nMeasured in its local coordinate system.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
@@ -489,7 +497,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <LatLon as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "A geographical position expressed in EPSG:4326 latitude and longitude.",
+                docstring_md: "A geospatial position expressed in EPSG:4326 latitude and longitude.",
                 custom_placeholder: Some(LatLon::default().to_arrow()?),
                 datatype: LatLon::arrow_datatype(),
             },
@@ -1233,6 +1241,25 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     docstring_md :
                     "An optional floating point value that specifies the 2D drawing order.\n\nObjects with higher values are drawn on top of those with lower values.",
                     is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.GeoLineStrings"),
+            ArchetypeReflection {
+                display_name: "Geo line strings",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.GeoLineString".into(), display_name :
+                    "Line strings", docstring_md :
+                    "The lines strings, expressed in EPSG:4326 coordinates.", is_required
+                    : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Radius".into(), display_name : "Radii",
+                    docstring_md : "Optional radii for the line strings.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Colors",
+                    docstring_md : "Optional colors for the linestrings.", is_required :
+                    false, },
                 ],
             },
         ),

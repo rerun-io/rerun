@@ -12,7 +12,6 @@ import numpy as np
 __version__ = "0.20.0-alpha.1+dev"
 __version_info__ = (0, 20, 0, "alpha.1")
 
-
 if sys.version_info < (3, 9):
     warnings.warn(
         "Python 3.8 is past EOL (https://devguide.python.org/versions/). Rerun version 0.21 will drop support/testing of Python 3.8.",
@@ -76,6 +75,7 @@ from .archetypes import (
     Ellipsoids3D as Ellipsoids3D,
     EncodedImage as EncodedImage,
     GeoPoints as GeoPoints,
+    GeoLineStrings as GeoLineStrings,
     Image as Image,
     InstancePoses3D as InstancePoses3D,
     LineStrips2D as LineStrips2D,
