@@ -428,7 +428,7 @@ mod tests {
     #[test]
     fn test_recording_id_conversion() {
         let recording_id = RecordingId {
-            id: "recording_id".to_string(),
+            id: "recording_id".to_owned(),
         };
 
         let store_id: re_log_types::StoreId = recording_id.clone().into();
