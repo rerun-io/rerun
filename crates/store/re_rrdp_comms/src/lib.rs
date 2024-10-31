@@ -32,9 +32,10 @@ impl std::fmt::Display for TonicStatusError {
         if !status.message().is_empty() {
             write!(f, ", message: {:?}", status.message())?;
         }
-        if !status.details().is_empty() {
-            write!(f, ", details: {:?}", status.details())?;
-        }
+        // Binary data - not useful.
+        // if !status.details().is_empty() {
+        //     write!(f, ", details: {:?}", status.details())?;
+        // }
         if !status.metadata().is_empty() {
             write!(f, ", metadata: {:?}", status.metadata())?;
         }
