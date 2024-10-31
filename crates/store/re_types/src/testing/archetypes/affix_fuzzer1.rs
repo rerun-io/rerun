@@ -207,7 +207,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
-
+    #[cfg(test)]
     #[inline]
     fn from_arrow_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
