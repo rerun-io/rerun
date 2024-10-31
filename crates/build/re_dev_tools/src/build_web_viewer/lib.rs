@@ -74,6 +74,7 @@ pub fn build(
     debug_symbols: bool,
     target: Target,
     build_dir: &Utf8Path,
+    features: &String,
 ) -> anyhow::Result<()> {
     std::env::set_current_dir(workspace_root())?;
 
@@ -113,24 +114,19 @@ pub fn build(
         cmd.args([
             "build",
             "--quiet",
-            "--package",
-            crate_name,
+            &format!("--package={crate_name}"),
             "--lib",
-            "--target",
-            "wasm32-unknown-unknown",
-            "--target-dir",
-            target_wasm_dir.as_str(),
+            "--target=wasm32-unknown-unknown",
+            &format!("--target-dir={}", target_wasm_dir.as_str()),
             "--no-default-features",
-            "--features=analytics",
+            &format!("--features={features}"),
         ]);
         if profile == Profile::Release {
             cmd.arg("--release");
         }
 
-        // This is required to enable the web_sys clipboard API which egui_web uses
-        // https://rustwasm.github.io/wasm-bindgen/api/web_sys/struct.Clipboard.html
+        // This is required for unstable WebGPU apis to work
         // https://rustwasm.github.io/docs/wasm-bindgen/web-sys/unstable-apis.html
-        // Furthermore, it's necessary for unstable WebGPU apis to work.
         cmd.env("RUSTFLAGS", "--cfg=web_sys_unstable_apis");
 
         // When executing this script from a Rust build script, do _not_, under any circumstances,
