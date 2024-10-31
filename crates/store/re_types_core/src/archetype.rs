@@ -1,7 +1,4 @@
-use crate::{
-    ComponentBatch, ComponentName, DeserializationResult, MaybeOwnedComponentBatch,
-    SerializationResult, _Backtrace,
-};
+use crate::{ComponentBatch, ComponentName, MaybeOwnedComponentBatch, SerializationResult};
 
 #[allow(unused_imports)] // used in docstrings
 use crate::{Component, Loggable, LoggableBatch};
@@ -92,45 +89,6 @@ pub trait Archetype {
         .flatten()
         .collect::<Vec<_>>()
         .into()
-    }
-
-    // ---
-
-    /// Given an iterator of Arrow arrays and their respective field metadata, deserializes them
-    /// into this archetype.
-    ///
-    /// Arrow arrays that are unknown to this [`Archetype`] will simply be ignored and a warning
-    /// logged to stderr.
-    #[inline]
-    fn from_arrow(
-        data: impl IntoIterator<Item = (arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
-    ) -> DeserializationResult<Self>
-    where
-        Self: Sized,
-    {
-        Self::from_arrow_components(
-            data.into_iter()
-                .map(|(field, array)| (field.name.into(), array)),
-        )
-    }
-
-    /// Given an iterator of Arrow arrays and their respective `ComponentNames`, deserializes them
-    /// into this archetype.
-    ///
-    /// Arrow arrays that are unknown to this [`Archetype`] will simply be ignored and a warning
-    /// logged to stderr.
-    #[inline]
-    fn from_arrow_components(
-        data: impl IntoIterator<Item = (ComponentName, Box<dyn ::arrow2::array::Array>)>,
-    ) -> DeserializationResult<Self>
-    where
-        Self: Sized,
-    {
-        _ = data; // NOTE: do this here to avoid breaking users' autocomplete snippets
-        Err(crate::DeserializationError::NotImplemented {
-            fqname: Self::name().to_string(),
-            backtrace: _Backtrace::new_unresolved(),
-        })
     }
 }
 
