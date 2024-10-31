@@ -84,7 +84,7 @@ exclude = [
   '%7B%7D',               # Ignore links with string interpolation, escaped variant.
 
   # Ignore storage-node example links
-  'rrdp://.*',
+  'rrdp:/.*',
 
   # Local links that require further setup.
   'http://127.0.0.1',
