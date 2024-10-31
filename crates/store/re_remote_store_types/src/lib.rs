@@ -25,12 +25,29 @@ pub mod v0 {
 
     // ==== below are all necessary transforms from internal rerun types to protobuf types =====
 
-    use std::collections::BTreeSet;
+    use std::{collections::BTreeSet, sync::Arc};
 
     #[derive(Debug, thiserror::Error)]
     pub enum TypeConversionError {
         #[error("missing required field: {0}")]
         MissingField(&'static str),
+    }
+
+    impl From<RecordingId> for re_log_types::StoreId {
+        fn from(value: RecordingId) -> Self {
+            Self {
+                kind: re_log_types::StoreKind::Recording,
+                id: Arc::new(value.id),
+            }
+        }
+    }
+
+    impl From<re_log_types::StoreId> for RecordingId {
+        fn from(value: re_log_types::StoreId) -> Self {
+            Self {
+                id: value.id.to_string(),
+            }
+        }
     }
 
     impl From<re_log_types::ResolvedTimeRange> for TimeRange {
