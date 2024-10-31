@@ -267,6 +267,20 @@ impl GroupOfPictures {
 }
 
 /// A single sample in a video.
+///
+/// This is equivalent to MP4's definition of a single sample.
+/// Note that in MP4, each sample is forms a single access unit,
+/// see 3.1.1 [ISO_IEC_14496-14](https://ossrs.io/lts/zh-cn/assets/files/ISO_IEC_14496-14-MP4-2003-9a3eb04879ded495406399602ff2e587.pdf):
+/// > 3.1.1 Elementary Stream Data
+/// > To maintain the goals of streaming protocol independence, the media data is stored in its most ‘natural’ format,
+/// > and not fragmented. This enables easy local manipulation of the media data. Therefore media-data is stored
+/// > as access units, a range of contiguous bytes for each access unit (a single access unit is the definition of a
+/// > ‘sample’ for an MPEG-4 media stream).
+///
+/// Access units in H.264/H.265 are always yielding a single frame upon decoding,
+/// see <https://en.wikipedia.org/wiki/Network_Abstraction_Layer#Access_Units/>:
+/// > A set of NAL units in a specified form is referred to as an access unit.
+/// > The decoding of each access unit results in one decoded picture.
 #[derive(Debug, Clone)]
 pub struct Sample {
     /// Is t his the start of a new [`GroupOfPictures`]?

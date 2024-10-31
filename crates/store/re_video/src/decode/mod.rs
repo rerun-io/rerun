@@ -198,9 +198,9 @@ pub fn new_decoder(
     }
 }
 
-/// One chunk of encoded video data; usually one frame.
+/// One chunk of encoded video data, representing a single [`crate::Sample`].
 ///
-/// One loaded [`crate::Sample`].
+/// For details on how to interpret the data, see [`crate::Sample`].
 pub struct Chunk {
     /// The start of a new [`crate::demux::GroupOfPictures`]?
     pub is_sync: bool,
