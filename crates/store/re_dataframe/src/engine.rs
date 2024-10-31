@@ -81,7 +81,7 @@ impl<E: StorageEngineLike + Clone> QueryEngine<E> {
     /// * second, the component columns in lexical order (`Color`, `Radius, ...`).
     #[inline]
     pub fn schema(&self) -> Vec<ColumnDescriptor> {
-        self.engine.with_store(|store| store.schema())
+        self.engine.with(|store, _cache| store.schema())
     }
 
     /// Returns the filtered schema for the given [`QueryExpression`].
@@ -92,7 +92,7 @@ impl<E: StorageEngineLike + Clone> QueryEngine<E> {
     #[inline]
     pub fn schema_for_query(&self, query: &QueryExpression) -> Vec<ColumnDescriptor> {
         self.engine
-            .with_store(|store| store.schema_for_query(query))
+            .with(|store, _cache| store.schema_for_query(query))
     }
 
     /// Starts a new query by instantiating a [`QueryHandle`].
@@ -107,7 +107,7 @@ impl<E: StorageEngineLike + Clone> QueryEngine<E> {
         &self,
         filter: &'a EntityPathFilter,
     ) -> impl Iterator<Item = EntityPath> + 'a {
-        self.engine.with_store(|store| {
+        self.engine.with(|store, _cache| {
             store
                 .all_entities()
                 .into_iter()

@@ -9,14 +9,15 @@ use crate::{QueryCache, QueryCacheHandle};
 // TODO(cmc): This whole business should really be defined elsewhere, but for now this the best we
 // have, and it's really not worth adding yet another crate just for this.
 
-// TODO(cmc): introduce recursive read locks when it becomes necessary.
-
 /// Anything that can expose references to a [`ChunkStore`] and its [`QueryCache`].
 ///
 /// Used to abstract over [`StorageEngine`] and its different types of guards, such as [`StorageEngineArcReadGuard`].
 pub trait StorageEngineLike {
-    fn with_store<F: FnOnce(&ChunkStore) -> R, R>(&self, f: F) -> R;
-    fn with_cache<F: FnOnce(&QueryCache) -> R, R>(&self, f: F) -> R;
+    fn with<F: FnOnce(&ChunkStore, &QueryCache) -> R, R>(&self, f: F) -> R;
+
+    fn try_with<F: FnOnce(&ChunkStore, &QueryCache) -> R, R>(&self, f: F) -> Option<R> {
+        Some(self.with(f))
+    }
 }
 
 /// Keeps track of handles towards a [`ChunkStore`] and its [`QueryCache`].
@@ -41,15 +42,15 @@ pub struct StorageEngine {
 
 impl StorageEngineLike for StorageEngine {
     #[inline]
-    fn with_store<F: FnOnce(&ChunkStore) -> R, R>(&self, f: F) -> R {
+    fn with<F: FnOnce(&ChunkStore, &QueryCache) -> R, R>(&self, f: F) -> R {
         let this = self.read();
-        f(this.store())
+        f(this.store(), this.cache())
     }
 
     #[inline]
-    fn with_cache<F: FnOnce(&QueryCache) -> R, R>(&self, f: F) -> R {
-        let this = self.read();
-        f(this.cache())
+    fn try_with<F: FnOnce(&ChunkStore, &QueryCache) -> R, R>(&self, f: F) -> Option<R> {
+        let this = self.try_read()?;
+        Some(f(this.store(), this.cache()))
     }
 }
 
@@ -78,11 +79,32 @@ impl StorageEngine {
     }
 
     #[inline]
+    pub fn try_read(&self) -> Option<StorageEngineReadGuard<'_>> {
+        let cache = self.cache.try_read()?;
+        let store = self.store.try_read()?;
+        Some(StorageEngineReadGuard { cache, store })
+    }
+
+    #[inline]
+    pub fn try_read_arc(&self) -> Option<StorageEngineArcReadGuard> {
+        let cache = self.cache.try_read_arc()?;
+        let store = self.store.try_read_arc()?;
+        Some(StorageEngineArcReadGuard { cache, store })
+    }
+
+    #[inline]
     pub fn write(&self) -> StorageEngineWriteGuard<'_> {
         StorageEngineWriteGuard {
             cache: self.cache.write(),
             store: self.store.write(),
         }
+    }
+
+    #[inline]
+    pub fn try_write(&self) -> Option<StorageEngineWriteGuard<'_>> {
+        let cache = self.cache.try_write()?;
+        let store = self.store.try_write()?;
+        Some(StorageEngineWriteGuard { cache, store })
     }
 
     #[inline]
@@ -99,6 +121,13 @@ impl StorageEngine {
             cache: self.cache.write_arc(),
             store: self.store.write_arc(),
         }
+    }
+
+    #[inline]
+    pub fn try_write_arc(&self) -> Option<StorageEngineArcWriteGuard> {
+        let cache = self.cache.try_write_arc()?;
+        let store = self.store.try_write_arc()?;
+        Some(StorageEngineArcWriteGuard { cache, store })
     }
 }
 
@@ -137,13 +166,8 @@ impl StorageEngineReadGuard<'_> {
 
 impl StorageEngineLike for StorageEngineReadGuard<'_> {
     #[inline]
-    fn with_store<F: FnOnce(&ChunkStore) -> R, R>(&self, f: F) -> R {
-        f(self.store())
-    }
-
-    #[inline]
-    fn with_cache<F: FnOnce(&QueryCache) -> R, R>(&self, f: F) -> R {
-        f(self.cache())
+    fn with<F: FnOnce(&ChunkStore, &QueryCache) -> R, R>(&self, f: F) -> R {
+        f(self.store(), self.cache())
     }
 }
 
@@ -170,13 +194,8 @@ impl StorageEngineArcReadGuard {
 
 impl StorageEngineLike for StorageEngineArcReadGuard {
     #[inline]
-    fn with_store<F: FnOnce(&ChunkStore) -> R, R>(&self, f: F) -> R {
-        f(self.store())
-    }
-
-    #[inline]
-    fn with_cache<F: FnOnce(&QueryCache) -> R, R>(&self, f: F) -> R {
-        f(self.cache())
+    fn with<F: FnOnce(&ChunkStore, &QueryCache) -> R, R>(&self, f: F) -> R {
+        f(self.store(), self.cache())
     }
 }
 
@@ -223,18 +242,6 @@ impl StorageEngineWriteGuard<'_> {
     }
 }
 
-impl StorageEngineLike for StorageEngineWriteGuard<'_> {
-    #[inline]
-    fn with_store<F: FnOnce(&ChunkStore) -> R, R>(&self, f: F) -> R {
-        f(&self.store)
-    }
-
-    #[inline]
-    fn with_cache<F: FnOnce(&QueryCache) -> R, R>(&self, f: F) -> R {
-        f(&self.cache)
-    }
-}
-
 // NOTE: None of these fields should ever be publicly exposed, either directly or through a method,
 // as it is always possible to go back to an actual `RwLock` via `ArcRwLockWriteGuard::rwlock`.
 // Doing so would defeat the deadlock protection that the `StorageEngine` offers.
@@ -263,17 +270,5 @@ impl StorageEngineArcWriteGuard {
     #[inline]
     pub fn cache(&mut self) -> &mut QueryCache {
         &mut self.cache
-    }
-}
-
-impl StorageEngineLike for StorageEngineArcWriteGuard {
-    #[inline]
-    fn with_store<F: FnOnce(&ChunkStore) -> R, R>(&self, f: F) -> R {
-        f(&self.store)
-    }
-
-    #[inline]
-    fn with_cache<F: FnOnce(&QueryCache) -> R, R>(&self, f: F) -> R {
-        f(&self.cache)
     }
 }
