@@ -34,6 +34,7 @@ pub mod v0 {
     }
 
     impl From<RecordingId> for re_log_types::StoreId {
+        #[inline]
         fn from(value: RecordingId) -> Self {
             Self {
                 kind: re_log_types::StoreKind::Recording,
