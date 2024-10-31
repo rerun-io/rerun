@@ -153,32 +153,6 @@ impl crate::Archetype for Clear {
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
-
-    #[inline]
-    fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
-    ) -> DeserializationResult<Self> {
-        re_tracing::profile_function!();
-        use crate::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let is_recursive = {
-            let array = arrays_by_name
-                .get("rerun.components.ClearIsRecursive")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Clear#is_recursive")?;
-            <crate::components::ClearIsRecursive>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Clear#is_recursive")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Clear#is_recursive")?
-        };
-        Ok(Self { is_recursive })
-    }
 }
 
 impl crate::AsComponents for Clear {

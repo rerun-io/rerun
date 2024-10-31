@@ -156,50 +156,6 @@ impl ::re_types_core::Archetype for TextLog {
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
-
-    #[inline]
-    fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
-    ) -> DeserializationResult<Self> {
-        re_tracing::profile_function!();
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let text = {
-            let array = arrays_by_name
-                .get("rerun.components.Text")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.TextLog#text")?;
-            <crate::components::Text>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.TextLog#text")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.TextLog#text")?
-        };
-        let level = if let Some(array) = arrays_by_name.get("rerun.components.TextLogLevel") {
-            <crate::components::TextLogLevel>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.TextLog#level")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let color = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
-            <crate::components::Color>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.TextLog#color")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        Ok(Self { text, level, color })
-    }
 }
 
 impl ::re_types_core::AsComponents for TextLog {

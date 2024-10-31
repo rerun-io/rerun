@@ -131,41 +131,6 @@ impl ::re_types_core::Archetype for BarChart {
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
-
-    #[inline]
-    fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
-    ) -> DeserializationResult<Self> {
-        re_tracing::profile_function!();
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let values = {
-            let array = arrays_by_name
-                .get("rerun.components.TensorData")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.BarChart#values")?;
-            <crate::components::TensorData>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.BarChart#values")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.BarChart#values")?
-        };
-        let color = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
-            <crate::components::Color>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.BarChart#color")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        Ok(Self { values, color })
-    }
 }
 
 impl ::re_types_core::AsComponents for BarChart {

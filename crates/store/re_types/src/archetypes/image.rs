@@ -239,68 +239,6 @@ impl ::re_types_core::Archetype for Image {
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
-
-    #[inline]
-    fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
-    ) -> DeserializationResult<Self> {
-        re_tracing::profile_function!();
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let buffer = {
-            let array = arrays_by_name
-                .get("rerun.components.ImageBuffer")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Image#buffer")?;
-            <crate::components::ImageBuffer>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Image#buffer")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Image#buffer")?
-        };
-        let format = {
-            let array = arrays_by_name
-                .get("rerun.components.ImageFormat")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Image#format")?;
-            <crate::components::ImageFormat>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Image#format")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Image#format")?
-        };
-        let opacity = if let Some(array) = arrays_by_name.get("rerun.components.Opacity") {
-            <crate::components::Opacity>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Image#opacity")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let draw_order = if let Some(array) = arrays_by_name.get("rerun.components.DrawOrder") {
-            <crate::components::DrawOrder>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Image#draw_order")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        Ok(Self {
-            buffer,
-            format,
-            opacity,
-            draw_order,
-        })
-    }
 }
 
 impl ::re_types_core::AsComponents for Image {

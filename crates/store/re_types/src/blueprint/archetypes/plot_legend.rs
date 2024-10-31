@@ -114,39 +114,6 @@ impl ::re_types_core::Archetype for PlotLegend {
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
-
-    #[inline]
-    fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
-    ) -> DeserializationResult<Self> {
-        re_tracing::profile_function!();
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let corner = if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Corner2D")
-        {
-            <crate::blueprint::components::Corner2D>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.PlotLegend#corner")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let visible = if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Visible")
-        {
-            <crate::blueprint::components::Visible>::from_arrow_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.PlotLegend#visible")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        Ok(Self { corner, visible })
-    }
 }
 
 impl ::re_types_core::AsComponents for PlotLegend {

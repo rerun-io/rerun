@@ -144,41 +144,6 @@ impl ::re_types_core::Archetype for Tensor {
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
-
-    #[inline]
-    fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
-    ) -> DeserializationResult<Self> {
-        re_tracing::profile_function!();
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let data = {
-            let array = arrays_by_name
-                .get("rerun.components.TensorData")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Tensor#data")?;
-            <crate::components::TensorData>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Tensor#data")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.Tensor#data")?
-        };
-        let value_range = if let Some(array) = arrays_by_name.get("rerun.components.ValueRange") {
-            <crate::components::ValueRange>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.Tensor#value_range")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        Ok(Self { data, value_range })
-    }
 }
 
 impl ::re_types_core::AsComponents for Tensor {

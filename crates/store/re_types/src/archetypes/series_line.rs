@@ -181,61 +181,6 @@ impl ::re_types_core::Archetype for SeriesLine {
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
-
-    #[inline]
-    fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
-    ) -> DeserializationResult<Self> {
-        re_tracing::profile_function!();
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let color = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
-            <crate::components::Color>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.SeriesLine#color")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let width = if let Some(array) = arrays_by_name.get("rerun.components.StrokeWidth") {
-            <crate::components::StrokeWidth>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.SeriesLine#width")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let name = if let Some(array) = arrays_by_name.get("rerun.components.Name") {
-            <crate::components::Name>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.SeriesLine#name")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let aggregation_policy =
-            if let Some(array) = arrays_by_name.get("rerun.components.AggregationPolicy") {
-                <crate::components::AggregationPolicy>::from_arrow_opt(&**array)
-                    .with_context("rerun.archetypes.SeriesLine#aggregation_policy")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
-        Ok(Self {
-            color,
-            width,
-            name,
-            aggregation_policy,
-        })
-    }
 }
 
 impl ::re_types_core::AsComponents for SeriesLine {

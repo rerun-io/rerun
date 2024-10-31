@@ -160,64 +160,6 @@ impl ::re_types_core::Archetype for EncodedImage {
     fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
         ALL_COMPONENTS.as_slice().into()
     }
-
-    #[inline]
-    fn from_arrow_components(
-        arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
-    ) -> DeserializationResult<Self> {
-        re_tracing::profile_function!();
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        let arrays_by_name: ::std::collections::HashMap<_, _> = arrow_data
-            .into_iter()
-            .map(|(name, array)| (name.full_name(), array))
-            .collect();
-        let blob = {
-            let array = arrays_by_name
-                .get("rerun.components.Blob")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.EncodedImage#blob")?;
-            <crate::components::Blob>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.EncodedImage#blob")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.archetypes.EncodedImage#blob")?
-        };
-        let media_type = if let Some(array) = arrays_by_name.get("rerun.components.MediaType") {
-            <crate::components::MediaType>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.EncodedImage#media_type")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let opacity = if let Some(array) = arrays_by_name.get("rerun.components.Opacity") {
-            <crate::components::Opacity>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.EncodedImage#opacity")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        let draw_order = if let Some(array) = arrays_by_name.get("rerun.components.DrawOrder") {
-            <crate::components::DrawOrder>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.EncodedImage#draw_order")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
-        Ok(Self {
-            blob,
-            media_type,
-            opacity,
-            draw_order,
-        })
-    }
 }
 
 impl ::re_types_core::AsComponents for EncodedImage {
