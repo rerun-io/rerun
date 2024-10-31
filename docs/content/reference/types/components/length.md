@@ -13,9 +13,9 @@ axis or part of the entity this is the length of.
 * length: [`Float32`](../datatypes/float32.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `Length`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Length.html)
- * 🐍 [Python API docs for `Length`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Length)
- * 🦀 [Rust API docs for `Length`](https://docs.rs/rerun/latest/rerun/components/struct.Length.html)
+ * 🌊 [C++ API docs for `Length`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Length.html?speculative-link)
+ * 🐍 [Python API docs for `Length`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.Length)
+ * 🦀 [Rust API docs for `Length`](https://docs.rs/rerun/latest/rerun/components/struct.Length.html?speculative-link)
 
 
 ## Used by

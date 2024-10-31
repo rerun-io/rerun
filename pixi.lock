@@ -19609,6 +19609,15 @@ packages:
 - kind: pypi
   name: google-crc32c
   version: 1.6.0
+  url: https://files.pythonhosted.org/packages/67/72/c3298da1a3773102359c5a78f20dae8925f5ea876e37354415f68594a6fb/google_crc32c-1.6.0.tar.gz
+  sha256: 6eceb6ad197656a1ff49ebfbbfa870678c75be4344feb35ac1edf694309413dc
+  requires_dist:
+  - importlib-resources>=1.3 ; python_full_version < '3.9' and os_name == 'nt'
+  - pytest ; extra == 'testing'
+  requires_python: '>=3.9'
+- kind: pypi
+  name: google-crc32c
+  version: 1.6.0
   url: https://files.pythonhosted.org/packages/7d/14/ab47972ac79b6e7b03c8be3a7ef44b530a60e69555668dbbf08fc5692a98/google_crc32c-1.6.0-cp311-cp311-macosx_12_0_arm64.whl
   sha256: f7a1fc29803712f80879b0806cb83ab24ce62fc8daf0569f2204a0cfd7f68ed4
   requires_dist:
@@ -35375,7 +35384,7 @@ packages:
   name: rerun-sdk
   version: 0.20.0a1+dev
   path: rerun_py
-  sha256: 4b7932cce3e26247be322cc2c6b94e9ce05ffdaba5b4684b749722ff52f7d1cd
+  sha256: e794f5f2413d45a681aeb5f41547fad5e7a05285cc35f0f6723634b6f5faff01
   requires_dist:
   - attrs>=23.1.0
   - numpy>=1.23,<2
@@ -35384,7 +35393,7 @@ packages:
   - typing-extensions>=4.5
   - pytest==7.1.2 ; extra == 'tests'
   - rerun-notebook==0.20.0a1+dev ; extra == 'notebook'
-  requires_python: '>=3.8,<3.14'
+  requires_python: '>=3.8'
   editable: true
 - kind: pypi
   name: rfc3339-validator

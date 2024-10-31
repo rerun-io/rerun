@@ -30,7 +30,6 @@ serde = ["dep:serde", "re_log_types/serde"]
 re_build_info.workspace = true
 re_chunk = { workspace = true, features = ["serde"] }
 re_chunk_store.workspace = true
-re_dataframe.workspace = true
 re_format.workspace = true
 re_int_histogram.workspace = true
 re_log.workspace = true

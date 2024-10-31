@@ -47,6 +47,8 @@ impl<'a> DataUi for ComponentPathLatestAtResults<'a> {
             UiLayout::SelectionPanelLimitHeight | UiLayout::SelectionPanelFull => num_instances,
         };
 
+        let engine = db.storage_engine();
+
         // Display data time and additional diagnostic information for static components.
         if !ui_layout.is_single_line() {
             let time = self
@@ -56,7 +58,7 @@ impl<'a> DataUi for ComponentPathLatestAtResults<'a> {
 
             // if the component is static, we display extra diagnostic information
             if time.is_static() {
-                let static_message_count = db
+                let static_message_count = engine
                     .store()
                     .num_static_events_for_component(entity_path, *component_name);
                 if static_message_count > 1 {
@@ -71,8 +73,9 @@ impl<'a> DataUi for ComponentPathLatestAtResults<'a> {
                     );
                 }
 
-                let temporal_message_count =
-                    db.store().num_temporal_events_for_component_on_timeline(
+                let temporal_message_count = engine
+                    .store()
+                    .num_temporal_events_for_component_on_timeline(
                         &query.timeline(),
                         entity_path,
                         *component_name,

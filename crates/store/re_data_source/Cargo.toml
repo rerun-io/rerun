@@ -20,7 +20,10 @@ all-features = true
 
 
 [features]
-default = []
+default = ["rrdp"]
+
+## Enable the rrdp data source.
+rrdp = ["dep:re_rrdp_comms"]
 
 
 [dependencies]
@@ -38,6 +41,9 @@ re_ws_comms = { workspace = true, features = ["client"] }
 anyhow.workspace = true
 itertools.workspace = true
 rayon.workspace = true
+
+# Optional dependencies:
+re_rrdp_comms = { workspace = true, optional = true }
 
 [build-dependencies]
 re_build_tools.workspace = true

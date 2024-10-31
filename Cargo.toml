@@ -51,7 +51,8 @@ re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.20.0-al
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.20.0-alpha.1", default-features = false }
 re_log_types = { path = "crates/store/re_log_types", version = "=0.20.0-alpha.1", default-features = false }
 re_query = { path = "crates/store/re_query", version = "=0.20.0-alpha.1", default-features = false }
-re_remote_store_types = { path = "crates/build/re_remote_store_types", version = "=0.20.0-alpha.1", default-features = false }
+re_rrdp_comms = { path = "crates/store/re_rrdp_comms", version = "=0.20.0-alpha.1", default-features = false }
+re_remote_store_types = { path = "crates/store/re_remote_store_types", version = "=0.20.0-alpha.1", default-features = false }
 re_sdk_comms = { path = "crates/store/re_sdk_comms", version = "=0.20.0-alpha.1", default-features = false }
 re_types = { path = "crates/store/re_types", version = "=0.20.0-alpha.1", default-features = false }
 re_types_blueprint = { path = "crates/store/re_types_blueprint", version = "=0.20.0-alpha.1", default-features = false }
@@ -266,9 +267,12 @@ tiny_http = { version = "0.12", default-features = false }
 tinystl = { version = "0.0.3", default-features = false }
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tobj = "4.0"
+tokio = { version = "1.40.0", default-features = false }
+tokio-stream = "0.1.16"
 toml = { version = "0.8.10", default-features = false }
-tonic = "0.12.3"
-tonic-build = "0.12.3"
+tonic = { version = "0.12.3", default-features = false }
+tonic-build = { version = "0.12.3", default-features = false }
+tonic-web-wasm-client = "0.6"
 tracing = { version = "0.1", default-features = false }
 tungstenite = { version = "0.23", default-features = false }
 type-map = "0.5"

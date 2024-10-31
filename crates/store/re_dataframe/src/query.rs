@@ -22,13 +22,15 @@ use re_chunk::{
     Chunk, ComponentName, EntityPath, RangeQuery, RowId, TimeInt, Timeline, UnitChunkShared,
 };
 use re_chunk_store::{
-    ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor, ComponentColumnSelector, Index,
-    IndexValue, QueryExpression, SparseFillStrategy, TimeColumnDescriptor, TimeColumnSelector,
+    ChunkStore, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
+    ComponentColumnSelector, Index, IndexValue, QueryExpression, SparseFillStrategy,
+    TimeColumnDescriptor, TimeColumnSelector,
 };
 use re_log_types::ResolvedTimeRange;
+use re_query::{QueryCache, StorageEngineLike};
 use re_types_core::components::ClearIsRecursive;
 
-use crate::{QueryEngine, RecordBatch};
+use crate::RecordBatch;
 
 // ---
 
@@ -51,12 +53,12 @@ use crate::{QueryEngine, RecordBatch};
 
 /// A handle to a dataframe query, ready to be executed.
 ///
-/// Cheaply created via [`QueryEngine::query`].
+/// Cheaply created via `QueryEngine::query`.
 ///
 /// See [`QueryHandle::next_row`] or [`QueryHandle::into_iter`].
-pub struct QueryHandle<'a> {
-    /// Handle to the [`QueryEngine`].
-    pub(crate) engine: &'a QueryEngine<'a>,
+pub struct QueryHandle<E: StorageEngineLike> {
+    /// Handle to the `QueryEngine`.
+    pub(crate) engine: E,
 
     /// The original query expression used to instantiate this handle.
     pub(crate) query: QueryExpression,
@@ -140,8 +142,8 @@ struct QueryHandleState {
     unique_index_values: Vec<IndexValue>,
 }
 
-impl<'a> QueryHandle<'a> {
-    pub(crate) fn new(engine: &'a QueryEngine<'a>, query: QueryExpression) -> Self {
+impl<E: StorageEngineLike> QueryHandle<E> {
+    pub(crate) fn new(engine: E, query: QueryExpression) -> Self {
         Self {
             engine,
             query,
@@ -150,23 +152,26 @@ impl<'a> QueryHandle<'a> {
     }
 }
 
-impl QueryHandle<'_> {
+impl<E: StorageEngineLike> QueryHandle<E> {
     /// Lazily initialize internal private state.
     ///
     /// It is important that query handles stay cheap to create.
     fn init(&self) -> &QueryHandleState {
-        self.state.get_or_init(|| self.init_())
+        self.state.get_or_init(|| {
+            self.engine
+                .with_store(|store| self.engine.with_cache(|cache| self.init_(store, cache)))
+        })
     }
 
     // NOTE: This is split in its own method otherwise it completely breaks `rustfmt`.
-    fn init_(&self) -> QueryHandleState {
+    fn init_(&self, store: &ChunkStore, cache: &QueryCache) -> QueryHandleState {
         re_tracing::profile_scope!("init");
 
         // The timeline doesn't matter if we're running in static-only mode.
         let filtered_index = self.query.filtered_index.unwrap_or_default();
 
         // 1. Compute the schema for the query.
-        let view_contents = self.engine.store.schema_for_query(&self.query);
+        let view_contents = store.schema_for_query(&self.query);
 
         // 2. Compute the schema of the selected contents.
         //
@@ -326,12 +331,8 @@ impl QueryHandle<'_> {
                         let query =
                             re_chunk::LatestAtQuery::new(Timeline::default(), TimeInt::STATIC);
 
-                        let results = self.engine.cache.latest_at(
-                            self.engine.store,
-                            &query,
-                            &descr.entity_path,
-                            [descr.component_name],
-                        );
+                        let results =
+                            cache.latest_at(&query, &descr.entity_path, [descr.component_name]);
 
                         results.components.get(&descr.component_name).cloned()
                     }
@@ -586,10 +587,9 @@ impl QueryHandle<'_> {
         //
         // TODO(cmc): Going through the cache is very useful in a Viewer context, but
         // not so much in an SDK context. Make it configurable.
-        let results =
-            self.engine
-                .cache
-                .range(self.engine.store, query, entity_path, component_names);
+        let results = self
+            .engine
+            .with_cache(|cache| cache.range(query, entity_path, component_names));
 
         debug_assert!(
             results.components.len() <= 1,
@@ -753,18 +753,7 @@ impl QueryHandle<'_> {
     /// The number of rows depends and only depends on the _view contents_.
     /// The _selected contents_ has no influence on this value.
     pub fn num_rows(&self) -> u64 {
-        let num_rows = self.init().unique_index_values.len() as _;
-
-        // NOTE: This is too slow to run in practice, even for debug builds.
-        // Do keep this around though, it does come in handy.
-        #[allow(clippy::overly_complex_bool_expr)]
-        if false && cfg!(debug_assertions) {
-            let expected_num_rows =
-                self.engine.query(self.query.clone()).into_iter().count() as u64;
-            assert_eq!(expected_num_rows, num_rows);
-        }
-
-        num_rows
+        self.init().unique_index_values.len() as _
     }
 
     /// Returns the next row's worth of data.
@@ -792,7 +781,12 @@ impl QueryHandle<'_> {
     ///     // …
     /// }
     /// ```
+    #[inline]
     pub fn next_row(&self) -> Option<Vec<Box<dyn ArrowArray>>> {
+        self.engine.with_cache(|cache| self._next_row(cache))
+    }
+
+    pub fn _next_row(&self, cache: &QueryCache) -> Option<Vec<Box<dyn ArrowArray>>> {
         re_tracing::profile_function!();
 
         /// Temporary state used to resolve the streaming join for the current iteration.
@@ -996,12 +990,8 @@ impl QueryHandle<'_> {
                     let query =
                         re_chunk::LatestAtQuery::new(state.filtered_index, *cur_index_value);
 
-                    let results = self.engine.cache.latest_at(
-                        self.engine.store,
-                        &query,
-                        &descr.entity_path,
-                        [descr.component_name],
-                    );
+                    let results =
+                        cache.latest_at(&query, &descr.entity_path, [descr.component_name]);
 
                     *streaming_state = results
                         .components
@@ -1172,28 +1162,28 @@ impl QueryHandle<'_> {
     }
 }
 
-impl<'a> QueryHandle<'a> {
+impl<E: StorageEngineLike> QueryHandle<E> {
     /// Returns an iterator backed by [`Self::next_row`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn iter(&'a self) -> impl Iterator<Item = Vec<Box<dyn ArrowArray>>> + 'a {
+    pub fn iter(&self) -> impl Iterator<Item = Vec<Box<dyn ArrowArray>>> + '_ {
         std::iter::from_fn(move || self.next_row())
     }
 
     /// Returns an iterator backed by [`Self::next_row`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn into_iter(self) -> impl Iterator<Item = Vec<Box<dyn ArrowArray>>> + 'a {
+    pub fn into_iter(self) -> impl Iterator<Item = Vec<Box<dyn ArrowArray>>> {
         std::iter::from_fn(move || self.next_row())
     }
 
     /// Returns an iterator backed by [`Self::next_row_batch`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn batch_iter(&'a self) -> impl Iterator<Item = RecordBatch> + 'a {
+    pub fn batch_iter(&self) -> impl Iterator<Item = RecordBatch> + '_ {
         std::iter::from_fn(move || self.next_row_batch())
     }
 
     /// Returns an iterator backed by [`Self::next_row_batch`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn into_batch_iter(self) -> impl Iterator<Item = RecordBatch> + 'a {
+    pub fn into_batch_iter(self) -> impl Iterator<Item = RecordBatch> {
         std::iter::from_fn(move || self.next_row_batch())
     }
 }
@@ -1206,7 +1196,9 @@ mod tests {
     use std::sync::Arc;
 
     use re_chunk::{util::concatenate_record_batches, Chunk, ChunkId, RowId, TimePoint};
-    use re_chunk_store::{ChunkStore, ChunkStoreConfig, ResolvedTimeRange, TimeInt};
+    use re_chunk_store::{
+        ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ResolvedTimeRange, TimeInt,
+    };
     use re_log_types::{
         build_frame_nr, build_log_time,
         example_components::{MyColor, MyLabel, MyPoint},
@@ -1215,7 +1207,7 @@ mod tests {
     use re_types::components::ClearIsRecursive;
     use re_types_core::Loggable as _;
 
-    use crate::QueryCache;
+    use crate::{QueryCache, QueryEngine};
 
     use super::*;
 
@@ -1251,13 +1243,10 @@ mod tests {
     fn barebones() -> anyhow::Result<()> {
         re_log::setup_logging();
 
-        let store = create_nasty_store()?;
+        let store = ChunkStoreHandle::new(create_nasty_store()?);
         eprintln!("{store}");
-        let query_cache = QueryCache::new(&store);
-        let query_engine = QueryEngine {
-            store: &store,
-            cache: &query_cache,
-        };
+        let query_cache = QueryCache::new_handle(store.clone());
+        let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
         let filtered_index = Some(Timeline::new_sequence("frame_nr"));
 
@@ -1335,13 +1324,10 @@ mod tests {
     fn sparse_fill_strategy_latestatglobal() -> anyhow::Result<()> {
         re_log::setup_logging();
 
-        let store = create_nasty_store()?;
+        let store = ChunkStoreHandle::new(create_nasty_store()?);
         eprintln!("{store}");
-        let query_cache = QueryCache::new(&store);
-        let query_engine = QueryEngine {
-            store: &store,
-            cache: &query_cache,
-        };
+        let query_cache = QueryCache::new_handle(store.clone());
+        let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
         let filtered_index = Some(Timeline::new_sequence("frame_nr"));
         let query = QueryExpression {
@@ -1384,13 +1370,10 @@ mod tests {
     fn filtered_index_range() -> anyhow::Result<()> {
         re_log::setup_logging();
 
-        let store = create_nasty_store()?;
+        let store = ChunkStoreHandle::new(create_nasty_store()?);
         eprintln!("{store}");
-        let query_cache = QueryCache::new(&store);
-        let query_engine = QueryEngine {
-            store: &store,
-            cache: &query_cache,
-        };
+        let query_cache = QueryCache::new_handle(store.clone());
+        let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
         let filtered_index = Some(Timeline::new_sequence("frame_nr"));
         let query = QueryExpression {
@@ -1433,13 +1416,10 @@ mod tests {
     fn filtered_index_values() -> anyhow::Result<()> {
         re_log::setup_logging();
 
-        let store = create_nasty_store()?;
+        let store = ChunkStoreHandle::new(create_nasty_store()?);
         eprintln!("{store}");
-        let query_cache = QueryCache::new(&store);
-        let query_engine = QueryEngine {
-            store: &store,
-            cache: &query_cache,
-        };
+        let query_cache = QueryCache::new_handle(store.clone());
+        let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
         let filtered_index = Some(Timeline::new_sequence("frame_nr"));
         let query = QueryExpression {
@@ -1488,13 +1468,10 @@ mod tests {
     fn using_index_values() -> anyhow::Result<()> {
         re_log::setup_logging();
 
-        let store = create_nasty_store()?;
+        let store = ChunkStoreHandle::new(create_nasty_store()?);
         eprintln!("{store}");
-        let query_cache = QueryCache::new(&store);
-        let query_engine = QueryEngine {
-            store: &store,
-            cache: &query_cache,
-        };
+        let query_cache = QueryCache::new_handle(store.clone());
+        let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
         let filtered_index = Some(Timeline::new_sequence("frame_nr"));
 
@@ -1590,13 +1567,10 @@ mod tests {
     fn filtered_is_not_null() -> anyhow::Result<()> {
         re_log::setup_logging();
 
-        let store = create_nasty_store()?;
+        let store = ChunkStoreHandle::new(create_nasty_store()?);
         eprintln!("{store}");
-        let query_cache = QueryCache::new(&store);
-        let query_engine = QueryEngine {
-            store: &store,
-            cache: &query_cache,
-        };
+        let query_cache = QueryCache::new_handle(store.clone());
+        let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
         let filtered_index = Some(Timeline::new_sequence("frame_nr"));
         let entity_path: EntityPath = "this/that".into();
@@ -1744,13 +1718,10 @@ mod tests {
     fn view_contents() -> anyhow::Result<()> {
         re_log::setup_logging();
 
-        let store = create_nasty_store()?;
+        let store = ChunkStoreHandle::new(create_nasty_store()?);
         eprintln!("{store}");
-        let query_cache = QueryCache::new(&store);
-        let query_engine = QueryEngine {
-            store: &store,
-            cache: &query_cache,
-        };
+        let query_cache = QueryCache::new_handle(store.clone());
+        let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
         let entity_path: EntityPath = "this/that".into();
         let filtered_index = Some(Timeline::new_sequence("frame_nr"));
@@ -1841,13 +1812,10 @@ mod tests {
     fn selection() -> anyhow::Result<()> {
         re_log::setup_logging();
 
-        let store = create_nasty_store()?;
+        let store = ChunkStoreHandle::new(create_nasty_store()?);
         eprintln!("{store}");
-        let query_cache = QueryCache::new(&store);
-        let query_engine = QueryEngine {
-            store: &store,
-            cache: &query_cache,
-        };
+        let query_cache = QueryCache::new_handle(store.clone());
+        let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
         let entity_path: EntityPath = "this/that".into();
         let filtered_index = Timeline::new_sequence("frame_nr");
@@ -2061,13 +2029,10 @@ mod tests {
     fn view_contents_and_selection() -> anyhow::Result<()> {
         re_log::setup_logging();
 
-        let store = create_nasty_store()?;
+        let store = ChunkStoreHandle::new(create_nasty_store()?);
         eprintln!("{store}");
-        let query_cache = QueryCache::new(&store);
-        let query_engine = QueryEngine {
-            store: &store,
-            cache: &query_cache,
-        };
+        let query_cache = QueryCache::new_handle(store.clone());
+        let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
         let entity_path: EntityPath = "this/that".into();
         let filtered_index = Timeline::new_sequence("frame_nr");
@@ -2147,15 +2112,12 @@ mod tests {
     fn clears() -> anyhow::Result<()> {
         re_log::setup_logging();
 
-        let mut store = create_nasty_store()?;
-        extend_nasty_store_with_clears(&mut store)?;
+        let store = ChunkStoreHandle::new(create_nasty_store()?);
+        extend_nasty_store_with_clears(&mut store.write())?;
         eprintln!("{store}");
 
-        let query_cache = QueryCache::new(&store);
-        let query_engine = QueryEngine {
-            store: &store,
-            cache: &query_cache,
-        };
+        let query_cache = QueryCache::new_handle(store.clone());
+        let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
         let filtered_index = Some(Timeline::new_sequence("frame_nr"));
         let entity_path = EntityPath::from("this/that");
@@ -2244,13 +2206,10 @@ mod tests {
     fn pagination() -> anyhow::Result<()> {
         re_log::setup_logging();
 
-        let store = create_nasty_store()?;
+        let store = ChunkStoreHandle::new(create_nasty_store()?);
         eprintln!("{store}");
-        let query_cache = QueryCache::new(&store);
-        let query_engine = QueryEngine {
-            store: &store,
-            cache: &query_cache,
-        };
+        let query_cache = QueryCache::new_handle(store.clone());
+        let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
         let filtered_index = Some(Timeline::new_sequence("frame_nr"));
         let entity_path = EntityPath::from("this/that");
