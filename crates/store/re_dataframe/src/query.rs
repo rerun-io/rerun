@@ -1209,7 +1209,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     pub async fn next_row_batch_async(&self) -> Option<RecordBatch> {
         let row = self.next_row_async().await?;
 
-        // If we managed to get a row, then the state must be intialized already.
+        // If we managed to get a row, then the state must be initialized already.
         #[allow(clippy::unwrap_used)]
         let schema = self.state.get().unwrap().arrow_schema.clone();
 
