@@ -345,8 +345,18 @@ impl ChunkStoreHandle {
     }
 
     #[inline]
+    pub fn try_read(&self) -> Option<parking_lot::RwLockReadGuard<'_, ChunkStore>> {
+        self.0.try_read_recursive()
+    }
+
+    #[inline]
     pub fn write(&self) -> parking_lot::RwLockWriteGuard<'_, ChunkStore> {
         self.0.write()
+    }
+
+    #[inline]
+    pub fn try_write(&self) -> Option<parking_lot::RwLockWriteGuard<'_, ChunkStore>> {
+        self.0.try_write()
     }
 
     #[inline]
@@ -355,10 +365,24 @@ impl ChunkStoreHandle {
     }
 
     #[inline]
+    pub fn try_read_arc(
+        &self,
+    ) -> Option<parking_lot::ArcRwLockReadGuard<parking_lot::RawRwLock, ChunkStore>> {
+        parking_lot::RwLock::try_read_recursive_arc(&self.0)
+    }
+
+    #[inline]
     pub fn write_arc(
         &self,
     ) -> parking_lot::ArcRwLockWriteGuard<parking_lot::RawRwLock, ChunkStore> {
         parking_lot::RwLock::write_arc(&self.0)
+    }
+
+    #[inline]
+    pub fn try_write_arc(
+        &self,
+    ) -> Option<parking_lot::ArcRwLockWriteGuard<parking_lot::RawRwLock, ChunkStore>> {
+        parking_lot::RwLock::try_write_arc(&self.0)
     }
 }
 
