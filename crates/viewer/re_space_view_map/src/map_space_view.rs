@@ -1,4 +1,4 @@
-use egui::{Context, NumExt as _, Rect, Response};
+use egui::{Context, NumExt as _, Rect, Response, Ui};
 use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
 use re_data_ui::{item_ui, DataUi};
@@ -251,7 +251,7 @@ Displays geospatial primitives on a map.
         }
 
         //
-        // Setup the ViewBuilder
+        // Draw all objects using re_renderer
         //
 
         let Some(render_ctx) = ctx.render_ctx else {
@@ -261,10 +261,6 @@ Displays geospatial primitives on a map.
         let mut view_builder =
             create_view_builder(&render_ctx, ui.ctx(), map_rect, &query.highlights);
 
-        //
-        // Queue draw data
-        //
-
         geo_points_visualizer.queue_draw_data(
             render_ctx,
             &mut view_builder,
@@ -272,62 +268,16 @@ Displays geospatial primitives on a map.
             &query.highlights,
         )?;
 
-        //
-        // Handle picking
-        //
-
-        let picking_readback_identifier = query.space_view_id.hash();
-
-        if let Some(pointer_in_ui) = map_response.hover_pos() {
-            let mut pointer_in_pixel = pointer_in_ui.to_vec2();
-            pointer_in_pixel -= map_rect.min.to_vec2();
-            pointer_in_pixel *= ui.ctx().pixels_per_point();
-
-            let picking_result = picking_gpu(
-                render_ctx,
-                picking_readback_identifier,
-                glam::vec2(pointer_in_pixel.x, pointer_in_pixel.y),
-                &mut state.last_gpu_picking_result,
-            );
-
-            handle_ui_interactions(ctx, query, map_response, picking_result);
-
-            // ------
-            // TODO: more wonky c&p
-
-            /// Radius in which cursor interactions may snap to the nearest object even if the cursor
-            /// does not hover it directly.
-            ///
-            /// Note that this needs to be scaled when zooming is applied by the virtual->visible ui rect transform.
-            pub const UI_INTERACTION_RADIUS: f32 = 5.0;
-
-            let picking_rect_size = UI_INTERACTION_RADIUS * ui.ctx().pixels_per_point();
-            // Make the picking rect bigger than necessary so we can use it to counter-act delays.
-            // (by the time the picking rectangle is read back, the cursor may have moved on).
-            let picking_rect_size = (picking_rect_size * 2.0)
-                .ceil()
-                .at_least(8.0)
-                .at_most(128.0) as u32;
-            // ------
-
-            view_builder.schedule_picking_rect(
-                render_ctx,
-                re_renderer::RectInt::from_middle_and_extent(
-                    glam::ivec2(pointer_in_pixel.x as _, pointer_in_pixel.y as _),
-                    glam::uvec2(picking_rect_size, picking_rect_size),
-                ),
-                picking_readback_identifier,
-                (),
-                ctx.app_options.show_picking_debug_overlay,
-            )?;
-        } else {
-            // TODO(andreas): should we keep flushing out the gpu picking results? Does spatial view do this?
-            state.last_gpu_picking_result = None;
-        }
-
-        //
-        // Register the callback
-        //
+        handle_picking_and_ui_interactions(
+            ctx,
+            render_ctx,
+            ui,
+            &mut view_builder,
+            query,
+            &state,
+            map_response,
+            map_rect,
+        )?;
 
         ui.painter().add(gpu_bridge::new_renderer_callback(
             view_builder,
@@ -385,6 +335,67 @@ fn create_view_builder(
                 .then(|| gpu_bridge::outline_config(egui_ctx)),
         },
     )
+}
+
+/// Handle picking and related ui interactions.
+fn handle_picking_and_ui_interactions(
+    ctx: &ViewerContext,
+    render_ctx: &RenderContext,
+    ui: &mut Ui,
+    view_builder: &mut ViewBuilder,
+    query: &ViewQuery,
+    state: &&mut MapSpaceViewState,
+    map_response: Response,
+    map_rect: Rect,
+) -> Result<(), SpaceViewSystemExecutionError> {
+    let picking_readback_identifier = query.space_view_id.hash();
+
+    if let Some(pointer_in_ui) = map_response.hover_pos() {
+        let mut pointer_in_pixel = pointer_in_ui.to_vec2();
+        pointer_in_pixel -= map_rect.min.to_vec2();
+        pointer_in_pixel *= ui.ctx().pixels_per_point();
+
+        let picking_result = picking_gpu(
+            render_ctx,
+            picking_readback_identifier,
+            glam::vec2(pointer_in_pixel.x, pointer_in_pixel.y),
+            &mut state.last_gpu_picking_result,
+        );
+
+        handle_ui_interactions(ctx, query, map_response, picking_result);
+
+        // TODO(ab, andreas): this part is copy-pasted-modified from spatial space view and should be factored as an utility
+
+        /// Radius in which cursor interactions may snap to the nearest object even if the cursor
+        /// does not hover it directly.
+        ///
+        /// Note that this needs to be scaled when zooming is applied by the virtual->visible ui rect transform.
+        pub const UI_INTERACTION_RADIUS: f32 = 5.0;
+
+        let picking_rect_size = UI_INTERACTION_RADIUS * ui.ctx().pixels_per_point();
+        // Make the picking rect bigger than necessary so we can use it to counter-act delays.
+        // (by the time the picking rectangle is read back, the cursor may have moved on).
+        let picking_rect_size = (picking_rect_size * 2.0)
+            .ceil()
+            .at_least(8.0)
+            .at_most(128.0) as u32;
+        // ------
+
+        view_builder.schedule_picking_rect(
+            render_ctx,
+            re_renderer::RectInt::from_middle_and_extent(
+                glam::ivec2(pointer_in_pixel.x as _, pointer_in_pixel.y as _),
+                glam::uvec2(picking_rect_size, picking_rect_size),
+            ),
+            picking_readback_identifier,
+            (),
+            ctx.app_options.show_picking_debug_overlay,
+        )?;
+    } else {
+        // TODO(andreas): should we keep flushing out the gpu picking results? Does spatial view do this?
+        state.last_gpu_picking_result = None;
+    }
+    Ok(())
 }
 
 /// Handle all UI interactions based on the currently picked instance (if any).
@@ -486,7 +497,7 @@ fn picking_gpu(
     }
 
     if let Some(gpu_picking_result) = gpu_picking_result {
-        // TODO: the block inside this particular branch is so reusable, it should probably live on re_renderer! (on picking result?)
+        // TODO(ab, andreas): the block inside this particular branch is so reusable, it should probably live on re_renderer! (on picking result?)
 
         // First, figure out where on the rect the cursor is by now.
         // (for simplicity, we assume the screen hasn't been resized)

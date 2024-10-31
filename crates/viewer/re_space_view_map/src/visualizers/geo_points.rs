@@ -157,7 +157,7 @@ impl GeoPointsVisualizer {
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()))
                 .outline_mask_ids(outline.overall);
 
-            //TODO: boilerplate copy-pasted from points2d
+            //TODO(ab, andreas): boilerplate copy-pasted from points2d
             let num_instances = positions.len() as u64;
             for (highlighted_key, instance_mask_ids) in &outline.instances {
                 let highlighted_point_index =
