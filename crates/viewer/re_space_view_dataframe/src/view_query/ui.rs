@@ -172,7 +172,8 @@ impl Query {
         //
 
         let all_components = ctx
-            .recording_store()
+            .recording_engine()
+            .store()
             .all_components_on_timeline(timeline, &filter_entity)
             .unwrap_or_default();
 
@@ -429,7 +430,8 @@ fn all_pov_entities_for_space_view(
         .visit(&mut |node| {
             if !node.data_result.tree_prefix_only {
                 let comp_for_entity = ctx
-                    .recording_store()
+                    .recording_engine()
+                    .store()
                     .all_components_on_timeline(timeline, &node.data_result.entity_path);
                 if comp_for_entity.is_some_and(|components| !components.is_empty()) {
                     all_entities.insert(node.data_result.entity_path.clone());

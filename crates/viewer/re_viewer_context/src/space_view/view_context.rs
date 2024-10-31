@@ -3,6 +3,7 @@ use std::sync::Arc;
 use re_chunk::ArrowArray;
 use re_chunk_store::LatestAtQuery;
 use re_log_types::{EntityPath, TimePoint};
+use re_query::StorageEngineReadGuard;
 use re_types::{AsComponents, ComponentBatch, ComponentName};
 
 use crate::{DataQueryResult, DataResult, QueryContext, SpaceViewId};
@@ -45,10 +46,10 @@ impl<'a> ViewContext<'a> {
         self.viewer_ctx.recording()
     }
 
-    /// The chunk store of the active recording.
+    /// The `StorageEngine` for the active recording.
     #[inline]
-    pub fn recording_store(&self) -> &re_chunk_store::ChunkStore {
-        self.viewer_ctx.recording_store()
+    pub fn recording_engine(&self) -> StorageEngineReadGuard<'_> {
+        self.viewer_ctx.recording_engine()
     }
 
     /// The active blueprint.
@@ -59,7 +60,7 @@ impl<'a> ViewContext<'a> {
 
     /// The `StoreId` of the active recording.
     #[inline]
-    pub fn recording_id(&self) -> &re_log_types::StoreId {
+    pub fn recording_id(&self) -> re_log_types::StoreId {
         self.viewer_ctx.recording_id()
     }
 

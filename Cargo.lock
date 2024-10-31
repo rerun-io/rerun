@@ -5703,7 +5703,6 @@ dependencies = [
  "re_build_info",
  "re_chunk",
  "re_chunk_store",
- "re_dataframe",
  "re_format",
  "re_int_histogram",
  "re_log",

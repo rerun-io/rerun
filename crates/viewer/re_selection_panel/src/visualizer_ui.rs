@@ -554,7 +554,7 @@ fn available_inactive_visualizers(
     let applicable_entities_per_visualizer = ctx
         .viewer_ctx
         .space_view_class_registry
-        .applicable_entities_for_visualizer_systems(entity_db.store_id());
+        .applicable_entities_for_visualizer_systems(&entity_db.store_id());
 
     let visualizable_entities = space_view
         .class(ctx.viewer_ctx.space_view_class_registry)

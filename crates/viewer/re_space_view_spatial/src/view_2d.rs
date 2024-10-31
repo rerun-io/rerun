@@ -119,7 +119,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
 
         // For a 2D space view, the origin of the subspace defined by the common ancestor is always
         // better.
-        SpatialTopology::access(entity_db.store_id(), |topo| {
+        SpatialTopology::access(&entity_db.store_id(), |topo| {
             topo.subspace_for_entity(&common_ancestor).origin.clone()
         })
     }
@@ -135,7 +135,7 @@ impl SpaceViewClass for SpatialSpaceView2D {
         // If the topology hasn't changed, we don't need to recompute any of this.
         // Also, we arrive at the same `VisualizableFilterContext` for lots of different origins!
 
-        let context = SpatialTopology::access(entity_db.store_id(), |topo| {
+        let context = SpatialTopology::access(&entity_db.store_id(), |topo| {
             let primary_space = topo.subspace_for_entity(space_origin);
             if !primary_space.supports_2d_content() {
                 // If this is strict 3D space, only display the origin entity itself.
@@ -178,15 +178,16 @@ impl SpaceViewClass for SpatialSpaceView2D {
             SpatialSpaceViewKind::TwoD,
         );
 
-        let image_dimensions = MaxImageDimensions::access(ctx.recording_id(), |image_dimensions| {
-            image_dimensions.clone()
-        })
-        .unwrap_or_default();
+        let image_dimensions =
+            MaxImageDimensions::access(&ctx.recording_id(), |image_dimensions| {
+                image_dimensions.clone()
+            })
+            .unwrap_or_default();
 
         // Spawn a space view at each subspace that has any potential 2D content.
         // Note that visualizability filtering is all about being in the right subspace,
         // so we don't need to call the visualizers' filter functions here.
-        SpatialTopology::access(ctx.recording_id(), |topo| {
+        SpatialTopology::access(&ctx.recording_id(), |topo| {
             SpaceViewSpawnHeuristics::new(topo.iter_subspaces().flat_map(|subspace| {
                 if !subspace.supports_2d_content()
                     || subspace.entities.is_empty()
@@ -282,6 +283,7 @@ fn count_non_nested_images_with_component(
     if image_dimensions.contains_key(&subtree.path) {
         // bool true -> 1
         entity_db
+            .storage_engine()
             .store()
             .entity_has_component(&subtree.path, component_name) as usize
     } else if !entity_bucket

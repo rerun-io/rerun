@@ -21,12 +21,13 @@ impl QueryCache {
     /// This is a cached API -- data will be lazily cached upon access.
     pub fn range(
         &self,
-        store: &ChunkStore,
         query: &RangeQuery,
         entity_path: &EntityPath,
         component_names: impl IntoIterator<Item = ComponentName>,
     ) -> RangeResults {
         re_tracing::profile_function!(entity_path.to_string());
+
+        let store = self.store.read();
 
         let mut results = RangeResults::new(query.clone());
 
@@ -51,7 +52,7 @@ impl QueryCache {
 
             cache.handle_pending_invalidation();
 
-            let cached = cache.range(store, query, entity_path, component_name);
+            let cached = cache.range(&store, query, entity_path, component_name);
             if !cached.is_empty() {
                 results.add(component_name, cached);
             }

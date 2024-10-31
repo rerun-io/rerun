@@ -699,8 +699,11 @@ impl TimePanel {
         // ----------------------------------------------
 
         // show the data in the time area:
-        let tree_has_data_in_current_timeline =
-            entity_db.subtree_has_data_on_timeline(time_ctrl.timeline(), &tree.path);
+        let tree_has_data_in_current_timeline = entity_db.subtree_has_data_on_timeline(
+            &entity_db.storage_engine(),
+            time_ctrl.timeline(),
+            &tree.path,
+        );
         if is_visible && tree_has_data_in_current_timeline {
             let row_rect =
                 Rect::from_x_y_ranges(time_area_response.rect.x_range(), response_rect.y_range());
@@ -751,35 +754,33 @@ impl TimePanel {
             );
         }
 
+        let engine = entity_db.storage_engine();
+        let store = engine.store();
+
         // If this is an entity:
-        if let Some(components) = entity_db.store().all_components_for_entity(&tree.path) {
+        if let Some(components) = store.all_components_for_entity(&tree.path) {
             for component_name in sorted_component_list_for_ui(components.iter()) {
-                let is_static = entity_db
-                    .store()
-                    .entity_has_static_component(&tree.path, &component_name);
+                let is_static = store.entity_has_static_component(&tree.path, &component_name);
 
                 let component_path = ComponentPath::new(tree.path.clone(), component_name);
                 let short_component_name = component_path.component_name.short_name();
                 let item = TimePanelItem::component_path(component_path.clone());
                 let timeline = time_ctrl.timeline();
 
-                let component_has_data_in_current_timeline =
-                    entity_db.store().entity_has_component_on_timeline(
+                let component_has_data_in_current_timeline = store
+                    .entity_has_component_on_timeline(
                         time_ctrl.timeline(),
                         &tree.path,
                         &component_name,
                     );
 
-                let num_static_messages = entity_db
-                    .store()
-                    .num_static_events_for_component(&tree.path, component_name);
-                let num_temporal_messages = entity_db
-                    .store()
-                    .num_temporal_events_for_component_on_timeline(
-                        time_ctrl.timeline(),
-                        &tree.path,
-                        component_name,
-                    );
+                let num_static_messages =
+                    store.num_static_events_for_component(&tree.path, component_name);
+                let num_temporal_messages = store.num_temporal_events_for_component_on_timeline(
+                    time_ctrl.timeline(),
+                    &tree.path,
+                    component_name,
+                );
                 let total_num_messages = num_static_messages + num_temporal_messages;
 
                 let response = ui

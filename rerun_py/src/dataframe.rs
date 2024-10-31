@@ -19,11 +19,11 @@ use pyo3::{
 };
 
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
-    ComponentColumnSelector, QueryExpression, SparseFillStrategy, TimeColumnDescriptor,
-    TimeColumnSelector, VersionPolicy, ViewContentsSelector,
+    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ColumnSelector,
+    ComponentColumnDescriptor, ComponentColumnSelector, QueryExpression, SparseFillStrategy,
+    TimeColumnDescriptor, TimeColumnSelector, VersionPolicy, ViewContentsSelector,
 };
-use re_dataframe::QueryEngine;
+use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeType};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 
@@ -566,8 +566,8 @@ impl PySchema {
 /// to retrieve the data.
 #[pyclass(name = "Recording")]
 pub struct PyRecording {
-    store: ChunkStore,
-    cache: re_dataframe::QueryCache,
+    store: ChunkStoreHandle,
+    cache: re_dataframe::QueryCacheHandle,
 }
 
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
@@ -1140,11 +1140,13 @@ impl PyRecordingView {
 }
 
 impl PyRecording {
-    fn engine(&self) -> QueryEngine<'_> {
-        QueryEngine {
-            store: &self.store,
-            cache: &self.cache,
-        }
+    fn engine(&self) -> QueryEngine<StorageEngine> {
+        // Safety: this is all happening in the context of a python client using the dataframe API,
+        // there is no reason to worry about handle leakage whatsoever.
+        #[allow(unsafe_code)]
+        let engine = unsafe { StorageEngine::new(self.store.clone(), self.cache.clone()) };
+
+        QueryEngine { engine }
     }
 
     fn find_best_component(&self, entity_path: &EntityPath, component_name: &str) -> ComponentName {
@@ -1154,6 +1156,7 @@ impl PyRecording {
         };
 
         self.store
+            .read()
             .resolve_component_selector(&selector)
             .component_name
     }
@@ -1248,7 +1251,7 @@ impl PyRecording {
     /// The schema describing all the columns available in the recording.
     fn schema(&self) -> PySchema {
         PySchema {
-            schema: self.store.schema(),
+            schema: self.store.read().schema(),
         }
     }
 
@@ -1330,7 +1333,7 @@ impl PyRecording {
             timeline: index.into(),
         };
 
-        let timeline = borrowed_self.store.resolve_time_selector(&selector);
+        let timeline = borrowed_self.store.read().resolve_time_selector(&selector);
 
         let contents = borrowed_self.extract_contents_expr(contents)?;
 
@@ -1358,13 +1361,14 @@ impl PyRecording {
 
     /// The recording ID of the recording.
     fn recording_id(&self) -> String {
-        self.store.id().as_str().to_owned()
+        self.store.read().id().as_str().to_owned()
     }
 
     /// The application ID of the recording.
     fn application_id(&self) -> PyResult<String> {
         Ok(self
             .store
+            .read()
             .info()
             .ok_or(PyValueError::new_err(
                 "Recording is missing application id.",
@@ -1381,7 +1385,7 @@ impl PyRecording {
 #[pyclass(frozen, name = "RRDArchive")]
 #[derive(Clone)]
 pub struct PyRRDArchive {
-    pub datasets: BTreeMap<StoreId, ChunkStore>,
+    pub datasets: BTreeMap<StoreId, ChunkStoreHandle>,
 }
 
 #[pymethods]
@@ -1401,7 +1405,9 @@ impl PyRRDArchive {
             .iter()
             .filter(|(id, _)| matches!(id.kind, StoreKind::Recording))
             .map(|(_, store)| {
-                let cache = re_dataframe::external::re_query::QueryCache::new(store);
+                let cache = re_dataframe::QueryCacheHandle::new(re_dataframe::QueryCache::new(
+                    store.clone(),
+                ));
                 PyRecording {
                     store: store.clone(),
                     cache,
@@ -1460,7 +1466,10 @@ pub fn load_recording(path_to_rrd: std::path::PathBuf) -> PyResult<PyRecording> 
 pub fn load_archive(path_to_rrd: std::path::PathBuf) -> PyResult<PyRRDArchive> {
     let stores =
         ChunkStore::from_rrd_filepath(&ChunkStoreConfig::DEFAULT, path_to_rrd, VersionPolicy::Warn)
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+            .into_iter()
+            .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
+            .collect();
 
     let archive = PyRRDArchive { datasets: stores };
 

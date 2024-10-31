@@ -1,8 +1,8 @@
 //! Query and display the first 10 rows of a recording.
 
 use rerun::{
-    dataframe::{QueryCache, QueryEngine, QueryExpression, SparseFillStrategy, Timeline},
-    ChunkStore, ChunkStoreConfig, VersionPolicy,
+    dataframe::{QueryEngine, QueryExpression, SparseFillStrategy, Timeline},
+    ChunkStoreConfig, VersionPolicy,
 };
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -11,19 +11,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let path_to_rrd = &args[1];
     let timeline = Timeline::log_time();
 
-    let stores = ChunkStore::from_rrd_filepath(
+    let engines = QueryEngine::from_rrd_filepath(
         &ChunkStoreConfig::DEFAULT,
         path_to_rrd,
         VersionPolicy::Warn,
     )?;
-    let Some((_, store)) = stores.first_key_value() else {
-        return Ok(());
-    };
 
-    let query_cache = QueryCache::new(store);
-    let query_engine = QueryEngine {
-        store,
-        cache: &query_cache,
+    let Some((_, engine)) = engines.first_key_value() else {
+        return Ok(());
     };
 
     let query = QueryExpression {
@@ -32,7 +27,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         ..Default::default()
     };
 
-    let query_handle = query_engine.query(query.clone());
+    let query_handle = engine.query(query.clone());
     for row in query_handle.batch_iter().take(10) {
         // Each row is a `RecordBatch`, which can be easily passed around across different data ecosystems.
         println!("{row}");

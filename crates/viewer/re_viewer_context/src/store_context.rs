@@ -33,6 +33,6 @@ pub struct StoreContext<'a> {
 
 impl StoreContext<'_> {
     pub fn is_active(&self, store_id: &StoreId) -> bool {
-        self.recording.store_id() == store_id || self.blueprint.store_id() == store_id
+        self.recording.store_id() == *store_id || self.blueprint.store_id() == *store_id
     }
 }

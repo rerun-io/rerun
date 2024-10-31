@@ -891,8 +891,8 @@ fn reset_blueprint_button_ui(ctx: &ViewerContext<'_>, ui: &mut egui::Ui) {
     let mut disabled_reason = None;
 
     if let Some(default_blueprint) = default_blueprint {
-        let active_is_clone_of_default =
-            Some(default_blueprint.store_id()) == ctx.store_context.blueprint.cloned_from();
+        let active_is_clone_of_default = Some(default_blueprint.store_id()).as_ref()
+            == ctx.store_context.blueprint.cloned_from();
         let last_modified_at_the_same_time =
             default_blueprint.latest_row_id() == ctx.store_context.blueprint.latest_row_id();
         if active_is_clone_of_default && last_modified_at_the_same_time {
