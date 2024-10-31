@@ -25,12 +25,31 @@ pub mod v0 {
 
     // ==== below are all necessary transforms from internal rerun types to protobuf types =====
 
-    use std::collections::BTreeSet;
+    use std::{collections::BTreeSet, sync::Arc};
 
     #[derive(Debug, thiserror::Error)]
     pub enum TypeConversionError {
         #[error("missing required field: {0}")]
         MissingField(&'static str),
+    }
+
+    impl From<RecordingId> for re_log_types::StoreId {
+        #[inline]
+        fn from(value: RecordingId) -> Self {
+            Self {
+                kind: re_log_types::StoreKind::Recording,
+                id: Arc::new(value.id),
+            }
+        }
+    }
+
+    impl From<re_log_types::StoreId> for RecordingId {
+        #[inline]
+        fn from(value: re_log_types::StoreId) -> Self {
+            Self {
+                id: value.id.to_string(),
+            }
+        }
     }
 
     impl From<re_log_types::ResolvedTimeRange> for TimeRange {
@@ -332,8 +351,8 @@ mod tests {
     use crate::v0::{
         column_selector::SelectorType, ColumnSelection, ColumnSelector, Component,
         ComponentColumnSelector, ComponentsSet, EntityPath, IndexColumnSelector, IndexRange,
-        IndexValues, Query, SparseFillStrategy, TimeInt, TimeRange, Timeline, ViewContents,
-        ViewContentsPart,
+        IndexValues, Query, RecordingId, SparseFillStrategy, TimeInt, TimeRange, Timeline,
+        ViewContents, ViewContentsPart,
     };
 
     #[test]
@@ -404,5 +423,17 @@ mod tests {
         let grpc_query_after = query_expression_native.into();
 
         assert_eq!(grpc_query_before, grpc_query_after);
+    }
+
+    #[test]
+    fn test_recording_id_conversion() {
+        let recording_id = RecordingId {
+            id: "recording_id".to_owned(),
+        };
+
+        let store_id: re_log_types::StoreId = recording_id.clone().into();
+        let recording_id_after: RecordingId = store_id.into();
+
+        assert_eq!(recording_id, recording_id_after);
     }
 }
