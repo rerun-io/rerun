@@ -68,6 +68,7 @@ skip-tree = [
   { name = "objc2" },          # old version via accesskit
   { name = "prost-build" },    # only used in objectron example
   { name = "prost-derive" },   # only used in objectron example
+  { name = "quick-xml" },      # Old version via accesskit
   { name = "toml_edit" },      # Old version via egui-winit, newer used by rustdoc-json
   { name = "tower" },          # tonic depends on 0.4.3, but also transitively (axum) on 0.5.1
   { name = "walkers" },        # TODO(#7876): suppress that when `walkers` is updated
