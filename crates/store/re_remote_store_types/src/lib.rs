@@ -349,8 +349,8 @@ mod tests {
     use crate::v0::{
         column_selector::SelectorType, ColumnSelection, ColumnSelector, Component,
         ComponentColumnSelector, ComponentsSet, EntityPath, IndexColumnSelector, IndexRange,
-        IndexValues, Query, SparseFillStrategy, TimeInt, TimeRange, Timeline, ViewContents,
-        ViewContentsPart,
+        IndexValues, Query, RecordingId, SparseFillStrategy, TimeInt, TimeRange, Timeline,
+        ViewContents, ViewContentsPart,
     };
 
     #[test]
@@ -421,5 +421,17 @@ mod tests {
         let grpc_query_after = query_expression_native.into();
 
         assert_eq!(grpc_query_before, grpc_query_after);
+    }
+
+    #[test]
+    fn test_recording_id_conversion() {
+        let recording_id = RecordingId {
+            id: "recording_id".to_string(),
+        };
+
+        let store_id: re_log_types::StoreId = recording_id.clone().into();
+        let recording_id_after: RecordingId = store_id.into();
+
+        assert_eq!(recording_id, recording_id_after);
     }
 }
