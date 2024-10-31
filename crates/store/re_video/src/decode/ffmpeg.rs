@@ -160,16 +160,15 @@ impl FfmpegProcessAndListener {
 
 impl Drop for FfmpegProcessAndListener {
     fn drop(&mut self) {
-        // First stop the write thread. If we kill it too early, it will try to send chunks to an already dead ffmpeg process.
+        re_tracing::profile_function!();
         self.frame_data_tx.send(FfmpegFrameData::EndOfStream).ok();
+        self.ffmpeg.kill().ok();
+
         if let Some(write_thread) = self.write_thread.take() {
             if write_thread.join().is_err() {
                 re_log::error!("Failed to join ffmpeg listener thread.");
             }
         }
-
-        // The listen thread is waiting for ffmpeg things, so killing ffmpeg is enough to get it notified.
-        self.ffmpeg.kill().ok();
         if let Some(listen_thread) = self.listen_thread.take() {
             if listen_thread.join().is_err() {
                 re_log::error!("Failed to join ffmpeg listener thread.");
