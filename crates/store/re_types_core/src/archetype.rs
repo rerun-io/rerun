@@ -101,6 +101,7 @@ pub trait Archetype {
     ///
     /// Arrow arrays that are unknown to this [`Archetype`] will simply be ignored and a warning
     /// logged to stderr.
+    #[cfg(test)] // Quite a lot of code that is only used for tests
     #[inline]
     fn from_arrow(
         data: impl IntoIterator<Item = (arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
@@ -119,6 +120,7 @@ pub trait Archetype {
     ///
     /// Arrow arrays that are unknown to this [`Archetype`] will simply be ignored and a warning
     /// logged to stderr.
+    #[cfg(test)] // Quite a lot of code that is only used for tests
     #[inline]
     fn from_arrow_components(
         data: impl IntoIterator<Item = (ComponentName, Box<dyn ::arrow2::array::Array>)>,
