@@ -613,7 +613,20 @@ fn write_avc_chunk_to_nalu_stream(
         buffer_offset = data_end;
     }
 
-    // TODO: Write an Access Unit Delimiter (AUD) NAL unit to the stream?
+    // Write an Access Unit Delimiter (AUD) NAL unit to the stream to signal the end of an access unit.
+    // This can help with ffmpeg picking up NALs right away before seeing the next chunk.
+    nalu_stream
+        .write_all(NAL_START_CODE)
+        .map_err(Error::FailedToWriteToFfmpeg)?;
+    nalu_stream
+        .write_all(&[
+            NalHeader::new(NalUnitType::AccessUnitDelimiter, 3).0,
+            // Two arbitrary bytes? 0000 worked as well, but this is what
+            // https://stackoverflow.com/a/44394025/ uses. Couldn't figure out the rules for this.
+            0xFF,
+            0x80,
+        ])
+        .map_err(Error::FailedToWriteToFfmpeg)?;
 
     Ok(())
 }
@@ -621,7 +634,9 @@ fn write_avc_chunk_to_nalu_stream(
 /// Possible values for `nal_unit_type` field in `nal_unit`.
 ///
 /// Encodes to 5 bits.
-/// Via: <https://docs.rs/less-avc/0.1.5/src/less_avc/nal_unit.rs.html#232/>
+/// Via:
+/// * <https://docs.rs/less-avc/0.1.5/src/less_avc/nal_unit.rs.html#232/>
+/// * <https://github.com/FFmpeg/FFmpeg/blob/87068b9600daa522e3f45b5501ecd487a3c0be57/libavcodec/h264.h#L33>
 #[derive(PartialEq, Eq)]
 #[non_exhaustive]
 #[repr(u8)]
@@ -654,6 +669,14 @@ pub enum NalUnitType {
     /// Picture parameter set
     PictureParameterSet = 8,
 
+    /// Signals the end of a NAL unit.
+    AccessUnitDelimiter = 9,
+
+    EndSequence = 10,
+    EndStream = 11,
+    FillerData = 12,
+    SequenceParameterSetExt = 13,
+
     /// Header type not listed here.
     Other,
 }
@@ -663,8 +686,12 @@ pub enum NalUnitType {
 struct NalHeader(pub u8);
 
 impl NalHeader {
+    pub const fn new(unit_type: NalUnitType, ref_idc: u8) -> Self {
+        Self((unit_type as u8) | (ref_idc << 5))
+    }
+
     pub fn unit_type(self) -> NalUnitType {
-        match self.0 & 0b111 {
+        match self.0 & 0b11111 {
             0 => NalUnitType::Unspecified,
             1 => NalUnitType::CodedSliceOfANonIDRPicture,
             2 => NalUnitType::CodedSliceDataPartitionA,
@@ -674,6 +701,11 @@ impl NalHeader {
             6 => NalUnitType::SupplementalEnhancementInformation,
             7 => NalUnitType::SequenceParameterSet,
             8 => NalUnitType::PictureParameterSet,
+            9 => NalUnitType::AccessUnitDelimiter,
+            10 => NalUnitType::EndSequence,
+            11 => NalUnitType::EndStream,
+            12 => NalUnitType::FillerData,
+            13 => NalUnitType::SequenceParameterSetExt,
             _ => NalUnitType::Other,
         }
     }
@@ -682,7 +714,7 @@ impl NalHeader {
     ///
     /// For details see:
     /// <https://yumichan.net/video-processing/video-compression/breif-description-of-nal_ref_idc-value-in-h-246-nalu/>
-    fn ref_idc(self) -> u8 {
+    pub fn ref_idc(self) -> u8 {
         (self.0 >> 5) & 0b11
     }
 }
