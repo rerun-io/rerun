@@ -153,7 +153,7 @@ impl GeoPointsVisualizer {
             let outline = highlight.entity_outline_mask(entity_path.hash());
 
             let mut point_batch = points
-                .batch("todo")
+                .batch(entity_path.to_string())
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()))
                 .outline_mask_ids(outline.overall);
 
