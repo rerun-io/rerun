@@ -737,21 +737,12 @@ impl PyRecordingView {
         let metadata = schema.metadata.clone().into_iter().collect();
         let schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
 
-        // TODO(jleibs): Need to keep the engine alive
-        /*
         let reader = RecordBatchIterator::new(
             query_handle
                 .into_batch_iter()
                 .map(|batch| batch.try_to_arrow_record_batch()),
             std::sync::Arc::new(schema),
         );
-        */
-        let batches = query_handle
-            .into_batch_iter()
-            .map(|batch| batch.try_to_arrow_record_batch())
-            .collect::<Vec<_>>();
-
-        let reader = RecordBatchIterator::new(batches.into_iter(), std::sync::Arc::new(schema));
 
         Ok(PyArrowType(Box::new(reader)))
     }
@@ -829,21 +820,12 @@ impl PyRecordingView {
         let metadata = schema.metadata.clone().into_iter().collect();
         let schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
 
-        // TODO(jleibs): Need to keep the engine alive
-        /*
         let reader = RecordBatchIterator::new(
             query_handle
                 .into_batch_iter()
                 .map(|batch| batch.try_to_arrow_record_batch()),
             std::sync::Arc::new(schema),
         );
-        */
-        let batches = query_handle
-            .into_batch_iter()
-            .map(|batch| batch.try_to_arrow_record_batch())
-            .collect::<Vec<_>>();
-
-        let reader = RecordBatchIterator::new(batches.into_iter(), std::sync::Arc::new(schema));
 
         Ok(PyArrowType(Box::new(reader)))
     }
