@@ -678,6 +678,7 @@ force_capitalized = [
     "CI",
     "Colab",
     "Google",
+    "gRPC",
     "GUI",
     "GUIs",
     "July",
