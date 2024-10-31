@@ -259,7 +259,7 @@ Displays geospatial primitives on a map.
         };
 
         let mut view_builder =
-            create_view_builder(&render_ctx, ui.ctx(), map_rect, &query.highlights);
+            create_view_builder(render_ctx, ui.ctx(), map_rect, &query.highlights);
 
         geo_points_visualizer.queue_draw_data(
             render_ctx,
@@ -333,6 +333,9 @@ fn create_view_builder(
             outline_config: highlights
                 .any_outlines()
                 .then(|| gpu_bridge::outline_config(egui_ctx)),
+
+            // Make sure the map in the background is not completely overwritten
+            blend_with_background: true,
         },
     )
 }

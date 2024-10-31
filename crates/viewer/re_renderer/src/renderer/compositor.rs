@@ -30,7 +30,8 @@ mod gpu_data {
 }
 
 pub struct Compositor {
-    render_pipeline_regular: GpuRenderPipelineHandle,
+    render_pipeline_opaque: GpuRenderPipelineHandle,
+    render_pipeline_blended: GpuRenderPipelineHandle,
     render_pipeline_screenshot: GpuRenderPipelineHandle,
     bind_group_layout: GpuBindGroupLayoutHandle,
 }
@@ -40,6 +41,9 @@ pub struct CompositorDrawData {
     /// [`GpuBindGroup`] pointing at the current image source and
     /// a uniform buffer for describing a tonemapper/compositor configuration.
     bind_group: GpuBindGroup,
+
+    /// If true, the compositor will blend the image with pre-multiplied alpha blending.
+    enable_blending: bool,
 }
 
 impl DrawData for CompositorDrawData {
@@ -52,6 +56,7 @@ impl CompositorDrawData {
         color_texture: &GpuTexture,
         outline_final_voronoi: Option<&GpuTexture>,
         outline_config: &Option<OutlineConfig>,
+        enable_blending: bool,
     ) -> Self {
         let compositor = ctx.renderer::<Compositor>();
 
@@ -91,6 +96,7 @@ impl CompositorDrawData {
                     layout: compositor.bind_group_layout,
                 },
             ),
+            enable_blending,
         }
     }
 }
@@ -161,21 +167,29 @@ impl Renderer for Compositor {
                 .shader_modules
                 .get_or_create(ctx, &include_shader_module!("../../shader/composite.wgsl")),
             vertex_buffers: smallvec![],
-            // TODO: create two versions of this pipeline one with blending and one without
-            // and then use the correct one based on some view builder configuration.
-            render_targets: smallvec![Some(wgpu::ColorTargetState {
-                format: ctx.config.output_format_color,
-                blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
-                write_mask: wgpu::ColorWrites::ALL,
-            })],
+            render_targets: smallvec![Some(ctx.config.output_format_color.into())],
             primitive: wgpu::PrimitiveState::default(),
             depth_stencil: None,
             multisample: wgpu::MultisampleState::default(),
         };
-        let render_pipeline_regular = ctx
+
+        let render_pipeline_opaque = ctx
             .gpu_resources
             .render_pipelines
             .get_or_create(ctx, &render_pipeline_descriptor);
+
+        let render_pipeline_blended = ctx.gpu_resources.render_pipelines.get_or_create(
+            ctx,
+            &RenderPipelineDesc {
+                render_targets: smallvec![Some(wgpu::ColorTargetState {
+                    format: ctx.config.output_format_color,
+                    blend: Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING),
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+                ..render_pipeline_descriptor.clone()
+            },
+        );
+
         let render_pipeline_screenshot = ctx.gpu_resources.render_pipelines.get_or_create(
             ctx,
             &RenderPipelineDesc {
@@ -186,7 +200,8 @@ impl Renderer for Compositor {
         );
 
         Self {
-            render_pipeline_regular,
+            render_pipeline_opaque,
+            render_pipeline_blended,
             render_pipeline_screenshot,
             bind_group_layout,
         }
@@ -200,7 +215,13 @@ impl Renderer for Compositor {
         draw_data: &CompositorDrawData,
     ) -> Result<(), DrawError> {
         let pipeline_handle = match phase {
-            DrawPhase::Compositing => self.render_pipeline_regular,
+            DrawPhase::Compositing => {
+                if draw_data.enable_blending {
+                    self.render_pipeline_blended
+                } else {
+                    self.render_pipeline_opaque
+                }
+            }
             DrawPhase::CompositingScreenshot => self.render_pipeline_screenshot,
             _ => unreachable!("We were called on a phase we weren't subscribed to: {phase:?}"),
         };

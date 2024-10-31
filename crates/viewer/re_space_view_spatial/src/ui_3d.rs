@@ -480,6 +480,7 @@ impl SpatialSpaceView3D {
                 .highlights
                 .any_outlines()
                 .then(|| gpu_bridge::outline_config(ui.ctx())),
+            blend_with_background: false,
         };
 
         let Some(render_ctx) = ctx.render_ctx else {

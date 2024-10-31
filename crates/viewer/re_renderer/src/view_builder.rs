@@ -216,6 +216,11 @@ pub struct TargetConfiguration {
     pub pixels_per_point: f32,
 
     pub outline_config: Option<OutlineConfig>,
+
+    /// If true, the `composite` step will blend the image with pre-multiplied alpha blending.
+    ///
+    /// Otherwise, this step will overwrite whatever was there before.
+    pub blend_with_background: bool,
 }
 
 impl Default for TargetConfiguration {
@@ -232,6 +237,7 @@ impl Default for TargetConfiguration {
             viewport_transformation: RectTransform::IDENTITY,
             pixels_per_point: 1.0,
             outline_config: None,
+            blend_with_background: false,
         }
     }
 }
@@ -455,6 +461,7 @@ impl ViewBuilder {
                 .as_ref()
                 .map(|p| p.final_voronoi_texture()),
             &config.outline_config,
+            config.blend_with_background,
         );
 
         let setup = ViewTargetSetup {
