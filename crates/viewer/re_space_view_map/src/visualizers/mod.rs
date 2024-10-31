@@ -1,4 +1,8 @@
-pub mod geo_points;
+mod geo_line_strings;
+mod geo_points;
+
+pub use geo_line_strings::GeoLineStringsVisualizer;
+pub use geo_points::GeoPointsVisualizer;
 
 /// Helper to track an area span in latitude and longitude.
 #[derive(Debug, Clone)]
@@ -70,6 +74,21 @@ impl GeoSpan {
 
         // Use the minimum zoom level to ensure the entire range fits
         Some(zoom_x.min(zoom_y))
+    }
+}
+
+/// Extend a span to include another span, if any.
+pub fn update_span(span: &mut Option<GeoSpan>, other: Option<GeoSpan>) {
+    if let Some(other) = other {
+        match span {
+            Some(span) => {
+                span.min_latitude = span.min_latitude.min(other.min_latitude);
+                span.max_latitude = span.max_latitude.max(other.max_latitude);
+                span.min_longitude = span.min_longitude.min(other.min_longitude);
+                span.max_longitude = span.max_longitude.max(other.max_longitude);
+            }
+            None => *span = Some(other),
+        }
     }
 }
 

@@ -1,0 +1,33 @@
+namespace rerun.archetypes;
+
+// ---
+
+/// Geospatial line strings with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
+///
+/// **Note**: Geospatial entities are experimental.
+// TODO(ab): add snippet and screenshot
+table GeoLineStrings (
+  "attr.rust.derive": "PartialEq",
+  "attr.docs.category": "Geospatial",
+  "attr.docs.view_types": "MapView",
+  "attr.docs.unreleased"
+) {
+  // --- Required ---
+
+  /// The lines strings, expressed in EPSG:4326 coordinates.
+  line_strings: [rerun.components.GeoLineString] ("attr.rerun.component_required", order: 1000);
+
+  // --- Recommended ---
+
+  /// Optional radii for the line strings.
+  radii: [rerun.components.Radius] ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  /// Optional colors for the linestrings.
+  ///
+  /// \py The colors are interpreted as RGB or RGBA in sRGB gamma-space,
+  /// \py As either 0-1 floats or 0-255 integers, with separate alpha.
+  colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
+
+  //TODO(ab): add `Label` and  `ShowLabels` components
+  //TODO(ab): add `Altitude` component
+}

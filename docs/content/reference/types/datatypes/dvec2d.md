@@ -17,4 +17,5 @@ A double-precision vector in 2D space.
 
 ## Used by
 
+* [`GeoLineString`](../components/geo_line_string.md?speculative-link)
 * [`LatLon`](../components/lat_lon.md?speculative-link)

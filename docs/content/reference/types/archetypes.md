@@ -14,6 +14,7 @@ This page lists all built-in archetypes.
 
 ## Geospatial
 
+* [`GeoLineStrings`](archetypes/geo_line_strings.md): Geospatial line strings with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
 * [`GeoPoints`](archetypes/geo_points.md): Geospatial points with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
 
 ## Image & tensor

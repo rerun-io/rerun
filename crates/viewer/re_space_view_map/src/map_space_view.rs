@@ -24,7 +24,7 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 
 use crate::map_overlays;
-use crate::visualizers::geo_points::GeoPointsVisualizer;
+use crate::visualizers::{update_span, GeoLineStringsVisualizer, GeoPointsVisualizer};
 
 #[derive(Default)]
 pub struct MapSpaceViewState {
@@ -102,7 +102,8 @@ Displays geospatial primitives on a map.
         &self,
         system_registry: &mut SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        system_registry.register_visualizer::<GeoPointsVisualizer>()
+        system_registry.register_visualizer::<GeoPointsVisualizer>()?;
+        system_registry.register_visualizer::<GeoLineStringsVisualizer>()
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
@@ -160,6 +161,9 @@ Displays geospatial primitives on a map.
         );
 
         let geo_points_visualizer = system_output.view_systems.get::<GeoPointsVisualizer>()?;
+        let geo_line_strings_visualizers = system_output
+            .view_systems
+            .get::<GeoLineStringsVisualizer>()?;
 
         //
         // Map Provider
@@ -187,7 +191,9 @@ Displays geospatial primitives on a map.
         // changes in walkers
         // TODO(#7884): support more elaborate auto-pan/zoom modes.
 
-        let span = geo_points_visualizer.span();
+        let mut span = None;
+        update_span(&mut span, geo_points_visualizer.span());
+        update_span(&mut span, geo_line_strings_visualizers.span());
 
         let default_center_position = span
             .as_ref()
@@ -261,6 +267,12 @@ Displays geospatial primitives on a map.
         let mut view_builder =
             create_view_builder(render_ctx, ui.ctx(), map_rect, &query.highlights);
 
+        geo_line_strings_visualizers.queue_draw_data(
+            render_ctx,
+            &mut view_builder,
+            &projector,
+            &query.highlights,
+        )?;
         geo_points_visualizer.queue_draw_data(
             render_ctx,
             &mut view_builder,
