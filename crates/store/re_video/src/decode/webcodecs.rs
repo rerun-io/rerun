@@ -132,7 +132,7 @@ impl AsyncDecoder for WebVideoDecoder {
         let web_chunk = EncodedVideoChunkInit::new(
             &data,
             video_chunk
-                .composition_timestamp
+                .presentation_timestamp
                 .into_micros(self.timescale),
             type_,
         );
@@ -184,6 +184,7 @@ fn init_video_decoder(
                 info: FrameInfo {
                     presentation_timestamp,
                     duration,
+                    ..Default::default()
                 },
             }));
         }) as Box<dyn Fn(web_sys::VideoFrame)>)
