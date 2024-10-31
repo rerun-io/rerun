@@ -54,13 +54,19 @@ pub trait ComponentBatch: LoggableBatch<Name = ComponentName> {
     }
 }
 
+// TODO: It really does feel like the only reason these things exist is because we don't have eager
+// serialization...
+
+// TODO: for when you need an extra description, beyond what just the data can tell you -- but man
+// is it all a mess.
+// TODO: we need this because you don't always have a descriptor available, although... why?
 // TODO: why do we need this again? and when can the basic one go away?
-pub struct MaybeOwnedComponentBatchWithDescriptor<'a> {
+pub struct MaybeOwnedDescribedComponentBatch<'a> {
     pub batch: MaybeOwnedComponentBatch<'a>,
     pub descriptor: ComponentDescriptor,
 }
 
-impl<'a> LoggableBatch for MaybeOwnedComponentBatchWithDescriptor<'a> {
+impl<'a> LoggableBatch for MaybeOwnedDescribedComponentBatch<'a> {
     type Name = ComponentName;
 
     #[inline]
@@ -74,7 +80,7 @@ impl<'a> LoggableBatch for MaybeOwnedComponentBatchWithDescriptor<'a> {
     }
 }
 
-impl<'a> ComponentBatch for MaybeOwnedComponentBatchWithDescriptor<'a> {
+impl<'a> ComponentBatch for MaybeOwnedDescribedComponentBatch<'a> {
     fn descriptor(&self) -> ComponentDescriptor {
         self.descriptor.clone()
     }

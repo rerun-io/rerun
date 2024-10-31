@@ -53,18 +53,19 @@ pub trait AsComponents {
 
     // TODO: doc
     // TODO: when can we remove the standard one?
-    fn as_described_component_batches(&self) -> Vec<MaybeOwnedComponentBatchWithDescriptor<'_>> {
+    fn as_described_component_batches(&self) -> Vec<MaybeOwnedDescribedComponentBatch<'_>> {
         self.as_component_batches()
             .into_iter()
             .map(|batch| {
                 let descriptor = batch.descriptor();
-                MaybeOwnedComponentBatchWithDescriptor { batch, descriptor }
+                MaybeOwnedDescribedComponentBatch { batch, descriptor }
             })
             .collect()
     }
 
     // ---
 
+    // TODO: why does this have a field though? actually, why is this a thing at all?
     /// Serializes all non-null [`Component`]s of this bundle into Arrow arrays.
     ///
     /// The default implementation will simply serialize the result of [`Self::as_component_batches`]
@@ -125,8 +126,7 @@ pub use self::{
     component_descriptor::ComponentDescriptor,
     loggable::{Component, ComponentName, ComponentNameSet, DatatypeName, Loggable},
     loggable_batch::{
-        ComponentBatch, LoggableBatch, MaybeOwnedComponentBatch,
-        MaybeOwnedComponentBatchWithDescriptor,
+        ComponentBatch, LoggableBatch, MaybeOwnedComponentBatch, MaybeOwnedDescribedComponentBatch,
     },
     result::{
         DeserializationError, DeserializationResult, ResultExt, SerializationError,
