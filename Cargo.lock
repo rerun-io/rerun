@@ -5376,6 +5376,7 @@ dependencies = [
  "re_types",
  "tempfile",
  "thiserror",
+ "uuid",
  "walkdir",
 ]
 
@@ -6415,6 +6416,7 @@ dependencies = [
  "strum",
  "strum_macros",
  "thiserror",
+ "uuid",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",

@@ -43,6 +43,7 @@ once_cell.workspace = true
 parking_lot.workspace = true
 rayon.workspace = true
 thiserror.workspace = true
+uuid.workspace = true
 walkdir.workspace = true
 
 [target.'cfg(not(any(target_arch = "wasm32")))'.dependencies]

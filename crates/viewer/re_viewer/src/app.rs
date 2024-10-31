@@ -150,6 +150,7 @@ const MAX_ZOOM_FACTOR: f32 = 5.0;
 struct PendingFilePromise {
     recommended_application_id: Option<ApplicationId>,
     recommended_recording_id: Option<re_log_types::StoreId>,
+    force_store_info: bool,
     promise: poll_promise::Promise<Vec<re_data_source::FileContents>>,
 }
 
@@ -573,17 +574,33 @@ impl App {
         store_context: Option<&StoreContext<'_>>,
         cmd: UICommand,
     ) {
+        let mut force_store_info = false;
         let active_application_id = store_context
             .and_then(|ctx| {
                 ctx.hub
                     .active_app()
                     // Don't redirect data to the welcome screen.
                     .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
+                    .cloned()
             })
-            .cloned();
+            // If we don't have any application ID to recommend (which means we are on the welcome screen),
+            // then just generate a new one using a UUID.
+            .or_else(|| Some(uuid::Uuid::new_v4().to_string().into()));
         let active_recording_id = store_context
-            .and_then(|ctx| ctx.hub.active_recording_id())
-            .cloned();
+            .and_then(|ctx| ctx.hub.active_recording_id().cloned())
+            .or_else(|| {
+                // When we're on the welcome screen, there is no recording ID to recommend.
+                // But we want one, otherwise multiple things being dropped simultaneously on the
+                // welcome screen would end up in different recordings!
+
+                // We're creating a recording just-in-time, directly from the viewer.
+                // We need those store infos or the data will just be silently ignored.
+                force_store_info = true;
+
+                // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
+                // this can only be a recording.
+                Some(re_log_types::StoreId::random(StoreKind::Recording))
+            });
 
         match cmd {
             UICommand::SaveRecording => {
@@ -615,6 +632,7 @@ impl App {
                             FileSource::FileDialog {
                                 recommended_application_id: None,
                                 recommended_recording_id: None,
+                                force_store_info,
                             },
                             file_path,
                         )));
@@ -624,9 +642,6 @@ impl App {
             UICommand::Open => {
                 let egui_ctx = egui_ctx.clone();
 
-                // Open: we want to try and load into a new dedicated recording.
-                let recommended_application_id = None;
-                let recommended_recording_id = None;
                 let promise = poll_promise::Promise::spawn_local(async move {
                     let file = async_open_rrd_dialog().await;
                     egui_ctx.request_repaint(); // Wake ui thread
@@ -634,8 +649,9 @@ impl App {
                 });
 
                 self.open_files_promise = Some(PendingFilePromise {
-                    recommended_application_id,
-                    recommended_recording_id,
+                    recommended_application_id: None,
+                    recommended_recording_id: None,
+                    force_store_info,
                     promise,
                 });
             }
@@ -648,6 +664,7 @@ impl App {
                             FileSource::FileDialog {
                                 recommended_application_id: active_application_id.clone(),
                                 recommended_recording_id: active_recording_id.clone(),
+                                force_store_info,
                             },
                             file_path,
                         )));
@@ -657,10 +674,6 @@ impl App {
             UICommand::Import => {
                 let egui_ctx = egui_ctx.clone();
 
-                // Import: we want to try and load into the current recording.
-                let recommended_application_id = active_application_id;
-                let recommended_recording_id = active_recording_id;
-
                 let promise = poll_promise::Promise::spawn_local(async move {
                     let file = async_open_rrd_dialog().await;
                     egui_ctx.request_repaint(); // Wake ui thread
@@ -668,8 +681,9 @@ impl App {
                 });
 
                 self.open_files_promise = Some(PendingFilePromise {
-                    recommended_application_id,
-                    recommended_recording_id,
+                    recommended_application_id: active_application_id.clone(),
+                    recommended_recording_id: active_recording_id.clone(),
+                    force_store_info,
                     promise,
                 });
             }
@@ -1364,17 +1378,33 @@ impl App {
             return;
         }
 
+        let mut force_store_info = false;
         let active_application_id = store_ctx
             .and_then(|ctx| {
                 ctx.hub
                     .active_app()
                     // Don't redirect data to the welcome screen.
                     .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
+                    .cloned()
             })
-            .cloned();
+            // If we don't have any application ID to recommend (which means we are on the welcome screen),
+            // then just generate a new one using a UUID.
+            .or_else(|| Some(uuid::Uuid::new_v4().to_string().into()));
         let active_recording_id = store_ctx
-            .and_then(|ctx| ctx.hub.active_recording_id())
-            .cloned();
+            .and_then(|ctx| ctx.hub.active_recording_id().cloned())
+            .or_else(|| {
+                // When we're on the welcome screen, there is no recording ID to recommend.
+                // But we want one, otherwise multiple things being dropped simultaneously on the
+                // welcome screen would end up in different recordings!
+
+                // We're creating a recording just-in-time, directly from the viewer.
+                // We need those store infos or the data will just be silently ignored.
+                force_store_info = true;
+
+                // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
+                // this can only be a recording.
+                Some(re_log_types::StoreId::random(StoreKind::Recording))
+            });
 
         for file in dropped_files {
             if let Some(bytes) = file.bytes {
@@ -1384,6 +1414,7 @@ impl App {
                         FileSource::DragAndDrop {
                             recommended_application_id: active_application_id.clone(),
                             recommended_recording_id: active_recording_id.clone(),
+                            force_store_info,
                         },
                         FileContents {
                             name: file.name.clone(),
@@ -1400,6 +1431,7 @@ impl App {
                     FileSource::DragAndDrop {
                         recommended_application_id: active_application_id.clone(),
                         recommended_recording_id: active_recording_id.clone(),
+                        force_store_info,
                     },
                     path,
                 )));
@@ -1650,6 +1682,7 @@ impl eframe::App for App {
         if let Some(PendingFilePromise {
             recommended_application_id,
             recommended_recording_id,
+            force_store_info,
             promise,
         }) = &self.open_files_promise
         {
@@ -1660,6 +1693,7 @@ impl eframe::App for App {
                             FileSource::FileDialog {
                                 recommended_application_id: recommended_application_id.clone(),
                                 recommended_recording_id: recommended_recording_id.clone(),
+                                force_store_info: *force_store_info,
                             },
                             file.clone(),
                         )));

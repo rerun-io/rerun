@@ -4,7 +4,7 @@ use ahash::{HashMap, HashMapExt};
 use re_log_types::{FileSource, LogMsg};
 use re_smart_channel::Sender;
 
-use crate::{DataLoaderError, LoadedData};
+use crate::{DataLoader, DataLoaderError, LoadedData, RrdLoader};
 
 // ---
 
@@ -37,7 +37,7 @@ pub fn load_from_path(
 
     let rx = load(settings, path, None)?;
 
-    send(settings.clone(), file_source, path.to_owned(), rx, tx);
+    send(settings.clone(), file_source, rx, tx);
 
     Ok(())
 }
@@ -64,7 +64,7 @@ pub fn load_from_file_contents(
 
     let data = load(settings, filepath, Some(contents))?;
 
-    send(settings.clone(), file_source, filepath.to_owned(), data, tx);
+    send(settings.clone(), file_source, data, tx);
 
     Ok(())
 }
@@ -73,21 +73,20 @@ pub fn load_from_file_contents(
 
 /// Prepares an adequate [`re_log_types::StoreInfo`] [`LogMsg`] given the input.
 pub(crate) fn prepare_store_info(
+    application_id: re_log_types::ApplicationId,
     store_id: &re_log_types::StoreId,
     file_source: FileSource,
-    path: &std::path::Path,
 ) -> LogMsg {
-    re_tracing::profile_function!(path.display().to_string());
+    re_tracing::profile_function!();
 
     use re_log_types::SetStoreInfo;
 
-    let app_id = re_log_types::ApplicationId(path.display().to_string());
     let store_source = re_log_types::StoreSource::File { file_source };
 
     LogMsg::SetStoreInfo(SetStoreInfo {
         row_id: *re_chunk::RowId::new(),
         info: re_log_types::StoreInfo {
-            application_id: app_id.clone(),
+            application_id,
             store_id: store_id.clone(),
             cloned_from: None,
             is_official_example: false,
@@ -263,14 +262,19 @@ pub(crate) fn load(
 pub(crate) fn send(
     settings: crate::DataLoaderSettings,
     file_source: FileSource,
-    path: std::path::PathBuf,
     rx_loader: std::sync::mpsc::Receiver<LoadedData>,
     tx: &Sender<LogMsg>,
 ) {
     spawn({
         re_tracing::profile_function!();
 
-        let mut store_info_tracker: HashMap<re_log_types::StoreId, bool> = HashMap::new();
+        #[derive(Default, Debug)]
+        struct Tracked {
+            is_rrd_or_rbl: bool,
+            already_has_store_info: bool,
+        }
+
+        let mut store_info_tracker: HashMap<re_log_types::StoreId, Tracked> = HashMap::new();
 
         let tx = tx.clone();
         move || {
@@ -280,6 +284,7 @@ pub(crate) fn send(
             // poll the channel in any case so as to make sure that the data producer
             // doesn't get stuck.
             for data in rx_loader {
+                let data_loader_name = data.data_loader_name().clone();
                 let msg = match data.into_log_msg() {
                     Ok(msg) => {
                         let store_info = match &msg {
@@ -293,7 +298,10 @@ pub(crate) fn send(
                         };
 
                         if let Some((store_id, store_info_created)) = store_info {
-                            *store_info_tracker.entry(store_id).or_default() |= store_info_created;
+                            let tracked = store_info_tracker.entry(store_id).or_default();
+                            tracked.is_rrd_or_rbl =
+                                *data_loader_name == RrdLoader::name(&RrdLoader);
+                            tracked.already_has_store_info |= store_info_created;
                         }
 
                         msg
@@ -306,16 +314,25 @@ pub(crate) fn send(
                 tx.send(msg).ok();
             }
 
-            for (store_id, store_info_already_created) in store_info_tracker {
+            for (store_id, tracked) in store_info_tracker {
                 let is_a_preexisting_recording =
                     Some(&store_id) == settings.opened_store_id.as_ref();
 
-                if store_info_already_created || is_a_preexisting_recording {
-                    continue;
-                }
+                // Never try to send custom store info for RRDs and RBLs, they always have their own, and
+                // it's always right.
+                let should_force_store_info = !tracked.is_rrd_or_rbl && settings.force_store_info;
 
-                let store_info = prepare_store_info(&store_id, file_source.clone(), &path);
-                tx.send(store_info).ok();
+                let should_send_new_store_info = should_force_store_info
+                    || (!tracked.already_has_store_info && !is_a_preexisting_recording);
+
+                if should_send_new_store_info {
+                    let app_id = settings
+                        .opened_application_id
+                        .clone()
+                        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string().into());
+                    let store_info = prepare_store_info(app_id, &store_id, file_source.clone());
+                    tx.send(store_info).ok();
+                }
             }
 
             tx.quit(None).ok();
