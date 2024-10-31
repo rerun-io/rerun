@@ -1,10 +1,10 @@
-use egui::{Context, NumExt as _};
-use re_entity_db::InstancePathHash;
-use re_renderer::OutlineConfig;
+use egui::{Context, NumExt as _, Response};
 use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
 use re_data_ui::{item_ui, DataUi};
-use re_log_types::{EntityPath, EntityPathHash, Instance};
+use re_entity_db::InstancePathHash;
+use re_log_types::EntityPath;
+use re_renderer::OutlineConfig;
 use re_space_view::suggest_space_view_for_each_entity;
 use re_types::{
     blueprint::{
@@ -32,6 +32,8 @@ pub struct MapSpaceViewState {
     map_memory: MapMemory,
     selected_provider: MapProvider,
 
+    /// Because `re_renderer` can have varying, multiple frames of delay, we must keep track of the
+    /// last picked results for when picking results is not available on a given frame.
     last_gpu_picking_result: Option<InstancePathHash>,
 }
 
@@ -221,7 +223,7 @@ Displays geospatial primitives on a map.
         };
 
         let some_tiles_manager: Option<&mut dyn Tiles> = Some(tiles);
-        let mut map_response = ui.add(Map::new(
+        let map_response = ui.add(Map::new(
             some_tiles_manager,
             map_memory,
             default_center_position,
@@ -321,42 +323,7 @@ Displays geospatial primitives on a map.
                 &mut state.last_gpu_picking_result,
             );
 
-            if let Some(instance_path) =
-                picking_result.and_then(|hash| hash.resolve(ctx.recording()))
-            {
-                map_response = map_response.on_hover_ui_at_pointer(|ui| {
-                    list_item::list_item_scope(ui, "map_hover", |ui| {
-                        item_ui::instance_path_button(
-                            ctx,
-                            &query.latest_at_query(),
-                            ctx.recording(),
-                            ui,
-                            Some(query.space_view_id),
-                            &instance_path,
-                        );
-
-                        instance_path.data_ui_recording(ctx, ui, UiLayout::Tooltip);
-                    });
-                });
-
-                ctx.select_hovered_on_click(
-                    &map_response,
-                    Item::DataResult(query.space_view_id, instance_path.clone()),
-                );
-
-                // double click selects the entire entity
-                if map_response.double_clicked() {
-                    // Select the entire entity
-                    ctx.selection_state().set_selection(Item::DataResult(
-                        query.space_view_id,
-                        instance_path.entity_path.clone().into(),
-                    ));
-                }
-            } else if map_response.clicked() {
-                // clicked elsewhere, select the view
-                ctx.selection_state()
-                    .set_selection(Item::SpaceView(query.space_view_id));
-            }
+            handle_ui_interactions(ctx, query, map_response, picking_result);
 
             // ------
             // TODO: more wonky c&p
@@ -403,6 +370,49 @@ Displays geospatial primitives on a map.
         ));
 
         Ok(())
+    }
+}
+
+/// Handle all UI interactions based on the currently picked instance (if any).
+fn handle_ui_interactions(
+    ctx: &ViewerContext<'_>,
+    query: &ViewQuery<'_>,
+    mut map_response: Response,
+    picked_instance: Option<InstancePathHash>,
+) {
+    if let Some(instance_path) = picked_instance.and_then(|hash| hash.resolve(ctx.recording())) {
+        map_response = map_response.on_hover_ui_at_pointer(|ui| {
+            list_item::list_item_scope(ui, "map_hover", |ui| {
+                item_ui::instance_path_button(
+                    ctx,
+                    &query.latest_at_query(),
+                    ctx.recording(),
+                    ui,
+                    Some(query.space_view_id),
+                    &instance_path,
+                );
+
+                instance_path.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+            });
+        });
+
+        ctx.select_hovered_on_click(
+            &map_response,
+            Item::DataResult(query.space_view_id, instance_path.clone()),
+        );
+
+        // double click selects the entire entity
+        if map_response.double_clicked() {
+            // Select the entire entity
+            ctx.selection_state().set_selection(Item::DataResult(
+                query.space_view_id,
+                instance_path.entity_path.clone().into(),
+            ));
+        }
+    } else if map_response.clicked() {
+        // clicked elsewhere, select the view
+        ctx.selection_state()
+            .set_selection(Item::SpaceView(query.space_view_id));
     }
 }
 
@@ -460,7 +470,8 @@ fn get_tile_manager(provider: MapProvider, egui_ctx: &Context) -> HttpTiles {
 
 re_viewer_context::impl_component_fallback_provider!(MapSpaceView => []);
 
-// TODO:
+// TODO(ab, andreas): this is a partial copy past of re_space_view_spatial::picking_gpu. Should be
+// turned into a utility function.
 fn picking_gpu(
     render_ctx: &re_renderer::RenderContext,
     gpu_readback_identifier: u64,
@@ -515,7 +526,9 @@ fn picking_gpu(
             // Nothing found.
             None
         } else {
-            Some(instance_path_hash_from_picking_layer_id(picked_id))
+            Some(gpu_bridge::instance_path_hash_from_picking_layer_id(
+                picked_id,
+            ))
         };
 
         *last_gpu_picking_result = new_result;
@@ -525,21 +538,5 @@ fn picking_gpu(
         // We need to cache the last picking result and use it until we get a new one or the mouse leaves the screen.
         // (Andreas: On my mac this *actually* happens in very simple scenes, I get occasional frames with 0 and then with 2 picking results!)
         *last_gpu_picking_result
-    }
-}
-
-// TODO: again this is verbatim copy pasted from re_space_view_spatial. we should make this a util.
-#[inline]
-pub fn instance_path_hash_from_picking_layer_id(
-    value: re_renderer::PickingLayerId,
-) -> InstancePathHash {
-    InstancePathHash {
-        entity_path_hash: EntityPathHash::from_u64(value.object.0),
-        // `PickingLayerId` uses `u64::MAX` to mean "hover and/or select all instances".
-        instance: if value.instance.0 == u64::MAX {
-            Instance::ALL
-        } else {
-            Instance::from(value.instance.0)
-        },
     }
 }

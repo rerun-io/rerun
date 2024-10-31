@@ -2,12 +2,16 @@
 
 mod colormap;
 mod image_to_gpu;
+mod instance_hash_conversions;
 mod re_renderer_callback;
 
 pub use colormap::{colormap_edit_or_view_ui, colormap_to_re_renderer};
 pub use image_to_gpu::{
     image_data_range_heuristic, image_to_gpu, required_shader_decode,
     texture_creation_desc_from_color_image,
+};
+pub use instance_hash_conversions::{
+    instance_path_hash_from_picking_layer_id, picking_layer_id_from_instance_path_hash,
 };
 pub use re_renderer_callback::new_renderer_callback;
 

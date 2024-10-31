@@ -4,11 +4,11 @@ use re_renderer::renderer::GpuMeshInstance;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, RenderContext};
 use re_types::components::{self, FillMode};
 use re_viewer_context::{
-    QueryContext, SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewQuery,
+    gpu_bridge, QueryContext, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    ViewQuery,
 };
 
 use crate::contexts::SpatialSceneEntityContext;
-use crate::instance_hash_conversions::picking_layer_id_from_instance_path_hash;
 use crate::proc_mesh::{self, ProcMeshKey};
 use crate::visualizers::{
     process_annotation_and_keypoint_slices, process_color_slice, process_labels_3d,
@@ -225,7 +225,7 @@ where
                         gpu_mesh: solid_mesh.gpu_mesh,
                         world_from_mesh: world_from_instance,
                         outline_mask_ids: ent_context.highlight.index_outline_mask(instance),
-                        picking_layer_id: picking_layer_id_from_instance_path_hash(
+                        picking_layer_id: gpu_bridge::picking_layer_id_from_instance_path_hash(
                             InstancePathHash::instance(entity_path, instance),
                         ),
                         additive_tint: color,

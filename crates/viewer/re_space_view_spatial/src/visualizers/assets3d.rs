@@ -8,16 +8,15 @@ use re_types::{
     ArrowBuffer, ArrowString, Loggable as _,
 };
 use re_viewer_context::{
-    ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
-    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem,
+    gpu_bridge, ApplicableEntities, IdentifiedViewSystem, QueryContext,
+    SpaceViewSystemExecutionError, ViewContext, ViewContextCollection, ViewQuery,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
 
 use crate::{
     contexts::SpatialSceneEntityContext,
-    instance_hash_conversions::picking_layer_id_from_instance_path_hash,
     mesh_cache::{AnyMesh, MeshCache, MeshCacheKey},
     view_kind::SpatialSpaceViewKind,
 };
@@ -96,7 +95,7 @@ impl Asset3DVisualizer {
                             gpu_mesh: mesh_instance.gpu_mesh.clone(),
                             world_from_mesh,
                             outline_mask_ids,
-                            picking_layer_id: picking_layer_id_from_instance_path_hash(
+                            picking_layer_id: gpu_bridge::picking_layer_id_from_instance_path_hash(
                                 picking_instance_hash,
                             ),
                             additive_tint: re_renderer::Color32::TRANSPARENT,

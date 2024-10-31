@@ -6,18 +6,16 @@ use re_types::{
     components::{ImagePlaneDistance, ViewCoordinates},
 };
 use re_viewer_context::{
-    ApplicableEntities, DataResult, IdentifiedViewSystem, QueryContext, SpaceViewOutlineMasks,
-    SpaceViewStateExt as _, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
-    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
-    VisualizerQueryInfo, VisualizerSystem,
+    gpu_bridge, ApplicableEntities, DataResult, IdentifiedViewSystem, QueryContext,
+    SpaceViewOutlineMasks, SpaceViewStateExt as _, SpaceViewSystemExecutionError,
+    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
+    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
 use crate::{
-    contexts::TransformContext,
-    instance_hash_conversions::picking_layer_id_from_instance_path_hash, query_pinhole,
-    space_camera_3d::SpaceCamera3D, ui::SpatialSpaceViewState,
-    visualizers::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    contexts::TransformContext, query_pinhole, space_camera_3d::SpaceCamera3D,
+    ui::SpatialSpaceViewState, visualizers::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
@@ -150,7 +148,8 @@ impl CamerasVisualizer {
         let radius = re_renderer::Size::new_ui_points(1.0);
         let instance_path_for_picking =
             re_entity_db::InstancePathHash::instance(ent_path, instance);
-        let instance_layer_id = picking_layer_id_from_instance_path_hash(instance_path_for_picking);
+        let instance_layer_id =
+            gpu_bridge::picking_layer_id_from_instance_path_hash(instance_path_for_picking);
 
         let mut batch = line_builder
             .batch(ent_path.to_string())

@@ -5,9 +5,10 @@ use std::collections::HashSet;
 use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
 use re_renderer::PickingLayerProcessor;
+use re_viewer_context::gpu_bridge;
 
+use crate::eye::Eye;
 use crate::PickableTexturedRect;
-use crate::{eye::Eye, instance_hash_conversions::instance_path_hash_from_picking_layer_id};
 
 #[derive(Clone, PartialEq, Eq)]
 pub enum PickingHitType {
@@ -230,7 +231,7 @@ fn picking_gpu(
             gpu_picking_result.picked_world_position(picked_on_picking_rect.as_uvec2());
 
         Some(PickingRayHit {
-            instance_path_hash: instance_path_hash_from_picking_layer_id(picked_id),
+            instance_path_hash: gpu_bridge::instance_path_hash_from_picking_layer_id(picked_id),
             space_position: picked_world_position,
             depth_offset: 1,
             hit_type: PickingHitType::GpuPickingResult,
