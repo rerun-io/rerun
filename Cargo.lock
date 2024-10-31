@@ -2426,7 +2426,7 @@ dependencies = [
  "document-features",
  "js-sys",
  "log",
- "tungstenite 0.24.0",
+ "tungstenite",
  "wasm-bindgen",
  "wasm-bindgen-futures",
  "web-sys",
@@ -6812,7 +6812,7 @@ dependencies = [
  "re_smart_channel",
  "re_tracing",
  "thiserror",
- "tungstenite 0.23.0",
+ "tungstenite",
 ]
 
 [[package]]
@@ -8631,27 +8631,6 @@ name = "ttf-parser"
 version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5902c5d130972a0000f60860bfbf46f7ca3db5391eddfedd1b8728bd9dc96c0e"
-
-[[package]]
-name = "tungstenite"
-version = "0.23.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6e2e2ce1e47ed2994fd43b04c8f618008d4cabdd5ee34027cf14f9d918edd9c8"
-dependencies = [
- "byteorder",
- "bytes",
- "data-encoding",
- "http 1.1.0",
- "httparse",
- "log",
- "rand",
- "rustls 0.23.16",
- "rustls-pki-types",
- "sha1",
- "thiserror",
- "utf-8",
- "webpki-roots 0.26.6",
-]
 
 [[package]]
 name = "tungstenite"
