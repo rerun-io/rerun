@@ -35,6 +35,7 @@ namespace rerun {
     using components::FillMode;
     using components::HalfSize2D;
     using components::HalfSize3D;
+    using components::LatLon;
     using components::LineStrip2D;
     using components::LineStrip3D;
     using components::MediaType;
@@ -53,6 +54,7 @@ namespace rerun {
     using datatypes::ChannelDatatype;
     using datatypes::ClassDescription;
     using datatypes::ColorModel;
+    using datatypes::DVec2D;
     using datatypes::Float32;
     using datatypes::KeypointPair;
     using datatypes::Mat3x3;
