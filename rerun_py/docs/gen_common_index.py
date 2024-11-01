@@ -77,7 +77,6 @@ class Section:
 
 
 # This is the list of sections and functions that will be included in the index
-# for each of them.
 SECTION_TABLE: Final[list[Section]] = [
     ################################################################################
     Section(
@@ -213,6 +212,7 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Geospatial Archetypes",
         class_list=[
+            "archetypes.GeoLineStrings",
             "archetypes.GeoPoints",
         ],
         gen_page=False,
@@ -381,6 +381,9 @@ SECTION_TABLE: Final[list[Section]] = [
         mod_path="rerun.experimental",
     ),
 ]
+
+
+# for each of them.
 
 
 def is_mentioned(thing: str) -> bool:
