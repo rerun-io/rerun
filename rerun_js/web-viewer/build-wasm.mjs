@@ -9,12 +9,12 @@ import * as util from "node:util";
 const __filename = path.resolve(fileURLToPath(import.meta.url));
 const __dirname = path.dirname(__filename);
 
-const exec = (cmd) => {
+const exec = (/** @type {string} */ cmd) => {
   console.log(cmd);
   child_process.execSync(cmd, { cwd: __dirname, stdio: "inherit" });
 };
 
-function buildWebViewer(mode) {
+function buildWebViewer(/** @type {"debug" | "release"} */ mode) {
   switch (mode) {
     case "debug": {
       return exec(
@@ -31,9 +31,9 @@ function buildWebViewer(mode) {
   }
 }
 
-async function re_viewer_js(mode) {
+async function re_viewer_js(/** @type {"debug" | "release"} */ mode) {
   let code = fs.readFileSync(path.join(__dirname, "re_viewer.js"), "utf-8");
-  await checkHash(mode, "re_viewer.js", code);
+  const valid = await isHashValid(mode, "re_viewer.js", code);
 
   // this transforms the module, wrapping it in a default-exported function.
   // calling the function produces a new "instance" of the module, because
@@ -87,11 +87,12 @@ return Object.assign(__wbg_init, { initSync, deinit }, __exports);
   code = code.replace(closure_dtors, closure_dtors_patch);
 
   fs.writeFileSync(path.join(__dirname, "re_viewer.js"), code);
+
+  return valid;
 }
 
-async function re_viewer_d_ts(mode) {
+function re_viewer_d_ts() {
   let code = fs.readFileSync(path.join(__dirname, "re_viewer.d.ts"), "utf-8");
-  await checkHash(mode, "re_viewer.d.ts", code);
 
   // this transformation just re-exports WebHandle and adds a default export inside the `.d.ts` file
 
@@ -111,32 +112,57 @@ async function hash(data) {
     .join("");
 }
 
-async function checkHash(mode, id, data) {
+async function isHashValid(
+  /** @type {"debug" | "release"} */ mode,
+  /** @type {string} */ id,
+  /** @type {string} */ data,
+) {
   const storedHash = hashes?.[mode]?.[id];
   const computedHash = await hash(new TextEncoder().encode(data));
 
-  if (updateHashes) {
+  if (options.updateHashes) {
     hashes[mode] ??= {};
     hashes[mode][id] = computedHash;
-    return;
+    return true;
   }
 
-  if (storedHash !== computedHash) {
-    console.error(`
-==============================================================
-Output of "${id}" changed.
-Update the \`build-wasm.mjs\` script to handle the new output,
-then run \`pixi run node build-wasm.mjs --update-hashes\`.
-==============================================================
-`);
-    process.exit(1);
-  }
+  return storedHash === computedHash;
 }
 
-async function run(mode) {
+async function run(/** @type {"debug" | "release"} */ mode) {
   buildWebViewer(mode);
-  await re_viewer_js(mode);
-  await re_viewer_d_ts(mode);
+  const valid = await re_viewer_js(mode);
+  re_viewer_d_ts(mode);
+
+  if (options.checkHashes && !valid) {
+    console.error(`
+==============================================================
+Output of "re_viewer.js" has changed.
+
+The the output of \`wasm-bindgen\` is unstable, but we depend on it
+for the web viewer. In order to make sure this didn't break anything,
+you should:
+
+1) Run \`pixi run js-build-base\`, and
+2) Inspect the generated \`rerun_js/web-viewer/re_viewer.js\` file.
+
+Most of the time, the hashes change because:
+
+- Some field offsets changed,
+- You added/removed/changed a closure passed into JS,
+- You added/removed/changed a new exported symbol
+
+Ideally, you would diff \`re_viewer.js\` against the same file generated
+on the \`main\` branch to make sure that this is the case. You can disable
+the hash checks by running:
+
+  pixi run node rerun_js/web-viewer/build-wasm.mjs --mode release --no-check
+
+Run \`pixi run js-update-hashes\` once you're sure that there are no issues.
+==============================================================
+      `);
+    process.exit(1);
+  }
 }
 
 const args = util.parseArgs({
@@ -147,10 +173,16 @@ const args = util.parseArgs({
     "update-hashes": {
       type: "boolean",
     },
+    "no-check": {
+      type: "boolean",
+    },
   },
 });
 
-let updateHashes = !!args.values["update-hashes"];
+let options = {
+  updateHashes: !!args.values["update-hashes"],
+  checkHashes: !args.values["no-check"],
+};
 let hashes;
 try {
   hashes = JSON.parse(
@@ -161,7 +193,7 @@ try {
 }
 
 try {
-  if (updateHashes) {
+  if (options.updateHashes) {
     await run("release");
     await run("debug");
     fs.writeFileSync(

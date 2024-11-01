@@ -280,10 +280,14 @@ js-setup = "npm i -g yarn"
 js-install = { cmd = "yarn install --cwd rerun_js", depends_on = ["js-setup"] }
 
 # Build JS packages
-js-build-base = { cmd = "yarn --cwd rerun_js/web-viewer run build", depends_on = [
+js-build-base = { cmd = "yarn --cwd rerun_js/web-viewer run build:no-check", depends_on = [
   "js-install",
 ] }
-js-build-all = { cmd = "yarn --cwd rerun_js workspaces run build", depends_on = [
+js-build-all = { cmd = "yarn --cwd rerun_js workspaces run build:no-check", depends_on = [
+  "js-install",
+] }
+
+js-update-hashes = { cmd = "node rerun_js/web-viewer/build-wasm.mjs --update-hashes", depends_on = [
   "js-install",
 ] }
 

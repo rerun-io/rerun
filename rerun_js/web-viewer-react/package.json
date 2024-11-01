@@ -12,7 +12,8 @@
   ],
   "scripts": {
     "build:types": "tsc --noEmit && dts-buddy",
-    "build": "npm run build:types"
+    "build": "npm run build:types",
+    "build:no-check": "npm run build"
   },
   "repository": {
     "type": "git",
