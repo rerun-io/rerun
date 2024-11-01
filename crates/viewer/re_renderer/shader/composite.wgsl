@@ -28,7 +28,10 @@ fn main(in: FragmentInput) -> @location(0) vec4f {
     var color = textureSample(color_texture, nearest_sampler, in.texcoord);
 
     // We assume that the color from the texture does *not* have pre-multiplied alpha.
-    // Transparency caused by anti-aliasing  very much behaves like this, so it's important to multiply with alpha here.
+    // TODO(andreas): At least empirically we get artifacts without this from our alpha-to-coverage shading!
+    // -> Alpha to coverage can't output premultiplied alpha values since it doesn't perform any color blending (this would lead to dark halos then).
+    // This is going to cause issues once we introduce actual transparency in the scene which *does* use premultiplied alpha.
+    // See also ViewBuilder::MAIN_TARGET_ALPHA_TO_COVERAGE_COLOR_STATE.
     color = vec4f(color.rgb * color.a, color.a);
 
     // Outlines

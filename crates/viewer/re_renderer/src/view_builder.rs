@@ -261,6 +261,30 @@ impl ViewBuilder {
     /// In any case, this gets us onto a potentially much costlier rendering path, especially for tiling GPUs.
     pub const MAIN_TARGET_COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8UnormSrgb;
 
+    /// Use this color state when targeting the main target with alpha-to-coverage.
+    ///
+    /// For blending during the composite step, we need alpha to indicate how much we overwrite the background.
+    /// However, when using alpha-to-coverage, we need alpha to indicate the coverage of the pixel from
+    /// which the samples are derived. Ideally, we'd output alpha==1.0 for each active sample and alpha==0.0 for each inactive sample.
+    /// This way, we'd get the correct alpha & pre-multipltiplied color values during MSAA resolve.
+    /// Unfortunately though, we don't have this level of control!
+    /// Next the best thing we can do is to accumulate alpha values with a additive blending operation.
+    /// (a regular blending operation is not order independent!)
+    // TODO(andreas): All of this is only needed when we do blending during the composite step. Should opt-in to this!
+    pub const MAIN_TARGET_ALPHA_TO_COVERAGE_COLOR_STATE: wgpu::ColorTargetState =
+        wgpu::ColorTargetState {
+            format: Self::MAIN_TARGET_COLOR_FORMAT,
+            blend: Some(wgpu::BlendState {
+                color: wgpu::BlendComponent::REPLACE,
+                alpha: wgpu::BlendComponent {
+                    src_factor: wgpu::BlendFactor::One,
+                    dst_factor: wgpu::BlendFactor::One,
+                    operation: wgpu::BlendOperation::Add,
+                },
+            }),
+            write_mask: wgpu::ColorWrites::ALL,
+        };
+
     /// The texture format used for screenshots.
     pub const SCREENSHOT_COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
 

@@ -689,7 +689,7 @@ impl Renderer for LineRenderer {
             fragment_entrypoint: "fs_main".into(),
             fragment_handle: shader_module,
             vertex_buffers: smallvec![],
-            render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
+            render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_ALPHA_TO_COVERAGE_COLOR_STATE)],
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 ..Default::default()
