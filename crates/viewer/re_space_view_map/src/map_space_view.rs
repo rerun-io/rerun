@@ -5,7 +5,6 @@ use re_data_ui::{item_ui, DataUi};
 use re_entity_db::InstancePathHash;
 use re_log_types::EntityPath;
 use re_renderer::{RenderContext, ViewBuilder};
-use re_space_view::suggest_space_view_for_each_entity;
 use re_types::{
     blueprint::{
         archetypes::{MapBackground, MapZoom},
@@ -16,10 +15,10 @@ use re_types::{
 };
 use re_ui::list_item;
 use re_viewer_context::{
-    gpu_bridge, Item, SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError,
-    SpaceViewHighlights, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
-    SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
-    SystemExecutionOutput, UiLayout, ViewQuery, ViewerContext,
+    gpu_bridge, IdentifiedViewSystem as _, Item, SpaceViewClass, SpaceViewClassLayoutPriority,
+    SpaceViewClassRegistryError, SpaceViewHighlights, SpaceViewId, SpaceViewSpawnHeuristics,
+    SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError,
+    SpaceViewSystemRegistrator, SystemExecutionOutput, UiLayout, ViewQuery, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -116,11 +115,29 @@ Displays geospatial primitives on a map.
     }
 
     fn layout_priority(&self) -> SpaceViewClassLayoutPriority {
-        SpaceViewClassLayoutPriority::Low
+        SpaceViewClassLayoutPriority::default()
     }
 
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
-        suggest_space_view_for_each_entity::<GeoPointsVisualizer>(ctx, self)
+        re_tracing::profile_function!();
+
+        // Spawn a single map view at the root if any geospatial entity exists.
+        let any_map_entity = [
+            GeoPointsVisualizer::identifier(),
+            GeoLineStringsVisualizer::identifier(),
+        ]
+        .iter()
+        .any(|system_id| {
+            ctx.indicated_entities_per_visualizer
+                .get(system_id)
+                .is_some_and(|indicated_entities| !indicated_entities.is_empty())
+        });
+
+        if any_map_entity {
+            SpaceViewSpawnHeuristics::root()
+        } else {
+            SpaceViewSpawnHeuristics::default()
+        }
     }
 
     fn selection_ui(
