@@ -223,7 +223,7 @@ pathdiff = "0.2"
 pico-args = "0.5"
 ply-rs = { version = "0.1", default-features = false }
 poll-promise = "0.3"
-polling = "2.2.0"
+polling = "3.7.3"
 pollster = "0.3"
 prettyplease = "0.2"
 proc-macro2 = { version = "1.0", default-features = false }
@@ -317,7 +317,7 @@ wgpu = { version = "22.1", default-features = false, features = [
 wgpu-core = "22.1"
 wgpu-types = "22.0"
 xshell = "0.2"
-zip = { version = "0.6", default-features = false }
+zip = { version = "0.6", default-features = false } # We're stuck on 0.6 because https://crates.io/crates/protoc-prebuilt is still using 0.6
 
 
 # ---------------------------------------------------------------------------------

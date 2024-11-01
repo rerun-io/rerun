@@ -623,7 +623,7 @@ dependencies = [
  "futures-io",
  "futures-lite",
  "parking",
- "polling 3.7.3",
+ "polling",
  "rustix",
  "slab",
  "tracing",
@@ -1110,7 +1110,7 @@ checksum = "b99da2f8558ca23c71f4fd15dc57c906239752dd27ff3c00a1d56b685b7cbfec"
 dependencies = [
  "bitflags 2.6.0",
  "log",
- "polling 3.7.3",
+ "polling",
  "rustix",
  "slab",
  "thiserror",
@@ -4717,22 +4717,6 @@ dependencies = [
 
 [[package]]
 name = "polling"
-version = "2.8.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b2d323e8ca7996b3e23126511a523f7e62924d93ecd5ae73b333815b0eb3dce"
-dependencies = [
- "autocfg",
- "bitflags 1.3.2",
- "cfg-if",
- "concurrent-queue",
- "libc",
- "log",
- "pin-project-lite",
- "windows-sys 0.48.0",
-]
-
-[[package]]
-name = "polling"
 version = "3.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cc2790cd301dec6cd3b7a025e4815cf825724a51c98dccfe6a3e55f05ffb6511"
@@ -6551,7 +6535,7 @@ dependencies = [
  "document-features",
  "ewebsock",
  "parking_lot",
- "polling 2.8.0",
+ "polling",
  "re_format",
  "re_log",
  "re_log_types",
