@@ -192,7 +192,7 @@ image = { version = "0.25", default-features = false }
 indent = "0.1"
 indexmap = "2.1" # Version chosen to align with other dependencies
 indicatif = "0.17.7" # Progress bar
-infer = "0.15" # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
+infer = "0.16" # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
 insta = "1.23"
 itertools = "0.13"
 js-sys = "0.3"
