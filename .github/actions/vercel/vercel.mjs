@@ -1,5 +1,6 @@
 // @ts-check
 import { assert } from "./util.mjs";
+/** @import { Deployment, DeploymentBuild, LegacyDeployment, VercelResponse } from "./types" */
 
 /**
  * @typedef {Record<string, string>} Params
@@ -8,12 +9,50 @@ import { assert } from "./util.mjs";
  *
  * @typedef {{ id: string; name: string }} TeamInfo
  * @typedef {{ id: string; name: string }} ProjectInfo
- * @typedef {{ uid: string }} Deployment
  * @typedef {{ id: string, key: string, value: string }} Env
  *
  * @typedef {"production" | "preview" | "development"} EnvTarget
  * @typedef {"encrypted" | "secret"} EnvType
  */
+
+function isDeploymentReady(
+  /** @type {Deployment | DeploymentBuild} */ deployment,
+) {
+  return deployment.readyState === "READY" || deployment.state === "READY";
+}
+
+function isDeploymentFailed(
+  /** @type {Deployment | DeploymentBuild} */ deployment,
+) {
+  if (
+    deployment?.readyState?.endsWith("_ERROR") ||
+    deployment?.readyState === "ERROR"
+  ) {
+    return true;
+  }
+  if (
+    (deployment.state && deployment.state.endsWith("_ERROR")) ||
+    deployment.state === "ERROR"
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function isDeploymentDone(
+  /** @type {Deployment | DeploymentBuild} */ deployment,
+) {
+  return isDeploymentReady(deployment) || isDeploymentFailed(deployment);
+}
+
+export function getDeploymentId(
+  /** @type {LegacyDeployment | Deployment | DeploymentBuild} */ deployment,
+) {
+  if ("uid" in deployment) return deployment.uid;
+  if ("deploymentId" in deployment && deployment.deploymentId)
+    return deployment.deploymentId;
+  return deployment.id;
+}
 
 export class Project {
   constructor(
@@ -35,10 +74,10 @@ export class Project {
    * The results are sorted by their created date, so the latest deployment
    * for the given `target` is at index `0`.
    * @param {"production" | "preview" | "development"} target
-   * @returns {Promise<Deployment[]>}
+   * @returns {Promise<LegacyDeployment[]>}
    */
   async deployments(target = "production") {
-    const response = await this.client.get("v6/deployments", {
+    const response = await this.client.get("v13/deployments", {
       teamId: this.team.id,
       projectId: this.project.id,
       target,
@@ -138,7 +177,7 @@ export class Project {
    * @param {string} deploymentId
    * @param {string} name
    * @param {Record<string, string>} [env]
-   * @returns {Promise<any>}
+   * @returns {Promise<Deployment>}
    */
   async deployPreviewFrom(deploymentId, name, env) {
     console.log(
@@ -160,6 +199,24 @@ export class Project {
       forceNew: "1",
     });
   }
+
+  /**
+   * @returns {Promise<VercelResponse<Deployment>>}
+   */
+  async getDeployment(/** @type {string} */ id) {
+    return this.client.get(`v13/deployments/${id}`);
+  }
+
+  // async *watchDeployment(/** @type {string} */ id) {
+  //   let deployment = await this.getDeployment(id);
+  //   while (true) {
+  //     if (isDeploymentFailed(deployment)) {
+  //       yield { type: "error", message: deployment.aliasError };
+  //     }
+
+  //     deployment = await this.getDeployment(getDeploymentId(deployment));
+  //   }
+  // }
 }
 
 /**
