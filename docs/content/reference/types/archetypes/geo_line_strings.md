@@ -22,3 +22,9 @@ Geospatial line strings with positions expressed in EPSG:4326 altitude and longi
  * 🐍 [Python API docs for `GeoLineStrings`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.GeoLineStrings)
  * 🦀 [Rust API docs for `GeoLineStrings`](https://docs.rs/rerun/latest/rerun/archetypes/struct.GeoLineStrings.html?speculative-link)
 
+## Example
+
+### Log a geospatial line string
+
+snippet: archetypes/geo_line_string_simple
+

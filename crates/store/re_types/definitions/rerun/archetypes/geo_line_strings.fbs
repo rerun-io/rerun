@@ -5,7 +5,9 @@ namespace rerun.archetypes;
 /// Geospatial line strings with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
 ///
 /// **Note**: Geospatial entities are experimental.
-// TODO(ab): add snippet and screenshot
+///
+/// \example archetypes/geo_line_string_simple title="Log a geospatial line string"
+// TODO(ab): add screenshot
 table GeoLineStrings (
   "attr.rust.derive": "PartialEq",
   "attr.docs.category": "Geospatial",
