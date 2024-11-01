@@ -267,7 +267,8 @@ impl ViewBuilder {
     /// However, when using alpha-to-coverage, we need alpha to indicate the coverage of the pixel from
     /// which the samples are derived. Ideally, we'd output alpha==1.0 for each active sample and alpha==0.0 for each inactive sample.
     /// This way, we'd get the correct alpha & pre-multipltiplied color values during MSAA resolve.
-    /// Unfortunately though, we don't have this level of control!
+    /// OpenGL exposes this as `GL_SAMPLE_ALPHA_TO_ONE`, Vulkan as `alphaToOne`.
+    /// Unfortunately though, WebGPU does not support this.
     /// Next the best thing we can do is to accumulate alpha values with a additive blending operation.
     /// (a regular blending operation is not order independent!)
     // TODO(andreas): All of this is only needed when we do blending during the composite step. Should opt-in to this!
