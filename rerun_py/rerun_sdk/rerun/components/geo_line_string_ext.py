@@ -37,7 +37,7 @@ class GeoLineStringExt:
 
         # pure-object
         elif isinstance(data, GeoLineString):
-            inners = [DVec2DBatch(data.points).as_arrow_array().storage]
+            inners = [DVec2DBatch(data.lat_lon).as_arrow_array().storage]
 
         # sequences
         elif isinstance(data, Sequence):
@@ -61,9 +61,9 @@ class GeoLineStringExt:
                 # .. otherwise assume that it's several strips.
                 else:
 
-                    def to_DVec2D_batch(strip: Any) -> DVec2DBatch:
+                    def to_dvec2D_batch(strip: Any) -> DVec2DBatch:
                         if isinstance(strip, GeoLineString):
-                            return DVec2DBatch(strip.points)
+                            return DVec2DBatch(strip.lat_lon)
                         else:
                             if isinstance(strip, np.ndarray) and (strip.ndim != 2 or strip.shape[1] != 2):
                                 raise ValueError(
@@ -71,7 +71,7 @@ class GeoLineStringExt:
                                 )
                             return DVec2DBatch(strip)
 
-                    inners = [to_DVec2D_batch(strip).as_arrow_array().storage for strip in data]
+                    inners = [to_dvec2D_batch(strip).as_arrow_array().storage for strip in data]
         else:
             inners = [DVec2DBatch(data).storage]
 
