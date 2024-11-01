@@ -1,4 +1,4 @@
-use egui::{Context, NumExt as _, Rect, Response, Ui};
+use egui::{Context, NumExt as _, Rect, Response};
 use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
 use re_data_ui::{item_ui, DataUi};
@@ -271,7 +271,7 @@ Displays geospatial primitives on a map.
         handle_picking_and_ui_interactions(
             ctx,
             render_ctx,
-            ui,
+            ui.ctx(),
             &mut view_builder,
             query,
             state,
@@ -341,10 +341,11 @@ fn create_view_builder(
 }
 
 /// Handle picking and related ui interactions.
+#[allow(clippy::too_many_arguments)]
 fn handle_picking_and_ui_interactions(
     ctx: &ViewerContext<'_>,
     render_ctx: &RenderContext,
-    ui: &mut Ui,
+    egui_ctx: &egui::Context,
     view_builder: &mut ViewBuilder,
     query: &ViewQuery<'_>,
     state: &mut MapSpaceViewState,
@@ -354,9 +355,10 @@ fn handle_picking_and_ui_interactions(
     let picking_readback_identifier = query.space_view_id.hash();
 
     if let Some(pointer_in_ui) = map_response.hover_pos() {
+        let pixels_per_point = egui_ctx.pixels_per_point();
         let mut pointer_in_pixel = pointer_in_ui.to_vec2();
         pointer_in_pixel -= map_rect.min.to_vec2();
-        pointer_in_pixel *= ui.ctx().pixels_per_point();
+        pointer_in_pixel *= pixels_per_point;
 
         let picking_result = picking_gpu(
             render_ctx,
@@ -375,7 +377,7 @@ fn handle_picking_and_ui_interactions(
         /// Note that this needs to be scaled when zooming is applied by the virtual->visible ui rect transform.
         pub const UI_INTERACTION_RADIUS: f32 = 5.0;
 
-        let picking_rect_size = UI_INTERACTION_RADIUS * ui.ctx().pixels_per_point();
+        let picking_rect_size = UI_INTERACTION_RADIUS * pixels_per_point;
         // Make the picking rect bigger than necessary so we can use it to counter-act delays.
         // (by the time the picking rectangle is read back, the cursor may have moved on).
         let picking_rect_size = (picking_rect_size * 2.0)
