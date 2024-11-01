@@ -123,11 +123,11 @@ async function checkHash(mode, id, data) {
 
   if (storedHash !== computedHash) {
     console.error(`
-========================================
+==============================================================
 Output of "${id}" changed.
 Update the \`build-wasm.mjs\` script to handle the new output,
-then run \`node build-wasm.mjs --update-hashes\`.
-========================================
+then run \`pixi run node build-wasm.mjs --update-hashes\`.
+==============================================================
 `);
     process.exit(1);
   }
