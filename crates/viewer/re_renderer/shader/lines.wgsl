@@ -63,26 +63,20 @@ struct VertexOut {
     @location(1) @interpolate(perspective)
     position_world: vec3f,
 
-    @location(2) @interpolate(perspective)
-    center_position: vec3f,
+    @location(2) @interpolate(flat)
+    rounded_inner_line_begin: vec3f,
 
     @location(3) @interpolate(flat)
-    active_radius: f32,
+    rounded_inner_line_end: vec3f,
 
-    @location(4) @interpolate(perspective)
-    round_cap_circle_center: vec3f,
+    @location(4) @interpolate(flat)
+    rounded_inner_line_radius: f32,
 
     @location(5) @interpolate(flat)
     fragment_flags: u32,
 
     @location(6) @interpolate(flat)
     picking_instance_id: vec2u,
-
-    // TODO: compute some of the above from this:
-    @location(7) @interpolate(flat)
-    center_position_begin: vec3f,
-    @location(8) @interpolate(flat)
-    center_position_end: vec3f,
 };
 
 struct LineStripData {
@@ -200,14 +194,14 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 
     // Compute quad_dir & correct center_position for triangle caps.
     var quad_dir: vec3f;
-    var is_at_pointy_end = false;
-    let is_end_cap_triangle = is_cap_triangle && is_right_triangle && has_any_flag(strip_data.flags, FLAG_CAP_END_TRIANGLE | FLAG_CAP_END_ROUND);
-    let is_start_cap_triangle = is_cap_triangle && !is_right_triangle && has_any_flag(strip_data.flags, FLAG_CAP_START_TRIANGLE | FLAG_CAP_START_ROUND);
+    var is_at_pointy_arrow_end = false;
+    let is_end_cap_triangle = is_cap_triangle && is_right_triangle && has_any_flag(strip_data.flags, FLAG_CAP_END_TRIANGLE);
+    let is_start_cap_triangle = is_cap_triangle && !is_right_triangle && has_any_flag(strip_data.flags, FLAG_CAP_START_TRIANGLE);
     if is_end_cap_triangle {
-        is_at_pointy_end = is_at_quad_end;
+        is_at_pointy_arrow_end = is_at_quad_end;
         quad_dir = pos_data_quad_begin.pos - pos_data_quad_before.pos; // Go one pos data back.
     } else if is_start_cap_triangle {
-        is_at_pointy_end = !is_at_quad_end;
+        is_at_pointy_arrow_end = !is_at_quad_end;
         quad_dir = pos_data_quad_after.pos - pos_data_quad_end.pos; // Go one pos data forward.
     } else if is_cap_triangle {
         // Discard vertex.
@@ -237,19 +231,27 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     triangle_cap_length *= triangle_cap_size_factor;
 
     // Make space for the end cap if this is either the cap itself or the cap follows right after/before this quad.
-    if !has_any_flag(strip_data.flags, FLAG_CAP_END_EXTEND_OUTWARDS) &&
-        (is_end_cap_triangle || (is_at_quad_end && pos_data_current.strip_index != pos_data_quad_after.strip_index)) {
-        var cap_length =
-            f32(has_any_flag(strip_data.flags, FLAG_CAP_END_ROUND)) * strip_radius +
-            f32(has_any_flag(strip_data.flags, FLAG_CAP_END_TRIANGLE)) * triangle_cap_length;
-        center_position -= quad_dir * cap_length;
-    }
-    if !has_any_flag(strip_data.flags, FLAG_CAP_START_EXTEND_OUTWARDS) &&
-        (is_start_cap_triangle || (!is_at_quad_end && pos_data_current.strip_index != pos_data_quad_before.strip_index)) {
+    var rounded_inner_line_begin = pos_data_quad_begin.pos;
+    if !has_any_flag(strip_data.flags, FLAG_CAP_START_EXTEND_OUTWARDS) && (is_start_cap_triangle || is_first_quad_after_cap) {
         var cap_length =
             f32(has_any_flag(strip_data.flags, FLAG_CAP_START_ROUND)) * strip_radius +
             f32(has_any_flag(strip_data.flags, FLAG_CAP_START_TRIANGLE)) * triangle_cap_length;
-        center_position += quad_dir * cap_length;
+        let offset = quad_dir * cap_length;
+        rounded_inner_line_begin += offset;
+        if !is_at_quad_end || is_start_cap_triangle {
+            center_position += offset;
+        }
+    }
+    var rounded_inner_line_end = pos_data_quad_end.pos;
+    if !has_any_flag(strip_data.flags, FLAG_CAP_END_EXTEND_OUTWARDS) && (is_end_cap_triangle || is_last_quad_before_cap) {
+        var cap_length =
+            f32(has_any_flag(strip_data.flags, FLAG_CAP_END_ROUND)) * strip_radius +
+            f32(has_any_flag(strip_data.flags, FLAG_CAP_END_TRIANGLE)) * triangle_cap_length;
+        let offset = quad_dir * cap_length;
+        rounded_inner_line_end -= offset;
+        if is_at_quad_end || is_end_cap_triangle {
+            center_position -= offset;
+        }
     }
 
     // Boost radius only now that we subtracted/added the cap length.
@@ -264,36 +266,32 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         center_position += quad_dir * (size_boost * select(-1.0, 1.0, is_at_quad_end));
     }
 
-    var active_radius = strip_radius;
     // If this is a triangle cap, we blow up our ("virtual") quad by a given factor.
     if (is_end_cap_triangle && has_any_flag(strip_data.flags, FLAG_CAP_END_TRIANGLE)) ||
        (is_start_cap_triangle && has_any_flag(strip_data.flags, FLAG_CAP_START_TRIANGLE)) {
-        active_radius *= batch.triangle_cap_width_factor * triangle_cap_size_factor;
+        strip_radius *= batch.triangle_cap_width_factor * triangle_cap_size_factor;
     }
 
     // Span up the vertex away from the line's axis, orthogonal to the direction to the camera
     let dir_up = normalize(cross(camera_ray.direction, quad_dir));
-
-    let round_cap_circle_center = center_position;
-
     var pos: vec3f;
-    var fragment_flags = strip_data.flags &
-                    (FLAG_COLOR_GRADIENT | (u32(is_cap_triangle) * select(FLAG_CAP_START_ROUND, FLAG_CAP_END_ROUND, is_right_triangle)));
-    if is_cap_triangle && is_at_pointy_end {
-        // We extend the cap triangle far enough to handle triangle caps,
-        // and far enough to do rounded caps without any visible clipping.
-        // There is _some_ clipping, but we can't see it ;)
-        // If we want to do it properly, we would extend the radius for rounded caps too.
+    if is_cap_triangle && is_at_pointy_arrow_end {
+        // We extend the cap triangle far enough to handle triangle caps.
         center_position += quad_dir * (triangle_cap_length * select(-1.0, 1.0, is_right_triangle));
         pos = center_position;
     } else {
-        pos = center_position + (active_radius * top_bottom) * dir_up;
+        pos = center_position + (strip_radius * top_bottom * 0.99) * dir_up;
     }
 
-    // Extend the line for rendering smooth joints.
-    if !is_cap_triangle &&
-      ((is_at_quad_end && !is_last_quad_before_cap) || (!is_at_quad_end && !is_first_quad_after_cap)) {
-        pos += quad_dir * strip_radius * select(-1.0, 1.0, is_at_quad_end);
+    // Extend the line for rendering smooth joints, as well as round start/end caps.
+    var fragment_flags = strip_data.flags & FLAG_COLOR_GRADIENT;
+    // It's easier to list reasons for not having a joint rather than the other way about when there's _no_ joint:
+    let no_joint = is_cap_triangle ||
+                    (!has_any_flag(strip_data.flags, FLAG_CAP_START_ROUND) && !is_at_quad_end && is_first_quad_after_cap) ||
+                    (!has_any_flag(strip_data.flags, FLAG_CAP_END_ROUND) && is_at_quad_end && is_last_quad_before_cap);
+    if !no_joint {
+        let left_right_offset = quad_dir * strip_radius * select(-1.0, 1.0, is_at_quad_end);
+        pos += left_right_offset;
         fragment_flags |= FLAG_ROUND_JOINT;
     }
 
@@ -301,48 +299,40 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     var out: VertexOut;
     out.position = apply_depth_offset(frame.projection_from_world * vec4f(pos, 1.0), batch.depth_offset);
     out.position_world = pos;
-    out.center_position = center_position;
-    out.round_cap_circle_center = round_cap_circle_center;
     out.color = strip_data.color;
-    out.active_radius = active_radius;
+    out.rounded_inner_line_begin = rounded_inner_line_begin;
+    out.rounded_inner_line_end = rounded_inner_line_end;
+    out.rounded_inner_line_radius = strip_radius;
     out.fragment_flags = fragment_flags;
     out.picking_instance_id = strip_data.picking_instance_id;
-    out.center_position_begin = pos_data_quad_begin.pos;
-    out.center_position_end = pos_data_quad_end.pos;
 
     return out;
 }
 
-fn distance_to_line(pos: vec3f, line_a: vec3f, line_b: vec3f) -> f32 {
+fn distance_to_line_sq(pos: vec3f, line_a: vec3f, line_b: vec3f) -> f32 {
     let pa = pos - line_a;
     let ba = line_b - line_a;
     let h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
-    return length(pa - ba*h);
+    let to_line = pa - ba*h;
+    return dot(to_line, to_line);
+}
+
+fn distance_to_line(pos: vec3f, line_a: vec3f, line_b: vec3f) -> f32 {
+    return sqrt(distance_to_line_sq(pos, line_a, line_b));
 }
 
 fn compute_coverage(in: VertexOut) -> f32 {
     var coverage = 1.0;
-    if has_any_flag(in.fragment_flags, FLAG_CAP_START_ROUND | FLAG_CAP_END_ROUND) {
-        let distance_to_skeleton = length(in.position_world - in.round_cap_circle_center);
-        let pixel_world_size = approx_pixel_world_size_at(length(in.position_world - frame.camera_position));
 
-        // It's important that we do antialias both inwards and outwards of the exact border.
-        // If we do only outwards, rectangle outlines won't line up nicely
-        let half_pixel_world_size = pixel_world_size * 0.5;
-        let signed_distance_to_border = distance_to_skeleton - in.active_radius;
-        coverage *= 1.0 - saturate((signed_distance_to_border + half_pixel_world_size) / pixel_world_size);
-    }
-
-    // TODO: do this only for joints
     if has_any_flag(in.fragment_flags, FLAG_ROUND_JOINT) {
-        let distance_to_skeleton = distance_to_line(in.position_world, in.center_position_begin, in.center_position_end);
+        let distance_to_skeleton = distance_to_line(in.position_world, in.rounded_inner_line_begin, in.rounded_inner_line_end);
         let pixel_world_size = approx_pixel_world_size_at(length(in.position_world - frame.camera_position));
 
         // It's important that we do antialias both inwards and outwards of the exact border.
         // If we do only outwards, rectangle outlines won't line up nicely
         let half_pixel_world_size = pixel_world_size * 0.5;
-        let signed_distance_to_border = distance_to_skeleton - in.active_radius;
-        coverage *= 1.0 - saturate((signed_distance_to_border + half_pixel_world_size) / pixel_world_size);
+        let signed_distance_to_border = distance_to_skeleton - in.rounded_inner_line_radius;
+        coverage = 1.0 - saturate((signed_distance_to_border + half_pixel_world_size) / pixel_world_size);
     }
 
     // Debugging hack: An offset here makes the geometry visible!
@@ -360,9 +350,8 @@ fn fs_main(in: VertexOut) -> @location(0) vec4f {
     // TODO(andreas): lighting setup
     var shading = 1.0;
     if has_any_flag(in.fragment_flags, FLAG_COLOR_GRADIENT) {
-        let to_center = in.position_world - in.center_position;
-        let relative_distance_to_center_sq = dot(to_center, to_center) / (in.active_radius * in.active_radius);
-        shading = max(0.2, 1.0 - relative_distance_to_center_sq) * 0.9;
+        let distance_to_inner = distance_to_line_sq(in.position_world, in.rounded_inner_line_begin, in.rounded_inner_line_end);
+        shading = max(0.2, 1.0 - distance_to_inner / (in.rounded_inner_line_radius * in.rounded_inner_line_radius)) * 0.9;
     }
 
     return vec4f(in.color.rgb * shading, coverage);
