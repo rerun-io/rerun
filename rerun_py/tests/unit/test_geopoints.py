@@ -12,9 +12,9 @@ from rerun.components import (
     LatLonBatch,
 )
 from rerun.datatypes import (
-    Rgba32ArrayLike,
-    Float32ArrayLike,
     DVec2DArrayLike,
+    Float32ArrayLike,
+    Rgba32ArrayLike,
 )
 
 from .common_arrays import (
