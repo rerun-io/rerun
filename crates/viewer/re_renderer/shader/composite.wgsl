@@ -59,14 +59,30 @@ fn main(in: FragmentInput) -> @location(0) vec4f {
         }
 
         // Show only the outline. Useful for debugging.
-        //color = outline_color_a.rgb;
+        //color = outline_color_b;
 
         // Show the raw voronoi texture. Useful for debugging.
-        //color = vec3f(closest_positions.xy / resolution, 0.0);
+        //color = vec4f(closest_positions.xy / resolution, 0.0, 1.0);
     }
 
     color = saturate(color); // TODO(andreas): Do something meaningful with values above 1
 
     // Apply srgb gamma curve - this is necessary since the final eframe output does *not* have an srgb format.
-    return srgba_from_linear(color);
+    // We can't do this with pre-multiplied alpha, because it would shift how additive the color is.
+    //
+    // Note that egui doing blending in non-linear is a workaround for otherwise poor text rendering, see:
+    // * https://github.com/emilk/egui/pull/2071
+    // * http://hikogui.org/2022/10/24/the-trouble-with-anti-aliasing.html
+    color = premultiplied_to_unmultiplied(color);
+    color = srgba_from_linear(color);
+    color = vec4f(color.rgb * color.a, color.a);
+
+    return color;
+}
+
+fn premultiplied_to_unmultiplied(color: vec4f) -> vec4f {
+    if (color.a == 0.0) {
+        return vec4f(0.0);
+    }
+    return vec4f(color.rgb / color.a, color.a);
 }
