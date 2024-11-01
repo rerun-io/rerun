@@ -182,7 +182,7 @@ impl TypedComponentFallbackProvider<Color> for GeoLineStringsVisualizer {
 
 impl TypedComponentFallbackProvider<Radius> for GeoLineStringsVisualizer {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> Radius {
-        Radius::from(5.0)
+        Radius::new_ui_points(2.0)
     }
 }
 
