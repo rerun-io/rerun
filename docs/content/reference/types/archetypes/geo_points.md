@@ -22,3 +22,17 @@ Geospatial points with positions expressed in EPSG:4326 altitude and longitude, 
  * 🐍 [Python API docs for `GeoPoints`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.GeoPoints)
  * 🦀 [Rust API docs for `GeoPoints`](https://docs.rs/rerun/latest/rerun/archetypes/struct.GeoPoints.html?speculative-link)
 
+## Example
+
+### Log a geospatial point
+
+snippet: archetypes/geo_point_simple
+
+<picture data-inline-viewer="snippets/geo_point_simple">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/geopoint_simple/146b0783c5aea1c1b6a9aab938879942b7c820e2/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/geopoint_simple/146b0783c5aea1c1b6a9aab938879942b7c820e2/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/geopoint_simple/146b0783c5aea1c1b6a9aab938879942b7c820e2/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/geopoint_simple/146b0783c5aea1c1b6a9aab938879942b7c820e2/1200w.png">
+  <img src="https://static.rerun.io/geopoint_simple/146b0783c5aea1c1b6a9aab938879942b7c820e2/full.png">
+</picture>
+
