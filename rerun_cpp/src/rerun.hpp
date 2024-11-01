@@ -33,6 +33,7 @@ namespace rerun {
     using components::AlbedoFactor;
     using components::Color;
     using components::FillMode;
+    using components::GeoLineString;
     using components::HalfSize2D;
     using components::HalfSize3D;
     using components::LatLon;
