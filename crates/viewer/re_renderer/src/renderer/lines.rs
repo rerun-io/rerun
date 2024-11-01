@@ -39,6 +39,8 @@
 //! Why not a triangle *strip* instead if *list*?
 //! -----------------------------------------------
 //!
+//! TODO: rewrite this chapter
+//!
 //! As long as we're not able to restart the strip (requires indices!), we can't discard a quad in a triangle strip setup.
 //! However, this could be solved with an index buffer which has the ability to restart triangle strips (something we haven't tried yet).
 //!
