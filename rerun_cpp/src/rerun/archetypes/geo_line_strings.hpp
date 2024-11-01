@@ -21,6 +21,32 @@ namespace rerun::archetypes {
     /// **Archetype**: Geospatial line strings with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
     ///
     /// **Note**: Geospatial entities are experimental.
+    ///
+    /// ## Example
+    ///
+    /// ### Log a geospatial line string
+    /// ```cpp
+    /// #include <rerun.hpp>
+    ///
+    /// int main() {
+    ///     const auto rec = rerun::RecordingStream("rerun_example_geo_line_strings");
+    ///     rec.spawn().exit_on_failure();
+    ///
+    ///     rerun::Collection<rerun::DVec2D> line_string = {
+    ///         {41.0000, -109.0452},
+    ///         {41.0000, -102.0415},
+    ///         {36.9931, -102.0415},
+    ///         {36.9931, -109.0452},
+    ///         {41.0000, -109.0452}};
+    ///
+    ///     rec.log(
+    ///         "colorado",
+    ///         rerun::GeoLineStrings({line_string})
+    ///             .with_radii(rerun::Radius::ui_points(2.0f))
+    ///             .with_colors(rerun::Color(0, 0, 255))
+    ///     );
+    /// }
+    /// ```
     struct GeoLineStrings {
         /// The lines strings, expressed in EPSG:4326 coordinates.
         Collection<rerun::components::GeoLineString> line_strings;

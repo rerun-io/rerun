@@ -21,6 +21,30 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Geospatial line strings with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
 ///
 /// **Note**: Geospatial entities are experimental.
+///
+/// ## Example
+///
+/// ### Log a geospatial line string
+/// ```ignore
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_geo_line_strings").spawn()?;
+///
+///     rec.log(
+///         "colorado",
+///         &rerun::GeoLineStrings::new([[
+///             [41.0000, -109.0452],
+///             [41.0000, -102.0415],
+///             [36.9931, -102.0415],
+///             [36.9931, -109.0452],
+///             [41.0000, -109.0452],
+///         ]])
+///         .with_radii([rerun::Radius::new_ui_points(2.0)])
+///         .with_colors([rerun::Color::from_rgb(0, 0, 255)]),
+///     )?;
+///
+///     Ok(())
+/// }
+/// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct GeoLineStrings {
     /// The lines strings, expressed in EPSG:4326 coordinates.
