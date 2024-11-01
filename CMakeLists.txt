@@ -170,9 +170,22 @@ endif()
 # ------------------------------------------------------------------------------
 add_subdirectory(crates/top/rerun_c) # The Rerun C SDK library, must be included before the C++ SDK.
 add_subdirectory(rerun_cpp) # The Rerun C++ SDK library.
-add_subdirectory(examples/cpp)
-add_subdirectory(tests/cpp)
-add_subdirectory(docs/snippets)
+
+option(BUILD_EXAMPLES "Build all examples." OFF)
+option(BUILD_TESTS "Build all tests." OFF)
+option(BUILD_DOCS "Build all documentation." OFF)
+
+if(BUILD_EXAMPLES)
+    add_subdirectory(examples/cpp)
+endif()
+
+if(BUILD_TESTS)
+    add_subdirectory(tests/cpp)
+endif()
+
+if(BUILD_DOCS)
+    add_subdirectory(docs/snippets)
+endif()
 
 # ------------------------------------------------------------------------------
 # Setup an 'all_targets' target that depends on all targets in the project.
