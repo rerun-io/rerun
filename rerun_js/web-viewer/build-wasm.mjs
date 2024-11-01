@@ -122,9 +122,10 @@ async function checkHash(mode, id, data) {
   }
 
   if (storedHash !== computedHash) {
-    throw new Error(`Output of "${id}" changed.
+    console.error(`Output of "${id}" changed.
 Update the \`build-wasm.mjs\` script to handle the new output,
 then run \`node build-wasm.mjs --update-hashes\`.`);
+    process.exit(1);
   }
 }
 
