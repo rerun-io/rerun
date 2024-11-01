@@ -21,6 +21,27 @@ namespace rerun::archetypes {
     /// **Archetype**: Geospatial points with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
     ///
     /// **Note**: Geospatial entities are experimental.
+    ///
+    /// ## Example
+    ///
+    /// ### Log a geospatial point
+    /// ![image](https://static.rerun.io/geopoint_simple/146b0783c5aea1c1b6a9aab938879942b7c820e2/full.png)
+    ///
+    /// ```cpp
+    /// #include <rerun.hpp>
+    ///
+    /// int main() {
+    ///     const auto rec = rerun::RecordingStream("rerun_example_geo_points");
+    ///     rec.spawn().exit_on_failure();
+    ///
+    ///     rec.log(
+    ///         "rerun_hq",
+    ///         rerun::GeoPoints({{59.319221, 18.075631}})
+    ///             .with_radii(rerun::Radius::ui_points(10.0f))
+    ///             .with_colors(rerun::Color(255, 0, 0))
+    ///     );
+    /// }
+    /// ```
     struct GeoPoints {
         /// The EPSG:4326 coordinates for the points.
         Collection<rerun::components::LatLon> positions;

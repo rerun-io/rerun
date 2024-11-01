@@ -21,6 +21,33 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: Geospatial points with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
 ///
 /// **Note**: Geospatial entities are experimental.
+///
+/// ## Example
+///
+/// ### Log a geospatial point
+/// ```ignore
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_geo_points").spawn()?;
+///
+///     rec.log(
+///         "rerun_hq",
+///         &rerun::GeoPoints::new([(59.319221, 18.075631)])
+///             .with_radii([rerun::Radius::new_ui_points(10.0)])
+///             .with_colors([rerun::Color::from_rgb(255, 0, 0)]),
+///     )?;
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/geopoint_simple/146b0783c5aea1c1b6a9aab938879942b7c820e2/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/geopoint_simple/146b0783c5aea1c1b6a9aab938879942b7c820e2/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/geopoint_simple/146b0783c5aea1c1b6a9aab938879942b7c820e2/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/geopoint_simple/146b0783c5aea1c1b6a9aab938879942b7c820e2/1200w.png">
+///   <img src="https://static.rerun.io/geopoint_simple/146b0783c5aea1c1b6a9aab938879942b7c820e2/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct GeoPoints {
     /// The EPSG:4326 coordinates for the points.
