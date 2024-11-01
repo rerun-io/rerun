@@ -121,6 +121,12 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     ),
     "FillRatioBatch": TestCase(0.5),
     "GammaCorrectionBatch": TestCase(2.2),
+    "GeoLineStripBatch": TestCase(
+        batch=[
+            ((0, 0), (1, 1), (2, 2)),
+            ((3, 3), (4, 4), (5, 5)),
+        ]
+    ),
     "HalfSize2DBatch": TestCase(batch=[(5.0, 10.0), (50, 30), (23, 45)]),
     "HalfSize3DBatch": TestCase(batch=[(5.0, 10.0, 20.0), (50, 30, 40), (23, 45, 67)]),
     "ImageBufferBatch": TestCase(
