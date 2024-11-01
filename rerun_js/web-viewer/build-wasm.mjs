@@ -31,11 +31,6 @@ function wasm(mode) {
   }
 }
 
-child_process.execSync(
-  "cargo run -p re_dev_tools -- build-web-viewer --debug --target no-modules-base -o rerun_js/web-viewer",
-  { cwd: __dirname, stdio: "inherit" },
-);
-
 function script() {
   let code = fs.readFileSync(path.join(__dirname, "re_viewer.js"), "utf-8");
 
@@ -64,11 +59,10 @@ ${code}
 function deinit() {
   __wbg_init.__wbindgen_wasm_module = null;
   wasm = null;
-  cachedFloat32Memory0 = null;
-  cachedFloat64Memory0 = null;
-  cachedInt32Memory0 = null;
-  cachedUint32Memory0 = null;
-  cachedUint8Memory0 = null;
+  cachedFloat32ArrayMemory0 = null;
+  cachedInt32ArrayMemory0 = null;
+  cachedUint32ArrayMemory0 = null;
+  cachedUint8ArrayMemory0 = null;
 }
 
 return Object.assign(__wbg_init, { initSync, deinit }, __exports);
