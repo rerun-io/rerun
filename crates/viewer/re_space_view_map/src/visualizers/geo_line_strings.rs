@@ -21,7 +21,7 @@ struct GeoLineStringsBatch {
     instance_id: Vec<PickingLayerInstanceId>,
 }
 
-/// Visualizer for [`GeoPoints`].
+/// Visualizer for [`GeoLineString`].
 #[derive(Default)]
 pub struct GeoLineStringsVisualizer {
     batches: Vec<(EntityPath, GeoLineStringsBatch)>,
