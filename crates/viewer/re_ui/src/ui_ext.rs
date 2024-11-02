@@ -18,6 +18,12 @@ pub trait UiExt {
     fn ui(&self) -> &egui::Ui;
     fn ui_mut(&mut self) -> &mut egui::Ui;
 
+    /// Shows a warning label.
+    fn warning_label(&mut self, warning_text: &str) -> egui::Response {
+        let label = egui::Label::new(self.ui().ctx().warning_text(warning_text));
+        self.ui_mut().add(label)
+    }
+
     /// Shows a small error label with the given text on hover and copies the text to the clipboard on click.
     fn error_label(&mut self, error_text: &str) -> egui::Response {
         let label = egui::Label::new(self.ui().ctx().error_text("Error"))
