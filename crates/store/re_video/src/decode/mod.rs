@@ -110,7 +110,7 @@ pub enum Error {
 
     #[cfg(target_arch = "wasm32")]
     #[error(transparent)]
-    WebDecoderError(#[from] webcodecs::Error),
+    WebDecoder(#[from] webcodecs::Error),
 
     #[error("Unsupported bits per component: {0}")]
     BadBitsPerComponent(usize),
