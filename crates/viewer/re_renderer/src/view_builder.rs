@@ -282,7 +282,7 @@ impl ViewBuilder {
     /// the resulting alpha value is not what was used to determine the color!
     /// -> See workaround in `composite.wgsl`
     ///
-    /// Utlimately, we have the following options to fix this properly sorted from most desirable to least:
+    /// Ultimately, we have the following options to fix this properly sorted from most desirable to least:
     /// * don't use alpha-to-coverage, use instead `SampleMask`
     ///     * this is not supported on WebGL which either needs a special path, or more likely, has to just disable anti-aliasing in these cases
     ///     * as long as we use 4x MSAA, we have a pretty good idea where the samples are (see `jumpflooding_init_msaa.wgsl`),
