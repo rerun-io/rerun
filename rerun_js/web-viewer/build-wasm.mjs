@@ -14,7 +14,7 @@ const exec = (cmd) => {
   child_process.execSync(cmd, { cwd: __dirname, stdio: "inherit" });
 };
 
-function wasm(mode) {
+function buildWebViewer(mode) {
   switch (mode) {
     case "debug": {
       return exec(
@@ -31,13 +31,9 @@ function wasm(mode) {
   }
 }
 
-child_process.execSync(
-  "cargo run -p re_dev_tools -- build-web-viewer --debug --target no-modules-base -o rerun_js/web-viewer",
-  { cwd: __dirname, stdio: "inherit" },
-);
-
-function script() {
+async function re_viewer_js(mode) {
   let code = fs.readFileSync(path.join(__dirname, "re_viewer.js"), "utf-8");
+  await checkHash(mode, "re_viewer.js", code);
 
   // this transforms the module, wrapping it in a default-exported function.
   // calling the function produces a new "instance" of the module, because
@@ -64,11 +60,10 @@ ${code}
 function deinit() {
   __wbg_init.__wbindgen_wasm_module = null;
   wasm = null;
-  cachedFloat32Memory0 = null;
-  cachedFloat64Memory0 = null;
-  cachedInt32Memory0 = null;
-  cachedUint32Memory0 = null;
-  cachedUint8Memory0 = null;
+  cachedFloat32ArrayMemory0 = null;
+  cachedInt32ArrayMemory0 = null;
+  cachedUint32ArrayMemory0 = null;
+  cachedUint8ArrayMemory0 = null;
 }
 
 return Object.assign(__wbg_init, { initSync, deinit }, __exports);
@@ -94,8 +89,9 @@ return Object.assign(__wbg_init, { initSync, deinit }, __exports);
   fs.writeFileSync(path.join(__dirname, "re_viewer.js"), code);
 }
 
-function types() {
+async function re_viewer_d_ts(mode) {
   let code = fs.readFileSync(path.join(__dirname, "re_viewer.d.ts"), "utf-8");
+  await checkHash(mode, "re_viewer.d.ts", code);
 
   // this transformation just re-exports WebHandle and adds a default export inside the `.d.ts` file
 
@@ -108,18 +104,77 @@ export default function(): wasm_bindgen;
   fs.writeFileSync(path.join(__dirname, "re_viewer.d.ts"), code);
 }
 
+async function hash(data) {
+  const buffer = await crypto.subtle.digest("sha-256", data);
+  return Array.from(new Uint8Array(buffer))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+}
+
+async function checkHash(mode, id, data) {
+  const storedHash = hashes?.[mode]?.[id];
+  const computedHash = await hash(new TextEncoder().encode(data));
+
+  if (updateHashes) {
+    hashes[mode] ??= {};
+    hashes[mode][id] = computedHash;
+    return;
+  }
+
+  if (storedHash !== computedHash) {
+    console.error(`
+==============================================================
+Output of "${id}" changed.
+Update the \`build-wasm.mjs\` script to handle the new output,
+then run \`pixi run node build-wasm.mjs --update-hashes\`.
+==============================================================
+`);
+    process.exit(1);
+  }
+}
+
+async function run(mode) {
+  buildWebViewer(mode);
+  await re_viewer_js(mode);
+  await re_viewer_d_ts(mode);
+}
+
 const args = util.parseArgs({
   options: {
     mode: {
       type: "string",
     },
+    "update-hashes": {
+      type: "boolean",
+    },
   },
 });
 
-if (!args.values.mode) {
-  throw new Error("Missing required argument: mode");
+let updateHashes = !!args.values["update-hashes"];
+let hashes;
+try {
+  hashes = JSON.parse(
+    fs.readFileSync(path.join(__dirname, "hashes.json"), "utf-8"),
+  );
+} catch (e) {
+  hashes = {};
 }
 
-wasm(args.values.mode);
-script();
-types();
+try {
+  if (updateHashes) {
+    await run("release");
+    await run("debug");
+    fs.writeFileSync(
+      path.join(__dirname, "hashes.json"),
+      JSON.stringify(hashes),
+    );
+  } else {
+    if (!args.values.mode) {
+      throw new Error("Missing required argument: mode");
+    }
+
+    await run(args.values.mode);
+  }
+} catch (e) {
+  console.error(e.message);
+}

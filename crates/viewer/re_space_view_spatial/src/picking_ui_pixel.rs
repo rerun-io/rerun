@@ -582,6 +582,7 @@ fn pixel_value_string_from_gpu_texture(
             buffer_info,
         }),
     );
+    drop(readback_belt);
 
     {
         let mut encoder = render_ctx.active_frame.before_view_builder_encoder.lock();

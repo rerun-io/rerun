@@ -254,7 +254,7 @@ mod file_server_impl {
                     .ok()
             }
 
-            let paths = self
+            let paths: HashSet<PathBuf> = self
                 .events_rx
                 .try_iter()
                 .flat_map(|ev| {

@@ -105,7 +105,8 @@ impl SyncDav1dDecoder {
             };
             match picture {
                 Ok(picture) => {
-                    output_picture(&self.debug_name, &picture, on_output);
+                    let frame = create_frame(&self.debug_name, &picture);
+                    on_output(frame);
                     count += 1;
                 }
                 Err(dav1d::Error::Again) => {
@@ -121,97 +122,114 @@ impl SyncDav1dDecoder {
     }
 }
 
-fn output_picture(
-    debug_name: &str,
-    picture: &dav1d::Picture,
-    on_output: &(dyn Fn(Result<Frame>) + Send + Sync),
-) {
-    let data = {
-        re_tracing::profile_scope!("copy_picture_data");
+fn create_frame(debug_name: &str, picture: &dav1d::Picture) -> Result<Frame> {
+    re_tracing::profile_function!();
 
-        match picture.pixel_layout() {
-            PixelLayout::I400 => picture.plane(PlanarImageComponent::Y).to_vec(),
-            PixelLayout::I420 | PixelLayout::I422 | PixelLayout::I444 => {
-                // TODO(#7594): If `picture.bit_depth()` isn't 8 we have a problem:
-                // We can't handle high bit depths yet and the YUV converter at the other side
-                // bases its opinion on what an acceptable number of incoming bytes is on this.
-                // So we just clamp to that expectation, ignoring `picture.stride(PlanarImageComponent::Y)` & friends.
-                // Note that `bit_depth` is either 8 or 16, which is semi-independent `bits_per_component` (which is None/8/10/12).
-                if picture.bit_depth() != 8 {
-                    re_log::warn_once!(
-                        "Video {debug_name:?} uses {} bis per component. Only a bit depth of 8 bit is currently unsupported.",
-                        picture.bits_per_component().map_or(picture.bit_depth(), |bpc| bpc.0)
-                    );
-                }
+    let bits_per_component = picture
+        .bits_per_component()
+        .map_or(picture.bit_depth(), |bpc| bpc.0);
 
-                let height_y = picture.height() as usize;
-                let height_uv = match picture.pixel_layout() {
-                    PixelLayout::I400 => 0,
-                    PixelLayout::I420 => height_y / 2,
-                    PixelLayout::I422 | PixelLayout::I444 => height_y,
-                };
+    let bytes_per_component = if bits_per_component == 8 {
+        1
+    } else if 8 < bits_per_component && bits_per_component <= 16 {
+        // TODO(#7594): Support HDR video.
+        // We currently handle HDR videos by throwing away the lowest bits,
+        // and doing so rather slowly on CPU. It works, but the colors won't be perfectly correct.
+        re_log::warn_once!(
+            "{debug_name:?} is a High-Dynamic-Range (HDR) video with {bits_per_component} bits per component. Rerun does not support this fully. Color accuracy and performance may suffer.",
+        );
+        // Note that `bit_depth` is either 8 or 16, which is semi-independent `bits_per_component` (which is None/8/10/12).
+        2
+    } else {
+        return Err(Error::BadBitsPerComponent(bits_per_component));
+    };
 
-                let packed_stride_y = picture.width() as usize;
-                let actual_stride_y = picture.stride(PlanarImageComponent::Y) as usize;
+    let mut data = match picture.pixel_layout() {
+        // Monochrome
+        PixelLayout::I400 => picture.plane(PlanarImageComponent::Y).to_vec(),
 
-                let packed_stride_uv = match picture.pixel_layout() {
-                    PixelLayout::I400 => 0,
-                    PixelLayout::I420 | PixelLayout::I422 => packed_stride_y / 2,
-                    PixelLayout::I444 => packed_stride_y,
-                };
-                let actual_stride_uv = picture.stride(PlanarImageComponent::U) as usize; // U / V stride is always the same.
+        PixelLayout::I420 | PixelLayout::I422 | PixelLayout::I444 => {
+            let height_y = picture.height() as usize;
+            let height_uv = match picture.pixel_layout() {
+                PixelLayout::I400 => 0,
+                PixelLayout::I420 => height_y / 2,
+                PixelLayout::I422 | PixelLayout::I444 => height_y,
+            };
 
-                let num_packed_bytes_y = packed_stride_y * height_y;
-                let num_packed_bytes_uv = packed_stride_uv * height_uv;
+            let packed_stride_y = bytes_per_component * picture.width() as usize;
+            let actual_stride_y = picture.stride(PlanarImageComponent::Y) as usize;
 
-                if actual_stride_y == packed_stride_y && actual_stride_uv == packed_stride_uv {
-                    // Best case scenario: There's no additional strides at all, so we can just copy the data directly.
-                    // TODO(andreas): This still has *significant* overhead for 8k video. Can we take ownership of the data instead without a copy?
-                    re_tracing::profile_scope!("fast path");
-                    let plane_y = &picture.plane(PlanarImageComponent::Y)[0..num_packed_bytes_y];
-                    let plane_u = &picture.plane(PlanarImageComponent::U)[0..num_packed_bytes_uv];
-                    let plane_v = &picture.plane(PlanarImageComponent::V)[0..num_packed_bytes_uv];
-                    [plane_y, plane_u, plane_v].concat()
-                } else {
-                    // At least either y or u/v have strides.
-                    //
-                    // We could make our image ingestion pipeline even more sophisticated and pass that stride information through.
-                    // But given that this is a matter of replacing a single large memcpy with a few hundred _still_ quite large ones,
-                    // this should not make a lot of difference (citation needed!).
+            let packed_stride_uv = match picture.pixel_layout() {
+                PixelLayout::I400 => 0,
+                PixelLayout::I420 | PixelLayout::I422 => packed_stride_y / 2,
+                PixelLayout::I444 => packed_stride_y,
+            };
+            let actual_stride_uv = picture.stride(PlanarImageComponent::U) as usize; // U / V stride is always the same.
 
-                    let mut data = Vec::with_capacity(num_packed_bytes_y + num_packed_bytes_uv * 2);
-                    {
-                        let plane = picture.plane(PlanarImageComponent::Y);
-                        if packed_stride_y == actual_stride_y {
-                            data.extend_from_slice(&plane[0..num_packed_bytes_y]);
-                        } else {
-                            re_tracing::profile_scope!("slow path, y-plane");
+            let num_packed_bytes_y = packed_stride_y * height_y;
+            let num_packed_bytes_uv = packed_stride_uv * height_uv;
 
-                            for y in 0..height_y {
-                                let offset = y * actual_stride_y;
-                                data.extend_from_slice(&plane[offset..(offset + packed_stride_y)]);
-                            }
+            if actual_stride_y == packed_stride_y && actual_stride_uv == packed_stride_uv {
+                // Best case scenario: There's no additional strides at all, so we can just copy the data directly.
+                // TODO(andreas): This still has *significant* overhead for 8k video. Can we take ownership of the data instead without a copy?
+                re_tracing::profile_scope!("fast path");
+                let plane_y = &picture.plane(PlanarImageComponent::Y)[0..num_packed_bytes_y];
+                let plane_u = &picture.plane(PlanarImageComponent::U)[0..num_packed_bytes_uv];
+                let plane_v = &picture.plane(PlanarImageComponent::V)[0..num_packed_bytes_uv];
+                [plane_y, plane_u, plane_v].concat()
+            } else {
+                // At least either y or u/v have strides.
+                //
+                // We could make our image ingestion pipeline even more sophisticated and pass that stride information through.
+                // But given that this is a matter of replacing a single large memcpy with a few hundred _still_ quite large ones,
+                // this should not make a lot of difference (citation needed!).
+
+                let mut data = Vec::with_capacity(num_packed_bytes_y + num_packed_bytes_uv * 2);
+                {
+                    let plane = picture.plane(PlanarImageComponent::Y);
+                    if packed_stride_y == actual_stride_y {
+                        data.extend_from_slice(&plane[0..num_packed_bytes_y]);
+                    } else {
+                        re_tracing::profile_scope!("slow path, y-plane");
+
+                        for y in 0..height_y {
+                            let offset = y * actual_stride_y;
+                            data.extend_from_slice(&plane[offset..(offset + packed_stride_y)]);
                         }
                     }
-                    for comp in [PlanarImageComponent::U, PlanarImageComponent::V] {
-                        let plane = picture.plane(comp);
-                        if actual_stride_uv == packed_stride_uv {
-                            data.extend_from_slice(&plane[0..num_packed_bytes_uv]);
-                        } else {
-                            re_tracing::profile_scope!("slow path, u/v-plane");
+                }
+                for comp in [PlanarImageComponent::U, PlanarImageComponent::V] {
+                    let plane = picture.plane(comp);
+                    if actual_stride_uv == packed_stride_uv {
+                        data.extend_from_slice(&plane[0..num_packed_bytes_uv]);
+                    } else {
+                        re_tracing::profile_scope!("slow path, u/v-plane");
 
-                            for y in 0..height_uv {
-                                let offset = y * actual_stride_uv;
-                                data.extend_from_slice(&plane[offset..(offset + packed_stride_uv)]);
-                            }
+                        for y in 0..height_uv {
+                            let offset = y * actual_stride_uv;
+                            data.extend_from_slice(&plane[offset..(offset + packed_stride_uv)]);
                         }
                     }
-
-                    data
                 }
+
+                data
             }
         }
     };
+
+    if bytes_per_component == 2 {
+        re_tracing::profile_scope!("Truncate HDR"); // costs around 1.5ms per megapixel on MacBook Pro M3 Max
+        let rshift = bits_per_component - 8; // we throw away the low bits
+        data = data
+            .chunks(2)
+            .map(|c| {
+                let lo = c[0] as u16;
+                let hi = c[1] as u16;
+                let full = (hi << 8) | lo;
+                (full >> rshift) as u8
+            })
+            .collect();
+    }
 
     let format = PixelFormat::Yuv {
         layout: match picture.pixel_layout() {
@@ -227,7 +245,7 @@ fn output_picture(
         coefficients: yuv_matrix_coefficients(debug_name, picture),
     };
 
-    let frame = Frame {
+    Ok(Frame {
         content: FrameContent {
             data,
             width: picture.width(),
@@ -238,8 +256,7 @@ fn output_picture(
             presentation_timestamp: Time(picture.timestamp().unwrap_or(0)),
             duration: Time(picture.duration()),
         },
-    };
-    on_output(Ok(frame));
+    })
 }
 
 fn yuv_matrix_coefficients(debug_name: &str, picture: &dav1d::Picture) -> YuvMatrixCoefficients {

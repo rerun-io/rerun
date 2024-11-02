@@ -304,7 +304,7 @@ impl VideoFrameReferenceVisualizer {
                 Hash64::hash("video_error").hash64(),
                 render_ctx,
                 || {
-                    let mut reader = image::io::Reader::new(std::io::Cursor::new(
+                    let mut reader = image::ImageReader::new(std::io::Cursor::new(
                         re_ui::icons::VIDEO_ERROR.png_bytes,
                     ));
                     reader.set_format(image::ImageFormat::Png);
