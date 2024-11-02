@@ -6186,6 +6186,7 @@ dependencies = [
  "puffin_http",
  "re_log",
  "rfd",
+ "wayland-sys",
 ]
 
 [[package]]

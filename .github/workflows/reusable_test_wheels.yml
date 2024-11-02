@@ -38,6 +38,8 @@ env:
 
   RUSTDOCFLAGS: --deny warnings
 
+  RUST_BACKTRACE: "1"
+
   # Disable the GHA backend (Github's 10GB storage) since we use our own GCS backend.
   # See: https://github.com/marketplace/actions/sccache-action
   SCCACHE_GHA_ENABLED: "false"
