@@ -263,15 +263,32 @@ impl ViewBuilder {
 
     /// Use this color state when targeting the main target with alpha-to-coverage.
     ///
-    /// For blending during the composite step, we need alpha to indicate how much we overwrite the background.
-    /// However, when using alpha-to-coverage, we need alpha to indicate the coverage of the pixel from
-    /// which the samples are derived. Ideally, we'd output alpha==1.0 for each active sample and alpha==0.0 for each inactive sample.
-    /// This way, we'd get the correct alpha & pre-multipltiplied color values during MSAA resolve.
-    /// OpenGL exposes this as `GL_SAMPLE_ALPHA_TO_ONE`, Vulkan as `alphaToOne`.
-    /// Unfortunately though, WebGPU does not support this.
-    /// Next the best thing we can do is to accumulate alpha values with a additive blending operation.
-    /// (a regular blending operation is not order independent!)
-    // TODO(andreas): All of this is only needed when we do blending during the composite step. Should opt-in to this!
+    /// If blending with the background is enabled, we need alpha to indicate how much we overwrite the background.
+    /// (i.e. when we do blending of the screen target with whatever was there during [Self::composite].)
+    /// However, when using alpha-to-coverage, we need alpha to _also_ indicate the coverage of the pixel from
+    /// which the samples are derived. What we'd like to happen is:
+    /// * use alpha to indicate coverage == number of samples written to
+    /// * write alpha==1.0 for each active sample despite what we set earlier
+    /// This way, we'd get the correct alpha and end up with pre-multipltiplied color values during MSAA resolve,
+    /// just like with opaque geometry!
+    /// OpenGL exposes this as `GL_SAMPLE_ALPHA_TO_ONE`, Vulkan as `alphaToOne`. Unfortunately though, WebGPU does not support this!
+    /// Instead, what happens is that alpha has a double meaning: Coverage _and_ alpha of all written samples.
+    /// This means that anti-aliased edges (== alpha < 1.0) will _always_ creates "holes" into the target texture
+    /// even if there was already an opaque object prior.
+    /// To work around this, we accumulate alpha values with an additive blending operation, so that previous opaque
+    /// objects won't be overwritten with alpha < 1.0. (this is obviously wrong for a variety of reasons, but it looks good enough)
+    /// Another problem with this is that during MSAA resolve we now average those too low alpha values.
+    /// This makes us end up with a premultiplied alpha value that looks like it has additive blending applied since
+    /// the resulting alpha value is not what was used to determine the color!
+    /// -> See workaround in `composite.wgsl`
+    ///
+    /// Utlimately, we have the following options to fix this properly sorted from most desirable to least:
+    /// * don't use alpha-to-coverage, use instead `SampleMask`
+    ///     * this is not supported on WebGL which either needs a special path, or more likely, has to just disable anti-aliasing in these cases
+    ///     * as long as we use 4x MSAA, we have a pretty good idea where the samples are (see `jumpflooding_init_msaa.wgsl`),
+    ///       so we can actually use this to **improve** the quality of the anti-aliasing a lot by turning on/off the samples that are actually covered.
+    /// * figure out a way to never needing to blend with the background in [`Self::composite`].
+    /// * figure out how to use `GL_SAMPLE_ALPHA_TO_ONE` after all. This involves bringing this up with the WebGPU spec team and won't work on WebGL.
     pub const MAIN_TARGET_ALPHA_TO_COVERAGE_COLOR_STATE: wgpu::ColorTargetState =
         wgpu::ColorTargetState {
             format: Self::MAIN_TARGET_COLOR_FORMAT,

@@ -27,11 +27,10 @@ fn main(in: FragmentInput) -> @location(0) vec4f {
     // but are about the location of the texel in the target texture.
     var color = textureSample(color_texture, nearest_sampler, in.texcoord);
 
-    // We assume that the color from the texture does *not* have pre-multiplied alpha.
-    // TODO(andreas): At least empirically we get artifacts without this from our alpha-to-coverage shading!
-    // -> Alpha to coverage can't output premultiplied alpha values since it doesn't perform any color blending (this would lead to dark halos then).
-    // This is going to cause issues once we introduce actual transparency in the scene which *does* use premultiplied alpha.
-    // See also ViewBuilder::MAIN_TARGET_ALPHA_TO_COVERAGE_COLOR_STATE.
+    // TODO(andreas): We assume that the color from the texture does *not* have pre-multiplied alpha.
+    // This is a brittle workaround for the alpha-to-coverage issue described in `ViewBuilder::MAIN_TARGET_ALPHA_TO_COVERAGE_COLOR_STATE`:
+    // We need this because otherwise the feathered edges of alpha-to-coverage would be overly bright, as after
+    // MSAA-resolve they end up with an unusually low alpha value relative to the color value.
     color = vec4f(color.rgb * color.a, color.a);
 
     // Outlines
