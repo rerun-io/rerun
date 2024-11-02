@@ -111,6 +111,9 @@ pub enum Error {
     #[cfg(target_arch = "wasm32")]
     #[error(transparent)]
     WebDecoderError(#[from] webcodecs::Error),
+
+    #[error("Unsupported bits per component: {0}")]
+    BadBitsPerComponent(usize),
 }
 
 pub type Result<T = (), E = Error> = std::result::Result<T, E>;
@@ -169,14 +172,14 @@ pub fn new_decoder(
                     return Err(Error::NoNativeAv1Debug); // because debug builds of rav1d is EXTREMELY slow
                 }
 
-                    re_log::trace!("Decoding AV1…");
-                    return Ok(Box::new(async_decoder_wrapper::AsyncDecoderWrapper::new(
-                        debug_name.to_owned(),
-                        Box::new(av1::SyncDav1dDecoder::new(debug_name.to_owned())?),
-                        on_output,
-                    )));
-                }
+                re_log::trace!("Decoding AV1…");
+                return Ok(Box::new(async_decoder_wrapper::AsyncDecoderWrapper::new(
+                    debug_name.to_owned(),
+                    Box::new(av1::SyncDav1dDecoder::new(debug_name.to_owned())?),
+                    on_output,
+                )));
             }
+        }
 
         _ => Err(Error::UnsupportedCodec(video.human_readable_codec_string())),
     }
