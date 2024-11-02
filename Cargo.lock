@@ -6275,6 +6275,7 @@ dependencies = [
  "syn 2.0.85",
  "tempfile",
  "unindent",
+ "wayland-sys",
  "xshell",
 ]
 
