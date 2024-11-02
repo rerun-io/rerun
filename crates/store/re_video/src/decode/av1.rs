@@ -133,7 +133,7 @@ fn create_frame(debug_name: &str, picture: &dav1d::Picture) -> Result<Frame> {
         1
     } else if 8 < bits_per_component && bits_per_component <= 16 {
         // TODO(#7594): Support HDR video.
-        // We currnelty handle HDR videos by throwing away the lowest bits,
+        // We currently handle HDR videos by throwing away the lowest bits,
         // and doing so rather slowly on CPU. It works, but the colors won't be perfectly correct.
         re_log::warn_once!(
             "{debug_name:?} is a High-Dynamic-Range (HDR) video with {bits_per_component} bits per component. Rerun does not support this fully. Color accuracy and performance may suffer.",
