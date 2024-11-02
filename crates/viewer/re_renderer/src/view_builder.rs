@@ -264,7 +264,7 @@ impl ViewBuilder {
     /// Use this color state when targeting the main target with alpha-to-coverage.
     ///
     /// If blending with the background is enabled, we need alpha to indicate how much we overwrite the background.
-    /// (i.e. when we do blending of the screen target with whatever was there during [Self::composite].)
+    /// (i.e. when we do blending of the screen target with whatever was there during [`Self::composite`].)
     /// However, when using alpha-to-coverage, we need alpha to _also_ indicate the coverage of the pixel from
     /// which the samples are derived. What we'd like to happen is:
     /// * use alpha to indicate coverage == number of samples written to
