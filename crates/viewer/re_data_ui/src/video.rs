@@ -33,14 +33,23 @@ pub fn show_video_blob_info(
                     )),
                 );
                 if let Some(bit_depth) = data.config.stsd.contents.bit_depth() {
-                    let mut bit_depth = bit_depth.to_string();
-                    if data.is_monochrome() == Some(true) {
-                        bit_depth = format!("{bit_depth} (monochrome)");
-                    }
-
-                    ui.list_item_flat_noninteractive(
-                        PropertyContent::new("Bit depth").value_text(bit_depth),
-                    );
+                    ui.list_item_flat_noninteractive(PropertyContent::new("Bit depth").value_fn(
+                        |ui, _| {
+                            ui.label(bit_depth.to_string());
+                            if 8 < bit_depth {
+                                // TODO(#7594): HDR videos
+                                ui.warning_label("HDR").on_hover_ui(|ui| {
+                                    ui.label(
+                                        "High-dynamic-range videos not yet supported by Rerun",
+                                    );
+                                    ui.hyperlink("https://github.com/rerun-io/rerun/issues/7594");
+                                });
+                            }
+                            if data.is_monochrome() == Some(true) {
+                                ui.label("(monochrome)");
+                            }
+                        },
+                    ));
                 }
                 if let Some(subsampling_mode) = data.subsampling_mode() {
                     // Don't show subsampling mode for monochrome, doesn't make sense usually.

@@ -143,7 +143,7 @@ pub fn url_to_receiver(
             re_rrdp_comms::stream_recording(url, Some(ui_waker)).map_err(|err| err.into())
         }
         #[cfg(not(feature = "rrdp"))]
-        EndpointCategory::DataPlatform(url) => {
+        EndpointCategory::DataPlatform(_url) => {
             anyhow::bail!("Missing 'rrdp' feature flag");
         }
         EndpointCategory::WebEventListener(url) => {
