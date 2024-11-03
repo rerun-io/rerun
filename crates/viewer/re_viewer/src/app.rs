@@ -1178,7 +1178,7 @@ impl App {
                     // updates the app-id when changing the recording.
                     match store_id.kind {
                         StoreKind::Recording => {
-                            re_log::debug!("Opening a new recording: {store_id}");
+                            re_log::trace!("Opening a new recording: '{store_id}'");
                             store_hub.set_active_recording_id(store_id.clone());
 
                             // Also select the new recording:
@@ -1214,7 +1214,7 @@ impl App {
                     }
                     StoreKind::Blueprint => {
                         if let Some(info) = entity_db.store_info() {
-                            re_log::debug!(
+                            re_log::trace!(
                                 "Activating blueprint that was loaded from {channel_source}"
                             );
                             let app_id = info.application_id.clone();

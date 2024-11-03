@@ -63,7 +63,7 @@ impl MeshCache {
             .or_default()
             .entry(key)
             .or_insert_with(|| {
-                re_log::debug!("Loading CPU mesh {name:?}…");
+                re_log::trace!("Loading CPU mesh {name:?}…");
 
                 let result = LoadedMesh::load(name.to_owned(), mesh, render_ctx);
 
