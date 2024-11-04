@@ -203,7 +203,7 @@ jobs:
         run: echo "::warning title="Link checker"::Link checker detected broken links!"
 
   wasm-bindgen-check:
-    name: Check wasm-bindgen output
+    name: Check wasm-bindgen version
     if: ${{ github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     continue-on-error: true
