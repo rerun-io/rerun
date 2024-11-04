@@ -12,7 +12,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Note: We log to the same entity here.
     rec.log(
         "simple",
-        &rerun::GraphEdges::new(&[("a", "b"), ("b", "c"), ("c", "a")]).with_directed_edges(),
+        &rerun::GraphEdges::new([("a", "b"), ("b", "c"), ("c", "a")]).with_directed_edges(),
     )?;
 
     Ok(())
