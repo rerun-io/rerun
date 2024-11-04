@@ -38,7 +38,7 @@ message RegisterRecordingResponse {
     // chunk by chunk) and extract the metadata. So we might want to 1/ not do this i.e.
     // only do it as part of explicit GetMetadata request or 2/ do it if Request has "include_metadata=true"
     // or 3/ do it always
-    repeated RecordingMetadata metadata = 2;
+    RecordingMetadata metadata = 2;
 }
 
 // Server can include details about the error as part of gRPC error (Status)
