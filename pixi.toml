@@ -529,6 +529,7 @@ mkdocs-redirects = { git = "https://github.com/rerun-io/mkdocs-redirects.git", r
 mkdocstrings = "==0.26.2"
 mkdocstrings-python = "==1.12.1"
 mike = "==1.1.2"
+setuptools = ">75"
 sphobjinv = "==2.3.1"
 
 [feature.py-test-deps.pypi-dependencies]
