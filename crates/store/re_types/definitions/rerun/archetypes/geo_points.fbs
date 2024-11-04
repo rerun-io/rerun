@@ -1,6 +1,6 @@
 namespace rerun.archetypes;
 
-/// Geospatial points with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
+/// Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) altitude and longitude (North/East-positive degrees), and optional colors and radii.
 ///
 /// **Note**: Geospatial entities are experimental.
 ///
@@ -14,7 +14,7 @@ table GeoPoints (
 ) {
   // --- Required ---
 
-  /// The EPSG:4326 coordinates for the points.
+  /// The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).
   positions: [rerun.components.LatLon] ("attr.rerun.component_required", order: 1000);
 
   // --- Recommended ---

@@ -18,7 +18,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: Geospatial points with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
+/// **Archetype**: Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) altitude and longitude (North/East-positive degrees), and optional colors and radii.
 ///
 /// **Note**: Geospatial entities are experimental.
 ///
@@ -50,7 +50,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct GeoPoints {
-    /// The EPSG:4326 coordinates for the points.
+    /// The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).
     pub positions: Vec<crate::components::LatLon>,
 
     /// Optional radii for the points, effectively turning them into circles.

@@ -18,7 +18,9 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: Geospatial line strings with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
+    /// **Archetype**: Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/4326) altitude and longitude (North/East-positive degrees), and optional colors and radii.
+    ///
+    /// Also known as "line strips" or "polylines".
     ///
     /// **Note**: Geospatial entities are experimental.
     ///
@@ -49,7 +51,7 @@ namespace rerun::archetypes {
     /// }
     /// ```
     struct GeoLineStrings {
-        /// The lines strings, expressed in EPSG:4326 coordinates.
+        /// The lines strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
         Collection<rerun::components::GeoLineString> line_strings;
 
         /// Optional radii for the line strings.

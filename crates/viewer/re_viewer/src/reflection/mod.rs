@@ -441,7 +441,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <GeoLineString as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "A geospatial line string expressed in EPSG:4326 latitude and longitude.",
+                docstring_md: "A geospatial line string expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).",
                 custom_placeholder: Some(GeoLineString::default().to_arrow()?),
                 datatype: GeoLineString::arrow_datatype(),
             },
@@ -497,7 +497,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <LatLon as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "A geospatial position expressed in EPSG:4326 latitude and longitude.",
+                docstring_md: "A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).",
                 custom_placeholder: Some(LatLon::default().to_arrow()?),
                 datatype: LatLon::arrow_datatype(),
             },
@@ -1252,8 +1252,8 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.GeoLineString".into(), display_name :
                     "Line strings", docstring_md :
-                    "The lines strings, expressed in EPSG:4326 coordinates.", is_required
-                    : true, }, ArchetypeFieldReflection { component_name :
+                    "The lines strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.Radius".into(), display_name : "Radii",
                     docstring_md : "Optional radii for the line strings.", is_required :
                     false, }, ArchetypeFieldReflection { component_name :
@@ -1270,9 +1270,10 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { component_name : "rerun.components.LatLon"
                     .into(), display_name : "Positions", docstring_md :
-                    "The EPSG:4326 coordinates for the points.", is_required : true, },
-                    ArchetypeFieldReflection { component_name : "rerun.components.Radius"
-                    .into(), display_name : "Radii", docstring_md :
+                    "The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Radius".into(), display_name : "Radii",
+                    docstring_md :
                     "Optional radii for the points, effectively turning them into circles.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.Color".into(), display_name : "Colors",

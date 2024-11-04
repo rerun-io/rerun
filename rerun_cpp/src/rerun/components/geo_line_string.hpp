@@ -18,7 +18,7 @@ namespace arrow {
 } // namespace arrow
 
 namespace rerun::components {
-    /// **Component**: A geospatial line string expressed in EPSG:4326 latitude and longitude.
+    /// **Component**: A geospatial line string expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
     struct GeoLineString {
         rerun::Collection<rerun::datatypes::DVec2D> lat_lon;
 

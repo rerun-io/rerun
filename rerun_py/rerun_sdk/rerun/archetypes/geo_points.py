@@ -21,7 +21,7 @@ __all__ = ["GeoPoints"]
 @define(str=False, repr=False, init=False)
 class GeoPoints(Archetype):
     """
-    **Archetype**: Geospatial points with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
+    **Archetype**: Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) altitude and longitude (North/East-positive degrees), and optional colors and radii.
 
     **Note**: Geospatial entities are experimental.
 
@@ -67,7 +67,7 @@ class GeoPoints(Archetype):
         Parameters
         ----------
         positions:
-            The EPSG:4326 coordinates for the points.
+            The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).
         radii:
             Optional radii for the points, effectively turning them into circles.
         colors:
@@ -103,7 +103,7 @@ class GeoPoints(Archetype):
         metadata={"component": "required"},
         converter=components.LatLonBatch._required,  # type: ignore[misc]
     )
-    # The EPSG:4326 coordinates for the points.
+    # The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
