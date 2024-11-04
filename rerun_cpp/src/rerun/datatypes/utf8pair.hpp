@@ -24,6 +24,13 @@ namespace rerun::datatypes {
         /// The second string.
         rerun::datatypes::Utf8 second;
 
+      public: // START of extensions from utf8pair_ext.cpp:
+        /// Creates a string pair.
+        Utf8Pair(rerun::datatypes::Utf8 first_, rerun::datatypes::Utf8 second_)
+            : first(std::move(first_)), second(std::move(second_)) {}
+
+        // END of extensions from utf8pair_ext.cpp, start of generated code:
+
       public:
         Utf8Pair() = default;
     };

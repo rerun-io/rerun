@@ -13,10 +13,9 @@ int main() {
             .with_labels({"A", "B", "C"})
     );
 
-    // TODO(grtlr): This still throws warnings!
-    rerun::datatypes::Utf8Pair edge_1{.first{"a"}, .second{"b"}};
-    rerun::datatypes::Utf8Pair edge_2{.first{"b"}, .second{"c"}};
-    rerun::datatypes::Utf8Pair edge_3{.first{"c"}, .second{"a"}};
+    rerun::datatypes::Utf8Pair edge_1({"a"}, {"b"});
+    rerun::datatypes::Utf8Pair edge_2({"b"}, {"c"});
+    rerun::datatypes::Utf8Pair edge_3({"c"}, {"a"});
 
     // Note: We log to the same entity here.
     rec.log(
