@@ -14,6 +14,8 @@ use indicatif::ProgressBar;
 use parking_lot::Mutex;
 
 fn main() {
+    re_log::setup_logging();
+
     // frames <video.mp4>
     let args: Vec<_> = std::env::args().collect();
     let Some(video_path) = args.get(1) else {
@@ -83,13 +85,20 @@ fn main() {
                 .create(true)
                 .truncate(true)
                 .open(output_dir.join(format!("{i:0width$}.ppm")))
-                .expect("failed to open file");
-            write_binary_ppm(
-                &mut file,
-                frame.content.width,
-                frame.content.height,
-                &frame.content.data,
-            );
+                .expect("failed to oformatpen file");
+
+            let frame = &frame.content;
+            match frame.format {
+                re_video::PixelFormat::Rgb8Unorm => {
+                    write_ppm_rgb24(&mut file, frame.width, frame.height, &frame.data);
+                }
+                re_video::PixelFormat::Rgba8Unorm => {
+                    write_ppm_rgba32(&mut file, frame.width, frame.height, &frame.data);
+                }
+                re_video::PixelFormat::Yuv { .. } => {
+                    re_log::error_once!("YUV frame writing is not supported");
+                }
+            }
         }
     }
 }
@@ -98,7 +107,24 @@ fn num_digits(n: usize) -> usize {
     (n as f64).log10().floor() as usize + 1
 }
 
-fn write_binary_ppm(file: &mut File, width: u32, height: u32, rgba: &[u8]) {
+fn write_ppm_rgb24(file: &mut File, width: u32, height: u32, rgb: &[u8]) {
+    assert_eq!(width as usize * height as usize * 3, rgb.len());
+
+    let header = format!("P6\n{width} {height}\n255\n");
+
+    let mut data = Vec::with_capacity(header.len() + width as usize * height as usize * 3);
+    data.extend_from_slice(header.as_bytes());
+
+    for rgb in rgb.chunks(3) {
+        data.extend_from_slice(&[rgb[0], rgb[1], rgb[2]]);
+    }
+
+    file.write_all(&data).expect("failed to write frame data");
+}
+
+fn write_ppm_rgba32(file: &mut File, width: u32, height: u32, rgba: &[u8]) {
+    assert_eq!(width as usize * height as usize * 4, rgba.len());
+
     let header = format!("P6\n{width} {height}\n255\n");
 
     let mut data = Vec::with_capacity(header.len() + width as usize * height as usize * 3);

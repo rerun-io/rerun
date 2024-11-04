@@ -54,7 +54,7 @@ impl VideoData {
             }
 
             let decode_timestamp = Time::new(sample.decode_timestamp as i64);
-            let composition_timestamp = Time::new(sample.composition_timestamp as i64);
+            let presentation_timestamp = Time::new(sample.composition_timestamp as i64);
             let duration = Time::new(sample.duration as i64);
 
             let byte_offset = sample.offset as u32;
@@ -63,7 +63,7 @@ impl VideoData {
             samples.push(Sample {
                 is_sync: sample.is_sync,
                 decode_timestamp,
-                composition_timestamp,
+                presentation_timestamp,
                 duration,
                 byte_offset,
                 byte_length,

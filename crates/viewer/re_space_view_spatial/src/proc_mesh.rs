@@ -164,7 +164,7 @@ impl WireframeCache {
             .or_insert_with(|| {
                 re_tracing::profile_scope!("proc_mesh::WireframeCache(miss)", format!("{key:?}"));
 
-                re_log::debug!("Generating wireframe mesh {key:?}…");
+                re_log::trace!("Generating wireframe mesh {key:?}…");
 
                 match generate_wireframe(&key, render_ctx) {
                     Ok(mesh) => Some(Arc::new(mesh)),
@@ -311,7 +311,7 @@ impl SolidCache {
             .or_insert_with(|| {
                 re_tracing::profile_scope!("proc_mesh::SolidCache(miss)", format!("{key:?}"));
 
-                re_log::debug!("Generating solid mesh {key:?}…");
+                re_log::trace!("Generating solid mesh {key:?}…");
 
                 match generate_solid(&key, render_ctx) {
                     Ok(mesh) => Some(mesh),

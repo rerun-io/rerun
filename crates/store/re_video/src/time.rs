@@ -15,6 +15,7 @@ pub struct Time(pub i64);
 impl Time {
     pub const ZERO: Self = Self(0);
     pub const MAX: Self = Self(i64::MAX);
+    pub const MIN: Self = Self(i64::MIN);
 
     /// Create a new value in _time units_.
     ///

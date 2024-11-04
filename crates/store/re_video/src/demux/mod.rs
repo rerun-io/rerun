@@ -238,7 +238,7 @@ impl VideoData {
         self.gops.iter().flat_map(|seg| {
             self.samples[seg.range()]
                 .iter()
-                .map(|sample| sample.composition_timestamp.into_nanos(self.timescale))
+                .map(|sample| sample.presentation_timestamp.into_nanos(self.timescale))
                 .sorted()
         })
     }
@@ -267,6 +267,20 @@ impl GroupOfPictures {
 }
 
 /// A single sample in a video.
+///
+/// This is equivalent to MP4's definition of a single sample.
+/// Note that in MP4, each sample is forms a single access unit,
+/// see 3.1.1 [ISO_IEC_14496-14](https://ossrs.io/lts/zh-cn/assets/files/ISO_IEC_14496-14-MP4-2003-9a3eb04879ded495406399602ff2e587.pdf):
+/// > 3.1.1 Elementary Stream Data
+/// > To maintain the goals of streaming protocol independence, the media data is stored in its most ‘natural’ format,
+/// > and not fragmented. This enables easy local manipulation of the media data. Therefore media-data is stored
+/// > as access units, a range of contiguous bytes for each access unit (a single access unit is the definition of a
+/// > ‘sample’ for an MPEG-4 media stream).
+///
+/// Access units in H.264/H.265 are always yielding a single frame upon decoding,
+/// see <https://en.wikipedia.org/wiki/Network_Abstraction_Layer#Access_Units/>:
+/// > A set of NAL units in a specified form is referred to as an access unit.
+/// > The decoding of each access unit results in one decoded picture.
 #[derive(Debug, Clone)]
 pub struct Sample {
     /// Is t his the start of a new [`GroupOfPictures`]?
@@ -276,15 +290,16 @@ pub struct Sample {
     ///
     /// Samples should be decoded in this order.
     ///
-    /// `decode_timestamp <= composition_timestamp`
+    /// `decode_timestamp <= presentation_timestamp`
     pub decode_timestamp: Time,
 
     /// Time at which this sample appears in the frame stream, in time units.
+    /// Often synonymous with `presentation_timestamp`.
     ///
     /// The frame should be shown at this time.
     ///
-    /// `decode_timestamp <= composition_timestamp`
-    pub composition_timestamp: Time,
+    /// `decode_timestamp <= presentation_timestamp`
+    pub presentation_timestamp: Time,
 
     /// Duration of the sample, in time units.
     pub duration: Time,
@@ -310,7 +325,8 @@ impl Sample {
             .to_vec();
         Some(Chunk {
             data,
-            composition_timestamp: self.composition_timestamp,
+            decode_timestamp: self.decode_timestamp,
+            presentation_timestamp: self.presentation_timestamp,
             duration: self.duration,
             is_sync: self.is_sync,
         })
@@ -336,6 +352,10 @@ pub struct Config {
 impl Config {
     pub fn is_av1(&self) -> bool {
         matches!(self.stsd.contents, re_mp4::StsdBoxContent::Av01 { .. })
+    }
+
+    pub fn is_h264(&self) -> bool {
+        matches!(self.stsd.contents, re_mp4::StsdBoxContent::Avc1 { .. })
     }
 }
 
