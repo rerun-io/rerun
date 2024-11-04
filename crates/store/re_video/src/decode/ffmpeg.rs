@@ -533,6 +533,10 @@ struct NaluStreamState {
     previous_frame_was_idr: bool,
 }
 
+fn write_bytes(stream: &mut dyn std::io::Write, data: &[u8]) -> Result<(), Error> {
+    stream.write_all(data).map_err(Error::FailedToWriteToFfmpeg)
+}
+
 fn write_avc_chunk_to_nalu_stream(
     avcc: &re_mp4::Avc1Box,
     nalu_stream: &mut dyn std::io::Write,
@@ -625,35 +629,30 @@ fn write_avc_chunk_to_nalu_stream(
 
         let data = &chunk.data[data_start..data_end];
 
-        nalu_stream
-            .write_all(NAL_START_CODE)
-            .map_err(Error::FailedToWriteToFfmpeg)?;
+        write_bytes(nalu_stream, NAL_START_CODE)?;
 
         // Note that we don't have to insert "emulation prevention bytes" since mp4 NALU still use them.
         // (unlike the NAL start code, the presentation bytes are part of the NAL spec!)
 
         re_tracing::profile_scope!("write_bytes", data.len().to_string());
-        nalu_stream
-            .write_all(data)
-            .map_err(Error::FailedToWriteToFfmpeg)?;
+        write_bytes(nalu_stream, data)?;
 
         buffer_offset = data_end;
     }
 
     // Write an Access Unit Delimiter (AUD) NAL unit to the stream to signal the end of an access unit.
     // This can help with ffmpeg picking up NALs right away before seeing the next chunk.
-    nalu_stream
-        .write_all(NAL_START_CODE)
-        .map_err(Error::FailedToWriteToFfmpeg)?;
-    nalu_stream
-        .write_all(&[
+    write_bytes(nalu_stream, NAL_START_CODE)?;
+    write_bytes(
+        nalu_stream,
+        &[
             NalHeader::new(NalUnitType::AccessUnitDelimiter, 3).0,
             // Two arbitrary bytes? 0000 worked as well, but this is what
             // https://stackoverflow.com/a/44394025/ uses. Couldn't figure out the rules for this.
             0xFF,
             0x80,
-        ])
-        .map_err(Error::FailedToWriteToFfmpeg)?;
+        ],
+    )?;
 
     Ok(())
 }
