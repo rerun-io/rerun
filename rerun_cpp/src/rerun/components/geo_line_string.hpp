@@ -9,7 +9,6 @@
 
 #include <cstdint>
 #include <memory>
-#include <utility>
 
 namespace arrow {
     class Array;
@@ -22,16 +21,18 @@ namespace rerun::components {
     struct GeoLineString {
         rerun::Collection<rerun::datatypes::DVec2D> lat_lon;
 
+      public: // START of extensions from geo_line_string_ext.cpp:
+        /// Creates a new GeoLineString object based on EPSG:4326 latitude and longitude (North/East-positive degrees).
+        static GeoLineString from_lat_lon(Collection<datatypes::DVec2D> lat_lon_) {
+            GeoLineString line_string;
+            line_string.lat_lon = std::move(lat_lon_);
+            return line_string;
+        }
+
+        // END of extensions from geo_line_string_ext.cpp, start of generated code:
+
       public:
         GeoLineString() = default;
-
-        GeoLineString(rerun::Collection<rerun::datatypes::DVec2D> lat_lon_)
-            : lat_lon(std::move(lat_lon_)) {}
-
-        GeoLineString& operator=(rerun::Collection<rerun::datatypes::DVec2D> lat_lon_) {
-            lat_lon = std::move(lat_lon_);
-            return *this;
-        }
     };
 } // namespace rerun::components
 

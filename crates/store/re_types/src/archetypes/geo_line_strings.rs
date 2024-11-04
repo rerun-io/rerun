@@ -33,7 +33,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     rec.log(
 ///         "colorado",
-///         &rerun::GeoLineStrings::new([[
+///         &rerun::GeoLineStrings::from_lat_lon([[
 ///             [41.0000, -109.0452],
 ///             [41.0000, -102.0415],
 ///             [36.9931, -102.0415],
@@ -226,7 +226,7 @@ impl ::re_types_core::ArchetypeReflectionMarker for GeoLineStrings {}
 impl GeoLineStrings {
     /// Create a new `GeoLineStrings`.
     #[inline]
-    pub fn new(
+    pub(crate) fn new(
         line_strings: impl IntoIterator<Item = impl Into<crate::components::GeoLineString>>,
     ) -> Self {
         Self {
