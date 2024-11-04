@@ -11,6 +11,11 @@ It *only* applies to space views that work with spatial transformations, i.e. 2D
 This is useful for specifying that a subgraph is independent of the rest of the scene.
 
 
+## Arrow datatype
+```
+boolean
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `DisconnectedSpace`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1DisconnectedSpace.html)
  * 🐍 [Python API docs for `DisconnectedSpace`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.DisconnectedSpace)

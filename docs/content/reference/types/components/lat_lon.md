@@ -6,6 +6,11 @@ title: "LatLon"
 A geographical position expressed in EPSG:4326 latitude and longitude.
 
 
+## Arrow datatype
+```
+FixedSizeList<2, float64>
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `LatLon`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1LatLon.html?speculative-link)
  * 🐍 [Python API docs for `LatLon`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.LatLon)

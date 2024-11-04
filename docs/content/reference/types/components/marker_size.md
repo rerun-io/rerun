@@ -6,6 +6,11 @@ title: "MarkerSize"
 Radius of a marker of a point in e.g. a 2D plot, measured in UI points.
 
 
+## Arrow datatype
+```
+float32
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `MarkerSize`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1MarkerSize.html)
  * 🐍 [Python API docs for `MarkerSize`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.MarkerSize)

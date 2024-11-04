@@ -28,6 +28,11 @@ Examples of what this means:
 The surface of the shape is filled in with a solid color. No lines are drawn.
 
 
+## Arrow datatype
+```
+uint8
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `FillMode`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
  * 🐍 [Python API docs for `FillMode`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.FillMode)

@@ -21,6 +21,11 @@ that from the point of view of `parent`, `parent/child` is translated -1 unit al
 From perspective of `parent/child`, the `parent` entity is translated 1 unit along `parent/child`'s Y axis.
 
 
+## Arrow datatype
+```
+uint8
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `TransformRelation`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
  * 🐍 [Python API docs for `TransformRelation`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.TransformRelation)

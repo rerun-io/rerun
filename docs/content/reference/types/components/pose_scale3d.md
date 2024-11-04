@@ -10,6 +10,11 @@ A scale of 2.0 means doubling the size.
 Each component scales along the corresponding axis.
 
 
+## Arrow datatype
+```
+FixedSizeList<3, float32>
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `PoseScale3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1PoseScale3D.html)
  * 🐍 [Python API docs for `PoseScale3D`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.PoseScale3D)

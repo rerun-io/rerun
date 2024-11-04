@@ -37,6 +37,11 @@ The visual appearance of a point in e.g. a 2D plot.
 `*`
 
 
+## Arrow datatype
+```
+uint8
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `MarkerShape`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
  * 🐍 [Python API docs for `MarkerShape`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.MarkerShape)

@@ -55,6 +55,11 @@ It is especially suited for visualizing signed values.
 It interpolates from cyan to blue to dark gray to brass to yellow.
 
 
+## Arrow datatype
+```
+uint8
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `Colormap`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
  * 🐍 [Python API docs for `Colormap`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Colormap)

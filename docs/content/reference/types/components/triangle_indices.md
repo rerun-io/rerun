@@ -6,6 +6,11 @@ title: "TriangleIndices"
 The three indices of a triangle in a triangle mesh.
 
 
+## Arrow datatype
+```
+FixedSizeList<3, uint32>
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `TriangleIndices`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1TriangleIndices.html)
  * 🐍 [Python API docs for `TriangleIndices`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.TriangleIndices)

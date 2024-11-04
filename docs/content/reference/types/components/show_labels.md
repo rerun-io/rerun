@@ -10,6 +10,11 @@ is to be overridden when desired, to allow hiding and showing from the viewer an
 blueprints.
 
 
+## Arrow datatype
+```
+boolean
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `ShowLabels`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ShowLabels.html)
  * 🐍 [Python API docs for `ShowLabels`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.ShowLabels)

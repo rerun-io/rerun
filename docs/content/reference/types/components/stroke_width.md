@@ -6,6 +6,11 @@ title: "StrokeWidth"
 The width of a stroke specified in UI points.
 
 
+## Arrow datatype
+```
+float32
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `StrokeWidth`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1StrokeWidth.html)
  * 🐍 [Python API docs for `StrokeWidth`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.StrokeWidth)

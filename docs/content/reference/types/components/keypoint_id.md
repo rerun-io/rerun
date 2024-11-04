@@ -6,6 +6,11 @@ title: "KeypointId"
 A 16-bit ID representing a type of semantic keypoint within a class.
 
 
+## Arrow datatype
+```
+uint16
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `KeypointId`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1KeypointId.html)
  * 🐍 [Python API docs for `KeypointId`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.KeypointId)

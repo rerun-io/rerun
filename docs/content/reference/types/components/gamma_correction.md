@@ -12,6 +12,11 @@ Valid range is from 0 (excluding) to max float.
 Defaults to 1.0 unless otherwise specified.
 
 
+## Arrow datatype
+```
+float32
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `GammaCorrection`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1GammaCorrection.html)
  * 🐍 [Python API docs for `GammaCorrection`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.GammaCorrection)

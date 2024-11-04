@@ -13,6 +13,11 @@ Note that the only effect on 2D views is the physical depth values shown when ho
 In 3D views on the other hand, this affects where the points of the point cloud are placed.
 
 
+## Arrow datatype
+```
+float32
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `DepthMeter`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1DepthMeter.html)
  * 🐍 [Python API docs for `DepthMeter`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.DepthMeter)

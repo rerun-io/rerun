@@ -18,6 +18,11 @@ row 2 | flat_columns[2] flat_columns[5] flat_columns[8]
 ```
 
 
+## Arrow datatype
+```
+FixedSizeList<9, float32>
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `PoseTransformMat3x3`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1PoseTransformMat3x3.html)
  * 🐍 [Python API docs for `PoseTransformMat3x3`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.PoseTransformMat3x3)

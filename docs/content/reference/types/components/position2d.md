@@ -6,6 +6,11 @@ title: "Position2D"
 A position in 2D space.
 
 
+## Arrow datatype
+```
+FixedSizeList<2, float32>
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `Position2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Position2D.html)
  * 🐍 [Python API docs for `Position2D`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Position2D)

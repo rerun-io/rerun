@@ -6,6 +6,14 @@ title: "TensorDimensionIndexSelection"
 Specifies a concrete index on a tensor dimension.
 
 
+## Arrow datatype
+```
+Struct {
+    dimension: uint32
+    index: uint64
+}
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `TensorDimensionIndexSelection`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1TensorDimensionIndexSelection.html)
  * 🐍 [Python API docs for `TensorDimensionIndexSelection`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.TensorDimensionIndexSelection)

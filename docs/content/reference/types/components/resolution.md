@@ -8,6 +8,11 @@ Pixel resolution width & height, e.g. of a camera sensor.
 Typically in integer units, but for some use cases floating point may be used.
 
 
+## Arrow datatype
+```
+FixedSizeList<2, float32>
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `Resolution`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Resolution.html)
  * 🐍 [Python API docs for `Resolution`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Resolution)

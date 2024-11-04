@@ -23,6 +23,11 @@ The following constants are used to represent the different directions:
  * Back = 6
 
 
+## Arrow datatype
+```
+FixedSizeList<3, uint8>
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `ViewCoordinates`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ViewCoordinates.html)
  * 🐍 [Python API docs for `ViewCoordinates`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.ViewCoordinates)

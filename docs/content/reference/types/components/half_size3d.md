@@ -11,6 +11,11 @@ The box extends both in negative and positive direction along each axis.
 Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.
 
 
+## Arrow datatype
+```
+FixedSizeList<3, float32>
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `HalfSize3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1HalfSize3D.html)
  * 🐍 [Python API docs for `HalfSize3D`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.HalfSize3D)

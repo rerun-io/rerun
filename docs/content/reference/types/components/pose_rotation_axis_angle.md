@@ -6,6 +6,14 @@ title: "PoseRotationAxisAngle"
 3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.
 
 
+## Arrow datatype
+```
+Struct {
+    axis: FixedSizeList<3, float32>
+    angle: float32
+}
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `PoseRotationAxisAngle`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1PoseRotationAxisAngle.html)
  * 🐍 [Python API docs for `PoseRotationAxisAngle`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.PoseRotationAxisAngle)

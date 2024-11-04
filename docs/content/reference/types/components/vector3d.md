@@ -6,6 +6,11 @@ title: "Vector3D"
 A vector in 3D space.
 
 
+## Arrow datatype
+```
+FixedSizeList<3, float32>
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `Vector3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Vector3D.html)
  * 🐍 [Python API docs for `Vector3D`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Vector3D)

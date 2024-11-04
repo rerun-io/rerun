@@ -6,6 +6,14 @@ title: "TensorWidthDimension"
 Specifies which dimension to use for width.
 
 
+## Arrow datatype
+```
+Struct {
+    dimension: uint32
+    invert: boolean
+}
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `TensorWidthDimension`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1TensorWidthDimension.html)
  * 🐍 [Python API docs for `TensorWidthDimension`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.TensorWidthDimension)

@@ -18,6 +18,11 @@ Linearly interpolate the nearest neighbors, creating a smoother look when zoomin
 Used as default for mesh rendering.
 
 
+## Arrow datatype
+```
+uint8
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `MagnificationFilter`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
  * 🐍 [Python API docs for `MagnificationFilter`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.MagnificationFilter)

@@ -31,6 +31,11 @@ This will yield two aggregated points instead of one, effectively creating a ver
 Find both the minimum and maximum values in the range, then use the average of those.
 
 
+## Arrow datatype
+```
+uint8
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `AggregationPolicy`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
  * 🐍 [Python API docs for `AggregationPolicy`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.AggregationPolicy)

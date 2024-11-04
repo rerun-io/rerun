@@ -13,6 +13,11 @@ at 100% UI scaling, UI points are equal to pixels
 The Viewer's UI scaling defaults to the OS scaling which typically is 100% for full HD screens and 200% for 4k screens.
 
 
+## Arrow datatype
+```
+float32
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `Radius`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Radius.html)
  * 🐍 [Python API docs for `Radius`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Radius)

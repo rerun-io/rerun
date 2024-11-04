@@ -302,7 +302,7 @@ fn object_page(
         }
     }
 
-    if object.kind == ObjectKind::Datatype {
+    if matches!(object.kind, ObjectKind::Datatype | ObjectKind::Component) {
         let datatype = &arrow_registry.get(&object.fqname);
         putln!(page);
         putln!(page, "## Arrow datatype");

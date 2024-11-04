@@ -9,6 +9,11 @@ The final opacity value may be a result of multiplication with alpha values as s
 Unless otherwise specified, the default value is 1.
 
 
+## Arrow datatype
+```
+float32
+```
+
 ## API reference links
  * 🌊 [C++ API docs for `Opacity`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Opacity.html)
  * 🐍 [Python API docs for `Opacity`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Opacity)
