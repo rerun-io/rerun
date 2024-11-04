@@ -1,6 +1,7 @@
 use egui::{Context, NumExt as _};
 use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
+use re_data_ui::{item_ui, DataUi};
 use re_log_types::EntityPath;
 use re_space_view::suggest_space_view_for_each_entity;
 use re_types::{
@@ -11,11 +12,12 @@ use re_types::{
     },
     SpaceViewClassIdentifier, View,
 };
+use re_ui::list_item;
 use re_viewer_context::{
-    SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
+    Item, SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
-    ViewerContext,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, UiLayout,
+    ViewQuery, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
@@ -214,20 +216,59 @@ Displays geospatial primitives on a map.
             Err(err) => return Err(err),
         };
         egui::Frame::default().show(ui, |ui| {
-            let some_tiles_manager: Option<&mut dyn Tiles> = Some(tiles);
-            let map_widget = ui.add(
-                Map::new(some_tiles_manager, map_memory, default_center_position)
-                    .with_plugin(geo_points_visualizer.plugin()),
-            );
+            let mut picked_instance = None;
 
-            if map_widget.double_clicked() {
+            let some_tiles_manager: Option<&mut dyn Tiles> = Some(tiles);
+            let mut map_response = ui.add(
+                Map::new(some_tiles_manager, map_memory, default_center_position).with_plugin(
+                    geo_points_visualizer.plugin(ctx, query.space_view_id, &mut picked_instance),
+                ),
+            );
+            let map_rect = map_response.rect;
+
+            if let Some(picked_instance) = picked_instance {
+                map_response = map_response.on_hover_ui_at_pointer(|ui| {
+                    list_item::list_item_scope(ui, "map_hover", |ui| {
+                        item_ui::instance_path_button(
+                            ctx,
+                            &query.latest_at_query(),
+                            ctx.recording(),
+                            ui,
+                            Some(query.space_view_id),
+                            &picked_instance.instance_path,
+                        );
+                        picked_instance
+                            .instance_path
+                            .data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                    });
+                });
+
+                ctx.select_hovered_on_click(
+                    &map_response,
+                    Item::DataResult(query.space_view_id, picked_instance.instance_path.clone()),
+                );
+
+                // double click selects the entire entity
+                if map_response.double_clicked() {
+                    // Select the entire entity
+                    ctx.selection_state().set_selection(Item::DataResult(
+                        query.space_view_id,
+                        picked_instance.instance_path.entity_path.clone().into(),
+                    ));
+                }
+            } else if map_response.clicked() {
+                // clicked elsewhere, select the view
+                ctx.selection_state()
+                    .set_selection(Item::SpaceView(query.space_view_id));
+            }
+
+            if map_response.double_clicked() {
                 map_memory.follow_my_position();
                 if let Some(zoom_level) = default_zoom_level {
                     let _ = map_memory.set_zoom(zoom_level);
                 }
             }
 
-            let map_rect = map_widget.rect;
             map_overlays::zoom_buttons_overlay(ui, &map_rect, map_memory);
             map_overlays::acknowledgement_overlay(ui, &map_rect, &tiles.attribution());
         });
@@ -239,7 +280,7 @@ Displays geospatial primitives on a map.
         if Some(map_memory.zoom()) != blueprint_zoom_level {
             map_zoom.save_blueprint_component(
                 ctx,
-                &ZoomLevel(re_types::datatypes::Float32(map_memory.zoom())),
+                &ZoomLevel(re_types::datatypes::Float64(map_memory.zoom())),
             );
         }
 

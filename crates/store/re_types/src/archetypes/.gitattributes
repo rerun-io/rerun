@@ -9,6 +9,7 @@ asset_video.rs linguist-generated=true
 bar_chart.rs linguist-generated=true
 boxes2d.rs linguist-generated=true
 boxes3d.rs linguist-generated=true
+capsules3d.rs linguist-generated=true
 depth_image.rs linguist-generated=true
 disconnected_space.rs linguist-generated=true
 ellipsoids3d.rs linguist-generated=true

@@ -22,7 +22,7 @@ dependencies = [
 description = "The Rerun Logging SDK"
 keywords = ["computer-vision", "logging", "rerun"]
 name = "rerun-sdk"
-requires-python = ">=3.8, <3.13"
+requires-python = ">=3.8"
 
 [[project.authors]]
 email = "opensource@rerun.io"

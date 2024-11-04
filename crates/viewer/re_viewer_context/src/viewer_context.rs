@@ -3,6 +3,7 @@ use parking_lot::RwLock;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::entity_db::EntityDb;
+use re_query::StorageEngineReadGuard;
 
 use crate::{
     query_context::DataQueryResult, AppOptions, ApplicableEntities, ApplicationSelectionState,
@@ -93,21 +94,21 @@ impl<'a> ViewerContext<'a> {
         self.store_context.blueprint
     }
 
-    /// The chunk store of the active recording.
+    /// The `StorageEngine` for the active recording.
     #[inline]
-    pub fn recording_store(&self) -> &re_chunk_store::ChunkStore {
-        self.store_context.recording.store()
+    pub fn recording_engine(&self) -> StorageEngineReadGuard<'_> {
+        self.store_context.recording.storage_engine()
     }
 
-    /// The chunk store of the active blueprint.
+    /// The `StorageEngine` for the active blueprint.
     #[inline]
-    pub fn blueprint_store(&self) -> &re_chunk_store::ChunkStore {
-        self.store_context.blueprint.store()
+    pub fn blueprint_engine(&self) -> StorageEngineReadGuard<'_> {
+        self.store_context.blueprint.storage_engine()
     }
 
     /// The `StoreId` of the active recording.
     #[inline]
-    pub fn recording_id(&self) -> &re_log_types::StoreId {
+    pub fn recording_id(&self) -> re_log_types::StoreId {
         self.store_context.recording.store_id()
     }
 
@@ -176,22 +177,27 @@ impl<'a> ViewerContext<'a> {
         &self,
         component: re_chunk::ComponentName,
     ) -> Box<dyn re_chunk::ArrowArray> {
-        self.reflection.components.get(&component).and_then(|info| info.custom_placeholder.as_ref()).cloned()
+        let datatype = if let Some(reflection) = self.reflection.components.get(&component) {
+            // It's a builtin type with reflection. We either have custom place holder, or can rely on the known datatype.
+            if let Some(placeholder) = reflection.custom_placeholder.as_ref() {
+                return placeholder.clone();
+            }
+            reflection.datatype.clone()
+        } else {
+            self.recording_engine()
+                .store()
+                .lookup_datatype(&component)
+                .cloned()
+                .or_else(|| self.blueprint_engine().store().lookup_datatype(&component).cloned())
+                .unwrap_or_else(|| {
+                    re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
+                    re_chunk::external::arrow2::datatypes::DataType::Null
+                })
+        };
 
-        .unwrap_or_else(||
-            {
-                // TODO(andreas): Is this operation common enough to cache the result? If so, here or in the reflection data?
-                // The nice thing about this would be that we could always give out references (but updating said cache wouldn't be easy in that case).
-        let datatype = self
-        .recording_store()
-        .lookup_datatype(&component)
-        .or_else(|| self.blueprint_store().lookup_datatype(&component))
-        .unwrap_or_else(|| {
-            re_log::error_once!("Could not find datatype for component {component}. Using null array as placeholder.");
-            &re_chunk::external::arrow2::datatypes::DataType::Null
-        });
-            re_types::reflection::generic_placeholder_for_datatype(datatype)
-    })
+        // TODO(andreas): Is this operation common enough to cache the result? If so, here or in the reflection data?
+        // The nice thing about this would be that we could always give out references (but updating said cache wouldn't be easy in that case).
+        re_types::reflection::generic_placeholder_for_datatype(&datatype)
     }
 }
 

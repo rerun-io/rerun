@@ -60,6 +60,9 @@ native_viewer = ["rerun/native_viewer"]
 #TODO(#7876): remove this feature when we have fewer dependencies
 map_view = ["rerun/map_view"]
 
+## Enable the rrdp data source.
+rrdp = ["rerun/rrdp", "dep:tokio"]
+
 ## Support serving a web viewer over HTTP.
 ##
 ## Enabling this inflates the binary size quite a bit, since it embeds the viewer wasm.
@@ -84,6 +87,11 @@ rerun = { workspace = true, features = [
 
 document-features.workspace = true
 mimalloc = "0.1.43"
+
+tokio = { workspace = true, optional = true, features = [
+  "macros",
+  "rt-multi-thread",
+] }
 
 
 [build-dependencies]

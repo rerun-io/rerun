@@ -159,7 +159,7 @@ impl VideoFrameReferenceVisualizer {
             return;
         };
 
-        let decode_stream_id = re_renderer::video::VideoDecodingStreamId(
+        let player_stream_id = re_renderer::video::VideoPlayerStreamId(
             Hash64::hash((entity_path.hash(), view_id)).hash64(),
         );
 
@@ -197,15 +197,16 @@ impl VideoFrameReferenceVisualizer {
 
                     match video.frame_at(
                         render_ctx,
-                        decode_stream_id,
+                        player_stream_id,
                         video_timestamp.as_seconds(),
                         video_data.as_slice(),
                     ) {
                         Ok(VideoFrameTexture {
                             texture,
-                            time_range: _, // TODO(emilk): maybe add to `PickableTexturedRect` and `PickingHitType::TexturedRect` so we can show on hover?
                             is_pending,
                             show_spinner,
+                            frame_info: _, // TODO(emilk): maybe add to `PickableTexturedRect` and `PickingHitType::TexturedRect` so we can show on hover?
+                            source_pixel_format: _,
                         }) => {
                             // Make sure to use the video instead of texture size here,
                             // since the texture may be a placeholder which doesn't have the full size yet.
@@ -303,7 +304,7 @@ impl VideoFrameReferenceVisualizer {
                 Hash64::hash("video_error").hash64(),
                 render_ctx,
                 || {
-                    let mut reader = image::io::Reader::new(std::io::Cursor::new(
+                    let mut reader = image::ImageReader::new(std::io::Cursor::new(
                         re_ui::icons::VIDEO_ERROR.png_bytes,
                     ));
                     reader.set_format(image::ImageFormat::Png);
@@ -404,8 +405,7 @@ fn latest_at_query_video_from_datastore(
 ) -> Option<(Arc<Result<Video, VideoLoadError>>, Blob)> {
     let query = ctx.current_query();
 
-    let results = ctx.recording().query_caches().latest_at(
-        ctx.recording_store(),
+    let results = ctx.recording_engine().cache().latest_at(
         &query,
         entity_path,
         AssetVideo::all_components().iter().copied(),

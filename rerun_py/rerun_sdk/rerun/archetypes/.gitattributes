@@ -10,6 +10,7 @@ asset_video.py linguist-generated=true
 bar_chart.py linguist-generated=true
 boxes2d.py linguist-generated=true
 boxes3d.py linguist-generated=true
+capsules3d.py linguist-generated=true
 clear.py linguist-generated=true
 depth_image.py linguist-generated=true
 disconnected_space.py linguist-generated=true

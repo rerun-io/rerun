@@ -130,7 +130,7 @@ impl TestContext {
             let command_name = format!("{command:?}");
             match command {
                 SystemCommand::UpdateBlueprint(store_id, chunks) => {
-                    assert_eq!(&store_id, self.blueprint_store.store_id());
+                    assert_eq!(store_id, self.blueprint_store.store_id());
 
                     for chunk in chunks {
                         self.blueprint_store
@@ -140,7 +140,7 @@ impl TestContext {
                 }
 
                 SystemCommand::DropEntity(store_id, entity_path) => {
-                    assert_eq!(&store_id, self.blueprint_store.store_id());
+                    assert_eq!(store_id, self.blueprint_store.store_id());
                     self.blueprint_store
                         .drop_entity_path_recursive(&entity_path);
                 }
@@ -150,7 +150,7 @@ impl TestContext {
                 }
 
                 SystemCommand::SetActiveTimeline { rec_id, timeline } => {
-                    assert_eq!(&rec_id, self.recording_store.store_id());
+                    assert_eq!(rec_id, self.recording_store.store_id());
                     self.active_timeline = timeline;
                 }
 

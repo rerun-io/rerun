@@ -20,6 +20,7 @@ mod image;
 mod instance_path;
 mod store_id;
 mod tensor;
+mod video;
 
 pub mod item_ui;
 

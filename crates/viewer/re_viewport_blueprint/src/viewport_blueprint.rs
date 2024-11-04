@@ -33,7 +33,7 @@ pub struct ViewportBlueprint {
     pub containers: BTreeMap<ContainerId, ContainerBlueprint>,
 
     /// The root container.
-    pub root_container: Option<ContainerId>,
+    pub root_container: ContainerId,
 
     /// The layouts of all the space views.
     pub tree: egui_tiles::Tree<SpaceViewId>,
@@ -68,8 +68,9 @@ impl ViewportBlueprint {
     ) -> Self {
         re_tracing::profile_function!();
 
-        let results = blueprint_db.query_caches().latest_at(
-            blueprint_db.store(),
+        let blueprint_engine = blueprint_db.storage_engine();
+
+        let results = blueprint_engine.cache().latest_at(
             query,
             &VIEWPORT_PATH.into(),
             blueprint_archetypes::ViewportBlueprint::all_components()
@@ -129,8 +130,6 @@ impl ViewportBlueprint {
             .map(|c| (c.id, c))
             .collect();
 
-        let root_container = root_container.map(|id| id.0.into());
-
         // Auto layouting and auto space view are only enabled if no blueprint has been provided by the user.
         // Only enable auto-space-views if this is the app-default blueprint
         let is_app_default_blueprint = blueprint_db
@@ -144,7 +143,7 @@ impl ViewportBlueprint {
         let tree = build_tree_from_space_views_and_containers(
             space_views.values(),
             containers.values(),
-            root_container,
+            root_container.clone(),
         );
 
         let past_viewer_recommendations = past_viewer_recommendations
@@ -153,10 +152,15 @@ impl ViewportBlueprint {
             .cloned()
             .collect();
 
+        let root_container_or_placeholder = root_container.clone().map_or_else(
+            || ContainerId::hashed_from_str("placeholder_root_container"),
+            |id| id.0.into(),
+        );
+
         Self {
             space_views,
             containers,
-            root_container,
+            root_container: root_container_or_placeholder,
             tree,
             maximized: maximized.map(|id| id.0.into()),
             auto_layout,
@@ -455,9 +459,7 @@ impl ViewportBlueprint {
     ///
     /// See [`Self::visit_contents_in_container`] for details.
     pub fn visit_contents(&self, visitor: &mut impl FnMut(&Contents, &SmallVec<[ContainerId; 4]>)) {
-        if let Some(root_container) = self.root_container {
-            self.visit_contents_in_container(&root_container, visitor);
-        }
+        self.visit_contents_in_container(&self.root_container, visitor);
     }
 
     /// Walk the subtree defined by the provided container id and call `visitor` for each
@@ -501,11 +503,7 @@ impl ViewportBlueprint {
     /// Given a predicate, finds the (first) matching contents by recursively walking from the root
     /// container.
     pub fn find_contents_by(&self, predicate: &impl Fn(&Contents) -> bool) -> Option<Contents> {
-        if let Some(root_container) = self.root_container {
-            self.find_contents_in_container_by(predicate, &root_container)
-        } else {
-            None
-        }
+        self.find_contents_in_container_by(predicate, &self.root_container)
     }
 
     /// Given a predicate, finds the (first) matching contents by recursively walking from the given
@@ -555,15 +553,11 @@ impl ViewportBlueprint {
         &self,
         contents: &Contents,
     ) -> Option<(ContainerId, usize)> {
-        if let Some(container_id) = self.root_container {
-            if *contents == Contents::Container(container_id) {
-                // root doesn't have a parent
-                return None;
-            }
-            self.find_parent_and_position_index_impl(contents, &container_id)
-        } else {
-            None
+        if *contents == Contents::Container(self.root_container) {
+            // root doesn't have a parent
+            return None;
         }
+        self.find_parent_and_position_index_impl(contents, &self.root_container)
     }
 
     fn find_parent_and_position_index_impl(
@@ -915,7 +909,7 @@ impl ViewportBlueprint {
 fn build_tree_from_space_views_and_containers<'a>(
     space_views: impl Iterator<Item = &'a SpaceViewBlueprint>,
     containers: impl Iterator<Item = &'a ContainerBlueprint>,
-    root_container: Option<ContainerId>,
+    root_container: Option<RootContainer>,
 ) -> egui_tiles::Tree<SpaceViewId> {
     re_tracing::profile_function!();
     let mut tree = egui_tiles::Tree::empty("viewport_tree");
@@ -937,8 +931,10 @@ fn build_tree_from_space_views_and_containers<'a>(
     }
 
     // And finally, set the root
-    if let Some(root_container) = root_container.map(|id| blueprint_id_to_tile_id(&id)) {
-        tree.root = Some(root_container);
+
+    if let Some(root_container) = root_container {
+        let root_container = ContainerId::from(root_container.0);
+        tree.root = Some(blueprint_id_to_tile_id(&root_container));
     }
 
     tree

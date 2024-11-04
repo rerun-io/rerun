@@ -23,6 +23,7 @@ A single-precision 32-bit IEEE 754 floating point number.
 * [`FillRatio`](../components/fill_ratio.md)
 * [`GammaCorrection`](../components/gamma_correction.md)
 * [`ImagePlaneDistance`](../components/image_plane_distance.md)
+* [`Length`](../components/length.md?speculative-link)
 * [`MarkerSize`](../components/marker_size.md)
 * [`Opacity`](../components/opacity.md)
 * [`Radius`](../components/radius.md)

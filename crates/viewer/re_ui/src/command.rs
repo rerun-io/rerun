@@ -75,8 +75,6 @@ pub enum UICommand {
     #[cfg(not(target_arch = "wasm32"))]
     PrintBlueprintStore,
     #[cfg(not(target_arch = "wasm32"))]
-    ClearPrimaryCache,
-    #[cfg(not(target_arch = "wasm32"))]
     PrintPrimaryCache,
 
     #[cfg(debug_assertions)]
@@ -227,11 +225,6 @@ impl UICommand {
                 "Prints the entire blueprint store to the console and clipboard. WARNING: this may be A LOT of text.",
             ),
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ClearPrimaryCache => (
-                "Clear primary cache",
-                "Clears the primary cache in its entirety.",
-            ),
-            #[cfg(not(target_arch = "wasm32"))]
             Self::PrintPrimaryCache => (
                 "Print primary cache",
                 "Prints the state of the entire primary cache to the console and clipboard. WARNING: this may be A LOT of text.",
@@ -350,8 +343,6 @@ impl UICommand {
             Self::PrintChunkStore => None,
             #[cfg(not(target_arch = "wasm32"))]
             Self::PrintBlueprintStore => None,
-            #[cfg(not(target_arch = "wasm32"))]
-            Self::ClearPrimaryCache => None,
             #[cfg(not(target_arch = "wasm32"))]
             Self::PrintPrimaryCache => None,
 

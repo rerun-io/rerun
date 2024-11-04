@@ -18,7 +18,7 @@ use crate::contexts::{
 ///
 /// If the input slice is empty, the second argument is returned forever.
 #[inline]
-pub fn clamped_or<'a, T>(values: &'a [T], if_empty: &'a T) -> impl Iterator<Item = &'a T> {
+pub fn clamped_or<'a, T>(values: &'a [T], if_empty: &'a T) -> impl Iterator<Item = &'a T> + Clone {
     let repeated = values.last().unwrap_or(if_empty);
     values.iter().chain(std::iter::repeat(repeated))
 }
@@ -27,7 +27,7 @@ pub fn clamped_or<'a, T>(values: &'a [T], if_empty: &'a T) -> impl Iterator<Item
 ///
 /// Returns an empty iterator if values is empty.
 #[inline]
-pub fn clamped_or_nothing<T>(values: &[T], clamped_len: usize) -> impl Iterator<Item = &T> {
+pub fn clamped_or_nothing<T>(values: &[T], clamped_len: usize) -> impl Iterator<Item = &T> + Clone {
     let Some(last) = values.last() else {
         return Either::Left(std::iter::empty());
     };

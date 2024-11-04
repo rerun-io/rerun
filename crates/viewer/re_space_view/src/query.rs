@@ -41,8 +41,7 @@ pub fn range_with_blueprint_resolved_data(
     // No need to query for components that have overrides.
     component_set.retain(|component| !overrides.components.contains_key(component));
 
-    let results = ctx.recording().query_caches().range(
-        ctx.recording_store(),
+    let results = ctx.recording_engine().cache().range(
         range_query,
         &data_result.entity_path,
         component_set.iter().copied(),
@@ -52,8 +51,7 @@ pub fn range_with_blueprint_resolved_data(
     // This means we over-query for defaults that will never be used.
     // component_set.retain(|component| !results.components.contains_key(component));
 
-    let defaults = ctx.viewer_ctx.blueprint_db().query_caches().latest_at(
-        ctx.viewer_ctx.store_context.blueprint.store(),
+    let defaults = ctx.viewer_ctx.blueprint_engine().cache().latest_at(
         ctx.viewer_ctx.blueprint_query,
         ctx.defaults_path,
         component_set.iter().copied(),
@@ -98,8 +96,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
         component_set.retain(|component| !overrides.components.contains_key(component));
     }
 
-    let results = ctx.viewer_ctx.recording().query_caches().latest_at(
-        ctx.viewer_ctx.recording_store(),
+    let results = ctx.viewer_ctx.recording_engine().cache().latest_at(
         latest_at_query,
         &data_result.entity_path,
         component_set.iter().copied(),
@@ -109,8 +106,7 @@ pub fn latest_at_with_blueprint_resolved_data<'a>(
     // This means we over-query for defaults that will never be used.
     // component_set.retain(|component| !results.components.contains_key(component));
 
-    let defaults = ctx.viewer_ctx.blueprint_db().query_caches().latest_at(
-        ctx.viewer_ctx.store_context.blueprint.store(),
+    let defaults = ctx.viewer_ctx.blueprint_engine().cache().latest_at(
         ctx.viewer_ctx.blueprint_query,
         ctx.defaults_path,
         component_set.iter().copied(),
@@ -176,6 +172,8 @@ fn query_overrides<'a>(
     // First see if any components have overrides.
     let mut overrides = LatestAtResults::empty("<overrides>".into(), ctx.current_query());
 
+    let blueprint_engine = &ctx.store_context.blueprint.storage_engine();
+
     // TODO(jleibs): partitioning overrides by path
     for component_name in component_names {
         if let Some(override_value) = data_result
@@ -194,21 +192,17 @@ fn query_overrides<'a>(
                     // TODO(jleibs): This probably is not right, but this code path is not used
                     // currently. This may want to use range_query instead depending on how
                     // component override data-references are resolved.
-                    ctx.store_context.blueprint.query_caches().latest_at(
-                        ctx.store_context.blueprint.store(),
+                    blueprint_engine.cache().latest_at(
                         &current_query,
                         &override_value.path,
                         [*component_name],
                     )
                 }
-                re_log_types::StoreKind::Blueprint => {
-                    ctx.store_context.blueprint.query_caches().latest_at(
-                        ctx.store_context.blueprint.store(),
-                        &current_query,
-                        &override_value.path,
-                        [*component_name],
-                    )
-                }
+                re_log_types::StoreKind::Blueprint => blueprint_engine.cache().latest_at(
+                    &current_query,
+                    &override_value.path,
+                    [*component_name],
+                ),
             };
 
             // If we successfully find a non-empty override, add it to our results.

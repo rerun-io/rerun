@@ -88,11 +88,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/3bdd323e2f9c8f6561cfc0696e7362190918d0fc/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/3bdd323e2f9c8f6561cfc0696e7362190918d0fc/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/3bdd323e2f9c8f6561cfc0696e7362190918d0fc/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/3bdd323e2f9c8f6561cfc0696e7362190918d0fc/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/3bdd323e2f9c8f6561cfc0696e7362190918d0fc/1200w.png">
+  <img src="https://static.rerun.io/crates/a1291641639f4dc3864e84259c70089a96bfcb1a/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/a1291641639f4dc3864e84259c70089a96bfcb1a/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/a1291641639f4dc3864e84259c70089a96bfcb1a/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/a1291641639f4dc3864e84259c70089a96bfcb1a/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/a1291641639f4dc3864e84259c70089a96bfcb1a/1200w.png">
 </picture>
 
 
@@ -186,11 +186,12 @@ Update instructions:
 
 | Crate                | Description                                                                                            |
 |----------------------|--------------------------------------------------------------------------------------------------------|
+| re_data_loader       | Handles loading of Rerun data from file using data loader plugins                                      |
+| re_data_source       | Handles loading of Rerun data from different sources                                                   |
 | re_sdk_comms         | TCP communication between Rerun SDK and Rerun Server                                                   |
 | re_web_viewer_server | Serves the Rerun web viewer (Wasm and HTML) over HTTP                                                  |
 | re_ws_comms          | WebSocket communication library (encoding, decoding, client, server) between a Rerun server and Viewer |
-| re_data_loader       | Handles loading of Rerun data from file using data loader plugins                                      |
-| re_data_source       | Handles loading of Rerun data from different sources                                                   |
+| re_rrdp_comms        | Communicate with the Rerun Data Platform over gRPC                                                     |
 
 
 ### Build support

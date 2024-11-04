@@ -83,6 +83,9 @@ exclude = [
   '%7B.+%7D',             # Ignore strings that look like ready to use links but contain a replacement strings. The URL escaping is for '{.+}' (this seems to be needed for html embedded urls since lychee assumes they use this encoding).
   '%7B%7D',               # Ignore links with string interpolation, escaped variant.
 
+  # Ignore storage-node example links
+  'rrdp:/.*',
+
   # Local links that require further setup.
   'http://127.0.0.1',
   'http://localhost',
