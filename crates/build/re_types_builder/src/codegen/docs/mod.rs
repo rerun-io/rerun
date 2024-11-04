@@ -416,19 +416,20 @@ fn write_fields(objects: &Objects, o: &mut String, object: &Object) {
         match ty {
             Type::Unit => unreachable!("Should be handled elsewhere"),
 
-            Type::UInt8 => atomic("u8"),
-            Type::UInt16 => atomic("u16"),
-            Type::UInt32 => atomic("u32"),
-            Type::UInt64 => atomic("u64"),
-            Type::Int8 => atomic("i8"),
-            Type::Int16 => atomic("i16"),
-            Type::Int32 => atomic("i32"),
-            Type::Int64 => atomic("i64"),
-            Type::Bool => atomic("bool"),
-            Type::Float16 => atomic("f16"),
-            Type::Float32 => atomic("f32"),
-            Type::Float64 => atomic("f64"),
-            Type::String => atomic("string"),
+            // We use explicit, arrow-like names:
+            Type::UInt8 => atomic("uint8"),
+            Type::UInt16 => atomic("uint16"),
+            Type::UInt32 => atomic("uint32"),
+            Type::UInt64 => atomic("uint64"),
+            Type::Int8 => atomic("int8"),
+            Type::Int16 => atomic("int16"),
+            Type::Int32 => atomic("int32"),
+            Type::Int64 => atomic("int64"),
+            Type::Bool => atomic("boolean"),
+            Type::Float16 => atomic("float16"),
+            Type::Float32 => atomic("float32"),
+            Type::Float64 => atomic("float64"),
+            Type::String => atomic("utf8"),
 
             Type::Array { elem_type, length } => {
                 format!(
@@ -438,7 +439,7 @@ fn write_fields(objects: &Objects, o: &mut String, object: &Object) {
             }
             Type::Vector { elem_type } => {
                 format!(
-                    "list of {}",
+                    "List of {}",
                     type_info(objects, &Type::from(elem_type.clone()))
                 )
             }
@@ -456,15 +457,24 @@ fn write_fields(objects: &Objects, o: &mut String, object: &Object) {
 
     let mut fields = Vec::new();
     for field in &object.fields {
-        if object.is_enum() || field.typ == Type::Unit {
-            fields.push(format!("* {}", field.name));
-        } else {
-            fields.push(format!(
-                "* {}: {}",
-                field.name,
-                type_info(objects, &field.typ)
-            ));
+        let mut field_string = format!("* `{}`", field.name);
+
+        if let Some(enum_value) = field.enum_value {
+            field_string.push_str(&format!(" = {enum_value}"));
         }
+
+        if !object.is_enum() {
+            field_string.push_str(": ");
+            if field.typ == Type::Unit {
+                field_string.push_str("`null`");
+        } else {
+                if field.is_nullable {
+                    field_string.push_str("nullable ");
+                }
+                field_string.push_str(&type_info(objects, &field.typ));
+        }
+    }
+        fields.push(field_string);
     }
 
     if !fields.is_empty() {
@@ -473,7 +483,6 @@ fn write_fields(objects: &Objects, o: &mut String, object: &Object) {
             crate::ObjectClass::Enum | crate::ObjectClass::Union => "## Variants",
         };
         putln!(o, "{heading}");
-        putln!(o);
         for field in fields {
             putln!(o, "{field}");
         }
