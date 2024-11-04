@@ -84,6 +84,8 @@ mod av1;
 
 #[cfg(with_ffmpeg)]
 mod ffmpeg;
+#[cfg(with_ffmpeg)]
+mod h264_sps;
 
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
