@@ -221,10 +221,6 @@ pub struct TargetConfiguration {
     ///
     /// Otherwise, this step will overwrite whatever was there before, drawing the view builder's result
     /// as an opaque rectangle.
-    ///
-    /// Note that the blending operation assumes that the incoming image does *not* have pre-multiplied alpha.
-    /// This makes it a lot easier to handles MSAA on a transparent background, since MSAA resolve
-    /// will not multiply the result with resulting alpha value (it just averages samples in a pixel unaware of channel information).
     pub blend_with_background: bool,
 }
 

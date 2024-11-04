@@ -43,10 +43,6 @@ pub struct CompositorDrawData {
     bind_group: GpuBindGroup,
 
     /// If true, the compositor will blend with the image.
-    ///
-    /// Note that this assumes that the incoming image does *not* have pre-multiplied alpha.
-    /// This makes it a lot easier to handles MSAA on a transparent background, since MSAA resolve
-    /// will not multiply the result with resulting alpha value (it just averages samples in a pixel unaware of channel information).
     enable_blending: bool,
 }
 
