@@ -183,12 +183,15 @@ impl RerunServer {
         // on the same poller.
         let listener_poll_key = 1;
 
-        if let Err(err) = poller.add(listener_socket, Event::readable(listener_poll_key)) {
+        #[allow(unsafe_code)]
+        // SAFETY: `poller.add` requires a matching call to `poller.delete`, which we have below
+        if let Err(err) = unsafe { poller.add(listener_socket, Event::readable(listener_poll_key)) }
+        {
             re_log::error!("Error when polling listener socket for incoming connections: {err}");
             return;
         }
 
-        let mut events = Vec::new();
+        let mut events = polling::Events::new();
         loop {
             if let Err(err) = poller.wait(&mut events, None) {
                 re_log::warn!("Error polling WebSocket server listener: {err}");
@@ -199,7 +202,7 @@ impl RerunServer {
                 break;
             }
 
-            for event in events.drain(..) {
+            for event in events.iter() {
                 if event.key == listener_poll_key {
                     Self::accept_connection(
                         listener_socket,
@@ -210,7 +213,11 @@ impl RerunServer {
                     );
                 }
             }
+            events.clear();
         }
+
+        // This MUST be called before dropping `poller`!
+        poller.delete(listener_socket).ok();
     }
 
     fn accept_connection(
