@@ -198,24 +198,36 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, timescale: re_video:
     let time_range = frame_info.time_range();
     ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
         "{} - {}",
-        re_format::format_timestamp_seconds(time_range.start.into_secs(timescale),),
-        re_format::format_timestamp_seconds(time_range.end.into_secs(timescale),),
+        re_format::format_timestamp_seconds(time_range.start.into_secs(timescale)),
+        re_format::format_timestamp_seconds(time_range.end.into_secs(timescale)),
     )))
     .on_hover_text("Time range in which this frame is valid.");
 
-    ui.list_item_flat_noninteractive(
-        PropertyContent::new("PTS").value_text(frame_info.presentation_timestamp.0.to_string()),
-    )
-    .on_hover_text("Raw presentation timestamp prior to applying the timescale.\n\
-                    This specifies the time at which the frame should be shown relative to the start of a video stream.");
+    fn value_fn_for_time(
+        time: re_video::Time,
+        timescale: re_video::Timescale,
+    ) -> impl FnOnce(&mut egui::Ui, egui::style::WidgetVisuals) {
+        move |ui, _| {
+            ui.add(egui::Label::new(time.0.to_string()).truncate())
+                .on_hover_text(re_format::format_timestamp_seconds(
+                    time.into_secs(timescale),
+                ));
+        }
+    }
 
     if let Some(dts) = frame_info.latest_decode_timestamp {
         ui.list_item_flat_noninteractive(
-            PropertyContent::new("DTS").value_text(dts.0.to_string()),
+            PropertyContent::new("DTS").value_fn(value_fn_for_time(dts, timescale)),
         )
         .on_hover_text("Raw decode timestamp prior to applying the timescale.\n\
                         If a frame is made up of multiple chunks, this is the last decode timestamp that was needed to decode the frame.");
     }
+
+    ui.list_item_flat_noninteractive(
+        PropertyContent::new("PTS").value_fn(value_fn_for_time(frame_info.presentation_timestamp, timescale)),
+    )
+    .on_hover_text("Raw presentation timestamp prior to applying the timescale.\n\
+                    This specifies the time at which the frame should be shown relative to the start of a video stream.");
 }
 
 fn source_image_data_format_ui(ui: &mut egui::Ui, format: &SourceImageDataFormat) {
