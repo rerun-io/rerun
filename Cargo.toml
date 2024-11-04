@@ -291,8 +291,8 @@ walkdir = "2.0"
 #       `crates/viewer/re_viewer/Cargo.toml`, and make sure that the build script still works.
 #       Do not make this an `=` dependency, because that may break Rust users’ builds when a newer
 #       version is released, even if they are not building the web viewer.
-wasm-bindgen = "0.2.95"
-wasm-bindgen-cli-support = "=0.2.95"
+wasm-bindgen = "0.2.93"
+wasm-bindgen-cli-support = "=0.2.93"
 wasm-bindgen-futures = "0.4.33"
 wayland-sys = "0.31.5"
 web-sys = "0.3"
