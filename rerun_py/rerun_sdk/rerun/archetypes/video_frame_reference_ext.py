@@ -28,15 +28,15 @@ class VideoFrameReferenceExt:
             Note that this uses the closest video frame instead of the latest at this timestamp
             in order to be more forgiving of rounding errors for inprecise timestamp types.
 
-            Mutally exclusive with `seconds` and `nanoseconds`.
+            Mutually exclusive with `seconds` and `nanoseconds`.
         seconds:
             Sets the timestamp to the given number of seconds.
 
-            Mutally exclusive with `timestamp` and `nanoseconds`.
+            Mutually exclusive with `timestamp` and `nanoseconds`.
         nanoseconds:
             Sets the timestamp to the given number of nanoseconds.
 
-            Mutally exclusive with `timestamp` and `seconds`.
+            Mutually exclusive with `timestamp` and `seconds`.
         video_reference:
             Optional reference to an entity with a [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo].
 
