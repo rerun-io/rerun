@@ -133,6 +133,9 @@ impl GeoPointsVisualizer {
         highlight: &SpaceViewHighlights,
     ) -> Result<(), PointCloudDrawDataError> {
         let mut points = re_renderer::PointCloudBuilder::new(render_ctx);
+        points.radius_boost_in_ui_points_for_outlines(
+            re_space_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+        );
 
         for (entity_path, batch) in &self.batches {
             let positions = batch

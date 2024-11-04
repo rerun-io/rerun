@@ -26,10 +26,7 @@ use crate::{
     space_camera_3d::SpaceCamera3D,
     ui::{create_labels, screenshot_context_menu, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
-    visualizers::{
-        collect_ui_labels, image_view_coordinates, CamerasVisualizer,
-        SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
-    },
+    visualizers::{collect_ui_labels, image_view_coordinates, CamerasVisualizer},
     SpatialSpaceView3D,
 };
 
@@ -489,7 +486,9 @@ impl SpatialSpaceView3D {
 
         // Various ui interactions draw additional lines.
         let mut line_builder = LineDrawableBuilder::new(render_ctx);
-        line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+        line_builder.radius_boost_in_ui_points_for_outlines(
+            re_space_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+        );
         // We don't know ahead of time how many lines we need, but it's not gonna be a huge amount!
         line_builder.reserve_strips(32)?;
         line_builder.reserve_vertices(64)?;

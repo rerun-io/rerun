@@ -18,7 +18,7 @@ use super::{
     filter_visualizable_2d_entities, process_annotation_and_keypoint_slices, process_color_slice,
     process_radius_slice,
     utilities::{process_labels_2d, LabeledBatch},
-    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    SpatialViewVisualizerData,
 };
 
 // ---
@@ -179,7 +179,9 @@ impl VisualizerSystem for Lines2DVisualizer {
         };
 
         let mut line_builder = re_renderer::LineDrawableBuilder::new(render_ctx);
-        line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+        line_builder.radius_boost_in_ui_points_for_outlines(
+            re_space_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+        );
 
         use super::entity_iterator::{iter_primitive_array_list, process_archetype};
         process_archetype::<Self, LineStrips2D, _>(
