@@ -487,7 +487,7 @@ impl StoreHub {
             }
         }
 
-        re_log::debug!("Switching default blueprint for {app_id} to {blueprint_id}");
+        re_log::trace!("Switching default blueprint for '{app_id}' to '{blueprint_id}'");
         self.default_blueprint_by_app_id
             .insert(app_id.clone(), blueprint_id.clone());
 
@@ -532,8 +532,8 @@ impl StoreHub {
     ) -> anyhow::Result<()> {
         let new_id = StoreId::random(StoreKind::Blueprint);
 
-        re_log::debug!(
-            "Cloning {blueprint_id} as {new_id} the active blueprint for {app_id} to {blueprint_id}"
+        re_log::trace!(
+            "Cloning '{blueprint_id}' as '{new_id}' the active blueprint for '{app_id}' to '{blueprint_id}'"
         );
 
         let blueprint = self
