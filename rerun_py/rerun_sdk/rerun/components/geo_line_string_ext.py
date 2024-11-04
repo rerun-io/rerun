@@ -8,7 +8,7 @@ import numpy as np
 import pyarrow as pa
 
 if TYPE_CHECKING:
-    from . import GeoLineStringArrayLike
+    from . import GeoLineStringArrayLike, GeoLineStringLike
 
 
 def next_offset(acc: int, arr: Sized) -> int:
@@ -17,6 +17,13 @@ def next_offset(acc: int, arr: Sized) -> int:
 
 class GeoLineStringExt:
     """Extension for [GeoLineString][rerun.components.GeoLineString]."""
+
+    # TODO(ab): the only purpose of this override is to make the `lat_lon` arg kw-only. Should be codegen-able?
+    def __init__(self: Any, *, lat_lon: GeoLineStringLike):
+        """Create a new instance of the GeoLineString component."""
+
+        # You can define your own __init__ function as a member of GeoLineStringExt in geo_line_string_ext.py
+        self.__attrs_init__(lat_lon=lat_lon)
 
     @staticmethod
     def native_to_pa_array_override(data: GeoLineStringArrayLike, data_type: pa.DataType) -> pa.Array:

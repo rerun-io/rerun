@@ -5,15 +5,12 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components
 from .._baseclasses import (
     Archetype,
 )
-from ..error_utils import catch_and_log_exceptions
 from .geo_points_ext import GeoPointsExt
 
 __all__ = ["GeoPoints"]
@@ -22,7 +19,7 @@ __all__ = ["GeoPoints"]
 @define(str=False, repr=False, init=False)
 class GeoPoints(GeoPointsExt, Archetype):
     """
-    **Archetype**: Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) altitude and longitude (North/East-positive degrees), and optional colors and radii.
+    **Archetype**: Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.
 
     **Note**: Geospatial entities are experimental.
 
@@ -55,35 +52,7 @@ class GeoPoints(GeoPointsExt, Archetype):
 
     """
 
-    def __init__(
-        self: Any,
-        positions: datatypes.DVec2DArrayLike,
-        *,
-        radii: datatypes.Float32ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-    ):
-        """
-        Create a new instance of the GeoPoints archetype.
-
-        Parameters
-        ----------
-        positions:
-            The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).
-        radii:
-            Optional radii for the points, effectively turning them into circles.
-        colors:
-            Optional colors for the points.
-
-            The colors are interpreted as RGB or RGBA in sRGB gamma-space,
-            As either 0-1 floats or 0-255 integers, with separate alpha.
-
-        """
-
-        # You can define your own __init__ function as a member of GeoPointsExt in geo_points_ext.py
-        with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(positions=positions, radii=radii, colors=colors)
-            return
-        self.__attrs_clear__()
+    # __init__ can be found in geo_points_ext.py
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""

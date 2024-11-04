@@ -75,9 +75,9 @@ def test_geo_line_strings() -> None:
         radii = cast(Optional[Float32ArrayLike], radii)
         colors = cast(Optional[Rgba32ArrayLike], colors)
 
-        print(f"rr.GeoLineStrings(\n    {strips}\n    radii={radii!r}\n    colors={colors!r}\n)")
+        print(f"rr.GeoLineStrings(\n    lat_lon={strips}\n    radii={radii!r}\n    colors={colors!r}\n)")
         arch = rr.GeoLineStrings(
-            strips,
+            lat_lon=strips,
             radii=radii,
             colors=colors,
         )
@@ -96,7 +96,7 @@ def test_geo_line_strings() -> None:
     ],
 )
 def test_geo_line_strings_segment(data: GeoLineStringArrayLike) -> None:
-    arch = rr.GeoLineStrings(data)
+    arch = rr.GeoLineStrings(lat_lon=data)
 
     assert arch.line_strings == GeoLineStringBatch([
         [[0, 0], [2, 1]],
@@ -107,13 +107,13 @@ def test_geo_line_strings_segment(data: GeoLineStringArrayLike) -> None:
 def test_geo_line_strings_single_line() -> None:
     # Regression test for #3643
     # Single line string can be passed and is not interpreted as a batch of zero-sized line strings.
-    reference = rr.GeoLineStrings([rr.components.GeoLineString([[0, 0], [1, 1]])])
+    reference = rr.GeoLineStrings(lat_lon=[rr.components.GeoLineString(lat_lon=[[0, 0], [1, 1]])])
     assert len(reference.line_strings) == 1
-    assert reference == rr.GeoLineStrings(rr.components.GeoLineString([[0, 0], [1, 1]]))
-    assert reference == rr.GeoLineStrings([[[0, 0], [1, 1]]])
-    assert reference == rr.GeoLineStrings([[0, 0], [1, 1]])
-    assert reference == rr.GeoLineStrings(np.array([[0, 0], [1, 1]]))
-    assert reference == rr.GeoLineStrings([np.array([0, 0]), np.array([1, 1])])
+    assert reference == rr.GeoLineStrings(lat_lon=rr.components.GeoLineString(lat_lon=[[0, 0], [1, 1]]))
+    assert reference == rr.GeoLineStrings(lat_lon=[[[0, 0], [1, 1]]])
+    assert reference == rr.GeoLineStrings(lat_lon=[[0, 0], [1, 1]])
+    assert reference == rr.GeoLineStrings(lat_lon=np.array([[0, 0], [1, 1]]))
+    assert reference == rr.GeoLineStrings(lat_lon=[np.array([0, 0]), np.array([1, 1])])
 
 
 def test_geo_line_strings_invalid_shapes() -> None:
@@ -122,14 +122,14 @@ def test_geo_line_strings_invalid_shapes() -> None:
     # We used to support flat arrays but this becomes too ambiguous when passing a single strip.
     with pytest.raises(ValueError):
         rr.GeoLineStrings(
-            [
+            lat_lon=[
                 [0, 0, 2, 1, 4, -1, 6, 0],
                 [0, 3, 1, 4, 2, 2, 3, 4, 4, 2, 5, 4, 6, 3],
             ],
         )
     with pytest.raises(ValueError):
         rr.GeoLineStrings(
-            [
+            lat_lon=[
                 np.array([0, 0, 2, 1, 4, -1, 6, 0], dtype=np.float64),
                 np.array([0, 3, 1, 4, 2, 2, 3, 4, 4, 2, 5, 4, 6, 3], dtype=np.float64),
             ],
@@ -138,14 +138,14 @@ def test_geo_line_strings_invalid_shapes() -> None:
     # not homogeneous numpy arrays
     with pytest.raises(ValueError):
         rr.GeoLineStrings(
-            np.array([
+            lat_lon=np.array([
                 [[0, 0], (2, 1), [4, -1], (6, 0)],
                 [[0, 3], (1, 4), [2, 2], (3, 4), [4, 2], (5, 4), [6, 3]],
             ])
         )
     with pytest.raises(ValueError):
         rr.GeoLineStrings(
-            np.array([
+            lat_lon=np.array([
                 [0, 0, 2, 1, 4, -1, 6, 0],
                 [0, 3, 1, 4, 2, 2, 3, 4, 4, 2, 5, 4, 6, 3],
             ]),

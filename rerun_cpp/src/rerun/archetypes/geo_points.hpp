@@ -18,7 +18,7 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) altitude and longitude (North/East-positive degrees), and optional colors and radii.
+    /// **Archetype**: Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.
     ///
     /// **Note**: Geospatial entities are experimental.
     ///

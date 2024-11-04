@@ -49,13 +49,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct GeoLineStrings {
-    /// The lines strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
+    /// The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
     pub line_strings: Vec<crate::components::GeoLineString>,
 
     /// Optional radii for the line strings.
     pub radii: Option<Vec<crate::components::Radius>>,
 
-    /// Optional colors for the linestrings.
+    /// Optional colors for the line strings.
     pub colors: Option<Vec<crate::components::Color>>,
 }
 
@@ -246,7 +246,7 @@ impl GeoLineStrings {
         self
     }
 
-    /// Optional colors for the linestrings.
+    /// Optional colors for the line strings.
     #[inline]
     pub fn with_colors(
         mut self,

@@ -51,13 +51,13 @@ namespace rerun::archetypes {
     /// }
     /// ```
     struct GeoLineStrings {
-        /// The lines strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
+        /// The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
         Collection<rerun::components::GeoLineString> line_strings;
 
         /// Optional radii for the line strings.
         std::optional<Collection<rerun::components::Radius>> radii;
 
-        /// Optional colors for the linestrings.
+        /// Optional colors for the line strings.
         std::optional<Collection<rerun::components::Color>> colors;
 
       public:
@@ -81,7 +81,7 @@ namespace rerun::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Optional colors for the linestrings.
+        /// Optional colors for the line strings.
         GeoLineStrings with_colors(Collection<rerun::components::Color> _colors) && {
             colors = std::move(_colors);
             // See: https://github.com/rerun-io/rerun/issues/4027

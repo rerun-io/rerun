@@ -7,7 +7,7 @@ rr.init("rerun_example_geo_line_strings", spawn=True)
 rr.log(
     "colorado",
     rr.GeoLineStrings(
-        [
+        lat_lon=[
             [41.0000, -109.0452],
             [41.0000, -102.0415],
             [36.9931, -102.0415],
