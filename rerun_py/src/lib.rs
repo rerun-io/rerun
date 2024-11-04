@@ -17,3 +17,6 @@ mod arrow;
 mod dataframe;
 mod python_bridge;
 mod video;
+
+#[cfg(feature = "remote")]
+mod remote;

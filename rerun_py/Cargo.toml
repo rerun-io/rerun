@@ -32,6 +32,14 @@ extension-module = ["pyo3/extension-module"]
 ## You need to install [nasm](https://nasm.us/) to compile with this feature.
 nasm = ["re_video/nasm"]
 
+remote = [
+  "dep:re_remote_store_types",
+  "dep:re_ws_comms",
+  "dep:tokio",
+  "dep:tokio-stream",
+  "dep:tonic",
+]
+
 ## Support serving a web viewer over HTTP with `serve()`.
 ##
 ## Enabling this adds quite a bit to the binary size,
@@ -70,6 +78,14 @@ parking_lot.workspace = true
 pyo3 = { workspace = true, features = ["abi3-py38"] }
 rand = { workspace = true, features = ["std", "std_rng"] }
 uuid.workspace = true
+
+# Deps for remote feature
+re_remote_store_types = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+tokio-stream = { workspace = true, optional = true }
+tonic = { workspace = true, default-features = false, features = [
+  "transport",
+], optional = true }
 
 
 [build-dependencies]
