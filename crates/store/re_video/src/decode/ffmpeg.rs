@@ -93,6 +93,7 @@ impl FfmpegProcessAndListener {
         re_tracing::profile_function!();
 
         let mut ffmpeg = FfmpegCommand::new()
+            .hide_banner()
             // "Reduce the latency introduced by buffering during initial input streams analysis."
             //.arg("-fflags nobuffer")
             //
@@ -358,10 +359,15 @@ fn read_ffmpeg_output(
                 //    DTS: 1 2 3 4
                 // Stream: I P B B
                 let frame_info = loop {
-                    if pending_frame_infos
-                        .first_key_value()
-                        .map_or(true, |(pts, _)| *pts > highest_dts)
-                    {
+                    let oldest_pts_in_buffer =
+                        pending_frame_infos.first_key_value().map(|(pts, _)| *pts);
+                    let is_caught_up = oldest_pts_in_buffer.is_some_and(|pts| pts <= highest_dts);
+                    if is_caught_up {
+                        // There must be an element here, otherwise we wouldn't be here.
+                        #[allow(clippy::unwrap_used)]
+                        break pending_frame_infos.pop_first().unwrap().1;
+                    } else {
+                        // We're behind:
                         let Ok(frame_info) = frame_info_rx.try_recv() else {
                             re_log::debug!(
                                 "{debug_name} ffmpeg decoder frame info channel disconnected"
@@ -378,10 +384,6 @@ fn read_ffmpeg_output(
                         highest_dts = frame_info.decode_timestamp;
 
                         pending_frame_infos.insert(frame_info.presentation_timestamp, frame_info);
-                    } else {
-                        // There must be an element here, otherwise we wouldn't be in this branch.
-                        #[allow(clippy::unwrap_used)]
-                        break pending_frame_infos.pop_first().unwrap().1;
                     }
                 };
 
