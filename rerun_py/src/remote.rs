@@ -1,5 +1,4 @@
 #![allow(unsafe_op_in_unsafe_fn)]
-use arrow2::io::ipc::write::Record;
 // False positive due to #[pyfunction] macro
 use pyo3::{exceptions::PyRuntimeError, prelude::*, Bound, PyResult};
 use re_remote_store_types::v0::{storage_node_client::StorageNodeClient, ListRecordingsRequest};
