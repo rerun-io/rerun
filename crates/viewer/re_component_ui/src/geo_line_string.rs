@@ -1,8 +1,7 @@
-use re_format::{format_f64, format_uint};
+use re_format::{format_lat_lon, format_uint};
 use re_types::components::GeoLineString;
+use re_ui::UiExt as _;
 use re_viewer_context::{MaybeMutRef, UiLayout, ViewerContext};
-
-use crate::DEFAULT_NUMBER_WIDTH;
 
 fn singleline_view_geo_line_string(
     _ctx: &ViewerContext<'_>,
@@ -25,20 +24,18 @@ fn multiline_view_geo_line_string(
     // TODO(andreas): Editing this would be nice!
     let value = value.as_ref();
 
-    // TODO(andreas): Is it really a good idea to always have the full table here?
-    // Can we use the ui stack to know where we are and do the right thing instead?
     UiLayout::SelectionPanelFull
         .table(ui)
         .resizable(true)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-        .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 2)
+        .columns(Column::initial(100.0).clip(true), 2)
         .header(re_ui::DesignTokens::table_header_height(), |mut header| {
             re_ui::DesignTokens::setup_table_header(&mut header);
             header.col(|ui| {
-                ui.label("latitude");
+                ui.label("Latitude");
             });
             header.col(|ui| {
-                ui.label("longitude");
+                ui.label("Longitude");
             });
         })
         .body(|mut body| {
@@ -47,10 +44,18 @@ fn multiline_view_geo_line_string(
             body.rows(row_height, value.0.len(), |mut row| {
                 if let Some(pos) = value.0.get(row.index()) {
                     row.col(|ui| {
-                        ui.label(format_f64(pos.x()));
+                        ui.label(format_lat_lon(pos.x())).on_hover_ui(|ui| {
+                            ui.markdown_ui(
+                                "Latitude according to [EPSG:4326](https://epsg.io/4326)",
+                            );
+                        });
                     });
                     row.col(|ui| {
-                        ui.label(format_f64(pos.y()));
+                        ui.label(format_lat_lon(pos.y())).on_hover_ui(|ui| {
+                            ui.markdown_ui(
+                                "Longitude according to [EPSG:4326](https://epsg.io/4326)",
+                            );
+                        });
                     });
                 }
             });
