@@ -273,8 +273,8 @@ pub struct RegisterRecordingResponse {
     /// chunk by chunk) and extract the metadata. So we might want to 1/ not do this i.e.
     /// only do it as part of explicit GetMetadata request or 2/ do it if Request has "include_metadata=true"
     /// or 3/ do it always
-    #[prost(message, repeated, tag = "2")]
-    pub metadata: ::prost::alloc::vec::Vec<RecordingMetadata>,
+    #[prost(message, optional, tag = "2")]
+    pub metadata: ::core::option::Option<RecordingMetadata>,
 }
 /// Server can include details about the error as part of gRPC error (Status)
 #[derive(Clone, PartialEq, ::prost::Message)]
