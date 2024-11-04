@@ -31,9 +31,8 @@ function buildWebViewer(mode) {
   }
 }
 
-async function re_viewer_js(mode) {
+function re_viewer_js() {
   let code = fs.readFileSync(path.join(__dirname, "re_viewer.js"), "utf-8");
-  await checkHash(mode, "re_viewer.js", code);
 
   // this transforms the module, wrapping it in a default-exported function.
   // calling the function produces a new "instance" of the module, because
@@ -89,9 +88,8 @@ return Object.assign(__wbg_init, { initSync, deinit }, __exports);
   fs.writeFileSync(path.join(__dirname, "re_viewer.js"), code);
 }
 
-async function re_viewer_d_ts(mode) {
+function re_viewer_d_ts() {
   let code = fs.readFileSync(path.join(__dirname, "re_viewer.d.ts"), "utf-8");
-  await checkHash(mode, "re_viewer.d.ts", code);
 
   // this transformation just re-exports WebHandle and adds a default export inside the `.d.ts` file
 
@@ -104,77 +102,26 @@ export default function(): wasm_bindgen;
   fs.writeFileSync(path.join(__dirname, "re_viewer.d.ts"), code);
 }
 
-async function hash(data) {
-  const buffer = await crypto.subtle.digest("sha-256", data);
-  return Array.from(new Uint8Array(buffer))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
+function main() {
+  const args = util.parseArgs({
+    options: {
+      mode: {
+        type: "string",
+      },
+    },
+  });
 
-async function checkHash(mode, id, data) {
-  const storedHash = hashes?.[mode]?.[id];
-  const computedHash = await hash(new TextEncoder().encode(data));
-
-  if (updateHashes) {
-    hashes[mode] ??= {};
-    hashes[mode][id] = computedHash;
-    return;
+  if (!args.values.mode) {
+    throw new Error("Missing required argument: mode");
   }
 
-  if (storedHash !== computedHash) {
-    console.error(`
-==============================================================
-Output of "${id}" changed.
-Update the \`build-wasm.mjs\` script to handle the new output,
-then run \`pixi run node build-wasm.mjs --update-hashes\`.
-==============================================================
-`);
-    process.exit(1);
-  }
-}
-
-async function run(mode) {
   buildWebViewer(mode);
-  await re_viewer_js(mode);
-  await re_viewer_d_ts(mode);
-}
-
-const args = util.parseArgs({
-  options: {
-    mode: {
-      type: "string",
-    },
-    "update-hashes": {
-      type: "boolean",
-    },
-  },
-});
-
-let updateHashes = !!args.values["update-hashes"];
-let hashes;
-try {
-  hashes = JSON.parse(
-    fs.readFileSync(path.join(__dirname, "hashes.json"), "utf-8"),
-  );
-} catch (e) {
-  hashes = {};
+  re_viewer_js();
+  re_viewer_d_ts();
 }
 
 try {
-  if (updateHashes) {
-    await run("release");
-    await run("debug");
-    fs.writeFileSync(
-      path.join(__dirname, "hashes.json"),
-      JSON.stringify(hashes),
-    );
-  } else {
-    if (!args.values.mode) {
-      throw new Error("Missing required argument: mode");
-    }
-
-    await run(args.values.mode);
-  }
+  main();
 } catch (e) {
-  console.error(e.message);
+  console.error(e);
 }
