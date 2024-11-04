@@ -26,33 +26,17 @@ pub fn arrow_datatype_docs(page: &mut String, indent: usize, datatype: &DataType
         DataType::Float16 => page.push_str("float16"),
         DataType::Float32 => page.push_str("float32"),
         DataType::Float64 => page.push_str("float64"),
-        // DataType::Timestamp(time_unit, arc) => todo!(),
-        // DataType::Date32 => todo!(),
-        // DataType::Date64 => todo!(),
-        // DataType::Time32(time_unit) => todo!(),
-        // DataType::Time64(time_unit) => todo!(),
-        // DataType::Duration(time_unit) => todo!(),
-        // DataType::Interval(interval_unit) => todo!(),
-        // DataType::Binary => todo!(),
-        // DataType::FixedSizeBinary(_) => todo!(),
-        // DataType::LargeBinary => todo!(),
-        // DataType::BinaryView => todo!(),
         DataType::Utf8 => page.push_str("utf8"),
-        // DataType::LargeUtf8 => todo!(),
-        // DataType::Utf8View => todo!(),
         DataType::List(inner) => {
             page.push_str("List<");
             arrow_datatype_docs(page, indent + 1, inner.data_type());
             page.push('>');
         }
-        // DataType::ListView(arc) => todo!(),
         DataType::FixedSizeList(inner, length) => {
             page.push_str(&format!("FixedSizeList<{length}, "));
             arrow_datatype_docs(page, indent + 1, inner.data_type());
             page.push('>');
         }
-        // DataType::LargeList(arc) => todo!(),
-        // DataType::LargeListView(arc) => todo!(),
         DataType::Struct(fields) => {
             page.push_str("Struct {\n");
             for field in fields {
@@ -81,13 +65,11 @@ pub fn arrow_datatype_docs(page: &mut String, indent: usize, datatype: &DataType
             }
             page.push_indented(indent, "}", 0);
         }
-        // DataType::Dictionary(data_type, data_type1) => todo!(),
-        // DataType::Decimal128(_, _) => todo!(),
-        // DataType::Decimal256(_, _) => todo!(),
-        // DataType::Map(arc, _) => todo!(),
-        // DataType::RunEndEncoded(arc, arc1) => todo!(),
         _ => {
-            unimplemented!("Docs-formatting of arrow datatype {:#?}", datatype);
+            unimplemented!(
+                "For the docs, you need to implement formatting of arrow datatype {:#?}",
+                datatype
+            );
         }
     }
 }
