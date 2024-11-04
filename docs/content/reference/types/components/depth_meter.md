@@ -12,9 +12,6 @@ this value would be `1000`.
 Note that the only effect on 2D views is the physical depth values shown when hovering the image.
 In 3D views on the other hand, this affects where the points of the point cloud are placed.
 
-## Fields
-
-* value: [`Float32`](../datatypes/float32.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `DepthMeter`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1DepthMeter.html)

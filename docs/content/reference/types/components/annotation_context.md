@@ -11,9 +11,6 @@ annotation context. We use the *first* annotation context we find in the
 path-hierarchy when searching up through the ancestors of a given entity
 path.
 
-## Fields
-
-* class_map: list of [`ClassDescriptionMapElem`](../datatypes/class_description_map_elem.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `AnnotationContext`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1AnnotationContext.html)

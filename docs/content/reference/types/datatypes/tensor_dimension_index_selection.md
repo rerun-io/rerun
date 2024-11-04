@@ -8,9 +8,16 @@ Indexing a specific tensor dimension.
 Selecting `dimension=2` and `index=42` is similar to doing `tensor[:, :, 42, :, :, …]` in numpy.
 
 ## Fields
+* `dimension`: `uint32`
+* `index`: `uint64`
 
-* dimension: `u32`
-* index: `u64`
+## Arrow datatype
+```
+Struct {
+    dimension: uint32
+    index: uint64
+}
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `TensorDimensionIndexSelection`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1TensorDimensionIndexSelection.html)

@@ -1,5 +1,7 @@
 //! Generate the markdown files shown at <https://rerun.io/docs/reference/types>.
 
+mod arrow_datatype;
+
 use std::{collections::BTreeMap, fmt::Write};
 
 use camino::Utf8PathBuf;
@@ -14,9 +16,10 @@ use crate::{
 
 pub const DATAFRAME_VIEW_FQNAME: &str = "rerun.blueprint.views.DataframeView";
 
+/// Like [`writeln!`], but without a [`Result`].
 macro_rules! putln {
-    ($o:ident) => ( writeln!($o).ok() );
-    ($o:ident, $($tt:tt)*) => ( writeln!($o, $($tt)*).ok() );
+    ($o:ident) => ( { writeln!($o).ok(); } );
+    ($o:ident, $($tt:tt)*) => ( { writeln!($o, $($tt)*).unwrap(); } );
 }
 
 pub struct DocsCodeGenerator {
@@ -44,7 +47,7 @@ impl CodeGenerator for DocsCodeGenerator {
         &mut self,
         reporter: &Reporter,
         objects: &Objects,
-        _arrow_registry: &crate::ArrowRegistry,
+        arrow_registry: &crate::ArrowRegistry,
     ) -> GeneratedFiles {
         re_tracing::profile_function!();
 
@@ -74,7 +77,13 @@ impl CodeGenerator for DocsCodeGenerator {
                 ObjectKind::View => views.push(object),
             }
 
-            let page = object_page(reporter, objects, object, &views_per_archetype);
+            let page = object_page(
+                reporter,
+                objects,
+                object,
+                arrow_registry,
+                &views_per_archetype,
+            );
             let path = self.docs_dir.join(format!(
                 "{}/{}.md",
                 object.kind.plural_snake_case(),
@@ -229,6 +238,7 @@ fn object_page(
     reporter: &Reporter,
     objects: &Objects,
     object: &Object,
+    arrow_registry: &crate::ArrowRegistry,
     views_per_archetype: &ViewsPerArchetype,
 ) -> String {
     let is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
@@ -290,6 +300,16 @@ fn object_page(
         ObjectKind::View => {
             write_view_properties(reporter, objects, &mut page, object);
         }
+    }
+
+    if object.kind == ObjectKind::Datatype {
+        let datatype = &arrow_registry.get(&object.fqname);
+        putln!(page);
+        putln!(page, "## Arrow datatype");
+        putln!(page, "```");
+        arrow_datatype::arrow2_datatype_docs(&mut page, datatype);
+        putln!(page);
+        putln!(page, "```");
     }
 
     putln!(page);
@@ -473,13 +493,13 @@ fn write_fields(objects: &Objects, o: &mut String, object: &Object) {
             field_string.push_str(": ");
             if field.typ == Type::Unit {
                 field_string.push_str("`null`");
-        } else {
+            } else {
                 if field.is_nullable {
                     field_string.push_str("nullable ");
                 }
                 field_string.push_str(&type_info(objects, &field.typ));
+            }
         }
-    }
         fields.push(field_string);
     }
 

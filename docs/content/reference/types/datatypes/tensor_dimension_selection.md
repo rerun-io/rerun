@@ -6,9 +6,16 @@ title: "TensorDimensionSelection"
 Selection of a single tensor dimension.
 
 ## Fields
+* `dimension`: `uint32`
+* `invert`: `boolean`
 
-* dimension: `u32`
-* invert: `bool`
+## Arrow datatype
+```
+Struct {
+    dimension: uint32
+    invert: boolean
+}
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `TensorDimensionSelection`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1TensorDimensionSelection.html)

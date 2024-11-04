@@ -8,9 +8,31 @@ A helper type for mapping [`datatypes.ClassId`](https://rerun.io/docs/reference/
 This is internal to [`components.AnnotationContext`](https://rerun.io/docs/reference/types/components/annotation_context).
 
 ## Fields
+* `class_id`: [`ClassId`](../datatypes/class_id.md)
+* `class_description`: [`ClassDescription`](../datatypes/class_description.md)
 
-* class_id: [`ClassId`](../datatypes/class_id.md)
-* class_description: [`ClassDescription`](../datatypes/class_description.md)
+## Arrow datatype
+```
+Struct {
+    class_id: uint16
+    class_description: Struct {
+        info: Struct {
+            id: uint16
+            label: nullable utf8
+            color: nullable uint32
+        }
+        keypoint_annotations: List<Struct {
+                id: uint16
+                label: nullable utf8
+                color: nullable uint32
+            }>
+        keypoint_connections: List<Struct {
+                keypoint0: uint16
+                keypoint1: uint16
+            }>
+    }
+}
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `ClassDescriptionMapElem`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1ClassDescriptionMapElem.html)

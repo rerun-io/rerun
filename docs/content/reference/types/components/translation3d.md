@@ -5,9 +5,6 @@ title: "Translation3D"
 
 A translation vector in 3D space.
 
-## Fields
-
-* vector: [`Vec3D`](../datatypes/vec3d.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `Translation3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Translation3D.html)

@@ -8,9 +8,11 @@ Presentation timestamp within a [`archetypes.AssetVideo`](https://rerun.io/docs/
 Specified in nanoseconds.
 Presentation timestamps are typically measured as time since video start.
 
-## Fields
 
-* timestamp_ns: `i64`
+## Arrow datatype
+```
+int64
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `VideoTimestamp`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1VideoTimestamp.html)

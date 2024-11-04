@@ -5,9 +5,6 @@ title: "ClearIsRecursive"
 
 Configures how a clear operation should behave - recursive or not.
 
-## Fields
-
-* recursive: [`Bool`](../datatypes/bool.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `ClearIsRecursive`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ClearIsRecursive.html)

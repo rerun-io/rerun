@@ -16,17 +16,21 @@ All these formats support random access.
 For more compressed image formats, see [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image).
 
 ## Variants
+* `Y_U_V12_LimitedRange` = 20
+* `NV12` = 26
+* `YUY2` = 27
+* `Y8_FullRange` = 30
+* `Y_U_V24_LimitedRange` = 39
+* `Y_U_V24_FullRange` = 40
+* `Y8_LimitedRange` = 41
+* `Y_U_V12_FullRange` = 44
+* `Y_U_V16_LimitedRange` = 49
+* `Y_U_V16_FullRange` = 50
 
-* Y_U_V12_LimitedRange
-* NV12
-* YUY2
-* Y8_FullRange
-* Y_U_V24_LimitedRange
-* Y_U_V24_FullRange
-* Y8_LimitedRange
-* Y_U_V12_FullRange
-* Y_U_V16_LimitedRange
-* Y_U_V16_FullRange
+## Arrow datatype
+```
+uint8
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `PixelFormat`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1datatypes.html)

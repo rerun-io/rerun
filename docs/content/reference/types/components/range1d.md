@@ -5,9 +5,6 @@ title: "Range1D"
 
 A 1D range, specifying a lower and upper bound.
 
-## Fields
-
-* range: [`Range1D`](../datatypes/range1d.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `Range1D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Range1D.html)

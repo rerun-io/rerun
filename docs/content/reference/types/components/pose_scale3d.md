@@ -9,9 +9,6 @@ A scale of 1.0 means no scaling.
 A scale of 2.0 means doubling the size.
 Each component scales along the corresponding axis.
 
-## Fields
-
-* scale: [`Vec3D`](../datatypes/vec3d.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `PoseScale3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1PoseScale3D.html)

@@ -5,9 +5,6 @@ title: "RotationAxisAngle"
 
 3D rotation represented by a rotation around a given axis.
 
-## Fields
-
-* rotation: [`RotationAxisAngle`](../datatypes/rotation_axis_angle.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `RotationAxisAngle`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1RotationAxisAngle.html)

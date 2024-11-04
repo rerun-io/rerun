@@ -6,9 +6,16 @@ title: "Range2D"
 An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum corners.
 
 ## Fields
+* `x_range`: [`Range1D`](../datatypes/range1d.md)
+* `y_range`: [`Range1D`](../datatypes/range1d.md)
 
-* x_range: [`Range1D`](../datatypes/range1d.md)
-* y_range: [`Range1D`](../datatypes/range1d.md)
+## Arrow datatype
+```
+Struct {
+    x_range: FixedSizeList<float64, 2>
+    y_range: FixedSizeList<float64, 2>
+}
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `Range2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Range2D.html)

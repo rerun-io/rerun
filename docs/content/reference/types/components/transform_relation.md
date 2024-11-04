@@ -6,9 +6,8 @@ title: "TransformRelation"
 Specifies relation a spatial transform describes.
 
 ## Variants
-
-* ParentFromChild
-* ChildFromParent
+* `ParentFromChild` = 1
+* `ChildFromParent` = 2
 
 ## API reference links
  * 🌊 [C++ API docs for `TransformRelation`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)

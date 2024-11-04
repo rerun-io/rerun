@@ -8,18 +8,22 @@ The innermost datatype of an image.
 How individual color channel components are encoded.
 
 ## Variants
+* `U8` = 6
+* `I8` = 7
+* `U16` = 8
+* `I16` = 9
+* `U32` = 10
+* `I32` = 11
+* `U64` = 12
+* `I64` = 13
+* `F16` = 33
+* `F32` = 34
+* `F64` = 35
 
-* U8
-* I8
-* U16
-* I16
-* U32
-* I32
-* U64
-* I64
-* F16
-* F32
-* F64
+## Arrow datatype
+```
+uint8
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `ChannelDatatype`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1datatypes.html)

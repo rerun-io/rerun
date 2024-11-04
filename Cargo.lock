@@ -6242,6 +6242,7 @@ name = "re_types_builder"
 version = "0.20.0-alpha.1+dev"
 dependencies = [
  "anyhow",
+ "arrow",
  "camino",
  "clang-format",
  "flatbuffers",

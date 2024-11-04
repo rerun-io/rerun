@@ -10,13 +10,12 @@ i.e. a single pixel covers more than one tick worth of data. It can greatly impr
 (and readability) in such situations as it prevents overdraw.
 
 ## Variants
-
-* Off
-* Average
-* Max
-* Min
-* MinMax
-* MinMaxAverage
+* `Off` = 1
+* `Average` = 2
+* `Max` = 3
+* `Min` = 4
+* `MinMax` = 5
+* `MinMaxAverage` = 6
 
 ## API reference links
  * 🌊 [C++ API docs for `AggregationPolicy`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)

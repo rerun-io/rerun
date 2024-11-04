@@ -5,9 +5,6 @@ title: "LatLon"
 
 A geographical position expressed in EPSG:4326 latitude and longitude.
 
-## Fields
-
-* lat_lon: [`DVec2D`](../datatypes/dvec2d.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `LatLon`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1LatLon.html?speculative-link)

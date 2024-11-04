@@ -6,9 +6,26 @@ title: "TimeRange"
 Visible time range bounds for a specific timeline.
 
 ## Fields
+* `start`: [`TimeRangeBoundary`](../datatypes/time_range_boundary.md)
+* `end`: [`TimeRangeBoundary`](../datatypes/time_range_boundary.md)
 
-* start: [`TimeRangeBoundary`](../datatypes/time_range_boundary.md)
-* end: [`TimeRangeBoundary`](../datatypes/time_range_boundary.md)
+## Arrow datatype
+```
+Struct {
+    start: DenseUnion {
+        0 = "_null_markers": nullable null
+        1 = "CursorRelative": int64
+        2 = "Absolute": int64
+        3 = "Infinite": nullable null
+    }
+    end: DenseUnion {
+        0 = "_null_markers": nullable null
+        1 = "CursorRelative": int64
+        2 = "Absolute": int64
+        3 = "Infinite": nullable null
+    }
+}
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `TimeRange`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1TimeRange.html)

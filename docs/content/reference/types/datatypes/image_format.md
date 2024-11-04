@@ -6,12 +6,22 @@ title: "ImageFormat"
 The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).
 
 ## Fields
+* `width`: `uint32`
+* `height`: `uint32`
+* `pixel_format`: nullable [`PixelFormat`](../datatypes/pixel_format.md)
+* `color_model`: nullable [`ColorModel`](../datatypes/color_model.md)
+* `channel_datatype`: nullable [`ChannelDatatype`](../datatypes/channel_datatype.md)
 
-* width: `u32`
-* height: `u32`
-* pixel_format: [`PixelFormat`](../datatypes/pixel_format.md)
-* color_model: [`ColorModel`](../datatypes/color_model.md)
-* channel_datatype: [`ChannelDatatype`](../datatypes/channel_datatype.md)
+## Arrow datatype
+```
+Struct {
+    width: uint32
+    height: uint32
+    pixel_format: nullable uint8
+    color_model: nullable uint8
+    channel_datatype: nullable uint8
+}
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `ImageFormat`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1ImageFormat.html)

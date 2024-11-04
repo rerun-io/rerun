@@ -8,12 +8,16 @@ Specified what color components are present in an [`archetypes.Image`](https://r
 This combined with [`datatypes.ChannelDatatype`](https://rerun.io/docs/reference/types/datatypes/channel_datatype) determines the pixel format of an image.
 
 ## Variants
+* `L` = 1
+* `RGB` = 2
+* `RGBA` = 3
+* `BGR` = 4
+* `BGRA` = 5
 
-* L
-* RGB
-* RGBA
-* BGR
-* BGRA
+## Arrow datatype
+```
+uint8
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `ColorModel`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1datatypes.html)

@@ -7,9 +7,6 @@ A buffer that is known to store image data.
 
 To interpret the contents of this buffer, see, [`components.ImageFormat`](https://rerun.io/docs/reference/types/components/image_format).
 
-## Fields
-
-* buffer: [`Blob`](../datatypes/blob.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `ImageBuffer`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ImageBuffer.html)

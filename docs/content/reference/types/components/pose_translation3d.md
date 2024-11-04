@@ -5,9 +5,6 @@ title: "PoseTranslation3D"
 
 A translation vector in 3D space that doesn't propagate in the transform hierarchy.
 
-## Fields
-
-* vector: [`Vec3D`](../datatypes/vec3d.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `PoseTranslation3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1PoseTranslation3D.html)

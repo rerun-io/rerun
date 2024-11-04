@@ -10,9 +10,6 @@ making it impossible to transform the entity path into its parent's space and vi
 It *only* applies to space views that work with spatial transformations, i.e. 2D & 3D space views.
 This is useful for specifying that a subgraph is independent of the rest of the scene.
 
-## Fields
-
-* is_disconnected: [`Bool`](../datatypes/bool.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `DisconnectedSpace`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1DisconnectedSpace.html)

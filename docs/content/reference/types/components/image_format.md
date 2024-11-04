@@ -5,9 +5,6 @@ title: "ImageFormat"
 
 The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).
 
-## Fields
-
-* image_format: [`ImageFormat`](../datatypes/image_format.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `ImageFormat`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ImageFormat.html)

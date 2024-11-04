@@ -6,9 +6,16 @@ title: "RotationAxisAngle"
 3D rotation represented by a rotation around a given axis.
 
 ## Fields
+* `axis`: [`Vec3D`](../datatypes/vec3d.md)
+* `angle`: [`Angle`](../datatypes/angle.md)
 
-* axis: [`Vec3D`](../datatypes/vec3d.md)
-* angle: [`Angle`](../datatypes/angle.md)
+## Arrow datatype
+```
+Struct {
+    axis: FixedSizeList<float32, 3>
+    angle: float32
+}
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `RotationAxisAngle`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1RotationAxisAngle.html)

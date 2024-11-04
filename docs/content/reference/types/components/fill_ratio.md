@@ -10,9 +10,6 @@ Valid range is from 0 to max float although typically values above 1.0 are not u
 
 Defaults to 1.0.
 
-## Fields
-
-* value: [`Float32`](../datatypes/float32.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `FillRatio`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1FillRatio.html)

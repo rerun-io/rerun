@@ -10,14 +10,13 @@ In the future, the Rerun Viewer will allow users to define their own colormaps,
 but currently the Viewer is limited to the types defined here.
 
 ## Variants
-
-* Grayscale
-* Inferno
-* Magma
-* Plasma
-* Turbo
-* Viridis
-* CyanToYellow
+* `Grayscale` = 1
+* `Inferno` = 2
+* `Magma` = 3
+* `Plasma` = 4
+* `Turbo` = 5
+* `Viridis` = 6
+* `CyanToYellow` = 7
 
 ## API reference links
  * 🌊 [C++ API docs for `Colormap`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)

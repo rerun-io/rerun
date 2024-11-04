@@ -6,9 +6,8 @@ title: "MagnificationFilter"
 Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.
 
 ## Variants
-
-* Nearest
-* Linear
+* `Nearest` = 1
+* `Linear` = 2
 
 ## API reference links
  * 🌊 [C++ API docs for `MagnificationFilter`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)

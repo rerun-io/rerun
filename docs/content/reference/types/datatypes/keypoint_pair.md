@@ -6,9 +6,16 @@ title: "KeypointPair"
 A connection between two [`datatypes.KeypointId`](https://rerun.io/docs/reference/types/datatypes/keypoint_id)s.
 
 ## Fields
+* `keypoint0`: [`KeypointId`](../datatypes/keypoint_id.md)
+* `keypoint1`: [`KeypointId`](../datatypes/keypoint_id.md)
 
-* keypoint0: [`KeypointId`](../datatypes/keypoint_id.md)
-* keypoint1: [`KeypointId`](../datatypes/keypoint_id.md)
+## Arrow datatype
+```
+Struct {
+    keypoint0: uint16
+    keypoint1: uint16
+}
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `KeypointPair`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1KeypointPair.html)

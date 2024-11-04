@@ -9,10 +9,18 @@ Color and label will be used to annotate entities/keypoints which reference the 
 The id refers either to a class or key-point id
 
 ## Fields
+* `id`: `uint16`
+* `label`: nullable [`Utf8`](../datatypes/utf8.md)
+* `color`: nullable [`Rgba32`](../datatypes/rgba32.md)
 
-* id: `u16`
-* label: [`Utf8`](../datatypes/utf8.md)
-* color: [`Rgba32`](../datatypes/rgba32.md)
+## Arrow datatype
+```
+Struct {
+    id: uint16
+    label: nullable utf8
+    color: nullable uint32
+}
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `AnnotationInfo`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1AnnotationInfo.html)

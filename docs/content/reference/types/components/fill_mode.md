@@ -6,10 +6,9 @@ title: "FillMode"
 How a geometric shape is drawn and colored.
 
 ## Variants
-
-* MajorWireframe
-* DenseWireframe
-* Solid
+* `MajorWireframe` = 1
+* `DenseWireframe` = 2
+* `Solid` = 3
 
 ## API reference links
  * 🌊 [C++ API docs for `FillMode`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)

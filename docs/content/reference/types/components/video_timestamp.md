@@ -5,9 +5,6 @@ title: "VideoTimestamp"
 
 Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).
 
-## Fields
-
-* timestamp: [`VideoTimestamp`](../datatypes/video_timestamp.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `VideoTimestamp`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1VideoTimestamp.html)

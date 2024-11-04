@@ -8,18 +8,35 @@ The underlying storage for [`archetypes.Tensor`](https://rerun.io/docs/reference
 Tensor elements are stored in a contiguous buffer of a single type.
 
 ## Variants
+* `U8` = 1: List of `uint8`
+* `U16` = 2: List of `uint16`
+* `U32` = 3: List of `uint32`
+* `U64` = 4: List of `uint64`
+* `I8` = 5: List of `int8`
+* `I16` = 6: List of `int16`
+* `I32` = 7: List of `int32`
+* `I64` = 8: List of `int64`
+* `F16` = 9: List of `float16`
+* `F32` = 10: List of `float32`
+* `F64` = 11: List of `float64`
 
-* U8: list of `u8`
-* U16: list of `u16`
-* U32: list of `u32`
-* U64: list of `u64`
-* I8: list of `i8`
-* I16: list of `i16`
-* I32: list of `i32`
-* I64: list of `i64`
-* F16: list of `f16`
-* F32: list of `f32`
-* F64: list of `f64`
+## Arrow datatype
+```
+DenseUnion {
+    0 = "_null_markers": nullable null
+    1 = "U8": List<uint8>
+    2 = "U16": List<uint16>
+    3 = "U32": List<uint32>
+    4 = "U64": List<uint64>
+    5 = "I8": List<int8>
+    6 = "I16": List<int16>
+    7 = "I32": List<int32>
+    8 = "I64": List<int64>
+    9 = "F16": List<float16>
+    10 = "F32": List<float32>
+    11 = "F64": List<float64>
+}
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `TensorBuffer`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1TensorBuffer.html)

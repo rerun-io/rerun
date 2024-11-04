@@ -12,9 +12,6 @@ a 2D RGB Image, the shape would be `[height, width, channel]`.
 These dimensions are combined with an index to look up values from the `buffer` field,
 which stores a contiguous array of typed values.
 
-## Fields
-
-* data: [`TensorData`](../datatypes/tensor_data.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `TensorData`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1TensorData.html)

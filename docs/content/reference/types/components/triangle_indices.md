@@ -5,9 +5,6 @@ title: "TriangleIndices"
 
 The three indices of a triangle in a triangle mesh.
 
-## Fields
-
-* indices: [`UVec3D`](../datatypes/uvec3d.md)
 
 ## API reference links
  * 🌊 [C++ API docs for `TriangleIndices`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1TriangleIndices.html)

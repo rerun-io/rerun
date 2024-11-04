@@ -19,10 +19,29 @@ keypoints should be connected with an edge. The edge should be labeled and
 colored as described by the class's [`datatypes.AnnotationInfo`](https://rerun.io/docs/reference/types/datatypes/annotation_info).
 
 ## Fields
+* `info`: [`AnnotationInfo`](../datatypes/annotation_info.md)
+* `keypoint_annotations`: List of [`AnnotationInfo`](../datatypes/annotation_info.md)
+* `keypoint_connections`: List of [`KeypointPair`](../datatypes/keypoint_pair.md)
 
-* info: [`AnnotationInfo`](../datatypes/annotation_info.md)
-* keypoint_annotations: list of [`AnnotationInfo`](../datatypes/annotation_info.md)
-* keypoint_connections: list of [`KeypointPair`](../datatypes/keypoint_pair.md)
+## Arrow datatype
+```
+Struct {
+    info: Struct {
+        id: uint16
+        label: nullable utf8
+        color: nullable uint32
+    }
+    keypoint_annotations: List<Struct {
+            id: uint16
+            label: nullable utf8
+            color: nullable uint32
+        }>
+    keypoint_connections: List<Struct {
+            keypoint0: uint16
+            keypoint1: uint16
+        }>
+}
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `ClassDescription`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1ClassDescription.html)
