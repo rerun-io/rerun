@@ -688,7 +688,7 @@ pub mod ar_plane_anchor {
     )]
     #[repr(i32)]
     pub enum PlaneClassificationStatus {
-        /// The classfication process for the plane anchor has completed but the
+        /// The classification process for the plane anchor has completed but the
         /// result is inconclusive.
         Unknown = 0,
         /// No classication information can be provided (set on error or if the
@@ -696,7 +696,7 @@ pub mod ar_plane_anchor {
         Unavailable = 1,
         /// The classification process has not completed.
         Undetermined = 2,
-        /// The classfication process for the plane anchor has completed.
+        /// The classification process for the plane anchor has completed.
         Known = 3,
     }
     impl PlaneClassificationStatus {
