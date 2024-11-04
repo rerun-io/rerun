@@ -269,6 +269,8 @@ pub struct RecordingMetadata {
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct RegisterRecordingResponse {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<RecordingId>,
     /// Note / TODO(zehiko): this implies we read the record (for example go through entire .rrd file
     /// chunk by chunk) and extract the metadata. So we might want to 1/ not do this i.e.
     /// only do it as part of explicit GetMetadata request or 2/ do it if Request has "include_metadata=true"
