@@ -154,6 +154,18 @@ pub fn show_video_blob_info(
 
                         Err(err) => {
                             ui.error_label_long(&err.to_string());
+
+                            if let re_renderer::video::VideoPlayerError::Decoding(
+                                re_video::decode::Error::Ffmpeg(ffmpeg),
+                            ) = err
+                            {
+                                if let re_video::decode::FfmpegError::FfmpegNotInstalled {
+                                    download_url: Some(url),
+                                } = ffmpeg.as_ref()
+                                {
+                                    ui.markdown_ui(&format!("You can download a build of `FFmpeg` [here]({url}). For Rerun to be able to use it, its binaries need to be reachable from `PATH`."));
+                                }
+                            }
                         }
                     }
                 }

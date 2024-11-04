@@ -19,7 +19,7 @@ use super::{AsyncDecoder, Chunk, Frame, OutputCallback};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("Requires an install of FFmpeg, none has been found in PATH.")]
+    #[error("Couldn't find an installation of the FFmpeg executable.")]
     FfmpegNotInstalled {
         /// Download URL for the latest version of `FFmpeg` on the current platform.
         /// None if the platform is not supported.

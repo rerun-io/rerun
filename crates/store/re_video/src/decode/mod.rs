@@ -88,6 +88,8 @@ mod webcodecs;
 
 use crate::Time;
 
+pub use ffmpeg::Error as FfmpegError;
+
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum Error {
     #[error("Unsupported codec: {0}")]
@@ -115,7 +117,7 @@ pub enum Error {
 
     #[cfg(with_ffmpeg)]
     #[error(transparent)]
-    Ffmpeg(std::sync::Arc<ffmpeg::Error>),
+    Ffmpeg(std::sync::Arc<FfmpegError>),
 
     #[error("Unsupported bits per component: {0}")]
     BadBitsPerComponent(usize),
