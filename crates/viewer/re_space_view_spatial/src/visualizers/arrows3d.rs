@@ -197,7 +197,9 @@ impl VisualizerSystem for Arrows3DVisualizer {
         };
 
         let mut line_builder = LineDrawableBuilder::new(render_ctx);
-        line_builder.radius_boost_in_ui_points_for_outlines(re_space_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+        line_builder.radius_boost_in_ui_points_for_outlines(
+            re_space_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+        );
 
         use super::entity_iterator::{iter_primitive_array, process_archetype};
         process_archetype::<Self, Arrows3D, _>(
