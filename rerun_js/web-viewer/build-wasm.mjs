@@ -110,8 +110,9 @@ function main() {
       },
     },
   });
+  const mode = args.values.mode;
 
-  if (!args.values.mode) {
+  if (!mode) {
     throw new Error("Missing required argument: mode");
   }
 
