@@ -36,7 +36,7 @@ namespace rerun::archetypes {
     ///
     ///     rec.log(
     ///         "rerun_hq",
-    ///         rerun::GeoPoints({{59.319221, 18.075631}})
+    ///         rerun::GeoPoints::from_lat_lon({{59.319221, 18.075631}})
     ///             .with_radii(rerun::Radius::ui_points(10.0f))
     ///             .with_colors(rerun::Color(255, 0, 0))
     ///     );
@@ -58,6 +58,16 @@ namespace rerun::archetypes {
 
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
+
+      public: // START of extensions from geo_points_ext.cpp:
+        /// Creates a new GeoPoints object based on EPSG:4326 latitude and longitude (North/East-positive degrees).
+        static GeoPoints from_lat_lon(Collection<components::LatLon> positions_) {
+            GeoPoints points;
+            points.positions = std::move(positions_);
+            return points;
+        }
+
+        // END of extensions from geo_points_ext.cpp, start of generated code:
 
       public:
         GeoPoints() = default;

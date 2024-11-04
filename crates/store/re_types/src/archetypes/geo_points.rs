@@ -31,7 +31,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 ///     rec.log(
 ///         "rerun_hq",
-///         &rerun::GeoPoints::new([(59.319221, 18.075631)])
+///         &rerun::GeoPoints::from_lat_lon([(59.319221, 18.075631)])
 ///             .with_radii([rerun::Radius::new_ui_points(10.0)])
 ///             .with_colors([rerun::Color::from_rgb(255, 0, 0)]),
 ///     )?;
@@ -227,7 +227,9 @@ impl ::re_types_core::ArchetypeReflectionMarker for GeoPoints {}
 impl GeoPoints {
     /// Create a new `GeoPoints`.
     #[inline]
-    pub fn new(positions: impl IntoIterator<Item = impl Into<crate::components::LatLon>>) -> Self {
+    pub(crate) fn new(
+        positions: impl IntoIterator<Item = impl Into<crate::components::LatLon>>,
+    ) -> Self {
         Self {
             positions: positions.into_iter().map(Into::into).collect(),
             radii: None,
