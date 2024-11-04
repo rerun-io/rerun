@@ -18,7 +18,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Component**: A geospatial line string expressed in EPSG:4326 latitude and longitude.
+/// **Component**: A geospatial line string expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
 #[derive(Clone, Debug, Default, PartialEq)]
 #[repr(transparent)]
 pub struct GeoLineString(pub Vec<crate::datatypes::DVec2D>);

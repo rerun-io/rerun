@@ -18,7 +18,7 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: Geospatial points with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
+    /// **Archetype**: Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) altitude and longitude (North/East-positive degrees), and optional colors and radii.
     ///
     /// **Note**: Geospatial entities are experimental.
     ///
@@ -43,7 +43,7 @@ namespace rerun::archetypes {
     /// }
     /// ```
     struct GeoPoints {
-        /// The EPSG:4326 coordinates for the points.
+        /// The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).
         Collection<rerun::components::LatLon> positions;
 
         /// Optional radii for the points, effectively turning them into circles.

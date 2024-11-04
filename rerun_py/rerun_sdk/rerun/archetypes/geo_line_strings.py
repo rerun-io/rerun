@@ -21,7 +21,9 @@ __all__ = ["GeoLineStrings"]
 @define(str=False, repr=False, init=False)
 class GeoLineStrings(Archetype):
     """
-    **Archetype**: Geospatial line strings with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
+    **Archetype**: Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/4326) altitude and longitude (North/East-positive degrees), and optional colors and radii.
+
+    Also known as "line strips" or "polylines".
 
     **Note**: Geospatial entities are experimental.
 
@@ -64,7 +66,7 @@ class GeoLineStrings(Archetype):
         Parameters
         ----------
         line_strings:
-            The lines strings, expressed in EPSG:4326 coordinates.
+            The lines strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
         radii:
             Optional radii for the line strings.
         colors:
@@ -100,7 +102,7 @@ class GeoLineStrings(Archetype):
         metadata={"component": "required"},
         converter=components.GeoLineStringBatch._required,  # type: ignore[misc]
     )
-    # The lines strings, expressed in EPSG:4326 coordinates.
+    # The lines strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

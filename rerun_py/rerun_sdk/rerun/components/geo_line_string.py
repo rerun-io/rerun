@@ -26,7 +26,7 @@ __all__ = ["GeoLineString", "GeoLineStringArrayLike", "GeoLineStringBatch", "Geo
 
 @define(init=False)
 class GeoLineString(GeoLineStringExt, ComponentMixin):
-    """**Component**: A geospatial line string expressed in EPSG:4326 latitude and longitude."""
+    """**Component**: A geospatial line string expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees)."""
 
     _BATCH_TYPE = None
 

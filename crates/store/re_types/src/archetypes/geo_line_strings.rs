@@ -18,7 +18,9 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: Geospatial line strings with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
+/// **Archetype**: Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/4326) altitude and longitude (North/East-positive degrees), and optional colors and radii.
+///
+/// Also known as "line strips" or "polylines".
 ///
 /// **Note**: Geospatial entities are experimental.
 ///
@@ -47,7 +49,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ```
 #[derive(Clone, Debug, PartialEq)]
 pub struct GeoLineStrings {
-    /// The lines strings, expressed in EPSG:4326 coordinates.
+    /// The lines strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
     pub line_strings: Vec<crate::components::GeoLineString>,
 
     /// Optional radii for the line strings.
