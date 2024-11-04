@@ -1,6 +1,10 @@
 //! Send video data to `ffmpeg` over CLI to decode it.
 
-use std::{collections::BTreeMap, io::Write, sync::Arc};
+use std::{
+    collections::BTreeMap,
+    io::Write,
+    sync::{atomic::AtomicBool, Arc},
+};
 
 use crossbeam::channel::{Receiver, Sender};
 use ffmpeg_sidecar::{
@@ -82,6 +86,9 @@ struct FfmpegProcessAndListener {
 
     listen_thread: Option<std::thread::JoinHandle<()>>,
     write_thread: Option<std::thread::JoinHandle<()>>,
+
+    /// If true, the write thread will not report errors. Used upon exit, so the write thread won't log spam on the hung up stdin.
+    suppress_write_error_reports: Arc<AtomicBool>,
 }
 
 impl FfmpegProcessAndListener {
@@ -142,12 +149,20 @@ impl FfmpegProcessAndListener {
             })
             .expect("Failed to spawn ffmpeg listener thread");
 
+        let suppress_write_error_reports = Arc::new(AtomicBool::new(false));
         let write_thread = std::thread::Builder::new()
             .name(format!("ffmpeg-writer for {debug_name}"))
             .spawn({
                 let ffmpeg_stdin = ffmpeg.take_stdin().ok_or(Error::NoStdin)?;
+                let suppress_write_error_reports = suppress_write_error_reports.clone();
                 move || {
-                    write_ffmpeg_input(ffmpeg_stdin, &frame_data_rx, on_output.as_ref(), &avcc);
+                    write_ffmpeg_input(
+                        ffmpeg_stdin,
+                        &frame_data_rx,
+                        on_output.as_ref(),
+                        &avcc,
+                        &suppress_write_error_reports,
+                    );
                 }
             })
             .expect("Failed to spawn ffmpeg writer thread");
@@ -158,6 +173,7 @@ impl FfmpegProcessAndListener {
             frame_data_tx,
             listen_thread: Some(listen_thread),
             write_thread: Some(write_thread),
+            suppress_write_error_reports,
         })
     }
 }
@@ -165,6 +181,8 @@ impl FfmpegProcessAndListener {
 impl Drop for FfmpegProcessAndListener {
     fn drop(&mut self) {
         re_tracing::profile_function!();
+        self.suppress_write_error_reports
+            .store(true, std::sync::atomic::Ordering::Relaxed);
         self.frame_data_tx.send(FfmpegFrameData::EndOfStream).ok();
         self.ffmpeg.kill().ok();
 
@@ -186,6 +204,7 @@ fn write_ffmpeg_input(
     frame_data_rx: &Receiver<FfmpegFrameData>,
     on_output: &OutputCallback,
     avcc: &re_mp4::Avc1Box,
+    suppress_write_error_reports: &AtomicBool,
 ) {
     let mut state = NaluStreamState::default();
 
@@ -198,11 +217,16 @@ fn write_ffmpeg_input(
         if let Err(err) =
             write_avc_chunk_to_nalu_stream(avcc, &mut ffmpeg_stdin, &chunk, &mut state)
         {
+            let write_error = matches!(err, Error::FailedToWriteToFfmpeg(_));
+            if !write_error
+                || !suppress_write_error_reports.load(std::sync::atomic::Ordering::Relaxed)
+            {
+                (on_output)(Err(err.into()));
+            }
+
             // This is unlikely to improve! Ffmpeg process likely died.
             // By exiting here we hang up on the channel, making future attempts to push into it fail which should cause a reset eventually.
-            let should_exit = matches!(err, Error::FailedToWriteToFfmpeg(_));
-            (on_output)(Err(err.into()));
-            if should_exit {
+            if write_error {
                 return;
             }
         } else {
