@@ -246,6 +246,7 @@ fn read_ffmpeg_output(
         let patterns = [
             "Duration: N/A, bitrate: N/A",
             "frame=    0 fps=0.0 q=0.0 size=       0kB time=N/A bitrate=N/A speed=N/A",
+            "encoder         : ", // Describes the encoder that was used to encode a video.
             "Metadata:",
             // TODO(andreas): we should just handle yuv420p directly!
             "No accelerated colorspace conversion found from yuv420p to rgb24",
@@ -272,12 +273,20 @@ fn read_ffmpeg_output(
         match event {
             FfmpegEvent::Log(LogLevel::Info, msg) => {
                 if !should_ignore_log_msg(&msg) {
-                    re_log::debug!("{debug_name} decoder: {msg}");
+                    re_log::trace!("{debug_name} decoder: {msg}");
                 }
             }
 
-            FfmpegEvent::Log(LogLevel::Warning, msg) => {
+            FfmpegEvent::Log(LogLevel::Warning, mut msg) => {
                 if !should_ignore_log_msg(&msg) {
+                    // Make warn_once work on `[swscaler @ 0x148db8000]` style warnings even if the address is different every time.
+                    if let Some(pos) = msg.find("[swscaler @ 0x") {
+                        msg = [
+                            &msg[..pos],
+                            &msg[(pos + "[swscaler @ 0x148db8000]".len())..],
+                        ]
+                        .join("[swscaler]");
+                    };
                     re_log::warn_once!("{debug_name} decoder: {msg}");
                 }
             }
@@ -298,7 +307,7 @@ fn read_ffmpeg_output(
                     return;
                 }
                 if !should_ignore_log_msg(&msg) {
-                    re_log::debug!("{debug_name} decoder: {msg}");
+                    re_log::warn_once!("{debug_name} decoder: {msg}");
                 }
             }
 
