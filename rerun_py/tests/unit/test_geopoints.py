@@ -55,6 +55,18 @@ def test_geopoints() -> None:
         assert arch.colors == colors_expected(colors)
 
 
+def test_geopoints_lat_lon_constructors() -> None:
+    positions_lat_lon = np.array([[59.319221, 18.075631], [50.319221, 12.075631]])
+    positions_lon_lat = np.fliplr(positions_lat_lon)
+
+    arch1 = rr.GeoPoints.from_lat_lon(positions_lat_lon)
+    arch2 = rr.GeoPoints.from_lon_lat(positions_lon_lat)
+    arch3 = rr.GeoPoints(positions_lat_lon)
+
+    assert arch1.positions == arch2.positions
+    assert arch2.positions == arch3.positions
+
+
 @pytest.mark.parametrize(
     "data",
     [
