@@ -4,7 +4,7 @@
 // #define EDIT_EXTENSION
 
 namespace rerun {
-    namespace archetypes {
+    namespace datatypes {
 
 #ifdef EDIT_EXTENSION
         // <CODEGEN_COPY_TO_HEADER>
@@ -17,5 +17,5 @@ namespace rerun {
 
         // </CODEGEN_COPY_TO_HEADER>
 #endif
-    } // namespace archetypes
+    } // namespace datatypes
 } // namespace rerun
