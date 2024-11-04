@@ -81,13 +81,14 @@
 mod async_decoder_wrapper;
 #[cfg(with_dav1d)]
 mod av1;
-
+#[cfg(with_ffmpeg)]
+mod ffmpeg;
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
 
 use crate::Time;
 
-#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
+#[derive(thiserror::Error, Debug, Clone)]
 pub enum Error {
     #[error("Unsupported codec: {0}")]
     UnsupportedCodec(String),
@@ -111,6 +112,10 @@ pub enum Error {
     #[cfg(target_arch = "wasm32")]
     #[error(transparent)]
     WebDecoder(#[from] webcodecs::Error),
+
+    #[cfg(with_ffmpeg)]
+    #[error(transparent)]
+    Ffmpeg(std::sync::Arc<ffmpeg::Error>),
 
     #[error("Unsupported bits per component: {0}")]
     BadBitsPerComponent(usize),
@@ -181,22 +186,40 @@ pub fn new_decoder(
             }
         }
 
+        #[cfg(with_ffmpeg)]
+        re_mp4::StsdBoxContent::Avc1(avc1_box) => {
+            re_log::trace!("Decoding H.264…");
+            Ok(Box::new(ffmpeg::FfmpegCliH264Decoder::new(
+                debug_name.to_owned(),
+                avc1_box.clone(),
+                on_output,
+            )?))
+        }
+
         _ => Err(Error::UnsupportedCodec(video.human_readable_codec_string())),
     }
 }
 
-/// One chunk of encoded video data; usually one frame.
+/// One chunk of encoded video data, representing a single [`crate::Sample`].
 ///
-/// One loaded [`crate::Sample`].
+/// For details on how to interpret the data, see [`crate::Sample`].
 pub struct Chunk {
     /// The start of a new [`crate::demux::GroupOfPictures`]?
     pub is_sync: bool,
 
     pub data: Vec<u8>,
 
-    /// Presentation/composition timestamp for the sample in this chunk.
-    /// *not* decode timestamp.
-    pub composition_timestamp: Time,
+    /// Decode timestamp of this sample.
+    /// Chunks are expected to be submitted in the order of decode timestamp.
+    ///
+    /// `decode_timestamp <= presentation_timestamp`
+    pub decode_timestamp: Time,
+
+    /// Presentation timestamp for the sample in this chunk.
+    /// Often synonymous with `composition_timestamp`.
+    ///
+    /// `decode_timestamp <= presentation_timestamp`
+    pub presentation_timestamp: Time,
 
     pub duration: Time,
 }
@@ -229,6 +252,11 @@ pub struct FrameInfo {
     /// A duration of [`Time::MAX`] indicates that the frame is invalid or not yet available.
     // Implementation note: unlike with presentation timestamp we may be able fine with making this optional.
     pub duration: Time,
+
+    /// The decode timestamp of the last chunk that was needed to decode this frame.
+    ///
+    /// None indicates that the information is not available.
+    pub latest_decode_timestamp: Option<Time>,
 }
 
 impl Default for FrameInfo {
@@ -236,6 +264,7 @@ impl Default for FrameInfo {
         Self {
             presentation_timestamp: Time::MAX,
             duration: Time::MAX,
+            latest_decode_timestamp: None,
         }
     }
 }

@@ -196,8 +196,9 @@ impl VideoPlayer {
         //     = determines the decoding order of samples
         //
         // Note: `decode <= composition` for any given sample.
-        //       For some codecs, the two timestamps are the same.
+        //       For some codecs & videos, the two timestamps are the same.
         // We must enqueue samples in decode order, but show them in composition order.
+        // In the presence of b-frames this order may be different!
 
         // 1. Find the latest sample where `decode_timestamp <= presentation_timestamp`.
         //    Because `decode <= composition`, we never have to look further ahead in the
@@ -211,11 +212,11 @@ impl VideoPlayer {
         };
 
         // 2. Search _backwards_, starting at `decode_sample_idx`, looking for
-        //    the first sample where `sample.composition_timestamp <= presentation_timestamp`.
+        //    the first sample where `sample.presentation_timestamp <= presentation_timestamp`.
         //    This is the sample which when decoded will be presented at the timestamp the user requested.
         let Some(requested_sample_idx) = self.data.samples[..=decode_sample_idx]
             .iter()
-            .rposition(|sample| sample.composition_timestamp <= presentation_timestamp)
+            .rposition(|sample| sample.presentation_timestamp <= presentation_timestamp)
         else {
             return Err(VideoPlayerError::EmptyVideo);
         };
@@ -288,7 +289,7 @@ impl VideoPlayer {
         );
 
         if let Err(err) = result {
-            if err == VideoPlayerError::EmptyBuffer {
+            if matches!(err, VideoPlayerError::EmptyBuffer) {
                 // No buffered frames
 
                 // Might this be due to an error?

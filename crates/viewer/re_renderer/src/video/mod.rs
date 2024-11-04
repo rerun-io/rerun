@@ -14,7 +14,7 @@ use crate::{
 };
 
 /// Error that can occur during playing videos.
-#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
+#[derive(thiserror::Error, Debug, Clone)]
 pub enum VideoPlayerError {
     #[error("The decoder is lagging behind")]
     EmptyBuffer,

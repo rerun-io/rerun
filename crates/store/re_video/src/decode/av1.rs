@@ -76,14 +76,14 @@ impl SyncDav1dDecoder {
         re_tracing::profile_function!();
         econtext::econtext_function_data!(format!(
             "chunk timestamp: {:?}",
-            chunk.composition_timestamp
+            chunk.presentation_timestamp
         ));
 
         re_tracing::profile_scope!("send_data");
         match self.decoder.send_data(
             chunk.data,
             None,
-            Some(chunk.composition_timestamp.0),
+            Some(chunk.presentation_timestamp.0),
             Some(chunk.duration.0),
         ) {
             Ok(()) => {}
@@ -255,6 +255,7 @@ fn create_frame(debug_name: &str, picture: &dav1d::Picture) -> Result<Frame> {
         info: FrameInfo {
             presentation_timestamp: Time(picture.timestamp().unwrap_or(0)),
             duration: Time(picture.duration()),
+            ..Default::default()
         },
     })
 }
