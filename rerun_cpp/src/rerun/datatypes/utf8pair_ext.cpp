@@ -15,5 +15,5 @@ namespace rerun {
 
         // </CODEGEN_COPY_TO_HEADER>
 #endif
-    } // namespace archetypes
+    } // namespace datatypes
 } // namespace rerun
