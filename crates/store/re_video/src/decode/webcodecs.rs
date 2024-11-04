@@ -191,7 +191,7 @@ fn init_video_decoder(
     };
 
     let on_error = Closure::wrap(Box::new(move |err: js_sys::Error| {
-        on_output_callback(Err(super::Error::WebDecoderError(Error::Decoding(
+        on_output_callback(Err(super::Error::WebDecoder(Error::Decoding(
             js_error_to_string(&err),
         ))));
     }) as Box<dyn Fn(js_sys::Error)>);

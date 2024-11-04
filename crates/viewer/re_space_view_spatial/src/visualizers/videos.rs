@@ -304,7 +304,7 @@ impl VideoFrameReferenceVisualizer {
                 Hash64::hash("video_error").hash64(),
                 render_ctx,
                 || {
-                    let mut reader = image::io::Reader::new(std::io::Cursor::new(
+                    let mut reader = image::ImageReader::new(std::io::Cursor::new(
                         re_ui::icons::VIDEO_ERROR.png_bytes,
                     ));
                     reader.set_format(image::ImageFormat::Png);
@@ -405,8 +405,7 @@ fn latest_at_query_video_from_datastore(
 ) -> Option<(Arc<Result<Video, VideoLoadError>>, Blob)> {
     let query = ctx.current_query();
 
-    let results = ctx.recording().query_caches().latest_at(
-        ctx.recording_store(),
+    let results = ctx.recording_engine().cache().latest_at(
         &query,
         entity_path,
         AssetVideo::all_components().iter().copied(),

@@ -1,3 +1,5 @@
+use re_entity_db::{InstancePath, InstancePathHash};
+use re_log_types::EntityPathHash;
 use re_space_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_types::{
     archetypes::GeoPoints,
@@ -5,30 +7,40 @@ use re_types::{
     Loggable as _,
 };
 use re_viewer_context::{
-    auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    VisualizerQueryInfo, VisualizerSystem,
+    auto_color_for_entity_path, IdentifiedViewSystem, Item, ItemCollection, QueryContext,
+    SpaceViewId, SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext,
+    ViewContextCollection, ViewQuery, ViewerContext, VisualizerQueryInfo, VisualizerSystem,
 };
 
-// ---
+use crate::visualizers::{update_picked_instance, PickedInstance};
 
 #[derive(Debug, Clone)]
 struct GeoPointEntry {
     /// Position.
     position: walkers::Position,
 
-    /// Display radius in pixels
+    /// Display radius in ui points
     //TODO(#7872): support for radius in meter
     radius: f32,
 
     /// Color.
     color: egui::Color32,
+
+    /// The instance corresponding to this entry.
+    instance_path: InstancePath,
 }
 
-/// A map scene, with entries on the map to render.
+/// Visualizer for [`GeoPoints`].
 #[derive(Default)]
 pub struct GeoPointsVisualizer {
+    /// Objects to render.
     map_entries: Vec<GeoPointEntry>,
+
+    /// Indices into `map_entries` corresponding to a given entity.
+    entities: nohash_hasher::IntMap<EntityPathHash, Vec<usize>>,
+
+    /// Indices into `map_entries` corresponding to specific instances.
+    instances: ahash::HashMap<InstancePathHash, usize>,
 }
 
 impl IdentifiedViewSystem for GeoPointsVisualizer {
@@ -81,12 +93,14 @@ impl VisualizerSystem for GeoPointsVisualizer {
                 let last_radii = radii.last().copied().unwrap_or(fallback_radius);
 
                 // iterate over all instances
-                for (position, color, radius) in itertools::izip!(
+                for (instance_index, (position, color, radius)) in itertools::izip!(
                     positions,
                     colors.iter().chain(std::iter::repeat(&last_color)),
                     radii.iter().chain(std::iter::repeat(&last_radii)),
-                ) {
-                    self.map_entries.push(GeoPointEntry {
+                )
+                .enumerate()
+                {
+                    let entry = GeoPointEntry {
                         position: walkers::Position::from_lat_lon(
                             position.latitude(),
                             position.longitude(),
@@ -94,7 +108,20 @@ impl VisualizerSystem for GeoPointsVisualizer {
                         //TODO(#7872): support for radius in meter
                         radius: radius.0.abs(),
                         color: color.0.into(),
-                    });
+                        instance_path: InstancePath::instance(
+                            data_result.entity_path.clone(),
+                            (instance_index as u64).into(),
+                        ),
+                    };
+
+                    let next_idx = self.map_entries.len();
+                    self.instances.insert(entry.instance_path.hash(), next_idx);
+                    self.entities
+                        .entry(data_result.entity_path.hash())
+                        .or_default()
+                        .push(next_idx);
+
+                    self.map_entries.push(entry);
                 }
             }
         }
@@ -113,9 +140,17 @@ impl VisualizerSystem for GeoPointsVisualizer {
 
 impl GeoPointsVisualizer {
     /// Return a [`walkers::Plugin`] for this visualizer.
-    pub fn plugin(&self) -> impl walkers::Plugin + '_ {
+    pub fn plugin<'a>(
+        &'a self,
+        ctx: &'a ViewerContext<'a>,
+        view_id: SpaceViewId,
+        picked_instance: &'a mut Option<PickedInstance>,
+    ) -> impl walkers::Plugin + 'a {
         GeoPointsPlugin {
-            map_entries: &self.map_entries,
+            visualizer: self,
+            viewer_ctx: ctx,
+            view_id,
+            picked_instance,
         }
     }
 
@@ -126,6 +161,43 @@ impl GeoPointsVisualizer {
                 .iter()
                 .map(|entry| (entry.position.lat(), entry.position.lon())),
         )
+    }
+
+    /// Returns a slice of entry indices matching the provided instance path.
+    fn indices_for_instance(&self, instance_path: &InstancePath) -> &[usize] {
+        let indices = if instance_path.instance.is_all() {
+            self.entities
+                .get(&instance_path.entity_path.hash())
+                .map(|indices| indices.as_slice())
+        } else {
+            self.instances
+                .get(&instance_path.hash())
+                .map(std::slice::from_ref)
+        };
+
+        indices.unwrap_or_default()
+    }
+
+    /// Returns entry indices corresponding to the provided item collection.
+    fn indices_for_item_collection(
+        &self,
+        item_collection: &ItemCollection,
+        view_id: SpaceViewId,
+    ) -> Vec<usize> {
+        item_collection
+            .iter()
+            .flat_map(|(item, _)| {
+                if let Item::DataResult(item_view_id, instance_path) = item {
+                    if *item_view_id == view_id {
+                        return self.indices_for_instance(instance_path);
+                    }
+                }
+
+                // empty slice
+                Default::default()
+            })
+            .copied()
+            .collect::<Vec<_>>()
     }
 }
 
@@ -144,21 +216,120 @@ impl TypedComponentFallbackProvider<Radius> for GeoPointsVisualizer {
 re_viewer_context::impl_component_fallback_provider!(GeoPointsVisualizer => [Color, Radius]);
 
 struct GeoPointsPlugin<'a> {
-    map_entries: &'a Vec<GeoPointEntry>,
+    visualizer: &'a GeoPointsVisualizer,
+    viewer_ctx: &'a ViewerContext<'a>,
+    view_id: SpaceViewId,
+    picked_instance: &'a mut Option<PickedInstance>,
 }
 
 impl walkers::Plugin for GeoPointsPlugin<'_> {
     fn run(
         self: Box<Self>,
         ui: &mut egui::Ui,
-        _response: &egui::Response,
+        response: &egui::Response,
         projector: &walkers::Projector,
     ) {
-        for entry in self.map_entries {
-            // Project it into the position on the screen.
-            let position = projector.project(entry.position).to_pos2();
-            ui.painter()
-                .circle_filled(position, entry.radius, entry.color);
+        re_tracing::profile_function!();
+
+        let painter = ui.painter();
+
+        // let's avoid computing that twice
+        let projected_position = self
+            .visualizer
+            .map_entries
+            .iter()
+            .map(|entry| projector.project(entry.position).to_pos2())
+            .collect::<Vec<_>>();
+
+        //
+        // First pass: draw everything without any highlight
+        //
+
+        let hover_position = response.hover_pos();
+        for (entry, position) in self
+            .visualizer
+            .map_entries
+            .iter()
+            .zip(projected_position.iter())
+        {
+            if let Some(hover_position) = hover_position {
+                let ui_point_distance = hover_position.distance(*position);
+                if ui_point_distance < entry.radius {
+                    update_picked_instance(
+                        self.picked_instance,
+                        Some(PickedInstance {
+                            instance_path: entry.instance_path.clone(),
+                            ui_point_distance,
+                        }),
+                    );
+                }
+            }
+
+            painter.circle_filled(*position, entry.radius, entry.color);
+        }
+
+        //
+        // Find the indices of all entries that are part of the current selection.
+        //
+
+        let selected_entries_indices = self
+            .visualizer
+            .indices_for_item_collection(self.viewer_ctx.selection(), self.view_id);
+
+        //
+        // Second pass: draw highlights for everything that is selected
+        //
+
+        for index in &selected_entries_indices {
+            let entry = &self.visualizer.map_entries[*index];
+            let position = projected_position[*index];
+
+            painter.circle_stroke(
+                position,
+                entry.radius,
+                egui::Stroke::new(2.0, ui.style().visuals.selection.bg_fill),
+            );
+        }
+
+        //
+        // Third pass: draw the selected entries again on top of the selection highlight
+        //
+
+        for index in selected_entries_indices {
+            let entry = &self.visualizer.map_entries[index];
+            let position = projected_position[index];
+
+            painter.circle_filled(position, entry.radius, entry.color);
+        }
+
+        //
+        // Forth pass: draw the hovered entries
+        //
+
+        // Note: usually, there only ever is a single hovered item, so we don't use the two-pass
+        // approach here.
+
+        let hovered_entries_indices = self
+            .visualizer
+            .indices_for_item_collection(self.viewer_ctx.hovered(), self.view_id);
+
+        for index in &hovered_entries_indices {
+            let entry = &self.visualizer.map_entries[*index];
+            let position = projected_position[*index];
+
+            painter.circle_stroke(
+                position,
+                entry.radius,
+                egui::Stroke::new(
+                    2.0,
+                    ui.style()
+                        .visuals
+                        .widgets
+                        .active
+                        .text_color()
+                        .gamma_multiply(0.5),
+                ),
+            );
         }
     }
 }

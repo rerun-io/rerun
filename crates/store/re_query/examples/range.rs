@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use itertools::{izip, Itertools};
 use re_chunk::{Chunk, RowId};
-use re_chunk_store::{ChunkStore, RangeQuery};
+use re_chunk_store::{ChunkStore, ChunkStoreHandle, RangeQuery};
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
 use re_log_types::{build_frame_nr, ResolvedTimeRange, TimeType, Timeline};
 use re_types::ComponentBatch;
@@ -21,11 +21,10 @@ fn main() -> anyhow::Result<()> {
     let query = RangeQuery::new(timeline, ResolvedTimeRange::EVERYTHING);
     eprintln!("query:{query:?}");
 
-    let caches = re_query::QueryCache::new(&store);
+    let caches = re_query::QueryCache::new(store.clone());
 
     // First, get the (potentially cached) results for this query.
     let results: RangeResults = caches.range(
-        &store,
         &query,
         &entity_path.into(),
         MyPoints::all_components().iter().copied(), // no generics!
@@ -99,8 +98,8 @@ fn main() -> anyhow::Result<()> {
 
 // ---
 
-fn store() -> anyhow::Result<ChunkStore> {
-    let mut store = ChunkStore::new(
+fn store() -> anyhow::Result<ChunkStoreHandle> {
+    let store = ChunkStore::new_handle(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
@@ -122,7 +121,7 @@ fn store() -> anyhow::Result<ChunkStore> {
             )
             .build()?;
 
-        store.insert_chunk(&Arc::new(chunk))?;
+        store.write().insert_chunk(&Arc::new(chunk))?;
     }
 
     {
@@ -143,7 +142,7 @@ fn store() -> anyhow::Result<ChunkStore> {
             )
             .build()?;
 
-        store.insert_chunk(&Arc::new(chunk))?;
+        store.write().insert_chunk(&Arc::new(chunk))?;
     }
 
     Ok(store)

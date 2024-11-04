@@ -51,7 +51,8 @@ re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.20.0-al
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.20.0-alpha.1", default-features = false }
 re_log_types = { path = "crates/store/re_log_types", version = "=0.20.0-alpha.1", default-features = false }
 re_query = { path = "crates/store/re_query", version = "=0.20.0-alpha.1", default-features = false }
-re_remote_store_types = { path = "crates/build/re_remote_store_types", version = "=0.20.0-alpha.1", default-features = false }
+re_rrdp_comms = { path = "crates/store/re_rrdp_comms", version = "=0.20.0-alpha.1", default-features = false }
+re_remote_store_types = { path = "crates/store/re_remote_store_types", version = "=0.20.0-alpha.1", default-features = false }
 re_sdk_comms = { path = "crates/store/re_sdk_comms", version = "=0.20.0-alpha.1", default-features = false }
 re_types = { path = "crates/store/re_types", version = "=0.20.0-alpha.1", default-features = false }
 re_types_blueprint = { path = "crates/store/re_types_blueprint", version = "=0.20.0-alpha.1", default-features = false }
@@ -178,7 +179,7 @@ ehttp = "0.5.0"
 enumset = "1.0.12"
 env_logger = { version = "0.10", default-features = false }
 ffmpeg-sidecar = "1.1.2"
-fixed = { version = "<1.28", default-features = false } # 1.28+ is MSRV 1.79+
+fixed = { version = "1.28", default-features = false }
 flatbuffers = "23.0"
 futures-channel = "0.3"
 futures-util = { version = "0.3", default-features = false }
@@ -192,7 +193,7 @@ image = { version = "0.25", default-features = false }
 indent = "0.1"
 indexmap = "2.1" # Version chosen to align with other dependencies
 indicatif = "0.17.7" # Progress bar
-infer = "0.15" # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
+infer = "0.16" # infer MIME type by checking the magic number signaturefer MIME type by checking the magic number signature
 insta = "1.23"
 itertools = "0.13"
 js-sys = "0.3"
@@ -223,7 +224,7 @@ pathdiff = "0.2"
 pico-args = "0.5"
 ply-rs = { version = "0.1", default-features = false }
 poll-promise = "0.3"
-polling = "2.2.0"
+polling = "3.7.3"
 pollster = "0.3"
 prettyplease = "0.2"
 proc-macro2 = { version = "1.0", default-features = false }
@@ -237,7 +238,10 @@ quote = "1.0"
 rand = { version = "0.8", default-features = false }
 rand_distr = { version = "0.4", default-features = false }
 rayon = "1.7"
-rfd = { version = "0.12", default-features = false, features = ["xdg-portal"] }
+rfd = { version = "0.15", default-features = false, features = [
+  "async-std",
+  "xdg-portal",
+] }
 rmp-serde = "1"
 ron = "0.8.0"
 rust-format = "0.3"
@@ -267,11 +271,14 @@ tiny_http = { version = "0.12", default-features = false }
 tinystl = { version = "0.0.3", default-features = false }
 tinyvec = { version = "1.6", features = ["alloc", "rustc_1_55"] }
 tobj = "4.0"
+tokio = { version = "1.40.0", default-features = false }
+tokio-stream = "0.1.16"
 toml = { version = "0.8.10", default-features = false }
-tonic = "0.12.3"
-tonic-build = "0.12.3"
+tonic = { version = "0.12.3", default-features = false }
+tonic-build = { version = "0.12.3", default-features = false }
+tonic-web-wasm-client = "0.6"
 tracing = { version = "0.1", default-features = false }
-tungstenite = { version = "0.23", default-features = false }
+tungstenite = { version = "0.24", default-features = false }
 type-map = "0.5"
 typenum = "1.15"
 unindent = "0.2"
@@ -288,6 +295,7 @@ walkdir = "2.0"
 wasm-bindgen = "0.2.93"
 wasm-bindgen-cli-support = "=0.2.93"
 wasm-bindgen-futures = "0.4.33"
+wayland-sys = "0.31.5"
 web-sys = "0.3"
 web-time = "1.1.0"
 webbrowser = "1.0"
@@ -311,7 +319,7 @@ wgpu = { version = "22.1", default-features = false, features = [
 wgpu-core = "22.1"
 wgpu-types = "22.0"
 xshell = "0.2"
-zip = { version = "0.6", default-features = false }
+zip = { version = "0.6", default-features = false } # We're stuck on 0.6 because https://crates.io/crates/protoc-prebuilt is still using 0.6
 
 
 # ---------------------------------------------------------------------------------
@@ -482,7 +490,6 @@ rest_pat_in_fully_bound_structs = "warn"
 same_functions_in_if_condition = "warn"
 semicolon_if_nothing_returned = "warn"
 should_panic_without_expect = "warn"
-significant_drop_tightening = "warn"
 single_match_else = "warn"
 str_split_at_newline = "warn"
 str_to_string = "warn"
@@ -531,6 +538,7 @@ iter_over_hash_type = "allow"
 let_underscore_untyped = "allow"
 missing_assert_message = "allow"
 missing_errors_doc = "allow"
+significant_drop_tightening = "allow" # An update of parking_lot made this trigger in a lot of places. TODO(emilk): fix those places
 
 [patch.crates-io]
 # Try to avoid patching crates! It prevents us from publishing the crates on crates.io.

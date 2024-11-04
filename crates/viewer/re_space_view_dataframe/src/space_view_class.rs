@@ -5,6 +5,7 @@ use crate::{
     visualizer_system::EmptySystem,
 };
 use re_chunk_store::{ColumnDescriptor, SparseFillStrategy};
+use re_dataframe::QueryEngine;
 use re_log_types::EntityPath;
 use re_types_core::SpaceViewClassIdentifier;
 use re_viewer_context::{
@@ -127,9 +128,8 @@ mode sets the default time range to _everything_. You can override this in the s
         let state = state.downcast_mut::<DataframeSpaceViewState>()?;
         let view_query = view_query::Query::from_blueprint(ctx, query.space_view_id);
 
-        let query_engine = re_dataframe::QueryEngine {
-            store: ctx.recording().store(),
-            cache: ctx.recording().query_caches(),
+        let query_engine = QueryEngine {
+            engine: ctx.recording().storage_engine_arc(),
         };
 
         let view_contents = query

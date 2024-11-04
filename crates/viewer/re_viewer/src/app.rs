@@ -453,7 +453,9 @@ impl App {
                 // That's the case of `SmartChannelSource::RrdHttpStream`.
                 // TODO(emilk): exactly what things get kept and what gets cleared?
                 self.rx.retain(|r| match r.source() {
-                    SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => false,
+                    SmartChannelSource::File(_)
+                    | SmartChannelSource::RrdHttpStream { .. }
+                    | SmartChannelSource::RrdpStream { .. } => false,
 
                     SmartChannelSource::WsClient { .. }
                     | SmartChannelSource::JsChannel { .. }
@@ -802,7 +804,7 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintChunkStore => {
                 if let Some(ctx) = store_context {
-                    let text = format!("{}", ctx.recording.store());
+                    let text = format!("{}", ctx.recording.storage_engine().store());
                     egui_ctx.output_mut(|o| o.copied_text = text.clone());
                     println!("{text}");
                 }
@@ -810,21 +812,15 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintBlueprintStore => {
                 if let Some(ctx) = store_context {
-                    let text = format!("{}", ctx.blueprint.store());
+                    let text = format!("{}", ctx.blueprint.storage_engine().store());
                     egui_ctx.output_mut(|o| o.copied_text = text.clone());
                     println!("{text}");
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
-            UICommand::ClearPrimaryCache => {
-                if let Some(ctx) = store_context {
-                    ctx.recording.query_caches().clear();
-                }
-            }
-            #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintPrimaryCache => {
                 if let Some(ctx) = store_context {
-                    let text = format!("{:?}", ctx.recording.query_caches());
+                    let text = format!("{:?}", ctx.recording.storage_engine().cache());
                     egui_ctx.output_mut(|o| o.copied_text = text.clone());
                     println!("{text}");
                 }
@@ -868,7 +864,7 @@ impl App {
             return;
         };
         let rec_id = entity_db.store_id();
-        let Some(rec_cfg) = self.state.recording_config_mut(rec_id) else {
+        let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) else {
             return;
         };
         let time_ctrl = rec_cfg.time_ctrl.get_mut();
@@ -1182,7 +1178,7 @@ impl App {
                     // updates the app-id when changing the recording.
                     match store_id.kind {
                         StoreKind::Recording => {
-                            re_log::debug!("Opening a new recording: {store_id}");
+                            re_log::trace!("Opening a new recording: '{store_id}'");
                             store_hub.set_active_recording_id(store_id.clone());
 
                             // Also select the new recording:
@@ -1218,7 +1214,7 @@ impl App {
                     }
                     StoreKind::Blueprint => {
                         if let Some(info) = entity_db.store_info() {
-                            re_log::debug!(
+                            re_log::trace!(
                                 "Activating blueprint that was loaded from {channel_source}"
                             );
                             let app_id = info.application_id.clone();
@@ -1425,6 +1421,7 @@ impl App {
             match &*source {
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
+                | SmartChannelSource::RrdpStream { .. }
                 | SmartChannelSource::Stdin
                 | SmartChannelSource::RrdWebEventListener
                 | SmartChannelSource::Sdk
@@ -1745,42 +1742,44 @@ impl eframe::App for App {
             }
         }
 
-        let store_context = store_hub.read_context();
+        {
+            let store_context = store_hub.read_context();
 
-        let app_blueprint = AppBlueprint::new(
-            store_context.as_ref(),
-            &self.state.blueprint_query_for_viewer(),
-            egui_ctx,
-            self.panel_state_overrides_active
-                .then_some(self.panel_state_overrides),
-        );
+            let app_blueprint = AppBlueprint::new(
+                store_context.as_ref(),
+                &self.state.blueprint_query_for_viewer(),
+                egui_ctx,
+                self.panel_state_overrides_active
+                    .then_some(self.panel_state_overrides),
+            );
 
-        self.ui(
-            egui_ctx,
-            frame,
-            &app_blueprint,
-            &gpu_resource_stats,
-            store_context.as_ref(),
-            store_stats.as_ref(),
-        );
+            self.ui(
+                egui_ctx,
+                frame,
+                &app_blueprint,
+                &gpu_resource_stats,
+                store_context.as_ref(),
+                store_stats.as_ref(),
+            );
 
-        if re_ui::CUSTOM_WINDOW_DECORATIONS {
-            // Paint the main window frame on top of everything else
-            paint_native_window_frame(egui_ctx);
+            if re_ui::CUSTOM_WINDOW_DECORATIONS {
+                // Paint the main window frame on top of everything else
+                paint_native_window_frame(egui_ctx);
+            }
+
+            if !self.screenshotter.is_screenshotting() {
+                self.toasts.show(egui_ctx);
+            }
+
+            if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
+                self.command_sender.send_ui(cmd);
+            }
+
+            Self::handle_dropping_files(egui_ctx, store_context.as_ref(), &self.command_sender);
+
+            // Run pending commands last (so we don't have to wait for a repaint before they are run):
+            self.run_pending_ui_commands(egui_ctx, &app_blueprint, store_context.as_ref());
         }
-
-        if !self.screenshotter.is_screenshotting() {
-            self.toasts.show(egui_ctx);
-        }
-
-        if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
-            self.command_sender.send_ui(cmd);
-        }
-
-        Self::handle_dropping_files(egui_ctx, store_context.as_ref(), &self.command_sender);
-
-        // Run pending commands last (so we don't have to wait for a repaint before they are run):
-        self.run_pending_ui_commands(egui_ctx, &app_blueprint, store_context.as_ref());
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 
         // Return the `StoreHub` to the Viewer so we have it on the next frame
