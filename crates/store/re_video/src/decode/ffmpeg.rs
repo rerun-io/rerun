@@ -483,8 +483,7 @@ impl AsyncDecoder for FfmpegCliH264Decoder {
         re_tracing::profile_function!();
 
         // We send the information about this chunk first.
-        // This assumes each sample/chunk will result in exactly one frame.
-        // If this assumption is not held, we will get weird errors, like videos playing to slowly.
+        // Chunks are defined to always yield a single frame.
         let frame_info = FfmpegFrameInfo {
             presentation_timestamp: chunk.presentation_timestamp,
             decode_timestamp: chunk.decode_timestamp,
@@ -543,8 +542,10 @@ fn write_avc_chunk_to_nalu_stream(
     re_tracing::profile_function!();
     let avcc = &avcc.avcc;
 
-    // Append SPS (Sequence Parameter Set) & PPS (Picture Parameter Set) NAL unit whenever encountering
-    // an IDR frame unless the previous frame was an IDR frame.
+    // We expect the stream of chunks to not have any SPS (Sequence Parameter Set) & PPS (Picture Parameter Set)
+    // just as it is the case with MP4 data.
+    // In order to have every IDR frame be able to be fully re-entrant, we need to prepend the SPS & PPS NAL units.
+    // Otherwise the decoder is not able to get the necessary information about how the video stream is encoded.
     if chunk.is_sync && !state.previous_frame_was_idr {
         for sps in &avcc.sequence_parameter_sets {
             nalu_stream
