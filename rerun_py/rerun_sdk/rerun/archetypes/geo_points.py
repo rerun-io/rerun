@@ -14,12 +14,13 @@ from .._baseclasses import (
     Archetype,
 )
 from ..error_utils import catch_and_log_exceptions
+from .geo_points_ext import GeoPointsExt
 
 __all__ = ["GeoPoints"]
 
 
 @define(str=False, repr=False, init=False)
-class GeoPoints(Archetype):
+class GeoPoints(GeoPointsExt, Archetype):
     """
     **Archetype**: Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) altitude and longitude (North/East-positive degrees), and optional colors and radii.
 
@@ -35,7 +36,7 @@ class GeoPoints(Archetype):
 
     rr.log(
         "rerun_hq",
-        rr.GeoPoints(
+        rr.GeoPoints.from_lat_lon(
             [59.319221, 18.075631],
             radii=rr.Radius.ui_points(10.0),
             colors=[255, 0, 0],
