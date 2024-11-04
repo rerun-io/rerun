@@ -8,7 +8,7 @@ A uint32 vector in 2D space.
 
 ## Arrow datatype
 ```
-FixedSizeList<uint32, 2>
+FixedSizeList<2, uint32>
 ```
 
 ## API reference links

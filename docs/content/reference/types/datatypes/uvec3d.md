@@ -8,7 +8,7 @@ A uint32 vector in 3D space.
 
 ## Arrow datatype
 ```
-FixedSizeList<uint32, 3>
+FixedSizeList<3, uint32>
 ```
 
 ## API reference links

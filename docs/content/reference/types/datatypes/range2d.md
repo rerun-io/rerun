@@ -16,8 +16,8 @@ The range of the Y-axis (usually top and bottom bounds).
 ## Arrow datatype
 ```
 Struct {
-    x_range: FixedSizeList<float64, 2>
-    y_range: FixedSizeList<float64, 2>
+    x_range: FixedSizeList<2, float64>
+    y_range: FixedSizeList<2, float64>
 }
 ```
 

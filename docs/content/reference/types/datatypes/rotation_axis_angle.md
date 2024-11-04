@@ -20,7 +20,7 @@ How much to rotate around the axis.
 ## Arrow datatype
 ```
 Struct {
-    axis: FixedSizeList<float32, 3>
+    axis: FixedSizeList<3, float32>
     angle: float32
 }
 ```

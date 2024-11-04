@@ -11,7 +11,7 @@ datastore as provided, when used in the Viewer Quaternions will always be normal
 
 ## Arrow datatype
 ```
-FixedSizeList<float32, 4>
+FixedSizeList<4, float32>
 ```
 
 ## API reference links

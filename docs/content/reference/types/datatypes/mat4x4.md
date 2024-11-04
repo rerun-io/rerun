@@ -18,7 +18,7 @@ row 3 | flat_columns[3]  flat_columns[7]  flat_columns[11] flat_columns[15]
 
 ## Arrow datatype
 ```
-FixedSizeList<float32, 16>
+FixedSizeList<16, float32>
 ```
 
 ## API reference links

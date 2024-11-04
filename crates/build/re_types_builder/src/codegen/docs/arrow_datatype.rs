@@ -47,9 +47,9 @@ pub fn arrow_datatype_docs(page: &mut String, indent: usize, datatype: &DataType
         }
         // DataType::ListView(arc) => todo!(),
         DataType::FixedSizeList(inner, length) => {
-            page.push_str("FixedSizeList<");
+            page.push_str(&format!("FixedSizeList<{length}, "));
             arrow_datatype_docs(page, indent + 1, inner.data_type());
-            page.push_str(&format!(", {length}>"));
+            page.push('>');
         }
         // DataType::LargeList(arc) => todo!(),
         // DataType::LargeListView(arc) => todo!(),

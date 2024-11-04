@@ -25,7 +25,7 @@ The following constants are used to represent the different directions:
 
 ## Arrow datatype
 ```
-FixedSizeList<uint8, 3>
+FixedSizeList<3, uint8>
 ```
 
 ## API reference links

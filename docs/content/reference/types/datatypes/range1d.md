@@ -8,7 +8,7 @@ A 1D range, specifying a lower and upper bound.
 
 ## Arrow datatype
 ```
-FixedSizeList<float64, 2>
+FixedSizeList<2, float64>
 ```
 
 ## API reference links
