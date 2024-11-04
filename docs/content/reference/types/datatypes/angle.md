@@ -5,9 +5,11 @@ title: "Angle"
 
 Angle in radians.
 
-## Fields
 
-* radians: `f32`
+## Arrow datatype
+```
+float32
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `Angle`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Angle.html)

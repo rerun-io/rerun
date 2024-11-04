@@ -5,9 +5,11 @@ title: "UInt64"
 
 A 64bit unsigned integer.
 
-## Fields
 
-* value: `u64`
+## Arrow datatype
+```
+uint64
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `UInt64`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1UInt64.html)

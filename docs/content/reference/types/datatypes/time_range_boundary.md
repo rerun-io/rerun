@@ -6,10 +6,31 @@ title: "TimeRangeBoundary"
 Left or right boundary of a time range.
 
 ## Variants
+#### `CursorRelative` = 1
+Type: [`TimeInt`](../datatypes/time_int.md)
 
-* CursorRelative: [`TimeInt`](../datatypes/time_int.md)
-* Absolute: [`TimeInt`](../datatypes/time_int.md)
-* Infinite
+Boundary is a value relative to the time cursor.
+
+#### `Absolute` = 2
+Type: [`TimeInt`](../datatypes/time_int.md)
+
+Boundary is an absolute value.
+
+#### `Infinite` = 3
+Type: `null`
+
+The boundary extends to infinity.
+
+
+## Arrow datatype
+```
+DenseUnion {
+    0 = "_null_markers": nullable null
+    1 = "CursorRelative": int64
+    2 = "Absolute": int64
+    3 = "Infinite": nullable null
+}
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `TimeRangeBoundary`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1TimeRangeBoundary.html)

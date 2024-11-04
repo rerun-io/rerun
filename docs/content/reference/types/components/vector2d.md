@@ -5,9 +5,11 @@ title: "Vector2D"
 
 A vector in 2D space.
 
-## Fields
 
-* vector: [`Vec2D`](../datatypes/vec2d.md)
+## Arrow datatype
+```
+FixedSizeList<2, float32>
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `Vector2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Vector2D.html)

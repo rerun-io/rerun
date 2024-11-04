@@ -5,9 +5,11 @@ title: "Vec4D"
 
 A vector in 4D space.
 
-## Fields
 
-* xyzw: 4x `f32`
+## Arrow datatype
+```
+FixedSizeList<4, float32>
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `Vec4D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Vec4D.html)

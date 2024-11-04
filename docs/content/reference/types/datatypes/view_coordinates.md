@@ -22,9 +22,11 @@ The following constants are used to represent the different directions:
  * Forward = 5
  * Back = 6
 
-## Fields
 
-* coordinates: 3x `u8`
+## Arrow datatype
+```
+FixedSizeList<3, uint8>
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `ViewCoordinates`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1ViewCoordinates.html)

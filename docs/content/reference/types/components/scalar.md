@@ -7,9 +7,11 @@ A scalar value, encoded as a 64-bit floating point.
 
 Used for time series plots.
 
-## Fields
 
-* value: [`Float64`](../datatypes/float64.md)
+## Arrow datatype
+```
+float64
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `Scalar`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Scalar.html)

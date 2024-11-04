@@ -5,9 +5,11 @@ title: "UInt16"
 
 A 16bit unsigned integer.
 
-## Fields
 
-* value: `u16`
+## Arrow datatype
+```
+uint16
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `UInt16`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1UInt16.html)

@@ -6,9 +6,24 @@ title: "TensorDimension"
 A single dimension within a multi-dimensional tensor.
 
 ## Fields
+#### `size`
+Type: `uint64`
 
-* size: `u64`
-* name: `string`
+The length of this dimension.
+
+#### `name`
+Type: nullable `utf8`
+
+The name of this dimension, e.g. "width", "height", "channel", "batch', ….
+
+
+## Arrow datatype
+```
+Struct {
+    size: uint64
+    name: nullable utf8
+}
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `TensorDimension`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1TensorDimension.html)

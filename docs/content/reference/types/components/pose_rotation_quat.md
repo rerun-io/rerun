@@ -8,9 +8,11 @@ A 3D rotation expressed as a quaternion that doesn't propagate in the transform 
 Note: although the x,y,z,w components of the quaternion will be passed through to the
 datastore as provided, when used in the Viewer, quaternions will always be normalized.
 
-## Fields
 
-* quaternion: [`Quaternion`](../datatypes/quaternion.md)
+## Arrow datatype
+```
+FixedSizeList<4, float32>
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `PoseRotationQuat`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1PoseRotationQuat.html)
