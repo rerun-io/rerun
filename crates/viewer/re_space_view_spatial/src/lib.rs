@@ -8,7 +8,6 @@
 mod contexts;
 mod eye;
 mod heuristics;
-mod instance_hash_conversions;
 mod max_image_dimension_subscriber;
 mod mesh_cache;
 mod mesh_loader;

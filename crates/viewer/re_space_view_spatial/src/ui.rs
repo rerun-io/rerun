@@ -1,14 +1,13 @@
-use egui::{epaint::util::OrderedFloat, text::TextWrapping, NumExt, WidgetText};
+use egui::{epaint::util::OrderedFloat, text::TextWrapping, NumExt as _, WidgetText};
 
 use re_format::format_f32;
 use re_math::BoundingBox;
-use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
 use re_types::{
     archetypes::Pinhole, blueprint::components::VisualBounds2D, components::ViewCoordinates,
     image::ImageKind,
 };
-use re_ui::{ContextExt as _, UiExt as _};
+use re_ui::UiExt as _;
 use re_viewer_context::{
     HoverHighlight, SelectionHighlight, SpaceViewHighlights, SpaceViewState, ViewerContext,
 };
@@ -317,23 +316,6 @@ pub fn paint_loading_spinners(
 
             egui::Spinner::new().paint_at(ui, rect);
         }
-    }
-}
-
-pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
-    // Use the exact same colors we have in the ui!
-    let hover_outline = gui_ctx.hover_stroke();
-    let selection_outline = gui_ctx.selection_stroke();
-
-    // See also: SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES
-
-    let outline_radius_ui_pts = 0.5 * f32::max(hover_outline.width, selection_outline.width);
-    let outline_radius_pixel = (gui_ctx.pixels_per_point() * outline_radius_ui_pts).at_least(0.5);
-
-    OutlineConfig {
-        outline_radius_pixel,
-        color_layer_a: re_renderer::Rgba::from(hover_outline.color),
-        color_layer_b: re_renderer::Rgba::from(selection_outline.color),
     }
 }
 
