@@ -19,7 +19,15 @@ use super::{AsyncDecoder, Chunk, Frame, OutputCallback};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
-    #[error("Failed to start ffmppeg: {0}")]
+    #[error("Requires an install of FFmpeg, none has been found in PATH.")]
+    FfmpegNotInstalled {
+        /// Download URL for the latest version of `FFmpeg` on the current platform.
+        /// None if the platform is not supported.
+        // TODO(andreas): as of writing, ffmpeg-sidecar doesn't define a download URL for linux arm.
+        download_url: Option<&'static str>,
+    },
+
+    #[error("Failed to start FFmpeg: {0}")]
     FailedToStartFfmpeg(std::io::Error),
 
     #[error("Failed to get stdin handle")]
@@ -31,28 +39,28 @@ pub enum Error {
     #[error("No frame info received, this is a likely a bug in Rerun")]
     NoFrameInfo,
 
-    #[error("Failed to write data to ffmpeg: {0}")]
+    #[error("Failed to write data to FFmpeg: {0}")]
     FailedToWriteToFfmpeg(std::io::Error),
 
     #[error("Bad video data: {0}")]
     BadVideoData(String),
 
-    #[error("FFMPEG error: {0}")]
+    #[error("FFmpeg error: {0}")]
     Ffmpeg(String),
 
-    #[error("FFMPEG fatal error: {0}")]
+    #[error("FFmpeg fatal error: {0}")]
     FfmpegFatal(String),
 
-    #[error("FFMPEG IPC error: {0}")]
+    #[error("FFmpeg IPC error: {0}")]
     FfmpegSidecar(String),
 
-    #[error("FFMPEG exited unexpectedly with code {0:?}")]
+    #[error("FFmpeg exited unexpectedly with code {0:?}")]
     FfmpegUnexpectedExit(Option<std::process::ExitStatus>),
 
-    #[error("FFMPEG output a non-image chunk when we expected only images.")]
+    #[error("FFmpeg output a non-image chunk when we expected only images.")]
     UnexpectedFfmpegOutputChunk,
 
-    #[error("Failed to send video frame info to the ffmpeg read thread.")]
+    #[error("Failed to send video frame info to the FFmpeg read thread.")]
     BrokenFrameInfoChannel,
 }
 
@@ -98,6 +106,12 @@ impl FfmpegProcessAndListener {
         avcc: re_mp4::Avc1Box,
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
+
+        if !ffmpeg_sidecar::command::ffmpeg_is_installed() {
+            return Err(Error::FfmpegNotInstalled {
+                download_url: ffmpeg_sidecar::download::ffmpeg_download_url().ok(),
+            });
+        }
 
         let mut ffmpeg = FfmpegCommand::new()
             .hide_banner()
@@ -303,7 +317,7 @@ fn read_ffmpeg_output(
             FfmpegEvent::Log(LogLevel::Unknown, msg) => {
                 if msg.contains("system signals, hard exiting") {
                     // That was probably us, killing the process.
-                    re_log::debug!("ffmpeg process for {debug_name} was killed");
+                    re_log::debug!("FFmpeg process for {debug_name} was killed");
                     return;
                 }
                 if !should_ignore_log_msg(&msg) {
@@ -462,12 +476,12 @@ fn read_ffmpeg_output(
             }
 
             FfmpegEvent::ParsedVersion(ffmpeg_version) => {
-                re_log::debug_once!("ffmpeg version is: {}", ffmpeg_version.version);
+                re_log::debug_once!("FFmpeg version is: {}", ffmpeg_version.version);
             }
 
             FfmpegEvent::ParsedConfiguration(ffmpeg_configuration) => {
                 re_log::debug_once!(
-                    "ffmpeg configuration: {:?}",
+                    "FFmpeg configuration: {:?}",
                     ffmpeg_configuration.configuration
                 );
             }
