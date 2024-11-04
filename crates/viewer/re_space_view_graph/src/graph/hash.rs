@@ -1,7 +1,7 @@
 use re_log_types::hash::Hash64;
 use re_types::components;
 
-/// A 64 bit hash of [`GraphNodeId`] with very small risk of collision.
+/// A 64 bit hash of [`components::GraphNode`] with very small risk of collision.
 #[derive(Copy, Clone, Eq, PartialOrd, Ord)]
 pub(crate) struct GraphNodeHash(Hash64);
 
