@@ -9,7 +9,9 @@ use re_types::{
     ArrowString, Loggable as _,
 };
 use re_viewer_context::{
-    self, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem
+    self, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
+    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
+    ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
 };
 
 use crate::graph::NodeIndex;
@@ -55,7 +57,9 @@ impl VisualizerSystem for NodeVisualizer {
             let all_colors = results.iter_as(query.timeline, components::Color::name());
             let all_positions = results.iter_as(query.timeline, components::Position2D::name());
             let all_labels = results.iter_as(query.timeline, components::Text::name());
-            let show_labels =  results.get_mono::<components::ShowLabels>().map_or(true, bool::from);
+            let show_labels = results
+                .get_mono::<components::ShowLabels>()
+                .map_or(true, bool::from);
 
             let data = range_zip_1x3(
                 all_indexed_nodes.component::<components::GraphNode>(),
@@ -65,7 +69,6 @@ impl VisualizerSystem for NodeVisualizer {
             );
 
             for (_index, nodes, colors, positions, labels) in data {
-
                 let nodes = clamped_zip_1x3(
                     nodes.iter(),
                     colors.unwrap_or_default().iter().map(Option::Some),

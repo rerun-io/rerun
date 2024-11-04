@@ -126,7 +126,10 @@ pub fn run(args: &Args) -> anyhow::Result<()> {
         if !level.edges.is_empty() {
             t += 1;
             rec.set_time_seconds("stable_time", t as f64);
-            let _ = rec.log("sorted", &GraphEdges::new(level.edges).with_graph_type(GraphType::Directed));
+            let _ = rec.log(
+                "sorted",
+                &GraphEdges::new(level.edges).with_graph_type(GraphType::Directed),
+            );
         }
     }
 

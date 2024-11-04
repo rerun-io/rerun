@@ -218,16 +218,20 @@ impl SpaceViewClass for GraphSpaceView {
                         .collect::<Vec<_>>();
 
                     // TODO(grtlr): The following logic is quite hacky, because we have to place the implicit nodes somewhere.
-                    let mut current_implicit_offset = Vec2::new(entity_rect.min.x, entity_rect.height() + 40.0);
+                    let mut current_implicit_offset =
+                        Vec2::new(entity_rect.min.x, entity_rect.height() + 40.0);
                     for node in implicit_nodes {
                         let ix = NodeIndex::from_entity_node(entity, node);
                         seen.insert(ix);
-                        let current = state.layout.entry(ix).or_insert(egui::Rect::ZERO.translate(entity_offset).translate(current_implicit_offset));
-                        let response =
-                            scene.node(current.min, |ui| ui::draw_dummy(ui, node));
+                        let current = state.layout.entry(ix).or_insert(
+                            egui::Rect::ZERO
+                                .translate(entity_offset)
+                                .translate(current_implicit_offset),
+                        );
+                        let response = scene.node(current.min, |ui| ui::draw_dummy(ui, node));
                         *current = response.rect.translate(-entity_offset);
                         // entity_rect = entity_rect.union(response.rect);
-                        current_implicit_offset.x +=  10.0;
+                        current_implicit_offset.x += 10.0;
                     }
 
                     for edge in &data.edges {

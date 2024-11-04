@@ -1,4 +1,7 @@
-use re_types::{components::{self, GraphNode}, ArrowString};
+use re_types::{
+    components::{self, GraphNode},
+    ArrowString,
+};
 
 use crate::graph::NodeIndex;
 

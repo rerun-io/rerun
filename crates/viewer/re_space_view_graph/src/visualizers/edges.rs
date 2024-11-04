@@ -75,10 +75,7 @@ impl VisualizerSystem for EdgesVisualizer {
 
                 self.data.insert(
                     data_result.entity_path.clone(),
-                    EdgeData {
-                        edges,
-                        graph_type,
-                    },
+                    EdgeData { edges, graph_type },
                 );
             }
         }
