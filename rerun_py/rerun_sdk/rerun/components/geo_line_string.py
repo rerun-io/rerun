@@ -29,12 +29,7 @@ class GeoLineString(GeoLineStringExt, ComponentMixin):
     """**Component**: A geospatial line string expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees)."""
 
     _BATCH_TYPE = None
-
-    def __init__(self: Any, lat_lon: GeoLineStringLike):
-        """Create a new instance of the GeoLineString component."""
-
-        # You can define your own __init__ function as a member of GeoLineStringExt in geo_line_string_ext.py
-        self.__attrs_init__(lat_lon=lat_lon)
+    # __init__ can be found in geo_line_string_ext.py
 
     lat_lon: list[datatypes.DVec2D] = field()
 

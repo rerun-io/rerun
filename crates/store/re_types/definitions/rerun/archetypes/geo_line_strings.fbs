@@ -19,7 +19,7 @@ table GeoLineStrings (
 ) {
   // --- Required ---
 
-  /// The lines strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
+  /// The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
   line_strings: [rerun.components.GeoLineString] ("attr.rerun.component_required", order: 1000);
 
   // --- Recommended ---
@@ -27,7 +27,7 @@ table GeoLineStrings (
   /// Optional radii for the line strings.
   radii: [rerun.components.Radius] ("attr.rerun.component_recommended", nullable, order: 2000);
 
-  /// Optional colors for the linestrings.
+  /// Optional colors for the line strings.
   ///
   /// \py The colors are interpreted as RGB or RGBA in sRGB gamma-space,
   /// \py As either 0-1 floats or 0-255 integers, with separate alpha.

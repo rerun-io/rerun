@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Sequence
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
 from .. import datatypes
-from .._converters import to_np_float64
+from ..error_utils import catch_and_log_exceptions
 
 if TYPE_CHECKING:
-    from .. import GeoPoints
+    pass
 
 NUMPY_VERSION = tuple(map(int, np.version.version.split(".")[:2]))
 
@@ -16,22 +16,21 @@ NUMPY_VERSION = tuple(map(int, np.version.version.split(".")[:2]))
 class GeoPointsExt:
     """Extension for [GeoPoints][rerun.archetypes.GeoPoints]."""
 
-    @staticmethod
-    def from_lat_lon(
-        positions: datatypes.DVec2DArrayLike,
+    # TODO(ab): the purpose of this override is to rename the required parameter and make it keyword-only. Should be codegen-able?
+    def __init__(
+        self: Any,
         *,
+        lat_lon: datatypes.DVec2DArrayLike,
         radii: datatypes.Float32ArrayLike | None = None,
         colors: datatypes.Rgba32ArrayLike | None = None,
-    ) -> GeoPoints:
+    ):
         """
-        Create a new instance of the GeoPoints archetype using latitudes and longitudes, in that order.
-
-        *Note*: this is how Rerun natively stores geospatial data.
+        Create a new instance of the GeoPoints archetype.
 
         Parameters
         ----------
-        positions:
-            The [EPSG:4326](https://epsg.io/4326) latitudes and longitudes (in that order) coordinates for the points (North/East-positive degrees).
+        lat_lon:
+            The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).
         radii:
             Optional radii for the points, effectively turning them into circles.
         colors:
@@ -42,45 +41,8 @@ class GeoPointsExt:
 
         """
 
-        from .. import GeoPoints
-
-        return GeoPoints(positions, radii=radii, colors=colors)
-
-    @staticmethod
-    def from_lon_lat(
-        positions: datatypes.DVec2DArrayLike,
-        *,
-        radii: datatypes.Float32ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-    ) -> GeoPoints:
-        """
-        Create a new instance of the GeoPoints archetype using longitude and latitudes, in that order.
-
-        *Note*: Rerun stores latitude first, so this method converts the input to a Numpy array and swaps the
-        coordinates first.
-
-        Parameters
-        ----------
-        positions:
-            The [EPSG:4326](https://epsg.io/4326) latitudes and longitudes (in that order) coordinates for the points (North/East-positive degrees).
-        radii:
-            Optional radii for the points, effectively turning them into circles.
-        colors:
-            Optional colors for the points.
-
-            The colors are interpreted as RGB or RGBA in sRGB gamma-space,
-            As either 0-1 floats or 0-255 integers, with separate alpha.
-
-        """
-
-        from .. import GeoPoints
-        from ..datatypes import DVec2D
-
-        if isinstance(positions, Sequence):
-            flipped_pos = np.array([np.array(p.xy) if isinstance(p, DVec2D) else p for p in positions])
-        elif isinstance(positions, DVec2D):
-            flipped_pos = np.array(positions.xy)
-        else:
-            flipped_pos = to_np_float64(positions)
-
-        return GeoPoints(np.fliplr(flipped_pos), radii=radii, colors=colors)
+        # You can define your own __init__ function as a member of GeoPointsExt in geo_points_ext.py
+        with catch_and_log_exceptions(context=self.__class__.__name__):
+            self.__attrs_init__(positions=lat_lon, radii=radii, colors=colors)
+            return
+        self.__attrs_clear__()

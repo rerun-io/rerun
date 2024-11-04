@@ -5,21 +5,19 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components
 from .._baseclasses import (
     Archetype,
 )
-from ..error_utils import catch_and_log_exceptions
+from .geo_line_strings_ext import GeoLineStringsExt
 
 __all__ = ["GeoLineStrings"]
 
 
 @define(str=False, repr=False, init=False)
-class GeoLineStrings(Archetype):
+class GeoLineStrings(GeoLineStringsExt, Archetype):
     """
     **Archetype**: Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/4326) altitude and longitude (North/East-positive degrees), and optional colors and radii.
 
@@ -49,39 +47,35 @@ class GeoLineStrings(Archetype):
             colors=[0, 0, 255],
         ),
     )
+
+    rr.log(
+        "colorado",
+        rr.GeoLineStrings(
+            lat_lon=[
+                [
+                    [41.0000, -109.0452],
+                    [41.0000, -102.0415],
+                    [36.9931, -102.0415],
+                    [36.9931, -109.0452],
+                    [41.0000, -109.0452],
+                ],
+                rr.components.GeoLineString(
+                    lat_lon=[
+                        [41.0000, -109.0452],
+                        [36.9931, -109.0452],
+                        [41.0000, -109.0452],
+                    ]
+                ),
+            ],
+            radii=rr.Radius.ui_points(2.0),
+            colors=[0, 0, 255],
+        ),
+    )
     ```
 
     """
 
-    def __init__(
-        self: Any,
-        line_strings: components.GeoLineStringArrayLike,
-        *,
-        radii: datatypes.Float32ArrayLike | None = None,
-        colors: datatypes.Rgba32ArrayLike | None = None,
-    ):
-        """
-        Create a new instance of the GeoLineStrings archetype.
-
-        Parameters
-        ----------
-        line_strings:
-            The lines strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
-        radii:
-            Optional radii for the line strings.
-        colors:
-            Optional colors for the linestrings.
-
-            The colors are interpreted as RGB or RGBA in sRGB gamma-space,
-            As either 0-1 floats or 0-255 integers, with separate alpha.
-
-        """
-
-        # You can define your own __init__ function as a member of GeoLineStringsExt in geo_line_strings_ext.py
-        with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(line_strings=line_strings, radii=radii, colors=colors)
-            return
-        self.__attrs_clear__()
+    # __init__ can be found in geo_line_strings_ext.py
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
@@ -102,7 +96,7 @@ class GeoLineStrings(Archetype):
         metadata={"component": "required"},
         converter=components.GeoLineStringBatch._required,  # type: ignore[misc]
     )
-    # The lines strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
+    # The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -120,7 +114,7 @@ class GeoLineStrings(Archetype):
         default=None,
         converter=components.ColorBatch._optional,  # type: ignore[misc]
     )
-    # Optional colors for the linestrings.
+    # Optional colors for the line strings.
     #
     # The colors are interpreted as RGB or RGBA in sRGB gamma-space,
     # As either 0-1 floats or 0-255 integers, with separate alpha.

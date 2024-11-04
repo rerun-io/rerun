@@ -1252,13 +1252,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.GeoLineString".into(), display_name :
                     "Line strings", docstring_md :
-                    "The lines strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).",
+                    "The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).",
                     is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.Radius".into(), display_name : "Radii",
                     docstring_md : "Optional radii for the line strings.", is_required :
                     false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.Color".into(), display_name : "Colors",
-                    docstring_md : "Optional colors for the linestrings.", is_required :
+                    docstring_md : "Optional colors for the line strings.", is_required :
                     false, },
                 ],
             },
