@@ -6,10 +6,10 @@ use re_types::{
     components::{ImagePlaneDistance, ViewCoordinates},
 };
 use re_viewer_context::{
-    gpu_bridge, ApplicableEntities, DataResult, IdentifiedViewSystem, QueryContext,
-    SpaceViewOutlineMasks, SpaceViewStateExt as _, SpaceViewSystemExecutionError,
-    TypedComponentFallbackProvider, ViewContext, ViewContextCollection, ViewQuery,
-    VisualizableEntities, VisualizableFilterContext, VisualizerQueryInfo, VisualizerSystem,
+    ApplicableEntities, DataResult, IdentifiedViewSystem, QueryContext, SpaceViewOutlineMasks,
+    SpaceViewStateExt as _, SpaceViewSystemExecutionError, TypedComponentFallbackProvider,
+    ViewContext, ViewContextCollection, ViewQuery, VisualizableEntities, VisualizableFilterContext,
+    VisualizerQueryInfo, VisualizerSystem,
 };
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
@@ -149,7 +149,7 @@ impl CamerasVisualizer {
         let instance_path_for_picking =
             re_entity_db::InstancePathHash::instance(ent_path, instance);
         let instance_layer_id =
-            gpu_bridge::picking_layer_id_from_instance_path_hash(instance_path_for_picking);
+            re_space_view::picking_layer_id_from_instance_path_hash(instance_path_for_picking);
 
         let mut batch = line_builder
             .batch(ent_path.to_string())

@@ -538,7 +538,7 @@ fn picking_gpu(
             // Nothing found.
             None
         } else {
-            Some(gpu_bridge::instance_path_hash_from_picking_layer_id(
+            Some(re_space_view::instance_path_hash_from_picking_layer_id(
                 picked_id,
             ))
         };

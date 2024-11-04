@@ -5,12 +5,16 @@
 pub mod controls;
 
 mod heuristics;
+mod instance_hash_conversions;
 mod query;
 mod results_ext;
 mod screenshot;
 mod view_property_ui;
 
 pub use heuristics::suggest_space_view_for_each_entity;
+pub use instance_hash_conversions::{
+    instance_path_hash_from_picking_layer_id, picking_layer_id_from_instance_path_hash,
+};
 pub use query::{
     latest_at_with_blueprint_resolved_data, range_with_blueprint_resolved_data, DataResultQuery,
 };
