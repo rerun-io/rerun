@@ -12,6 +12,6 @@ rr.log(
 )
 # Note: We log to the same entity here.
 rr.log(
-    "edges",
+    "simple",
     rr.GraphEdges(edges=[("a", "b"), ("b", "c"), ("c", "a")], graph_type="directed"),
 )

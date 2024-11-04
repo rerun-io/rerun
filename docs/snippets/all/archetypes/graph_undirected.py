@@ -12,7 +12,7 @@ rr.log(
 )
 # Note: We log to the same entity here.
 rr.log(
-    "edges",
+    "simple",
     # `graph_type` is optional, graphs are undirected by default.
     rr.GraphEdges(edges=[("a", "b"), ("b", "c"), ("c", "a")], graph_type="undirected"),
 )
