@@ -9,6 +9,7 @@ mod entity_path;
 mod fallback_ui;
 mod geo_line_string;
 mod image_format;
+mod lat_lon;
 mod line_strip;
 mod marker_shape;
 mod pinhole;
@@ -151,6 +152,8 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view(entity_path::edit_or_view_entity_path);
 
     registry.add_singleline_edit_or_view(video_timestamp::edit_or_view_timestamp);
+
+    registry.add_singleline_edit_or_view(lat_lon::singleline_view_lat_lon);
 
     registry
 }
