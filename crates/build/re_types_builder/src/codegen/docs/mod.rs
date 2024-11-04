@@ -455,6 +455,12 @@ fn write_fields(objects: &Objects, o: &mut String, object: &Object) {
         }
     }
 
+    if object.is_arrow_transparent() {
+        debug_assert!(object.is_struct());
+        debug_assert_eq!(object.fields.len(), 1);
+        return; // This is just a wrapper type, so don't show the "Fields" section
+    }
+
     let mut fields = Vec::new();
     for field in &object.fields {
         let mut field_string = format!("* `{}`", field.name);
