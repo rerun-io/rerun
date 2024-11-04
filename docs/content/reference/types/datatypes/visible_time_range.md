@@ -6,10 +6,14 @@ title: "VisibleTimeRange"
 Visible time range bounds for a specific timeline.
 
 ## Fields
-#### `timeline`: [`Utf8`](../datatypes/utf8.md)
+#### `timeline`
+Type: [`Utf8`](../datatypes/utf8.md)
+
 Name of the timeline this applies to.
 
-#### `range`: [`TimeRange`](../datatypes/time_range.md)
+#### `range`
+Type: [`TimeRange`](../datatypes/time_range.md)
+
 Time range to use for this timeline.
 
 

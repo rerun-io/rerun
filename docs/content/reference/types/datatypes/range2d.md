@@ -6,10 +6,14 @@ title: "Range2D"
 An Axis-Aligned Bounding Box in 2D space, implemented as the minimum and maximum corners.
 
 ## Fields
-#### `x_range`: [`Range1D`](../datatypes/range1d.md)
+#### `x_range`
+Type: [`Range1D`](../datatypes/range1d.md)
+
 The range of the X-axis (usually left and right bounds).
 
-#### `y_range`: [`Range1D`](../datatypes/range1d.md)
+#### `y_range`
+Type: [`Range1D`](../datatypes/range1d.md)
+
 The range of the Y-axis (usually top and bottom bounds).
 
 

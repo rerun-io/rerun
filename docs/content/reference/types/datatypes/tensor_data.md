@@ -13,10 +13,14 @@ These dimensions are combined with an index to look up values from the `buffer` 
 which stores a contiguous array of typed values.
 
 ## Fields
-#### `shape`: List of [`TensorDimension`](../datatypes/tensor_dimension.md)
+#### `shape`
+Type: List of [`TensorDimension`](../datatypes/tensor_dimension.md)
+
 The shape of the tensor, including optional names for each dimension.
 
-#### `buffer`: [`TensorBuffer`](../datatypes/tensor_buffer.md)
+#### `buffer`
+Type: [`TensorBuffer`](../datatypes/tensor_buffer.md)
+
 The content/data.
 
 

@@ -9,13 +9,19 @@ Color and label will be used to annotate entities/keypoints which reference the 
 The id refers either to a class or key-point id
 
 ## Fields
-#### `id`: `uint16`
+#### `id`
+Type: `uint16`
+
 [`datatypes.ClassId`](https://rerun.io/docs/reference/types/datatypes/class_id) or [`datatypes.KeypointId`](https://rerun.io/docs/reference/types/datatypes/keypoint_id) to which this annotation info belongs.
 
-#### `label`: nullable [`Utf8`](../datatypes/utf8.md)
+#### `label`
+Type: nullable [`Utf8`](../datatypes/utf8.md)
+
 The label that will be shown in the UI.
 
-#### `color`: nullable [`Rgba32`](../datatypes/rgba32.md)
+#### `color`
+Type: nullable [`Rgba32`](../datatypes/rgba32.md)
+
 The color that will be applied to the annotated entity.
 
 

@@ -6,14 +6,18 @@ title: "RotationAxisAngle"
 3D rotation represented by a rotation around a given axis.
 
 ## Fields
-#### `axis`: [`Vec3D`](../datatypes/vec3d.md)
+#### `axis`
+Type: [`Vec3D`](../datatypes/vec3d.md)
+
 Axis to rotate around.
 
 This is not required to be normalized.
 If normalization fails (typically because the vector is length zero), the rotation is silently
 ignored.
 
-#### `angle`: [`Angle`](../datatypes/angle.md)
+#### `angle`
+Type: [`Angle`](../datatypes/angle.md)
+
 How much to rotate around the axis.
 
 

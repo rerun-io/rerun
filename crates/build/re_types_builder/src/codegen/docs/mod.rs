@@ -488,9 +488,10 @@ fn write_fields(objects: &Objects, o: &mut String, object: &Object) {
         if let Some(enum_value) = field.enum_value {
             field_string.push_str(&format!(" = {enum_value}"));
         }
+        field_string.push('\n');
 
         if !object.is_enum() {
-            field_string.push_str(": ");
+            field_string.push_str("Type: ");
             if field.typ == Type::Unit {
                 field_string.push_str("`null`");
             } else {
@@ -499,9 +500,10 @@ fn write_fields(objects: &Objects, o: &mut String, object: &Object) {
                 }
                 field_string.push_str(&type_info(objects, &field.typ));
             }
+            field_string.push('\n');
+            field_string.push('\n');
         }
 
-        field_string.push('\n');
         for line in field.docs.lines_for(objects, Target::WebDocsMarkdown) {
             field_string.push_str(&line);
             field_string.push('\n');

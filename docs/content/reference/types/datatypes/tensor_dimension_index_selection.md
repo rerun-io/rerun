@@ -8,10 +8,14 @@ Indexing a specific tensor dimension.
 Selecting `dimension=2` and `index=42` is similar to doing `tensor[:, :, 42, :, :, …]` in numpy.
 
 ## Fields
-#### `dimension`: `uint32`
+#### `dimension`
+Type: `uint32`
+
 The dimension number to select.
 
-#### `index`: `uint64`
+#### `index`
+Type: `uint64`
+
 The index along the dimension to use.
 
 
