@@ -8,17 +8,39 @@ The innermost datatype of an image.
 How individual color channel components are encoded.
 
 ## Variants
-* `U8` = 6
-* `I8` = 7
-* `U16` = 8
-* `I16` = 9
-* `U32` = 10
-* `I32` = 11
-* `U64` = 12
-* `I64` = 13
-* `F16` = 33
-* `F32` = 34
-* `F64` = 35
+#### `U8` = 6
+8-bit unsigned integer.
+
+#### `I8` = 7
+8-bit signed integer.
+
+#### `U16` = 8
+16-bit unsigned integer.
+
+#### `I16` = 9
+16-bit signed integer.
+
+#### `U32` = 10
+32-bit unsigned integer.
+
+#### `I32` = 11
+32-bit signed integer.
+
+#### `U64` = 12
+64-bit unsigned integer.
+
+#### `I64` = 13
+64-bit signed integer.
+
+#### `F16` = 33
+16-bit IEEE-754 floating point, also known as `half`.
+
+#### `F32` = 34
+32-bit IEEE-754 floating point, also known as `float` or `single`.
+
+#### `F64` = 35
+64-bit IEEE-754 floating point, also known as `double`.
+
 
 ## Arrow datatype
 ```

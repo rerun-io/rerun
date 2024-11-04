@@ -6,8 +6,12 @@ title: "TensorDimension"
 A single dimension within a multi-dimensional tensor.
 
 ## Fields
-* `size`: `uint64`
-* `name`: nullable `utf8`
+#### `size`: `uint64`
+The length of this dimension.
+
+#### `name`: nullable `utf8`
+The name of this dimension, e.g. "width", "height", "channel", "batch', ….
+
 
 ## Arrow datatype
 ```

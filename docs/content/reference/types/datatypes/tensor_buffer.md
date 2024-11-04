@@ -8,17 +8,39 @@ The underlying storage for [`archetypes.Tensor`](https://rerun.io/docs/reference
 Tensor elements are stored in a contiguous buffer of a single type.
 
 ## Variants
-* `U8` = 1: List of `uint8`
-* `U16` = 2: List of `uint16`
-* `U32` = 3: List of `uint32`
-* `U64` = 4: List of `uint64`
-* `I8` = 5: List of `int8`
-* `I16` = 6: List of `int16`
-* `I32` = 7: List of `int32`
-* `I64` = 8: List of `int64`
-* `F16` = 9: List of `float16`
-* `F32` = 10: List of `float32`
-* `F64` = 11: List of `float64`
+#### `U8` = 1: List of `uint8`
+8bit unsigned integer.
+
+#### `U16` = 2: List of `uint16`
+16bit unsigned integer.
+
+#### `U32` = 3: List of `uint32`
+32bit unsigned integer.
+
+#### `U64` = 4: List of `uint64`
+64bit unsigned integer.
+
+#### `I8` = 5: List of `int8`
+8bit signed integer.
+
+#### `I16` = 6: List of `int16`
+16bit signed integer.
+
+#### `I32` = 7: List of `int32`
+32bit signed integer.
+
+#### `I64` = 8: List of `int64`
+64bit signed integer.
+
+#### `F16` = 9: List of `float16`
+16bit IEEE-754 floating point, also known as `half`.
+
+#### `F32` = 10: List of `float32`
+32bit IEEE-754 floating point, also known as `float` or `single`.
+
+#### `F64` = 11: List of `float64`
+64bit IEEE-754 floating point, also known as `double`.
+
 
 ## Arrow datatype
 ```

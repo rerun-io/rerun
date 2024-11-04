@@ -483,7 +483,7 @@ fn write_fields(objects: &Objects, o: &mut String, object: &Object) {
 
     let mut fields = Vec::new();
     for field in &object.fields {
-        let mut field_string = format!("* `{}`", field.name);
+        let mut field_string = format!("#### `{}`", field.name);
 
         if let Some(enum_value) = field.enum_value {
             field_string.push_str(&format!(" = {enum_value}"));
@@ -500,6 +500,13 @@ fn write_fields(objects: &Objects, o: &mut String, object: &Object) {
                 field_string.push_str(&type_info(objects, &field.typ));
             }
         }
+
+        field_string.push('\n');
+        for line in field.docs.lines_for(objects, Target::WebDocsMarkdown) {
+            field_string.push_str(&line);
+            field_string.push('\n');
+        }
+
         fields.push(field_string);
     }
 

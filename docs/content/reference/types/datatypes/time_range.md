@@ -6,8 +6,12 @@ title: "TimeRange"
 Visible time range bounds for a specific timeline.
 
 ## Fields
-* `start`: [`TimeRangeBoundary`](../datatypes/time_range_boundary.md)
-* `end`: [`TimeRangeBoundary`](../datatypes/time_range_boundary.md)
+#### `start`: [`TimeRangeBoundary`](../datatypes/time_range_boundary.md)
+Low time boundary for sequence timeline.
+
+#### `end`: [`TimeRangeBoundary`](../datatypes/time_range_boundary.md)
+High time boundary for sequence timeline.
+
 
 ## Arrow datatype
 ```

@@ -6,16 +6,36 @@ title: "MarkerShape"
 The visual appearance of a point in e.g. a 2D plot.
 
 ## Variants
-* `Circle` = 1
-* `Diamond` = 2
-* `Square` = 3
-* `Cross` = 4
-* `Plus` = 5
-* `Up` = 6
-* `Down` = 7
-* `Left` = 8
-* `Right` = 9
-* `Asterisk` = 10
+#### `Circle` = 1
+`⏺`
+
+#### `Diamond` = 2
+`◆`
+
+#### `Square` = 3
+`◼️`
+
+#### `Cross` = 4
+`x`
+
+#### `Plus` = 5
+`+`
+
+#### `Up` = 6
+`▲`
+
+#### `Down` = 7
+`▼`
+
+#### `Left` = 8
+`◀`
+
+#### `Right` = 9
+`▶`
+
+#### `Asterisk` = 10
+`*`
+
 
 ## API reference links
  * 🌊 [C++ API docs for `MarkerShape`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)

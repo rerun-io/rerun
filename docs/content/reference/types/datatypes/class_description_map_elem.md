@@ -8,8 +8,12 @@ A helper type for mapping [`datatypes.ClassId`](https://rerun.io/docs/reference/
 This is internal to [`components.AnnotationContext`](https://rerun.io/docs/reference/types/components/annotation_context).
 
 ## Fields
-* `class_id`: [`ClassId`](../datatypes/class_id.md)
-* `class_description`: [`ClassDescription`](../datatypes/class_description.md)
+#### `class_id`: [`ClassId`](../datatypes/class_id.md)
+The key: the [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id).
+
+#### `class_description`: [`ClassDescription`](../datatypes/class_description.md)
+The value: class name, color, etc.
+
 
 ## Arrow datatype
 ```

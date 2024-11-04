@@ -19,9 +19,15 @@ keypoints should be connected with an edge. The edge should be labeled and
 colored as described by the class's [`datatypes.AnnotationInfo`](https://rerun.io/docs/reference/types/datatypes/annotation_info).
 
 ## Fields
-* `info`: [`AnnotationInfo`](../datatypes/annotation_info.md)
-* `keypoint_annotations`: List of [`AnnotationInfo`](../datatypes/annotation_info.md)
-* `keypoint_connections`: List of [`KeypointPair`](../datatypes/keypoint_pair.md)
+#### `info`: [`AnnotationInfo`](../datatypes/annotation_info.md)
+The [`datatypes.AnnotationInfo`](https://rerun.io/docs/reference/types/datatypes/annotation_info) for the class.
+
+#### `keypoint_annotations`: List of [`AnnotationInfo`](../datatypes/annotation_info.md)
+The [`datatypes.AnnotationInfo`](https://rerun.io/docs/reference/types/datatypes/annotation_info) for all of the keypoints.
+
+#### `keypoint_connections`: List of [`KeypointPair`](../datatypes/keypoint_pair.md)
+The connections between keypoints.
+
 
 ## Arrow datatype
 ```

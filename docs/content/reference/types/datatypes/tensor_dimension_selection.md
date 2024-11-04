@@ -6,8 +6,12 @@ title: "TensorDimensionSelection"
 Selection of a single tensor dimension.
 
 ## Fields
-* `dimension`: `uint32`
-* `invert`: `boolean`
+#### `dimension`: `uint32`
+The dimension number to select.
+
+#### `invert`: `boolean`
+Invert the direction of the dimension.
+
 
 ## Arrow datatype
 ```

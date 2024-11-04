@@ -6,8 +6,12 @@ title: "KeypointPair"
 A connection between two [`datatypes.KeypointId`](https://rerun.io/docs/reference/types/datatypes/keypoint_id)s.
 
 ## Fields
-* `keypoint0`: [`KeypointId`](../datatypes/keypoint_id.md)
-* `keypoint1`: [`KeypointId`](../datatypes/keypoint_id.md)
+#### `keypoint0`: [`KeypointId`](../datatypes/keypoint_id.md)
+The first point of the pair.
+
+#### `keypoint1`: [`KeypointId`](../datatypes/keypoint_id.md)
+The second point of the pair.
+
 
 ## Arrow datatype
 ```

@@ -6,9 +6,15 @@ title: "TimeRangeBoundary"
 Left or right boundary of a time range.
 
 ## Variants
-* `CursorRelative` = 1: [`TimeInt`](../datatypes/time_int.md)
-* `Absolute` = 2: [`TimeInt`](../datatypes/time_int.md)
-* `Infinite` = 3: `null`
+#### `CursorRelative` = 1: [`TimeInt`](../datatypes/time_int.md)
+Boundary is a value relative to the time cursor.
+
+#### `Absolute` = 2: [`TimeInt`](../datatypes/time_int.md)
+Boundary is an absolute value.
+
+#### `Infinite` = 3: `null`
+The boundary extends to infinity.
+
 
 ## Arrow datatype
 ```
