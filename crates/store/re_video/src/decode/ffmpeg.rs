@@ -402,8 +402,9 @@ fn read_ffmpeg_output(
                         // If the decodetimestamp did not increase, we're probably seeking backwards!
                         // We'd expect the video player to do a reset prior to that and close the channel as part of that, but we may not have noticed that in here yet!
                         // In any case, we'll have to just run with this as the new highest timestamp, not much else we can do.
-                        if highest_dts < frame_info.decode_timestamp {
-                            re_log::warn_once!("Video decode timestamps are expected to monotonically increase unless there was a decoder reset. This is probably a bug in Rerun.");
+                        if highest_dts > frame_info.decode_timestamp {
+                            re_log::warn!("Video decode timestamps are expected to monotonically increase unless there was a decoder reset.\n\
+                                                It went from {:?} to {:?} for the decoder of {debug_name}. This is probably a bug in Rerun.", highest_dts, frame_info.decode_timestamp);
                         }
                         highest_dts = frame_info.decode_timestamp;
 
