@@ -476,7 +476,7 @@ impl SpatialSpaceView3D {
             outline_config: query
                 .highlights
                 .any_outlines()
-                .then(|| gpu_bridge::outline_config(ui.ctx())),
+                .then(|| re_space_view::outline_config(ui.ctx())),
             blend_with_background: false,
         };
 

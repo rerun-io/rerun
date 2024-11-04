@@ -332,7 +332,7 @@ fn create_view_builder(
             pixels_per_point,
             outline_config: highlights
                 .any_outlines()
-                .then(|| gpu_bridge::outline_config(egui_ctx)),
+                .then(|| re_space_view::outline_config(egui_ctx)),
 
             // Make sure the map in the background is not completely overwritten
             blend_with_background: true,

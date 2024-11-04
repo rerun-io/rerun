@@ -404,7 +404,7 @@ fn setup_target_config(
             projection_from_view,
             viewport_transformation,
             pixels_per_point,
-            outline_config: any_outlines.then(|| gpu_bridge::outline_config(egui_painter.ctx())),
+            outline_config: any_outlines.then(|| re_space_view::outline_config(egui_painter.ctx())),
             blend_with_background: false,
         }
     })
