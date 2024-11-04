@@ -1,6 +1,6 @@
 use crate::{codegen::Target, Objects};
 
-/// A high-level representation of the contetns of a flatbuffer docstring.
+/// A high-level representation of the contents of a flatbuffer docstring.
 #[derive(Debug, Clone)]
 pub struct Docs {
     /// All docmentation lines, including the leading tag, if any.
