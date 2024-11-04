@@ -45,6 +45,9 @@ pub enum Error {
     #[error("FFMPEG exited unexpectedly with code {0:?}")]
     FfmpegUnexpectedExit(Option<std::process::ExitStatus>),
 
+    #[error("FFMPEG output a non-image chunk when we expected only images.")]
+    UnexpectedFfmpegOutputChunk,
+
     #[error("Failed to send video frame info to the ffmpeg read thread.")]
     BrokenFrameInfoChannel,
 }
@@ -237,14 +240,14 @@ fn read_ffmpeg_output(
 
     // Pending frames, sorted by their presentation timestamp.
     let mut pending_frame_infos = BTreeMap::new();
-    let mut highest_dts = Time(i64::MIN); // Highest dts encountered so far.
+    let mut highest_dts = Time::MIN; // Highest dts encountered so far.
 
     for event in ffmpeg_iterator {
         #[allow(clippy::match_same_arms)]
         match event {
             FfmpegEvent::Log(LogLevel::Info, msg) => {
                 if !should_ignore_log_msg(&msg) {
-                    re_log::trace!("{debug_name} decoder: {msg}");
+                    re_log::debug!("{debug_name} decoder: {msg}");
                 }
             }
 
@@ -280,18 +283,22 @@ fn read_ffmpeg_output(
             }
 
             FfmpegEvent::Error(error) => {
+                // An error in ffmpeg sidecar itself, rather than ffmpeg.
                 on_output(Err(Error::FfmpegSidecar(error).into()));
             }
 
-            // Usefuless info in these:
             FfmpegEvent::ParsedInput(input) => {
                 re_log::trace!("{debug_name} decoder: {input:?}");
             }
+
             FfmpegEvent::ParsedOutput(output) => {
                 re_log::trace!("{debug_name} decoder: {output:?}");
             }
 
-            FfmpegEvent::ParsedStreamMapping(_) => {}
+            FfmpegEvent::ParsedStreamMapping(_) => {
+                // This reports what input streams ffmpeg maps to which output streams.
+                // Very unspectecular in our case as know that we map h264 video to raw video.
+            }
 
             FfmpegEvent::ParsedInputStream(stream) => {
                 let ffmpeg_sidecar::event::AVStream {
@@ -335,8 +342,13 @@ fn read_ffmpeg_output(
             }
 
             FfmpegEvent::OutputFrame(frame) => {
-                // Frames come in PTS order, but "frame info" comes in DTS order!
+                // We input frames into ffmpeg in decode (DTS) order, and so that's
+                // also the order we will receive the `FrameInfo`s from `frame_info_rx`.
+                // However, `ffmpeg` will re-order the frames to output them in presentation (PTS) order.
+                // We want to accurately match the `FrameInfo` with its corresponding output frame.
+                // To do that, we need to buffer frames that come out of ffmpeg.
                 //
+                // How do we know how large this buffer needs to be?
                 // Whenever the highest known DTS is behind the PTS, we need to wait until the DTS catches up.
                 // Otherwise, we'd assign the wrong PTS to the frame that just came in.
                 //
@@ -424,13 +436,14 @@ fn read_ffmpeg_output(
                 );
             }
 
-            FfmpegEvent::ParsedDuration(ffmpeg_duration) => {
-                re_log::debug!("ffmpeg duration: {:?}", ffmpeg_duration);
+            FfmpegEvent::ParsedDuration(_) => {
+                // ffmpeg has no way of knowing the duration of the stream. Whatever it might make up is wrong.
             }
 
             FfmpegEvent::OutputChunk(_) => {
                 // Something went seriously wrong if we end up here.
                 re_log::error!("Unexpected ffmpeg output chunk for {debug_name}");
+                on_output(Err(Error::UnexpectedFfmpegOutputChunk.into()));
                 return;
             }
         }
