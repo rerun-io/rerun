@@ -12,6 +12,9 @@ UI points are independent of zooming in Views, but are sensitive to the applicat
 at 100% UI scaling, UI points are equal to pixels
 The Viewer's UI scaling defaults to the OS scaling which typically is 100% for full HD screens and 200% for 4k screens.
 
+## Rerun datatype
+[`Float32`](../datatypes/float32.md)
+
 
 ## Arrow datatype
 ```

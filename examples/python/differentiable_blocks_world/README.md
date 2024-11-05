@@ -40,6 +40,4 @@ To stabilize the optimization and avoid local minima, a 3-stage optimization is 
 
 https://vimeo.com/865329177?autoplay=1&loop=1&autopause=0&background=1&muted=1&ratio=10000:8845
 
-Check out the [project page](https://www.tmonnier.com/DBW/), which also contains examples of physical simulation and scene editing enabled by this kind of scene decomposition.
-
-Also make sure to read the [paper](https://arxiv.org/abs/2307.05473) by Tom Monnier, Jake Austin, Angjoo Kanazawa, Alexei A. Efros, Mathieu Aubry. Interesting study of how to approach such a difficult optimization problem.
+Make sure to read the [paper](https://arxiv.org/abs/2307.05473) by Tom Monnier, Jake Austin, Angjoo Kanazawa, Alexei A. Efros, Mathieu Aubry. Interesting study of how to approach such a difficult optimization problem.

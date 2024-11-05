@@ -17,6 +17,9 @@ row 1 | flat_columns[1] flat_columns[4] flat_columns[7]
 row 2 | flat_columns[2] flat_columns[5] flat_columns[8]
 ```
 
+## Rerun datatype
+[`Mat3x3`](../datatypes/mat3x3.md)
+
 
 ## Arrow datatype
 ```

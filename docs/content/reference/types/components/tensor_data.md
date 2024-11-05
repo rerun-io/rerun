@@ -12,6 +12,9 @@ a 2D RGB Image, the shape would be `[height, width, channel]`.
 These dimensions are combined with an index to look up values from the `buffer` field,
 which stores a contiguous array of typed values.
 
+## Rerun datatype
+[`TensorData`](../datatypes/tensor_data.md)
+
 
 ## Arrow datatype
 ```

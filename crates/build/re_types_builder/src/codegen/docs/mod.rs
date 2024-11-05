@@ -476,8 +476,16 @@ fn write_fields(objects: &Objects, o: &mut String, object: &Object) {
     }
 
     if object.is_arrow_transparent() {
-        debug_assert!(object.is_struct());
-        debug_assert_eq!(object.fields.len(), 1);
+        assert!(object.is_struct());
+        assert_eq!(object.fields.len(), 1);
+        let field_type = &object.fields[0].typ;
+        if object.kind == ObjectKind::Component && matches!(field_type, Type::Object(_)) {
+            putln!(o, "## Rerun datatype");
+            putln!(o, "{}", type_info(objects, field_type));
+            putln!(o);
+        } else {
+            // The arrow datatype section covers it
+        }
         return; // This is just a wrapper type, so don't show the "Fields" section
     }
 

@@ -5,6 +5,9 @@ title: "LatLon"
 
 A geographical position expressed in EPSG:4326 latitude and longitude.
 
+## Rerun datatype
+[`DVec2D`](../datatypes/dvec2d.md)
+
 
 ## Arrow datatype
 ```

@@ -5,6 +5,9 @@ title: "Vector2D"
 
 A vector in 2D space.
 
+## Rerun datatype
+[`Vec2D`](../datatypes/vec2d.md)
+
 
 ## Arrow datatype
 ```

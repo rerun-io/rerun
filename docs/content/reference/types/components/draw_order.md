@@ -10,6 +10,9 @@ Within an entity draw order is governed by the order of the components.
 
 Draw order for entities with the same draw order is generally undefined.
 
+## Rerun datatype
+[`Float32`](../datatypes/float32.md)
+
 
 ## Arrow datatype
 ```

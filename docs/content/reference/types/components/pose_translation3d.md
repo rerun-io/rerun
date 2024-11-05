@@ -5,6 +5,9 @@ title: "PoseTranslation3D"
 
 A translation vector in 3D space that doesn't propagate in the transform hierarchy.
 
+## Rerun datatype
+[`Vec3D`](../datatypes/vec3d.md)
+
 
 ## Arrow datatype
 ```

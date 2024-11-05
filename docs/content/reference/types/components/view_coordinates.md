@@ -22,6 +22,9 @@ The following constants are used to represent the different directions:
  * Forward = 5
  * Back = 6
 
+## Rerun datatype
+[`ViewCoordinates`](../datatypes/view_coordinates.md)
+
 
 ## Arrow datatype
 ```

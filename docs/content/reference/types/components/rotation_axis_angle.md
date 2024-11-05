@@ -5,6 +5,9 @@ title: "RotationAxisAngle"
 
 3D rotation represented by a rotation around a given axis.
 
+## Rerun datatype
+[`RotationAxisAngle`](../datatypes/rotation_axis_angle.md)
+
 
 ## Arrow datatype
 ```

@@ -5,6 +5,9 @@ title: "KeypointId"
 
 A 16-bit ID representing a type of semantic keypoint within a class.
 
+## Rerun datatype
+[`KeypointId`](../datatypes/keypoint_id.md)
+
 
 ## Arrow datatype
 ```
