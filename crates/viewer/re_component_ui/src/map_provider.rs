@@ -15,7 +15,9 @@ impl VariantAvailableProvider<MapProvider> for MapProviderVariantAvailable {
             VariantAvailable::Yes
         } else {
             VariantAvailable::No {
-                reason_markdown: "Mapbox access token is not set. ".to_owned(),
+                reason_markdown: "A Mapbox access token is not available. You can set it in the \
+                settings or using the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable."
+                    .to_owned(),
             }
         };
 
