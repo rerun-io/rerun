@@ -259,25 +259,27 @@ impl Drop for FfmpegProcessAndListener {
         // This should wake up the listen thread if it is sleeping, but that may take a while.
         self.ffmpeg.kill().ok();
 
-        // Wait for both threads to shut down.
-        // Since we killed `on_output` this is not strictly necessary as the threads should come down eventually.
-        // However, we'd like to avoid getting into a situation where repeated stream reset causes threads to accumulate.
-        // With the above measures, this was found to be fast & reliable, but if stalls may show up here again,
-        // we may decide to skip the below steps.
-        // (DO NOT remove this as workaround for a stuck program! While this MAY be slow, it is NOT supposed to hang which indicates a bug in the shutdown logic!)
-        {
-            re_tracing::profile_scope!("shutdown write thread");
-            if let Some(write_thread) = self.write_thread.take() {
-                if write_thread.join().is_err() {
-                    re_log::error!("Failed to join ffmpeg listener thread.");
+        // Unfortunately, even with the above measures, it can still happen that the listen threads take occasionally 100ms and more to shut down.
+        // (very much depending on the system & OS, typical times may be low with large outliers)
+        // It is crucial that the threads come down eventually and rather timely so to avoid leaking resources.
+        // However, in order to avoid stalls, we'll let them finish in parallel.
+        //
+        // Since we disconnected the `on_output` callback from them, they won't influence any new instances.
+        if false {
+            {
+                re_tracing::profile_scope!("shutdown write thread");
+                if let Some(write_thread) = self.write_thread.take() {
+                    if write_thread.join().is_err() {
+                        re_log::error!("Failed to join ffmpeg listener thread.");
+                    }
                 }
             }
-        }
-        {
-            re_tracing::profile_scope!("shutdown listen thread");
-            if let Some(listen_thread) = self.listen_thread.take() {
-                if listen_thread.join().is_err() {
-                    re_log::error!("Failed to join ffmpeg listener thread.");
+            {
+                re_tracing::profile_scope!("shutdown listen thread");
+                if let Some(listen_thread) = self.listen_thread.take() {
+                    if listen_thread.join().is_err() {
+                        re_log::error!("Failed to join ffmpeg listener thread.");
+                    }
                 }
             }
         }
