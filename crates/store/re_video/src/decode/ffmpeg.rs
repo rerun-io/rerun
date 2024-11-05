@@ -172,21 +172,23 @@ impl FfmpegProcessAndListener {
                 re_log::trace!("Successfully parsed SPS for {debug_name}:\n{sps:?}");
 
                 if let Some(mut layout) = sps.pixel_layout() {
-                    // TODO: ffmpeg-sidecar can't handle this yet. Quite unfortunate since this is the most common case by far!
+                    // TODO(nathanbabcock/ffmpeg-sidecar#61): ffmpeg-sidecar can't handle this yet. Quite unfortunate since this is the most common case by far!
                     if layout == crate::decode::YuvPixelLayout::Y_U_V420 {
                         layout = crate::decode::YuvPixelLayout::Y_U_V422;
                     }
-
                     pixel_format = PixelFormat::Yuv {
                         layout,
                         // Unfortunately the color range is an entirely different thing to parse as it's part of optional Video Usability Information (VUI).
-                        // We instead just always tell ffmpeg to give us full range, this is done implicitely by using the `yuvj` variants.
+                        //
+                        // We instead just always tell ffmpeg to give us full range, see`-color_range` below.
+                        // Note that yuvj4xy family of formats fullfill the same function. They according to this post
+                        // https://www.facebook.com/permalink.php?story_fbid=2413101932257643&id=100006735798590
+                        // they are still not quite passed through everywhere. So we'll just use both.
                         range: crate::decode::YuvRange::Full,
                         // Again, instead of parsing this out we tell ffmpeg to give us BT.709.
                         coefficients: crate::decode::YuvMatrixCoefficients::Bt709,
                     };
                     ffmpeg_pix_fmt = match layout {
-                        // See comment on YuvRange::Full above - use j variants for full range.
                         crate::decode::YuvPixelLayout::Y_U_V444 => "yuvj444p",
                         crate::decode::YuvPixelLayout::Y_U_V422 => "yuvj422p",
                         crate::decode::YuvPixelLayout::Y_U_V420 => "yuvj420p",
@@ -227,8 +229,13 @@ impl FfmpegProcessAndListener {
             // h264 bitstreams doesn't have timestamp information. Whatever ffmpeg tries to make up about timing & framerates is wrong!
             // If we don't tell it to just pass the frames through, variable framerate (VFR) video will just not play at all.
             .fps_mode("passthrough")
-            .args(["-f", "rawvideo", "-colorspace", "bt709"]) // ffmpeg-sidecar's .rawvideo() sets pix_fmt to rgb24.
             .pix_fmt(ffmpeg_pix_fmt)
+            // ffmpeg-sidecar's .rawvideo() sets pix_fmt to rgb24, we don't want that.
+            .args(["-f", "rawvideo"])
+            // This should be taken care of by the yuvj formats, but let's be explit again that we want full color range
+            .args(["-color_range", "2"]) // 2 == pc/full
+            // Besides the less and less common Bt601, this is the only space we support right now, so let ffmpeg do the conversion.
+            .args(["-colorspace", "1"]) // 1 == Bt.709
             .output("-") // Output to stdout.
             .spawn()
             .map_err(Error::FailedToStartFfmpeg)?;
@@ -391,6 +398,14 @@ fn read_ffmpeg_output(
             "encoder         : ", // Describes the encoder that was used to encode a video.
             "Metadata:",
             "Stream mapping:",
+            // It likes to say that a lot almost no matter the format.
+            // Some sources say this is more about internal formats, i.e. specific decoders using the wrong values, rather than the cli passed formats.
+            "deprecated pixel format used, make sure you did set range correctly",
+            // Not entirely sure why it tells us this sometimes:
+            // Nowhere in the pipeline do we ask for this conversion, so it must be a transitional format?
+            // This is supported by experimentation yielding that it shows only up when using the `-colorspace` parameter.
+            // (color range and yuvj formats are fine though!)
+            "No accelerated colorspace conversion found from yuv420p to bgr24",
             // We actually don't even want it to estimate a framerate!
             "not enough frames to estimate rate",
         ];
