@@ -56,6 +56,7 @@ def detect_target() -> str:
 class BuildMode(Enum):
     PYPI = "pypi"
     PR = "pr"
+    EXTRA = "extra"
 
     def __str__(self) -> str:
         return self.value
@@ -68,6 +69,8 @@ def build_and_upload(bucket: Bucket | None, mode: BuildMode, gcs_dir: str, targe
         maturin_feature_flags = "--no-default-features --features pypi"
     elif mode is BuildMode.PR:
         maturin_feature_flags = "--no-default-features --features extension-module"
+    elif mode is BuildMode.EXTRA:
+        maturin_feature_flags = "--no-default-features --features extra"
 
     dist = f"dist/{target}"
 
