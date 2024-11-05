@@ -3,14 +3,14 @@ name: Adhoc Wheels
 on:
   workflow_dispatch:
     inputs:
-        MODE:
-            type: choice
-            required: false
-            options:
-              - pypi
-              - pr
-              - extra
-            description: "The build mode (`pypi` includes the web viewer, `pr` does not)"
+      MODE:
+        type: choice
+        required: false
+        options:
+          - pypi
+          - pr
+          - extra
+        description: "The build mode (`pypi` includes the web viewer, `pr` does not)"
 
 defaults:
   run:
@@ -22,7 +22,6 @@ permissions:
   deployments: "write"
 
 jobs:
-
   # -----------------------------------------------------------------------------------
   # Build rerun-cli (rerun binaries):
 
@@ -88,7 +87,7 @@ jobs:
       CONCURRENCY: adhoc-wheels-linux-x64
       PLATFORM: linux-x64
       WHEEL_ARTIFACT_NAME: linux-x64-wheel
-      MODE:  ${{ inputs.MODE }}
+      MODE: ${{ inputs.MODE }}
     secrets: inherit
 
   build-wheel-macos-arm64:
@@ -99,7 +98,7 @@ jobs:
       CONCURRENCY: adhoc-wheels-macos-arm64
       PLATFORM: macos-arm64
       WHEEL_ARTIFACT_NAME: macos-arm64-wheel
-      MODE:  ${{ inputs.MODE }}
+      MODE: ${{ inputs.MODE }}
     secrets: inherit
 
   build-wheel-macos-x64:
@@ -110,7 +109,7 @@ jobs:
       CONCURRENCY: adhoc-wheels-macos-x64
       PLATFORM: macos-x64
       WHEEL_ARTIFACT_NAME: "macos-x64-wheel"
-      MODE:  ${{ inputs.MODE }}
+      MODE: ${{ inputs.MODE }}
     secrets: inherit
 
   build-wheel-windows-x64:
@@ -140,4 +139,3 @@ jobs:
     with:
       CONCURRENCY: adhoc-wheels
     secrets: inherit
-
