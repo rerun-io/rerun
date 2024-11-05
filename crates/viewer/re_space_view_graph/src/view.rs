@@ -283,8 +283,9 @@ impl SpaceViewClass for GraphSpaceView {
         // Update stored bounds on the state, so visualizers see an up-to-date value.
         state.world_bounds = Some(bounds);
 
-        // Clean up the layout for nodes that are no longer present.
-        state.layout.retain(|k, _| seen.contains(k));
+        // For now, we reset the layout after every frame. Eventually, we want
+        // to keep information between frames so that the nodes don't jump around.
+        state.layout.clear();
 
         Ok(())
     }
