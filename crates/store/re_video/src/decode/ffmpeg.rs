@@ -66,7 +66,11 @@ pub enum Error {
 
 impl From<Error> for super::Error {
     fn from(err: Error) -> Self {
-        Self::Ffmpeg(std::sync::Arc::new(err))
+        if let Error::FfmpegNotInstalled { download_url } = err {
+            Self::FfmpegNotInstalled { download_url }
+        } else {
+            Self::Ffmpeg(std::sync::Arc::new(err))
+        }
     }
 }
 
