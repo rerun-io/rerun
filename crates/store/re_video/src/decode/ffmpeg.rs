@@ -179,8 +179,8 @@ impl FfmpegProcessAndListener {
 
                     pixel_format = PixelFormat::Yuv {
                         layout,
-                        // Unfortunately the color range is an entirely differen thing to parse as it's part of optional Video Usability Information (VUI).
-                        // We instead just always tell ffmpeg to give us full range, this is done implicitely by using the `yuvj`variants.
+                        // Unfortunately the color range is an entirely different thing to parse as it's part of optional Video Usability Information (VUI).
+                        // We instead just always tell ffmpeg to give us full range, this is done implicitely by using the `yuvj` variants.
                         range: crate::decode::YuvRange::Full,
                         // Again, instead of parsing this out we tell ffmpeg to give us BT.709.
                         coefficients: crate::decode::YuvMatrixCoefficients::Bt709,
