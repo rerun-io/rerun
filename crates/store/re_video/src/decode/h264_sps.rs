@@ -217,9 +217,9 @@ impl H264Sps {
             2 => Some(YuvPixelLayout::Y_U_V422),
 
             // Spec says:
-            // In 4:4:4 sampling, depending on the value of `separate_colour_plane_flag``, the following applies:
-            // – If `separate_colour_plane_flag`` is equal to 0, each of the two chroma arrays has the same height and width as the luma array.
-            // – Otherwise (`separate_colour_plane_flag`` is equal to 1), the three colour planes are separately processed as monochrome sampled pictures
+            // In 4:4:4 sampling, depending on the value of `separate_color_plane_flag``, the following applies:
+            // – If `separate_color_plane_flag`` is equal to 0, each of the two chroma arrays has the same height and width as the luma array.
+            // – Otherwise (`separate_color_plane_flag`` is equal to 1), the three colour planes are separately processed as monochrome sampled pictures
             //
             // So it's planar YUV4:4:4 in either case but in the second the pixel data is spread accross frames.
             3 => Some(YuvPixelLayout::Y_U_V444),
