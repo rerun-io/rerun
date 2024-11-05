@@ -17,6 +17,9 @@ name = "rerun_bindings" # name of the .so library that the Python module will im
 [features]
 default = ["extension-module"]
 
+## Extra features that aren't ready to be included in release builds yet.
+extra = ["pypi", "remote"]
+
 ## The features we turn on when building the `rerun-sdk` PyPi package
 ## for <https://pypi.org/project/rerun-sdk/>.
 pypi = ["extension-module", "nasm", "web_viewer"]
