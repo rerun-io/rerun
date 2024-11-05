@@ -11,17 +11,17 @@ pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_
         ..Default::default()
     }
     .show(ui, |ui| {
-        let min_width = 500.0;
-        let centering_margin = ((ui.available_width() - min_width) / 2.0).at_least(0.0);
+        const MAX_WIDTH: f32 = 600.0;
+        const MIN_WIDTH: f32 = 300.0;
 
+        let centering_margin = ((ui.available_width() - MAX_WIDTH) / 2.0).at_least(0.0);
         let max_rect = ui.max_rect().expand2(-centering_margin * egui::Vec2::X);
-        let horizontal_scroll = max_rect.width() < 300.0;
-
         let mut child_ui = ui.new_child(egui::UiBuilder::new().max_rect(max_rect));
 
-        egui::ScrollArea::new([horizontal_scroll, true])
+        egui::ScrollArea::both()
             .auto_shrink(false)
             .show(&mut child_ui, |ui| {
+                ui.set_min_width(MIN_WIDTH);
                 settings_screen_ui_impl(ui, app_options, keep_open);
             });
 
@@ -32,6 +32,10 @@ pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_
 }
 
 fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_open: &mut bool) {
+    //
+    // Title
+    //
+
     ui.add_space(40.0);
 
     ui.horizontal(|ui| {
@@ -53,6 +57,10 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
         )
     });
 
+    //
+    // General
+    //
+
     separator_with_some_space(ui);
 
     ui.strong("General");
@@ -64,6 +72,10 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
     ui.re_checkbox(&mut app_options.show_metrics, "Show performance metrics")
         .on_hover_text("Show metrics for milliseconds/frame and RAM usage in the top bar");
+
+    //
+    // Timezone
+    //
 
     separator_with_some_space(ui);
 
@@ -78,6 +90,10 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
         "Unix epoch",
     )
     .on_hover_text("Display timestamps in seconds since unix epoch");
+
+    //
+    // Map view
+    //
 
     separator_with_some_space(ui);
 
@@ -95,6 +111,10 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
         ui.add(egui::TextEdit::singleline(&mut app_options.mapbox_access_token).password(true));
     });
+
+    //
+    // Video
+    //
 
     separator_with_some_space(ui);
 
@@ -124,12 +144,16 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
         // entries outdate automatically.
     });
 
+    //
+    // Experimental features
+    //
+
     // Currently, the wasm target does not have any experimental features. If/when that changes,
     // move the conditional compilation flag to the respective checkbox code.
     #[cfg(not(target_arch = "wasm32"))]
     {
         separator_with_some_space(ui);
-        ui.label("Experimental features:");
+        ui.strong("Experimental features");
         ui
             .re_checkbox(&mut app_options.experimental_space_view_screenshots, "Space view screenshots")
             .on_hover_text("Allow taking screenshots of 2D and 3D space views via their context menu. Does not contain labels.");

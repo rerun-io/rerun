@@ -83,7 +83,7 @@ impl App {
             UICommand::Settings.menu_button_ui(ui, &self.command_sender);
 
             #[cfg(target_arch = "wasm32")]
-            backend_menu_ui(&self.command_sender, ui, frame, &mut self.state.app_options);
+            backend_menu_ui(&self.command_sender, ui, frame);
 
             #[cfg(debug_assertions)]
             ui.menu_button("Debug", |ui| {
