@@ -474,39 +474,38 @@ fn read_ffmpeg_output(
             }
 
             FfmpegEvent::ParsedInputStream(stream) => {
-                let ffmpeg_sidecar::event::AVStream {
-                    stream_type,
+                let ffmpeg_sidecar::event::Stream {
                     format,
-                    pix_fmt, // Often 'yuv420p'
-                    width,
-                    height,
-                    fps,
-                    ..
-                } = stream;
+                    language,
+                    parent_index,
+                    stream_index,
+                    raw_log_message: _,
+                    type_specific_data,
+                } = &stream;
 
                 re_log::trace!(
-                    "{debug_name} decoder input: {stream_type} {format} {pix_fmt} {width}x{height} @ {fps} FPS"
+                    "{debug_name} decoder input: {format} ({language}) parent: {parent_index}, index: {stream_index}, stream data: {type_specific_data:?}"
                 );
 
-                debug_assert_eq!(stream_type.to_ascii_lowercase(), "video");
+                debug_assert!(stream.is_video());
             }
 
             FfmpegEvent::ParsedOutputStream(stream) => {
                 // This just repeats what we told ffmpeg to output, e.g. "rawvideo rgb24"
-                let ffmpeg_sidecar::event::AVStream {
-                    stream_type,
+                let ffmpeg_sidecar::event::Stream {
                     format,
-                    pix_fmt,
-                    width,
-                    height,
-                    fps,
-                    ..
-                } = stream;
+                    language,
+                    parent_index,
+                    stream_index,
+                    raw_log_message: _,
+                    type_specific_data,
+                } = &stream;
+
                 re_log::trace!(
-                    "{debug_name} decoder output: {stream_type} {format} {pix_fmt} {width}x{height} @ {fps} FPS"
+                    "{debug_name} decoder output: {format} ({language}) parent: {parent_index}, index: {stream_index}, stream data: {type_specific_data:?}"
                 );
 
-                debug_assert_eq!(stream_type.to_ascii_lowercase(), "video");
+                debug_assert!(stream.is_video());
             }
 
             FfmpegEvent::Progress(_) => {
