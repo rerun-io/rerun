@@ -5,6 +5,9 @@ title: "ValueRange"
 
 Range of expected or valid values, specifying a lower and upper bound.
 
+## Rerun datatype
+[`Range1D`](../datatypes/range1d.md)
+
 
 ## Arrow datatype
 ```

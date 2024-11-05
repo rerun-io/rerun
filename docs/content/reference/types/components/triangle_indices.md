@@ -5,6 +5,9 @@ title: "TriangleIndices"
 
 The three indices of a triangle in a triangle mesh.
 
+## Rerun datatype
+[`UVec3D`](../datatypes/uvec3d.md)
+
 
 ## Arrow datatype
 ```

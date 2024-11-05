@@ -8,6 +8,9 @@ An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear 
 The color is stored as a 32-bit integer, where the most significant
 byte is `R` and the least significant byte is `A`.
 
+## Rerun datatype
+[`Rgba32`](../datatypes/rgba32.md)
+
 
 ## Arrow datatype
 ```

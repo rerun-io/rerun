@@ -5,6 +5,9 @@ title: "ImageFormat"
 
 The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).
 
+## Rerun datatype
+[`ImageFormat`](../datatypes/image_format.md)
+
 
 ## Arrow datatype
 ```

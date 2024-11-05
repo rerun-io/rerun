@@ -5,6 +5,9 @@ title: "TensorHeightDimension"
 
 Specifies which dimension to use for height.
 
+## Rerun datatype
+[`TensorDimensionSelection`](../datatypes/tensor_dimension_selection.md)
+
 
 ## Arrow datatype
 ```

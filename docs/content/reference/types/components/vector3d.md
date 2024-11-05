@@ -5,6 +5,9 @@ title: "Vector3D"
 
 A vector in 3D space.
 
+## Rerun datatype
+[`Vec3D`](../datatypes/vec3d.md)
+
 
 ## Arrow datatype
 ```

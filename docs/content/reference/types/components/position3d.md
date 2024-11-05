@@ -5,6 +5,9 @@ title: "Position3D"
 
 A position in 3D space.
 
+## Rerun datatype
+[`Vec3D`](../datatypes/vec3d.md)
+
 
 ## Arrow datatype
 ```

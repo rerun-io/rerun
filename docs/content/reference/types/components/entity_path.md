@@ -5,6 +5,9 @@ title: "EntityPath"
 
 A path to an entity, usually to reference some data that is part of the target entity.
 
+## Rerun datatype
+[`EntityPath`](../datatypes/entity_path.md)
+
 
 ## Arrow datatype
 ```

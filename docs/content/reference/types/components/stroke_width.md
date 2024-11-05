@@ -5,6 +5,9 @@ title: "StrokeWidth"
 
 The width of a stroke specified in UI points.
 
+## Rerun datatype
+[`Float32`](../datatypes/float32.md)
+
 
 ## Arrow datatype
 ```

@@ -5,6 +5,9 @@ title: "VideoTimestamp"
 
 Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).
 
+## Rerun datatype
+[`VideoTimestamp`](../datatypes/video_timestamp.md)
+
 
 ## Arrow datatype
 ```

@@ -5,6 +5,9 @@ title: "Blob"
 
 A binary blob of data.
 
+## Rerun datatype
+[`Blob`](../datatypes/blob.md)
+
 
 ## Arrow datatype
 ```

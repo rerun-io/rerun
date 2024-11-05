@@ -8,6 +8,9 @@ Degree of transparency ranging from 0.0 (fully transparent) to 1.0 (fully opaque
 The final opacity value may be a result of multiplication with alpha values as specified by other color sources.
 Unless otherwise specified, the default value is 1.
 
+## Rerun datatype
+[`Float32`](../datatypes/float32.md)
+
 
 ## Arrow datatype
 ```

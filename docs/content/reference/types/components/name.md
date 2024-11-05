@@ -5,6 +5,9 @@ title: "Name"
 
 A display name, typically for an entity or a item like a plot series.
 
+## Rerun datatype
+[`Utf8`](../datatypes/utf8.md)
+
 
 ## Arrow datatype
 ```

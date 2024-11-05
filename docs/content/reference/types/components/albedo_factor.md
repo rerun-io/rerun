@@ -5,6 +5,9 @@ title: "AlbedoFactor"
 
 A color multiplier, usually applied to a whole entity, e.g. a mesh.
 
+## Rerun datatype
+[`Rgba32`](../datatypes/rgba32.md)
+
 
 ## Arrow datatype
 ```

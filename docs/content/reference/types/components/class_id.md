@@ -5,6 +5,9 @@ title: "ClassId"
 
 A 16-bit ID representing a type of semantic class.
 
+## Rerun datatype
+[`ClassId`](../datatypes/class_id.md)
+
 
 ## Arrow datatype
 ```

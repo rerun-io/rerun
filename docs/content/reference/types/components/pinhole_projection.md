@@ -15,6 +15,9 @@ Example:
    0.0     0.0    1.0
 ```
 
+## Rerun datatype
+[`Mat3x3`](../datatypes/mat3x3.md)
+
 
 ## Arrow datatype
 ```

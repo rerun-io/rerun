@@ -8,6 +8,9 @@ Length, or one-dimensional size.
 Measured in its local coordinate system; consult the archetype in use to determine which
 axis or part of the entity this is the length of.
 
+## Rerun datatype
+[`Float32`](../datatypes/float32.md)
+
 
 ## Arrow datatype
 ```
