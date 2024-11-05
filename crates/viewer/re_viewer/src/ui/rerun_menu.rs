@@ -2,7 +2,7 @@
 
 use egui::NumExt as _;
 
-use re_ui::{UICommand, UiExt as _};
+use re_ui::UICommand;
 use re_viewer_context::StoreContext;
 
 use crate::App;
@@ -324,6 +324,8 @@ fn backend_menu_ui(
 
 #[cfg(debug_assertions)]
 fn egui_debug_options_ui(ui: &mut egui::Ui) {
+    use re_ui::UiExt as _;
+
     let mut debug = ui.style().debug;
     let mut any_clicked = false;
 
@@ -366,6 +368,8 @@ fn debug_menu_options_ui(
     app_options: &mut re_viewer_context::AppOptions,
     command_sender: &CommandSender,
 ) {
+    use re_ui::UiExt as _;
+
     #[cfg(not(target_arch = "wasm32"))]
     {
         if ui.button("Mobile size").clicked() {
