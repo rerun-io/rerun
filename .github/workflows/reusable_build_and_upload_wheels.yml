@@ -40,6 +40,7 @@ on:
         options:
           - pypi
           - pr
+          - extra
         description: "The build mode (`pypi` includes the web viewer, `pr` does not)"
       CONCURRENCY:
         required: false
