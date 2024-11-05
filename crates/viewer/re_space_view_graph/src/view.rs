@@ -60,28 +60,26 @@ impl SpaceViewClass for GraphSpaceView {
     }
 
     fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32> {
-        state
-            .downcast_ref::<GraphSpaceViewState>()
-            .ok()
-            .map(|state| {
-                let (width, height) = state.world_bounds.map_or_else(
-                    || {
-                        let bbox = bounding_rect_from_iter(state.layout.values());
-                        (
-                            (bbox.max.x - bbox.min.x).abs(),
-                            (bbox.max.y - bbox.min.y).abs(),
-                        )
-                    },
-                    |bounds| {
-                        (
-                            bounds.x_range.abs_len() as f32,
-                            bounds.y_range.abs_len() as f32,
-                        )
-                    },
-                );
+        let state = state.downcast_ref::<GraphSpaceViewState>().ok()?;
+        let layout = state.layout.as_ref()?;
 
-                width / height
-            })
+        let (width, height) = state.world_bounds.map_or_else(
+            || {
+                let bbox = bounding_rect_from_iter(layout.values());
+                (
+                    (bbox.max.x - bbox.min.x).abs(),
+                    (bbox.max.y - bbox.min.y).abs(),
+                )
+            },
+            |bounds| {
+                (
+                    bounds.x_range.abs_len() as f32,
+                    bounds.y_range.abs_len() as f32,
+                )
+            },
+        );
+
+        Some(width / height)
     }
 
     // TODO(grtlr): implement `recommended_root_for_entities`
@@ -148,8 +146,6 @@ impl SpaceViewClass for GraphSpaceView {
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
-        let layout_was_empty = state.layout.is_empty();
-
         let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
             ctx.blueprint_db(),
             ctx.blueprint_query,
@@ -158,6 +154,12 @@ impl SpaceViewClass for GraphSpaceView {
 
         let bounds: blueprint::components::VisualBounds2D =
             bounds_property.component_or_fallback(ctx, self, state)?;
+
+        let layout_was_empty = state.layout.is_none();
+
+        // For now, we reset the layout at every frame. Eventually, we want
+        // to keep information between frames so that the nodes don't jump around.
+        let layout = state.layout.insert(Default::default());
 
         state.world_bounds = Some(bounds);
         let bounds_rect: egui::Rect = bounds.into();
@@ -186,7 +188,7 @@ impl SpaceViewClass for GraphSpaceView {
                 if let Some(data) = node_data.get(entity) {
                     for node in &data.nodes {
                         seen.insert(node.index);
-                        let current = state.layout.entry(node.index).or_insert(
+                        let current = layout.entry(node.index).or_insert(
                             node.position
                                 .map_or(egui::Rect::ZERO.translate(entity_offset), |p| {
                                     Rect::from_center_size(p, egui::Vec2::ZERO)
@@ -223,7 +225,7 @@ impl SpaceViewClass for GraphSpaceView {
                     for node in implicit_nodes {
                         let ix = NodeIndex::from_entity_node(entity, node);
                         seen.insert(ix);
-                        let current = state.layout.entry(ix).or_insert(
+                        let current = layout.entry(ix).or_insert(
                             egui::Rect::ZERO
                                 .translate(entity_offset)
                                 .translate(current_implicit_offset),
@@ -236,8 +238,8 @@ impl SpaceViewClass for GraphSpaceView {
 
                     for edge in &data.edges {
                         if let (Some(source_pos), Some(target_pos)) = (
-                            state.layout.get(&edge.source_index),
-                            state.layout.get(&edge.target_index),
+                            layout.get(&edge.source_index),
+                            layout.get(&edge.target_index),
                         ) {
                             scene.edge(|ui| {
                                 ui::draw_edge(
@@ -282,10 +284,6 @@ impl SpaceViewClass for GraphSpaceView {
         }
         // Update stored bounds on the state, so visualizers see an up-to-date value.
         state.world_bounds = Some(bounds);
-
-        // For now, we reset the layout after every frame. Eventually, we want
-        // to keep information between frames so that the nodes don't jump around.
-        state.layout.clear();
 
         Ok(())
     }

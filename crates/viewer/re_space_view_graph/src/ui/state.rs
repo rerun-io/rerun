@@ -14,8 +14,9 @@ use super::bounding_rect_from_iter;
 /// This state is preserved between frames, but not across Viewer sessions.
 #[derive(Default)]
 pub struct GraphSpaceViewState {
-    /// Positions of the nodes in world space.
-    pub layout: HashMap<NodeIndex, egui::Rect>,
+    /// Positions of the nodes in world space. If the layout is `None`, the
+    /// nodes were never layed out.
+    pub layout: Option<HashMap<NodeIndex, egui::Rect>>,
 
     pub show_debug: bool,
 
@@ -24,11 +25,14 @@ pub struct GraphSpaceViewState {
 
 impl GraphSpaceViewState {
     pub fn layout_ui(&mut self, ui: &mut egui::Ui) {
+        let Some(layout) = self.layout.as_ref() else {
+            return;
+        };
         ui.grid_left_hand_label("Layout")
             .on_hover_text("The bounding box encompassing all entities in the view right now");
         ui.vertical(|ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-            let egui::Rect { min, max } = bounding_rect_from_iter(self.layout.values());
+            let egui::Rect { min, max } = bounding_rect_from_iter(layout.values());
             ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
             ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
         });
