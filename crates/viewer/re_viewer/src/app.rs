@@ -750,6 +750,10 @@ impl App {
                 self.toggle_fullscreen();
             }
 
+            UICommand::Settings => {
+                self.state.show_settings_ui = true;
+            }
+
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomIn => {
                 let mut zoom_factor = egui_ctx.zoom_factor();

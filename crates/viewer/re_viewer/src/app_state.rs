@@ -17,7 +17,7 @@ use re_viewport_blueprint::ui::add_space_view_or_container_modal_ui;
 use re_viewport_blueprint::ViewportBlueprint;
 
 use crate::app_blueprint::AppBlueprint;
-use crate::ui::recordings_panel_ui;
+use crate::ui::{recordings_panel_ui, settings_screen_ui};
 
 const WATERMARK: bool = false; // Nice for recording media material
 
@@ -43,8 +43,16 @@ pub struct AppState {
     #[serde(skip)]
     datastore_ui: re_chunk_store_ui::DatastoreUi,
 
+    /// Display the datastore UI instead of the regular viewer UI.
     #[serde(skip)]
     pub(crate) show_datastore_ui: bool,
+
+    /// Display the settings UI.
+    ///
+    /// If both `show_datastore_ui` and `show_settings_ui` are true, the settings UI takes
+    /// precedence.
+    #[serde(skip)]
+    pub(crate) show_settings_ui: bool,
 
     /// Storage for the state of each `SpaceView`
     ///
@@ -77,6 +85,7 @@ impl Default for AppState {
             welcome_screen: Default::default(),
             datastore_ui: Default::default(),
             show_datastore_ui: false,
+            show_settings_ui: false,
             view_states: Default::default(),
             selection_state: Default::default(),
             focused_item: Default::default(),
@@ -152,6 +161,7 @@ impl AppState {
             welcome_screen,
             datastore_ui,
             show_datastore_ui,
+            show_settings_ui,
             view_states,
             selection_state,
             focused_item,
@@ -309,8 +319,13 @@ impl AppState {
             }
         };
 
-        // TODO(jleibs): The need to rebuild this after updating the queries is kind of annoying,
-        // but it's just a bunch of refs so not really that big of a deal in practice.
+        // must happen before we recreate the view context as we mutably borrow the app options
+        if *show_settings_ui {
+            settings_screen_ui(ui, app_options, show_settings_ui);
+        }
+
+        // We need to recreate the context to appease the borrow checker. It is a bit annoying, but
+        // it's just a bunch of refs so not really that big of a deal in practice.
         let ctx = ViewerContext {
             app_options,
             cache: store_context.caches,
@@ -331,7 +346,9 @@ impl AppState {
             focused_item,
         };
 
-        if *show_datastore_ui {
+        if *show_settings_ui {
+            // nothing: this is already handled above
+        } else if *show_datastore_ui {
             datastore_ui.ui(&ctx, ui, show_datastore_ui, app_options.time_zone);
         } else {
             //
