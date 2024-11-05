@@ -25,6 +25,11 @@ use crate::{
     PixelFormat, Time,
 };
 
+// FFmpeg 5.1 "Riemann" is from 2022-07-22.
+// It's simply the oldest I tested manually as of writing. We might be able to go lower.
+const FFMPEG_MINIMUM_VERSION_MAJOR: u32 = 5;
+const FFMPEG_MINIMUM_VERSION_MINOR: u32 = 1;
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("Couldn't find an installation of the FFmpeg executable.")]
@@ -200,7 +205,8 @@ impl FfmpegProcessAndListener {
         };
 
         let mut ffmpeg = FfmpegCommand::new()
-            .hide_banner()
+            // Keep banner enabled so we can check on the version more easily.
+            //.hide_banner()
             // "Reduce the latency introduced by buffering during initial input streams analysis."
             //.arg("-fflags nobuffer")
             //
@@ -422,6 +428,21 @@ fn read_ffmpeg_output(
         false
     }
 
+    fn log_ffmpeg_warning_once(debug_name: &str, msg: &str) {
+        // Make warn_once work on `[swscaler @ 0x148db8000]` style warnings even if the address is different every time.
+        // In older versions of FFmpeg this may happen several times in the same message (happend in 5.1, did not happen in 7.1).
+        let mut msg = msg.to_owned();
+        while let Some(pos) = msg.find("[swscaler @ 0x") {
+            msg = [
+                &msg[..pos],
+                &msg[(pos + "[swscaler @ 0x148db8000]".len())..],
+            ]
+            .join("[swscaler]");
+        }
+
+        re_log::warn_once!("{debug_name} decoder: {msg}");
+    }
+
     // Pending frames, sorted by their presentation timestamp.
     let mut pending_frame_infos = BTreeMap::new();
     let mut highest_dts = Time::MIN; // Highest dts encountered so far.
@@ -435,17 +456,9 @@ fn read_ffmpeg_output(
                 }
             }
 
-            FfmpegEvent::Log(LogLevel::Warning, mut msg) => {
+            FfmpegEvent::Log(LogLevel::Warning, msg) => {
                 if !should_ignore_log_msg(&msg) {
-                    // Make warn_once work on `[swscaler @ 0x148db8000]` style warnings even if the address is different every time.
-                    if let Some(pos) = msg.find("[swscaler @ 0x") {
-                        msg = [
-                            &msg[..pos],
-                            &msg[(pos + "[swscaler @ 0x148db8000]".len())..],
-                        ]
-                        .join("[swscaler]");
-                    };
-                    re_log::warn_once!("{debug_name} decoder: {msg}");
+                    log_ffmpeg_warning_once(debug_name, &msg);
                 }
             }
 
@@ -464,7 +477,8 @@ fn read_ffmpeg_output(
                     return None;
                 }
                 if !should_ignore_log_msg(&msg) {
-                    re_log::warn_once!("{debug_name} decoder: {msg}");
+                    // Note that older ffmpeg versions don't flag their warnings as such and may end up here.
+                    log_ffmpeg_warning_once(debug_name, &msg);
                 }
             }
 
@@ -620,7 +634,32 @@ fn read_ffmpeg_output(
             }
 
             FfmpegEvent::ParsedVersion(ffmpeg_version) => {
-                re_log::debug_once!("FFmpeg version is: {}", ffmpeg_version.version);
+                re_log::debug_once!("FFmpeg version is {}", ffmpeg_version.version);
+
+                let mut version_parts = ffmpeg_version.version.split(".");
+                if let (Some(major), Some(minor)) = (
+                    version_parts
+                        .next()
+                        .and_then(|part| part.parse::<u32>().ok()),
+                    version_parts
+                        .next()
+                        .and_then(|part| part.parse::<u32>().ok()),
+                ) {
+                    if major < FFMPEG_MINIMUM_VERSION_MAJOR
+                        || (major == FFMPEG_MINIMUM_VERSION_MAJOR
+                            && minor < FFMPEG_MINIMUM_VERSION_MINOR)
+                    {
+                        re_log::warn_once!(
+                            "FFmpeg version is {}. Only versions >= {FFMPEG_MINIMUM_VERSION_MAJOR}.{FFMPEG_MINIMUM_VERSION_MINOR} are officially supported",
+                            ffmpeg_version.version
+                        );
+                    }
+                } else {
+                    re_log::warn_once!(
+                        "Failed to parse FFmpeg version: {}",
+                        ffmpeg_version.raw_log_message
+                    );
+                }
             }
 
             FfmpegEvent::ParsedConfiguration(ffmpeg_configuration) => {
