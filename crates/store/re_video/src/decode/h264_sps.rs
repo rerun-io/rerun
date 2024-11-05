@@ -171,7 +171,7 @@ impl H264Sps {
             (None, None, None, None)
         };
 
-        Ok(H264Sps {
+        Ok(Self {
             profile_idc,
             constraint_set0_flags,
             constraint_set1_flags,
@@ -321,7 +321,7 @@ mod tests {
 
         let mut bit_pos = 2;
         assert_eq!(
-            read_exponential_golomb(&mut bit_pos, &[0b_110011_11]).unwrap(),
+            read_exponential_golomb(&mut bit_pos, &[0b1100_1111]).unwrap(),
             6
         );
         assert_eq!(bit_pos, 7);
