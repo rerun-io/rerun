@@ -13,9 +13,11 @@ Recommended to be one of:
 * `"DEBUG"`
 * `"TRACE"`
 
-## Fields
 
-* value: [`Utf8`](../datatypes/utf8.md)
+## Arrow datatype
+```
+utf8
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `TextLogLevel`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1TextLogLevel.html)

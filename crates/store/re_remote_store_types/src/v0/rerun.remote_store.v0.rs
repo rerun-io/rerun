@@ -243,14 +243,14 @@ impl ErrorCode {
     }
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RegisterRecordingsRequest {
+pub struct RegisterRecordingRequest {
     /// human readable description of the recording
     #[prost(string, tag = "1")]
     pub description: ::prost::alloc::string::String,
     /// information about recording's backing storage
     /// TODO(zehiko) add separate info about the "source" recording
-    #[prost(message, optional, tag = "2")]
-    pub obj_storage: ::core::option::Option<ObjectStorage>,
+    #[prost(string, tag = "2")]
+    pub url: ::prost::alloc::string::String,
     /// type of recording
     #[prost(enumeration = "RecordingType", tag = "3")]
     pub typ: i32,
@@ -268,20 +268,15 @@ pub struct RecordingMetadata {
     pub payload: ::prost::alloc::vec::Vec<u8>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct ObjectStorage {
-    #[prost(string, tag = "1")]
-    pub bucket_name: ::prost::alloc::string::String,
-    #[prost(string, tag = "2")]
-    pub url: ::prost::alloc::string::String,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RegisterRecordingsResponse {
+pub struct RegisterRecordingResponse {
+    #[prost(message, optional, tag = "1")]
+    pub id: ::core::option::Option<RecordingId>,
     /// Note / TODO(zehiko): this implies we read the record (for example go through entire .rrd file
     /// chunk by chunk) and extract the metadata. So we might want to 1/ not do this i.e.
     /// only do it as part of explicit GetMetadata request or 2/ do it if Request has "include_metadata=true"
     /// or 3/ do it always
-    #[prost(message, repeated, tag = "2")]
-    pub metadata: ::prost::alloc::vec::Vec<RecordingMetadata>,
+    #[prost(message, optional, tag = "2")]
+    pub metadata: ::core::option::Option<RecordingMetadata>,
 }
 /// Server can include details about the error as part of gRPC error (Status)
 #[derive(Clone, PartialEq, ::prost::Message)]
@@ -577,23 +572,22 @@ pub mod storage_node_client {
             ));
             self.inner.unary(req, path, codec).await
         }
-        /// TODO(zehiko) - should this be singular recording registration? Currently we can have 1 rrd => many recordings
-        pub async fn register_recordings(
+        pub async fn register_recording(
             &mut self,
-            request: impl tonic::IntoRequest<super::RegisterRecordingsRequest>,
-        ) -> std::result::Result<tonic::Response<super::RegisterRecordingsResponse>, tonic::Status>
+            request: impl tonic::IntoRequest<super::RegisterRecordingRequest>,
+        ) -> std::result::Result<tonic::Response<super::RegisterRecordingResponse>, tonic::Status>
         {
             self.inner.ready().await.map_err(|e| {
                 tonic::Status::unknown(format!("Service was not ready: {}", e.into()))
             })?;
             let codec = tonic::codec::ProstCodec::default();
             let path = http::uri::PathAndQuery::from_static(
-                "/rerun.remote_store.v0.StorageNode/RegisterRecordings",
+                "/rerun.remote_store.v0.StorageNode/RegisterRecording",
             );
             let mut req = request.into_request();
             req.extensions_mut().insert(GrpcMethod::new(
                 "rerun.remote_store.v0.StorageNode",
-                "RegisterRecordings",
+                "RegisterRecording",
             ));
             self.inner.unary(req, path, codec).await
         }
@@ -638,11 +632,10 @@ pub mod storage_node_server {
             &self,
             request: tonic::Request<super::GetRecordingMetadataRequest>,
         ) -> std::result::Result<tonic::Response<super::GetRecordingMetadataResponse>, tonic::Status>;
-        /// TODO(zehiko) - should this be singular recording registration? Currently we can have 1 rrd => many recordings
-        async fn register_recordings(
+        async fn register_recording(
             &self,
-            request: tonic::Request<super::RegisterRecordingsRequest>,
-        ) -> std::result::Result<tonic::Response<super::RegisterRecordingsResponse>, tonic::Status>;
+            request: tonic::Request<super::RegisterRecordingRequest>,
+        ) -> std::result::Result<tonic::Response<super::RegisterRecordingResponse>, tonic::Status>;
     }
     #[derive(Debug)]
     pub struct StorageNodeServer<T> {
@@ -884,22 +877,22 @@ pub mod storage_node_server {
                     };
                     Box::pin(fut)
                 }
-                "/rerun.remote_store.v0.StorageNode/RegisterRecordings" => {
+                "/rerun.remote_store.v0.StorageNode/RegisterRecording" => {
                     #[allow(non_camel_case_types)]
-                    struct RegisterRecordingsSvc<T: StorageNode>(pub Arc<T>);
+                    struct RegisterRecordingSvc<T: StorageNode>(pub Arc<T>);
                     impl<T: StorageNode>
-                        tonic::server::UnaryService<super::RegisterRecordingsRequest>
-                        for RegisterRecordingsSvc<T>
+                        tonic::server::UnaryService<super::RegisterRecordingRequest>
+                        for RegisterRecordingSvc<T>
                     {
-                        type Response = super::RegisterRecordingsResponse;
+                        type Response = super::RegisterRecordingResponse;
                         type Future = BoxFuture<tonic::Response<Self::Response>, tonic::Status>;
                         fn call(
                             &mut self,
-                            request: tonic::Request<super::RegisterRecordingsRequest>,
+                            request: tonic::Request<super::RegisterRecordingRequest>,
                         ) -> Self::Future {
                             let inner = Arc::clone(&self.0);
                             let fut = async move {
-                                <T as StorageNode>::register_recordings(&inner, request).await
+                                <T as StorageNode>::register_recording(&inner, request).await
                             };
                             Box::pin(fut)
                         }
@@ -910,7 +903,7 @@ pub mod storage_node_server {
                     let max_encoding_message_size = self.max_encoding_message_size;
                     let inner = self.inner.clone();
                     let fut = async move {
-                        let method = RegisterRecordingsSvc(inner);
+                        let method = RegisterRecordingSvc(inner);
                         let codec = tonic::codec::ProstCodec::default();
                         let mut grpc = tonic::server::Grpc::new(codec)
                             .apply_compression_config(

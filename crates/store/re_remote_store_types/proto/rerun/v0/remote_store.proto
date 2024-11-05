@@ -9,18 +9,17 @@ service StorageNode {
     rpc Query(QueryRequest) returns (stream QueryResponse) {}
     rpc FetchRecording(FetchRecordingRequest) returns (stream FetchRecordingResponse) {}
     rpc GetRecordingMetadata(GetRecordingMetadataRequest) returns (GetRecordingMetadataResponse) {}
-    // TODO(zehiko) - should this be singular recording registration? Currently we can have 1 rrd => many recordings
-    rpc RegisterRecordings(RegisterRecordingsRequest) returns (RegisterRecordingsResponse) {}
+    rpc RegisterRecording(RegisterRecordingRequest) returns (RegisterRecordingResponse) {}
 }
 
 // ---------------- RegisterRecording ------------------
 
-message RegisterRecordingsRequest {
+message RegisterRecordingRequest {
     // human readable description of the recording
     string description = 1;
     // information about recording's backing storage
     // TODO(zehiko) add separate info about the "source" recording
-    ObjectStorage obj_storage = 2;
+    string url = 2;
     // type of recording
     RecordingType typ = 3;
     // (optional) any additional metadata that should be associated with the recording
@@ -34,17 +33,13 @@ message RecordingMetadata {
     bytes payload = 2;
 }
 
-message ObjectStorage {
-    string bucket_name = 1;
-    string url = 2;
-}
-
-message RegisterRecordingsResponse {
+message RegisterRecordingResponse {
+    RecordingId id = 1;
     // Note / TODO(zehiko): this implies we read the record (for example go through entire .rrd file
     // chunk by chunk) and extract the metadata. So we might want to 1/ not do this i.e.
     // only do it as part of explicit GetMetadata request or 2/ do it if Request has "include_metadata=true"
     // or 3/ do it always
-    repeated RecordingMetadata metadata = 2;
+    RecordingMetadata metadata = 2;
 }
 
 // Server can include details about the error as part of gRPC error (Status)

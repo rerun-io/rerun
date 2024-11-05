@@ -139,23 +139,23 @@ pub fn decode(version: EncoderVersion, data: &[u8]) -> Result<Option<TransportCh
 }
 
 impl RecordingMetadata {
-    /// Create `RecordingMetadata` from arrow schema and arrow record batch
+    /// Create `RecordingMetadata` from `TransportChunk`. We rely on `TransportChunk` until
+    /// we migrate from arrow2 to arrow.
     pub fn try_from(
         version: EncoderVersion,
-        schema: &ArrowSchema,
-        unit_batch: &ArrowChunk<Box<dyn ArrowArray>>,
+        metadata: &TransportChunk,
     ) -> Result<Self, CodecError> {
-        if unit_batch.len() > 1 {
+        if metadata.data.len() != 1 {
             return Err(CodecError::InvalidArgument(format!(
                 "metadata record batch can only have a single row, batch with {} rows given",
-                unit_batch.len()
+                metadata.data.len()
             )));
-        }
+        };
 
         match version {
             EncoderVersion::V0 => {
                 let mut data: Vec<u8> = Vec::new();
-                write_arrow_to_bytes(&mut data, schema, unit_batch)?;
+                write_arrow_to_bytes(&mut data, &metadata.schema, &metadata.data)?;
 
                 Ok(Self {
                     encoder_version: version as i32,
@@ -166,14 +166,17 @@ impl RecordingMetadata {
     }
 
     /// Get metadata as arrow data
-    pub fn data(&self) -> Result<(ArrowSchema, ArrowChunk<Box<dyn ArrowArray>>), CodecError> {
+    pub fn data(&self) -> Result<TransportChunk, CodecError> {
         let mut reader = std::io::Cursor::new(self.payload.clone());
 
         let encoder_version = EncoderVersion::try_from(self.encoder_version)
             .map_err(|err| CodecError::InvalidArgument(err.to_string()))?;
 
         match encoder_version {
-            EncoderVersion::V0 => read_arrow_from_bytes(&mut reader),
+            EncoderVersion::V0 => {
+                let (schema, data) = read_arrow_from_bytes(&mut reader)?;
+                Ok(TransportChunk { schema, data })
+            }
         }
     }
 }
@@ -224,6 +227,7 @@ mod tests {
     use arrow2::chunk::Chunk as ArrowChunk;
     use arrow2::{array::Int32Array, datatypes::Field, datatypes::Schema as ArrowSchema};
     use re_dataframe::external::re_chunk::{Chunk, RowId};
+    use re_dataframe::TransportChunk;
     use re_log_types::{example_components::MyPoint, Timeline};
 
     use crate::v0::RecordingMetadata;
@@ -328,15 +332,17 @@ mod tests {
         )]);
         let my_ints = Int32Array::from_slice([42]);
         let expected_chunk = ArrowChunk::new(vec![Box::new(my_ints) as _]);
+        let metadata_tc = TransportChunk {
+            schema: expected_schema.clone(),
+            data: expected_chunk.clone(),
+        };
 
-        let metadata =
-            RecordingMetadata::try_from(EncoderVersion::V0, &expected_schema, &expected_chunk)
-                .unwrap();
+        let metadata = RecordingMetadata::try_from(EncoderVersion::V0, &metadata_tc).unwrap();
 
-        let (schema, chunk) = metadata.data().unwrap();
+        let tc = metadata.data().unwrap();
 
-        assert_eq!(expected_schema, schema);
-        assert_eq!(expected_chunk, chunk);
+        assert_eq!(expected_schema, tc.schema);
+        assert_eq!(expected_chunk, tc.data);
     }
 
     #[test]
@@ -350,9 +356,12 @@ mod tests {
         let my_ints = Int32Array::from_slice([41, 42]);
 
         let expected_chunk = ArrowChunk::new(vec![Box::new(my_ints) as _]);
+        let metadata_tc = TransportChunk {
+            schema: expected_schema.clone(),
+            data: expected_chunk,
+        };
 
-        let metadata =
-            RecordingMetadata::try_from(EncoderVersion::V0, &expected_schema, &expected_chunk);
+        let metadata = RecordingMetadata::try_from(EncoderVersion::V0, &metadata_tc);
 
         assert!(matches!(
             metadata.err().unwrap(),

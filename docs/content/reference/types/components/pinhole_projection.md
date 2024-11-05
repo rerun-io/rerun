@@ -15,9 +15,11 @@ Example:
    0.0     0.0    1.0
 ```
 
-## Fields
 
-* image_from_camera: [`Mat3x3`](../datatypes/mat3x3.md)
+## Arrow datatype
+```
+FixedSizeList<9, float32>
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `PinholeProjection`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1PinholeProjection.html)

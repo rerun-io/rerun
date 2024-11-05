@@ -1,5 +1,7 @@
 //! Generate the markdown files shown at <https://rerun.io/docs/reference/types>.
 
+mod arrow_datatype;
+
 use std::{collections::BTreeMap, fmt::Write};
 
 use camino::Utf8PathBuf;
@@ -14,9 +16,10 @@ use crate::{
 
 pub const DATAFRAME_VIEW_FQNAME: &str = "rerun.blueprint.views.DataframeView";
 
+/// Like [`writeln!`], but without a [`Result`].
 macro_rules! putln {
-    ($o:ident) => ( writeln!($o).ok() );
-    ($o:ident, $($tt:tt)*) => ( writeln!($o, $($tt)*).ok() );
+    ($o:ident) => ( { writeln!($o).ok(); } );
+    ($o:ident, $($tt:tt)*) => ( { writeln!($o, $($tt)*).unwrap(); } );
 }
 
 pub struct DocsCodeGenerator {
@@ -44,7 +47,7 @@ impl CodeGenerator for DocsCodeGenerator {
         &mut self,
         reporter: &Reporter,
         objects: &Objects,
-        _arrow_registry: &crate::ArrowRegistry,
+        arrow_registry: &crate::ArrowRegistry,
     ) -> GeneratedFiles {
         re_tracing::profile_function!();
 
@@ -74,7 +77,13 @@ impl CodeGenerator for DocsCodeGenerator {
                 ObjectKind::View => views.push(object),
             }
 
-            let page = object_page(reporter, objects, object, &views_per_archetype);
+            let page = object_page(
+                reporter,
+                objects,
+                object,
+                arrow_registry,
+                &views_per_archetype,
+            );
             let path = self.docs_dir.join(format!(
                 "{}/{}.md",
                 object.kind.plural_snake_case(),
@@ -229,6 +238,7 @@ fn object_page(
     reporter: &Reporter,
     objects: &Objects,
     object: &Object,
+    arrow_registry: &crate::ArrowRegistry,
     views_per_archetype: &ViewsPerArchetype,
 ) -> String {
     let is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
@@ -290,6 +300,16 @@ fn object_page(
         ObjectKind::View => {
             write_view_properties(reporter, objects, &mut page, object);
         }
+    }
+
+    if matches!(object.kind, ObjectKind::Datatype | ObjectKind::Component) {
+        let datatype = &arrow_registry.get(&object.fqname);
+        putln!(page);
+        putln!(page, "## Arrow datatype");
+        putln!(page, "```");
+        arrow_datatype::arrow2_datatype_docs(&mut page, datatype);
+        putln!(page);
+        putln!(page, "```");
     }
 
     putln!(page);
@@ -416,19 +436,20 @@ fn write_fields(objects: &Objects, o: &mut String, object: &Object) {
         match ty {
             Type::Unit => unreachable!("Should be handled elsewhere"),
 
-            Type::UInt8 => atomic("u8"),
-            Type::UInt16 => atomic("u16"),
-            Type::UInt32 => atomic("u32"),
-            Type::UInt64 => atomic("u64"),
-            Type::Int8 => atomic("i8"),
-            Type::Int16 => atomic("i16"),
-            Type::Int32 => atomic("i32"),
-            Type::Int64 => atomic("i64"),
-            Type::Bool => atomic("bool"),
-            Type::Float16 => atomic("f16"),
-            Type::Float32 => atomic("f32"),
-            Type::Float64 => atomic("f64"),
-            Type::String => atomic("string"),
+            // We use explicit, arrow-like names:
+            Type::UInt8 => atomic("uint8"),
+            Type::UInt16 => atomic("uint16"),
+            Type::UInt32 => atomic("uint32"),
+            Type::UInt64 => atomic("uint64"),
+            Type::Int8 => atomic("int8"),
+            Type::Int16 => atomic("int16"),
+            Type::Int32 => atomic("int32"),
+            Type::Int64 => atomic("int64"),
+            Type::Bool => atomic("boolean"),
+            Type::Float16 => atomic("float16"),
+            Type::Float32 => atomic("float32"),
+            Type::Float64 => atomic("float64"),
+            Type::String => atomic("utf8"),
 
             Type::Array { elem_type, length } => {
                 format!(
@@ -438,7 +459,7 @@ fn write_fields(objects: &Objects, o: &mut String, object: &Object) {
             }
             Type::Vector { elem_type } => {
                 format!(
-                    "list of {}",
+                    "List of {}",
                     type_info(objects, &Type::from(elem_type.clone()))
                 )
             }
@@ -454,17 +475,41 @@ fn write_fields(objects: &Objects, o: &mut String, object: &Object) {
         }
     }
 
+    if object.is_arrow_transparent() {
+        debug_assert!(object.is_struct());
+        debug_assert_eq!(object.fields.len(), 1);
+        return; // This is just a wrapper type, so don't show the "Fields" section
+    }
+
     let mut fields = Vec::new();
     for field in &object.fields {
-        if object.is_enum() || field.typ == Type::Unit {
-            fields.push(format!("* {}", field.name));
-        } else {
-            fields.push(format!(
-                "* {}: {}",
-                field.name,
-                type_info(objects, &field.typ)
-            ));
+        let mut field_string = format!("#### `{}`", field.name);
+
+        if let Some(enum_value) = field.enum_value {
+            field_string.push_str(&format!(" = {enum_value}"));
         }
+        field_string.push('\n');
+
+        if !object.is_enum() {
+            field_string.push_str("Type: ");
+            if field.typ == Type::Unit {
+                field_string.push_str("`null`");
+            } else {
+                if field.is_nullable {
+                    field_string.push_str("nullable ");
+                }
+                field_string.push_str(&type_info(objects, &field.typ));
+            }
+            field_string.push('\n');
+            field_string.push('\n');
+        }
+
+        for line in field.docs.lines_for(objects, Target::WebDocsMarkdown) {
+            field_string.push_str(&line);
+            field_string.push('\n');
+        }
+
+        fields.push(field_string);
     }
 
     if !fields.is_empty() {
@@ -473,7 +518,6 @@ fn write_fields(objects: &Objects, o: &mut String, object: &Object) {
             crate::ObjectClass::Enum | crate::ObjectClass::Union => "## Variants",
         };
         putln!(o, "{heading}");
-        putln!(o);
         for field in fields {
             putln!(o, "{field}");
         }

@@ -5,9 +5,11 @@ title: "Uuid"
 
 A 16-byte UUID.
 
-## Fields
 
-* bytes: 16x `u8`
+## Arrow datatype
+```
+FixedSizeList<16, uint8>
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `Uuid`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Uuid.html)
