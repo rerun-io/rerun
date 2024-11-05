@@ -14,7 +14,7 @@ use ffmpeg_sidecar::{
 };
 use parking_lot::Mutex;
 
-use crate::Time;
+use crate::{decode::h264_sps::H264Sps, PixelFormat, Time};
 
 use super::{AsyncDecoder, Chunk, Frame, OutputCallback};
 
@@ -63,6 +63,9 @@ pub enum Error {
 
     #[error("Failed to send video frame info to the FFmpeg read thread.")]
     BrokenFrameInfoChannel,
+
+    #[error("Failed to parse sequence parameter set.")]
+    SpsParsing,
 }
 
 impl From<Error> for super::Error {
@@ -151,6 +154,59 @@ impl FfmpegProcessAndListener {
             });
         }
 
+        // By default play it safe: let ffmpeg convert to rgba.
+        let mut pixel_format = PixelFormat::Rgba8Unorm;
+        let mut ffmpeg_pix_fmt = "rgba";
+
+        // There might be extensions to the SPS (`NalUnitType::SequenceParameterSetExt`), ignore those.
+        let mut sps_units =
+            avcc.avcc.sequence_parameter_sets.iter().filter(|sps| {
+                NalHeader(sps.bytes[0]).unit_type() == NalUnitType::SequenceParameterSet
+            });
+        if let Some(sps_unit) = sps_units.next() {
+            if sps_units.next().is_some() {
+                // This is rather strange. Must mean that some pictures refer to one SPS and some to another!
+                // We don't know what to do with this.
+                re_log::trace_once!("Found more than one sequence parameter set (SPS) in the AVCC box of {debug_name}.");
+            } else if let Ok(sps) = H264Sps::try_parse(&sps_unit.bytes[1..]) {
+                re_log::trace!("Successfully parsed SPS for {debug_name}:\n{sps:?}");
+
+                if let Some(mut layout) = sps.pixel_layout() {
+                    // TODO: ffmpeg-sidecar can't handle this yet. Quite unfortunate since this is the most common case by far!
+                    if layout == crate::decode::YuvPixelLayout::Y_U_V420 {
+                        layout = crate::decode::YuvPixelLayout::Y_U_V422;
+                    }
+
+                    pixel_format = PixelFormat::Yuv {
+                        layout,
+                        // Unfortunately the color range is an entirely differen thing to parse as it's part of optional Video Usability Information (VUI).
+                        // We instead just always tell ffmpeg to give us full range, this is done implicitely by using the `yuvj`variants.
+                        range: crate::decode::YuvRange::Full,
+                        // Again, instead of parsing this out we tell ffmpeg to give us BT.709.
+                        coefficients: crate::decode::YuvMatrixCoefficients::Bt709,
+                    };
+                    ffmpeg_pix_fmt = match layout {
+                        // See comment on YuvRange::Full above - use j variants for full range.
+                        crate::decode::YuvPixelLayout::Y_U_V444 => "yuvj444p",
+                        crate::decode::YuvPixelLayout::Y_U_V422 => "yuvj422p",
+                        crate::decode::YuvPixelLayout::Y_U_V420 => "yuvj420p",
+                        crate::decode::YuvPixelLayout::Y400 => "gray",
+                    };
+                } else {
+                    re_log::warn_once!(
+                        "Failed to parse pixel layout from sequence parameter set (SPS) for {debug_name}. `chroma_format_idc` was {}.",
+                        sps.chroma_format_idc
+                    );
+                }
+            } else {
+                re_log::warn_once!(
+                    "Failed to parse the sequence parameter set (SPS) for {debug_name}."
+                );
+            }
+        } else {
+            re_log::warn_once!("Expected at least one sequence parameter set (SPS) in the AVCC box of {debug_name}, but found none.");
+        };
+
         let mut ffmpeg = FfmpegCommand::new()
             .hide_banner()
             // "Reduce the latency introduced by buffering during initial input streams analysis."
@@ -171,10 +227,9 @@ impl FfmpegProcessAndListener {
             // h264 bitstreams doesn't have timestamp information. Whatever ffmpeg tries to make up about timing & framerates is wrong!
             // If we don't tell it to just pass the frames through, variable framerate (VFR) video will just not play at all.
             .fps_mode("passthrough")
-            // TODO(andreas): at least do `rgba`. But we could also do `yuv420p` for instance if that's what the video is specifying
-            // (should be faster overall at no quality loss if the video is in this format).
-            // Check `ffmpeg -pix_fmts` for full list.
-            .rawvideo() // Output rgb24 on stdout.
+            .args(["-f", "rawvideo", "-colorspace", "bt709"]) // ffmpeg-sidecar's .rawvideo() sets pix_fmt to rgb24.
+            .pix_fmt(ffmpeg_pix_fmt)
+            .output("-") // Output to stdout.
             .spawn()
             .map_err(Error::FailedToStartFfmpeg)?;
 
@@ -201,6 +256,7 @@ impl FfmpegProcessAndListener {
                         &debug_name,
                         ffmpeg_iterator,
                         &frame_info_rx,
+                        &pixel_format,
                         on_output.as_ref(),
                     );
                 }
@@ -324,6 +380,7 @@ fn read_ffmpeg_output(
     debug_name: &str,
     ffmpeg_iterator: ffmpeg_sidecar::iter::FfmpegIterator,
     frame_info_rx: &Receiver<FfmpegFrameInfo>,
+    pixel_format: &PixelFormat,
     on_output: &Mutex<Option<Arc<OutputCallback>>>,
 ) -> Option<()> {
     /// Ignore some common output from ffmpeg:
@@ -333,8 +390,6 @@ fn read_ffmpeg_output(
             "frame=    0 fps=0.0 q=0.0 size=       0kB time=N/A bitrate=N/A speed=N/A",
             "encoder         : ", // Describes the encoder that was used to encode a video.
             "Metadata:",
-            // TODO(andreas): we should just handle yuv420p directly!
-            "No accelerated colorspace conversion found from yuv420p to rgb24",
             "Stream mapping:",
             // We actually don't even want it to estimate a framerate!
             "not enough frames to estimate rate",
@@ -521,15 +576,12 @@ fn read_ffmpeg_output(
                     frame_info.presentation_timestamp
                 );
 
-                debug_assert_eq!(pix_fmt, "rgb24");
-                debug_assert_eq!(width as usize * height as usize * 3, data.len());
-
                 (on_output.lock().as_ref()?)(Ok(super::Frame {
                     content: super::FrameContent {
                         data,
                         width,
                         height,
-                        format: crate::PixelFormat::Rgb8Unorm,
+                        format: pixel_format.clone(),
                     },
                     info: super::FrameInfo {
                         presentation_timestamp: frame_info.presentation_timestamp,

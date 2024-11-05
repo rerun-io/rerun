@@ -296,7 +296,7 @@ pub struct Frame {
 }
 
 /// Pixel format/layout used by [`FrameContent::data`].
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum PixelFormat {
     Rgb8Unorm,
     Rgba8Unorm,
@@ -314,7 +314,7 @@ pub enum PixelFormat {
 ///
 /// For details see `re_renderer`'s `YuvPixelLayout` type.
 #[allow(non_camel_case_types)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum YuvPixelLayout {
     Y_U_V444,
     Y_U_V422,
@@ -325,7 +325,7 @@ pub enum YuvPixelLayout {
 /// Yuv value range used by [`PixelFormat::Yuv`].
 ///
 /// For details see `re_renderer`'s `YuvRange` type.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum YuvRange {
     Limited,
     Full,
@@ -334,7 +334,7 @@ pub enum YuvRange {
 /// Yuv matrix coefficients used by [`PixelFormat::Yuv`].
 ///
 /// For details see `re_renderer`'s `YuvMatrixCoefficients` type.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum YuvMatrixCoefficients {
     /// Interpret YUV as GBR.
     Identity,
