@@ -81,14 +81,16 @@
 mod async_decoder_wrapper;
 #[cfg(with_dav1d)]
 mod av1;
+
 #[cfg(with_ffmpeg)]
 mod ffmpeg;
+#[cfg(with_ffmpeg)]
+pub use ffmpeg::Error as FfmpegError;
+
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
 
 use crate::Time;
-
-pub use ffmpeg::Error as FfmpegError;
 
 #[derive(thiserror::Error, Debug, Clone)]
 pub enum Error {
