@@ -9,6 +9,7 @@ mod entity_path;
 mod fallback_ui;
 mod image_format;
 mod line_strip;
+mod map_provider;
 mod marker_shape;
 mod pinhole;
 mod radius;
@@ -27,6 +28,7 @@ use datatype_uis::{
     edit_view_enum, edit_view_range1d, view_view_id,
 };
 
+use crate::datatype_uis::edit_view_enum_with_variant_available;
 use re_types::{
     blueprint::components::{
         BackgroundKind, Corner2D, LockRangeDuringZoom, MapProvider, ViewFit, Visible, ZoomLevel,
@@ -94,7 +96,12 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
     registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MagnificationFilter>(edit_view_enum);
-    registry.add_singleline_edit_or_view::<MapProvider>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<MapProvider>(
+        edit_view_enum_with_variant_available::<
+            MapProvider,
+            crate::map_provider::MapProviderVariantAvailable,
+        >,
+    );
     registry.add_singleline_edit_or_view::<TransformRelation>(edit_view_enum);
     registry.add_singleline_edit_or_view::<ViewFit>(edit_view_enum);
 
