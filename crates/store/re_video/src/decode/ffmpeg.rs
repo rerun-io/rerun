@@ -181,7 +181,7 @@ impl FfmpegProcessAndListener {
                         // Unfortunately the color range is an entirely different thing to parse as it's part of optional Video Usability Information (VUI).
                         //
                         // We instead just always tell ffmpeg to give us full range, see`-color_range` below.
-                        // Note that yuvj4xy family of formats fullfill the same function. They according to this post
+                        // Note that yuvj4xy family of formats fulfill the same function. They according to this post
                         // https://www.facebook.com/permalink.php?story_fbid=2413101932257643&id=100006735798590
                         // they are still not quite passed through everywhere. So we'll just use both.
                         range: crate::decode::YuvRange::Full,
@@ -232,7 +232,7 @@ impl FfmpegProcessAndListener {
             .pix_fmt(ffmpeg_pix_fmt)
             // ffmpeg-sidecar's .rawvideo() sets pix_fmt to rgb24, we don't want that.
             .args(["-f", "rawvideo"])
-            // This should be taken care of by the yuvj formats, but let's be explit again that we want full color range
+            // This should be taken care of by the yuvj formats, but let's be explicit again that we want full color range
             .args(["-color_range", "2"]) // 2 == pc/full
             // Besides the less and less common Bt601, this is the only space we support right now, so let ffmpeg do the conversion.
             .args(["-colorspace", "1"]) // 1 == Bt.709

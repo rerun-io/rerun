@@ -29,7 +29,7 @@ pub struct H264Sps {
     pub pic_width_in_mbs_minus1: u32,
     pub pic_height_in_map_units_minus1: u32,
     pub frame_mbs_only_flag: bool,
-    pub mb_adapative_frame_field_flag: bool,
+    pub mb_adaptive_frame_field_flag: bool,
     pub direct_8x8_inference_flag: bool,
 
     pub frame_crop_left_offset: Option<u32>,
@@ -142,7 +142,7 @@ impl H264Sps {
         let pic_width_in_mbs_minus1 = read_exponential_golomb(&mut bit_read_pos, buffer)?;
         let pic_height_in_map_units_minus1 = read_exponential_golomb(&mut bit_read_pos, buffer)?;
         let frame_mbs_only_flag = read_bits(&mut bit_read_pos, buffer, 1)? == 1;
-        let mb_adapative_frame_field_flag = if !frame_mbs_only_flag {
+        let mb_adaptive_frame_field_flag = if !frame_mbs_only_flag {
             read_bits(&mut bit_read_pos, buffer, 1)? == 1
         } else {
             false
@@ -194,7 +194,7 @@ impl H264Sps {
             pic_width_in_mbs_minus1,
             pic_height_in_map_units_minus1,
             frame_mbs_only_flag,
-            mb_adapative_frame_field_flag,
+            mb_adaptive_frame_field_flag,
             direct_8x8_inference_flag,
 
             frame_crop_left_offset,
@@ -219,9 +219,9 @@ impl H264Sps {
             // Spec says:
             // In 4:4:4 sampling, depending on the value of `separate_color_plane_flag``, the following applies:
             // – If `separate_color_plane_flag`` is equal to 0, each of the two chroma arrays has the same height and width as the luma array.
-            // – Otherwise (`separate_color_plane_flag`` is equal to 1), the three colour planes are separately processed as monochrome sampled pictures
+            // – Otherwise (`separate_color_plane_flag`` is equal to 1), the three color planes are separately processed as monochrome sampled pictures
             //
-            // So it's planar YUV4:4:4 in either case but in the second the pixel data is spread accross frames.
+            // So it's planar YUV4:4:4 in either case but in the second the pixel data is spread across frames.
             3 => Some(YuvPixelLayout::Y_U_V444),
 
             _ => None,
