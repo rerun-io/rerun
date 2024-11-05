@@ -10,6 +10,7 @@
   <a href="https://github.com/rerun-io/rerun/blob/main/LICENSE-MIT">    <img alt="MIT"            src="https://img.shields.io/badge/license-MIT-blue.svg">                        </a>
   <a href="https://github.com/rerun-io/rerun/blob/main/LICENSE-APACHE"> <img alt="Apache"         src="https://img.shields.io/badge/license-Apache-blue.svg">                     </a>
   <a href="https://discord.gg/Gcm8BbTaAj">                              <img alt="Rerun Discord"  src="https://img.shields.io/discord/1062300748202921994?label=Rerun%20Discord"> </a>
+  <a href="https://gurubase.io/g/rerun">                                <img alt="Gurubase"       src="https://img.shields.io/badge/Gurubase-Ask%20Rerun%20Guru-006BFF">           </a>
 </h1>
 
 # Time-aware multimodal data stack and visualizations
