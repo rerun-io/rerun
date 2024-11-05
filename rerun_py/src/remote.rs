@@ -1,7 +1,12 @@
 #![allow(unsafe_op_in_unsafe_fn)]
+use arrow::{array::ArrayData, pyarrow::PyArrowType};
 // False positive due to #[pyfunction] macro
-use pyo3::{exceptions::PyRuntimeError, prelude::*, Bound, PyResult};
-use re_remote_store_types::v0::{storage_node_client::StorageNodeClient, ListRecordingsRequest};
+use pyo3::{exceptions::PyRuntimeError, prelude::*, types::PyDict, Bound, PyResult};
+use re_chunk::TransportChunk;
+use re_remote_store_types::v0::{
+    storage_node_client::StorageNodeClient, EncoderVersion, ListRecordingsRequest,
+    RecordingMetadata, RecordingType, RegisterRecordingRequest,
+};
 
 /// Register the `rerun.remote` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -64,6 +69,120 @@ impl PyConnection {
                 .map(|recording| PyRecordingInfo { info: recording })
                 .collect())
         })
+    }
+
+    /// Register a recording along with some metadata
+    #[pyo3(signature = (
+        storage_url,
+        metadata = None
+    ))]
+    fn register(
+        &mut self,
+        storage_url: &str,
+        metadata: Option<&Bound<'_, PyDict>>,
+    ) -> PyResult<String> {
+        self.runtime.block_on(async {
+            let storage_url = url::Url::parse(storage_url)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            let _obj = object_store::ObjectStoreScheme::parse(&storage_url)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            let metadata = metadata
+                .map(|metadata| {
+                    let (schema, data): (
+                        Vec<arrow2::datatypes::Field>,
+                        Vec<Box<dyn arrow2::array::Array>>,
+                    ) = metadata
+                        .iter()
+                        .map(|(key, value)| {
+                            let key = key.to_string();
+                            let value = value.extract::<MetadataLike>()?;
+                            let value_array = value.to_arrow2()?;
+                            let field = arrow2::datatypes::Field::new(
+                                key,
+                                value_array.data_type().clone(),
+                                true,
+                            );
+                            Ok((field, value_array))
+                        })
+                        .collect::<PyResult<Vec<_>>>()?
+                        .into_iter()
+                        .unzip();
+
+                    let schema = arrow2::datatypes::Schema::from(schema);
+
+                    let data = arrow2::chunk::Chunk::new(data);
+
+                    let metadata_tc = TransportChunk {
+                        schema: schema.clone(),
+                        data,
+                    };
+
+                    RecordingMetadata::try_from(EncoderVersion::V0, &metadata_tc)
+                        .map_err(|err| PyRuntimeError::new_err(err.to_string()))
+                })
+                .transpose()?;
+
+            let request = RegisterRecordingRequest {
+                // TODO(jleibs): Description should really just be in the metadata
+                description: Default::default(),
+                url: storage_url.to_string(),
+                metadata,
+                typ: RecordingType::Rrd.into(),
+            };
+
+            let resp = self
+                .client
+                .register_recording(request)
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                .into_inner();
+
+            let recording_id: String = resp.id.map_or("Unknown".to_owned(), |id| id.id);
+
+            Ok(recording_id)
+        })
+    }
+}
+
+/// A type alias for metadata.
+#[derive(FromPyObject)]
+enum MetadataLike {
+    PyArrow(PyArrowType<ArrayData>),
+    // TODO(jleibs): Support converting other primitives
+}
+
+impl MetadataLike {
+    fn to_arrow2(&self) -> PyResult<Box<dyn re_chunk::ArrowArray>> {
+        match self {
+            Self::PyArrow(array) => {
+                let array = arrow2::array::from_data(&array.0);
+                if array.len() == 1 {
+                    Ok(array)
+                } else {
+                    Err(PyRuntimeError::new_err(
+                        "Metadata must be a single array, not a list",
+                    ))
+                }
+            }
+        }
+    }
+
+    #[allow(dead_code)]
+    fn to_arrow(&self) -> PyResult<std::sync::Arc<dyn arrow::array::Array>> {
+        match self {
+            Self::PyArrow(array) => {
+                let array = arrow::array::make_array(array.0.clone());
+                if array.len() == 1 {
+                    Ok(array)
+                } else {
+                    Err(PyRuntimeError::new_err(
+                        "Metadata must be a single array, not a list",
+                    ))
+                }
+            }
+        }
     }
 }
 

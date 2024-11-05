@@ -33,10 +33,12 @@ extension-module = ["pyo3/extension-module"]
 nasm = ["re_video/nasm"]
 
 remote = [
+  "dep:object_store",
   "dep:re_remote_store_types",
   "dep:re_ws_comms",
   "dep:tokio",
   "dep:tonic",
+  "dep:url",
 ]
 
 ## Support serving a web viewer over HTTP with `serve()`.
@@ -79,6 +81,7 @@ rand = { workspace = true, features = ["std", "std_rng"] }
 uuid.workspace = true
 
 # Deps for remote feature
+object_store = { workspace = true, optional = true, features = ["aws"] }
 re_remote_store_types = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true }
 # Not used yet, but we will need it when we start streaming data
@@ -86,6 +89,7 @@ tokio = { workspace = true, optional = true }
 tonic = { workspace = true, default-features = false, features = [
   "transport",
 ], optional = true }
+url = { workspace = true, optional = true }
 
 
 [build-dependencies]
