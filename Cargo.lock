@@ -5581,6 +5581,7 @@ dependencies = [
  "anyhow",
  "itertools 0.13.0",
  "nohash-hasher",
+ "rayon",
  "re_arrow2",
  "re_chunk",
  "re_chunk_store",
@@ -5591,6 +5592,8 @@ dependencies = [
  "re_types",
  "re_types_core",
  "similar-asserts",
+ "tokio",
+ "tokio-stream",
  "unindent",
 ]
 
@@ -8378,6 +8381,7 @@ dependencies = [
  "libc",
  "mio 1.0.2",
  "pin-project-lite",
+ "signal-hook-registry",
  "socket2",
  "tokio-macros",
  "windows-sys 0.52.0",
