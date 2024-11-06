@@ -40,7 +40,7 @@ analytics = ["dep:re_analytics"]
 map_view = ["dep:re_space_view_map"]
 
 ## Enable the rrdp data source.
-rrdp = ["re_data_source/rrdp", "dep:re_rrdp_comms"]
+rrdp = ["re_data_source/rrdp", "dep:re_grpc_client"]
 
 
 [dependencies]
@@ -91,7 +91,7 @@ re_ws_comms = { workspace = true, features = ["client"] }
 
 # Internal (optional):
 re_analytics = { workspace = true, optional = true }
-re_rrdp_comms = { workspace = true, optional = true }
+re_grpc_client = { workspace = true, optional = true }
 re_space_view_map = { workspace = true, optional = true }
 
 

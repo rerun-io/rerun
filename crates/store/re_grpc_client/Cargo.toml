@@ -1,5 +1,5 @@
 [package]
-name = "re_rrdp_comms"
+name = "re_grpc_client"
 authors.workspace = true
 description = "gRCP client for the Rerun Data Platform gRPC prototocl"
 edition.workspace = true

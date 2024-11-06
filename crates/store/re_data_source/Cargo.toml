@@ -23,7 +23,7 @@ all-features = true
 default = ["rrdp"]
 
 ## Enable the rrdp data source.
-rrdp = ["dep:re_rrdp_comms"]
+rrdp = ["dep:re_grpc_client"]
 
 
 [dependencies]
@@ -43,7 +43,7 @@ itertools.workspace = true
 rayon.workspace = true
 
 # Optional dependencies:
-re_rrdp_comms = { workspace = true, optional = true }
+re_grpc_client = { workspace = true, optional = true }
 
 [build-dependencies]
 re_build_tools.workspace = true

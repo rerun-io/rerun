@@ -247,7 +247,7 @@ impl DataSource {
 
             #[cfg(feature = "rrdp")]
             Self::RerunGrpcUrl { url } => {
-                re_rrdp_comms::stream_recording(url, on_msg).map_err(|err| err.into())
+                re_grpc_client::stream_recording(url, on_msg).map_err(|err| err.into())
             }
         }
     }
