@@ -54,6 +54,8 @@ pub struct GeoPoints {
     pub positions: Vec<crate::components::LatLon>,
 
     /// Optional radii for the points, effectively turning them into circles.
+    ///
+    /// *Note*: scene units radiii are interpreted as meters.
     pub radii: Option<Vec<crate::components::Radius>>,
 
     /// Optional colors for the points.
@@ -238,6 +240,8 @@ impl GeoPoints {
     }
 
     /// Optional radii for the points, effectively turning them into circles.
+    ///
+    /// *Note*: scene units radiii are interpreted as meters.
     #[inline]
     pub fn with_radii(
         mut self,

@@ -47,6 +47,8 @@ namespace rerun::archetypes {
         Collection<rerun::components::LatLon> positions;
 
         /// Optional radii for the points, effectively turning them into circles.
+        ///
+        /// *Note*: scene units radiii are interpreted as meters.
         std::optional<Collection<rerun::components::Radius>> radii;
 
         /// Optional colors for the points.
@@ -77,6 +79,8 @@ namespace rerun::archetypes {
             : positions(std::move(_positions)) {}
 
         /// Optional radii for the points, effectively turning them into circles.
+        ///
+        /// *Note*: scene units radiii are interpreted as meters.
         GeoPoints with_radii(Collection<rerun::components::Radius> _radii) && {
             radii = std::move(_radii);
             // See: https://github.com/rerun-io/rerun/issues/4027

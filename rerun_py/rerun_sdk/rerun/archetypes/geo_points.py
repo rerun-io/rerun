@@ -84,6 +84,8 @@ class GeoPoints(GeoPointsExt, Archetype):
     )
     # Optional radii for the points, effectively turning them into circles.
     #
+    # *Note*: scene units radiii are interpreted as meters.
+    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     colors: components.ColorBatch | None = field(

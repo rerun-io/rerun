@@ -25,6 +25,9 @@ table GeoLineStrings (
   // --- Recommended ---
 
   /// Optional radii for the line strings.
+  ///
+  /// *Note*: scene units radiii are interpreted as meters. Currently, the display scale only consideres the latitude of
+  /// the first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).
   radii: [rerun.components.Radius] ("attr.rerun.component_recommended", nullable, order: 2000);
 
   /// Optional colors for the line strings.
