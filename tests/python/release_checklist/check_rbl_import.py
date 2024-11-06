@@ -11,7 +11,7 @@ import rerun.blueprint as rrb
 README = """\
 # Blueprint imports
 
-This checks that importing a blueprint into an application always applies it, regarless of its AppID.
+This checks that importing a blueprint into an application always applies it, regardless of its AppID.
 
 You should be seeing a **dataframe view of a plot** on your left, instead of an _actual plot_.
 """
