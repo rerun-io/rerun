@@ -83,9 +83,7 @@ mod async_decoder_wrapper;
 mod av1;
 
 #[cfg(with_ffmpeg)]
-mod ffmpeg;
-#[cfg(with_ffmpeg)]
-mod h264_sps;
+mod ffmpeg_h264;
 
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
@@ -119,7 +117,7 @@ pub enum Error {
 
     #[cfg(with_ffmpeg)]
     #[error(transparent)]
-    Ffmpeg(std::sync::Arc<ffmpeg::Error>),
+    Ffmpeg(std::sync::Arc<ffmpeg_h264::Error>),
 
     // We need to check for this one and don't want to infect more crates with the feature requirement.
     #[error("Couldn't find an installation of the FFmpeg executable.")]
@@ -202,7 +200,7 @@ pub fn new_decoder(
         #[cfg(with_ffmpeg)]
         re_mp4::StsdBoxContent::Avc1(avc1_box) => {
             re_log::trace!("Decoding H.264…");
-            Ok(Box::new(ffmpeg::FfmpegCliH264Decoder::new(
+            Ok(Box::new(ffmpeg_h264::FfmpegCliH264Decoder::new(
                 debug_name.to_owned(),
                 avc1_box.clone(),
                 on_output,

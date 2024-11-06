@@ -1,4 +1,21 @@
-use super::YuvPixelLayout;
+use crate::decode::YuvPixelLayout;
+
+use super::nalu::{NalHeader, NalUnitType};
+
+#[derive(thiserror::Error, Debug)]
+pub enum SpsParsingError {
+    #[error("SPS buffer too small")]
+    UnexpectedEndOfSpsBuffer,
+
+    #[error("Invalid pixel layout index in SPS: chroma_format_idc was {0}.")]
+    InvalidPixelLayout(u32),
+
+    #[error("More than one SPS in AVC configuration.")]
+    MoreThanOneSpsInAvcc,
+
+    #[error("AVC configuration did not contain a SPS.")]
+    NoSpsInAvcc,
+}
 
 /// Sequence Parameter Set for h264 video
 ///
@@ -40,7 +57,7 @@ pub struct H264Sps {
 
 impl H264Sps {
     /// Parses a sequence parameter set from a buffer.
-    pub fn try_parse(buffer: &[u8]) -> Result<Self, ()> {
+    pub fn try_parse(buffer: &[u8]) -> Result<Self, SpsParsingError> {
         let mut bit_read_pos = 0;
 
         // Follows closely the diagram provided by https://stackoverflow.com/a/6477652
@@ -204,17 +221,38 @@ impl H264Sps {
         })
     }
 
+    /// Parses a sequence parameter set from an AVC configuration box.
+    pub fn parse_from_avcc(avcc: &re_mp4::Avc1Box) -> Result<Self, SpsParsingError> {
+        // There might be extensions to the SPS (`NalUnitType::SequenceParameterSetExt`), ignore those.
+        let mut sps_units =
+            avcc.avcc.sequence_parameter_sets.iter().filter(|sps| {
+                NalHeader(sps.bytes[0]).unit_type() == NalUnitType::SequenceParameterSet
+            });
+
+        if let Some(sps_unit) = sps_units.next() {
+            if sps_units.next().is_some() {
+                // This is rather strange. Must mean that some pictures refer to one SPS and some to another!
+                // We don't know what to do with this.
+                Err(SpsParsingError::MoreThanOneSpsInAvcc)
+            } else {
+                Self::try_parse(&sps_unit.bytes[1..])
+            }
+        } else {
+            Err(SpsParsingError::NoSpsInAvcc)
+        }
+    }
+
     /// Return the pixel layout specified in the SPS.
     ///
     /// None means that the value in the SPS was invalid.
-    pub fn pixel_layout(&self) -> Option<YuvPixelLayout> {
+    pub fn pixel_layout(&self) -> Result<YuvPixelLayout, SpsParsingError> {
         // Section 6.1
         // http://wikil.lwwhome.cn:28080/wp-content/uploads/2018/08/T-REC-H.264-201704%E8%8B%B1%E6%96%87.pdf
 
         match self.chroma_format_idc {
-            0 => Some(YuvPixelLayout::Y400),
-            1 => Some(YuvPixelLayout::Y_U_V420),
-            2 => Some(YuvPixelLayout::Y_U_V422),
+            0 => Ok(YuvPixelLayout::Y400),
+            1 => Ok(YuvPixelLayout::Y_U_V420),
+            2 => Ok(YuvPixelLayout::Y_U_V422),
 
             // Spec says:
             // In 4:4:4 sampling, depending on the value of `separate_color_plane_flag``, the following applies:
@@ -222,22 +260,28 @@ impl H264Sps {
             // – Otherwise (`separate_color_plane_flag`` is equal to 1), the three color planes are separately processed as monochrome sampled pictures
             //
             // So it's planar YUV4:4:4 in either case but in the second the pixel data is spread across frames.
-            3 => Some(YuvPixelLayout::Y_U_V444),
+            3 => Ok(YuvPixelLayout::Y_U_V444),
 
-            _ => None,
+            _ => Err(SpsParsingError::InvalidPixelLayout(self.chroma_format_idc)),
         }
     }
 }
 
-fn read_bits(bit_read_pos: &mut usize, buffer: &[u8], num_bits: usize) -> Result<u32, ()> {
+fn read_bits(
+    bit_read_pos: &mut usize,
+    buffer: &[u8],
+    num_bits: usize,
+) -> Result<u32, SpsParsingError> {
+    debug_assert!(num_bits <= 32);
+
     let byte_pos = *bit_read_pos / 8;
     if buffer.len() <= byte_pos {
-        return Err(());
+        return Err(SpsParsingError::UnexpectedEndOfSpsBuffer);
     }
 
     let num_bytes = num_bits.next_multiple_of(8) / 8;
     if buffer.len() < byte_pos + num_bytes {
-        return Err(());
+        return Err(SpsParsingError::UnexpectedEndOfSpsBuffer);
     }
 
     let mut result = 0;
@@ -254,8 +298,11 @@ fn read_bits(bit_read_pos: &mut usize, buffer: &[u8], num_bits: usize) -> Result
 }
 
 /// Reads a sequence of bits in exponential golomb coding
-/// See <https://en.wikipedia.org/wiki/Exponential-Golomb_coding/>
-fn read_exponential_golomb(bit_read_pos: &mut usize, buffer: &[u8]) -> Result<u32, ()> {
+/// See <https://en.wikipedia.org/wiki/Exponential-Golomb_coding>
+fn read_exponential_golomb(
+    bit_read_pos: &mut usize,
+    buffer: &[u8],
+) -> Result<u32, SpsParsingError> {
     let mut zero_count = 0;
     while read_bits(bit_read_pos, buffer, 1)? == 0 {
         zero_count += 1;
