@@ -1207,7 +1207,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     }
 
     #[inline]
-    pub async fn next_row_batch_async(&self) -> Option<RecordBatch> {
+    pub async fn next_row_batch_async(&self) -> Option<RecordBatch>
+    where
+        E: 'static + Send + Clone,
+    {
         let row = self.next_row_async().await?;
 
         // If we managed to get a row, then the state must be initialized already.
@@ -2468,10 +2471,12 @@ mod tests {
         let query_cache = QueryCache::new_handle(store.clone());
         let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
 
+        let engine_guard = query_engine.engine.write_arc();
+
         let filtered_index = Some(Timeline::new_sequence("frame_nr"));
 
         // static
-        tokio::spawn({
+        let handle_static = tokio::spawn({
             let query_engine = query_engine.clone();
             async move {
                 let query = QueryExpression::default();
@@ -2513,7 +2518,7 @@ mod tests {
         });
 
         // temporal
-        tokio::spawn({
+        let handle_temporal = tokio::spawn({
             async move {
                 let query = QueryExpression {
                     filtered_index,
@@ -2555,6 +2560,63 @@ mod tests {
                 Ok::<_, anyhow::Error>(())
             }
         });
+
+        let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+
+        let handle_queries = tokio::spawn(async move {
+            let mut handle_static = std::pin::pin!(handle_static);
+            let mut handle_temporal = std::pin::pin!(handle_temporal);
+
+            // Poll the query handles, just once.
+            //
+            // Because the storage engine is already held by a writer, this will put them in a pending state,
+            // waiting to be woken up. If nothing wakes them up, then this will simply deadlock.
+            {
+                // Although it might look scary, all we're doing is crafting a noop waker manually,
+                // because `std::task::Waker::noop` is unstable.
+                //
+                // We'll use this to build a noop async context, so that we can poll our promises
+                // manually.
+                const RAW_WAKER_NOOP: std::task::RawWaker = {
+                    const VTABLE: std::task::RawWakerVTable = std::task::RawWakerVTable::new(
+                        |_| RAW_WAKER_NOOP, // Cloning just returns a new no-op raw waker
+                        |_| {},             // `wake` does nothing
+                        |_| {},             // `wake_by_ref` does nothing
+                        |_| {},             // Dropping does nothing as we don't allocate anything
+                    );
+                    std::task::RawWaker::new(std::ptr::null(), &VTABLE)
+                };
+
+                #[allow(unsafe_code)]
+                let mut cx = std::task::Context::from_waker(
+                    // Safety: a Waker is just a privacy-preserving wrapper around a RawWaker.
+                    unsafe {
+                        std::mem::transmute::<&std::task::RawWaker, &std::task::Waker>(
+                            &RAW_WAKER_NOOP,
+                        )
+                    },
+                );
+
+                use std::future::Future as _;
+                assert!(handle_static.as_mut().poll(&mut cx).is_pending());
+                assert!(handle_temporal.as_mut().poll(&mut cx).is_pending());
+            }
+
+            tx.send(()).unwrap();
+
+            handle_static.await??;
+            handle_temporal.await??;
+
+            Ok::<_, anyhow::Error>(())
+        });
+
+        rx.await?;
+
+        // Release the writer: the queries should now be able to stream to completion, provided
+        // that _something_ wakes them up appropriately.
+        drop(engine_guard);
+
+        handle_queries.await??;
 
         Ok(())
     }
