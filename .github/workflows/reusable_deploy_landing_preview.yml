@@ -70,7 +70,7 @@ jobs:
             | ------ | ------- | ----- |
             | ✅ | ${{ steps.get-sha.outputs.sha }} | https://${{ steps.vercel.outputs.vercel_preview_url }}/docs |
 
-            <sub><sup>Note: This comment is updated whenever you push a commit.</sup></sub>
+            <sup>Note: This comment is updated whenever you push a commit.</sup>
 
       - name: Create PR comment
         # https://github.com/mshick/add-pr-comment
@@ -86,7 +86,7 @@ jobs:
             | ------ | ------- | ----- |
             | ❌ | ${{ steps.get-sha.outputs.sha }} | unavailable |
 
-            <sub><sup>Note: This comment is updated whenever you push a commit.</sup></sub>
+            <sup>Note: This comment is updated whenever you push a commit.</sup>
 
       - name: Create PR comment
         # https://github.com/mshick/add-pr-comment
@@ -102,4 +102,4 @@ jobs:
             | ------ | ------- | ----- |
             | ❌ | ${{ steps.get-sha.outputs.sha }} | unavailable |
 
-            <sub><sup>Note: This comment is updated whenever you push a commit.</sup></sub>
+            <sup>Note: This comment is updated whenever you push a commit.</sup>
