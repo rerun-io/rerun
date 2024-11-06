@@ -593,6 +593,11 @@ fn read_ffmpeg_output(
                     frame_info.presentation_timestamp
                 );
 
+                debug_assert_eq!(
+                    data.len() * 8,
+                    (width * height * pixel_format.bits_per_pixel()) as usize
+                );
+
                 (on_output.lock().as_ref()?)(Ok(Frame {
                     content: FrameContent {
                         data,

@@ -309,6 +309,21 @@ pub enum PixelFormat {
     },
 }
 
+impl PixelFormat {
+    pub fn bits_per_pixel(&self) -> u32 {
+        match self {
+            Self::Rgb8Unorm { .. } => 24,
+            Self::Rgba8Unorm { .. } => 32,
+            Self::Yuv { layout, .. } => match layout {
+                YuvPixelLayout::Y_U_V444 => 24,
+                YuvPixelLayout::Y_U_V422 => 16,
+                YuvPixelLayout::Y_U_V420 => 12,
+                YuvPixelLayout::Y400 => 8,
+            },
+        }
+    }
+}
+
 /// Pixel layout used by [`PixelFormat::Yuv`].
 ///
 /// For details see `re_renderer`'s `YuvPixelLayout` type.
