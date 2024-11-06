@@ -43,7 +43,6 @@ jobs:
       - name: Deploy rerun.io preview
         id: vercel-initial-deploy
         uses: ./.github/actions/vercel
-        continue-on-error: true
         with:
           command: "deploy"
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
@@ -70,7 +69,6 @@ jobs:
       - name: Wait for deployment
         id: vercel
         uses: ./.github/actions/vercel
-        continue-on-error: true
         if: success()
         with:
           command: "wait-for-deployment"
