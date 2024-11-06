@@ -45,7 +45,7 @@ Codec support varies in the web & native viewer:
 | ---------- | ------- | ------ |
 | AV1        | ✅       | ✅      |
 | H.264/avc  | ✅       | ✅      |
-| H.265/hevc | 🚧       | ❌      |
+| H.265/hevc | 🔳       | ❌      |
 | VP8        | ✅       | ❌      |
 | VP9        | ✅       | ❌      |
 
@@ -56,7 +56,7 @@ Details see below.
 When choosing a codec, we recommend [AV1](https://developer.mozilla.org/en-US/docs/Web/Media/Formats/Video_codecs#av1),
 as it seems to have the best overall playback support while also having very high compression quality.
 
-Since AV1 can have very long encoding times, it is often not yet suitable for streaming.
+Since AV1 can have very long encoding times, it is often not suitable for streaming.
 In those cases where encoding time matters, we recommend H.264/avc.
 
 ### Native viewer
