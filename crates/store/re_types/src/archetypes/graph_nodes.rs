@@ -37,7 +37,7 @@ pub struct GraphNodes {
     pub show_labels: Option<crate::components::ShowLabels>,
 
     /// Optional radius for nodes.
-    pub radius: Option<crate::components::Radius>,
+    pub radii: Option<crate::components::Radius>,
 }
 
 impl ::re_types_core::SizeBytes for GraphNodes {
@@ -48,7 +48,7 @@ impl ::re_types_core::SizeBytes for GraphNodes {
             + self.colors.heap_size_bytes()
             + self.labels.heap_size_bytes()
             + self.show_labels.heap_size_bytes()
-            + self.radius.heap_size_bytes()
+            + self.radii.heap_size_bytes()
     }
 
     #[inline]
@@ -206,9 +206,9 @@ impl ::re_types_core::Archetype for GraphNodes {
         } else {
             None
         };
-        let radius = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
+        let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
             <crate::components::Radius>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.GraphNodes#radius")?
+                .with_context("rerun.archetypes.GraphNodes#radii")?
                 .into_iter()
                 .next()
                 .flatten()
@@ -221,7 +221,7 @@ impl ::re_types_core::Archetype for GraphNodes {
             colors,
             labels,
             show_labels,
-            radius,
+            radii,
         })
     }
 }
@@ -245,7 +245,7 @@ impl ::re_types_core::AsComponents for GraphNodes {
             self.show_labels
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.radius
+            self.radii
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
@@ -269,7 +269,7 @@ impl GraphNodes {
             colors: None,
             labels: None,
             show_labels: None,
-            radius: None,
+            radii: None,
         }
     }
 
@@ -315,8 +315,8 @@ impl GraphNodes {
 
     /// Optional radius for nodes.
     #[inline]
-    pub fn with_radius(mut self, radius: impl Into<crate::components::Radius>) -> Self {
-        self.radius = Some(radius.into());
+    pub fn with_radii(mut self, radii: impl Into<crate::components::Radius>) -> Self {
+        self.radii = Some(radii.into());
         self
     }
 }

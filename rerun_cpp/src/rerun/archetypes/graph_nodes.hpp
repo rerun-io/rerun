@@ -39,7 +39,7 @@ namespace rerun::archetypes {
         std::optional<rerun::components::ShowLabels> show_labels;
 
         /// Optional radius for nodes.
-        std::optional<rerun::components::Radius> radius;
+        std::optional<rerun::components::Radius> radii;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -84,8 +84,8 @@ namespace rerun::archetypes {
         }
 
         /// Optional radius for nodes.
-        GraphNodes with_radius(rerun::components::Radius _radius) && {
-            radius = std::move(_radius);
+        GraphNodes with_radii(rerun::components::Radius _radii) && {
+            radii = std::move(_radii);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

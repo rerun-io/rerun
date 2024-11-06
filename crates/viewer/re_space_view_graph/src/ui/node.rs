@@ -3,6 +3,7 @@ use re_viewer_context::{HoverHighlight, InteractionHighlight, SelectionHighlight
 
 use crate::types::NodeInstance;
 
+// TODO: Handle Scene/UI radius correctly!
 fn draw_circle_node(
     ui: &mut egui::Ui,
     radius: f32,

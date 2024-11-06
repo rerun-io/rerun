@@ -30,7 +30,7 @@ class GraphNodes(Archetype):
         colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolLike | None = None,
-        radius: datatypes.Float32Like | None = None,
+        radii: datatypes.Float32Like | None = None,
     ):
         """
         Create a new instance of the GraphNodes archetype.
@@ -47,7 +47,7 @@ class GraphNodes(Archetype):
             Optional text labels for the node.
         show_labels:
             Optional choice of whether the text labels should be shown by default.
-        radius:
+        radii:
             Optional radius for nodes.
 
         """
@@ -60,7 +60,7 @@ class GraphNodes(Archetype):
                 colors=colors,
                 labels=labels,
                 show_labels=show_labels,
-                radius=radius,
+                radii=radii,
             )
             return
         self.__attrs_clear__()
@@ -73,7 +73,7 @@ class GraphNodes(Archetype):
             colors=None,  # type: ignore[arg-type]
             labels=None,  # type: ignore[arg-type]
             show_labels=None,  # type: ignore[arg-type]
-            radius=None,  # type: ignore[arg-type]
+            radii=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -127,7 +127,7 @@ class GraphNodes(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    radius: components.RadiusBatch | None = field(
+    radii: components.RadiusBatch | None = field(
         metadata={"component": "optional"},
         default=None,
         converter=components.RadiusBatch._optional,  # type: ignore[misc]

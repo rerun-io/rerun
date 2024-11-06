@@ -2,7 +2,8 @@ use re_chunk::LatestAtQuery;
 use re_log_types::EntityPath;
 use re_query::{clamped_zip_1x4, range_zip_1x4};
 use re_space_view::{DataResultQuery, RangeResultsExt};
-use re_types::components::{Color, ShowLabels};
+use re_types::components::{Color, Radius, ShowLabels};
+use re_types::datatypes::Float32;
 use re_types::{
     self, archetypes,
     components::{self},
@@ -122,4 +123,10 @@ impl TypedComponentFallbackProvider<ShowLabels> for NodeVisualizer {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(NodeVisualizer => [ShowLabels]);
+impl TypedComponentFallbackProvider<Radius> for NodeVisualizer {
+    fn fallback_for(&self, _ctx: &QueryContext<'_>) -> Radius {
+        Radius(Float32(4.0f32))
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(NodeVisualizer => [ShowLabels, Radius]);

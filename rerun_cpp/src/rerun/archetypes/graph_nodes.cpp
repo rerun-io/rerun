@@ -41,8 +41,8 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.radius.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.radius.value());
+        if (archetype.radii.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.radii.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
