@@ -71,6 +71,7 @@ jobs:
         id: vercel
         uses: ./.github/actions/vercel
         continue-on-error: true
+        if: success()
         with:
           command: "wait-for-deployment"
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
