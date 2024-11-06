@@ -25,10 +25,9 @@ mod zoom_level;
 use datatype_uis::{
     display_name_ui, display_text_ui, edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max,
     edit_f32_zero_to_one, edit_multiline_string, edit_or_view_vec3d, edit_singleline_string,
-    edit_view_enum, edit_view_range1d, view_view_id,
+    edit_view_enum, edit_view_enum_with_variant_available, edit_view_range1d, view_view_id,
 };
 
-use crate::datatype_uis::edit_view_enum_with_variant_available;
 use re_types::{
     blueprint::components::{
         BackgroundKind, Corner2D, LockRangeDuringZoom, MapProvider, ViewFit, Visible, ZoomLevel,
