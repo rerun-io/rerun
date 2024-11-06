@@ -887,7 +887,7 @@ fn should_ignore_log_msg(msg: &str) -> bool {
 /// Strips out buffer addresses from `FFmpeg` log messages so that we can use it with the log-once family of methods.
 fn sanitize_ffmpeg_log_message(msg: &str) -> String {
     // Make warn_once work on `[swscaler @ 0x148db8000]` style warnings even if the address is different every time.
-    // In older versions of FFmpeg this may happen several times in the same message (happend in 5.1, did not happen in 7.1).
+    // In older versions of FFmpeg this may happen several times in the same message (happens in 5.1, did not happen in 7.1).
     let mut msg = msg.to_owned();
     while let Some(start_pos) = msg.find("[swscaler @ 0x") {
         if let Some(end_offset) = msg[start_pos..].find(']') {
