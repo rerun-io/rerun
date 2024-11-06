@@ -1,11 +1,5 @@
 name: Reusable Deploy Landing Preview
 
-# TODO:
-# - add ability to wait for deploy to finish
-# - create a temporary branch that is based off of `docs-latest`,
-#   push it, use that as the `RELEASE_COMMIT` for the preview,
-#   then delete the branch
-
 on:
   workflow_call:
     inputs:
