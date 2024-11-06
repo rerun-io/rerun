@@ -11,7 +11,7 @@ pub enum VariantAvailable {
 
     /// The variant is not available.
     No {
-        /// The reason why the variant is not available, markdown formated.
+        /// The reason why the variant is not available, markdown formatted.
         reason_markdown: String,
     },
 }
