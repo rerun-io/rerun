@@ -171,11 +171,7 @@ impl FfmpegProcessAndListener {
             } else if let Ok(sps) = H264Sps::try_parse(&sps_unit.bytes[1..]) {
                 re_log::trace!("Successfully parsed SPS for {debug_name}:\n{sps:?}");
 
-                if let Some(mut layout) = sps.pixel_layout() {
-                    // TODO(nathanbabcock/ffmpeg-sidecar#61): ffmpeg-sidecar can't handle this yet. Quite unfortunate since this is the most common case by far!
-                    if layout == crate::decode::YuvPixelLayout::Y_U_V420 {
-                        layout = crate::decode::YuvPixelLayout::Y_U_V422;
-                    }
+                if let Some(layout) = sps.pixel_layout() {
                     pixel_format = PixelFormat::Yuv {
                         layout,
                         // Unfortunately the color range is an entirely different thing to parse as it's part of optional Video Usability Information (VUI).
