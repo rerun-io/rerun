@@ -4,7 +4,10 @@
 # a redeploy of `rerun.io`.
 
 # If `target` is set to `preview`, then this instead deploys a fresh preview
-# with an override for `release_commit`, and sets the `vercel_preview_url` output.
+# with an override for `release_commit`, and sets the following outputs:
+# - `vercel_preview_result`
+# - `vercel_preview_url`
+# - `vercel_preview_inspector_url`
 
 name: "Deploy rerun.io"
 

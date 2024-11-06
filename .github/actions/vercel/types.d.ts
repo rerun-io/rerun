@@ -114,6 +114,11 @@ export type LegacyDeployment = {
   url: string;
 };
 
-export type VercelResponse<T> =
-  | T
-  | { error: { code: string; message: string } };
+export type VercelApiError = {
+  error: {
+    code: string;
+    message: string;
+  };
+};
+
+export type VercelResponse<T> = T | VercelApiError;

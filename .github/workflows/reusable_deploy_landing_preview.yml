@@ -49,6 +49,7 @@ jobs:
       - name: Re-deploy rerun.io
         id: vercel
         uses: ./.github/actions/vercel
+        continue-on-error: true
         with:
           command: "deploy"
           vercel_token: ${{ secrets.VERCEL_TOKEN }}
@@ -60,11 +61,45 @@ jobs:
       - name: Create PR comment
         # https://github.com/mshick/add-pr-comment
         uses: mshick/add-pr-comment@v2.8.2
+        if: success() && steps.vercel.outputs.vercel_preview_result == 'success'
         with:
+          message-id: "vercel-preview"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message: |
-            ## Deployed docs
+            | Result | Commit  | Link  |
+            | ------ | ------- | ----- |
+            | ✅ | ${{ steps.get-sha.outputs.sha }} | https://${{ steps.vercel.outputs.vercel_preview_url }}/docs |
 
-            | Commit  | Link  |
-            | ------- | ----- |
-            | ${{ steps.get-sha.outputs.sha }} | https://${{ steps.vercel.outputs.vercel_preview_url }}/docs |
+            <sub><sup>Note: This comment is updated whenever you push a commit.</sup></sub>
+
+      - name: Create PR comment
+        # https://github.com/mshick/add-pr-comment
+        uses: mshick/add-pr-comment@v2.8.2
+        if: success() && steps.vercel.outputs.vercel_preview_result == 'failure'
+        with:
+          message-id: "vercel-preview"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            Latest preview failed to deploy. See ${{ steps.vercel.outputs.vercel_preview_inspector_url }} for more information.
+
+            | Result | Commit  | Link  |
+            | ------ | ------- | ----- |
+            | ❌ | ${{ steps.get-sha.outputs.sha }} | unavailable |
+
+            <sub><sup>Note: This comment is updated whenever you push a commit.</sup></sub>
+
+      - name: Create PR comment
+        # https://github.com/mshick/add-pr-comment
+        uses: mshick/add-pr-comment@v2.8.2
+        if: failure()
+        with:
+          message-id: "vercel-preview"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            Latest preview failed to deploy.
+
+            | Result | Commit  | Link  |
+            | ------ | ------- | ----- |
+            | ❌ | ${{ steps.get-sha.outputs.sha }} | unavailable |
+
+            <sub><sup>Note: This comment is updated whenever you push a commit.</sup></sub>
