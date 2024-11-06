@@ -83,8 +83,8 @@ pub fn stream_recording(
     let address = Address::from_str(&url)?;
 
     let (tx, rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::RrdpStream { url: url.clone() },
-        re_smart_channel::SmartChannelSource::RrdpStream { url: url.clone() },
+        re_smart_channel::SmartMessageSource::RerunGrpcStream { url: url.clone() },
+        re_smart_channel::SmartChannelSource::RerunGrpcStream { url: url.clone() },
     );
 
     spawn_future(async move {

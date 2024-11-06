@@ -32,9 +32,9 @@ pub enum DataSource {
     #[cfg(not(target_arch = "wasm32"))]
     Stdin,
 
-    /// A remote file, served over RRDP interface.
+    /// A file on a Rerun Data Platform server, over `rerun://` gRPC interface.
     #[cfg(feature = "rrdp")]
-    RrdpUrl { url: String },
+    RerunGrpcUrl { url: String },
 }
 
 impl DataSource {
@@ -92,7 +92,7 @@ impl DataSource {
 
         #[cfg(feature = "rrdp")]
         if uri.starts_with("rerun://") {
-            return Self::RrdpUrl { url: uri };
+            return Self::RerunGrpcUrl { url: uri };
         }
 
         if uri.starts_with("file://") || path.exists() {
@@ -137,7 +137,7 @@ impl DataSource {
             #[cfg(not(target_arch = "wasm32"))]
             Self::Stdin => None,
             #[cfg(feature = "rrdp")]
-            Self::RrdpUrl { .. } => None, // TODO(jleibs): This needs to come from the RRDP server.
+            Self::RerunGrpcUrl { .. } => None, // TODO(jleibs): This needs to come from the RRDP server.
         }
     }
 
@@ -246,7 +246,7 @@ impl DataSource {
             }
 
             #[cfg(feature = "rrdp")]
-            Self::RrdpUrl { url } => {
+            Self::RerunGrpcUrl { url } => {
                 re_rrdp_comms::stream_recording(url, on_msg).map_err(|err| err.into())
             }
         }

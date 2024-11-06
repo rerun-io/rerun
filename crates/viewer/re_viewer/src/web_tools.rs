@@ -86,7 +86,7 @@ enum EndpointCategory {
     HttpRrd(String),
 
     /// gRPC Rerun Data Platform URL, e.g. `rerun://ip:port/recording/1234`
-    DataPlatform(String),
+    RerunGrpc(String),
 
     /// A remote Rerun server.
     WebSocket(String),
@@ -100,7 +100,7 @@ impl EndpointCategory {
         if uri.starts_with("http") || uri.ends_with(".rrd") || uri.ends_with(".rbl") {
             Self::HttpRrd(uri)
         } else if uri.starts_with("rerun://") {
-            Self::DataPlatform(uri)
+            Self::RerunGrpc(uri)
         } else if uri.starts_with("ws:") || uri.starts_with("wss:") {
             Self::WebSocket(uri)
         } else if uri.starts_with("web_event:") {
@@ -139,11 +139,11 @@ pub fn url_to_receiver(
         ),
 
         #[cfg(feature = "rrdp")]
-        EndpointCategory::DataPlatform(url) => {
+        EndpointCategory::RerunGrpc(url) => {
             re_rrdp_comms::stream_recording(url, Some(ui_waker)).map_err(|err| err.into())
         }
         #[cfg(not(feature = "rrdp"))]
-        EndpointCategory::DataPlatform(_url) => {
+        EndpointCategory::RerunGrpc(_url) => {
             anyhow::bail!("Missing 'rrdp' feature flag");
         }
         EndpointCategory::WebEventListener(url) => {
