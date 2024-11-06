@@ -119,9 +119,9 @@ jobs:
         run: |
           run_id=${{ github.run_id }}
           job=${{ github.job }}
-          echo $run_id $job
-
           job_id=$(gh run view ${{ github.run_id }} --json jobs | jq -r '.jobs[] | select(.name | ascii_downcase == "${{ github.job }}") | .databaseId')
+
+          echo $run_id $job $job_id
           echo "job-id=$job_id" >> "$GITHUB_OUTPUT"
 
       - name: Create PR comment
