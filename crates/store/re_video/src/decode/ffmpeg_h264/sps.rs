@@ -2,7 +2,7 @@ use crate::decode::YuvPixelLayout;
 
 use super::nalu::{NalHeader, NalUnitType};
 
-#[derive(thiserror::Error, Debug)]
+#[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum SpsParsingError {
     #[error("SPS buffer too small")]
     UnexpectedEndOfSpsBuffer,
@@ -271,16 +271,13 @@ fn read_bits(
 ) -> Result<u32, SpsParsingError> {
     debug_assert!(num_bits <= 32);
 
-    let byte_pos = *bit_read_pos / 8;
-    if buffer.len() <= byte_pos {
+    let highest_byte_read = (num_bits + *bit_read_pos).next_multiple_of(8) / 8;
+    if buffer.len() < highest_byte_read {
         return Err(SpsParsingError::UnexpectedEndOfSpsBuffer);
     }
 
-    let num_bytes = num_bits.next_multiple_of(8) / 8;
-    if buffer.len() < byte_pos + num_bytes {
-        return Err(SpsParsingError::UnexpectedEndOfSpsBuffer);
-    }
-
+    // Read bit by bit.
+    // Obviously this can be sped up by reading bytes when possible, but let's keep it simple.
     let mut result = 0;
     for n in 0..num_bits {
         let bit_pos = *bit_read_pos + n;
@@ -318,6 +315,8 @@ fn read_exponential_golomb(
 
 #[cfg(test)]
 mod tests {
+    use crate::decode::ffmpeg_h264::sps::SpsParsingError;
+
     use super::{read_bits, read_exponential_golomb};
 
     #[test]
@@ -337,7 +336,14 @@ mod tests {
         );
         assert_eq!(bit_pos, 12);
 
-        assert_eq!(read_bits(&mut 0, &[0], 9), Err(()));
+        assert_eq!(
+            read_bits(&mut 0, &[0], 9),
+            Err(SpsParsingError::UnexpectedEndOfSpsBuffer)
+        );
+        assert_eq!(
+            read_bits(&mut 1, &[0], 8),
+            Err(SpsParsingError::UnexpectedEndOfSpsBuffer)
+        );
     }
 
     #[test]
@@ -369,5 +375,10 @@ mod tests {
             6
         );
         assert_eq!(bit_pos, 7);
+
+        assert_eq!(
+            read_exponential_golomb(&mut 0, &[0b_0000_1111]),
+            Err(SpsParsingError::UnexpectedEndOfSpsBuffer)
+        );
     }
 }
