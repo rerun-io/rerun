@@ -46,10 +46,6 @@ rayon.workspace = true
 re_types.workspace = true
 # External dependencies:
 similar-asserts.workspace = true
-tokio = { workspace = true, features = [
-    "macros",
-    "rt-multi-thread",
-    "signal",
-] }
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }
 tokio-stream.workspace = true
 unindent.workspace = true
