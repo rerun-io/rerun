@@ -10,13 +10,31 @@ i.e. a single pixel covers more than one tick worth of data. It can greatly impr
 (and readability) in such situations as it prevents overdraw.
 
 ## Variants
+#### `Off` = 1
+No aggregation.
 
-* Off
-* Average
-* Max
-* Min
-* MinMax
-* MinMaxAverage
+#### `Average` = 2
+Average all points in the range together.
+
+#### `Max` = 3
+Keep only the maximum values in the range.
+
+#### `Min` = 4
+Keep only the minimum values in the range.
+
+#### `MinMax` = 5
+Keep both the minimum and maximum values in the range.
+
+This will yield two aggregated points instead of one, effectively creating a vertical line.
+
+#### `MinMaxAverage` = 6
+Find both the minimum and maximum values in the range, then use the average of those.
+
+
+## Arrow datatype
+```
+uint8
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `AggregationPolicy`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)

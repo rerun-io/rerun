@@ -40,6 +40,7 @@ pub enum UICommand {
     ToggleSelectionPanel,
     ToggleTimePanel,
     ToggleChunkStoreBrowser,
+    Settings,
 
     #[cfg(debug_assertions)]
     ToggleBlueprintInspectionPanel,
@@ -155,6 +156,7 @@ impl UICommand {
             Self::ToggleSelectionPanel => ("Toggle selection panel", "Toggle the right panel"),
             Self::ToggleTimePanel => ("Toggle time panel", "Toggle the bottom panel"),
             Self::ToggleChunkStoreBrowser => ("Toggle chunk store browser", "Toggle the chunk store browser"),
+            Self::Settings => ("Settings…", "Show the settings screen"),
 
             #[cfg(debug_assertions)]
             Self::ToggleBlueprintInspectionPanel => (
@@ -308,6 +310,7 @@ impl UICommand {
             Self::ToggleSelectionPanel => Some(ctrl_shift(Key::S)),
             Self::ToggleTimePanel => Some(ctrl_shift(Key::T)),
             Self::ToggleChunkStoreBrowser => Some(ctrl_shift(Key::D)),
+            Self::Settings => None,
 
             #[cfg(debug_assertions)]
             Self::ToggleBlueprintInspectionPanel => Some(ctrl_shift(Key::I)),

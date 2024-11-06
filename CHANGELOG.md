@@ -4,6 +4,21 @@
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
 
+
+## [0.19.1](https://github.com/rerun-io/rerun/compare/0.19.0..0.19.1) - Web viewer fix
+
+This release fixes an error thrown when the web viewer is closed.
+
+### 🔎 Details
+
+#### 🕸️ Web
+- Fix wasm-bindgen patch [#7970](https://github.com/rerun-io/rerun/pull/7970)
+
+#### 📦 Dependencies
+- Add wasm-bindgen version check to CI [#7983](https://github.com/rerun-io/rerun/pull/7983)
+
+
+
 ## [0.19.0](https://github.com/rerun-io/rerun/compare/0.18.2...0.19.0) - Dataframes & Video support
 
 📖 Release blogpost: https://rerun.io/blog/dataframe

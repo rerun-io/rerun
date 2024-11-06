@@ -5,9 +5,14 @@ title: "LatLon"
 
 A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
 
-## Fields
+## Rerun datatype
+[`DVec2D`](../datatypes/dvec2d.md)
 
-* lat_lon: [`DVec2D`](../datatypes/dvec2d.md)
+
+## Arrow datatype
+```
+FixedSizeList<2, float64>
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `LatLon`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1LatLon.html?speculative-link)

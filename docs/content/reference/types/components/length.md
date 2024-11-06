@@ -8,9 +8,14 @@ Length, or one-dimensional size.
 Measured in its local coordinate system; consult the archetype in use to determine which
 axis or part of the entity this is the length of.
 
-## Fields
+## Rerun datatype
+[`Float32`](../datatypes/float32.md)
 
-* length: [`Float32`](../datatypes/float32.md)
+
+## Arrow datatype
+```
+float32
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `Length`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Length.html?speculative-link)

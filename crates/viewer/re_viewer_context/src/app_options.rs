@@ -1,5 +1,7 @@
 use re_log_types::TimeZone;
 
+const MAPBOX_ACCESS_TOKEN_ENV_VAR: &str = "RERUN_MAPBOX_ACCESS_TOKEN";
+
 /// Global options for the viewer.
 #[derive(Debug, PartialEq, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
@@ -32,6 +34,11 @@ pub struct AppOptions {
 
     /// Hardware acceleration settings for video decoding.
     pub video_decoder_hw_acceleration: re_video::decode::DecodeHardwareAcceleration,
+
+    /// Mapbox API key (used to enable Mapbox-based map view backgrounds).
+    ///
+    /// Can also be set using the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
+    pub mapbox_access_token: String,
 }
 
 impl Default for AppOptions {
@@ -56,6 +63,18 @@ impl Default for AppOptions {
             time_zone: TimeZone::Utc,
 
             video_decoder_hw_acceleration: Default::default(),
+
+            mapbox_access_token: String::new(),
+        }
+    }
+}
+
+impl AppOptions {
+    pub fn mapbox_access_token(&self) -> Option<String> {
+        if self.mapbox_access_token.is_empty() {
+            std::env::var(MAPBOX_ACCESS_TOKEN_ENV_VAR).ok()
+        } else {
+            Some(self.mapbox_access_token.clone())
         }
     }
 }

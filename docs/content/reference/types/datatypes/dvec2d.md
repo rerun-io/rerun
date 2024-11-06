@@ -5,9 +5,11 @@ title: "DVec2D"
 
 A double-precision vector in 2D space.
 
-## Fields
 
-* xy: 2x `f64`
+## Arrow datatype
+```
+FixedSizeList<2, float64>
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `DVec2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1DVec2D.html?speculative-link)

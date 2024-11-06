@@ -40,10 +40,11 @@ impl MapSpaceViewState {
     // This method ensures that tiles is initialized and returns mutable references to tiles and map_memory.
     pub fn ensure_and_get_mut_refs(
         &mut self,
-        ctx: &egui::Context,
+        ctx: &ViewerContext<'_>,
+        egui_ctx: &egui::Context,
     ) -> Result<(&mut HttpTiles, &mut MapMemory), SpaceViewSystemExecutionError> {
         if self.tiles.is_none() {
-            let tiles = get_tile_manager(self.selected_provider, ctx);
+            let tiles = get_tile_manager(ctx, self.selected_provider, egui_ctx);
             self.tiles = Some(tiles);
         }
 
@@ -240,7 +241,7 @@ Displays geospatial primitives on a map.
         // Map UI
         //
 
-        let (tiles, map_memory) = match state.ensure_and_get_mut_refs(ui.ctx()) {
+        let (tiles, map_memory) = match state.ensure_and_get_mut_refs(ctx, ui.ctx()) {
             Ok(refs) => refs,
             Err(err) => return Err(err),
         };
@@ -475,8 +476,12 @@ fn handle_ui_interactions(
     }
 }
 
-fn get_tile_manager(provider: MapProvider, egui_ctx: &Context) -> HttpTiles {
-    let mapbox_access_token = std::env::var("RERUN_MAPBOX_ACCESS_TOKEN").unwrap_or_default();
+fn get_tile_manager(
+    ctx: &ViewerContext<'_>,
+    provider: MapProvider,
+    egui_ctx: &Context,
+) -> HttpTiles {
+    let mapbox_access_token = ctx.app_options.mapbox_access_token().unwrap_or_default();
 
     match provider {
         MapProvider::OpenStreetMap => {

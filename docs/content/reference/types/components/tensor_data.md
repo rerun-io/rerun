@@ -12,9 +12,33 @@ a 2D RGB Image, the shape would be `[height, width, channel]`.
 These dimensions are combined with an index to look up values from the `buffer` field,
 which stores a contiguous array of typed values.
 
-## Fields
+## Rerun datatype
+[`TensorData`](../datatypes/tensor_data.md)
 
-* data: [`TensorData`](../datatypes/tensor_data.md)
+
+## Arrow datatype
+```
+Struct {
+    shape: List<Struct {
+            size: uint64
+            name: nullable utf8
+        }>
+    buffer: DenseUnion {
+        0 = "_null_markers": nullable null
+        1 = "U8": List<uint8>
+        2 = "U16": List<uint16>
+        3 = "U32": List<uint32>
+        4 = "U64": List<uint64>
+        5 = "I8": List<int8>
+        6 = "I16": List<int16>
+        7 = "I32": List<int32>
+        8 = "I64": List<int64>
+        9 = "F16": List<float16>
+        10 = "F32": List<float32>
+        11 = "F64": List<float64>
+    }
+}
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `TensorData`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1TensorData.html)

@@ -56,18 +56,23 @@ def detect_target() -> str:
 class BuildMode(Enum):
     PYPI = "pypi"
     PR = "pr"
+    EXTRA = "extra"
 
     def __str__(self) -> str:
         return self.value
 
 
 def build_and_upload(bucket: Bucket | None, mode: BuildMode, gcs_dir: str, target: str, compatibility: str) -> None:
-    if mode is BuildMode.PYPI:
-        # Only build web viewer when publishing to pypi
+    # pypi / extra builds require a web build
+    if mode in (BuildMode.PYPI, BuildMode.EXTRA):
         run("pixi run rerun-build-web-release")
+
+    if mode is BuildMode.PYPI:
         maturin_feature_flags = "--no-default-features --features pypi"
     elif mode is BuildMode.PR:
         maturin_feature_flags = "--no-default-features --features extension-module"
+    elif mode is BuildMode.EXTRA:
+        maturin_feature_flags = "--no-default-features --features extra"
 
     dist = f"dist/{target}"
 

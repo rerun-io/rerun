@@ -5,9 +5,11 @@ title: "EntityPath"
 
 A path to an entity in the `ChunkStore`.
 
-## Fields
 
-* path: `string`
+## Arrow datatype
+```
+utf8
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `EntityPath`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1EntityPath.html)

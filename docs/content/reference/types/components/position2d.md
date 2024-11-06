@@ -5,9 +5,14 @@ title: "Position2D"
 
 A position in 2D space.
 
-## Fields
+## Rerun datatype
+[`Vec2D`](../datatypes/vec2d.md)
 
-* xy: [`Vec2D`](../datatypes/vec2d.md)
+
+## Arrow datatype
+```
+FixedSizeList<2, float32>
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `Position2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Position2D.html)
