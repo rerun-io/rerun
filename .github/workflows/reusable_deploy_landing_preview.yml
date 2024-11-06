@@ -37,6 +37,8 @@ jobs:
       # GitHub moment: https://github.com/orgs/community/discussions/8945
       - name: Get Job ID
         id: job-id
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           run_id=${{ github.run_id }}
           job=${{ github.job }}
