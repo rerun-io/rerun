@@ -377,7 +377,7 @@ def serve_web(
 
     recording = RecordingStream.to_native(recording)
     # TODO(#5531): keep static data around.
-    bindings.serve(
+    bindings.serve_web(
         open_browser,
         web_port,
         ws_port,
