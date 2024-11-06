@@ -813,14 +813,38 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// ```
     pub fn next_row_async(
         &self,
-    ) -> impl std::future::Future<Output = Option<Vec<Box<dyn ArrowArray>>>> {
+    ) -> impl std::future::Future<Output = Option<Vec<Box<dyn ArrowArray>>>>
+    where
+        E: 'static + Send + Clone,
+    {
         let res: Option<Option<_>> = self
             .engine
             .try_with(|store, cache| self._next_row(store, cache));
 
-        std::future::poll_fn(move |_cx| match &res {
+        let engine = self.engine.clone();
+        std::future::poll_fn(move |cx| match &res {
             Some(row) => std::task::Poll::Ready(row.clone()),
-            None => std::task::Poll::Pending,
+            None => {
+                // The lock is already held by a writer, we have to yield control back to the async
+                // runtime, for now.
+                // Before we do so, we need to schedule a callback that will be in charge of waking up
+                // the async task once we can possibly make progress once again.
+
+                // Commenting out this code should make the `async_barebones` test deadlock.
+                rayon::spawn({
+                    let engine = engine.clone();
+                    let waker = cx.waker().clone();
+                    move || {
+                        engine.with(|_store, _cache| {
+                            // This is of course optimistic -- we might end up right back here on
+                            // next tick. That's fine.
+                            waker.wake();
+                        });
+                    }
+                });
+
+                std::task::Poll::Pending
+            }
         })
     }
 
