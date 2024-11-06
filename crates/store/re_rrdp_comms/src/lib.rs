@@ -1,4 +1,4 @@
-//! Communications with an RRDP GRPC server.
+//! Communications with an Rerun Data Platform gRPC server.
 
 mod address;
 

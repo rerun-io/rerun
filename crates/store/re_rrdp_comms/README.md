@@ -7,4 +7,4 @@ Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 
-Client-side gRPC communication library with an Rerun Data Platform (RRDP) server.
+Client-side gRPC communication library with a Rerun Data Platform server.
