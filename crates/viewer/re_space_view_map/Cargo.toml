@@ -36,6 +36,5 @@ re_viewport_blueprint.workspace = true
 egui.workspace = true
 glam.workspace = true
 itertools.workspace = true
+walkers.workspace = true
 
-# TODO(#7876): move to workspace
-walkers = "0.26.0"
