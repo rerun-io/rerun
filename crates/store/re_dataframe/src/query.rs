@@ -2474,6 +2474,7 @@ mod tests {
 
         /// Wraps a [`QueryHandle`] in a [`Stream`].
         pub struct QueryHandleStream(pub QueryHandle<StorageEngine>);
+
         impl tokio_stream::Stream for QueryHandleStream {
             type Item = TransportChunk;
 
