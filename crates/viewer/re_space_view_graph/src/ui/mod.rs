@@ -4,7 +4,6 @@ use re_viewer_context::SpaceViewHighlights;
 mod edge;
 pub(crate) use edge::draw_edge;
 mod node;
-pub(crate) use node::{draw_dummy, draw_node};
 mod state;
 pub(crate) use state::GraphSpaceViewState;
 

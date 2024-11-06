@@ -96,7 +96,7 @@ impl VisualizerSystem for NodeVisualizer {
                     color: color.map(|&Color(color)| color.into()),
                     position: position.map(|[x, y]| egui::Pos2::new(x, y)),
                     label: if show_labels { label.cloned() } else { None },
-                    radius: radius.cloned(),
+                    radius: radius.copied(),
                 })
                 .collect();
 

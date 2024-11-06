@@ -1,6 +1,6 @@
 use std::collections::{BTreeSet, HashSet};
 
-use egui::{self, emath::TSTransform, Pos2, Rect, Vec2};
+use egui::{self, Vec2};
 
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
@@ -20,17 +20,9 @@ use re_viewport_blueprint::ViewProperty;
 
 use crate::{
     graph::NodeIndex,
-    types::NodeInstance,
     ui::{self, bounding_rect_from_iter, scene::ViewBuilder, GraphSpaceViewState},
     visualizers::{EdgesVisualizer, NodeVisualizer},
 };
-
-/// Try to estimate a good starting `Rect` for a node that has not been layed out yet.
-fn initial_rect(node: &NodeInstance) -> Rect {
-    let size = node.radius.map(|r| r.0.into()).unwrap_or(0.0) * 2.0;
-    let pos = node.position.unwrap_or(Pos2::ZERO);
-    Rect::from_center_size(pos, Vec2::splat(size))
-}
 
 #[derive(Default)]
 pub struct GraphSpaceView;
@@ -196,17 +188,9 @@ impl SpaceViewClass for GraphSpaceView {
                 if let Some(data) = node_data.get(entity) {
                     for node in &data.nodes {
                         seen.insert(node.index);
-                        let current = layout.entry(node.index).or_insert(initial_rect(node));
+                        let current = layout.entry(node.index).or_insert(scene.initial_rect(node));
 
-                        let response =
-                            scene.node(current.min + entity_offset, |ui, world_to_window| {
-                                ui::draw_node(
-                                    ui,
-                                    world_to_window,
-                                    node,
-                                    Default::default(), // TODO(grtlr): we currently don't have any highlighting
-                                )
-                            });
+                        let response = scene.node(current.min + entity_offset, node);
 
                         // TODO(grtlr): ⚠️ This is hacky:
                         // We need to undo the `entity_offset` otherwise the offset will increase each frame.
@@ -236,7 +220,7 @@ impl SpaceViewClass for GraphSpaceView {
                                 .translate(entity_offset)
                                 .translate(current_implicit_offset),
                         );
-                        let response = scene.node(current.min, |ui, _| ui::draw_dummy(ui, node));
+                        let response = scene.dummy(current.min, node);
                         *current = response.rect.translate(-entity_offset);
                         // entity_rect = entity_rect.union(response.rect);
                         current_implicit_offset.x += 10.0;

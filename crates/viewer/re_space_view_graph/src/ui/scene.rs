@@ -2,8 +2,16 @@ use std::ops::RangeFrom;
 
 use egui::{
     emath::TSTransform, Area, Color32, Id, LayerId, Order, Painter, Pos2, Rect, Response, Sense,
-    Stroke, Ui,
+    Stroke, Ui, Vec2,
 };
+use re_types::{
+    components::{self, GraphNode, Radius},
+    datatypes::Float32,
+};
+
+use crate::types::NodeInstance;
+
+use super::node::{draw_circle_node, draw_dummy, draw_node};
 
 fn fit_to_world_rect(clip_rect_window: Rect, world_rect: Rect) -> TSTransform {
     let available_size = clip_rect_window.size();
@@ -140,10 +148,53 @@ pub struct Scene<'a> {
 }
 
 impl<'a> Scene<'a> {
+    pub fn radius_to_world(&self, radius: Radius) -> f32 {
+        match radius {
+            Radius(Float32(r)) if r.is_sign_positive() => r,
+            Radius(Float32(r)) => {
+                let inv = self.world_to_window
+                    .inverse();
+                let radius_point = inv * egui::Pos2::new(r, 0.0);
+                let reference_point = inv * egui::Pos2::new(0.0, 0.0);
+                (radius_point - reference_point).length()
+            }
+        }
+    }
+
+    /// Try to estimate a good starting `Rect` for a node that has not been layed out yet.
+    pub fn initial_rect(&self, node: &NodeInstance) -> Rect {
+        let size = node.radius.map(|r| self.radius_to_world(r)).unwrap_or(0.0) * 2.0;
+        let pos = node.position.unwrap_or(Pos2::ZERO);
+        Rect::from_center_size(pos, Vec2::splat(size))
+    }
+
+    pub fn node(&mut self, pos: Pos2, instance: &NodeInstance) -> Response {
+        let radius = instance.radius.map(|r| self.radius_to_world(r));
+        self.node_inner(pos, |ui| match &instance.label {
+            Some(label) => draw_node(
+                ui,
+                label,
+                instance.color,
+                ui.style().visuals.widgets.noninteractive.bg_fill,
+            ),
+            None => draw_circle_node(
+                ui,
+                radius.unwrap_or(4.0),
+                instance.color.unwrap_or(ui.style().visuals.text_color()),
+                egui::Stroke::NONE,
+            ),
+        })
+        .on_hover_text(format!("Node: `{}`", instance.node.as_str(),))
+    }
+
+    pub fn dummy(&mut self, pos: Pos2, node: &GraphNode) -> Response {
+        self.node_inner(pos, |ui| draw_dummy(ui, node))
+    }
+
     /// `pos` is the top-left position of the node in world coordinates.
-    pub fn node<F>(&mut self, pos: Pos2, add_node_contents: F) -> Response
+    fn node_inner<F>(&mut self, pos: Pos2, add_node_contents: F) -> Response
     where
-        F: for<'b> FnOnce(&'b mut Ui, &TSTransform) -> Response,
+        F: for<'b> FnOnce(&'b mut Ui) -> Response,
     {
         let response = Area::new(
             self.id.with((
@@ -158,7 +209,7 @@ impl<'a> Scene<'a> {
         .constrain(false)
         .show(self.ui.ctx(), |ui| {
             ui.set_clip_rect(self.clip_rect_world);
-            add_node_contents(ui, &self.world_to_window)
+            add_node_contents(ui)
         })
         .response;
 
