@@ -32,9 +32,9 @@ pub enum DataSource {
     #[cfg(not(target_arch = "wasm32"))]
     Stdin,
 
-    /// A remote file, served over RRDP interface.
-    #[cfg(feature = "rrdp")]
-    RrdpUrl { url: String },
+    /// A file on a Rerun Data Platform server, over `rerun://` gRPC interface.
+    #[cfg(feature = "grpc")]
+    RerunGrpcUrl { url: String },
 }
 
 impl DataSource {
@@ -90,9 +90,9 @@ impl DataSource {
 
         let path = std::path::Path::new(&uri).to_path_buf();
 
-        #[cfg(feature = "rrdp")]
-        if uri.starts_with("rrdp://") {
-            return Self::RrdpUrl { url: uri };
+        #[cfg(feature = "grpc")]
+        if uri.starts_with("rerun://") {
+            return Self::RerunGrpcUrl { url: uri };
         }
 
         if uri.starts_with("file://") || path.exists() {
@@ -136,8 +136,8 @@ impl DataSource {
             Self::WebSocketAddr(_) => None,
             #[cfg(not(target_arch = "wasm32"))]
             Self::Stdin => None,
-            #[cfg(feature = "rrdp")]
-            Self::RrdpUrl { .. } => None, // TODO(jleibs): This needs to come from the RRDP server.
+            #[cfg(feature = "grpc")]
+            Self::RerunGrpcUrl { .. } => None, // TODO(jleibs): This needs to come from the server.
         }
     }
 
@@ -245,9 +245,9 @@ impl DataSource {
                 Ok(rx)
             }
 
-            #[cfg(feature = "rrdp")]
-            Self::RrdpUrl { url } => {
-                re_rrdp_comms::stream_recording(url, on_msg).map_err(|err| err.into())
+            #[cfg(feature = "grpc")]
+            Self::RerunGrpcUrl { url } => {
+                re_grpc_client::stream_recording(url, on_msg).map_err(|err| err.into())
             }
         }
     }

@@ -1,12 +1,12 @@
 /// The given url is not a valid Rerun storage node URL.
 #[derive(thiserror::Error, Debug)]
-#[error("URL {url:?} should follow rrdp://addr:port/recording/12345")]
+#[error("URL {url:?} should follow rerun://addr:port/recording/12345")]
 pub struct InvalidAddressError {
     url: String,
     msg: String,
 }
 
-/// Parsed `rrdp://addr:port/recording/12345`
+/// Parsed `rerun://addr:port/recording/12345`
 pub struct Address {
     pub addr_port: String,
     pub recording_id: String,
@@ -16,7 +16,7 @@ impl std::fmt::Display for Address {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "rrdp://{}/recording/{}",
+            "rerun://{}/recording/{}",
             self.addr_port, self.recording_id
         )
     }
@@ -26,10 +26,10 @@ impl std::str::FromStr for Address {
     type Err = InvalidAddressError;
 
     fn from_str(url: &str) -> Result<Self, Self::Err> {
-        let Some(stripped_url) = url.strip_prefix("rrdp://") else {
+        let Some(stripped_url) = url.strip_prefix("rerun://") else {
             return Err(InvalidAddressError {
                 url: url.to_owned(),
-                msg: "Missing rrdp://".to_owned(),
+                msg: "Missing rerun://".to_owned(),
             });
         };
 
