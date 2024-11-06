@@ -5,7 +5,13 @@
 
 # If `target` is set to `preview`, then this instead deploys a fresh preview
 # with an override for `release_commit`, and sets the following outputs:
-# - `vercel_preview_result`
+# - `vercel_preview_deployment_id`
+# - `vercel_preview_url`
+# - `vercel_preview_inspector_url`
+#
+# The `vercel_preview_deployment_id` may be used to wait for the deployment
+# to complete with the `wait-for-deployment` command, which outputs:
+# - `vercel_preview_result`, either "success" or "failure"
 # - `vercel_preview_url`
 # - `vercel_preview_inspector_url`
 
