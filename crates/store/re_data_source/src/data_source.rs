@@ -91,7 +91,7 @@ impl DataSource {
         let path = std::path::Path::new(&uri).to_path_buf();
 
         #[cfg(feature = "rrdp")]
-        if uri.starts_with("rrdp://") {
+        if uri.starts_with("rerun://") {
             return Self::RrdpUrl { url: uri };
         }
 

@@ -65,7 +65,7 @@ pub enum SmartChannelSource {
 
     /// The data is streaming in directly from an RRDP server.
     RrdpStream {
-        /// Should include `rrdp://` prefix.
+        /// Should include `rerun://` prefix.
         url: String,
     },
 }
@@ -152,7 +152,7 @@ pub enum SmartMessageSource {
 
     /// The data is streaming in directly from an RRDP server.
     RrdpStream {
-        /// Should include `rrdp://` prefix.
+        /// Should include `rerun://` prefix.
         url: String,
     },
 }

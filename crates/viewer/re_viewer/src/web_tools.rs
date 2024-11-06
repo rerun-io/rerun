@@ -85,7 +85,7 @@ enum EndpointCategory {
     /// Could be a link to either an `.rrd` recording or a `.rbl` blueprint.
     HttpRrd(String),
 
-    /// gRPC Rerun Data Platform URL, e.g. `rrdp://ip:port/recording/1234`
+    /// gRPC Rerun Data Platform URL, e.g. `rerun://ip:port/recording/1234`
     DataPlatform(String),
 
     /// A remote Rerun server.
@@ -99,7 +99,7 @@ impl EndpointCategory {
     fn categorize_uri(uri: String) -> Self {
         if uri.starts_with("http") || uri.ends_with(".rrd") || uri.ends_with(".rbl") {
             Self::HttpRrd(uri)
-        } else if uri.starts_with("rrdp://") {
+        } else if uri.starts_with("rerun://") {
             Self::DataPlatform(uri)
         } else if uri.starts_with("ws:") || uri.starts_with("wss:") {
             Self::WebSocket(uri)
