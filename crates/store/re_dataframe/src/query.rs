@@ -1254,7 +1254,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 mod tests {
     use std::sync::Arc;
 
-    use re_chunk::{util::concatenate_record_batches, Chunk, ChunkId, RowId, TimePoint};
+    use re_chunk::{
+        util::concatenate_record_batches, Chunk, ChunkId, RowId, TimePoint, TransportChunk,
+    };
     use re_chunk_store::{
         ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ResolvedTimeRange, TimeInt,
     };
@@ -1263,6 +1265,7 @@ mod tests {
         example_components::{MyColor, MyLabel, MyPoint},
         EntityPath, Timeline,
     };
+    use re_query::StorageEngine;
     use re_types::components::ClearIsRecursive;
     use re_types_core::Loggable as _;
 
@@ -2432,6 +2435,126 @@ mod tests {
                 }
             }
         }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn async_barebones() -> anyhow::Result<()> {
+        use tokio_stream::StreamExt as _;
+
+        re_log::setup_logging();
+
+        /// Wraps a [`QueryHandle`] in a [`Stream`].
+        pub struct QueryHandleStream(pub QueryHandle<StorageEngine>);
+        impl tokio_stream::Stream for QueryHandleStream {
+            type Item = TransportChunk;
+
+            #[inline]
+            fn poll_next(
+                self: std::pin::Pin<&mut Self>,
+                cx: &mut std::task::Context<'_>,
+            ) -> std::task::Poll<Option<Self::Item>> {
+                let fut = self.0.next_row_batch_async();
+                let fut = std::pin::pin!(fut);
+
+                use std::future::Future;
+                fut.poll(cx)
+            }
+        }
+
+        let store = ChunkStoreHandle::new(create_nasty_store()?);
+        eprintln!("{store}");
+        let query_cache = QueryCache::new_handle(store.clone());
+        let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
+
+        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+
+        // static
+        tokio::spawn({
+            let query_engine = query_engine.clone();
+            async move {
+                let query = QueryExpression::default();
+                eprintln!("{query:#?}:");
+
+                let query_handle = query_engine.query(query.clone());
+                assert_eq!(
+                    QueryHandleStream(query_engine.query(query.clone()))
+                        .collect::<Vec<_>>()
+                        .await
+                        .len() as u64,
+                    query_handle.num_rows()
+                );
+                let dataframe = concatenate_record_batches(
+                    query_handle.schema().clone(),
+                    &QueryHandleStream(query_engine.query(query.clone()))
+                        .collect::<Vec<_>>()
+                        .await,
+                )?;
+                eprintln!("{dataframe}");
+
+                let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+                let expected = unindent::unindent(
+                    "\
+                    [
+                        Int64[None],
+                        Timestamp(Nanosecond, None)[None],
+                        ListArray[None],
+                        ListArray[[c]],
+                        ListArray[None],
+                    ]\
+                    ",
+                );
+
+                similar_asserts::assert_eq!(expected, got);
+
+                Ok::<_, anyhow::Error>(())
+            }
+        });
+
+        // temporal
+        tokio::spawn({
+            async move {
+                let query = QueryExpression {
+                    filtered_index,
+                    ..Default::default()
+                };
+                eprintln!("{query:#?}:");
+
+                let query_handle = query_engine.query(query.clone());
+                assert_eq!(
+                    QueryHandleStream(query_engine.query(query.clone()))
+                        .collect::<Vec<_>>()
+                        .await
+                        .len() as u64,
+                    query_handle.num_rows()
+                );
+                let dataframe = concatenate_record_batches(
+                    query_handle.schema().clone(),
+                    &QueryHandleStream(query_engine.query(query.clone()))
+                        .collect::<Vec<_>>()
+                        .await,
+                )?;
+                eprintln!("{dataframe}");
+
+                let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+                let expected = unindent::unindent(
+                    "\
+                    [
+                        Int64[10, 20, 30, 40, 50, 60, 70],
+                        Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
+                        ListArray[None, None, [2], [3], [4], None, [6]],
+                        ListArray[[c], [c], [c], [c], [c], [c], [c]],
+                        ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
+                    ]\
+                    "
+                );
+
+                similar_asserts::assert_eq!(expected, got);
+
+                Ok::<_, anyhow::Error>(())
+            }
+        });
 
         Ok(())
     }
