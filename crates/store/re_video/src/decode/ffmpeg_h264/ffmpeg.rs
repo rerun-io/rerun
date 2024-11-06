@@ -907,6 +907,8 @@ fn sanitize_ffmpeg_log_message(msg: &str) -> String {
 
 #[cfg(test)]
 mod tests {
+    use super::sanitize_ffmpeg_log_message;
+
     #[test]
     fn test_sanitize_ffmpeg_log_message() {
         assert_eq!(
