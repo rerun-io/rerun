@@ -83,7 +83,7 @@ mod async_decoder_wrapper;
 mod av1;
 
 #[cfg(with_ffmpeg)]
-mod ffmpeg;
+mod ffmpeg_h264;
 
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
@@ -117,7 +117,7 @@ pub enum Error {
 
     #[cfg(with_ffmpeg)]
     #[error(transparent)]
-    Ffmpeg(std::sync::Arc<ffmpeg::Error>),
+    Ffmpeg(std::sync::Arc<ffmpeg_h264::Error>),
 
     // We need to check for this one and don't want to infect more crates with the feature requirement.
     #[error("Couldn't find an installation of the FFmpeg executable.")]
@@ -200,7 +200,7 @@ pub fn new_decoder(
         #[cfg(with_ffmpeg)]
         re_mp4::StsdBoxContent::Avc1(avc1_box) => {
             re_log::trace!("Decoding H.264…");
-            Ok(Box::new(ffmpeg::FfmpegCliH264Decoder::new(
+            Ok(Box::new(ffmpeg_h264::FfmpegCliH264Decoder::new(
                 debug_name.to_owned(),
                 avc1_box.clone(),
                 on_output,
@@ -294,7 +294,7 @@ pub struct Frame {
 }
 
 /// Pixel format/layout used by [`FrameContent::data`].
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum PixelFormat {
     Rgb8Unorm,
     Rgba8Unorm,
@@ -305,14 +305,30 @@ pub enum PixelFormat {
         // TODO(andreas): color primaries should also apply to RGB data,
         // but for now we just always assume RGB to be BT.709 ~= sRGB.
         coefficients: YuvMatrixCoefficients,
+        // Note that we don't handle chroma sample location at all so far.
     },
+}
+
+impl PixelFormat {
+    pub fn bits_per_pixel(&self) -> u32 {
+        match self {
+            Self::Rgb8Unorm { .. } => 24,
+            Self::Rgba8Unorm { .. } => 32,
+            Self::Yuv { layout, .. } => match layout {
+                YuvPixelLayout::Y_U_V444 => 24,
+                YuvPixelLayout::Y_U_V422 => 16,
+                YuvPixelLayout::Y_U_V420 => 12,
+                YuvPixelLayout::Y400 => 8,
+            },
+        }
+    }
 }
 
 /// Pixel layout used by [`PixelFormat::Yuv`].
 ///
 /// For details see `re_renderer`'s `YuvPixelLayout` type.
 #[allow(non_camel_case_types)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum YuvPixelLayout {
     Y_U_V444,
     Y_U_V422,
@@ -323,7 +339,7 @@ pub enum YuvPixelLayout {
 /// Yuv value range used by [`PixelFormat::Yuv`].
 ///
 /// For details see `re_renderer`'s `YuvRange` type.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum YuvRange {
     Limited,
     Full,
@@ -332,7 +348,7 @@ pub enum YuvRange {
 /// Yuv matrix coefficients used by [`PixelFormat::Yuv`].
 ///
 /// For details see `re_renderer`'s `YuvMatrixCoefficients` type.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum YuvMatrixCoefficients {
     /// Interpret YUV as GBR.
     Identity,
