@@ -5,9 +5,11 @@ title: "GeoLineString"
 
 A geospatial line string expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
 
-## Fields
 
-* lat_lon: list of [`DVec2D`](../datatypes/dvec2d.md)
+## Arrow datatype
+```
+List<FixedSizeList<2, float64>>
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `GeoLineString`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1GeoLineString.html?speculative-link)
