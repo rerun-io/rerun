@@ -66,9 +66,12 @@ jobs:
           message-id: "vercel-preview"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message: |
+            Latest documentation preview deployment is pending:
+            ${{ steps.vercel-initial-deploy.outputs.vercel_preview_inspector_url }}
+
             | Result | Commit  | Link  |
             | ------ | ------- | ----- |
-            | ⏳ | ${{ steps.get-sha.outputs.sha }} | https://${{ steps.vercel-initial-deploy.outputs.vercel_preview_url }}/docs |
+            | ⏳ | ${{ steps.get-sha.outputs.sha }} | unavailable |
 
       - name: Wait for deployment
         id: vercel
@@ -89,6 +92,8 @@ jobs:
           message-id: "vercel-preview"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message: |
+            Latest documentation preview deployed successfully.
+
             | Result | Commit  | Link  |
             | ------ | ------- | ----- |
             | ✅ | ${{ steps.get-sha.outputs.sha }} | https://${{ steps.vercel.outputs.vercel_preview_url }}/docs |
@@ -103,7 +108,8 @@ jobs:
           message-id: "vercel-preview"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message: |
-            Latest preview failed to deploy. See ${{ steps.vercel.outputs.vercel_preview_inspector_url }} for more information.
+            Latest documentation preview failed to deploy:
+            ${{ steps.vercel.outputs.vercel_preview_inspector_url }}
 
             | Result | Commit  | Link  |
             | ------ | ------- | ----- |
@@ -119,7 +125,7 @@ jobs:
           message-id: "vercel-preview"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message: |
-            Latest preview failed to deploy:
+            Latest documentation preview failed to deploy:
             ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs/${{ github.job_id }}?pr=${{ github.event.pull_request.number }}
 
             | Result | Commit  | Link  |
