@@ -31,8 +31,7 @@ export async function deployToPreview(client, options) {
     "landing-preview",
     env,
   );
-  const result = await project.waitForDeployment(newDeployment.id);
-  setOutput("vercel_preview_result", result.type);
+  setOutput("vercel_preview_deployment_id", newDeployment.id);
   setOutput("vercel_preview_url", newDeployment.url);
   setOutput("vercel_preview_inspector_url", newDeployment.inspectorUrl);
 

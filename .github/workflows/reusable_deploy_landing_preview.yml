@@ -46,8 +46,8 @@ jobs:
           full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
           echo "sha=$full_commit" >> "$GITHUB_OUTPUT"
 
-      - name: Re-deploy rerun.io
-        id: vercel
+      - name: Deploy rerun.io preview
+        id: vercel-initial-deploy
         uses: ./.github/actions/vercel
         continue-on-error: true
         with:
@@ -57,6 +57,29 @@ jobs:
           vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
           release_commit: ${{ steps.get-sha.outputs.sha }}
           target: "preview"
+
+      - name: Create pending comment
+        # https://github.com/mshick/add-pr-comment
+        uses: mshick/add-pr-comment@v2.8.2
+        if: success() && steps.vercel-initial-deploy.outputs.vercel_preview_result == 'pending'
+        with:
+          message-id: "vercel-preview"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            | Result | Commit  | Link  |
+            | ------ | ------- | ----- |
+            | ⏳ | ${{ steps.get-sha.outputs.sha }} | https://${{ steps.vercel-initial-deploy.outputs.vercel_preview_url }}/docs |
+
+      - name: Wait for deployment
+        id: vercel
+        uses: ./.github/actions/vercel
+        continue-on-error: true
+        with:
+          command: "wait-for-deployment"
+          vercel_token: ${{ secrets.VERCEL_TOKEN }}
+          vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
+          vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
+          vercel_deployment_id: ${{ steps.vercel-initial-deploy.outputs.vercel_preview_deployment_id }}
 
       - name: Create PR comment
         # https://github.com/mshick/add-pr-comment
@@ -96,7 +119,8 @@ jobs:
           message-id: "vercel-preview"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message: |
-            Latest preview failed to deploy.
+            Latest preview failed to deploy:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/jobs/${{ github.job_id }}?pr=${{ github.event.pull_request.number }}
 
             | Result | Commit  | Link  |
             | ------ | ------- | ----- |
