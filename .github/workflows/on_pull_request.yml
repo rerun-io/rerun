@@ -54,9 +54,6 @@ jobs:
     outputs:
       docs_changes: ${{ steps.filter.outputs.docs_changes }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
       - uses: dorny/paths-filter@v3
         id: filter
         with:
