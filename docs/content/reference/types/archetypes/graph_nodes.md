@@ -9,7 +9,7 @@ A list of nodes in a graph with optional labels, colors, etc.
 
 **Required**: [`GraphNode`](../components/graph_node.md)
 
-**Optional**: [`Position2D`](../components/position2d.md), [`Color`](../components/color.md), [`Text`](../components/text.md), [`ShowLabels`](../components/show_labels.md)
+**Optional**: [`Position2D`](../components/position2d.md), [`Color`](../components/color.md), [`Text`](../components/text.md), [`ShowLabels`](../components/show_labels.md), [`Radius`](../components/radius.md)
 
 ## Shown in
 * [Graph View](../views/graph_view.md)

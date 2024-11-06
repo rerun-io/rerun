@@ -35,6 +35,9 @@ pub struct GraphNodes {
 
     /// Optional choice of whether the text labels should be shown by default.
     pub show_labels: Option<crate::components::ShowLabels>,
+
+    /// Optional radius for nodes.
+    pub radius: Option<crate::components::Radius>,
 }
 
 impl ::re_types_core::SizeBytes for GraphNodes {
@@ -45,6 +48,7 @@ impl ::re_types_core::SizeBytes for GraphNodes {
             + self.colors.heap_size_bytes()
             + self.labels.heap_size_bytes()
             + self.show_labels.heap_size_bytes()
+            + self.radius.heap_size_bytes()
     }
 
     #[inline]
@@ -54,6 +58,7 @@ impl ::re_types_core::SizeBytes for GraphNodes {
             && <Option<Vec<crate::components::Color>>>::is_pod()
             && <Option<Vec<crate::components::Text>>>::is_pod()
             && <Option<crate::components::ShowLabels>>::is_pod()
+            && <Option<crate::components::Radius>>::is_pod()
     }
 }
 
@@ -63,17 +68,18 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.components.GraphNodesIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.Position2D".into(),
             "rerun.components.Color".into(),
             "rerun.components.Text".into(),
             "rerun.components.ShowLabels".into(),
+            "rerun.components.Radius".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.GraphNode".into(),
@@ -82,12 +88,13 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
             "rerun.components.Color".into(),
             "rerun.components.Text".into(),
             "rerun.components.ShowLabels".into(),
+            "rerun.components.Radius".into(),
         ]
     });
 
 impl GraphNodes {
-    /// The total number of components in the archetype: 1 required, 1 recommended, 4 optional
-    pub const NUM_COMPONENTS: usize = 6usize;
+    /// The total number of components in the archetype: 1 required, 1 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 7usize;
 }
 
 /// Indicator component for the [`GraphNodes`] [`::re_types_core::Archetype`]
@@ -199,12 +206,22 @@ impl ::re_types_core::Archetype for GraphNodes {
         } else {
             None
         };
+        let radius = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
+            <crate::components::Radius>::from_arrow_opt(&**array)
+                .with_context("rerun.archetypes.GraphNodes#radius")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         Ok(Self {
             node_ids,
             positions,
             colors,
             labels,
             show_labels,
+            radius,
         })
     }
 }
@@ -228,6 +245,9 @@ impl ::re_types_core::AsComponents for GraphNodes {
             self.show_labels
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.radius
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -249,6 +269,7 @@ impl GraphNodes {
             colors: None,
             labels: None,
             show_labels: None,
+            radius: None,
         }
     }
 
@@ -289,6 +310,13 @@ impl GraphNodes {
         show_labels: impl Into<crate::components::ShowLabels>,
     ) -> Self {
         self.show_labels = Some(show_labels.into());
+        self
+    }
+
+    /// Optional radius for nodes.
+    #[inline]
+    pub fn with_radius(mut self, radius: impl Into<crate::components::Radius>) -> Self {
+        self.radius = Some(radius.into());
         self
     }
 }

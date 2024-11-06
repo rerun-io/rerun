@@ -9,6 +9,7 @@
 #include "../components/color.hpp"
 #include "../components/graph_node.hpp"
 #include "../components/position2d.hpp"
+#include "../components/radius.hpp"
 #include "../components/show_labels.hpp"
 #include "../components/text.hpp"
 #include "../indicator_component.hpp"
@@ -36,6 +37,9 @@ namespace rerun::archetypes {
 
         /// Optional choice of whether the text labels should be shown by default.
         std::optional<rerun::components::ShowLabels> show_labels;
+
+        /// Optional radius for nodes.
+        std::optional<rerun::components::Radius> radius;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -75,6 +79,13 @@ namespace rerun::archetypes {
         /// Optional choice of whether the text labels should be shown by default.
         GraphNodes with_show_labels(rerun::components::ShowLabels _show_labels) && {
             show_labels = std::move(_show_labels);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Optional radius for nodes.
+        GraphNodes with_radius(rerun::components::Radius _radius) && {
+            radius = std::move(_radius);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

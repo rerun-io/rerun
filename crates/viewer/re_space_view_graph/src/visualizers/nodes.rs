@@ -1,6 +1,6 @@
 use re_chunk::LatestAtQuery;
 use re_log_types::EntityPath;
-use re_query::{clamped_zip_1x3, range_zip_1x3};
+use re_query::{clamped_zip_1x4, range_zip_1x4};
 use re_space_view::{DataResultQuery, RangeResultsExt};
 use re_types::components::{Color, ShowLabels};
 use re_types::{
@@ -57,19 +57,21 @@ impl VisualizerSystem for NodeVisualizer {
             let all_colors = results.iter_as(query.timeline, components::Color::name());
             let all_positions = results.iter_as(query.timeline, components::Position2D::name());
             let all_labels = results.iter_as(query.timeline, components::Text::name());
+            let all_radii = results.iter_as(query.timeline, components::Radius::name());
             let show_labels = results
                 .get_mono::<components::ShowLabels>()
                 .map_or(true, bool::from);
 
-            let data = range_zip_1x3(
+            let data = range_zip_1x4(
                 all_indexed_nodes.component::<components::GraphNode>(),
                 all_colors.component::<components::Color>(),
                 all_positions.primitive_array::<2, f32>(),
                 all_labels.string(),
+                all_radii.component::<components::Radius>(),
             );
 
-            for (_index, nodes, colors, positions, labels) in data {
-                let nodes = clamped_zip_1x3(
+            for (_index, nodes, colors, positions, labels, radii) in data {
+                let nodes = clamped_zip_1x4(
                     nodes.iter(),
                     colors.unwrap_or_default().iter().map(Option::Some),
                     Option::<&Color>::default,
@@ -84,13 +86,16 @@ impl VisualizerSystem for NodeVisualizer {
                         .iter()
                         .map(|l| show_labels.then_some(l)),
                     Option::<&ArrowString>::default,
+                    radii.unwrap_or_default().iter().map(Option::Some),
+                    Option::<&components::Radius>::default,
                 )
-                .map(|(node, color, position, label)| NodeInstance {
+                .map(|(node, color, position, label, radius)| NodeInstance {
                     node: node.clone(),
                     index: NodeIndex::from_entity_node(&data_result.entity_path, node),
                     color: color.map(|&Color(color)| color.into()),
                     position: position.map(|[x, y]| egui::Pos2::new(x, y)),
                     label: if show_labels { label.cloned() } else { None },
+                    radius: radius.map(|&components::Radius(radius)| radius.0),
                 })
                 .collect();
 

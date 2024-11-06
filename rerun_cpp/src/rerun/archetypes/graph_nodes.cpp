@@ -14,7 +14,7 @@ namespace rerun {
     ) {
         using namespace archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(6);
+        cells.reserve(7);
 
         {
             auto result = ComponentBatch::from_loggable(archetype.node_ids);
@@ -38,6 +38,11 @@ namespace rerun {
         }
         if (archetype.show_labels.has_value()) {
             auto result = ComponentBatch::from_loggable(archetype.show_labels.value());
+            RR_RETURN_NOT_OK(result.error);
+            cells.push_back(std::move(result.value));
+        }
+        if (archetype.radius.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.radius.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

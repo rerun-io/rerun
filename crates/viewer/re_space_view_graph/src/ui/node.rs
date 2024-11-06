@@ -5,16 +5,19 @@ use crate::types::NodeInstance;
 
 fn draw_circle_node(
     ui: &mut egui::Ui,
+    radius: f32,
     fill_color: egui::Color32,
     stroke: egui::Stroke,
 ) -> egui::Response {
     egui::Frame::default()
         .show(ui, |ui| {
-            let r = 4.0;
             ui.add(|ui: &mut egui::Ui| {
-                let (rect, response) =
-                    ui.allocate_at_least(egui::Vec2::new(2.0 * r, 2.0 * r), egui::Sense::drag()); // Frame size
-                ui.painter().circle(rect.center(), r, fill_color, stroke);
+                let (rect, response) = ui.allocate_at_least(
+                    egui::Vec2::new(2.0 * radius, 2.0 * radius),
+                    egui::Sense::drag(),
+                ); // Frame size
+                ui.painter()
+                    .circle(rect.center(), radius, fill_color, stroke);
                 response
             })
         })
@@ -24,6 +27,7 @@ fn draw_circle_node(
 pub fn draw_dummy(ui: &mut egui::Ui, node: &GraphNode) -> egui::Response {
     draw_circle_node(
         ui,
+        4.0,
         ui.style().visuals.gray_out(ui.style().visuals.text_color()),
         egui::Stroke::NONE,
     )
@@ -69,6 +73,7 @@ pub fn draw_node(
     } else {
         draw_circle_node(
             ui,
+            instance.radius.unwrap_or(4.0),
             instance.color.unwrap_or(ui.style().visuals.text_color()),
             hcolor.map_or(egui::Stroke::NONE, |c| egui::Stroke::new(2.0, c)),
         )

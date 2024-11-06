@@ -30,6 +30,7 @@ class GraphNodes(Archetype):
         colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolLike | None = None,
+        radius: datatypes.Float32Like | None = None,
     ):
         """
         Create a new instance of the GraphNodes archetype.
@@ -46,13 +47,20 @@ class GraphNodes(Archetype):
             Optional text labels for the node.
         show_labels:
             Optional choice of whether the text labels should be shown by default.
+        radius:
+            Optional radius for nodes.
 
         """
 
         # You can define your own __init__ function as a member of GraphNodesExt in graph_nodes_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
             self.__attrs_init__(
-                node_ids=node_ids, positions=positions, colors=colors, labels=labels, show_labels=show_labels
+                node_ids=node_ids,
+                positions=positions,
+                colors=colors,
+                labels=labels,
+                show_labels=show_labels,
+                radius=radius,
             )
             return
         self.__attrs_clear__()
@@ -65,6 +73,7 @@ class GraphNodes(Archetype):
             colors=None,  # type: ignore[arg-type]
             labels=None,  # type: ignore[arg-type]
             show_labels=None,  # type: ignore[arg-type]
+            radius=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -115,6 +124,15 @@ class GraphNodes(Archetype):
         converter=components.ShowLabelsBatch._optional,  # type: ignore[misc]
     )
     # Optional choice of whether the text labels should be shown by default.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    radius: components.RadiusBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.RadiusBatch._optional,  # type: ignore[misc]
+    )
+    # Optional radius for nodes.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
