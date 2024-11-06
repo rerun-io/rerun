@@ -811,6 +811,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ///     // …
     /// }
     /// ```
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn next_row_async(
         &self,
     ) -> impl std::future::Future<Output = Option<Vec<Box<dyn ArrowArray>>>>
@@ -1231,6 +1232,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     }
 
     #[inline]
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn next_row_batch_async(&self) -> Option<RecordBatch>
     where
         E: 'static + Send + Clone,
