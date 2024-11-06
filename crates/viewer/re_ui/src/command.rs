@@ -359,9 +359,6 @@ impl UICommand {
             Self::RestartWithWebGl => None,
             #[cfg(target_arch = "wasm32")]
             Self::RestartWithWebGpu => None,
-
-            #[cfg(target_arch = "wasm32 ")]
-            Self::ViewportMode(_) => None,
         }
     }
 
