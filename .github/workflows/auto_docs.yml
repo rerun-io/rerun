@@ -1,0 +1,26 @@
+name: Push to docs-latest on merge
+
+# TODO(jan):
+# 1. trigger on push to `main`
+# 2. if the commit ends with (#\d+), that is the PR number
+# 3. find the PR by its number
+# 4. if the PR has the label `deploy-docs`, then push the commit
+#    to `docs-latest`
+# 5. once committed, send a comment to the PR:
+#    "`deploy-docs` label found, this PR has been deployed to `docs-latest`."
+#    ideally, also include a link to the deploy job on vercel.
+
+on:
+  pull_request_target:
+    types:
+      - closed
+
+jobs:
+  auto-docs:
+    if: ${{ github.event.pull_request.merged == true && contains(github.event.pull_request.labels.*.name, 'deploy docs') }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: docs-latest
+          fetch-depth: 0
