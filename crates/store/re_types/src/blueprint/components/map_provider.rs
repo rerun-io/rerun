@@ -29,17 +29,17 @@ pub enum MapProvider {
 
     /// Mapbox Streets is a minimalistic map designed by Mapbox.
     ///
-    /// **Note**: Requires a Mapbox API key in the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
+    /// **Note**: Requires a Mapbox access token in the settings or using the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
     MapboxStreets = 2,
 
     /// Mapbox Dark is a dark-themed map designed by Mapbox.
     ///
-    /// **Note**: Requires a Mapbox API key in the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
+    /// **Note**: Requires a Mapbox access token in the settings or using the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
     MapboxDark = 3,
 
     /// Mapbox Satellite is a satellite map designed by Mapbox.
     ///
-    /// **Note**: Requires a Mapbox API key in the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
+    /// **Note**: Requires a Mapbox access token in the settings or using the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
     MapboxSatellite = 4,
 }
 
@@ -59,13 +59,13 @@ impl ::re_types_core::reflection::Enum for MapProvider {
         match self {
             Self::OpenStreetMap => "`OpenStreetMap` is the default map provider.",
             Self::MapboxStreets => {
-                "Mapbox Streets is a minimalistic map designed by Mapbox.\n\n**Note**: Requires a Mapbox API key in the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable."
+                "Mapbox Streets is a minimalistic map designed by Mapbox.\n\n**Note**: Requires a Mapbox access token in the settings or using the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable."
             }
             Self::MapboxDark => {
-                "Mapbox Dark is a dark-themed map designed by Mapbox.\n\n**Note**: Requires a Mapbox API key in the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable."
+                "Mapbox Dark is a dark-themed map designed by Mapbox.\n\n**Note**: Requires a Mapbox access token in the settings or using the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable."
             }
             Self::MapboxSatellite => {
-                "Mapbox Satellite is a satellite map designed by Mapbox.\n\n**Note**: Requires a Mapbox API key in the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable."
+                "Mapbox Satellite is a satellite map designed by Mapbox.\n\n**Note**: Requires a Mapbox access token in the settings or using the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable."
             }
         }
     }
