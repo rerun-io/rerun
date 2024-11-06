@@ -55,7 +55,7 @@ jobs:
       - name: Create pending comment
         # https://github.com/mshick/add-pr-comment
         uses: mshick/add-pr-comment@v2.8.2
-        if: success() && steps.vercel-initial-deploy.outputs.vercel_preview_result == 'pending'
+        if: success()
         with:
           message-id: "vercel-preview"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
