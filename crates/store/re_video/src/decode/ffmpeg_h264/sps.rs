@@ -159,11 +159,8 @@ impl H264Sps {
         let pic_width_in_mbs_minus1 = read_exponential_golomb(&mut bit_read_pos, buffer)?;
         let pic_height_in_map_units_minus1 = read_exponential_golomb(&mut bit_read_pos, buffer)?;
         let frame_mbs_only_flag = read_bits(&mut bit_read_pos, buffer, 1)? == 1;
-        let mb_adaptive_frame_field_flag = if !frame_mbs_only_flag {
-            read_bits(&mut bit_read_pos, buffer, 1)? == 1
-        } else {
-            false
-        };
+        let mb_adaptive_frame_field_flag =
+            !frame_mbs_only_flag && read_bits(&mut bit_read_pos, buffer, 1)? == 1;
         let direct_8x8_inference_flag = read_bits(&mut bit_read_pos, buffer, 1)? == 1;
 
         let (
