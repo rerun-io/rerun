@@ -5710,6 +5710,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_grpc_types_builder"
+version = "0.20.0-alpha.1+dev"
+dependencies = [
+ "camino",
+ "re_log",
+ "tonic-build",
+]
+
+[[package]]
 name = "re_int_histogram"
 version = "0.20.0-alpha.1+dev"
 dependencies = [
@@ -5895,15 +5904,6 @@ dependencies = [
  "strum",
  "to_method",
  "zerocopy",
-]
-
-[[package]]
-name = "re_remote_store_types_builder"
-version = "0.20.0-alpha.1+dev"
-dependencies = [
- "camino",
- "re_log",
- "tonic-build",
 ]
 
 [[package]]

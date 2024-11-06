@@ -35,7 +35,7 @@ fn main() {
         "Running codegen for storage node types",
     );
 
-    re_remote_store_types_builder::generate_rust_code(
+    re_grpc_types_builder::generate_rust_code(
         definitions_dir_path,
         &[PROTOBUF_REMOTE_STORE_V0_RELATIVE_PATH],
         rust_generated_output_dir_path,

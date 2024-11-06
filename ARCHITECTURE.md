@@ -88,11 +88,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/a1291641639f4dc3864e84259c70089a96bfcb1a/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/a1291641639f4dc3864e84259c70089a96bfcb1a/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/a1291641639f4dc3864e84259c70089a96bfcb1a/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/a1291641639f4dc3864e84259c70089a96bfcb1a/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/a1291641639f4dc3864e84259c70089a96bfcb1a/1200w.png">
+  <img src="https://static.rerun.io/crates/91c15c92ad604a46c0b45d6282d00d1995d6a79f/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/91c15c92ad604a46c0b45d6282d00d1995d6a79f/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/91c15c92ad604a46c0b45d6282d00d1995d6a79f/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/91c15c92ad604a46c0b45d6282d00d1995d6a79f/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/91c15c92ad604a46c0b45d6282d00d1995d6a79f/1200w.png">
 </picture>
 
 
@@ -199,9 +199,9 @@ Update instructions:
 |-------------------------------|------------------------------------------------------------------|
 | re_build_info                 | Information about the build. Use together with re_build_tools    |
 | re_build_tools                | build.rs helpers for generating build info                       |
-| re_remote_store_types_builder | Generates code for Rerun remote store gRPC API                   |
-| re_types_builder              | Generates code for Rerun's SDKs from flatbuffers definitions.    |
 | re_dev_tools                  | Various tools for Rerun development. Each tool has a subcommand. |
+| re_grpc_types_builder         | Generates code for Rerun remote store gRPC API                   |
+| re_types_builder              | Generates code for Rerun's SDKs from flatbuffers definitions.    |
 
 
 ### Utilities
