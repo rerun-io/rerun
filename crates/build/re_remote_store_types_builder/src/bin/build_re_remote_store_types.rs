@@ -7,9 +7,9 @@
 
 use camino::Utf8Path;
 
-const PROTOBUF_DEFINITIONS_DIR_PATH: &str = "crates/store/re_remote_store_types/proto";
+const PROTOBUF_DEFINITIONS_DIR_PATH: &str = "crates/store/re_grpc_types/proto";
 const PROTOBUF_REMOTE_STORE_V0_RELATIVE_PATH: &str = "rerun/v0/remote_store.proto";
-const RUST_V0_OUTPUT_DIR_PATH: &str = "crates/store/re_remote_store_types/src/v0";
+const RUST_V0_OUTPUT_DIR_PATH: &str = "crates/store/re_grpc_types/src/v0";
 
 fn main() {
     re_log::setup_logging();

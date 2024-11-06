@@ -9,14 +9,14 @@ pub use address::{Address, InvalidAddressError};
 use std::{error::Error, str::FromStr};
 
 use re_chunk::Chunk;
-use re_log_types::{
-    ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
-};
-use re_remote_store_types::{
+use re_grpc_types::{
     codec::{decode, CodecError},
     v0::{
         storage_node_client::StorageNodeClient, EncoderVersion, FetchRecordingRequest, RecordingId,
     },
+};
+use re_log_types::{
+    ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
 };
 
 // ----------------------------------------------------------------------------

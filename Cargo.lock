@@ -5684,9 +5684,9 @@ version = "0.20.0-alpha.1+dev"
 dependencies = [
  "re_chunk",
  "re_error",
+ "re_grpc_types",
  "re_log",
  "re_log_types",
- "re_remote_store_types",
  "re_smart_channel",
  "thiserror",
  "tokio",
@@ -5694,6 +5694,19 @@ dependencies = [
  "tonic",
  "tonic-web-wasm-client",
  "wasm-bindgen-futures",
+]
+
+[[package]]
+name = "re_grpc_types"
+version = "0.20.0-alpha.1+dev"
+dependencies = [
+ "prost",
+ "re_arrow2",
+ "re_dataframe",
+ "re_log_types",
+ "thiserror",
+ "tonic",
+ "tonic-web-wasm-client",
 ]
 
 [[package]]
@@ -5882,19 +5895,6 @@ dependencies = [
  "strum",
  "to_method",
  "zerocopy",
-]
-
-[[package]]
-name = "re_remote_store_types"
-version = "0.20.0-alpha.1+dev"
-dependencies = [
- "prost",
- "re_arrow2",
- "re_dataframe",
- "re_log_types",
- "thiserror",
- "tonic",
- "tonic-web-wasm-client",
 ]
 
 [[package]]
@@ -6986,10 +6986,10 @@ dependencies = [
  "re_chunk",
  "re_chunk_store",
  "re_dataframe",
+ "re_grpc_types",
  "re_log",
  "re_log_types",
  "re_memory",
- "re_remote_store_types",
  "re_sdk",
  "re_video",
  "re_web_viewer_server",

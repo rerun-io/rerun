@@ -1,5 +1,5 @@
 [package]
-name = "re_remote_store_types"
+name = "re_grpc_types"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true

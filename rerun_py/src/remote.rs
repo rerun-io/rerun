@@ -3,7 +3,7 @@ use arrow::{array::ArrayData, pyarrow::PyArrowType};
 // False positive due to #[pyfunction] macro
 use pyo3::{exceptions::PyRuntimeError, prelude::*, types::PyDict, Bound, PyResult};
 use re_chunk::TransportChunk;
-use re_remote_store_types::v0::{
+use re_grpc_types::v0::{
     storage_node_client::StorageNodeClient, EncoderVersion, ListRecordingsRequest,
     RecordingMetadata, RecordingType, RegisterRecordingRequest,
 };
@@ -189,7 +189,7 @@ impl MetadataLike {
 /// The info for a recording stored in the archive.
 #[pyclass(name = "RecordingInfo")]
 pub struct PyRecordingInfo {
-    info: re_remote_store_types::v0::RecordingInfo,
+    info: re_grpc_types::v0::RecordingInfo,
 }
 
 #[pymethods]
