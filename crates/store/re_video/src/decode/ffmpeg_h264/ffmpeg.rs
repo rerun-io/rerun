@@ -25,6 +25,11 @@ use crate::{
     PixelFormat, Time,
 };
 
+// FFmpeg 5.1 "Riemann" is from 2022-07-22.
+// It's simply the oldest I tested manually as of writing. We might be able to go lower.
+const FFMPEG_MINIMUM_VERSION_MAJOR: u32 = 5;
+const FFMPEG_MINIMUM_VERSION_MINOR: u32 = 1;
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("Couldn't find an installation of the FFmpeg executable.")]
@@ -200,7 +205,8 @@ impl FfmpegProcessAndListener {
         };
 
         let mut ffmpeg = FfmpegCommand::new()
-            .hide_banner()
+            // Keep banner enabled so we can check on the version more easily.
+            //.hide_banner()
             // "Reduce the latency introduced by buffering during initial input streams analysis."
             //.arg("-fflags nobuffer")
             //
@@ -382,46 +388,6 @@ fn read_ffmpeg_output(
     pixel_format: &PixelFormat,
     on_output: &Mutex<Option<Arc<OutputCallback>>>,
 ) -> Option<()> {
-    /// Ignore some common output from ffmpeg:
-    fn should_ignore_log_msg(msg: &str) -> bool {
-        let patterns = [
-            "Duration: N/A, bitrate: N/A",
-            "frame=    0 fps=0.0 q=0.0 size=       0kB time=N/A bitrate=N/A speed=N/A",
-            "encoder         : ", // Describes the encoder that was used to encode a video.
-            "Metadata:",
-            "Stream mapping:",
-             // It likes to say this a lot, almost no matter the format.
-            // Some sources say this is more about internal formats, i.e. specific decoders using the wrong values, rather than the cli passed formats.
-            "deprecated pixel format used, make sure you did set range correctly",
-            // Not entirely sure why it tells us this sometimes:
-            // Nowhere in the pipeline do we ask for this conversion, so it must be a transitional format?
-            // This is supported by experimentation yielding that it shows only up when using the `-colorspace` parameter.
-            // (color range and yuvj formats are fine though!)
-            "No accelerated colorspace conversion found from yuv420p to bgr24",
-            // We actually don't even want it to estimate a framerate!
-            "not enough frames to estimate rate",
-            // Similar: we don't want it to be able to estimate any of these things and we set those values explicitly, see invocation.
-            // Observed on Windows FFmpeg 7.1, but not with the same version on Mac with the same video.
-            "Consider increasing the value for the 'analyzeduration' (0) and 'probesize' (32) options",
-            // Size etc. *is* specified in SPS & PPS, unclear why it's missing that.
-            // Observed on Windows FFmpeg 7.1, but not with the same version on Mac with the same video.
-            "Could not find codec parameters for stream 0 (Video: h264, none): unspecified size",
-        ];
-
-        // Why would we get an empty message? Observed on Windows FFmpeg 7.1.
-        if msg.is_empty() {
-            return true;
-        }
-
-        for pattern in patterns {
-            if msg.contains(pattern) {
-                return true;
-            }
-        }
-
-        false
-    }
-
     // Pending frames, sorted by their presentation timestamp.
     let mut pending_frame_infos = BTreeMap::new();
     let mut highest_dts = Time::MIN; // Highest dts encountered so far.
@@ -435,17 +401,12 @@ fn read_ffmpeg_output(
                 }
             }
 
-            FfmpegEvent::Log(LogLevel::Warning, mut msg) => {
+            FfmpegEvent::Log(LogLevel::Warning, msg) => {
                 if !should_ignore_log_msg(&msg) {
-                    // Make warn_once work on `[swscaler @ 0x148db8000]` style warnings even if the address is different every time.
-                    if let Some(pos) = msg.find("[swscaler @ 0x") {
-                        msg = [
-                            &msg[..pos],
-                            &msg[(pos + "[swscaler @ 0x148db8000]".len())..],
-                        ]
-                        .join("[swscaler]");
-                    };
-                    re_log::warn_once!("{debug_name} decoder: {msg}");
+                    re_log::warn_once!(
+                        "{debug_name} decoder: {}",
+                        sanitize_ffmpeg_log_message(&msg)
+                    );
                 }
             }
 
@@ -464,7 +425,11 @@ fn read_ffmpeg_output(
                     return None;
                 }
                 if !should_ignore_log_msg(&msg) {
-                    re_log::warn_once!("{debug_name} decoder: {msg}");
+                    // Note that older ffmpeg versions don't flag their warnings as such and may end up here.
+                    re_log::warn_once!(
+                        "{debug_name} decoder: {}",
+                        sanitize_ffmpeg_log_message(&msg)
+                    );
                 }
             }
 
@@ -620,7 +585,47 @@ fn read_ffmpeg_output(
             }
 
             FfmpegEvent::ParsedVersion(ffmpeg_version) => {
-                re_log::debug_once!("FFmpeg version is: {}", ffmpeg_version.version);
+                re_log::debug_once!("FFmpeg version is {}", ffmpeg_version.version);
+
+                fn download_advice() -> String {
+                    if let Ok(download_url) = ffmpeg_sidecar::download::ffmpeg_download_url() {
+                        format!("\nYou can download an up to date version for your system at {download_url}.")
+                    } else {
+                        String::new()
+                    }
+                }
+
+                // Version strings can get pretty wild!
+                // E.g. choco installed ffmpeg on Windows gives me "7.1-essentials_build-www.gyan.dev".
+                let mut version_parts = ffmpeg_version.version.split('.');
+                let major = version_parts
+                    .next()
+                    .and_then(|part| part.parse::<u32>().ok());
+                let minor = version_parts.next().and_then(|part| {
+                    part.split('-')
+                        .next()
+                        .and_then(|part| part.parse::<u32>().ok())
+                });
+
+                if let (Some(major), Some(minor)) = (major, minor) {
+                    re_log::debug_once!("Parsed FFmpeg version as {}.{}", major, minor);
+
+                    if major < FFMPEG_MINIMUM_VERSION_MAJOR
+                        || (major == FFMPEG_MINIMUM_VERSION_MAJOR
+                            && minor < FFMPEG_MINIMUM_VERSION_MINOR)
+                    {
+                        re_log::warn_once!(
+                            "FFmpeg version is {}. Only versions >= {FFMPEG_MINIMUM_VERSION_MAJOR}.{FFMPEG_MINIMUM_VERSION_MINOR} are officially supported.{}",
+                            ffmpeg_version.version, download_advice()
+                        );
+                    }
+                } else {
+                    re_log::warn_once!(
+                        "Failed to parse FFmpeg version: {}{}",
+                        ffmpeg_version.version,
+                        download_advice()
+                    );
+                }
             }
 
             FfmpegEvent::ParsedConfiguration(ffmpeg_configuration) => {
@@ -801,12 +806,13 @@ fn write_avc_chunk_to_nalu_stream(
             return Err(Error::BadVideoData("Not enough bytes to".to_owned()));
         }
 
-        let nal_header = NalHeader(chunk.data[data_start]);
-        re_log::trace!(
-            "nal_header: {:?}, {}",
-            nal_header.unit_type(),
-            nal_header.ref_idc()
-        );
+        // Can be useful for finding issues, but naturally very spammy.
+        // let nal_header = NalHeader(chunk.data[data_start]);
+        // re_log::trace!(
+        //     "nal_header: {:?}, {}",
+        //     nal_header.unit_type(),
+        //     nal_header.ref_idc()
+        // );
 
         let data = &chunk.data[data_start..data_end];
 
@@ -836,4 +842,111 @@ fn write_avc_chunk_to_nalu_stream(
     )?;
 
     Ok(())
+}
+
+/// Ignore some common output from ffmpeg.
+fn should_ignore_log_msg(msg: &str) -> bool {
+    let patterns = [
+        "Duration: N/A, bitrate: N/A",
+        "frame=    0 fps=0.0 q=0.0 size=       0kB time=N/A bitrate=N/A speed=N/A",
+        "encoder         : ", // Describes the encoder that was used to encode a video.
+        "Metadata:",
+        "Stream mapping:",
+        // It likes to say this a lot, almost no matter the format.
+        // Some sources say this is more about internal formats, i.e. specific decoders using the wrong values, rather than the cli passed formats.
+        "deprecated pixel format used, make sure you did set range correctly",
+        // Not entirely sure why it tells us this sometimes:
+        // Nowhere in the pipeline do we ask for this conversion, so it must be a transitional format?
+        // This is supported by experimentation yielding that it shows only up when using the `-colorspace` parameter.
+        // (color range and yuvj formats are fine though!)
+        "No accelerated colorspace conversion found from yuv420p to bgr24",
+        // We actually don't even want it to estimate a framerate!
+        "not enough frames to estimate rate",
+        // Similar: we don't want it to be able to estimate any of these things and we set those values explicitly, see invocation.
+        // Observed on Windows FFmpeg 7.1, but not with the same version on Mac with the same video.
+        "Consider increasing the value for the 'analyzeduration' (0) and 'probesize' (32) options",
+        // Size etc. *is* specified in SPS & PPS, unclear why it's missing that.
+        // Observed on Windows FFmpeg 7.1, but not with the same version on Mac with the same video.
+        "Could not find codec parameters for stream 0 (Video: h264, none): unspecified size",
+    ];
+
+    // Why would we get an empty message? Observed on Windows FFmpeg 7.1.
+    if msg.is_empty() {
+        return true;
+    }
+
+    for pattern in patterns {
+        if msg.contains(pattern) {
+            return true;
+        }
+    }
+
+    false
+}
+
+/// Strips out buffer addresses from `FFmpeg` log messages so that we can use it with the log-once family of methods.
+fn sanitize_ffmpeg_log_message(msg: &str) -> String {
+    // Make warn_once work on `[swscaler @ 0x148db8000]` style warnings even if the address is different every time.
+    // In older versions of FFmpeg this may happen several times in the same message (happens in 5.1, did not happen in 7.1).
+    let mut msg = msg.to_owned();
+    while let Some(start_pos) = msg.find("[swscaler @ 0x") {
+        if let Some(end_offset) = msg[start_pos..].find(']') {
+            if start_pos + end_offset + 1 > msg.len() {
+                break;
+            }
+
+            msg = [&msg[..start_pos], &msg[start_pos + end_offset + 1..]].join("[swscaler]");
+        } else {
+            // Huh, strange. Ignore it :shrug:
+            break;
+        }
+    }
+
+    msg
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sanitize_ffmpeg_log_message;
+
+    #[test]
+    fn test_sanitize_ffmpeg_log_message() {
+        assert_eq!(
+            sanitize_ffmpeg_log_message("[swscaler @ 0x148db8000]"),
+            "[swscaler]"
+        );
+
+        assert_eq!(
+            sanitize_ffmpeg_log_message(
+                "Some text prior [swscaler @ 0x148db8000] Warning: invalid pixel format specified"
+            ),
+            "Some text prior [swscaler] Warning: invalid pixel format specified"
+        );
+
+        assert_eq!(
+            sanitize_ffmpeg_log_message(
+                "Some text prior [swscaler @ 0x148db8000 other stuff we don't care about I guess] Warning: invalid pixel format specified"
+            ),
+            "Some text prior [swscaler] Warning: invalid pixel format specified"
+        );
+
+        assert_eq!(
+            sanitize_ffmpeg_log_message("[swscaler @ 0x148db8100] Warning: invalid poxel format specified [swscaler @ 0x148db8200]"),
+            "[swscaler] Warning: invalid poxel format specified [swscaler]"
+        );
+
+        assert_eq!(
+            sanitize_ffmpeg_log_message("[swscaler @ 0x248db8000] Warning: invalid päxel format specified [swscaler @ 0x198db8000] [swscaler @ 0x148db8030]"),
+            "[swscaler] Warning: invalid päxel format specified [swscaler] [swscaler]"
+        );
+
+        assert_eq!(
+            sanitize_ffmpeg_log_message("[swscaler @ 0x148db8000 something is wrong here"),
+            "[swscaler @ 0x148db8000 something is wrong here"
+        );
+        assert_eq!(
+            sanitize_ffmpeg_log_message("swscaler @ 0x148db8000] something is wrong here"),
+            "swscaler @ 0x148db8000] something is wrong here"
+        );
+    }
 }
