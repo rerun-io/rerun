@@ -56,7 +56,7 @@ namespace rerun::archetypes {
 
         /// Optional radii for the line strings.
         ///
-        /// *Note*: scene units radiii are interpreted as meters. Currently, the display scale only consideres the latitude of
+        /// *Note*: scene units radiii are interpreted as meters. Currently, the display scale only considers the latitude of
         /// the first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).
         std::optional<Collection<rerun::components::Radius>> radii;
 
@@ -79,7 +79,7 @@ namespace rerun::archetypes {
 
         /// Optional radii for the line strings.
         ///
-        /// *Note*: scene units radiii are interpreted as meters. Currently, the display scale only consideres the latitude of
+        /// *Note*: scene units radiii are interpreted as meters. Currently, the display scale only considers the latitude of
         /// the first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).
         GeoLineStrings with_radii(Collection<rerun::components::Radius> _radii) && {
             radii = std::move(_radii);

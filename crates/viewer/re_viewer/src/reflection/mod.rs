@@ -1256,7 +1256,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.Radius".into(), display_name : "Radii",
                     docstring_md :
-                    "Optional radii for the line strings.\n\n*Note*: scene units radiii are interpreted as meters. Currently, the display scale only consideres the latitude of\nthe first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).",
+                    "Optional radii for the line strings.\n\n*Note*: scene units radiii are interpreted as meters. Currently, the display scale only considers the latitude of\nthe first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.Color".into(), display_name : "Colors",
                     docstring_md : "Optional colors for the line strings.", is_required :
