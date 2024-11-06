@@ -37,7 +37,7 @@ nasm = ["re_video/nasm"]
 
 remote = [
   "dep:object_store",
-  "dep:re_grpc_types",
+  "dep:re_protos",
   "dep:re_ws_comms",
   "dep:tokio",
   "dep:tonic",
@@ -85,7 +85,7 @@ uuid.workspace = true
 
 # Deps for remote feature
 object_store = { workspace = true, optional = true, features = ["aws"] }
-re_grpc_types = { workspace = true, optional = true }
+re_protos = { workspace = true, optional = true }
 tokio = { workspace = true, optional = true }
 # Not used yet, but we will need it when we start streaming data
 #tokio-stream = { workspace = true, optional = true }

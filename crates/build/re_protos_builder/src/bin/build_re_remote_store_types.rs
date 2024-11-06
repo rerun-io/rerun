@@ -7,9 +7,9 @@
 
 use camino::Utf8Path;
 
-const PROTOBUF_DEFINITIONS_DIR_PATH: &str = "crates/store/re_grpc_types/proto";
+const PROTOBUF_DEFINITIONS_DIR_PATH: &str = "crates/store/re_protos/proto";
 const PROTOBUF_REMOTE_STORE_V0_RELATIVE_PATH: &str = "rerun/v0/remote_store.proto";
-const RUST_V0_OUTPUT_DIR_PATH: &str = "crates/store/re_grpc_types/src/v0";
+const RUST_V0_OUTPUT_DIR_PATH: &str = "crates/store/re_protos/src/v0";
 
 fn main() {
     re_log::setup_logging();
@@ -35,7 +35,7 @@ fn main() {
         "Running codegen for storage node types",
     );
 
-    re_grpc_types_builder::generate_rust_code(
+    re_protos_builder::generate_rust_code(
         definitions_dir_path,
         &[PROTOBUF_REMOTE_STORE_V0_RELATIVE_PATH],
         rust_generated_output_dir_path,

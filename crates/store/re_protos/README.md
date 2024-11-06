@@ -1,9 +1,9 @@
-# re_grpc_types
+# re_protos
 
 Part of the [`rerun`](https://github.com/rerun-io/rerun) family of crates.
 
-[![Latest version](https://img.shields.io/crates/v/re_grpc_types.svg)](https://crates.io/crates/re_grpc_types?speculative-link)
-[![Documentation](https://docs.rs/re_grpc_types/badge.svg)](https://docs.rs/re_grpc_types?speculative-link)
+[![Latest version](https://img.shields.io/crates/v/re_protos.svg)](https://crates.io/crates/re_protos?speculative-link)
+[![Documentation](https://docs.rs/re_protos/badge.svg)](https://docs.rs/re_protos?speculative-link)
 ![MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Apache](https://img.shields.io/badge/license-Apache-blue.svg)
 

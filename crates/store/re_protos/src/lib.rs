@@ -1,5 +1,5 @@
 //! This crate contains generated types for the remote store gRPC service API.
-//! Generation is done using the `re_grpc_types_builder` crate.
+//! Generation is done using the `re_protos_builder` crate.
 //!
 //! We want clear separation between 'internal' types and gRPC types and don't want
 //! to use gRPC types in the rerun viewer codebase. That's why we implement all the
