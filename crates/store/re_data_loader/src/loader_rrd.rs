@@ -4,7 +4,7 @@ use re_log_encoding::decoder::Decoder;
 use crossbeam::channel::Receiver;
 use re_log_types::{ApplicationId, StoreId};
 
-use crate::LoadedData;
+use crate::{DataLoader as _, LoadedData};
 
 // ---
 
@@ -130,12 +130,21 @@ impl crate::DataLoader for RrdLoader {
             },
         };
 
+        // * We never want to patch blueprints' store IDs, only their app IDs.
+        // * We neer use import semantics at all for .rrd files.
+        let forced_application_id = if extension == "rbl" {
+            settings.opened_application_id.as_ref()
+        } else {
+            None
+        };
+        let forced_recording_id = None;
+
         decode_and_stream(
             &filepath,
             &tx,
             decoder,
-            settings.opened_application_id.as_ref(),
-            settings.opened_store_id.as_ref(),
+            forced_application_id,
+            forced_recording_id,
         );
 
         Ok(())
@@ -192,7 +201,7 @@ fn decode_and_stream<R: std::io::Read>(
             msg
         };
 
-        let data = LoadedData::LogMsg(msg);
+        let data = LoadedData::LogMsg(RrdLoader::name(&RrdLoader), msg);
         if tx.send(data).is_err() {
             break; // The other end has decided to hang up, not our problem.
         }

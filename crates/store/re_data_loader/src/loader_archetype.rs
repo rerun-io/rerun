@@ -138,7 +138,7 @@ impl DataLoader for ArchetypeLoader {
             .clone()
             .unwrap_or_else(|| settings.store_id.clone());
         for row in rows {
-            let data = LoadedData::Chunk(store_id.clone(), row);
+            let data = LoadedData::Chunk(Self::name(&Self), store_id.clone(), row);
             if tx.send(data).is_err() {
                 break; // The other end has decided to hang up, not our problem.
             }
