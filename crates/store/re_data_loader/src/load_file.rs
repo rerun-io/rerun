@@ -320,7 +320,7 @@ pub(crate) fn send(
 
                 // Never try to send custom store info for RRDs and RBLs, they always have their own, and
                 // it's always right.
-                let should_force_store_info = !tracked.is_rrd_or_rbl && settings.force_store_info;
+                let should_force_store_info = settings.force_store_info && !tracked.is_rrd_or_rbl;
 
                 let should_send_new_store_info = should_force_store_info
                     || (!tracked.already_has_store_info && !is_a_preexisting_recording);
