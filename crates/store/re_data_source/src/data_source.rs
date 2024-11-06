@@ -33,7 +33,7 @@ pub enum DataSource {
     Stdin,
 
     /// A file on a Rerun Data Platform server, over `rerun://` gRPC interface.
-    #[cfg(feature = "rrdp")]
+    #[cfg(feature = "grpc")]
     RerunGrpcUrl { url: String },
 }
 
@@ -90,7 +90,7 @@ impl DataSource {
 
         let path = std::path::Path::new(&uri).to_path_buf();
 
-        #[cfg(feature = "rrdp")]
+        #[cfg(feature = "grpc")]
         if uri.starts_with("rerun://") {
             return Self::RerunGrpcUrl { url: uri };
         }
@@ -136,8 +136,8 @@ impl DataSource {
             Self::WebSocketAddr(_) => None,
             #[cfg(not(target_arch = "wasm32"))]
             Self::Stdin => None,
-            #[cfg(feature = "rrdp")]
-            Self::RerunGrpcUrl { .. } => None, // TODO(jleibs): This needs to come from the RRDP server.
+            #[cfg(feature = "grpc")]
+            Self::RerunGrpcUrl { .. } => None, // TODO(jleibs): This needs to come from the server.
         }
     }
 
@@ -245,7 +245,7 @@ impl DataSource {
                 Ok(rx)
             }
 
-            #[cfg(feature = "rrdp")]
+            #[cfg(feature = "grpc")]
             Self::RerunGrpcUrl { url } => {
                 re_grpc_client::stream_recording(url, on_msg).map_err(|err| err.into())
             }

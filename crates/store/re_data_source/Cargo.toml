@@ -20,10 +20,10 @@ all-features = true
 
 
 [features]
-default = ["rrdp"]
+default = ["grpc"]
 
-## Enable the rrdp data source.
-rrdp = ["dep:re_grpc_client"]
+## Enable the gRPC Rerun Data Platform data source.
+grpc = ["dep:re_grpc_client"]
 
 
 [dependencies]

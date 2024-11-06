@@ -131,7 +131,7 @@ pub fn open_recording(
     let data_source = entity_db.data_source.as_ref().map(|v| match v {
         re_smart_channel::SmartChannelSource::File(_) => "file", // .rrd, .png, .glb, …
         re_smart_channel::SmartChannelSource::RrdHttpStream { .. } => "http",
-        re_smart_channel::SmartChannelSource::RerunGrpcStream { .. } => "rrdp",
+        re_smart_channel::SmartChannelSource::RerunGrpcStream { .. } => "grpc",
         re_smart_channel::SmartChannelSource::RrdWebEventListener { .. } => "web_event",
         re_smart_channel::SmartChannelSource::JsChannel { .. } => "javascript", // mediated via rerun-js
         re_smart_channel::SmartChannelSource::Sdk => "sdk",                     // show()

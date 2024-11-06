@@ -138,13 +138,13 @@ pub fn url_to_receiver(
             ),
         ),
 
-        #[cfg(feature = "rrdp")]
+        #[cfg(feature = "grpc")]
         EndpointCategory::RerunGrpc(url) => {
             re_grpc_client::stream_recording(url, Some(ui_waker)).map_err(|err| err.into())
         }
-        #[cfg(not(feature = "rrdp"))]
+        #[cfg(not(feature = "grpc"))]
         EndpointCategory::RerunGrpc(_url) => {
-            anyhow::bail!("Missing 'rrdp' feature flag");
+            anyhow::bail!("Missing 'grpc' feature flag");
         }
         EndpointCategory::WebEventListener(url) => {
             // Process an rrd when it's posted via `window.postMessage`

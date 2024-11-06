@@ -71,7 +71,7 @@ enum StreamError {
 
 // ----------------------------------------------------------------------------
 
-/// Stream an rrd file from an RRDP server.
+/// Stream an rrd file over gRPC from a Rerun Data Platform server.
 ///
 /// `on_msg` can be used to wake up the UI thread on Wasm.
 pub fn stream_recording(
@@ -170,7 +170,7 @@ async fn stream_recording_async(
     let store_id = StoreId::from_string(StoreKind::Recording, recording_id.clone());
 
     let store_info = StoreInfo {
-        application_id: ApplicationId::from("rrdp"),
+        application_id: ApplicationId::from("rerun_data_platform"),
         store_id: store_id.clone(),
         cloned_from: None,
         is_official_example: false,
