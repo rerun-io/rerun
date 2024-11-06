@@ -119,6 +119,8 @@ jobs:
         run: |
           run_id=${{ github.run_id }}
           job=${{ github.job }}
+          run_jobs=$(gh run view ${{ github.run_id }} --json jobs)
+          echo $run_jobs
           job_id=$(gh run view ${{ github.run_id }} --json jobs | jq -r '.jobs[] | select(.name | ascii_downcase == "${{ github.job }}") | .databaseId')
 
           echo $run_id $job $job_id
