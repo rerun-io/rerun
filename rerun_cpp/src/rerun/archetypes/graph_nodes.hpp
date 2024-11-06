@@ -38,8 +38,8 @@ namespace rerun::archetypes {
         /// Optional choice of whether the text labels should be shown by default.
         std::optional<rerun::components::ShowLabels> show_labels;
 
-        /// Optional radius for nodes.
-        std::optional<rerun::components::Radius> radii;
+        /// Optional radii for nodes.
+        std::optional<Collection<rerun::components::Radius>> radii;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -83,8 +83,8 @@ namespace rerun::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// Optional radius for nodes.
-        GraphNodes with_radii(rerun::components::Radius _radii) && {
+        /// Optional radii for nodes.
+        GraphNodes with_radii(Collection<rerun::components::Radius> _radii) && {
             radii = std::move(_radii);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)

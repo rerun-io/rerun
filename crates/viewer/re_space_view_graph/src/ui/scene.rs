@@ -143,7 +143,7 @@ impl<'a> Scene<'a> {
     /// `pos` is the top-left position of the node in world coordinates.
     pub fn node<F>(&mut self, pos: Pos2, add_node_contents: F) -> Response
     where
-        F: for<'b> FnOnce(&'b mut Ui) -> Response,
+        F: for<'b> FnOnce(&'b mut Ui, &TSTransform) -> Response,
     {
         let response = Area::new(
             self.id.with((
@@ -158,7 +158,7 @@ impl<'a> Scene<'a> {
         .constrain(false)
         .show(self.ui.ctx(), |ui| {
             ui.set_clip_rect(self.clip_rect_world);
-            add_node_contents(ui)
+            add_node_contents(ui, &self.world_to_window)
         })
         .response;
 

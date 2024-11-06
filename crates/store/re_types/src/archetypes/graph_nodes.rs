@@ -36,8 +36,8 @@ pub struct GraphNodes {
     /// Optional choice of whether the text labels should be shown by default.
     pub show_labels: Option<crate::components::ShowLabels>,
 
-    /// Optional radius for nodes.
-    pub radii: Option<crate::components::Radius>,
+    /// Optional radii for nodes.
+    pub radii: Option<Vec<crate::components::Radius>>,
 }
 
 impl ::re_types_core::SizeBytes for GraphNodes {
@@ -58,7 +58,7 @@ impl ::re_types_core::SizeBytes for GraphNodes {
             && <Option<Vec<crate::components::Color>>>::is_pod()
             && <Option<Vec<crate::components::Text>>>::is_pod()
             && <Option<crate::components::ShowLabels>>::is_pod()
-            && <Option<crate::components::Radius>>::is_pod()
+            && <Option<Vec<crate::components::Radius>>>::is_pod()
     }
 }
 
@@ -207,11 +207,14 @@ impl ::re_types_core::Archetype for GraphNodes {
             None
         };
         let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
-            <crate::components::Radius>::from_arrow_opt(&**array)
-                .with_context("rerun.archetypes.GraphNodes#radii")?
-                .into_iter()
-                .next()
-                .flatten()
+            Some({
+                <crate::components::Radius>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.GraphNodes#radii")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.GraphNodes#radii")?
+            })
         } else {
             None
         };
@@ -247,7 +250,7 @@ impl ::re_types_core::AsComponents for GraphNodes {
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.radii
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -313,10 +316,13 @@ impl GraphNodes {
         self
     }
 
-    /// Optional radius for nodes.
+    /// Optional radii for nodes.
     #[inline]
-    pub fn with_radii(mut self, radii: impl Into<crate::components::Radius>) -> Self {
-        self.radii = Some(radii.into());
+    pub fn with_radii(
+        mut self,
+        radii: impl IntoIterator<Item = impl Into<crate::components::Radius>>,
+    ) -> Self {
+        self.radii = Some(radii.into_iter().map(Into::into).collect());
         self
     }
 }

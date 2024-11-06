@@ -30,7 +30,7 @@ class GraphNodes(Archetype):
         colors: datatypes.Rgba32ArrayLike | None = None,
         labels: datatypes.Utf8ArrayLike | None = None,
         show_labels: datatypes.BoolLike | None = None,
-        radii: datatypes.Float32Like | None = None,
+        radii: datatypes.Float32ArrayLike | None = None,
     ):
         """
         Create a new instance of the GraphNodes archetype.
@@ -48,7 +48,7 @@ class GraphNodes(Archetype):
         show_labels:
             Optional choice of whether the text labels should be shown by default.
         radii:
-            Optional radius for nodes.
+            Optional radii for nodes.
 
         """
 
@@ -132,7 +132,7 @@ class GraphNodes(Archetype):
         default=None,
         converter=components.RadiusBatch._optional,  # type: ignore[misc]
     )
-    # Optional radius for nodes.
+    # Optional radii for nodes.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

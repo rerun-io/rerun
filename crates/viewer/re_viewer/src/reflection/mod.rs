@@ -1317,7 +1317,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Optional choice of whether the text labels should be shown by default.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.Radius".into(), display_name : "Radii",
-                    docstring_md : "Optional radius for nodes.", is_required : false, },
+                    docstring_md : "Optional radii for nodes.", is_required : false, },
                 ],
             },
         ),

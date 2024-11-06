@@ -1,3 +1,4 @@
+use egui::emath::TSTransform;
 use re_types::components::GraphNode;
 use re_viewer_context::{HoverHighlight, InteractionHighlight, SelectionHighlight};
 
@@ -37,6 +38,7 @@ pub fn draw_dummy(ui: &mut egui::Ui, node: &GraphNode) -> egui::Response {
 
 pub fn draw_node(
     ui: &mut egui::Ui,
+    world_to_window: &TSTransform,
     instance: &NodeInstance,
     highlight: InteractionHighlight,
 ) -> egui::Response {
@@ -72,9 +74,20 @@ pub fn draw_node(
             })
             .response
     } else {
+        let mut radius = instance.radius.map(|r| r.0.into()).unwrap_or(4.0);
+
+        if radius < 0.0 {
+            let view_radius = radius.abs();
+            let world_radius = world_to_window
+                .inverse()
+                .mul_pos(egui::Pos2::new(view_radius, 0.0))
+                .x;
+            radius = world_radius;
+        }
+
         draw_circle_node(
             ui,
-            instance.radius.unwrap_or(4.0),
+            radius,
             instance.color.unwrap_or(ui.style().visuals.text_color()),
             hcolor.map_or(egui::Stroke::NONE, |c| egui::Stroke::new(2.0, c)),
         )

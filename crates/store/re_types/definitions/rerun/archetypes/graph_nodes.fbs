@@ -33,6 +33,6 @@ table GraphNodes (
   /// Optional choice of whether the text labels should be shown by default.
   show_labels: rerun.components.ShowLabels ("attr.rerun.component_optional", nullable, order: 3250);
 
-  /// Optional radius for nodes.
-  radii: rerun.components.Radius ("attr.rerun.component_optional", nullable, order: 3300);
+  /// Optional radii for nodes.
+  radii: [rerun.components.Radius] ("attr.rerun.component_optional", nullable, order: 3300);
 }

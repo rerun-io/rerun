@@ -11,7 +11,7 @@ pub struct NodeInstance {
     pub label: Option<ArrowString>,
     pub color: Option<egui::Color32>,
     pub position: Option<egui::Pos2>,
-    pub radius: Option<f32>,
+    pub radius: Option<components::Radius>,
 }
 
 pub struct EdgeInstance {
