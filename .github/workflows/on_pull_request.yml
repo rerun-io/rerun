@@ -60,6 +60,7 @@ jobs:
           filters: |
             docs_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
+              - .github/actions/vercel/**/*
               - pixi.lock # maybe out build commands have changed
               - pixi.toml # maybe out build commands have changed
               - scripts/ci/*
