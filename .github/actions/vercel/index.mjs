@@ -44,8 +44,6 @@ switch (command) {
  * @param {string | null} version
  */
 async function deploy(client, teamId, projectId, commit, version) {
-  throw new Error("CI failure");
-
   switch (target) {
     case "production": {
       await deployToProduction(client, {
