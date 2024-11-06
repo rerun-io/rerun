@@ -113,9 +113,13 @@ impl ChunkStore {
                 None,                /* compacted */
             )];
 
-            // NOTE(1): Our chunks can only cover a single entity path at a time, therefore we know we
+            // NOTE: Our chunks can only cover a single entity path at a time, therefore we know we
             // only have to check that one entity for complete overwrite.
-            // NOTE(2): This condition cannot fail, we just want to avoid unwrapping.
+            debug_assert!(
+                self.static_chunk_ids_per_entity
+                    .contains_key(chunk.entity_path()),
+                "This condition cannot fail, we just want to avoid unwrapping",
+            );
             if let Some(per_component) = self.static_chunk_ids_per_entity.get(chunk.entity_path()) {
                 re_tracing::profile_scope!("static dangling checks");
 
