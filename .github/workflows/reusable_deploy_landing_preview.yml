@@ -34,19 +34,6 @@ jobs:
         with:
           ref: ${{ (github.event_name == 'pull_request' && github.event.pull_request.head.ref) || '' }}
 
-      # GitHub moment: https://github.com/orgs/community/discussions/8945
-      - name: Get Job ID
-        id: job-id
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          run_id=${{ github.run_id }}
-          job=${{ github.job }}
-          echo $run_id $job
-
-          job_id=$(gh run view ${{ github.run_id }} --json jobs | jq -r '.jobs[] | select(.name | ascii_downcase == "${{ github.job }}") | .databaseId')
-          echo "job-id=$job_id" >> "$GITHUB_OUTPUT"
-
       - name: Get sha
         id: get-sha
         run: |
@@ -122,6 +109,20 @@ jobs:
             | ❌ | ${{ steps.get-sha.outputs.sha }} | unavailable |
 
             <sup>Note: This comment is updated whenever you push a commit.</sup>
+
+      # GitHub moment: https://github.com/orgs/community/discussions/8945
+      - name: Get Job ID
+        id: job-id
+        env:
+          GH_TOKEN: ${{ github.token }}
+        if: failure()
+        run: |
+          run_id=${{ github.run_id }}
+          job=${{ github.job }}
+          echo $run_id $job
+
+          job_id=$(gh run view ${{ github.run_id }} --json jobs | jq -r '.jobs[] | select(.name | ascii_downcase == "${{ github.job }}") | .databaseId')
+          echo "job-id=$job_id" >> "$GITHUB_OUTPUT"
 
       - name: Create PR comment
         # https://github.com/mshick/add-pr-comment
