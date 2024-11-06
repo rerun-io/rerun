@@ -413,21 +413,39 @@ pub enum FileSource {
     DragAndDrop {
         /// The [`ApplicationId`] that the viewer heuristically recommends should be used when loading
         /// this data source, based on the surrounding context.
+        #[cfg_attr(feature = "serde", serde(skip))]
         recommended_application_id: Option<ApplicationId>,
 
         /// The [`StoreId`] that the viewer heuristically recommends should be used when loading
         /// this data source, based on the surrounding context.
+        #[cfg_attr(feature = "serde", serde(skip))]
         recommended_recording_id: Option<StoreId>,
+
+        /// Whether `SetStoreInfo`s should be sent, regardless of the surrounding context.
+        ///
+        /// Only useful when creating a recording just-in-time directly in the viewer (which is what
+        /// happens when importing things into the welcome screen).
+        #[cfg_attr(feature = "serde", serde(skip))]
+        force_store_info: bool,
     },
 
     FileDialog {
         /// The [`ApplicationId`] that the viewer heuristically recommends should be used when loading
         /// this data source, based on the surrounding context.
+        #[cfg_attr(feature = "serde", serde(skip))]
         recommended_application_id: Option<ApplicationId>,
 
         /// The [`StoreId`] that the viewer heuristically recommends should be used when loading
         /// this data source, based on the surrounding context.
+        #[cfg_attr(feature = "serde", serde(skip))]
         recommended_recording_id: Option<StoreId>,
+
+        /// Whether `SetStoreInfo`s should be sent, regardless of the surrounding context.
+        ///
+        /// Only useful when creating a recording just-in-time directly in the viewer (which is what
+        /// happens when importing things into the welcome screen).
+        #[cfg_attr(feature = "serde", serde(skip))]
+        force_store_info: bool,
     },
 
     Sdk,
@@ -461,6 +479,19 @@ impl FileSource {
                 ..
             } => recommended_recording_id.as_ref(),
             Self::Cli | Self::Sdk => None,
+        }
+    }
+
+    #[inline]
+    pub fn force_store_info(&self) -> bool {
+        match self {
+            Self::FileDialog {
+                force_store_info, ..
+            }
+            | Self::DragAndDrop {
+                force_store_info, ..
+            } => *force_store_info,
+            Self::Cli | Self::Sdk => false,
         }
     }
 }

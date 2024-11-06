@@ -1259,6 +1259,7 @@ impl RecordingStream {
             opened_application_id: None,
             store_id: store_info.store_id.clone(),
             opened_store_id: None,
+            force_store_info: false,
             entity_path_prefix,
             timepoint: (!static_).then(|| {
                 self.with(|inner| {

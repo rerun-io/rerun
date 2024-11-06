@@ -178,6 +178,7 @@ impl DataSource {
                 let settings = re_data_loader::DataLoaderSettings {
                     opened_application_id: file_source.recommended_application_id().cloned(),
                     opened_store_id: file_source.recommended_recording_id().cloned(),
+                    force_store_info: file_source.force_store_info(),
                     ..re_data_loader::DataLoaderSettings::recommended(shared_store_id)
                 };
                 re_data_loader::load_from_path(&settings, file_source, &path, &tx)
@@ -206,6 +207,7 @@ impl DataSource {
                 let settings = re_data_loader::DataLoaderSettings {
                     opened_application_id: file_source.recommended_application_id().cloned(),
                     opened_store_id: file_source.recommended_recording_id().cloned(),
+                    force_store_info: file_source.force_store_info(),
                     ..re_data_loader::DataLoaderSettings::recommended(shared_store_id)
                 };
                 re_data_loader::load_from_file_contents(
@@ -275,6 +277,7 @@ fn test_data_source_from_uri() {
     let file_source = FileSource::DragAndDrop {
         recommended_application_id: None,
         recommended_recording_id: None,
+        force_store_info: false,
     };
 
     for uri in file {
