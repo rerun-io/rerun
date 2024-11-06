@@ -110,22 +110,6 @@ jobs:
 
             <sup>Note: This comment is updated whenever you push a commit.</sup>
 
-      # GitHub moment: https://github.com/orgs/community/discussions/8945
-      - name: Get Job ID
-        id: job-id
-        env:
-          GH_TOKEN: ${{ github.token }}
-        if: failure()
-        run: |
-          run_id=${{ github.run_id }}
-          job=${{ github.job }}
-          run_jobs=$(gh run view ${{ github.run_id }} --json jobs)
-          echo $run_jobs
-          job_id=$(gh run view ${{ github.run_id }} --json jobs | jq -r '.jobs[] | select(.name | ascii_downcase == "${{ github.job }}") | .databaseId')
-
-          echo $run_id $job $job_id
-          echo "job-id=$job_id" >> "$GITHUB_OUTPUT"
-
       - name: Create PR comment
         # https://github.com/mshick/add-pr-comment
         uses: mshick/add-pr-comment@v2.8.2
@@ -134,8 +118,8 @@ jobs:
           message-id: "vercel-preview"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message: |
-            Latest documentation preview failed to deploy:
-            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/job/${{ steps.job-id.outputs.job-id }}?pr=${{ github.event.pull_request.number }}
+            Latest documentation preview failed to deploy, check the CI for more details:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}?pr=${{ github.event.pull_request.number }}
 
             | Result | Commit  | Link  |
             | ------ | ------- | ----- |
