@@ -190,7 +190,7 @@ impl SpaceViewClass for GraphSpaceView {
                         seen.insert(node.index);
                         let current = layout.entry(node.index).or_insert(scene.initial_rect(node));
 
-                        let response = scene.node(current.min + entity_offset, node);
+                        let response = scene.explicit_node(current.min + entity_offset, node);
 
                         // TODO(grtlr): ⚠️ This is hacky:
                         // We need to undo the `entity_offset` otherwise the offset will increase each frame.
@@ -220,7 +220,7 @@ impl SpaceViewClass for GraphSpaceView {
                                 .translate(entity_offset)
                                 .translate(current_implicit_offset),
                         );
-                        let response = scene.dummy(current.min, node);
+                        let response = scene.implicit_node(current.min, node);
                         *current = response.rect.translate(-entity_offset);
                         // entity_rect = entity_rect.union(response.rect);
                         current_implicit_offset.x += 10.0;
