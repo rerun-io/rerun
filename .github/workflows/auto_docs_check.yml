@@ -45,11 +45,11 @@ jobs:
           git checkout -b temp-cherry-pick
 
           # Try the cherry-pick and capture the exit code
-          if git cherry-pick ${{ github.sha }}; then
+          if git cherry-pick --no-commit ${{ github.sha }}; then
             echo "Cherry-pick successful"
             exit 0
           else
             echo "Cherry-pick failed"
-            git cherry-pick --abort
+            printf $(git diff)
             exit 1
           fi
