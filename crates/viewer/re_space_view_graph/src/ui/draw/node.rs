@@ -3,9 +3,7 @@ use egui::{
 };
 use re_types::components::GraphNode;
 
-use crate::types::NodeInstance;
-
-use super::scene::radius_to_world;
+use crate::{types::NodeInstance, ui::scene::radius_to_world};
 
 /// The `world_to_ui_scale` parameter is used to convert between world and ui coordinates.
 pub fn draw_explicit(ui: &mut Ui, world_to_ui: &TSTransform, node: &NodeInstance) -> Response {

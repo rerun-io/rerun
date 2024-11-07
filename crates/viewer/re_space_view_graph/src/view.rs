@@ -231,16 +231,12 @@ impl SpaceViewClass for GraphSpaceView {
                             layout.get(&edge.source_index),
                             layout.get(&edge.target_index),
                         ) {
-                            scene.edge(|ui| {
-                                ui::draw_edge(
-                                    ui,
-                                    None, // TODO(grtlr): change this back once we have edge colors
-                                    &source_pos.translate(entity_offset),
-                                    &target_pos.translate(entity_offset),
-                                    Default::default(), // TODO(grtlr): we currently don't have any highlighting
-                                    data.graph_type == components::GraphType::Directed,
-                                )
-                            });
+                            scene.edge(
+                                source_pos.translate(entity_offset),
+                                target_pos.translate(entity_offset),
+                                edge,
+                                data.graph_type == components::GraphType::Directed,
+                            );
                         }
                     }
                 }

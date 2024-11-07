@@ -1,13 +1,12 @@
 use re_log_types::EntityPath;
 use re_viewer_context::SpaceViewHighlights;
 
-mod edge;
-pub(crate) use edge::draw_edge;
-mod node;
+mod draw;
 mod state;
-pub(crate) use state::GraphSpaceViewState;
 
-pub(crate) mod scene;
+pub mod scene;
+
+pub use state::GraphSpaceViewState;
 
 pub fn draw_entity(
     ui: &mut egui::Ui,

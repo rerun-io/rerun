@@ -8,9 +8,9 @@ use re_types::{
 };
 use std::ops::RangeFrom;
 
-use crate::types::NodeInstance;
+use crate::types::{EdgeInstance, NodeInstance};
 
-use super::node::{draw_explicit, draw_implicit};
+use super::draw::{draw_edge, draw_explicit, draw_implicit};
 
 fn fit_to_world_rect(clip_rect_window: Rect, world_rect: Rect) -> TSTransform {
     let available_size = clip_rect_window.size();
@@ -234,10 +234,13 @@ impl<'a> Scene<'a> {
         response
     }
 
-    pub fn edge<F>(&mut self, add_edge_contents: F) -> Response
-    where
-        F: for<'b> FnOnce(&'b mut Ui) -> Response,
-    {
+    pub fn edge(
+        &mut self,
+        from: Rect,
+        to: Rect,
+        _edge: &EdgeInstance,
+        show_arrow: bool,
+    ) -> Response {
         let response = Area::new(
             self.id.with((
                 "edge",
@@ -250,7 +253,7 @@ impl<'a> Scene<'a> {
         .constrain(false)
         .show(self.ui.ctx(), |ui| {
             ui.set_clip_rect(self.clip_rect_world);
-            add_edge_contents(ui)
+            draw_edge(ui, from, to, show_arrow)
         })
         .response;
 
