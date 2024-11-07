@@ -145,7 +145,7 @@ def log_lidar_and_ego_pose(
         (lat, long) = derive_latlon(location, ego_pose)
         rr.log(
             "world/ego_vehicle/gps",
-            rr.GeoPoints([[lat, long]]),
+            rr.GeoPoints(lat_lon=[[lat, long]]),
         )
 
         data_file_path = nusc.dataroot / sample_data["filename"]
