@@ -1,5 +1,5 @@
 [package]
-name = "re_remote_store_types"
+name = "re_protos"
 authors.workspace = true
 edition.workspace = true
 homepage.workspace = true

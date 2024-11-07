@@ -1,4 +1,4 @@
-//! Communications with an RRDP GRPC server.
+//! Communications with an Rerun Data Platform gRPC server.
 
 mod address;
 
@@ -12,7 +12,7 @@ use re_chunk::Chunk;
 use re_log_types::{
     ApplicationId, LogMsg, SetStoreInfo, StoreId, StoreInfo, StoreKind, StoreSource, Time,
 };
-use re_remote_store_types::{
+use re_protos::{
     codec::{decode, CodecError},
     v0::{
         storage_node_client::StorageNodeClient, EncoderVersion, FetchRecordingRequest, RecordingId,
@@ -71,7 +71,7 @@ enum StreamError {
 
 // ----------------------------------------------------------------------------
 
-/// Stream an rrd file from an RRDP server.
+/// Stream an rrd file over gRPC from a Rerun Data Platform server.
 ///
 /// `on_msg` can be used to wake up the UI thread on Wasm.
 pub fn stream_recording(
@@ -83,8 +83,8 @@ pub fn stream_recording(
     let address = Address::from_str(&url)?;
 
     let (tx, rx) = re_smart_channel::smart_channel(
-        re_smart_channel::SmartMessageSource::RrdpStream { url: url.clone() },
-        re_smart_channel::SmartChannelSource::RrdpStream { url: url.clone() },
+        re_smart_channel::SmartMessageSource::RerunGrpcStream { url: url.clone() },
+        re_smart_channel::SmartChannelSource::RerunGrpcStream { url: url.clone() },
     );
 
     spawn_future(async move {
@@ -170,7 +170,7 @@ async fn stream_recording_async(
     let store_id = StoreId::from_string(StoreKind::Recording, recording_id.clone());
 
     let store_info = StoreInfo {
-        application_id: ApplicationId::from("rrdp"),
+        application_id: ApplicationId::from("rerun_data_platform"),
         store_id: store_id.clone(),
         cloned_from: None,
         is_official_example: false,

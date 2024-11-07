@@ -60,8 +60,8 @@ native_viewer = ["rerun/native_viewer"]
 #TODO(#7876): remove this feature when we have fewer dependencies
 map_view = ["rerun/map_view"]
 
-## Enable the rrdp data source.
-rrdp = ["rerun/rrdp", "dep:tokio"]
+## Enable the gRPC Rerun Data Platform data source.
+grpc = ["rerun/grpc", "dep:tokio"]
 
 ## Support serving a web viewer over HTTP.
 ##

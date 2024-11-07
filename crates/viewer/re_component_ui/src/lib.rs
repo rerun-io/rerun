@@ -9,6 +9,7 @@ mod entity_path;
 mod fallback_ui;
 mod image_format;
 mod line_strip;
+mod map_provider;
 mod marker_shape;
 mod pinhole;
 mod radius;
@@ -24,7 +25,7 @@ mod zoom_level;
 use datatype_uis::{
     display_name_ui, display_text_ui, edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max,
     edit_f32_zero_to_one, edit_multiline_string, edit_or_view_vec3d, edit_singleline_string,
-    edit_view_enum, edit_view_range1d, view_view_id,
+    edit_view_enum, edit_view_enum_with_variant_available, edit_view_range1d, view_view_id,
 };
 
 use re_types::{
@@ -94,7 +95,12 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
     registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MagnificationFilter>(edit_view_enum);
-    registry.add_singleline_edit_or_view::<MapProvider>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<MapProvider>(
+        edit_view_enum_with_variant_available::<
+            MapProvider,
+            crate::map_provider::MapProviderVariantAvailable,
+        >,
+    );
     registry.add_singleline_edit_or_view::<TransformRelation>(edit_view_enum);
     registry.add_singleline_edit_or_view::<ViewFit>(edit_view_enum);
 

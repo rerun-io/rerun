@@ -23,6 +23,8 @@ pub enum SourceImageDataFormat {
     WgpuCompatible(wgpu::TextureFormat),
 
     /// YUV (== `YCbCr`) formats, typically using chroma downsampling.
+    ///
+    /// Does not handle chroma sample locations.
     Yuv {
         layout: YuvPixelLayout,
         coefficients: YuvMatrixCoefficients,

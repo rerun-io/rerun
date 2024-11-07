@@ -240,7 +240,7 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, timescale: re_video:
 }
 
 fn source_image_data_format_ui(ui: &mut egui::Ui, format: &SourceImageDataFormat) {
-    let label = "Output format";
+    let label = "Decoder output format";
 
     match format {
         SourceImageDataFormat::WgpuCompatible(format) => {

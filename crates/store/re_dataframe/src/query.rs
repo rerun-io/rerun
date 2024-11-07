@@ -811,16 +811,41 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ///     // …
     /// }
     /// ```
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn next_row_async(
         &self,
-    ) -> impl std::future::Future<Output = Option<Vec<Box<dyn ArrowArray>>>> {
+    ) -> impl std::future::Future<Output = Option<Vec<Box<dyn ArrowArray>>>>
+    where
+        E: 'static + Send + Clone,
+    {
         let res: Option<Option<_>> = self
             .engine
             .try_with(|store, cache| self._next_row(store, cache));
 
-        std::future::poll_fn(move |_cx| match &res {
+        let engine = self.engine.clone();
+        std::future::poll_fn(move |cx| match &res {
             Some(row) => std::task::Poll::Ready(row.clone()),
-            None => std::task::Poll::Pending,
+            None => {
+                // The lock is already held by a writer, we have to yield control back to the async
+                // runtime, for now.
+                // Before we do so, we need to schedule a callback that will be in charge of waking up
+                // the async task once we can possibly make progress once again.
+
+                // Commenting out this code should make the `async_barebones` test deadlock.
+                rayon::spawn({
+                    let engine = engine.clone();
+                    let waker = cx.waker().clone();
+                    move || {
+                        engine.with(|_store, _cache| {
+                            // This is of course optimistic -- we might end up right back here on
+                            // next tick. That's fine.
+                            waker.wake();
+                        });
+                    }
+                });
+
+                std::task::Poll::Pending
+            }
         })
     }
 
@@ -1207,7 +1232,11 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     }
 
     #[inline]
-    pub async fn next_row_batch_async(&self) -> Option<RecordBatch> {
+    #[cfg(not(target_arch = "wasm32"))]
+    pub async fn next_row_batch_async(&self) -> Option<RecordBatch>
+    where
+        E: 'static + Send + Clone,
+    {
         let row = self.next_row_async().await?;
 
         // If we managed to get a row, then the state must be initialized already.
@@ -1254,7 +1283,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 mod tests {
     use std::sync::Arc;
 
-    use re_chunk::{util::concatenate_record_batches, Chunk, ChunkId, RowId, TimePoint};
+    use re_chunk::{
+        util::concatenate_record_batches, Chunk, ChunkId, RowId, TimePoint, TransportChunk,
+    };
     use re_chunk_store::{
         ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ResolvedTimeRange, TimeInt,
     };
@@ -1263,6 +1294,7 @@ mod tests {
         example_components::{MyColor, MyLabel, MyPoint},
         EntityPath, Timeline,
     };
+    use re_query::StorageEngine;
     use re_types::components::ClearIsRecursive;
     use re_types_core::Loggable as _;
 
@@ -2432,6 +2464,186 @@ mod tests {
                 }
             }
         }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn async_barebones() -> anyhow::Result<()> {
+        use tokio_stream::StreamExt as _;
+
+        re_log::setup_logging();
+
+        /// Wraps a [`QueryHandle`] in a [`Stream`].
+        pub struct QueryHandleStream(pub QueryHandle<StorageEngine>);
+
+        impl tokio_stream::Stream for QueryHandleStream {
+            type Item = TransportChunk;
+
+            #[inline]
+            fn poll_next(
+                self: std::pin::Pin<&mut Self>,
+                cx: &mut std::task::Context<'_>,
+            ) -> std::task::Poll<Option<Self::Item>> {
+                let fut = self.0.next_row_batch_async();
+                let fut = std::pin::pin!(fut);
+
+                use std::future::Future;
+                fut.poll(cx)
+            }
+        }
+
+        let store = ChunkStoreHandle::new(create_nasty_store()?);
+        eprintln!("{store}");
+        let query_cache = QueryCache::new_handle(store.clone());
+        let query_engine = QueryEngine::new(store.clone(), query_cache.clone());
+
+        let engine_guard = query_engine.engine.write_arc();
+
+        let filtered_index = Some(Timeline::new_sequence("frame_nr"));
+
+        // static
+        let handle_static = tokio::spawn({
+            let query_engine = query_engine.clone();
+            async move {
+                let query = QueryExpression::default();
+                eprintln!("{query:#?}:");
+
+                let query_handle = query_engine.query(query.clone());
+                assert_eq!(
+                    QueryHandleStream(query_engine.query(query.clone()))
+                        .collect::<Vec<_>>()
+                        .await
+                        .len() as u64,
+                    query_handle.num_rows()
+                );
+                let dataframe = concatenate_record_batches(
+                    query_handle.schema().clone(),
+                    &QueryHandleStream(query_engine.query(query.clone()))
+                        .collect::<Vec<_>>()
+                        .await,
+                )?;
+                eprintln!("{dataframe}");
+
+                let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+                let expected = unindent::unindent(
+                    "\
+                    [
+                        Int64[None],
+                        Timestamp(Nanosecond, None)[None],
+                        ListArray[None],
+                        ListArray[[c]],
+                        ListArray[None],
+                    ]\
+                    ",
+                );
+
+                similar_asserts::assert_eq!(expected, got);
+
+                Ok::<_, anyhow::Error>(())
+            }
+        });
+
+        // temporal
+        let handle_temporal = tokio::spawn({
+            async move {
+                let query = QueryExpression {
+                    filtered_index,
+                    ..Default::default()
+                };
+                eprintln!("{query:#?}:");
+
+                let query_handle = query_engine.query(query.clone());
+                assert_eq!(
+                    QueryHandleStream(query_engine.query(query.clone()))
+                        .collect::<Vec<_>>()
+                        .await
+                        .len() as u64,
+                    query_handle.num_rows()
+                );
+                let dataframe = concatenate_record_batches(
+                    query_handle.schema().clone(),
+                    &QueryHandleStream(query_engine.query(query.clone()))
+                        .collect::<Vec<_>>()
+                        .await,
+                )?;
+                eprintln!("{dataframe}");
+
+                let got = format!("{:#?}", dataframe.data.iter().collect_vec());
+                let expected = unindent::unindent(
+                    "\
+                    [
+                        Int64[10, 20, 30, 40, 50, 60, 70],
+                        Timestamp(Nanosecond, None)[1970-01-01 00:00:00.000000010, None, None, None, 1970-01-01 00:00:00.000000050, None, 1970-01-01 00:00:00.000000070],
+                        ListArray[None, None, [2], [3], [4], None, [6]],
+                        ListArray[[c], [c], [c], [c], [c], [c], [c]],
+                        ListArray[[{x: 0, y: 0}], [{x: 1, y: 1}], [{x: 2, y: 2}], [{x: 3, y: 3}], [{x: 4, y: 4}], [{x: 5, y: 5}], [{x: 8, y: 8}]],
+                    ]\
+                    "
+                );
+
+                similar_asserts::assert_eq!(expected, got);
+
+                Ok::<_, anyhow::Error>(())
+            }
+        });
+
+        let (tx, rx) = tokio::sync::oneshot::channel::<()>();
+
+        let handle_queries = tokio::spawn(async move {
+            let mut handle_static = std::pin::pin!(handle_static);
+            let mut handle_temporal = std::pin::pin!(handle_temporal);
+
+            // Poll the query handles, just once.
+            //
+            // Because the storage engine is already held by a writer, this will put them in a pending state,
+            // waiting to be woken up. If nothing wakes them up, then this will simply deadlock.
+            {
+                // Although it might look scary, all we're doing is crafting a noop waker manually,
+                // because `std::task::Waker::noop` is unstable.
+                //
+                // We'll use this to build a noop async context, so that we can poll our promises
+                // manually.
+                const RAW_WAKER_NOOP: std::task::RawWaker = {
+                    const VTABLE: std::task::RawWakerVTable = std::task::RawWakerVTable::new(
+                        |_| RAW_WAKER_NOOP, // Cloning just returns a new no-op raw waker
+                        |_| {},             // `wake` does nothing
+                        |_| {},             // `wake_by_ref` does nothing
+                        |_| {},             // Dropping does nothing as we don't allocate anything
+                    );
+                    std::task::RawWaker::new(std::ptr::null(), &VTABLE)
+                };
+
+                #[allow(unsafe_code)]
+                let mut cx = std::task::Context::from_waker(
+                    // Safety: a Waker is just a privacy-preserving wrapper around a RawWaker.
+                    unsafe {
+                        std::mem::transmute::<&std::task::RawWaker, &std::task::Waker>(
+                            &RAW_WAKER_NOOP,
+                        )
+                    },
+                );
+
+                use std::future::Future as _;
+                assert!(handle_static.as_mut().poll(&mut cx).is_pending());
+                assert!(handle_temporal.as_mut().poll(&mut cx).is_pending());
+            }
+
+            tx.send(()).unwrap();
+
+            handle_static.await??;
+            handle_temporal.await??;
+
+            Ok::<_, anyhow::Error>(())
+        });
+
+        rx.await?;
+
+        // Release the writer: the queries should now be able to stream to completion, provided
+        // that _something_ wakes them up appropriately.
+        drop(engine_guard);
+
+        handle_queries.await??;
 
         Ok(())
     }
