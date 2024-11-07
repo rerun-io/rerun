@@ -101,6 +101,18 @@ Radar data is logged similar to LiDAR data, as [`Points3D`](https://www.rerun.io
 rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colors))
 ```
 
+### GPS data
+
+GPS data is calculated from the scene's reference coordinates and the transformations (starting map point + odometry).
+The GPS coordinates are logged as [`GeoPoints`](https://www.rerun.io/docs/reference/types/archetypes/geopoints).
+
+```python
+rr.log(
+    "world/ego_vehicle/gps",
+    rr.GeoPoints([[lat, long]]),
+)
+```
+
 ### Annotations
 
 Annotations are logged as [`Boxes3D`](https://www.rerun.io/docs/reference/types/archetypes/boxes3d), containing details such as object positions, sizes, and rotation.
@@ -130,9 +142,22 @@ sensor_space_views = [
     for sensor_name in nuscene_sensor_names(nusc, args.scene_name)
 ]
 blueprint = rrb.Vertical(
-    rrb.Spatial3DView(name="3D", origin="world"),
+    rrb.Horizontal(
+        rrb.Spatial3DView(name="3D", origin="world"),
+        rrb.Vertical(
+            rrb.TextDocumentView(origin="description", name="Description"),
+            rrb.MapView(
+                origin="world/ego_vehicle/gps",
+                name="MapView",
+                zoom=rrb.archetypes.MapZoom(18.0),
+                background=rrb.archetypes.MapBackground(rrb.components.MapProvider.OpenStreetMap),
+            ),
+            row_shares=[1, 1],
+        ),
+        column_shares=[3, 1],
+    ),
     rrb.Grid(*sensor_space_views),
-    row_shares=[3, 2],
+    row_shares=[4, 2],
 )
 ```
 
@@ -155,9 +180,9 @@ pip install -e examples/python/nuscenes_dataset
 ```
 To experiment with the provided example, simply execute the main Python script:
 ```bash
-python -m nuscenes # run the example
+python -m nuscenes_dataset # run the example
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python -m nuscenes --help
+python -m nuscenes_dataset --help
 ```

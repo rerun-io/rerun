@@ -12,6 +12,7 @@ import rerun.blueprint as rrb
 from nuscenes import nuscenes
 
 from .download_dataset import MINISPLIT_SCENES, download_minisplit
+from .export_gps import derive_latlon
 
 DESCRIPTION = """
 # nuScenes
@@ -82,6 +83,9 @@ def log_nuscenes(nusc: nuscenes.NuScenes, scene_name: str, max_time_sec: float) 
 
     scene = next(s for s in nusc.scene if s["name"] == scene_name)
 
+    location = nusc.get("log", scene["log_token"])["location"]
+    print(f"Visualizing scene {scene_name} in {location}")
+
     rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
 
     first_sample_token = scene["first_sample_token"]
@@ -104,13 +108,15 @@ def log_nuscenes(nusc: nuscenes.NuScenes, scene_name: str, max_time_sec: float) 
     first_timestamp_us = nusc.get("sample_data", first_lidar_token)["timestamp"]
     max_timestamp_us = first_timestamp_us + 1e6 * max_time_sec
 
-    log_lidar_and_ego_pose(first_lidar_token, nusc, max_timestamp_us)
+    log_lidar_and_ego_pose(location, first_lidar_token, nusc, max_timestamp_us)
     log_cameras(first_camera_tokens, nusc, max_timestamp_us)
     log_radars(first_radar_tokens, nusc, max_timestamp_us)
     log_annotations(first_sample_token, nusc, max_timestamp_us)
 
 
-def log_lidar_and_ego_pose(first_lidar_token: str, nusc: nuscenes.NuScenes, max_timestamp_us: float) -> None:
+def log_lidar_and_ego_pose(
+    location: str, first_lidar_token: str, nusc: nuscenes.NuScenes, max_timestamp_us: float
+) -> None:
     """Log lidar data and vehicle pose."""
     current_lidar_token = first_lidar_token
 
@@ -136,6 +142,13 @@ def log_lidar_and_ego_pose(first_lidar_token: str, nusc: nuscenes.NuScenes, max_
         )
         current_lidar_token = sample_data["next"]
 
+        # log GPS data
+        (lat, long) = derive_latlon(location, ego_pose)
+        rr.log(
+            "world/ego_vehicle/gps",
+            rr.GeoPoints([[lat, long]]),
+        )
+
         data_file_path = nusc.dataroot / sample_data["filename"]
         pointcloud = nuscenes.LidarPointCloud.from_file(str(data_file_path))
         points = pointcloud.points[:3].T  # shape after transposing: (num_points, 3)
@@ -155,7 +168,7 @@ def log_cameras(first_camera_tokens: list[str], nusc: nuscenes.NuScenes, max_tim
             sensor_name = sample_data["channel"]
             rr.set_time_seconds("timestamp", sample_data["timestamp"] * 1e-6)
             data_file_path = nusc.dataroot / sample_data["filename"]
-            rr.log(f"world/ego_vehicle/{sensor_name}", rr.EncodedImage(path=data_file_path))
+            rr.log(f"world/ego_vehicle/{sensor_name}", rr.ImageEncoded(path=data_file_path))
             current_camera_token = sample_data["next"]
 
 
@@ -174,10 +187,7 @@ def log_radars(first_radar_tokens: list[str], nusc: nuscenes.NuScenes, max_times
             points = pointcloud.points[:3].T  # shape after transposing: (num_points, 3)
             point_distances = np.linalg.norm(points, axis=1)
             point_colors = cmap(norm(point_distances))
-            rr.log(
-                f"world/ego_vehicle/{sensor_name}",
-                rr.Points3D(points, colors=point_colors),
-            )
+            rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colors))
             current_camera_token = sample_data["next"]
 
 
@@ -193,7 +203,7 @@ def log_annotations(first_sample_token: str, nusc: nuscenes.NuScenes, max_timest
         ann_tokens = sample_data["anns"]
         sizes = []
         centers = []
-        quaternions = []
+        rotations = []
         class_ids = []
         for ann_token in ann_tokens:
             ann = nusc.get("sample_annotation", ann_token)
@@ -202,21 +212,12 @@ def log_annotations(first_sample_token: str, nusc: nuscenes.NuScenes, max_timest
             width, length, height = ann["size"]
             sizes.append((length, width, height))  # x, y, z sizes
             centers.append(ann["translation"])
-            quaternions.append(rr.Quaternion(xyzw=rotation_xyzw))
+            rotations.append(rr.Quaternion(xyzw=rotation_xyzw))
             if ann["category_name"] not in label2id:
                 label2id[ann["category_name"]] = len(label2id)
             class_ids.append(label2id[ann["category_name"]])
 
-        rr.log(
-            "world/anns",
-            rr.Boxes3D(
-                sizes=sizes,
-                centers=centers,
-                quaternions=quaternions,
-                class_ids=class_ids,
-                fill_mode=rr.components.FillMode.Solid,
-            ),
-        )
+        rr.log("world/anns", rr.Boxes3D(sizes=sizes, centers=centers, rotations=rotations, class_ids=class_ids))
         current_sample_token = sample_data["next"]
 
     # skipping for now since labels take too much space in 3D view (see https://github.com/rerun-io/rerun/issues/4451)
@@ -267,10 +268,7 @@ def main() -> None:
     )
     parser.add_argument("--dataset-version", type=str, default="v1.0-mini", help="Scene id to visualize")
     parser.add_argument(
-        "--seconds",
-        type=float,
-        default=float("inf"),
-        help="If specified, limits the number of seconds logged",
+        "--seconds", type=float, default=float("inf"), help="If specified, limits the number of seconds logged"
     )
     rr.script_add_args(parser)
     args = parser.parse_args()
@@ -289,15 +287,17 @@ def main() -> None:
     ]
     blueprint = rrb.Vertical(
         rrb.Horizontal(
-            rrb.Spatial3DView(
-                name="3D",
-                origin="world",
-                # Default for `ImagePlaneDistance` so that the pinhole frustum visualizations don't take up too much space.
-                defaults=[rr.components.ImagePlaneDistance(4.0)],
-                # Transform arrows for the vehicle shouldn't be too long.
-                overrides={"world/ego_vehicle": [rr.components.AxisLength(5.0)]},
+            rrb.Spatial3DView(name="3D", origin="world"),
+            rrb.Vertical(
+                rrb.TextDocumentView(origin="description", name="Description"),
+                rrb.MapView(
+                    origin="world/ego_vehicle/gps",
+                    name="MapView",
+                    zoom=rrb.archetypes.MapZoom(18.0),
+                    background=rrb.archetypes.MapBackground(rrb.components.MapProvider.OpenStreetMap),
+                ),
+                row_shares=[1, 1],
             ),
-            rrb.TextDocumentView(origin="description", name="Description"),
             column_shares=[3, 1],
         ),
         rrb.Grid(*sensor_space_views),
@@ -306,11 +306,7 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_nuscenes", default_blueprint=blueprint)
 
-    rr.log(
-        "description",
-        rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN),
-        timeless=True,
-    )
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), timeless=True)
 
     log_nuscenes(nusc, args.scene_name, max_time_sec=args.seconds)
 
