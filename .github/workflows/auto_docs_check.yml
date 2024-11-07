@@ -40,7 +40,12 @@ jobs:
           git config --global user.name "rerun-bot"
           git config --global user.email "bot@rerun.io"
 
-          git log --oneline -n 10
+          echo
+          echo "base"
+          git log --oneline -n 10 ${{ github.event.pull_request.base.ref }}
+          echo "head"
+          git log --oneline -n 10 ${{ github.event.pull_request.head.ref }}
+          echo
 
           git checkout docs-latest
 
