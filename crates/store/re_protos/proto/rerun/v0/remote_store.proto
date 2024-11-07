@@ -12,7 +12,7 @@ service StorageNode {
     // metadata API calls
     rpc ListRecordings(ListRecordingsRequest) returns (ListRecordingsResponse) {}
     rpc GetRecordingMetadata(GetRecordingMetadataRequest) returns (GetRecordingMetadataResponse) {}
-    rpc UpdateRrecordingMetadata(UpdateRecordingMetadataRequest) returns (UpdateRecordingMetadataResponse) {}
+    rpc UpdateRecordingMetadata(UpdateRecordingMetadataRequest) returns (UpdateRecordingMetadataResponse) {}
     rpc RegisterRecording(RegisterRecordingRequest) returns (RegisterRecordingResponse) {}
 }
 
