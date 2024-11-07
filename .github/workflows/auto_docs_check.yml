@@ -42,7 +42,7 @@ jobs:
 
           git fetch origin main
           git checkout main
-          git merge ${{ github.event.pull_request.head.ref }}
+          git merge origin/${{ github.event.pull_request.head.ref }}
           commit=$(git rev-parse HEAD)
           git checkout docs-latest
 
