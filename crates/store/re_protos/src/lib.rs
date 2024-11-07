@@ -339,7 +339,7 @@ pub mod v0 {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.write_fmt(format_args!(
                 "Failed to register recording: {}, error code: {}, error message: {}",
-                self.url, self.code, self.message
+                self.storage_url, self.code, self.message
             ))
         }
     }
