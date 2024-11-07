@@ -86,15 +86,21 @@ impl CrateVersion {
 pub enum Meta {
     Rc(u8),
     Alpha(u8),
-    DevAlpha(u8),
+    DevAlpha {
+        alpha: u8,
+        /// Utf8
+        commit: Option<&'static [u8]>,
+    },
 }
 
 impl Meta {
-    pub const fn to_byte(self) -> u8 {
+    pub const fn to_byte(&self) -> u8 {
         match self {
-            Self::Rc(value) => value | meta::RC,
-            Self::Alpha(value) => value | meta::ALPHA,
-            Self::DevAlpha(value) => value | meta::DEV_ALPHA,
+            Self::Rc(value) => *value | meta::RC,
+            Self::Alpha(value) => *value | meta::ALPHA,
+
+            // We ignore the commit hash, if any
+            Self::DevAlpha { alpha, .. } => *alpha | meta::DEV_ALPHA,
         }
     }
 
@@ -104,7 +110,10 @@ impl Meta {
         match tag {
             meta::RC => Some(Self::Rc(value)),
             meta::ALPHA => Some(Self::Alpha(value)),
-            meta::DEV_ALPHA => Some(Self::DevAlpha(value)),
+            meta::DEV_ALPHA => Some(Self::DevAlpha {
+                alpha: value,
+                commit: None,
+            }),
             _ => None,
         }
     }
@@ -202,12 +211,12 @@ impl CrateVersion {
     /// This is used to identify builds which are not explicit releases,
     /// such as local builds and CI builds for every commit.
     pub fn is_dev(&self) -> bool {
-        matches!(self.meta, Some(Meta::DevAlpha(..)))
+        matches!(self.meta, Some(Meta::DevAlpha { .. }))
     }
 
     /// Whether or not this is an alpha version (`-alpha.N` or `-alpha.N+dev`).
     pub fn is_alpha(&self) -> bool {
-        matches!(self.meta, Some(Meta::Alpha(..) | Meta::DevAlpha(..)))
+        matches!(self.meta, Some(Meta::Alpha(..) | Meta::DevAlpha { .. }))
     }
 
     /// Whether or not this is a release candidate (`-rc.N`).
@@ -231,7 +240,7 @@ impl CrateVersion {
             self.major,
             self.minor,
             self.patch,
-            self.meta.map(Meta::to_byte).unwrap_or_default(),
+            self.meta.as_ref().map(Meta::to_byte).unwrap_or_default(),
         ]
     }
 
@@ -260,11 +269,13 @@ impl CrateVersion {
             self.major == other.major
         }
     }
+}
 
+impl CrateVersion {
     /// Parse a version string according to our subset of semver.
     ///
     /// See [`CrateVersion`] for more information.
-    pub const fn parse(version_string: &str) -> Self {
+    pub const fn parse(version_string: &'static str) -> Self {
         match Self::try_parse(version_string) {
             Ok(version) => version,
             Err(_err) => {
@@ -278,7 +289,7 @@ impl CrateVersion {
     /// Parse a version string according to our subset of semver.
     ///
     /// See [`CrateVersion`] for more information.
-    pub const fn try_parse(version_string: &str) -> Result<Self, &'static str> {
+    pub const fn try_parse(version_string: &'static str) -> Result<Self, &'static str> {
         // Note that this is a const function, which means we are extremely limited in what we can do!
 
         const fn maybe(s: &[u8], c: u8) -> (bool, &[u8]) {
@@ -378,15 +389,22 @@ impl CrateVersion {
             s = remainder;
             match meta {
                 Some(Meta::Alpha(build)) => {
-                    meta = Some(Meta::DevAlpha(build));
                     if let (true, remainder) = maybe_token(s, b"dev") {
                         s = remainder;
+                        meta = Some(Meta::DevAlpha {
+                            alpha: build,
+                            commit: None,
+                        });
                     } else if s.is_empty() {
                         return Err("expected `dev` after `+`");
                     } else {
                         // It's a commit hash
                         let commit_hash = s; // TODO: use
                         s = &[];
+                        meta = Some(Meta::DevAlpha {
+                            alpha: build,
+                            commit: Some(commit_hash),
+                        });
                     }
                 }
                 Some(..) => return Err("unexpected `-rc` with `+dev`"),
@@ -412,7 +430,17 @@ impl std::fmt::Display for Meta {
         match self {
             Self::Rc(build) => write!(f, "-rc.{build}"),
             Self::Alpha(build) => write!(f, "-alpha.{build}"),
-            Self::DevAlpha(build) => write!(f, "-alpha.{build}+dev"),
+            Self::DevAlpha { alpha, commit } => {
+                if let Some(commit) = commit {
+                    if let Ok(commit) = std::str::from_utf8(commit) {
+                        write!(f, "-alpha.{alpha}+{commit}")
+                    } else {
+                        write!(f, "-alpha.{alpha}+dev")
+                    }
+                } else {
+                    write!(f, "-alpha.{alpha}+dev")
+                }
+            }
         }
     }
 }
@@ -470,7 +498,10 @@ fn test_parse_version() {
             major: 12,
             minor: 23,
             patch: 24,
-            meta: Some(Meta::DevAlpha(63)),
+            meta: Some(Meta::DevAlpha {
+                alpha: 63,
+                commit: None
+            }),
         }
     );
     // We use commit hash suffixes in some cases:
@@ -480,7 +511,10 @@ fn test_parse_version() {
             major: 12,
             minor: 23,
             patch: 24,
-            meta: Some(Meta::DevAlpha(63)),
+            meta: Some(Meta::DevAlpha {
+                alpha: 63,
+                commit: Some(b"aab0b4e")
+            }),
         }
     );
 }
@@ -494,6 +528,7 @@ fn test_format_parse_roundtrip() {
         "12.23.24-rc.63",
         "12.23.24-alpha.63",
         "12.23.24-alpha.63+dev",
+        "12.23.24-alpha.63+aab0b4e",
     ] {
         assert_eq!(CrateVersion::parse(version).to_string(), version);
     }
@@ -508,6 +543,7 @@ fn test_format_parse_roundtrip_bytes() {
         "12.23.24-rc.63",
         "12.23.24-alpha.63",
         "12.23.24-alpha.63+dev",
+        // "12.23.24-alpha.63+aab0b4e", // we don't serialize commit hashes!
     ] {
         let version = CrateVersion::parse(version);
         let bytes = version.to_bytes();
@@ -517,7 +553,7 @@ fn test_format_parse_roundtrip_bytes() {
 
 #[test]
 fn test_compatibility() {
-    fn are_compatible(a: &str, b: &str) -> bool {
+    fn are_compatible(a: &'static str, b: &'static str) -> bool {
         CrateVersion::parse(a).is_compatible_with(CrateVersion::parse(b))
     }
 

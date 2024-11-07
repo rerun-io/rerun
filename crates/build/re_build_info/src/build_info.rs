@@ -142,7 +142,7 @@ impl CrateVersion {
     /// <name> <semver> [<rust_info>] <target> <branch> <commit> <build_date>
     /// ```
     pub fn try_parse_from_build_info_string(s: impl AsRef<str>) -> Result<Self, String> {
-        let s = s.as_ref();
+        let s = Box::leak(s.as_ref().to_owned().into_boxed_str()); // We leak it here to get a 'static str, so it can be parsed by the same const function. Yes, this is ugly.
         let parts = s.split_whitespace().collect::<Vec<_>>();
         if parts.len() < 2 {
             return Err(format!("{s:?} is not a valid BuildInfo string"));
@@ -160,7 +160,10 @@ fn crate_version_from_build_info_string() {
             major: 0,
             minor: 10,
             patch: 0,
-            meta: Some(crate::crate_version::Meta::DevAlpha(7)),
+            meta: Some(crate::crate_version::Meta::DevAlpha {
+                alpha: 7,
+                commit: None,
+            }),
         },
         rustc_version: "1.76.0 (d5c2e9c34 2023-09-13)",
         llvm_version: "16.0.5",
