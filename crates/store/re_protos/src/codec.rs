@@ -189,7 +189,7 @@ impl RecordingMetadata {
             .iter()
             // TODO(zehiko) we need to figure out where mandatory fields live
             .position(|field| field.name == "id")
-            .ok_or_else(|| CodecError::InvalidArgument("missing id field in schema".to_string()))?;
+            .ok_or_else(|| CodecError::InvalidArgument("missing id field in schema".to_owned()))?;
 
         use arrow2::array::Utf8Array as ArrowUtf8Array;
 
@@ -365,7 +365,7 @@ mod tests {
             ArrowField::new("my_int", arrow2::datatypes::DataType::Int32, false),
         ]);
 
-        let id = ArrowUtf8Array::<i32>::from_slice(&["some_id"]);
+        let id = ArrowUtf8Array::<i32>::from_slice(["some_id"]);
         let my_ints = ArrowInt32Array::from_slice([42]);
         let expected_chunk = ArrowChunk::new(vec![Box::new(id) as _, Box::new(my_ints) as _]);
         let metadata_tc = TransportChunk {
@@ -375,7 +375,7 @@ mod tests {
 
         let metadata = RecordingMetadata::try_from(EncoderVersion::V0, &metadata_tc).unwrap();
         assert_eq!(
-            StoreId::from_string(re_log_types::StoreKind::Recording, "some_id".to_string()),
+            StoreId::from_string(re_log_types::StoreKind::Recording, "some_id".to_owned()),
             metadata.id().unwrap()
         );
 
