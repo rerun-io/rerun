@@ -67,7 +67,7 @@ impl ChunkStore {
                     continue;
                 }
 
-                let Some((_row_id_min, row_id_max)) =
+                let Some((_row_id_min_for_component, row_id_max_for_component)) =
                     row_id_range_per_component.get(&component_name)
                 else {
                     continue;
@@ -81,24 +81,40 @@ impl ChunkStore {
                         // NOTE: When attempting to overwrite static data, the chunk with the most
                         // recent data within -- according to RowId -- wins.
 
-                        let (cur_row_id_min, cur_row_id_max) = self
+                        let cur_row_id_max_for_component = self
                             .chunks_per_chunk_id
                             .get(cur_chunk_id)
-                            .map_or((RowId::ZERO, RowId::ZERO), |chunk| {
+                            .map_or(RowId::ZERO, |chunk| {
                                 chunk
                                     .row_id_range_per_component()
                                     .get(&component_name)
-                                    .map_or(
-                                        (RowId::ZERO, RowId::ZERO),
-                                        |(row_id_min, row_id_max)| (*row_id_min, *row_id_max),
-                                    )
+                                    .map_or(RowId::ZERO, |(_, row_id_max)| *row_id_max)
                             });
-                        if *row_id_max > cur_row_id_max {
+
+                        if *row_id_max_for_component > cur_row_id_max_for_component {
                             // We are about to overwrite the existing chunk with the new one, at
                             // least for this one specific component.
                             // Keep track of the overwritten ChunkId: we'll need it further down in
                             // order to check whether that chunk is now dangling.
-                            overwritten_chunk_ids.insert(*cur_chunk_id, cur_row_id_min);
+
+                            // NOTE: The chunks themselves are indexed using the smallest RowId in
+                            // the chunk _as a whole_, as opposed to the smallest RowId of one
+                            // specific component in that chunk.
+                            let cur_row_id_min_for_chunk = self
+                                .chunks_per_chunk_id
+                                .get(cur_chunk_id)
+                                .and_then(|chunk| {
+                                    chunk.row_id_range().map(|(row_id_min, _)| row_id_min)
+                                });
+
+                            debug_assert!(
+                                cur_row_id_min_for_chunk.is_some(),
+                                "This condition cannot fail, we just want to avoid unwrapping",
+                            );
+                            if let Some(cur_row_id_min_for_chunk) = cur_row_id_min_for_chunk {
+                                overwritten_chunk_ids
+                                    .insert(*cur_chunk_id, cur_row_id_min_for_chunk);
+                            }
 
                             *cur_chunk_id = chunk.id();
                         }
@@ -113,9 +129,13 @@ impl ChunkStore {
                 None,                /* compacted */
             )];
 
-            // NOTE(1): Our chunks can only cover a single entity path at a time, therefore we know we
+            // NOTE: Our chunks can only cover a single entity path at a time, therefore we know we
             // only have to check that one entity for complete overwrite.
-            // NOTE(2): This condition cannot fail, we just want to avoid unwrapping.
+            debug_assert!(
+                self.static_chunk_ids_per_entity
+                    .contains_key(chunk.entity_path()),
+                "This condition cannot fail, we just want to avoid unwrapping",
+            );
             if let Some(per_component) = self.static_chunk_ids_per_entity.get(chunk.entity_path()) {
                 re_tracing::profile_scope!("static dangling checks");
 

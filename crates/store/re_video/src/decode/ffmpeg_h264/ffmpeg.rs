@@ -14,9 +14,21 @@ use ffmpeg_sidecar::{
 };
 use parking_lot::Mutex;
 
-use crate::Time;
+use crate::{
+    decode::{
+        ffmpeg_h264::{
+            nalu::{NalHeader, NalUnitType, NAL_START_CODE},
+            sps::H264Sps,
+        },
+        AsyncDecoder, Chunk, Frame, FrameContent, FrameInfo, OutputCallback,
+    },
+    PixelFormat, Time,
+};
 
-use super::{AsyncDecoder, Chunk, Frame, OutputCallback};
+// FFmpeg 5.1 "Riemann" is from 2022-07-22.
+// It's simply the oldest I tested manually as of writing. We might be able to go lower.
+const FFMPEG_MINIMUM_VERSION_MAJOR: u32 = 5;
+const FFMPEG_MINIMUM_VERSION_MINOR: u32 = 1;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -63,9 +75,12 @@ pub enum Error {
 
     #[error("Failed to send video frame info to the FFmpeg read thread.")]
     BrokenFrameInfoChannel,
+
+    #[error("Failed to parse sequence parameter set.")]
+    SpsParsing,
 }
 
-impl From<Error> for super::Error {
+impl From<Error> for crate::decode::Error {
     fn from(err: Error) -> Self {
         if let Error::FfmpegNotInstalled { download_url } = err {
             Self::FfmpegNotInstalled { download_url }
@@ -151,8 +166,47 @@ impl FfmpegProcessAndListener {
             });
         }
 
+        let sps_result = H264Sps::parse_from_avcc(&avcc);
+        if let Ok(sps) = &sps_result {
+            re_log::trace!("Successfully parsed SPS for {debug_name}:\n{sps:?}");
+        }
+
+        let (pixel_format, ffmpeg_pix_fmt) = match sps_result.and_then(|sps| sps.pixel_layout()) {
+            Ok(layout) => {
+                let pixel_format = PixelFormat::Yuv {
+                    layout,
+                    // Unfortunately the color range is an entirely different thing to parse as it's part of optional Video Usability Information (VUI).
+                    //
+                    // We instead just always tell ffmpeg to give us full range, see`-color_range` below.
+                    // Note that yuvj4xy family of formats fulfill the same function. They according to this post
+                    // https://www.facebook.com/permalink.php?story_fbid=2413101932257643&id=100006735798590
+                    // they are still not quite passed through everywhere. So we'll just use both.
+                    range: crate::decode::YuvRange::Full,
+                    // Again, instead of parsing this out we tell ffmpeg to give us BT.709.
+                    coefficients: crate::decode::YuvMatrixCoefficients::Bt709,
+                };
+                let ffmpeg_pix_fmt = match layout {
+                    crate::decode::YuvPixelLayout::Y_U_V444 => "yuvj444p",
+                    crate::decode::YuvPixelLayout::Y_U_V422 => "yuvj422p",
+                    crate::decode::YuvPixelLayout::Y_U_V420 => "yuvj420p",
+                    crate::decode::YuvPixelLayout::Y400 => "gray",
+                };
+
+                (pixel_format, ffmpeg_pix_fmt)
+            }
+            Err(err) => {
+                re_log::warn_once!(
+                    "Failed to parse sequence parameter set (SPS) for {debug_name}: {err}"
+                );
+
+                // By default play it safe: let ffmpeg convert to rgba.
+                (PixelFormat::Rgba8Unorm, "rgba")
+            }
+        };
+
         let mut ffmpeg = FfmpegCommand::new()
-            .hide_banner()
+            // Keep banner enabled so we can check on the version more easily.
+            //.hide_banner()
             // "Reduce the latency introduced by buffering during initial input streams analysis."
             //.arg("-fflags nobuffer")
             //
@@ -171,10 +225,16 @@ impl FfmpegProcessAndListener {
             // h264 bitstreams doesn't have timestamp information. Whatever ffmpeg tries to make up about timing & framerates is wrong!
             // If we don't tell it to just pass the frames through, variable framerate (VFR) video will just not play at all.
             .fps_mode("passthrough")
-            // TODO(andreas): at least do `rgba`. But we could also do `yuv420p` for instance if that's what the video is specifying
-            // (should be faster overall at no quality loss if the video is in this format).
-            // Check `ffmpeg -pix_fmts` for full list.
-            .rawvideo() // Output rgb24 on stdout.
+            .pix_fmt(ffmpeg_pix_fmt)
+            // ffmpeg-sidecar's .rawvideo() sets pix_fmt to rgb24, we don't want that.
+            .args(["-f", "rawvideo"])
+            // This should be taken care of by the yuvj formats, but let's be explicit again that we want full color range
+            .args(["-color_range", "2"]) // 2 == pc/full
+            // Besides the less and less common Bt601, this is the only space we support right now, so let ffmpeg do the conversion.
+            // TODO(andreas): It seems that FFmpeg 7.0 handles this as I expect, but FFmpeg 7.1 consistently gives me the wrong colors on the Bunny test clip.
+            // (tested Windows with both FFmpeg 7.0 and 7.1, tested Mac with 7.1. More rigorous testing and comparing is required!)
+            .args(["-colorspace", "1"]) // 1 == Bt.709
+            .output("-") // Output to stdout.
             .spawn()
             .map_err(Error::FailedToStartFfmpeg)?;
 
@@ -201,6 +261,7 @@ impl FfmpegProcessAndListener {
                         &debug_name,
                         ffmpeg_iterator,
                         &frame_info_rx,
+                        &pixel_format,
                         on_output.as_ref(),
                     );
                 }
@@ -324,31 +385,9 @@ fn read_ffmpeg_output(
     debug_name: &str,
     ffmpeg_iterator: ffmpeg_sidecar::iter::FfmpegIterator,
     frame_info_rx: &Receiver<FfmpegFrameInfo>,
+    pixel_format: &PixelFormat,
     on_output: &Mutex<Option<Arc<OutputCallback>>>,
 ) -> Option<()> {
-    /// Ignore some common output from ffmpeg:
-    fn should_ignore_log_msg(msg: &str) -> bool {
-        let patterns = [
-            "Duration: N/A, bitrate: N/A",
-            "frame=    0 fps=0.0 q=0.0 size=       0kB time=N/A bitrate=N/A speed=N/A",
-            "encoder         : ", // Describes the encoder that was used to encode a video.
-            "Metadata:",
-            // TODO(andreas): we should just handle yuv420p directly!
-            "No accelerated colorspace conversion found from yuv420p to rgb24",
-            "Stream mapping:",
-            // We actually don't even want it to estimate a framerate!
-            "not enough frames to estimate rate",
-        ];
-
-        for pattern in patterns {
-            if msg.contains(pattern) {
-                return true;
-            }
-        }
-
-        false
-    }
-
     // Pending frames, sorted by their presentation timestamp.
     let mut pending_frame_infos = BTreeMap::new();
     let mut highest_dts = Time::MIN; // Highest dts encountered so far.
@@ -362,17 +401,12 @@ fn read_ffmpeg_output(
                 }
             }
 
-            FfmpegEvent::Log(LogLevel::Warning, mut msg) => {
+            FfmpegEvent::Log(LogLevel::Warning, msg) => {
                 if !should_ignore_log_msg(&msg) {
-                    // Make warn_once work on `[swscaler @ 0x148db8000]` style warnings even if the address is different every time.
-                    if let Some(pos) = msg.find("[swscaler @ 0x") {
-                        msg = [
-                            &msg[..pos],
-                            &msg[(pos + "[swscaler @ 0x148db8000]".len())..],
-                        ]
-                        .join("[swscaler]");
-                    };
-                    re_log::warn_once!("{debug_name} decoder: {msg}");
+                    re_log::warn_once!(
+                        "{debug_name} decoder: {}",
+                        sanitize_ffmpeg_log_message(&msg)
+                    );
                 }
             }
 
@@ -391,7 +425,11 @@ fn read_ffmpeg_output(
                     return None;
                 }
                 if !should_ignore_log_msg(&msg) {
-                    re_log::warn_once!("{debug_name} decoder: {msg}");
+                    // Note that older ffmpeg versions don't flag their warnings as such and may end up here.
+                    re_log::warn_once!(
+                        "{debug_name} decoder: {}",
+                        sanitize_ffmpeg_log_message(&msg)
+                    );
                 }
             }
 
@@ -419,39 +457,38 @@ fn read_ffmpeg_output(
             }
 
             FfmpegEvent::ParsedInputStream(stream) => {
-                let ffmpeg_sidecar::event::AVStream {
-                    stream_type,
+                let ffmpeg_sidecar::event::Stream {
                     format,
-                    pix_fmt, // Often 'yuv420p'
-                    width,
-                    height,
-                    fps,
-                    ..
-                } = stream;
+                    language,
+                    parent_index,
+                    stream_index,
+                    raw_log_message: _,
+                    type_specific_data,
+                } = &stream;
 
                 re_log::trace!(
-                    "{debug_name} decoder input: {stream_type} {format} {pix_fmt} {width}x{height} @ {fps} FPS"
+                    "{debug_name} decoder input: {format} ({language}) parent: {parent_index}, index: {stream_index}, stream data: {type_specific_data:?}"
                 );
 
-                debug_assert_eq!(stream_type.to_ascii_lowercase(), "video");
+                debug_assert!(stream.is_video());
             }
 
             FfmpegEvent::ParsedOutputStream(stream) => {
                 // This just repeats what we told ffmpeg to output, e.g. "rawvideo rgb24"
-                let ffmpeg_sidecar::event::AVStream {
-                    stream_type,
+                let ffmpeg_sidecar::event::Stream {
                     format,
-                    pix_fmt,
-                    width,
-                    height,
-                    fps,
-                    ..
-                } = stream;
+                    language,
+                    parent_index,
+                    stream_index,
+                    raw_log_message: _,
+                    type_specific_data,
+                } = &stream;
+
                 re_log::trace!(
-                    "{debug_name} decoder output: {stream_type} {format} {pix_fmt} {width}x{height} @ {fps} FPS"
+                    "{debug_name} decoder output: {format} ({language}) parent: {parent_index}, index: {stream_index}, stream data: {type_specific_data:?}"
                 );
 
-                debug_assert_eq!(stream_type.to_ascii_lowercase(), "video");
+                debug_assert!(stream.is_video());
             }
 
             FfmpegEvent::Progress(_) => {
@@ -521,17 +558,19 @@ fn read_ffmpeg_output(
                     frame_info.presentation_timestamp
                 );
 
-                debug_assert_eq!(pix_fmt, "rgb24");
-                debug_assert_eq!(width as usize * height as usize * 3, data.len());
+                debug_assert_eq!(
+                    data.len() * 8,
+                    (width * height * pixel_format.bits_per_pixel()) as usize
+                );
 
-                (on_output.lock().as_ref()?)(Ok(super::Frame {
-                    content: super::FrameContent {
+                (on_output.lock().as_ref()?)(Ok(Frame {
+                    content: FrameContent {
                         data,
                         width,
                         height,
-                        format: crate::PixelFormat::Rgb8Unorm,
+                        format: pixel_format.clone(),
                     },
-                    info: super::FrameInfo {
+                    info: FrameInfo {
                         presentation_timestamp: frame_info.presentation_timestamp,
                         duration: frame_info.duration,
                         latest_decode_timestamp: Some(frame_info.decode_timestamp),
@@ -546,7 +585,47 @@ fn read_ffmpeg_output(
             }
 
             FfmpegEvent::ParsedVersion(ffmpeg_version) => {
-                re_log::debug_once!("FFmpeg version is: {}", ffmpeg_version.version);
+                re_log::debug_once!("FFmpeg version is {}", ffmpeg_version.version);
+
+                fn download_advice() -> String {
+                    if let Ok(download_url) = ffmpeg_sidecar::download::ffmpeg_download_url() {
+                        format!("\nYou can download an up to date version for your system at {download_url}.")
+                    } else {
+                        String::new()
+                    }
+                }
+
+                // Version strings can get pretty wild!
+                // E.g. choco installed ffmpeg on Windows gives me "7.1-essentials_build-www.gyan.dev".
+                let mut version_parts = ffmpeg_version.version.split('.');
+                let major = version_parts
+                    .next()
+                    .and_then(|part| part.parse::<u32>().ok());
+                let minor = version_parts.next().and_then(|part| {
+                    part.split('-')
+                        .next()
+                        .and_then(|part| part.parse::<u32>().ok())
+                });
+
+                if let (Some(major), Some(minor)) = (major, minor) {
+                    re_log::debug_once!("Parsed FFmpeg version as {}.{}", major, minor);
+
+                    if major < FFMPEG_MINIMUM_VERSION_MAJOR
+                        || (major == FFMPEG_MINIMUM_VERSION_MAJOR
+                            && minor < FFMPEG_MINIMUM_VERSION_MINOR)
+                    {
+                        re_log::warn_once!(
+                            "FFmpeg version is {}. Only versions >= {FFMPEG_MINIMUM_VERSION_MAJOR}.{FFMPEG_MINIMUM_VERSION_MINOR} are officially supported.{}",
+                            ffmpeg_version.version, download_advice()
+                        );
+                    }
+                } else {
+                    re_log::warn_once!(
+                        "Failed to parse FFmpeg version: {}{}",
+                        ffmpeg_version.version,
+                        download_advice()
+                    );
+                }
             }
 
             FfmpegEvent::ParsedConfiguration(ffmpeg_configuration) => {
@@ -584,7 +663,7 @@ impl FfmpegCliH264Decoder {
     pub fn new(
         debug_name: String,
         avcc: re_mp4::Avc1Box,
-        on_output: impl Fn(super::Result<Frame>) + Send + Sync + 'static,
+        on_output: impl Fn(crate::decode::Result<Frame>) + Send + Sync + 'static,
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
@@ -601,7 +680,7 @@ impl FfmpegCliH264Decoder {
 }
 
 impl AsyncDecoder for FfmpegCliH264Decoder {
-    fn submit_chunk(&mut self, chunk: super::Chunk) -> super::Result<()> {
+    fn submit_chunk(&mut self, chunk: Chunk) -> crate::decode::Result<()> {
         re_tracing::profile_function!();
 
         // We send the information about this chunk first.
@@ -616,13 +695,13 @@ impl AsyncDecoder for FfmpegCliH264Decoder {
         if self.ffmpeg.frame_info_tx.send(frame_info).is_err()
             || self.ffmpeg.frame_data_tx.send(chunk).is_err()
         {
-            let err = super::Error::Ffmpeg(Arc::new(
+            let err: crate::decode::Error =
                 if let Ok(exit_code) = self.ffmpeg.ffmpeg.as_inner_mut().try_wait() {
                     Error::FfmpegUnexpectedExit(exit_code)
                 } else {
                     Error::BrokenFrameInfoChannel
-                },
-            ));
+                }
+                .into();
 
             // Report the error on the decoding stream.
             (self.on_output)(Err(err.clone()));
@@ -632,7 +711,7 @@ impl AsyncDecoder for FfmpegCliH264Decoder {
         Ok(())
     }
 
-    fn reset(&mut self) -> super::Result<()> {
+    fn reset(&mut self) -> crate::decode::Result<()> {
         re_log::debug!("Resetting ffmpeg decoder {}", self.debug_name);
         self.ffmpeg = FfmpegProcessAndListener::new(
             &self.debug_name,
@@ -642,13 +721,6 @@ impl AsyncDecoder for FfmpegCliH264Decoder {
         Ok(())
     }
 }
-
-/// Before every NAL unit, here is a nal start code.
-/// Can also be 2 bytes of 0x00 and 1 byte of 0x01.
-///
-/// This is used in byte stream formats such as h264 files.
-/// Packet transform systems (RTP) may omit these.
-pub const NAL_START_CODE: &[u8] = &[0x00, 0x00, 0x00, 0x01];
 
 #[derive(Default)]
 struct NaluStreamState {
@@ -662,7 +734,7 @@ fn write_bytes(stream: &mut dyn std::io::Write, data: &[u8]) -> Result<(), Error
 fn write_avc_chunk_to_nalu_stream(
     avcc: &re_mp4::Avc1Box,
     nalu_stream: &mut dyn std::io::Write,
-    chunk: &super::Chunk,
+    chunk: &Chunk,
     state: &mut NaluStreamState,
 ) -> Result<(), Error> {
     re_tracing::profile_function!();
@@ -734,12 +806,13 @@ fn write_avc_chunk_to_nalu_stream(
             return Err(Error::BadVideoData("Not enough bytes to".to_owned()));
         }
 
-        let nal_header = NalHeader(chunk.data[data_start]);
-        re_log::trace!(
-            "nal_header: {:?}, {}",
-            nal_header.unit_type(),
-            nal_header.ref_idc()
-        );
+        // Can be useful for finding issues, but naturally very spammy.
+        // let nal_header = NalHeader(chunk.data[data_start]);
+        // re_log::trace!(
+        //     "nal_header: {:?}, {}",
+        //     nal_header.unit_type(),
+        //     nal_header.ref_idc()
+        // );
 
         let data = &chunk.data[data_start..data_end];
 
@@ -771,87 +844,109 @@ fn write_avc_chunk_to_nalu_stream(
     Ok(())
 }
 
-/// Possible values for `nal_unit_type` field in `nal_unit`.
-///
-/// Encodes to 5 bits.
-/// Via:
-/// * <https://docs.rs/less-avc/0.1.5/src/less_avc/nal_unit.rs.html#232/>
-/// * <https://github.com/FFmpeg/FFmpeg/blob/87068b9600daa522e3f45b5501ecd487a3c0be57/libavcodec/h264.h#L33>
-#[derive(PartialEq, Eq)]
-#[non_exhaustive]
-#[repr(u8)]
-#[derive(Copy, Clone, Debug)]
-pub enum NalUnitType {
-    /// Unspecified
-    Unspecified = 0,
+/// Ignore some common output from ffmpeg.
+fn should_ignore_log_msg(msg: &str) -> bool {
+    let patterns = [
+        "Duration: N/A, bitrate: N/A",
+        "frame=    0 fps=0.0 q=0.0 size=       0kB time=N/A bitrate=N/A speed=N/A",
+        "encoder         : ", // Describes the encoder that was used to encode a video.
+        "Metadata:",
+        "Stream mapping:",
+        // It likes to say this a lot, almost no matter the format.
+        // Some sources say this is more about internal formats, i.e. specific decoders using the wrong values, rather than the cli passed formats.
+        "deprecated pixel format used, make sure you did set range correctly",
+        // Not entirely sure why it tells us this sometimes:
+        // Nowhere in the pipeline do we ask for this conversion, so it must be a transitional format?
+        // This is supported by experimentation yielding that it shows only up when using the `-colorspace` parameter.
+        // (color range and yuvj formats are fine though!)
+        "No accelerated colorspace conversion found from yuv420p to bgr24",
+        // We actually don't even want it to estimate a framerate!
+        "not enough frames to estimate rate",
+        // Similar: we don't want it to be able to estimate any of these things and we set those values explicitly, see invocation.
+        // Observed on Windows FFmpeg 7.1, but not with the same version on Mac with the same video.
+        "Consider increasing the value for the 'analyzeduration' (0) and 'probesize' (32) options",
+        // Size etc. *is* specified in SPS & PPS, unclear why it's missing that.
+        // Observed on Windows FFmpeg 7.1, but not with the same version on Mac with the same video.
+        "Could not find codec parameters for stream 0 (Video: h264, none): unspecified size",
+    ];
 
-    /// Coded slice of a non-IDR picture
-    CodedSliceOfANonIDRPicture = 1,
-
-    /// Coded slice data partition A
-    CodedSliceDataPartitionA = 2,
-
-    /// Coded slice data partition B
-    CodedSliceDataPartitionB = 3,
-
-    /// Coded slice data partition C
-    CodedSliceDataPartitionC = 4,
-
-    /// Coded slice of an IDR picture
-    CodedSliceOfAnIDRPicture = 5,
-
-    /// Supplemental enhancement information (SEI)
-    SupplementalEnhancementInformation = 6,
-
-    /// Sequence parameter set
-    SequenceParameterSet = 7,
-
-    /// Picture parameter set
-    PictureParameterSet = 8,
-
-    /// Signals the end of a NAL unit.
-    AccessUnitDelimiter = 9,
-
-    EndSequence = 10,
-    EndStream = 11,
-    FillerData = 12,
-    SequenceParameterSetExt = 13,
-
-    /// Header type not listed here.
-    Other,
-}
-
-/// Header of the "Network Abstraction Layer" unit that is used by H.264/AVC & H.265/HEVC.
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
-struct NalHeader(pub u8);
-
-impl NalHeader {
-    pub const fn new(unit_type: NalUnitType, ref_idc: u8) -> Self {
-        Self((unit_type as u8) | (ref_idc << 5))
+    // Why would we get an empty message? Observed on Windows FFmpeg 7.1.
+    if msg.is_empty() {
+        return true;
     }
 
-    pub fn unit_type(self) -> NalUnitType {
-        match self.0 & 0b11111 {
-            0 => NalUnitType::Unspecified,
-            1 => NalUnitType::CodedSliceOfANonIDRPicture,
-            2 => NalUnitType::CodedSliceDataPartitionA,
-            3 => NalUnitType::CodedSliceDataPartitionB,
-            4 => NalUnitType::CodedSliceDataPartitionC,
-            5 => NalUnitType::CodedSliceOfAnIDRPicture,
-            6 => NalUnitType::SupplementalEnhancementInformation,
-            7 => NalUnitType::SequenceParameterSet,
-            8 => NalUnitType::PictureParameterSet,
-            9 => NalUnitType::AccessUnitDelimiter,
-            10 => NalUnitType::EndSequence,
-            11 => NalUnitType::EndStream,
-            12 => NalUnitType::FillerData,
-            13 => NalUnitType::SequenceParameterSetExt,
-            _ => NalUnitType::Other,
+    for pattern in patterns {
+        if msg.contains(pattern) {
+            return true;
         }
     }
 
-    /// Ref idc is a value from 0-3 that tells us how "important" the frame/sample is.
-    pub fn ref_idc(self) -> u8 {
-        (self.0 >> 5) & 0b11
+    false
+}
+
+/// Strips out buffer addresses from `FFmpeg` log messages so that we can use it with the log-once family of methods.
+fn sanitize_ffmpeg_log_message(msg: &str) -> String {
+    // Make warn_once work on `[swscaler @ 0x148db8000]` style warnings even if the address is different every time.
+    // In older versions of FFmpeg this may happen several times in the same message (happens in 5.1, did not happen in 7.1).
+    let mut msg = msg.to_owned();
+    while let Some(start_pos) = msg.find("[swscaler @ 0x") {
+        if let Some(end_offset) = msg[start_pos..].find(']') {
+            if start_pos + end_offset + 1 > msg.len() {
+                break;
+            }
+
+            msg = [&msg[..start_pos], &msg[start_pos + end_offset + 1..]].join("[swscaler]");
+        } else {
+            // Huh, strange. Ignore it :shrug:
+            break;
+        }
+    }
+
+    msg
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sanitize_ffmpeg_log_message;
+
+    #[test]
+    fn test_sanitize_ffmpeg_log_message() {
+        assert_eq!(
+            sanitize_ffmpeg_log_message("[swscaler @ 0x148db8000]"),
+            "[swscaler]"
+        );
+
+        assert_eq!(
+            sanitize_ffmpeg_log_message(
+                "Some text prior [swscaler @ 0x148db8000] Warning: invalid pixel format specified"
+            ),
+            "Some text prior [swscaler] Warning: invalid pixel format specified"
+        );
+
+        assert_eq!(
+            sanitize_ffmpeg_log_message(
+                "Some text prior [swscaler @ 0x148db8000 other stuff we don't care about I guess] Warning: invalid pixel format specified"
+            ),
+            "Some text prior [swscaler] Warning: invalid pixel format specified"
+        );
+
+        assert_eq!(
+            sanitize_ffmpeg_log_message("[swscaler @ 0x148db8100] Warning: invalid poxel format specified [swscaler @ 0x148db8200]"),
+            "[swscaler] Warning: invalid poxel format specified [swscaler]"
+        );
+
+        assert_eq!(
+            sanitize_ffmpeg_log_message("[swscaler @ 0x248db8000] Warning: invalid päxel format specified [swscaler @ 0x198db8000] [swscaler @ 0x148db8030]"),
+            "[swscaler] Warning: invalid päxel format specified [swscaler] [swscaler]"
+        );
+
+        assert_eq!(
+            sanitize_ffmpeg_log_message("[swscaler @ 0x148db8000 something is wrong here"),
+            "[swscaler @ 0x148db8000 something is wrong here"
+        );
+        assert_eq!(
+            sanitize_ffmpeg_log_message("swscaler @ 0x148db8000] something is wrong here"),
+            "swscaler @ 0x148db8000] something is wrong here"
+        );
     }
 }

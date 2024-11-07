@@ -27,18 +27,12 @@ namespace rerun::blueprint::components {
         OpenStreetMap = 1,
 
         /// Mapbox Streets is a minimalistic map designed by Mapbox.
-        ///
-        /// **Note**: Requires a Mapbox access token in the settings or using the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
         MapboxStreets = 2,
 
         /// Mapbox Dark is a dark-themed map designed by Mapbox.
-        ///
-        /// **Note**: Requires a Mapbox access token in the settings or using the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
         MapboxDark = 3,
 
         /// Mapbox Satellite is a satellite map designed by Mapbox.
-        ///
-        /// **Note**: Requires a Mapbox access token in the settings or using the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
         MapboxSatellite = 4,
     };
 } // namespace rerun::blueprint::components
