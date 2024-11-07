@@ -11,7 +11,7 @@ __all__ = ["MapView"]
 from ... import datatypes
 from ..._baseclasses import AsComponents, ComponentBatchLike
 from ...datatypes import EntityPathLike, Utf8Like
-from .. import archetypes as blueprint_archetypes
+from .. import archetypes as blueprint_archetypes, components as blueprint_components
 from ..api import SpaceView, SpaceViewContentsLike
 
 
@@ -28,22 +28,30 @@ class MapView(SpaceView):
 
     rr.init("rerun_example_map_view", spawn=True)
 
-    rr.log("points", rr.GeoPoints(lat_lon=[[47.6344, 19.1397], [47.6334, 19.1399]]))
+    rr.log("points", rr.GeoPoints(lat_lon=[[47.6344, 19.1397], [47.6334, 19.1399]], radii=rr.Radius.ui_points(20.0)))
 
     # Create a map view to display the chart.
-    # TODO(#7903): cleanup the blueprint API for the map view
     blueprint = rrb.Blueprint(
         rrb.MapView(
             origin="points",
             name="MapView",
-            zoom=rrb.archetypes.MapZoom(16.0),
-            background=rrb.archetypes.MapBackground(rrb.components.MapProvider.OpenStreetMap),
+            zoom=16.0,
+            background=rrb.MapProvider.OpenStreetMap,
         ),
         collapse_panels=True,
     )
 
     rr.send_blueprint(blueprint)
     ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/map-view/8b2cc15e3f3313e2181667f6c29816ebe75e16e6/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/map-view/8b2cc15e3f3313e2181667f6c29816ebe75e16e6/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/map-view/8b2cc15e3f3313e2181667f6c29816ebe75e16e6/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/map-view/8b2cc15e3f3313e2181667f6c29816ebe75e16e6/1200w.png">
+      <img src="https://static.rerun.io/map-view/8b2cc15e3f3313e2181667f6c29816ebe75e16e6/full.png" width="640">
+    </picture>
+    </center>
 
     """
 
@@ -56,8 +64,8 @@ class MapView(SpaceView):
         visible: datatypes.BoolLike | None = None,
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
-        zoom: blueprint_archetypes.MapZoom | None = None,
-        background: blueprint_archetypes.MapBackground | None = None,
+        zoom: blueprint_archetypes.MapZoom | datatypes.Float64Like | None = None,
+        background: blueprint_archetypes.MapBackground | blueprint_components.MapProviderLike | None = None,
     ) -> None:
         """
         Construct a blueprint for a new MapView view.
