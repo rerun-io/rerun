@@ -2,11 +2,12 @@ use egui::{
     emath::TSTransform, Area, Color32, Id, LayerId, Order, Painter, Pos2, Rect, Response, Sense,
     Stroke, Ui, Vec2,
 };
+use re_chunk::EntityPath;
 use re_types::{
     components::{GraphNode, Radius},
     datatypes::Float32,
 };
-use std::ops::RangeFrom;
+use std::hash::Hash;
 
 use crate::types::{EdgeInstance, NodeInstance};
 
@@ -101,7 +102,6 @@ impl CanvasBuilder {
                 clip_rect_world,
                 world_to_window,
             },
-            counter: 0u64..,
             bounding_rect: &mut self.bounding_rect,
         });
 
@@ -162,7 +162,6 @@ pub struct Canvas<'a> {
     id: Id,
     window_layer: LayerId,
     context: CanvasContext,
-    counter: RangeFrom<u64>,
     bounding_rect: &'a mut Rect,
 }
 
@@ -180,34 +179,29 @@ impl<'a> Canvas<'a> {
 
     /// Draws a regular node, i.e. an explicit node instance.
     pub fn explicit_node(&mut self, pos: Pos2, node: &NodeInstance) -> Response {
-        self.node_wrapper(pos, |ui, world_to_ui| draw_explicit(ui, world_to_ui, node))
+        self.node_wrapper(node.index, pos, |ui, world_to_ui| {
+            draw_explicit(ui, world_to_ui, node)
+        })
     }
 
     pub fn implicit_node(&mut self, pos: Pos2, node: &GraphNode) -> Response {
-        self.node_wrapper(pos, |ui, _| draw_implicit(ui, node))
+        self.node_wrapper(node, pos, |ui, _| draw_implicit(ui, node))
     }
 
     /// `pos` is the top-left position of the node in world coordinates.
-    fn node_wrapper<F>(&mut self, pos: Pos2, add_node_contents: F) -> Response
+    fn node_wrapper<F>(&mut self, id: impl Hash, pos: Pos2, add_node_contents: F) -> Response
     where
         F: for<'b> FnOnce(&'b mut Ui, &'b CanvasContext) -> Response,
     {
-        let response = Area::new(
-            self.id.with((
-                "__node",
-                self.counter
-                    .next()
-                    .expect("The counter should never run out."),
-            )),
-        )
-        .fixed_pos(pos)
-        .order(Order::Foreground)
-        .constrain(false)
-        .show(self.ui.ctx(), |ui| {
-            ui.set_clip_rect(self.context.clip_rect_world);
-            add_node_contents(ui, &self.context)
-        })
-        .response;
+        let response = Area::new(Id::new(id))
+            .fixed_pos(pos)
+            .order(Order::Foreground)
+            .constrain(false)
+            .show(self.ui.ctx(), |ui| {
+                ui.set_clip_rect(self.context.clip_rect_world);
+                add_node_contents(ui, &self.context)
+            })
+            .response;
 
         let id = response.layer_id;
         self.ui
@@ -220,29 +214,24 @@ impl<'a> Canvas<'a> {
         response
     }
 
-    pub fn entity<F>(&mut self, pos: Pos2, add_entity_contents: F) -> Response
+    pub fn entity<F>(&mut self, entity: &EntityPath, pos: Pos2, add_entity_contents: F) -> Response
     where
         F: for<'b> FnOnce(&'b mut Ui) -> Response,
     {
-        let response = Area::new(
-            self.id.with((
-                "__entity",
-                self.counter
-                    .next()
-                    .expect("The counter should never run out."),
-            )),
-        )
-        .fixed_pos(pos)
-        .order(Order::Background)
-        .constrain(false)
-        .show(self.ui.ctx(), |ui| {
-            ui.set_clip_rect(self.context.clip_rect_world);
-            add_entity_contents(ui)
-        })
-        .response;
+        let response = Area::new(Id::new(entity))
+            .fixed_pos(pos)
+            .order(Order::Background)
+            .constrain(false)
+            .show(self.ui.ctx(), |ui| {
+                ui.set_clip_rect(self.context.clip_rect_world);
+                add_entity_contents(ui)
+            })
+            .response;
 
         let id = response.layer_id;
-        self.ui.ctx().set_transform_layer(id, self.context.world_to_window);
+        self.ui
+            .ctx()
+            .set_transform_layer(id, self.context.world_to_window);
         self.ui.ctx().set_sublayer(self.window_layer, id);
 
         response
@@ -252,27 +241,22 @@ impl<'a> Canvas<'a> {
         &mut self,
         from: Rect,
         to: Rect,
-        _edge: &EdgeInstance,
+        edge: &EdgeInstance,
         show_arrow: bool,
     ) -> Response {
-        let response = Area::new(
-            self.id.with((
-                "edge",
-                self.counter
-                    .next()
-                    .expect("The counter should never run out."),
-            )),
-        )
-        .order(Order::Middle)
-        .constrain(false)
-        .show(self.ui.ctx(), |ui| {
-            ui.set_clip_rect(self.context.clip_rect_world);
-            draw_edge(ui, from, to, show_arrow)
-        })
-        .response;
+        let response = Area::new(self.id.with(((edge.source_index, edge.target_index),)))
+            .order(Order::Middle)
+            .constrain(false)
+            .show(self.ui.ctx(), |ui| {
+                ui.set_clip_rect(self.context.clip_rect_world);
+                draw_edge(ui, from, to, show_arrow)
+            })
+            .response;
 
         let id = response.layer_id;
-        self.ui.ctx().set_transform_layer(id, self.context.world_to_window);
+        self.ui
+            .ctx()
+            .set_transform_layer(id, self.context.world_to_window);
         self.ui.ctx().set_sublayer(self.window_layer, id);
 
         response

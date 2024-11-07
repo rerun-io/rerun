@@ -242,7 +242,7 @@ impl SpaceViewClass for GraphSpaceView {
                 }
 
                 if entity_rect.is_positive() {
-                    let response = scene.entity(entity_rect.min, |ui| {
+                    let response = scene.entity(entity, entity_rect.min, |ui| {
                         ui::draw_entity(ui, entity_rect, entity, &query.highlights)
                     });
 
