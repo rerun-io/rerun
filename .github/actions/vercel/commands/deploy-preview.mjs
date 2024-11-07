@@ -26,11 +26,14 @@ export async function deployToPreview(client, options) {
   if (options.commit) env["RELEASE_COMMIT"] = options.commit;
   if (options.version) env["RELEASE_VERSION"] = options.version;
 
-  const { url } = await project.deployPreviewFrom(
+  const newDeployment = await project.deployPreviewFrom(
     deployment.uid,
     "landing-preview",
     env,
   );
+  setOutput("vercel_preview_deployment_id", newDeployment.id);
+  setOutput("vercel_preview_url", newDeployment.url);
+  setOutput("vercel_preview_inspector_url", newDeployment.inspectorUrl);
 
-  setOutput("vercel_preview_url", url);
+  return newDeployment;
 }
