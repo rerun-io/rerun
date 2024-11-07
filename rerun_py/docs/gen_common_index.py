@@ -213,6 +213,7 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Geospatial Archetypes",
         class_list=[
+            "archetypes.GeoLineStrings",
             "archetypes.GeoPoints",
         ],
         gen_page=False,
