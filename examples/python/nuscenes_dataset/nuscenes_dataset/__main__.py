@@ -84,7 +84,6 @@ def log_nuscenes(nusc: nuscenes.NuScenes, scene_name: str, max_time_sec: float) 
     scene = next(s for s in nusc.scene if s["name"] == scene_name)
 
     location = nusc.get("log", scene["log_token"])["location"]
-    print(f"Visualizing scene {scene_name} in {location}")
 
     rr.log("world", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)
 
