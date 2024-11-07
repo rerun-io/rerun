@@ -37,7 +37,9 @@ def set_default_size(*, width: int | None, height: int | None) -> None:
     if height is not None:
         _default_height = height
 
+
 _version_mismatch_checked = False
+
 
 class Viewer:
     """
@@ -83,8 +85,9 @@ class Viewer:
         try:
             global _version_mismatch_checked
             if not _version_mismatch_checked:
-                import warnings
                 import importlib.metadata
+                import warnings
+
                 rerun_notebook_version = importlib.metadata.version("rerun-notebook")
                 rerun_version = importlib.metadata.version("rerun-sdk")
                 if rerun_version != rerun_notebook_version:
