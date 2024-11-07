@@ -230,7 +230,6 @@ pub fn customize_eframe_and_setup_renderer(
 // ---------------------------------------------------------------------------
 
 /// This wakes up the ui thread each time we receive a new message.
-#[cfg(not(feature = "web_viewer"))]
 #[cfg(not(target_arch = "wasm32"))]
 pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
     rx: re_smart_channel::Receiver<T>,
