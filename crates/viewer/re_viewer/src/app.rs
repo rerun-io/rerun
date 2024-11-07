@@ -528,13 +528,6 @@ impl App {
                             re_chunk::TimeInt::MAX,
                         ),
                     );
-
-                    let times_per_timeline = blueprint_db.times_per_timeline();
-                    self.state
-                        .blueprint_cfg
-                        .time_ctrl
-                        .write()
-                        .set_play_state(times_per_timeline, PlayState::Following);
                 }
 
                 for chunk in updates {
@@ -545,6 +538,10 @@ impl App {
                         }
                     }
                 }
+
+                // If we inspect the timeline, make sure we show the latest state:
+                let mut time_ctrl = self.state.blueprint_cfg.time_ctrl.write();
+                time_ctrl.set_play_state(blueprint_db.times_per_timeline(), PlayState::Following);
             }
             SystemCommand::DropEntity(blueprint_id, entity_path) => {
                 let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
