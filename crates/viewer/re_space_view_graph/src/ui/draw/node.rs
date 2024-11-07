@@ -1,12 +1,10 @@
-use egui::{
-    emath::TSTransform, Frame, Label, Response, RichText, Sense, Stroke, TextWrapMode, Ui, Vec2,
-};
+use egui::{Frame, Label, Response, RichText, Sense, Stroke, TextWrapMode, Ui, Vec2};
 use re_types::components::GraphNode;
 
-use crate::{types::NodeInstance, ui::canvas::radius_to_world};
+use crate::{types::NodeInstance, ui::canvas::CanvasContext};
 
 /// The `world_to_ui_scale` parameter is used to convert between world and ui coordinates.
-pub fn draw_explicit(ui: &mut Ui, world_to_ui: &TSTransform, node: &NodeInstance) -> Response {
+pub fn draw_explicit(ui: &mut Ui, ctx: &CanvasContext, node: &NodeInstance) -> Response {
     let visuals = &ui.style().visuals;
 
     let fg = node.color.unwrap_or_else(|| visuals.text_color());
@@ -29,11 +27,7 @@ pub fn draw_explicit(ui: &mut Ui, world_to_ui: &TSTransform, node: &NodeInstance
             .response
     } else {
         // Draw a circle node.
-
-        let r = node
-            .radius
-            .map(|r| radius_to_world(world_to_ui, r))
-            .unwrap_or(4.0);
+        let r = node.radius.map(|r| ctx.radius_to_world(r)).unwrap_or(4.0);
         debug_assert!(r.is_sign_positive(), "radius must be greater than zero");
 
         Frame::default()

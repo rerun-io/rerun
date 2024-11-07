@@ -32,14 +32,6 @@ fn fit_to_world_rect(clip_rect_window: Rect, world_rect: Rect) -> TSTransform {
         * TSTransform::from_scaling(scale)
 }
 
-/// If the radius is negative, we need to convert it from ui to world coordinates.
-pub fn radius_to_world(world_to_ui: &TSTransform, radius: Radius) -> f32 {
-    match radius {
-        Radius(Float32(r)) if r.is_sign_positive() => r,
-        Radius(Float32(r)) => 1.0 / world_to_ui.scaling * r.abs(),
-    }
-}
-
 pub struct CanvasBuilder {
     show_debug: bool,
     world_bounds: Rect,
@@ -105,8 +97,10 @@ impl CanvasBuilder {
             ui,
             id,
             window_layer,
-            clip_rect_world,
-            world_to_window,
+            context: CanvasContext {
+                clip_rect_world,
+                world_to_window,
+            },
             counter: 0u64..,
             bounding_rect: &mut self.bounding_rect,
         });
@@ -144,24 +138,42 @@ impl CanvasBuilder {
     }
 }
 
+pub struct CanvasContext {
+    clip_rect_world: Rect,
+    world_to_window: TSTransform,
+}
+
+impl CanvasContext {
+    pub fn distance_to_world(&self, distance: f32) -> f32 {
+        distance / self.world_to_window.scaling
+    }
+
+    /// If the radius is negative, we need to convert it from ui to world coordinates.
+    pub fn radius_to_world(&self, radius: Radius) -> f32 {
+        match radius {
+            Radius(Float32(r)) if r.is_sign_positive() => r,
+            Radius(Float32(r)) => self.distance_to_world(r.abs()),
+        }
+    }
+}
+
 pub struct Canvas<'a> {
     ui: &'a mut Ui,
     id: Id,
     window_layer: LayerId,
-    clip_rect_world: Rect,
-    world_to_window: TSTransform,
+    context: CanvasContext,
     counter: RangeFrom<u64>,
     bounding_rect: &'a mut Rect,
 }
 
 impl<'a> Canvas<'a> {
-    fn radius_to_world(&self, radius: Radius) -> f32 {
-        radius_to_world(&self.world_to_window, radius)
-    }
-
     /// Try to estimate a good starting `Rect` for a node that has not been layed out yet.
     pub fn initial_rect(&self, node: &NodeInstance) -> Rect {
-        let size = node.radius.map(|r| self.radius_to_world(r)).unwrap_or(0.0) * 2.0;
+        let size = node
+            .radius
+            .map(|r| self.context.radius_to_world(r))
+            .unwrap_or(0.0)
+            * 2.0;
         let pos = node.position.unwrap_or(Pos2::ZERO);
         Rect::from_center_size(pos, Vec2::splat(size))
     }
@@ -178,7 +190,7 @@ impl<'a> Canvas<'a> {
     /// `pos` is the top-left position of the node in world coordinates.
     fn node_wrapper<F>(&mut self, pos: Pos2, add_node_contents: F) -> Response
     where
-        F: for<'b> FnOnce(&'b mut Ui, &'b TSTransform) -> Response,
+        F: for<'b> FnOnce(&'b mut Ui, &'b CanvasContext) -> Response,
     {
         let response = Area::new(
             self.id.with((
@@ -192,13 +204,15 @@ impl<'a> Canvas<'a> {
         .order(Order::Foreground)
         .constrain(false)
         .show(self.ui.ctx(), |ui| {
-            ui.set_clip_rect(self.clip_rect_world);
-            add_node_contents(ui, &self.world_to_window)
+            ui.set_clip_rect(self.context.clip_rect_world);
+            add_node_contents(ui, &self.context)
         })
         .response;
 
         let id = response.layer_id;
-        self.ui.ctx().set_transform_layer(id, self.world_to_window);
+        self.ui
+            .ctx()
+            .set_transform_layer(id, self.context.world_to_window);
         self.ui.ctx().set_sublayer(self.window_layer, id);
 
         *self.bounding_rect = self.bounding_rect.union(response.rect);
@@ -222,13 +236,13 @@ impl<'a> Canvas<'a> {
         .order(Order::Background)
         .constrain(false)
         .show(self.ui.ctx(), |ui| {
-            ui.set_clip_rect(self.clip_rect_world);
+            ui.set_clip_rect(self.context.clip_rect_world);
             add_entity_contents(ui)
         })
         .response;
 
         let id = response.layer_id;
-        self.ui.ctx().set_transform_layer(id, self.world_to_window);
+        self.ui.ctx().set_transform_layer(id, self.context.world_to_window);
         self.ui.ctx().set_sublayer(self.window_layer, id);
 
         response
@@ -252,13 +266,13 @@ impl<'a> Canvas<'a> {
         .order(Order::Middle)
         .constrain(false)
         .show(self.ui.ctx(), |ui| {
-            ui.set_clip_rect(self.clip_rect_world);
+            ui.set_clip_rect(self.context.clip_rect_world);
             draw_edge(ui, from, to, show_arrow)
         })
         .response;
 
         let id = response.layer_id;
-        self.ui.ctx().set_transform_layer(id, self.world_to_window);
+        self.ui.ctx().set_transform_layer(id, self.context.world_to_window);
         self.ui.ctx().set_sublayer(self.window_layer, id);
 
         response
