@@ -40,6 +40,7 @@ from .components import (
     BackgroundKind as BackgroundKind,
     Corner2D as Corner2D,
     LockRangeDuringZoom as LockRangeDuringZoom,
+    MapProvider as MapProvider,
     VisibleTimeRange as VisibleTimeRange,
     VisualizerOverrides as VisualizerOverrides,
 )

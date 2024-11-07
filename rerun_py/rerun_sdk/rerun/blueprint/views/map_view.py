@@ -11,7 +11,7 @@ __all__ = ["MapView"]
 from ... import datatypes
 from ..._baseclasses import AsComponents, ComponentBatchLike
 from ...datatypes import EntityPathLike, Utf8Like
-from .. import archetypes as blueprint_archetypes
+from .. import archetypes as blueprint_archetypes, components as blueprint_components
 from ..api import SpaceView, SpaceViewContentsLike
 
 
@@ -31,13 +31,12 @@ class MapView(SpaceView):
     rr.log("points", rr.GeoPoints([[47.6344, 19.1397], [47.6334, 19.1399]]))
 
     # Create a map view to display the chart.
-    # TODO(#7903): cleanup the blueprint API for the map view
     blueprint = rrb.Blueprint(
         rrb.MapView(
             origin="points",
             name="MapView",
-            zoom=rrb.archetypes.MapZoom(16.0),
-            background=rrb.archetypes.MapBackground(rrb.components.MapProvider.OpenStreetMap),
+            zoom=16.0,
+            background=rrb.MapProvider.OpenStreetMap,
         ),
         collapse_panels=True,
     )
@@ -56,8 +55,8 @@ class MapView(SpaceView):
         visible: datatypes.BoolLike | None = None,
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
-        zoom: blueprint_archetypes.MapZoom | None = None,
-        background: blueprint_archetypes.MapBackground | None = None,
+        zoom: blueprint_archetypes.MapZoom | datatypes.Float64Like | None = None,
+        background: blueprint_archetypes.MapBackground | blueprint_components.MapProviderLike | None = None,
     ) -> None:
         """
         Construct a blueprint for a new MapView view.
