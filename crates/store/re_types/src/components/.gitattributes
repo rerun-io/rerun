@@ -16,6 +16,7 @@ entity_path.rs linguist-generated=true
 fill_mode.rs linguist-generated=true
 fill_ratio.rs linguist-generated=true
 gamma_correction.rs linguist-generated=true
+geo_line_string.rs linguist-generated=true
 half_size2d.rs linguist-generated=true
 half_size3d.rs linguist-generated=true
 image_buffer.rs linguist-generated=true

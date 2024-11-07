@@ -7,7 +7,9 @@ mod color;
 mod datatype_uis;
 mod entity_path;
 mod fallback_ui;
+mod geo_line_string;
 mod image_format;
+mod lat_lon;
 mod line_strip;
 mod map_provider;
 mod marker_shape;
@@ -45,6 +47,9 @@ use re_types_blueprint::blueprint::components::{
     IncludedSpaceView, RootContainer, SpaceViewMaximized,
 };
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
+
+/// Default number of ui points to show a number.
+const DEFAULT_NUMBER_WIDTH: f32 = 52.0;
 
 // ----
 
@@ -153,10 +158,13 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_multiline_edit_or_view(pinhole::multiline_view_pinhole);
 
     line_strip::register_linestrip_component_ui(&mut registry);
+    geo_line_string::register_geo_line_string_component_ui(&mut registry);
 
     registry.add_singleline_edit_or_view(entity_path::edit_or_view_entity_path);
 
     registry.add_singleline_edit_or_view(video_timestamp::edit_or_view_timestamp);
+
+    registry.add_singleline_edit_or_view(lat_lon::singleline_view_lat_lon);
 
     registry
 }

@@ -15,7 +15,7 @@ __all__ = ["LatLon", "LatLonBatch", "LatLonType"]
 
 
 class LatLon(datatypes.DVec2D, ComponentMixin):
-    """**Component**: A geographical position expressed in EPSG:4326 latitude and longitude."""
+    """**Component**: A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees)."""
 
     _BATCH_TYPE = None
     # You can define your own __init__ function as a member of LatLonExt in lat_lon_ext.py
