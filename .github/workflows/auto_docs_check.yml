@@ -40,21 +40,13 @@ jobs:
           git config --global user.name "rerun-bot"
           git config --global user.email "bot@rerun.io"
 
-          echo
-          echo "base"
-          git log --oneline -n 10 ${{ github.event.pull_request.base.ref }}
-          echo "head"
-          git log --oneline -n 10 ${{ github.event.pull_request.head.ref }}
-          echo
-
+          git fetch origin main
+          git checkout main
+          git merge ${{ github.event.pull_request.head.ref }}
+          commit=$(git rev-parse HEAD)
           git checkout docs-latest
 
-          # Try the cherry-pick and capture the exit code
-          from=$(git rev-parse ${{ github.event.pull_request.base.sha }})
-          to=$(git rev-parse ${{ github.event.pull_request.head.sha }})
-
-          echo "$from -> $to"
-          if git cherry-pick --no-commit $from..$to; then
+          if git cherry-pick $commit; then
             echo "Cherry-pick successful"
             exit 0
           else
