@@ -41,7 +41,6 @@ mod meta {
 /// - `01NNNNNN` -> `-rc.N`
 /// - `00000000` -> none of the above
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct CrateVersion {
     pub major: u8,
     pub minor: u8,
@@ -312,20 +311,6 @@ impl CrateVersion {
             }};
         }
 
-        macro_rules! eat_token {
-            ($s:ident, $token:expr, $msg:literal) => {{
-                let token = $token;
-                if token.len() > $s.len() {
-                    return Err($msg);
-                }
-                let (left, right) = split_at($s, token.len());
-                if !equals(left, token) {
-                    return Err($msg);
-                }
-                right
-            }};
-        }
-
         macro_rules! eat_u8 {
             ($s:ident, $msg:literal) => {{
                 if $s.is_empty() {
@@ -393,8 +378,16 @@ impl CrateVersion {
             s = remainder;
             match meta {
                 Some(Meta::Alpha(build)) => {
-                    s = eat_token!(s, b"dev", "expected `dev` after `+`");
                     meta = Some(Meta::DevAlpha(build));
+                    if let (true, remainder) = maybe_token(s, b"dev") {
+                        s = remainder;
+                    } else if s.is_empty() {
+                        return Err("expected `dev` after `+`");
+                    } else {
+                        // It's a commit hash
+                        let commit_hash = s; // TODO: use
+                        s = &[];
+                    }
                 }
                 Some(..) => return Err("unexpected `-rc` with `+dev`"),
                 None => return Err("unexpected `+dev` without `-alpha`"),
@@ -473,6 +466,16 @@ fn test_parse_version() {
     );
     assert_parse_ok!(
         "12.23.24-alpha.63+dev",
+        CrateVersion {
+            major: 12,
+            minor: 23,
+            patch: 24,
+            meta: Some(Meta::DevAlpha(63)),
+        }
+    );
+    // We use commit hash suffixes in some cases:
+    assert_parse_ok!(
+        "12.23.24-alpha.63+aab0b4e",
         CrateVersion {
             major: 12,
             minor: 23,

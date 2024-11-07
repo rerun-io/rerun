@@ -175,8 +175,12 @@ fn crate_version_from_build_info_string() {
 
     {
         let expected_crate_version = build_info.version;
-        let crate_version = CrateVersion::try_parse_from_build_info_string(build_info_str);
+        let crate_version = CrateVersion::try_parse_from_build_info_string(&build_info_str);
 
-        assert_eq!(Ok(expected_crate_version), crate_version);
+        assert_eq!(
+            crate_version,
+            Ok(expected_crate_version),
+            "Failed to parse {build_info_str:?}"
+        );
     }
 }
