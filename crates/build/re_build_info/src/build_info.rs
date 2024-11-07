@@ -142,7 +142,10 @@ impl CrateVersion {
     /// <name> <semver> [<rust_info>] <target> <branch> <commit> <build_date>
     /// ```
     pub fn try_parse_from_build_info_string(s: impl AsRef<str>) -> Result<Self, String> {
-        let s = Box::leak(s.as_ref().to_owned().into_boxed_str()); // We leak it here to get a 'static str, so it can be parsed by the same const function. Yes, this is ugly.
+        // `CrateVersion::try_parse` is `const` (for good reasons), and needs a `&'static str`.
+        // In order to accomplish this, we need to leak the string here.
+        let s = Box::leak(s.as_ref().to_owned().into_boxed_str());
+
         let parts = s.split_whitespace().collect::<Vec<_>>();
         if parts.len() < 2 {
             return Err(format!("{s:?} is not a valid BuildInfo string"));

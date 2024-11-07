@@ -86,9 +86,22 @@ impl CrateVersion {
 pub enum Meta {
     Rc(u8),
     Alpha(u8),
+
+    /// `0.19.1-alpha.2+dev` or `0.19.1-alpha.2+aab0b4e`
     DevAlpha {
         alpha: u8,
-        /// Utf8
+
+        /// The commit hash, if known
+        ///
+        /// `None` corresponds to `+dev`.
+        ///
+        /// In order to support compile-time parsing of versions strings
+        /// this needs to be `&'static` and `[u8]` instead of `String`.
+        /// But in practice this is guaranteed to be valid UTF-8.
+        ///
+        /// The commit hash is NOT sent over the wire,
+        /// so `0.19.1-alpha.2+aab0b4e` will end up as `0.19.1-alpha.2+dev`
+        /// on the other end.
         commit: Option<&'static [u8]>,
     },
 }
@@ -398,8 +411,7 @@ impl CrateVersion {
                     } else if s.is_empty() {
                         return Err("expected `dev` after `+`");
                     } else {
-                        // It's a commit hash
-                        let commit_hash = s; // TODO: use
+                        let commit_hash = s;
                         s = &[];
                         meta = Some(Meta::DevAlpha {
                             alpha: build,
@@ -431,12 +443,8 @@ impl std::fmt::Display for Meta {
             Self::Rc(build) => write!(f, "-rc.{build}"),
             Self::Alpha(build) => write!(f, "-alpha.{build}"),
             Self::DevAlpha { alpha, commit } => {
-                if let Some(commit) = commit {
-                    if let Ok(commit) = std::str::from_utf8(commit) {
-                        write!(f, "-alpha.{alpha}+{commit}")
-                    } else {
-                        write!(f, "-alpha.{alpha}+dev")
-                    }
+                if let Some(commit) = commit.and_then(|s| std::str::from_utf8(s).ok()) {
+                    write!(f, "-alpha.{alpha}+{commit}")
                 } else {
                     write!(f, "-alpha.{alpha}+dev")
                 }
