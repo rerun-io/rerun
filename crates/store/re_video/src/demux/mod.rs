@@ -48,6 +48,17 @@ pub struct VideoData {
     /// Duration of the video, in time units.
     pub duration: Time,
 
+    /// The smallest presentation timestamp observed in this video.
+    ///
+    /// This is typically 0, but in the presence of B-frames, it may be non-zero.
+    /// In fact, many formats don't require this to be zero, but video players typically
+    /// normalize the shown time to start at zero.
+    /// Note that timestamps in the [`Sample`]s are *not* automatically adjusted with this value.
+    // This is roughly equivalent to FFmpeg's internal `min_corrected_pts` https://github.com/FFmpeg/FFmpeg/blob/4047b887fc44b110bccb1da09bcb79d6e454b88b/libavformat/isom.h#L202
+    // To learn more about this I recommend reading the patch that introduced this in FFmpeg:
+    // https://patchwork.ffmpeg.org/project/ffmpeg/patch/20170606181601.25187-1-isasi@google.com/#12592
+    pub minimum_presentation_timestamp: Time,
+
     /// We split video into GOPs, each beginning with a key frame,
     /// followed by any number of delta frames.
     pub gops: Vec<GroupOfPictures>,
@@ -229,17 +240,22 @@ impl VideoData {
         }
     }
 
-    /// Determines the presentation timestamps of all frames inside a video, returning raw time values.
+    /// Determines the video timestamps of all frames inside a video, returning raw time values.
     ///
     /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
+    /// These are *not* necessarily the same as the presentation timestamps, as the returned timestamps are
+    /// normalized respect to the start of the video, see [`Self::minimum_presentation_timestamp`].
     pub fn frame_timestamps_ns(&self) -> impl Iterator<Item = i64> + '_ {
+        re_tracing::profile_function!();
+
         // Segments are guaranteed to be sorted among each other, but within a segment,
         // presentation timestamps may not be sorted since this is sorted by decode timestamps.
         self.gops.iter().flat_map(|seg| {
             self.samples[seg.range()]
                 .iter()
-                .map(|sample| sample.presentation_timestamp.into_nanos(self.timescale))
+                .map(|sample| sample.presentation_timestamp)
                 .sorted()
+                .map(|pts| (pts - self.minimum_presentation_timestamp).into_nanos(self.timescale))
         })
     }
 }

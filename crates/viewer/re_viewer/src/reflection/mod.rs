@@ -1678,7 +1678,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.VideoTimestamp".into(), display_name : "Timestamp",
                     docstring_md :
-                    "References the closest video frame to this timestamp.\n\nNote that this uses the closest video frame instead of the latest at this timestamp\nin order to be more forgiving of rounding errors for inprecise timestamp types.",
+                    "References the closest video frame to this timestamp.\n\nNote that this uses the closest video frame instead of the latest at this timestamp\nin order to be more forgiving of rounding errors for inprecise timestamp types.\n\nTimestamps are relative to the start of the video, i.e. a timestamp of 0 always corresponds to the first frame.\nThis is oftentimes equivalent to presentation timestamps (known as PTS), but in the presence of B-frames\n(bidirectionally predicted frames) there may be an offset on the first presentation timestamp in the video.",
                     is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.EntityPath".into(), display_name :
                     "Video reference", docstring_md :

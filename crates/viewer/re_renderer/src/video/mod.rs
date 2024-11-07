@@ -68,7 +68,7 @@ pub struct VideoFrameTexture {
 }
 
 impl VideoFrameTexture {
-    pub fn time_range(&self) -> Range<re_video::Time> {
+    pub fn presentation_time_range(&self) -> Range<re_video::Time> {
         self.frame_info.presentation_timestamp
             ..self.frame_info.presentation_timestamp + self.frame_info.duration
     }
@@ -135,18 +135,22 @@ impl Video {
         self.data.height()
     }
 
-    /// Returns a texture with the latest frame at the given timestamp.
+    /// Returns a texture with the latest frame at the given time since video start.
     ///
-    /// If the timestamp is negative, a zeroed texture is returned.
+    /// If the time is negative, a zeroed texture is returned.
     ///
     /// This API is _asynchronous_, meaning that the decoder may not yet have decoded the frame
     /// at the given timestamp. If the frame is not yet available, the returned texture will be
     /// empty.
+    ///
+    /// The time is specified in seconds since the start of the video.
+    /// This may not be equal to the presentation timestamp as it may have an offset applied,
+    /// see [`VideoData::minimum_presentation_timestamp`].
     pub fn frame_at(
         &self,
         render_context: &RenderContext,
         player_stream_id: VideoPlayerStreamId,
-        presentation_timestamp_s: f64,
+        time_since_video_start_in_seconds: f64,
         video_data: &[u8],
     ) -> FrameDecodingResult {
         re_tracing::profile_function!();
@@ -176,9 +180,11 @@ impl Video {
         };
 
         decoder_entry.frame_index = render_context.active_frame_idx();
-        decoder_entry
-            .player
-            .frame_at(render_context, presentation_timestamp_s, video_data)
+        decoder_entry.player.frame_at(
+            render_context,
+            time_since_video_start_in_seconds,
+            video_data,
+        )
     }
 
     /// Removes all decoders that have been unused in the last frame.

@@ -42,32 +42,36 @@ impl VideoData {
         let mut gops = Vec::<GroupOfPictures>::new();
         let mut gop_sample_start_index = 0;
 
-        for sample in &track.samples {
-            if sample.is_sync && !samples.is_empty() {
-                let start = samples[gop_sample_start_index].decode_timestamp;
-                let sample_range = gop_sample_start_index as u32..samples.len() as u32;
-                gops.push(GroupOfPictures {
-                    start,
-                    sample_range,
+        {
+            re_tracing::profile_scope!("copy samples & build gops");
+
+            for sample in &track.samples {
+                if sample.is_sync && !samples.is_empty() {
+                    let start = samples[gop_sample_start_index].decode_timestamp;
+                    let sample_range = gop_sample_start_index as u32..samples.len() as u32;
+                    gops.push(GroupOfPictures {
+                        start,
+                        sample_range,
+                    });
+                    gop_sample_start_index = samples.len();
+                }
+
+                let decode_timestamp = Time::new(sample.decode_timestamp as i64);
+                let presentation_timestamp = Time::new(sample.composition_timestamp as i64);
+                let duration = Time::new(sample.duration as i64);
+
+                let byte_offset = sample.offset as u32;
+                let byte_length = sample.size as u32;
+
+                samples.push(Sample {
+                    is_sync: sample.is_sync,
+                    decode_timestamp,
+                    presentation_timestamp,
+                    duration,
+                    byte_offset,
+                    byte_length,
                 });
-                gop_sample_start_index = samples.len();
             }
-
-            let decode_timestamp = Time::new(sample.decode_timestamp as i64);
-            let presentation_timestamp = Time::new(sample.composition_timestamp as i64);
-            let duration = Time::new(sample.duration as i64);
-
-            let byte_offset = sample.offset as u32;
-            let byte_length = sample.size as u32;
-
-            samples.push(Sample {
-                is_sync: sample.is_sync,
-                decode_timestamp,
-                presentation_timestamp,
-                duration,
-                byte_offset,
-                byte_length,
-            });
         }
 
         if !samples.is_empty() {
@@ -79,10 +83,17 @@ impl VideoData {
             });
         }
 
+        let minimum_presentation_timestamp = samples
+            .iter()
+            .map(|s| s.presentation_timestamp)
+            .min()
+            .unwrap_or_default();
+
         Ok(Self {
             config,
             timescale,
             duration,
+            minimum_presentation_timestamp,
             gops,
             samples,
             mp4_tracks,

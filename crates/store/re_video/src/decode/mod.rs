@@ -282,7 +282,7 @@ impl Default for FrameInfo {
 
 impl FrameInfo {
     /// Presentation timestamp range in which this frame is valid.
-    pub fn time_range(&self) -> std::ops::Range<Time> {
+    pub fn presentation_time_range(&self) -> std::ops::Range<Time> {
         self.presentation_timestamp..self.presentation_timestamp + self.duration
     }
 }
