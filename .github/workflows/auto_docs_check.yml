@@ -47,6 +47,8 @@ jobs:
           # Try the cherry-pick and capture the exit code
           from=$(git rev-parse ${{ github.event.pull_request.base.sha }})
           to=$(git rev-parse ${{ github.event.pull_request.head.sha }})
+
+          echo "$from -> $to"
           if git cherry-pick --no-commit $from..$to; then
             echo "Cherry-pick successful"
             exit 0
