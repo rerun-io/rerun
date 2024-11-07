@@ -7,11 +7,12 @@ use re_types::{
     components::{GraphNode, Radius},
     datatypes::Float32,
 };
+use re_viewer_context::SpaceViewHighlights;
 use std::hash::Hash;
 
 use crate::types::{EdgeInstance, NodeInstance};
 
-use super::draw::{draw_edge, draw_explicit, draw_implicit};
+use super::draw::{draw_edge, draw_entity, draw_explicit, draw_implicit};
 
 fn fit_to_world_rect(clip_rect_window: Rect, world_rect: Rect) -> TSTransform {
     let available_size = clip_rect_window.size();
@@ -214,17 +215,19 @@ impl<'a> Canvas<'a> {
         response
     }
 
-    pub fn entity<F>(&mut self, entity: &EntityPath, pos: Pos2, add_entity_contents: F) -> Response
-    where
-        F: for<'b> FnOnce(&'b mut Ui) -> Response,
-    {
+    pub fn entity(
+        &mut self,
+        entity: &EntityPath,
+        rect: Rect,
+        highlights: &SpaceViewHighlights,
+    ) -> Response {
         let response = Area::new(Id::new(entity))
-            .fixed_pos(pos)
+            .fixed_pos(rect.min)
             .order(Order::Background)
             .constrain(false)
             .show(self.ui.ctx(), |ui| {
                 ui.set_clip_rect(self.context.clip_rect_world);
-                add_entity_contents(ui)
+                draw_entity(ui, rect, entity, highlights);
             })
             .response;
 

@@ -20,7 +20,7 @@ use re_viewport_blueprint::ViewProperty;
 
 use crate::{
     graph::NodeIndex,
-    ui::{self, bounding_rect_from_iter, canvas::CanvasBuilder, GraphSpaceViewState},
+    ui::{bounding_rect_from_iter, canvas::CanvasBuilder, GraphSpaceViewState},
     visualizers::{EdgesVisualizer, NodeVisualizer},
 };
 
@@ -242,9 +242,7 @@ impl SpaceViewClass for GraphSpaceView {
                 }
 
                 if entity_rect.is_positive() {
-                    let response = scene.entity(entity, entity_rect.min, |ui| {
-                        ui::draw_entity(ui, entity_rect, entity, &query.highlights)
-                    });
+                    let response = scene.entity(entity, entity_rect, &query.highlights);
 
                     let instance_path = InstancePath::entity_all(entity.clone());
                     ctx.select_hovered_on_click(
