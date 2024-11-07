@@ -18,7 +18,7 @@ impl From<uuid::Uuid> for Uuid {
 
 impl std::fmt::Display for Uuid {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", uuid::Uuid::from(*self))
+        uuid::Uuid::from(*self).fmt(f)
     }
 }
 
