@@ -187,7 +187,10 @@ def log_radars(first_radar_tokens: list[str], nusc: nuscenes.NuScenes, max_times
             points = pointcloud.points[:3].T  # shape after transposing: (num_points, 3)
             point_distances = np.linalg.norm(points, axis=1)
             point_colors = cmap(norm(point_distances))
-            rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colors))
+            rr.log(
+                f"world/ego_vehicle/{sensor_name}",
+                rr.Points3D(points, colors=point_colors),
+            )
             current_camera_token = sample_data["next"]
 
 
