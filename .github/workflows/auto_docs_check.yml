@@ -46,7 +46,7 @@ jobs:
           commit=$(git rev-parse HEAD)
           git checkout docs-latest
 
-          if git cherry-pick $commit; then
+          if git cherry-pick $commit -m1; then
             echo "Cherry-pick successful"
             exit 0
           else
