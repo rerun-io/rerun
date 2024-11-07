@@ -6,6 +6,7 @@
 from __future__ import annotations
 
 import math
+from typing import Sequence
 
 EARTH_RADIUS_METERS = 6.378137e6
 REFERENCE_COORDINATES = {
@@ -20,11 +21,23 @@ def get_coordinate(ref_lat: float, ref_lon: float, bearing: float, dist: float) 
     """
     Using a reference coordinate, extract the coordinates of another point in space given its distance and bearing
     to the reference coordinate. For reference, please see: https://www.movable-type.co.uk/scripts/latlong.html.
-    :param ref_lat: Latitude of the reference coordinate in degrees, ie: 42.3368.
-    :param ref_lon: Longitude of the reference coordinate in degrees, ie: 71.0578.
-    :param bearing: The clockwise angle in radians between target point, reference point and the axis pointing north.
-    :param dist: The distance in meters from the reference point to the target point.
-    :return: A tuple of lat and lon.
+
+    Parameters
+    ----------
+    ref_lat : float
+        Latitude of the reference coordinate in degrees, e.g., 42.3368.
+    ref_lon : float
+        Longitude of the reference coordinate in degrees, e.g., 71.0578.
+    bearing : float
+        The clockwise angle in radians between the target point, reference point, and the axis pointing north.
+    dist : float
+        The distance in meters from the reference point to the target point.
+
+    Returns
+    -------
+    tuple[float, float]
+        A tuple of latitude and longitude.
+
     """  # noqa: D205
     lat, lon = math.radians(ref_lat), math.radians(ref_lon)
     angular_distance = dist / EARTH_RADIUS_METERS
@@ -39,7 +52,7 @@ def get_coordinate(ref_lat: float, ref_lon: float, bearing: float, dist: float) 
     return math.degrees(target_lat), math.degrees(target_lon)
 
 
-def derive_latlon(location: str, pose: dict[str, float]) -> tuple[float, float]:
+def derive_latlon(location: str, pose: dict[str, Sequence[float]]) -> tuple[float, float]:
     """
     Extract lat/lon coordinate from pose.
 
@@ -47,9 +60,18 @@ def derive_latlon(location: str, pose: dict[str, float]) -> tuple[float, float]:
         1. The reference coordinate for each map is in the south-western corner.
         2. The origin of the global poses is also in the south-western corner (and identical to 1).
 
-    :param location: The name of the map the poses correspond to, ie: 'boston-seaport'.
-    :param pose: nuScenes egopose
-    :return: lat and lon coordinates in degrees.
+    Parameters
+    ----------
+    location : str
+        The name of the map the poses correspond to, i.e., `boston-seaport`.
+    pose : dict[str, Sequence[float]]
+        nuScenes egopose.
+
+    Returns
+    -------
+    tuple[float, float]
+    Latitude and longitude coordinates in degrees.
+
     """
     assert (
         location in REFERENCE_COORDINATES.keys()
