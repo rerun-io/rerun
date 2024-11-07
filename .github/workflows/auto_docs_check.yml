@@ -45,7 +45,9 @@ jobs:
           git checkout -b temp-cherry-pick
 
           # Try the cherry-pick and capture the exit code
-          if git cherry-pick --no-commit ${{ github.sha }}; then
+          from=$(git rev-parse main)
+          to=$(git rev-parse ${{ github.event.pull_request.head.ref }})
+          if git cherry-pick --no-commit $from..$to; then
             echo "Cherry-pick successful"
             exit 0
           else
