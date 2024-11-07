@@ -220,16 +220,16 @@ fn sample_statistics_ui(ui: &mut egui::Ui, sample_statistics: &SampleStatistics)
 fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_video::VideoData) {
     let time_range = frame_info.presentation_time_range();
     ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
-            "{} - {}",
-            re_format::format_timestamp_seconds(
-                (time_range.start - video_data.sample_statistics.minimum_presentation_timestamp)
-                    .into_secs(video_data.timescale)
-            ),
-            re_format::format_timestamp_seconds(
-                (time_range.end - video_data.sample_statistics.minimum_presentation_timestamp)
-                    .into_secs(video_data.timescale)
-            ),
-        )))
+        "{} - {}",
+        re_format::format_timestamp_seconds(time_range.start.into_secs_since_start(
+            video_data.timescale,
+            video_data.sample_statistics.minimum_presentation_timestamp
+        )),
+        re_format::format_timestamp_seconds(time_range.end.into_secs_since_start(
+            video_data.timescale,
+            video_data.sample_statistics.minimum_presentation_timestamp
+        )),
+    )))
     .on_hover_text("Time range in which this frame is valid.");
 
     fn value_fn_for_time(
@@ -239,8 +239,10 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
         move |ui, _| {
             ui.add(egui::Label::new(time.0.to_string()).truncate())
                 .on_hover_text(re_format::format_timestamp_seconds(
-                    (time - video_data.sample_statistics.minimum_presentation_timestamp)
-                        .into_secs(video_data.timescale),
+                    time.into_secs_since_start(
+                        video_data.timescale,
+                        video_data.sample_statistics.minimum_presentation_timestamp,
+                    ),
                 ));
         }
     }

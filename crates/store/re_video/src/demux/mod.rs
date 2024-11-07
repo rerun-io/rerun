@@ -138,7 +138,7 @@ impl VideoData {
     /// Length of the video.
     #[inline]
     pub fn duration(&self) -> std::time::Duration {
-        std::time::Duration::from_nanos(self.duration.into_nanos(self.timescale) as _)
+        self.duration.duration(self.timescale)
     }
 
     /// Natural width and height of the video
@@ -288,8 +288,10 @@ impl VideoData {
                 .map(|sample| sample.presentation_timestamp)
                 .sorted()
                 .map(|pts| {
-                    (pts - self.sample_statistics.minimum_presentation_timestamp)
-                        .into_nanos(self.timescale)
+                    pts.into_nanos_since_start(
+                        self.timescale,
+                        self.sample_statistics.minimum_presentation_timestamp,
+                    )
                 })
         })
     }

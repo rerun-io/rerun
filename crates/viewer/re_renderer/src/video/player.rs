@@ -127,10 +127,13 @@ impl VideoPlayer {
         if time_since_video_start_in_seconds < 0.0 {
             return Err(VideoPlayerError::NegativeTimestamp);
         }
-        let presentation_timestamp =
-            Time::from_secs(time_since_video_start_in_seconds, self.data.timescale)
-                + self.data.sample_statistics.minimum_presentation_timestamp;
-        let presentation_timestamp = presentation_timestamp.min(self.data.duration); // Don't seek past the end of the video.
+        let presentation_timestamp = Time::from_secs_since_start(
+            time_since_video_start_in_seconds,
+            self.data.timescale,
+            self.data.sample_statistics.minimum_presentation_timestamp,
+        );
+        let presentation_timestamp = presentation_timestamp
+            .min(self.data.duration + self.data.sample_statistics.minimum_presentation_timestamp); // Don't seek past the end of the video.
 
         let error_on_last_frame_at = self.last_error.is_some();
         let result = self.frame_at_internal(render_ctx, presentation_timestamp, video_data);
@@ -161,9 +164,7 @@ impl VideoPlayer {
                     false // it is an active frame
                 } else {
                     let how_outdated = presentation_timestamp - time_range.end;
-                    if how_outdated.into_secs(self.data.timescale)
-                        < DECODING_GRACE_DELAY.as_secs_f64()
-                    {
+                    if how_outdated.duration(self.data.timescale) < DECODING_GRACE_DELAY {
                         false // Just outdated by a little bit - show no spinner
                     } else {
                         true // Very old frame - show spinner
