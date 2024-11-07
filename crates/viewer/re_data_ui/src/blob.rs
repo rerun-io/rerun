@@ -103,6 +103,7 @@ pub fn blob_preview_and_save_ui(
     media_type: Option<&MediaType>,
     video_timestamp: Option<VideoTimestamp>,
 ) {
+    #[allow(unused_assignments)] // Not used when targeting web.
     let mut image = None;
     let mut video_result_for_frame_preview = None;
 
