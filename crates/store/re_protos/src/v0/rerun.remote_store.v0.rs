@@ -247,10 +247,9 @@ pub struct RegisterRecordingRequest {
     /// human readable description of the recording
     #[prost(string, tag = "1")]
     pub description: ::prost::alloc::string::String,
-    /// information about recording's backing storage
-    /// TODO(zehiko) add separate info about the "source" recording
+    /// recording storage url (e.g. s3://bucket/file or file:///path/to/file)
     #[prost(string, tag = "2")]
-    pub url: ::prost::alloc::string::String,
+    pub storage_url: ::prost::alloc::string::String,
     /// type of recording
     #[prost(enumeration = "RecordingType", tag = "3")]
     pub typ: i32,
@@ -284,9 +283,9 @@ pub struct RegistrationError {
     /// error code
     #[prost(enumeration = "ErrorCode", tag = "1")]
     pub code: i32,
-    /// url of the recording that failed to register
+    /// storage url of the recording that failed to register
     #[prost(string, tag = "2")]
-    pub url: ::prost::alloc::string::String,
+    pub storage_url: ::prost::alloc::string::String,
     /// human readable details about the error
     #[prost(string, tag = "3")]
     pub message: ::prost::alloc::string::String,
@@ -335,20 +334,7 @@ pub struct ListRecordingsRequest {}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListRecordingsResponse {
     #[prost(message, repeated, tag = "1")]
-    pub recordings: ::prost::alloc::vec::Vec<RecordingInfo>,
-}
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RecordingInfo {
-    #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<RecordingId>,
-    #[prost(string, tag = "2")]
-    pub description: ::prost::alloc::string::String,
-    #[prost(string, tag = "3")]
-    pub storage_url: ::prost::alloc::string::String,
-    #[prost(uint64, tag = "4")]
-    pub size_bytes: u64,
-    #[prost(enumeration = "RecordingType", tag = "5")]
-    pub typ: i32,
+    pub recordings: ::prost::alloc::vec::Vec<RecordingMetadata>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FetchRecordingRequest {

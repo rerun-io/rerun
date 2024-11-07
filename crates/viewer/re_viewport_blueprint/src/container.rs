@@ -191,7 +191,7 @@ impl ContainerBlueprint {
         }
 
         if let Some(chunk) = Chunk::builder(id.as_entity_path())
-            .with_archetype(RowId::new(), timepoint.clone(), &arch)
+            .with_archetype(RowId::new(), timepoint, &arch)
             .build()
             .warn_on_err_once("Failed to create container blueprint.")
         {

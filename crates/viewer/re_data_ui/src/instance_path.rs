@@ -34,27 +34,34 @@ impl DataUi for InstancePath {
             instance,
         } = self;
 
-        let Some(components) = ctx
-            .recording_engine()
-            .store()
-            .all_components_on_timeline(&query.timeline(), entity_path)
-        else {
-            if ctx.recording().is_known_entity(entity_path) {
-                // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
-                ui_layout.label(
-                    ui,
-                    format!(
-                        "No components logged on timeline {:?}",
-                        query.timeline().name()
-                    ),
-                );
-            } else {
-                ui_layout.label(
-                    ui,
-                    ui.ctx()
-                        .error_text(format!("Unknown entity: {entity_path:?}")),
-                );
-            }
+        let component = if ctx.recording().is_known_entity(entity_path) {
+            // We are looking at an entity in the recording
+            ctx.recording_engine()
+                .store()
+                .all_components_on_timeline(&query.timeline(), entity_path)
+        } else if ctx.blueprint_db().is_known_entity(entity_path) {
+            // We are looking at an entity in the blueprint
+            ctx.blueprint_db()
+                .storage_engine()
+                .store()
+                .all_components_on_timeline(&query.timeline(), entity_path)
+        } else {
+            ui_layout.label(
+                ui,
+                ui.ctx()
+                    .error_text(format!("Unknown entity: {entity_path:?}")),
+            );
+            return;
+        };
+        let Some(components) = component else {
+            // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
+            ui_layout.label(
+                ui,
+                format!(
+                    "No components logged on timeline {:?}",
+                    query.timeline().name()
+                ),
+            );
             return;
         };
 

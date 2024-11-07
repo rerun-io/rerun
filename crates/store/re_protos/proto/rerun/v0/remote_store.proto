@@ -17,9 +17,8 @@ service StorageNode {
 message RegisterRecordingRequest {
     // human readable description of the recording
     string description = 1;
-    // information about recording's backing storage
-    // TODO(zehiko) add separate info about the "source" recording
-    string url = 2;
+    // recording storage url (e.g. s3://bucket/file or file:///path/to/file)
+    string storage_url = 2;
     // type of recording
     RecordingType typ = 3;
     // (optional) any additional metadata that should be associated with the recording
@@ -46,8 +45,8 @@ message RegisterRecordingResponse {
 message RegistrationError {
     // error code
     ErrorCode code = 1;
-    // url of the recording that failed to register
-    string url = 2;
+    // storage url of the recording that failed to register
+    string storage_url = 2;
     // human readable details about the error
     string message = 3;
 }
@@ -97,15 +96,7 @@ enum EncoderVersion {
 message ListRecordingsRequest {}
 
 message ListRecordingsResponse {
-    repeated RecordingInfo recordings = 1;
-}
-
-message RecordingInfo {
-    RecordingId id = 1;
-    string description = 2;
-    string storage_url = 3;
-    uint64 size_bytes = 4;
-    RecordingType typ = 5;
+    repeated RecordingMetadata recordings = 1;
 }
 
 enum RecordingType {
