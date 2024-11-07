@@ -103,37 +103,37 @@ pub fn blob_preview_and_save_ui(
     media_type: Option<&MediaType>,
     video_timestamp: Option<VideoTimestamp>,
 ) {
-    // Try to treat it as an image:
-    let image = blob_row_id.and_then(|row_id| {
-        ctx.cache
-            .entry(|c: &mut re_viewer_context::ImageDecodeCache| c.entry(row_id, blob, media_type))
-            .ok()
-    });
+    let mut image = None;
+    let mut video_result_for_frame_preview = None;
 
-    let video_result_for_frame_preview = if let Some(image) = &image {
-        let colormap = None; // TODO(andreas): Rely on default here for now.
-        image_preview_ui(ctx, ui, ui_layout, query, entity_path, image, colormap);
-        None
+    if let Some(blob_row_id) = blob_row_id {
+        // Try to treat it as an image:
+        image = ctx
+            .cache
+            .entry(|c: &mut re_viewer_context::ImageDecodeCache| {
+                c.entry(blob_row_id, blob, media_type)
+            })
+            .ok();
+
+        if let Some(image) = &image {
+            let colormap = None; // TODO(andreas): Rely on default here for now.
+            image_preview_ui(ctx, ui, ui_layout, query, entity_path, image, colormap);
+        } else {
+            // Try to treat it as a video.
+            let video_result = ctx.cache.entry(|c: &mut re_viewer_context::VideoCache| {
+                let debug_name = entity_path.to_string();
+                c.entry(
+                    debug_name,
+                    blob_row_id,
+                    blob,
+                    media_type,
+                    ctx.app_options.video_decoder_hw_acceleration,
+                )
+            });
+            show_video_blob_info(ui, ui_layout, &video_result);
+            video_result_for_frame_preview = Some(video_result);
+        }
     }
-    // Try to treat it as a video if treating it as image didn't work:
-    else if let Some(blob_row_id) = blob_row_id {
-        let video_result = ctx.cache.entry(|c: &mut re_viewer_context::VideoCache| {
-            let debug_name = entity_path.to_string();
-            c.entry(
-                debug_name,
-                blob_row_id,
-                blob,
-                media_type,
-                ctx.app_options.video_decoder_hw_acceleration,
-            )
-        });
-
-        show_video_blob_info(ui, ui_layout, &video_result);
-
-        Some(video_result)
-    } else {
-        None
-    };
 
     if !ui_layout.is_single_line() && ui_layout != UiLayout::Tooltip {
         ui.horizontal(|ui| {
@@ -169,14 +169,21 @@ pub fn blob_preview_and_save_ui(
                 crate::image::copy_image_button_ui(ui, &image, data_range);
             }
         });
-    }
 
-    // Show a mini video player for video blobs:
-    if let Some(video_result) = &video_result_for_frame_preview {
-        if let Ok(video) = video_result.as_ref() {
-            ui.separator();
+        // Show a mini video player for video blobs:
+        if let Some(video_result) = &video_result_for_frame_preview {
+            if let Ok(video) = video_result.as_ref() {
+                ui.separator();
 
-            show_decoded_frame_info(ctx.render_ctx, ui, ui_layout, video, video_timestamp, blob);
+                show_decoded_frame_info(
+                    ctx.render_ctx,
+                    ui,
+                    ui_layout,
+                    video,
+                    video_timestamp,
+                    blob,
+                );
+            }
         }
     }
 }
