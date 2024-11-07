@@ -167,8 +167,7 @@ pub fn new_decoder(
 
     #[cfg(target_arch = "wasm32")]
     return Ok(Box::new(webcodecs::WebVideoDecoder::new(
-        video.config.clone(),
-        video.timescale,
+        video,
         hw_acceleration,
         on_output,
     )?));
