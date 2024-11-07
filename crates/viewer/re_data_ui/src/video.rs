@@ -92,7 +92,7 @@ pub fn show_video_blob_info(
                         }
                     });
                     ui.list_item_collapsible_noninteractive_label(
-                        "Extended timing info",
+                        "More video statistics",
                         false,
                         |ui| {
                             sample_statistics_ui(ui, &data.sample_statistics);
@@ -117,6 +117,9 @@ pub fn show_video_blob_info(
                         ui.id().with("video_player").value(),
                     );
 
+                    ui.separator();
+                    ui.add_space(4.0);
+
                     match video.frame_at(
                         render_ctx,
                         player_stream_id,
@@ -130,6 +133,18 @@ pub fn show_video_blob_info(
                             frame_info,
                             source_pixel_format,
                         }) => {
+                            re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
+                                let default_open = false;
+                                ui.list_item_collapsible_noninteractive_label(
+                                    "Current decoded frame",
+                                    default_open,
+                                    |ui| {
+                                        frame_info_ui(ui, &frame_info, video.data());
+                                        source_image_data_format_ui(ui, &source_pixel_format);
+                                    },
+                                );
+                            });
+
                             let response = crate::image::texture_preview_ui(
                                 render_ctx,
                                 ui,
@@ -150,8 +165,6 @@ pub fn show_video_blob_info(
                                 );
                                 egui::Spinner::new().paint_at(ui, smaller_rect);
                             }
-
-                            decoded_frame_ui(ui, &frame_info, video.data(), &source_pixel_format);
                         }
 
                         Err(err) => {
@@ -198,23 +211,8 @@ fn sample_statistics_ui(ui: &mut egui::Ui, sample_statistics: &SampleStatistics)
                                          Rerun will place the 0:00:00 time at this timestamp.");
     ui.list_item_flat_noninteractive(
             // `value_bool` doesn't look great for static values.
-            PropertyContent::new("PTS equivalent to DTS").value_text(sample_statistics.dts_always_equal_pts.to_string())
+            PropertyContent::new("All PTS equal DTS").value_text(sample_statistics.dts_always_equal_pts.to_string())
         ).on_hover_text("Whether all decode timestamps are equal to presentation timestamps. If true, the video typically has no B-frames.");
-}
-
-fn decoded_frame_ui(
-    ui: &mut egui::Ui,
-    frame_info: &FrameInfo,
-    video_data: &re_video::VideoData,
-    source_image_format: &SourceImageDataFormat,
-) {
-    re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
-        let default_open = false;
-        ui.list_item_collapsible_noninteractive_label("Decoded frame info", default_open, |ui| {
-            frame_info_ui(ui, frame_info, video_data);
-            source_image_data_format_ui(ui, source_image_format);
-        });
-    });
 }
 
 fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_video::VideoData) {

@@ -278,7 +278,7 @@ impl VideoData {
     ///
     /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
     /// These are *not* necessarily the same as the presentation timestamps, as the returned timestamps are
-    /// normalized respect to the start of the video, see [`Self::minimum_presentation_timestamp`].
+    /// normalized respect to the start of the video, see [`SampleStatistics::minimum_presentation_timestamp`].
     pub fn frame_timestamps_ns(&self) -> impl Iterator<Item = i64> + '_ {
         re_tracing::profile_function!();
 

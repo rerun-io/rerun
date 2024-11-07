@@ -145,7 +145,7 @@ impl Video {
     ///
     /// The time is specified in seconds since the start of the video.
     /// This may not be equal to the presentation timestamp as it may have an offset applied,
-    /// see [`VideoData::minimum_presentation_timestamp`].
+    /// see [`re_video::SampleStatistics::minimum_presentation_timestamp`].
     pub fn frame_at(
         &self,
         render_context: &RenderContext,
