@@ -40,13 +40,13 @@ pub fn radius_to_world(world_to_ui: &TSTransform, radius: Radius) -> f32 {
     }
 }
 
-pub struct ViewBuilder {
+pub struct CanvasBuilder {
     show_debug: bool,
     world_bounds: Rect,
     bounding_rect: Rect,
 }
 
-impl ViewBuilder {
+impl CanvasBuilder {
     pub fn from_world_bounds(world_bounds: impl Into<Rect>) -> Self {
         Self {
             world_bounds: world_bounds.into(),
@@ -59,10 +59,10 @@ impl ViewBuilder {
         self.show_debug = true;
     }
 
-    /// Return the clip rect of the scene in window coordinates.
-    pub fn scene<F>(mut self, ui: &mut Ui, add_scene_contents: F) -> (Rect, Response)
+    /// Return the clip rect of the canvas in window coordinates.
+    pub fn canvas<F>(mut self, ui: &mut Ui, add_canvas_contents: F) -> (Rect, Response)
     where
-        F: for<'b> FnOnce(Scene<'b>),
+        F: for<'b> FnOnce(Canvas<'b>),
     {
         re_tracing::profile_function!();
 
@@ -101,7 +101,7 @@ impl ViewBuilder {
 
         let window_layer = ui.layer_id();
 
-        add_scene_contents(Scene {
+        add_canvas_contents(Canvas {
             ui,
             id,
             window_layer,
@@ -144,7 +144,7 @@ impl ViewBuilder {
     }
 }
 
-pub struct Scene<'a> {
+pub struct Canvas<'a> {
     ui: &'a mut Ui,
     id: Id,
     window_layer: LayerId,
@@ -154,7 +154,7 @@ pub struct Scene<'a> {
     bounding_rect: &'a mut Rect,
 }
 
-impl<'a> Scene<'a> {
+impl<'a> Canvas<'a> {
     fn radius_to_world(&self, radius: Radius) -> f32 {
         radius_to_world(&self.world_to_window, radius)
     }

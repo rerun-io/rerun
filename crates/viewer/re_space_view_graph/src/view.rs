@@ -20,7 +20,7 @@ use re_viewport_blueprint::ViewProperty;
 
 use crate::{
     graph::NodeIndex,
-    ui::{self, bounding_rect_from_iter, scene::ViewBuilder, GraphSpaceViewState},
+    ui::{self, bounding_rect_from_iter, canvas::CanvasBuilder, GraphSpaceViewState},
     visualizers::{EdgesVisualizer, NodeVisualizer},
 };
 
@@ -164,7 +164,7 @@ impl SpaceViewClass for GraphSpaceView {
         state.world_bounds = Some(bounds);
         let bounds_rect: egui::Rect = bounds.into();
 
-        let mut viewer = ViewBuilder::from_world_bounds(bounds_rect);
+        let mut viewer = CanvasBuilder::from_world_bounds(bounds_rect);
 
         // TODO(grtlr): Is there a blueprint archetype for debug information?
         if state.show_debug {
@@ -177,7 +177,7 @@ impl SpaceViewClass for GraphSpaceView {
         // get added and removed and cleans up automatically (guard pattern).
         let mut seen: HashSet<NodeIndex> = HashSet::new();
 
-        let (new_world_bounds, response) = viewer.scene(ui, |mut scene| {
+        let (new_world_bounds, response) = viewer.canvas(ui, |mut scene| {
             // We store the offset to draw entities next to each other.
             // This is a workaround and will probably be removed once we have auto-layout.
             let mut entity_offset = egui::Vec2::ZERO;

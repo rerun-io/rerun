@@ -4,7 +4,7 @@ use re_viewer_context::SpaceViewHighlights;
 mod draw;
 mod state;
 
-pub mod scene;
+pub mod canvas;
 
 pub use state::GraphSpaceViewState;
 
