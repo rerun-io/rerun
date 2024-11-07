@@ -8,12 +8,9 @@ use re_video::{decode::FrameInfo, demux::SampleStatistics};
 use re_viewer_context::UiLayout;
 
 pub fn show_video_blob_info(
-    render_ctx: Option<&re_renderer::RenderContext>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     video_result: &Result<re_renderer::video::Video, VideoLoadError>,
-    video_timestamp: Option<VideoTimestamp>,
-    blob: &re_types::datatypes::Blob,
 ) {
     #[allow(clippy::match_same_arms)]
     match video_result {
@@ -99,88 +96,6 @@ pub fn show_video_blob_info(
                         },
                     );
                 }
-
-                if let Some(render_ctx) = render_ctx {
-                    // Show a mini-player for the video:
-
-                    let timestamp_in_seconds = if let Some(video_timestamp) = video_timestamp {
-                        video_timestamp.as_seconds()
-                    } else {
-                        // TODO(emilk): Some time controls would be nice,
-                        // but the point here is not to have a nice viewer,
-                        // but to show the user what they have selected
-                        ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
-                        ui.input(|i| i.time) % video.data().duration().as_secs_f64()
-                    };
-
-                    let player_stream_id = re_renderer::video::VideoPlayerStreamId(
-                        ui.id().with("video_player").value(),
-                    );
-
-                    ui.separator();
-                    ui.add_space(4.0);
-
-                    match video.frame_at(
-                        render_ctx,
-                        player_stream_id,
-                        timestamp_in_seconds,
-                        blob.as_slice(),
-                    ) {
-                        Ok(VideoFrameTexture {
-                            texture,
-                            is_pending,
-                            show_spinner,
-                            frame_info,
-                            source_pixel_format,
-                        }) => {
-                            re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
-                                let default_open = false;
-                                ui.list_item_collapsible_noninteractive_label(
-                                    "Current decoded frame",
-                                    default_open,
-                                    |ui| {
-                                        frame_info_ui(ui, &frame_info, video.data());
-                                        source_image_data_format_ui(ui, &source_pixel_format);
-                                    },
-                                );
-                            });
-
-                            let response = crate::image::texture_preview_ui(
-                                render_ctx,
-                                ui,
-                                ui_layout,
-                                "video_preview",
-                                re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture),
-                            );
-
-                            if is_pending {
-                                ui.ctx().request_repaint(); // Keep polling for an up-to-date texture
-                            }
-
-                            if show_spinner {
-                                // Shrink slightly:
-                                let smaller_rect = egui::Rect::from_center_size(
-                                    response.rect.center(),
-                                    0.75 * response.rect.size(),
-                                );
-                                egui::Spinner::new().paint_at(ui, smaller_rect);
-                            }
-                        }
-
-                        Err(err) => {
-                            ui.error_label_long(&err.to_string());
-
-                            if let re_renderer::video::VideoPlayerError::Decoding(
-                                re_video::decode::Error::FfmpegNotInstalled {
-                                    download_url: Some(url),
-                                },
-                            ) = err
-                            {
-                                ui.markdown_ui(&format!("You can download a build of `FFmpeg` [here]({url}). For Rerun to be able to use it, its binaries need to be reachable from `PATH`."));
-                            }
-                        }
-                    }
-                }
             });
         }
         Err(VideoLoadError::MimeTypeIsNotAVideo { .. }) => {
@@ -198,6 +113,93 @@ pub fn show_video_blob_info(
                 ui.error_label(&format!("Failed to load video: {err}"));
             } else {
                 ui.error_label_long(&format!("Failed to load video: {err}"));
+            }
+        }
+    }
+}
+
+pub fn show_decoded_frame_info(
+    render_ctx: Option<&re_renderer::RenderContext>,
+    ui: &mut egui::Ui,
+    ui_layout: UiLayout,
+    video: &re_renderer::video::Video,
+    video_timestamp: Option<VideoTimestamp>,
+    blob: &re_types::datatypes::Blob,
+) {
+    let Some(render_ctx) = render_ctx else {
+        return;
+    };
+
+    let timestamp_in_seconds = if let Some(video_timestamp) = video_timestamp {
+        video_timestamp.as_seconds()
+    } else {
+        // TODO(emilk): Some time controls would be nice,
+        // but the point here is not to have a nice viewer,
+        // but to show the user what they have selected
+        ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
+        ui.input(|i| i.time) % video.data().duration().as_secs_f64()
+    };
+
+    let player_stream_id =
+        re_renderer::video::VideoPlayerStreamId(ui.id().with("video_player").value());
+
+    match video.frame_at(
+        render_ctx,
+        player_stream_id,
+        timestamp_in_seconds,
+        blob.as_slice(),
+    ) {
+        Ok(VideoFrameTexture {
+            texture,
+            is_pending,
+            show_spinner,
+            frame_info,
+            source_pixel_format,
+        }) => {
+            re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
+                let default_open = false;
+                ui.list_item_collapsible_noninteractive_label(
+                    "Current decoded frame",
+                    default_open,
+                    |ui| {
+                        frame_info_ui(ui, &frame_info, video.data());
+                        source_image_data_format_ui(ui, &source_pixel_format);
+                    },
+                );
+            });
+
+            let response = crate::image::texture_preview_ui(
+                render_ctx,
+                ui,
+                ui_layout,
+                "video_preview",
+                re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture),
+            );
+
+            if is_pending {
+                ui.ctx().request_repaint(); // Keep polling for an up-to-date texture
+            }
+
+            if show_spinner {
+                // Shrink slightly:
+                let smaller_rect = egui::Rect::from_center_size(
+                    response.rect.center(),
+                    0.75 * response.rect.size(),
+                );
+                egui::Spinner::new().paint_at(ui, smaller_rect);
+            }
+        }
+
+        Err(err) => {
+            ui.error_label_long(&err.to_string());
+
+            if let re_renderer::video::VideoPlayerError::Decoding(
+                re_video::decode::Error::FfmpegNotInstalled {
+                    download_url: Some(url),
+                },
+            ) = err
+            {
+                ui.markdown_ui(&format!("You can download a build of `FFmpeg` [here]({url}). For Rerun to be able to use it, its binaries need to be reachable from `PATH`."));
             }
         }
     }

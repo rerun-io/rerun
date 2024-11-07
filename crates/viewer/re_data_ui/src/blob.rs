@@ -2,7 +2,11 @@ use re_types::components::{Blob, MediaType, VideoTimestamp};
 use re_ui::{list_item::PropertyContent, UiExt};
 use re_viewer_context::UiLayout;
 
-use crate::{image::image_preview_ui, video::show_video_blob_info, EntityDataUi};
+use crate::{
+    image::image_preview_ui,
+    video::{show_decoded_frame_info, show_video_blob_info},
+    EntityDataUi,
+};
 
 impl EntityDataUi for Blob {
     fn entity_data_ui(
@@ -105,9 +109,11 @@ pub fn blob_preview_and_save_ui(
             .entry(|c: &mut re_viewer_context::ImageDecodeCache| c.entry(row_id, blob, media_type))
             .ok()
     });
-    if let Some(image) = &image {
+
+    let video_result_for_frame_preview = if let Some(image) = &image {
         let colormap = None; // TODO(andreas): Rely on default here for now.
         image_preview_ui(ctx, ui, ui_layout, query, entity_path, image, colormap);
+        None
     }
     // Try to treat it as a video if treating it as image didn't work:
     else if let Some(blob_row_id) = blob_row_id {
@@ -122,15 +128,12 @@ pub fn blob_preview_and_save_ui(
             )
         });
 
-        show_video_blob_info(
-            ctx.render_ctx,
-            ui,
-            ui_layout,
-            &video_result,
-            video_timestamp,
-            blob,
-        );
-    }
+        show_video_blob_info(ui, ui_layout, &video_result);
+
+        Some(video_result)
+    } else {
+        None
+    };
 
     if !ui_layout.is_single_line() && ui_layout != UiLayout::Tooltip {
         ui.horizontal(|ui| {
@@ -166,5 +169,14 @@ pub fn blob_preview_and_save_ui(
                 crate::image::copy_image_button_ui(ui, &image, data_range);
             }
         });
+    }
+
+    // Show a mini video player for video blobs:
+    if let Some(video_result) = &video_result_for_frame_preview {
+        if let Ok(video) = video_result.as_ref() {
+            ui.separator();
+
+            show_decoded_frame_info(ctx.render_ctx, ui, ui_layout, video, video_timestamp, blob);
+        }
     }
 }
