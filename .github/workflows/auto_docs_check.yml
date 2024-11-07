@@ -41,11 +41,11 @@ jobs:
           git config --global user.email "bot@rerun.io"
 
           # Create a temporary branch from docs-latest
+          git checkout main
           git checkout docs-latest
           git checkout -b temp-cherry-pick
 
           # Try the cherry-pick and capture the exit code
-          git fetch origin main
           from=$(git rev-parse main)
           to=$(git rev-parse ${{ github.event.pull_request.head.ref }})
           if git cherry-pick --no-commit $from..$to; then
