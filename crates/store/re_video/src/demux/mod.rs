@@ -280,8 +280,6 @@ impl VideoData {
     /// These are *not* necessarily the same as the presentation timestamps, as the returned timestamps are
     /// normalized respect to the start of the video, see [`SampleStatistics::minimum_presentation_timestamp`].
     pub fn frame_timestamps_ns(&self) -> impl Iterator<Item = i64> + '_ {
-        re_tracing::profile_function!();
-
         // Segments are guaranteed to be sorted among each other, but within a segment,
         // presentation timestamps may not be sorted since this is sorted by decode timestamps.
         self.gops.iter().flat_map(|seg| {
