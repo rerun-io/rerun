@@ -27,8 +27,8 @@ use re_log_types::{
 use re_types::blueprint::components::PanelState;
 use re_ui::{list_item, ContextExt as _, DesignTokens, UiExt as _};
 use re_viewer_context::{
-    CollapseScope, HoverHighlight, Item, PlayState, RecordingConfig, TimeControl, TimeView,
-    UiLayout, ViewerContext,
+    CollapseScope, HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, UiLayout,
+    ViewerContext,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -947,18 +947,6 @@ impl TimePanel {
             self.time_control_ui.playback_speed_ui(time_ctrl, ui);
             self.time_control_ui.fps_ui(time_ctrl, ui);
             current_time_ui(ctx, ui, time_ctrl);
-
-            ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                help_button(ui);
-
-                if self.source == TimePanelSource::Blueprint
-                    && ctx.app_options.inspect_blueprint_timeline
-                    && time_ctrl.play_state() != PlayState::Following
-                {
-                    ui.label(ui.ctx().warning_text("Blueprint editing is disabled"))
-                        .on_hover_text("Enable follow-mode to allow editing");
-                }
-            });
         }
     }
 }

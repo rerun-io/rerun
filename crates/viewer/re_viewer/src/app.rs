@@ -514,14 +514,34 @@ impl App {
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
-                if self.state.blueprint_editing_enabled() {
-                    let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
-                    for chunk in updates {
-                        match blueprint_db.add_chunk(&Arc::new(chunk)) {
-                            Ok(_store_events) => {}
-                            Err(err) => {
-                                re_log::warn_once!("Failed to store blueprint delta: {err}");
-                            }
+                let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
+
+                if self.state.app_options.inspect_blueprint_timeline {
+                    // We may we viewing a historical blueprint, and doing an edit based on that.
+                    // We therefor throw away everything after the currently viewed time (like an undo)
+                    let last_kept_event_time = self.state.blueprint_query_for_viewer().at();
+                    let first_dropped_event_time = last_kept_event_time.inc();
+                    blueprint_db.drop_time_range(
+                        &re_viewer_context::blueprint_timeline(),
+                        re_log_types::ResolvedTimeRange::new(
+                            first_dropped_event_time,
+                            re_chunk::TimeInt::MAX,
+                        ),
+                    );
+
+                    let times_per_timeline = blueprint_db.times_per_timeline();
+                    self.state
+                        .blueprint_cfg
+                        .time_ctrl
+                        .write()
+                        .set_play_state(times_per_timeline, PlayState::Following);
+                }
+
+                for chunk in updates {
+                    match blueprint_db.add_chunk(&Arc::new(chunk)) {
+                        Ok(_store_events) => {}
+                        Err(err) => {
+                            re_log::warn_once!("Failed to store blueprint delta: {err}");
                         }
                     }
                 }
