@@ -5,6 +5,7 @@ mod range1d;
 mod singleline_string;
 mod vec;
 mod view_id;
+mod view_uuid;
 
 pub use bool_toggle::edit_bool;
 pub use enum_combobox::{
@@ -21,3 +22,4 @@ pub use singleline_string::{
 };
 pub use vec::edit_or_view_vec3d;
 pub use view_id::view_view_id;
+pub use view_uuid::view_uuid;
