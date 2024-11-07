@@ -37,6 +37,7 @@ def set_default_size(*, width: int | None, height: int | None) -> None:
     if height is not None:
         _default_height = height
 
+_version_mismatch_checked = False
 
 class Viewer:
     """
@@ -80,6 +81,19 @@ class Viewer:
         """
 
         try:
+            global _version_mismatch_checked
+            if not _version_mismatch_checked:
+                import warnings
+                import importlib.metadata
+                rerun_notebook_version = importlib.metadata.version("rerun-notebook")
+                rerun_version = importlib.metadata.version("rerun-sdk")
+                if rerun_version != rerun_notebook_version:
+                    warnings.warn(
+                        f"rerun-notebook version mismatch: rerun-sdk {rerun_version}, rerun-notebook {rerun_notebook_version}",
+                        category=ImportWarning,
+                    )
+                _version_mismatch_checked = True
+
             from rerun_notebook import Viewer as _Viewer  # type: ignore[attr-defined]
         except ImportError:
             logging.error("Could not import rerun_notebook. Please install `rerun-notebook`.")
