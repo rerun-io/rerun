@@ -80,7 +80,7 @@ pub struct SampleStatistics {
     /// Note that timestamps in the [`Sample`]s are *not* automatically adjusted with this value.
     // This is roughly equivalent to FFmpeg's internal `min_corrected_pts`
     // https://github.com/FFmpeg/FFmpeg/blob/4047b887fc44b110bccb1da09bcb79d6e454b88b/libavformat/isom.h#L202
-    // (unlike us, this handles a bunch more edge cases but it fullfills the same role)
+    // (unlike us, this handles a bunch more edge cases but it fulfills the same role)
     // To learn more about this I recommend reading the patch that introduced this in FFmpeg:
     // https://patchwork.ffmpeg.org/project/ffmpeg/patch/20170606181601.25187-1-isasi@google.com/#12592
     pub minimum_presentation_timestamp: Time,
