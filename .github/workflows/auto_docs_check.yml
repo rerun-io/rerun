@@ -40,6 +40,8 @@ jobs:
           git config --global user.name "rerun-bot"
           git config --global user.email "bot@rerun.io"
 
+          git log --oneline -n 10
+
           git checkout docs-latest
 
           # Try the cherry-pick and capture the exit code
