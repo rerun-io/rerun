@@ -283,7 +283,7 @@ impl VideoData {
         // Segments are guaranteed to be sorted among each other, but within a segment,
         // presentation timestamps may not be sorted since this is sorted by decode timestamps.
         self.gops.iter().flat_map(|seg| {
-            self.samples[seg.range()]
+            self.samples[seg.decode_time_range()]
                 .iter()
                 .map(|sample| sample.presentation_timestamp)
                 .sorted()
@@ -295,6 +295,56 @@ impl VideoData {
                 })
         })
     }
+
+    /// For a given decode (!) timestamp, returns the index of the latest sample whose
+    /// decode timestamp is lesser than or equal to the given timestamp.
+    pub fn latest_sample_index_at_decode_timestamp(&self, decode_time: Time) -> Option<usize> {
+        latest_at_idx(
+            &self.samples,
+            |sample| sample.decode_timestamp,
+            &decode_time,
+        )
+    }
+
+    /// For a given presentation timestamp, return the index of the latest sample
+    /// whose presentation timestamp is lesser than or equal to the given timestamp.
+    pub fn latest_sample_index_at_presentation_timestamp(
+        &self,
+        presentation_timestamp: Time,
+    ) -> Option<usize> {
+        // Find the latest sample where `decode_timestamp <= presentation_timestamp`.
+        // Because `decode <= presentation`, we never have to look further backwards in the
+        // video than this.
+        let decode_sample_idx =
+            self.latest_sample_index_at_decode_timestamp(presentation_timestamp)?;
+
+        // Search backwards, starting at `decode_sample_idx`, looking for
+        // the first sample where `sample.presentation_timestamp <= presentation_timestamp`.
+        // this is the sample which when decoded will be presented at the timestamp the user requested.
+        self.samples[..=decode_sample_idx]
+            .iter()
+            .rposition(|sample| sample.presentation_timestamp <= presentation_timestamp)
+    }
+
+    /// For a given decode (!) timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
+    pub fn gop_index_containing_decode_timestamp(&self, decode_time: Time) -> Option<usize> {
+        latest_at_idx(&self.gops, |gop| gop.decode_start_time, &decode_time)
+    }
+
+    /// For a given presentation timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
+    pub fn gop_index_containing_presentation_timestamp(
+        &self,
+        presentation_timestamp: Time,
+    ) -> Option<usize> {
+        let requested_sample_index =
+            self.latest_sample_index_at_presentation_timestamp(presentation_timestamp)?;
+
+        // Do a binary search through GOPs by the decode timestamp of the found sample
+        // to find the GOP that contains the sample.
+        self.gop_index_containing_decode_timestamp(
+            self.samples[requested_sample_index].decode_timestamp,
+        )
+    }
 }
 
 /// A Group of Pictures (GOP) always starts with an I-frame, followed by delta-frames.
@@ -303,7 +353,7 @@ impl VideoData {
 #[derive(Debug, Clone)]
 pub struct GroupOfPictures {
     /// Decode timestamp of the first sample in this GOP, in time units.
-    pub start: Time,
+    pub decode_start_time: Time,
 
     /// Range of samples contained in this GOP.
     pub sample_range: Range<u32>,
@@ -311,7 +361,7 @@ pub struct GroupOfPictures {
 
 impl GroupOfPictures {
     /// The GOP's `sample_range` mapped to `usize` for slicing.
-    pub fn range(&self) -> Range<usize> {
+    pub fn decode_time_range(&self) -> Range<usize> {
         Range {
             start: self.sample_range.start as usize,
             end: self.sample_range.end as usize,
@@ -458,5 +508,49 @@ impl std::fmt::Debug for VideoData {
                 &self.samples.iter().enumerate().collect::<Vec<_>>(),
             )
             .finish()
+    }
+}
+
+/// Returns the index of:
+/// - The index of `needle` in `v`, if it exists
+/// - The index of the first element in `v` that is lesser than `needle`, if it exists
+/// - `None`, if `v` is empty OR `needle` is greater than all elements in `v`
+pub fn latest_at_idx<T, K: Ord>(v: &[T], key: impl Fn(&T) -> K, needle: &K) -> Option<usize> {
+    if v.is_empty() {
+        return None;
+    }
+
+    let idx = v.partition_point(|x| key(x) <= *needle);
+
+    if idx == 0 {
+        // If idx is 0, then all elements are greater than the needle
+        if &key(&v[0]) > needle {
+            return None;
+        }
+    }
+
+    Some(idx.saturating_sub(1))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_latest_at_idx() {
+        let v = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        assert_eq!(latest_at_idx(&v, |v| *v, &0), None);
+        assert_eq!(latest_at_idx(&v, |v| *v, &1), Some(0));
+        assert_eq!(latest_at_idx(&v, |v| *v, &2), Some(1));
+        assert_eq!(latest_at_idx(&v, |v| *v, &3), Some(2));
+        assert_eq!(latest_at_idx(&v, |v| *v, &4), Some(3));
+        assert_eq!(latest_at_idx(&v, |v| *v, &5), Some(4));
+        assert_eq!(latest_at_idx(&v, |v| *v, &6), Some(5));
+        assert_eq!(latest_at_idx(&v, |v| *v, &7), Some(6));
+        assert_eq!(latest_at_idx(&v, |v| *v, &8), Some(7));
+        assert_eq!(latest_at_idx(&v, |v| *v, &9), Some(8));
+        assert_eq!(latest_at_idx(&v, |v| *v, &10), Some(9));
+        assert_eq!(latest_at_idx(&v, |v| *v, &11), Some(9));
+        assert_eq!(latest_at_idx(&v, |v| *v, &1000), Some(9));
     }
 }

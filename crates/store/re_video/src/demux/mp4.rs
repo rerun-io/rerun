@@ -50,7 +50,7 @@ impl VideoData {
                     let start = samples[gop_sample_start_index].decode_timestamp;
                     let sample_range = gop_sample_start_index as u32..samples.len() as u32;
                     gops.push(GroupOfPictures {
-                        start,
+                        decode_start_time: start,
                         sample_range,
                     });
                     gop_sample_start_index = samples.len();
@@ -78,7 +78,7 @@ impl VideoData {
             let start = samples[gop_sample_start_index].decode_timestamp;
             let sample_range = gop_sample_start_index as u32..samples.len() as u32;
             gops.push(GroupOfPictures {
-                start,
+                decode_start_time: start,
                 sample_range,
             });
         }
