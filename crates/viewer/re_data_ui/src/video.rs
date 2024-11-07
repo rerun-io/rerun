@@ -4,7 +4,7 @@ use re_renderer::{
 };
 use re_types::components::VideoTimestamp;
 use re_ui::{list_item::PropertyContent, UiExt};
-use re_video::decode::FrameInfo;
+use re_video::{decode::FrameInfo, demux::SampleStatistics};
 use re_viewer_context::UiLayout;
 
 pub fn show_video_blob_info(
@@ -65,11 +65,11 @@ pub fn show_video_blob_info(
                         .value_text(format!("{}", re_log_types::Duration::from(data.duration()))),
                 );
                 // Some people may think that num_frames / duration = fps, but that's not true, videos may have variable frame rate.
-                // At the same time, we don't want to overload users with video codec/container specific stuff that they have to understand,
-                // and for all intents and purposes one sample = one frame.
-                // So the compromise is that we truthfully show the number of *samples* here and don't talk about frames.
+                // Video containers and codecs like talking about samples or chunks rather than frames, but for how we define a chunk today,
+                // a frame is always a single chunk of data is always a single sample, see [`re_video::decode::Chunk`].
+                // So for all practical purposes the sample count _is_ the number of frames, at least how we use it today.
                 ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Sample count")
+                    PropertyContent::new("Frame count")
                         .value_text(re_format::format_uint(data.num_samples())),
                 );
                 ui.list_item_flat_noninteractive(
@@ -91,6 +91,13 @@ pub fn show_video_blob_info(
                             );
                         }
                     });
+                    ui.list_item_collapsible_noninteractive_label(
+                        "Extended timing info",
+                        false,
+                        |ui| {
+                            sample_statistics_ui(ui, &data.sample_statistics);
+                        },
+                    );
                 }
 
                 if let Some(render_ctx) = render_ctx {
@@ -144,12 +151,7 @@ pub fn show_video_blob_info(
                                 egui::Spinner::new().paint_at(ui, smaller_rect);
                             }
 
-                            decoded_frame_ui(
-                                ui,
-                                &frame_info,
-                                video.data().timescale,
-                                &source_pixel_format,
-                            );
+                            decoded_frame_ui(ui, &frame_info, video.data(), &source_pixel_format);
                         }
 
                         Err(err) => {
@@ -188,52 +190,71 @@ pub fn show_video_blob_info(
     }
 }
 
+fn sample_statistics_ui(ui: &mut egui::Ui, sample_statistics: &SampleStatistics) {
+    ui.list_item_flat_noninteractive(
+            PropertyContent::new("Minimum PTS").value_text(sample_statistics.minimum_presentation_timestamp.0.to_string())
+        ).on_hover_text("The smallest presentation timestamp (PTS) observed in this video.\n\
+                                         A non-zero value indicates that there are B-frames in the video.\n\
+                                         Rerun will place the 0:00:00 time at this timestamp.");
+    ui.list_item_flat_noninteractive(
+            // `value_bool` doesn't look great for static values.
+            PropertyContent::new("PTS equivalent to DTS").value_text(sample_statistics.dts_always_equal_pts.to_string())
+        ).on_hover_text("Whether all decode timestamps are equal to presentation timestamps. If true, the video typically has no B-frames.");
+}
+
 fn decoded_frame_ui(
     ui: &mut egui::Ui,
     frame_info: &FrameInfo,
-    timescale: re_video::Timescale,
+    video_data: &re_video::VideoData,
     source_image_format: &SourceImageDataFormat,
 ) {
     re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
         let default_open = false;
         ui.list_item_collapsible_noninteractive_label("Decoded frame info", default_open, |ui| {
-            frame_info_ui(ui, frame_info, timescale);
+            frame_info_ui(ui, frame_info, video_data);
             source_image_data_format_ui(ui, source_image_format);
         });
     });
 }
 
-fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, timescale: re_video::Timescale) {
-    let time_range = frame_info.time_range();
+fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_video::VideoData) {
+    let time_range = frame_info.presentation_time_range();
     ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
-        "{} - {}",
-        re_format::format_timestamp_seconds(time_range.start.into_secs(timescale)),
-        re_format::format_timestamp_seconds(time_range.end.into_secs(timescale)),
-    )))
+            "{} - {}",
+            re_format::format_timestamp_seconds(
+                (time_range.start - video_data.sample_statistics.minimum_presentation_timestamp)
+                    .into_secs(video_data.timescale)
+            ),
+            re_format::format_timestamp_seconds(
+                (time_range.end - video_data.sample_statistics.minimum_presentation_timestamp)
+                    .into_secs(video_data.timescale)
+            ),
+        )))
     .on_hover_text("Time range in which this frame is valid.");
 
     fn value_fn_for_time(
         time: re_video::Time,
-        timescale: re_video::Timescale,
-    ) -> impl FnOnce(&mut egui::Ui, egui::style::WidgetVisuals) {
+        video_data: &re_video::VideoData,
+    ) -> impl FnOnce(&mut egui::Ui, egui::style::WidgetVisuals) + '_ {
         move |ui, _| {
             ui.add(egui::Label::new(time.0.to_string()).truncate())
                 .on_hover_text(re_format::format_timestamp_seconds(
-                    time.into_secs(timescale),
+                    (time - video_data.sample_statistics.minimum_presentation_timestamp)
+                        .into_secs(video_data.timescale),
                 ));
         }
     }
 
     if let Some(dts) = frame_info.latest_decode_timestamp {
         ui.list_item_flat_noninteractive(
-            PropertyContent::new("DTS").value_fn(value_fn_for_time(dts, timescale)),
+            PropertyContent::new("DTS").value_fn(value_fn_for_time(dts, video_data)),
         )
         .on_hover_text("Raw decode timestamp prior to applying the timescale.\n\
                         If a frame is made up of multiple chunks, this is the last decode timestamp that was needed to decode the frame.");
     }
 
     ui.list_item_flat_noninteractive(
-        PropertyContent::new("PTS").value_fn(value_fn_for_time(frame_info.presentation_timestamp, timescale)),
+        PropertyContent::new("PTS").value_fn(value_fn_for_time(frame_info.presentation_timestamp, video_data)),
     )
     .on_hover_text("Raw presentation timestamp prior to applying the timescale.\n\
                     This specifies the time at which the frame should be shown relative to the start of a video stream.");

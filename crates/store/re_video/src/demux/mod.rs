@@ -48,17 +48,6 @@ pub struct VideoData {
     /// Duration of the video, in time units.
     pub duration: Time,
 
-    /// The smallest presentation timestamp observed in this video.
-    ///
-    /// This is typically 0, but in the presence of B-frames, it may be non-zero.
-    /// In fact, many formats don't require this to be zero, but video players typically
-    /// normalize the shown time to start at zero.
-    /// Note that timestamps in the [`Sample`]s are *not* automatically adjusted with this value.
-    // This is roughly equivalent to FFmpeg's internal `min_corrected_pts` https://github.com/FFmpeg/FFmpeg/blob/4047b887fc44b110bccb1da09bcb79d6e454b88b/libavformat/isom.h#L202
-    // To learn more about this I recommend reading the patch that introduced this in FFmpeg:
-    // https://patchwork.ffmpeg.org/project/ffmpeg/patch/20170606181601.25187-1-isasi@google.com/#12592
-    pub minimum_presentation_timestamp: Time,
-
     /// We split video into GOPs, each beginning with a key frame,
     /// followed by any number of delta frames.
     pub gops: Vec<GroupOfPictures>,
@@ -71,10 +60,55 @@ pub struct VideoData {
     /// and should be presented in composition-timestamp order.
     pub samples: Vec<Sample>,
 
+    /// Meta information about the samples.
+    pub sample_statistics: SampleStatistics,
+
     /// All the tracks in the mp4; not just the video track.
     ///
     /// Can be nice to show in a UI.
     pub mp4_tracks: BTreeMap<TrackId, Option<TrackKind>>,
+}
+
+/// Meta informationa about the video samples.
+#[derive(Clone, Debug)]
+pub struct SampleStatistics {
+    /// The smallest presentation timestamp observed in this video.
+    ///
+    /// This is typically 0, but in the presence of B-frames, it may be non-zero.
+    /// In fact, many formats don't require this to be zero, but video players typically
+    /// normalize the shown time to start at zero.
+    /// Note that timestamps in the [`Sample`]s are *not* automatically adjusted with this value.
+    // This is roughly equivalent to FFmpeg's internal `min_corrected_pts`
+    // https://github.com/FFmpeg/FFmpeg/blob/4047b887fc44b110bccb1da09bcb79d6e454b88b/libavformat/isom.h#L202
+    // (unlike us, this handles a bunch more edge cases but it fullfills the same role)
+    // To learn more about this I recommend reading the patch that introduced this in FFmpeg:
+    // https://patchwork.ffmpeg.org/project/ffmpeg/patch/20170606181601.25187-1-isasi@google.com/#12592
+    pub minimum_presentation_timestamp: Time,
+
+    /// Whether all decode timestamps are equal to presentation timestamps.
+    ///
+    /// If true, the video typically has no B-frames as those require frame reordering.
+    pub dts_always_equal_pts: bool,
+}
+
+impl SampleStatistics {
+    pub fn new(samples: &[Sample]) -> Self {
+        re_tracing::profile_function!();
+
+        let minimum_presentation_timestamp = samples
+            .iter()
+            .map(|s| s.presentation_timestamp)
+            .min()
+            .unwrap_or_default();
+        let dts_always_equal_pts = samples
+            .iter()
+            .all(|s| s.decode_timestamp == s.presentation_timestamp);
+
+        Self {
+            minimum_presentation_timestamp,
+            dts_always_equal_pts,
+        }
+    }
 }
 
 impl VideoData {
@@ -255,7 +289,10 @@ impl VideoData {
                 .iter()
                 .map(|sample| sample.presentation_timestamp)
                 .sorted()
-                .map(|pts| (pts - self.minimum_presentation_timestamp).into_nanos(self.timescale))
+                .map(|pts| {
+                    (pts - self.sample_statistics.minimum_presentation_timestamp)
+                        .into_nanos(self.timescale)
+                })
         })
     }
 }
