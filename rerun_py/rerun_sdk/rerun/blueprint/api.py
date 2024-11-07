@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Iterable, Optional, Union
+from typing import Iterable, Optional, Union
 
 import rerun_bindings as bindings
 
@@ -90,28 +90,6 @@ class SpaceView:
         self.properties = properties
         self.defaults = defaults
         self.overrides = overrides
-
-    def __eq__(self, other: Any) -> bool:
-        """
-        Equality implementation, useful for tests.
-
-        This ignores the `id` field, which should always be unique.
-        """
-
-        if not isinstance(other, self.__class__):
-            return NotImplemented
-
-        # ignore the id field
-        return (
-            self.class_identifier == other.class_identifier
-            and self.name == other.name
-            and self.origin == other.origin
-            and self.contents == other.contents
-            and self.visible == other.visible
-            and self.properties == other.properties
-            and self.defaults == other.defaults
-            and self.overrides == other.overrides
-        )
 
     def blueprint_path(self) -> str:
         """
@@ -244,27 +222,6 @@ class Container:
         self.grid_columns = grid_columns
         self.active_tab = active_tab
         self.name = name
-
-    def __eq__(self, other: Any) -> bool:
-        """
-        Equality implementation, useful for tests.
-
-        This ignores the `id` field, which should always be unique.
-        """
-
-        if not isinstance(other, self.__class__):
-            return NotImplemented
-
-        # ignore the id field
-        return (
-            self.kind == other.kind
-            and self.column_shares == other.column_shares
-            and self.row_shares == other.row_shares
-            and self.grid_columns == other.grid_columns
-            and self.active_tab == other.active_tab
-            and self.name == other.name
-            and self.contents == other.contents
-        )
 
     def blueprint_path(self) -> str:
         """
