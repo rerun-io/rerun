@@ -518,6 +518,17 @@ impl AppState {
             LatestAtQuery::latest(blueprint_timeline())
         }
     }
+
+    pub fn blueprint_editing_enabled(&self) -> bool {
+        // If the "inspect blueprint timeline" mode allows the user to change the
+        // blueprint query time, which in turn updates the displayed state of the UI itself.
+        // This means any updates we receive while in this mode may be relative to a historical
+        // blueprint state and would conflict with the current true blueprint state.
+        // So we only allow edits if we're also in follow-mode, i.e. seeing the latest edits.
+        // An alternative would be to always allow edits, but throw away everything after the current time.
+        !self.app_options.inspect_blueprint_timeline
+            || self.blueprint_cfg.time_ctrl.read().play_state() == PlayState::Following
+    }
 }
 
 fn move_time(ctx: &ViewerContext<'_>, recording: &EntityDb, rx: &ReceiveSet<LogMsg>) {

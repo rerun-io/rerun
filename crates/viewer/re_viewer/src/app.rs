@@ -514,15 +514,7 @@ impl App {
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
-                // We only want to update the blueprint if the "inspect blueprint timeline" mode is
-                // disabled. This is because the blueprint inspector allows you to change the
-                // blueprint query time, which in turn updates the displayed state of the UI itself.
-                // This means any updates we receive while in this mode may be relative to a historical
-                // blueprint state and would conflict with the current true blueprint state.
-
-                // TODO(jleibs): When the blueprint is in "follow-mode" we should actually be able
-                // to apply updates here, but this needs more validation and testing to be safe.
-                if !self.state.app_options.inspect_blueprint_timeline {
+                if self.state.blueprint_editing_enabled() {
                     let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
                     for chunk in updates {
                         match blueprint_db.add_chunk(&Arc::new(chunk)) {

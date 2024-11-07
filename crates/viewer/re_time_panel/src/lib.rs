@@ -27,8 +27,8 @@ use re_log_types::{
 use re_types::blueprint::components::PanelState;
 use re_ui::{list_item, ContextExt as _, DesignTokens, UiExt as _};
 use re_viewer_context::{
-    CollapseScope, HoverHighlight, Item, RecordingConfig, TimeControl, TimeView, UiLayout,
-    ViewerContext,
+    CollapseScope, HoverHighlight, Item, PlayState, RecordingConfig, TimeControl, TimeView,
+    UiLayout, ViewerContext,
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -953,10 +953,10 @@ impl TimePanel {
 
                 if self.source == TimePanelSource::Blueprint
                     && ctx.app_options.inspect_blueprint_timeline
+                    && time_ctrl.play_state() != PlayState::Following
                 {
-                    // TODO(jleibs): Once we can edit blueprint while in follow mode, show
-                    // this conditionally.
-                    ui.label(ui.ctx().warning_text("Blueprint Editing is Disabled"));
+                    ui.label(ui.ctx().warning_text("Blueprint editing is disabled"))
+                        .on_hover_text("Enable follow-mode to allow editing");
                 }
             });
         }
