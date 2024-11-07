@@ -23,7 +23,7 @@ use re_chunk_store::{
     ComponentColumnDescriptor, ComponentColumnSelector, QueryExpression, SparseFillStrategy,
     TimeColumnDescriptor, TimeColumnSelector, VersionPolicy, ViewContentsSelector,
 };
-use re_dataframe::{QueryEngine, StorageEngine};
+use re_dataframe::{QueryCacheHandle, QueryEngine, StorageEngine};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeType};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 
@@ -568,6 +568,22 @@ impl PySchema {
 pub struct PyRecording {
     store: ChunkStoreHandle,
     cache: re_dataframe::QueryCacheHandle,
+}
+
+use once_cell::sync::{Lazy, OnceCell};
+use std::collections::HashMap;
+
+// TODO: just use a storageengine i guess
+fn all_stores() -> parking_lot::MutexGuard<'static, Vec<(ChunkStoreHandle, QueryCacheHandle)>> {
+    static ALL_STORES: OnceCell<parking_lot::Mutex<Vec<(ChunkStoreHandle, QueryCacheHandle)>>> =
+        OnceCell::new();
+    ALL_STORES.get_or_init(Default::default).lock()
+}
+
+impl std::ops::Drop for PyRecording {
+    fn drop(&mut self) {
+        all_stores().push((self.store.clone(), self.cache.clone()));
+    }
 }
 
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
@@ -1390,6 +1406,8 @@ impl PyRRDArchive {
                 let cache = re_dataframe::QueryCacheHandle::new(re_dataframe::QueryCache::new(
                     store.clone(),
                 ));
+                Box::leak(Box::new((store.clone(), cache.clone())));
+                all_stores().push((store.clone(), cache.clone()));
                 PyRecording {
                     store: store.clone(),
                     cache,
@@ -1425,6 +1443,7 @@ pub fn load_recording(path_to_rrd: std::path::PathBuf) -> PyResult<PyRecording> 
     }
 
     if let Some(recording) = archive.all_recordings().into_iter().next() {
+        all_stores().push((recording.store.clone(), recording.cache.clone()));
         Ok(recording)
     } else {
         Err(PyValueError::new_err(
@@ -1451,7 +1470,14 @@ pub fn load_archive(path_to_rrd: std::path::PathBuf) -> PyResult<PyRRDArchive> {
             .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
             .into_iter()
             .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
-            .collect();
+            .collect::<BTreeMap<_, _>>();
+
+    for store in stores.values() {
+        let cache =
+            re_dataframe::QueryCacheHandle::new(re_dataframe::QueryCache::new(store.clone()));
+        Box::leak(Box::new((store.clone(), cache.clone())));
+        all_stores().push((store.clone(), cache.clone()));
+    }
 
     let archive = PyRRDArchive { datasets: stores };
 
