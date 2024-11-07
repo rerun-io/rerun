@@ -15,8 +15,7 @@ use re_viewer_context::{
 #[derive(Debug, Default)]
 struct GeoLineStringsBatch {
     lines: Vec<Vec<walkers::Position>>,
-    //TODO(#7872): to be converted to scene vs. ui
-    radii: Vec<f32>,
+    radii: Vec<Radius>,
     colors: Vec<re_renderer::Color32>,
     instance_id: Vec<PickingLayerInstanceId>,
 }
@@ -93,7 +92,7 @@ impl VisualizerSystem for GeoLineStringsVisualizer {
                             .map(|pos| walkers::Position::from_lat_lon(pos.x(), pos.y()))
                             .collect(),
                     );
-                    batch_data.radii.push(radius.0.abs());
+                    batch_data.radii.push(*radius);
                     batch_data.colors.push(color.0.into());
                     batch_data
                         .instance_id
@@ -159,7 +158,15 @@ impl GeoLineStringsVisualizer {
                         let ui_position = projector.project(*pos);
                         glam::vec2(ui_position.x, ui_position.y)
                     }))
-                    .radius(re_renderer::Size(*radius))
+                    //TODO(#8013): we use the first vertex's latitude because `re_renderer` doesn't support per-vertex radii
+                    .radius(super::radius_to_size(
+                        *radius,
+                        projector,
+                        strip
+                            .first()
+                            .copied()
+                            .unwrap_or(walkers::Position::from_lat_lon(0.0, 0.0)),
+                    ))
                     .color(*color)
                     .picking_instance_id(*instance)
                     .outline_mask_ids(

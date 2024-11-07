@@ -21,6 +21,8 @@ table GeoPoints (
   // --- Recommended ---
 
   /// Optional radii for the points, effectively turning them into circles.
+  ///
+  /// *Note*: scene units radiii are interpreted as meters.
   radii: [rerun.components.Radius] ("attr.rerun.component_recommended", nullable, order: 2000);
 
   /// Optional colors for the points.

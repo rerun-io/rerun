@@ -53,6 +53,9 @@ pub struct GeoLineStrings {
     pub line_strings: Vec<crate::components::GeoLineString>,
 
     /// Optional radii for the line strings.
+    ///
+    /// *Note*: scene units radiii are interpreted as meters. Currently, the display scale only considers the latitude of
+    /// the first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).
     pub radii: Option<Vec<crate::components::Radius>>,
 
     /// Optional colors for the line strings.
@@ -237,6 +240,9 @@ impl GeoLineStrings {
     }
 
     /// Optional radii for the line strings.
+    ///
+    /// *Note*: scene units radiii are interpreted as meters. Currently, the display scale only considers the latitude of
+    /// the first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).
     #[inline]
     pub fn with_radii(
         mut self,
