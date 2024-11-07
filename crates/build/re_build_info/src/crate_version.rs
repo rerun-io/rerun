@@ -94,13 +94,13 @@ pub enum Meta {
 }
 
 impl Meta {
-    pub const fn to_byte(&self) -> u8 {
+    pub const fn to_byte(self) -> u8 {
         match self {
-            Self::Rc(value) => *value | meta::RC,
-            Self::Alpha(value) => *value | meta::ALPHA,
+            Self::Rc(value) => value | meta::RC,
+            Self::Alpha(value) => value | meta::ALPHA,
 
             // We ignore the commit hash, if any
-            Self::DevAlpha { alpha, .. } => *alpha | meta::DEV_ALPHA,
+            Self::DevAlpha { alpha, .. } => alpha | meta::DEV_ALPHA,
         }
     }
 
@@ -240,7 +240,7 @@ impl CrateVersion {
             self.major,
             self.minor,
             self.patch,
-            self.meta.as_ref().map(Meta::to_byte).unwrap_or_default(),
+            self.meta.map(Meta::to_byte).unwrap_or_default(),
         ]
     }
 
