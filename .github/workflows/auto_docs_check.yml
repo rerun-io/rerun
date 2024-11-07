@@ -42,11 +42,12 @@ jobs:
 
           git fetch origin main
           git checkout main
-          git merge origin/${{ github.event.pull_request.head.ref }}
+          git merge --squash origin/${{ github.event.pull_request.head.ref }}
+          git commit -m "${{ github.event.pull_request.head.title }} (#${{ github.event.pull_request.number }})"
           commit=$(git rev-parse HEAD)
           git checkout docs-latest
 
-          if git cherry-pick $commit -m1; then
+          if git cherry-pick $commit; then
             echo "Cherry-pick successful"
             exit 0
           else
