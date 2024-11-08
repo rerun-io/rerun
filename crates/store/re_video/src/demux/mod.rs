@@ -89,6 +89,11 @@ pub struct SamplesStatistics {
     ///
     /// If true, the video typically has no B-frames as those require frame reordering.
     pub dts_always_equal_pts: bool,
+
+    /// If `dts_always_equal_pts` is false, then this gives for each sample whether its PTS is the highest seen so far.
+    /// If `dts_always_equal_pts` is true, then this is left empty.
+    /// This is used for optimizing PTS search.
+    pub has_sample_highest_pts_so_far: Vec<bool>,
 }
 
 impl SamplesStatistics {
@@ -104,9 +109,23 @@ impl SamplesStatistics {
             .iter()
             .all(|s| s.decode_timestamp == s.presentation_timestamp);
 
+        let mut biggest_pts_so_far = Time::MIN;
+        let has_sample_highest_pts_so_far = samples
+            .iter()
+            .map(move |sample| {
+                if sample.presentation_timestamp > biggest_pts_so_far {
+                    biggest_pts_so_far = sample.presentation_timestamp;
+                    true
+                } else {
+                    false
+                }
+            })
+            .collect();
+
         Self {
             minimum_presentation_timestamp,
             dts_always_equal_pts,
+            has_sample_highest_pts_so_far,
         }
     }
 }
@@ -308,6 +327,7 @@ impl VideoData {
     /// See [`Self::latest_sample_index_at_presentation_timestamp`], split out for testing purposes.
     fn latest_sample_index_at_presentation_timestamp_internal(
         samples: &[Sample],
+        sample_statistics: &SamplesStatistics,
         presentation_timestamp: Time,
     ) -> Option<usize> {
         // Find the latest sample where `decode_timestamp <= presentation_timestamp`.
@@ -315,6 +335,11 @@ impl VideoData {
         // video than this.
         let decode_sample_idx =
             Self::latest_sample_index_at_decode_timestamp(samples, presentation_timestamp)?;
+
+        // It's very common that dts==pts in which case we're done!
+        if sample_statistics.dts_always_equal_pts {
+            return Some(decode_sample_idx);
+        }
 
         // Search backwards, starting at `decode_sample_idx`, looking for
         // the first sample where `sample.presentation_timestamp <= presentation_timestamp`.
@@ -340,19 +365,14 @@ impl VideoData {
                 best_index = sample_idx;
             }
 
-            // The next DTS is smaller (we're walking backwards) than the current DTS.
-            // Each DTS is smaller equal than its corresponding PTS.
-            // Therefore, the next PTS is bigger equal than the next DTS.
-            // Therefore, the next PTS is bigger than the current DTS.
-
-            // TODO: is there a way to have a lower bound on this search?
+            if best_pts != Time::MIN && sample_statistics.has_sample_highest_pts_so_far[sample_idx]
+            {
+                // We won't see any bigger PTS values anymore, meaning we're as close as we can get to the requested PTS!
+                return Some(best_index);
+            }
         }
 
-        if best_pts != Time::MIN {
-            Some(best_index)
-        } else {
-            None
-        }
+        None
     }
 
     /// For a given presentation timestamp, return the index of the first sample
@@ -366,6 +386,7 @@ impl VideoData {
     ) -> Option<usize> {
         Self::latest_sample_index_at_presentation_timestamp_internal(
             &self.samples,
+            &self.samples_statistics,
             presentation_timestamp,
         )
     }
@@ -632,35 +653,67 @@ mod tests {
             })
             .collect::<Vec<_>>();
 
+        let sample_statistics = SamplesStatistics::new(&samples);
+        assert_eq!(sample_statistics.minimum_presentation_timestamp, Time(512));
+        assert_eq!(sample_statistics.dts_always_equal_pts, false);
+
         // Test queries on the samples.
-        let query_pts = VideoData::latest_sample_index_at_presentation_timestamp_internal;
+        let query_pts = |pts| {
+            VideoData::latest_sample_index_at_presentation_timestamp_internal(
+                &samples,
+                &sample_statistics,
+                pts,
+            )
+        };
+
+        // Check that query for all exact positions works as expected using brute force search as the reference.
+        for (idx, sample) in samples.iter().enumerate() {
+            assert_eq!(Some(idx), query_pts(sample.presentation_timestamp));
+        }
+
+        // Check that for slightly offsetted positions the query is still correct.
+        // This works because for this dataset we know the minimum presentation timesetampe distance is always 256.
+        for (idx, sample) in samples.iter().enumerate() {
+            assert_eq!(
+                Some(idx),
+                query_pts(sample.presentation_timestamp + Time(1))
+            );
+            assert_eq!(
+                Some(idx),
+                query_pts(sample.presentation_timestamp + Time(255))
+            );
+        }
+
+        // A few hardcoded cases - both for illustrative purposes and to make sure the generic tests above are correct.
 
         // Querying before the first sample.
-        assert_eq!(None, query_pts(&samples, Time(0)));
-        assert_eq!(None, query_pts(&samples, Time(123)));
+        assert_eq!(None, query_pts(Time(0)));
+        assert_eq!(None, query_pts(Time(123)));
 
         // Querying for the first sample
-        assert_eq!(Some(0), query_pts(&samples, Time(512)));
-        assert_eq!(Some(0), query_pts(&samples, Time(513)));
-        assert_eq!(Some(0), query_pts(&samples, Time(600)));
-        assert_eq!(Some(0), query_pts(&samples, Time(767)));
+        assert_eq!(Some(0), query_pts(Time(512)));
+        assert_eq!(Some(0), query_pts(Time(513)));
+        assert_eq!(Some(0), query_pts(Time(600)));
+        assert_eq!(Some(0), query_pts(Time(767)));
 
         // The next sample is a jump in index!
-        assert_eq!(Some(3), query_pts(&samples, Time(768)));
-        assert_eq!(Some(3), query_pts(&samples, Time(769)));
-        assert_eq!(Some(3), query_pts(&samples, Time(800)));
-        assert_eq!(Some(3), query_pts(&samples, Time(1023)));
+        assert_eq!(Some(3), query_pts(Time(768)));
+        assert_eq!(Some(3), query_pts(Time(769)));
+        assert_eq!(Some(3), query_pts(Time(800)));
+        assert_eq!(Some(3), query_pts(Time(1023)));
 
         // And the one after that should jump back again.
-        assert_eq!(Some(2), query_pts(&samples, Time(1024)));
-        assert_eq!(Some(2), query_pts(&samples, Time(1025)));
-        assert_eq!(Some(2), query_pts(&samples, Time(1100)));
-        assert_eq!(Some(2), query_pts(&samples, Time(1279)));
+        assert_eq!(Some(2), query_pts(Time(1024)));
+        assert_eq!(Some(2), query_pts(Time(1025)));
+        assert_eq!(Some(2), query_pts(Time(1100)));
+        assert_eq!(Some(2), query_pts(Time(1279)));
 
         // And another one!
-        assert_eq!(Some(4), query_pts(&samples, Time(1280)));
-        assert_eq!(Some(4), query_pts(&samples, Time(1281)));
+        assert_eq!(Some(4), query_pts(Time(1280)));
+        assert_eq!(Some(4), query_pts(Time(1281)));
 
-        // Prod the reordering properties of the PTS, very visivble in the first few samples
+        // Test way outside of the range.
+        // (this is not the last element in the list since that one doesn't have the highest PTS)
+        assert_eq!(Some(48), query_pts(Time(123123123123123123)));
     }
 }
