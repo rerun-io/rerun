@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "OSM Data"
+title = "OSM data"
 tags = ["Map", "Blueprint"]
 thumbnail_dimensions = [480, 480]
 thumbnail = "https://static.rerun.io/osm_data/6d598e50c3d4c7c4a293fbc4bd34e0163563b602/480w.png"
@@ -7,7 +7,8 @@ channel = "release"
 -->
 
 
-Download [`OpenStreetMap`](https://www.openstreetmap.org) data via the [Overpass](https://overpass-api.de) API and display it on a [map view](https://www.rerun.io/docs/reference/types/view/map_view).
+Download [`OpenStreetMap`](https://www.openstreetmap.org) data via the [Overpass](https://overpass-api.de) API and [query language](https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL),
+and display it on a [map view](https://www.rerun.io/docs/reference/types/view/map_view?speculative-link).
 
 <picture>
   <img src="https://static.rerun.io/osm-data/926e89e0587b0d66a1cd620b3f5b77ac79eca272/full.png" alt="">

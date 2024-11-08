@@ -4,6 +4,7 @@ import hashlib
 import json
 from argparse import ArgumentParser
 from pathlib import Path
+from typing import Any
 from urllib.parse import urlencode
 
 import requests
@@ -16,7 +17,8 @@ if not CACHE_DIR.exists():
 
 OVERPASS_API_URL = "https://overpass-api.de/api/interpreter"
 
-# find some hotels in the area of Lausanne, Switzerland
+# Find some hotels in the area of Lausanne, Switzerland
+# This uses the Overpass API query language: https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL
 QUERY = """
 [out:json][timeout:90];
 (
@@ -27,13 +29,13 @@ out geom;
 """
 
 
-def execute_query(query: str) -> dict:
+def execute_query(query: str) -> dict[str, Any]:
     """Execute an Overpass query, caching its result locally."""
     query_hash = hashlib.sha256(query.encode()).hexdigest()
 
     cache_file = CACHE_DIR / f"{query_hash}.json"
     if cache_file.exists():
-        return json.loads(cache_file.read_text())
+        result = json.loads(cache_file.read_text())
     else:
         params = {"data": query}
         encoded_query = urlencode(params)
@@ -43,10 +45,14 @@ def execute_query(query: str) -> dict:
 
         cache_file.write_text(json.dumps(result))
 
-        return result
+    # very basic validation
+    if not isinstance(result, dict):
+        raise ValueError("Unexpected result from Overpass API")
+
+    return result
 
 
-def log_node(node: dict) -> None:
+def log_node(node: dict[str, Any]) -> None:
     node_id = node["id"]
     entity_path = f"nodes/{node_id}"
 
@@ -54,7 +60,7 @@ def log_node(node: dict) -> None:
     rr.log(entity_path, rr.AnyValues(**node.get("tags", {})))
 
 
-def log_way(way: dict) -> None:
+def log_way(way: dict[str, Any]) -> None:
     way_id = way["id"]
     entity_path = f"ways/{way_id}"
 
@@ -64,7 +70,7 @@ def log_way(way: dict) -> None:
     rr.log(entity_path, rr.AnyValues(**way.get("tags", {})))
 
 
-def log_data(data: dict) -> None:
+def log_data(data: dict[str, Any]) -> None:
     try:
         copyright_text = data["osm3s"]["copyright"]
         rr.log_components("copyright", [rr.components.Text(copyright_text)])

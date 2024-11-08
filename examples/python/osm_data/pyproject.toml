@@ -2,10 +2,7 @@
 name = "osm_data"
 version = "0.1.0"
 readme = "README.md"
-dependencies = [
-  "requests",
-  "rerun-sdk",
-]
+dependencies = ["requests", "rerun-sdk"]
 
 [project.scripts]
 osm_data = "osm_data:main"
