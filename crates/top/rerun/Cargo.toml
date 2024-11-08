@@ -88,8 +88,8 @@ native_viewer = ["dep:re_viewer"]
 #TODO(#7876): remove this feature when we have fewer dependencies
 map_view = ["re_viewer?/map_view"]
 
-## Enable the rrdp data source.
-rrdp = ["re_viewer/rrdp"]
+## Enable the gRPC Rerun Data Platform data source.
+grpc = ["re_viewer/grpc"]
 
 ## Add support for the [`run()`] function, which acts like a main-function for a CLI,
 ## acting the same as [the `rerun` binary](https://crates.io/crates/rerun-cli).

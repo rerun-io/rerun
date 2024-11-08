@@ -5536,10 +5536,10 @@ dependencies = [
  "rayon",
  "re_build_tools",
  "re_data_loader",
+ "re_grpc_client",
  "re_log",
  "re_log_encoding",
  "re_log_types",
- "re_rrdp_comms",
  "re_smart_channel",
  "re_tracing",
  "re_ws_comms",
@@ -5682,6 +5682,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_grpc_client"
+version = "0.20.0-alpha.1+dev"
+dependencies = [
+ "re_chunk",
+ "re_error",
+ "re_log",
+ "re_log_types",
+ "re_protos",
+ "re_smart_channel",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tonic-web-wasm-client",
+ "wasm-bindgen-futures",
+]
+
+[[package]]
 name = "re_int_histogram"
 version = "0.20.0-alpha.1+dev"
 dependencies = [
@@ -5816,6 +5834,28 @@ dependencies = [
 ]
 
 [[package]]
+name = "re_protos"
+version = "0.20.0-alpha.1+dev"
+dependencies = [
+ "prost",
+ "re_arrow2",
+ "re_dataframe",
+ "re_log_types",
+ "thiserror",
+ "tonic",
+ "tonic-web-wasm-client",
+]
+
+[[package]]
+name = "re_protos_builder"
+version = "0.20.0-alpha.1+dev"
+dependencies = [
+ "camino",
+ "re_log",
+ "tonic-build",
+]
+
+[[package]]
 name = "re_query"
 version = "0.20.0-alpha.1+dev"
 dependencies = [
@@ -5867,28 +5907,6 @@ dependencies = [
  "strum",
  "to_method",
  "zerocopy",
-]
-
-[[package]]
-name = "re_remote_store_types"
-version = "0.20.0-alpha.1+dev"
-dependencies = [
- "prost",
- "re_arrow2",
- "re_dataframe",
- "re_log_types",
- "thiserror",
- "tonic",
- "tonic-web-wasm-client",
-]
-
-[[package]]
-name = "re_remote_store_types_builder"
-version = "0.20.0-alpha.1+dev"
-dependencies = [
- "camino",
- "re_log",
- "tonic-build",
 ]
 
 [[package]]
@@ -5966,24 +5984,6 @@ dependencies = [
  "wgpu",
  "winit",
  "zip",
-]
-
-[[package]]
-name = "re_rrdp_comms"
-version = "0.20.0-alpha.1+dev"
-dependencies = [
- "re_chunk",
- "re_error",
- "re_log",
- "re_log_types",
- "re_remote_store_types",
- "re_smart_channel",
- "thiserror",
- "tokio",
- "tokio-stream",
- "tonic",
- "tonic-web-wasm-client",
- "wasm-bindgen-futures",
 ]
 
 [[package]]
@@ -6529,13 +6529,13 @@ dependencies = [
  "re_entity_db",
  "re_error",
  "re_format",
+ "re_grpc_client",
  "re_log",
  "re_log_encoding",
  "re_log_types",
  "re_memory",
  "re_query",
  "re_renderer",
- "re_rrdp_comms",
  "re_sdk_comms",
  "re_selection_panel",
  "re_smart_channel",
@@ -6992,7 +6992,7 @@ dependencies = [
  "re_log",
  "re_log_types",
  "re_memory",
- "re_remote_store_types",
+ "re_protos",
  "re_sdk",
  "re_video",
  "re_web_viewer_server",

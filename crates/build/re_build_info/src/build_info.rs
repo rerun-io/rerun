@@ -142,7 +142,10 @@ impl CrateVersion {
     /// <name> <semver> [<rust_info>] <target> <branch> <commit> <build_date>
     /// ```
     pub fn try_parse_from_build_info_string(s: impl AsRef<str>) -> Result<Self, String> {
-        let s = s.as_ref();
+        // `CrateVersion::try_parse` is `const` (for good reasons), and needs a `&'static str`.
+        // In order to accomplish this, we need to leak the string here.
+        let s = Box::leak(s.as_ref().to_owned().into_boxed_str());
+
         let parts = s.split_whitespace().collect::<Vec<_>>();
         if parts.len() < 2 {
             return Err(format!("{s:?} is not a valid BuildInfo string"));
@@ -160,7 +163,10 @@ fn crate_version_from_build_info_string() {
             major: 0,
             minor: 10,
             patch: 0,
-            meta: Some(crate::crate_version::Meta::DevAlpha(7)),
+            meta: Some(crate::crate_version::Meta::DevAlpha {
+                alpha: 7,
+                commit: None,
+            }),
         },
         rustc_version: "1.76.0 (d5c2e9c34 2023-09-13)",
         llvm_version: "16.0.5",
@@ -175,8 +181,12 @@ fn crate_version_from_build_info_string() {
 
     {
         let expected_crate_version = build_info.version;
-        let crate_version = CrateVersion::try_parse_from_build_info_string(build_info_str);
+        let crate_version = CrateVersion::try_parse_from_build_info_string(&build_info_str);
 
-        assert_eq!(Ok(expected_crate_version), crate_version);
+        assert_eq!(
+            crate_version,
+            Ok(expected_crate_version),
+            "Failed to parse {build_info_str:?}"
+        );
     }
 }

@@ -3,7 +3,7 @@ use arrow::{array::ArrayData, pyarrow::PyArrowType};
 // False positive due to #[pyfunction] macro
 use pyo3::{exceptions::PyRuntimeError, prelude::*, types::PyDict, Bound, PyResult};
 use re_chunk::TransportChunk;
-use re_remote_store_types::v0::{
+use re_protos::v0::{
     storage_node_client::StorageNodeClient, EncoderVersion, ListRecordingsRequest,
     RecordingMetadata, RecordingType, RegisterRecordingRequest,
 };
@@ -52,7 +52,7 @@ pub struct PyConnection {
 #[pymethods]
 impl PyConnection {
     /// List all recordings registered with the node.
-    fn list_recordings(&mut self) -> PyResult<Vec<PyRecordingInfo>> {
+    fn list_recordings(&mut self) -> PyResult<Vec<PyRecordingMetadata>> {
         self.runtime.block_on(async {
             let request = ListRecordingsRequest {};
 
@@ -66,7 +66,7 @@ impl PyConnection {
                 .into_inner()
                 .recordings
                 .into_iter()
-                .map(|recording| PyRecordingInfo { info: recording })
+                .map(|recording| PyRecordingMetadata { info: recording })
                 .collect())
         })
     }
@@ -127,7 +127,7 @@ impl PyConnection {
             let request = RegisterRecordingRequest {
                 // TODO(jleibs): Description should really just be in the metadata
                 description: Default::default(),
-                url: storage_url.to_string(),
+                storage_url: storage_url.to_string(),
                 metadata,
                 typ: RecordingType::Rrd.into(),
             };
@@ -187,17 +187,20 @@ impl MetadataLike {
 }
 
 /// The info for a recording stored in the archive.
-#[pyclass(name = "RecordingInfo")]
-pub struct PyRecordingInfo {
-    info: re_remote_store_types::v0::RecordingInfo,
+#[pyclass(name = "RecordingMetadata")]
+pub struct PyRecordingMetadata {
+    info: re_protos::v0::RecordingMetadata,
 }
 
 #[pymethods]
-impl PyRecordingInfo {
+impl PyRecordingMetadata {
     fn __repr__(&self) -> String {
         format!(
             "Recording(id={})",
-            self.info.id.as_ref().map_or("Unknown", |id| id.id.as_str())
+            self.info
+                .id()
+                .map(|id| id.to_string())
+                .unwrap_or("Unknown".to_owned())
         )
     }
 }

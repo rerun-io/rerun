@@ -21,8 +21,17 @@ Configuration for the background map of the map view.
 
 snippet: views/map
 
+<picture data-inline-viewer="snippets/map">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/map-view/8b2cc15e3f3313e2181667f6c29816ebe75e16e6/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/map-view/8b2cc15e3f3313e2181667f6c29816ebe75e16e6/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/map-view/8b2cc15e3f3313e2181667f6c29816ebe75e16e6/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/map-view/8b2cc15e3f3313e2181667f6c29816ebe75e16e6/1200w.png">
+  <img src="https://static.rerun.io/map-view/8b2cc15e3f3313e2181667f6c29816ebe75e16e6/full.png">
+</picture>
+
 
 ## Visualized archetypes
 
+* [`GeoLineStrings`](../archetypes/geo_line_strings.md)
 * [`GeoPoints`](../archetypes/geo_points.md)
 

@@ -19,6 +19,9 @@ from rerun.components import (
 )
 from rerun.datatypes import (
     Angle,
+    DVec2D,
+    DVec2DArrayLike,
+    DVec2DBatch,
     Float32ArrayLike,
     Quaternion,
     QuaternionArrayLike,
@@ -61,6 +64,45 @@ def none_empty_or_value(obj: Any, value: Any) -> Any:
         return []
     else:
         return value
+
+
+dvec2ds_arrays: list[DVec2DArrayLike] = [
+    [],
+    np.array([]),
+    # Vec2DArrayLike: Sequence[Point2DLike]:
+    [
+        DVec2D([1, 2]),
+        DVec2D([3, 4]),
+    ],
+    # Vec2DArrayLike: Sequence[Point2DLike]: npt.NDArray[np.float64]
+    [
+        np.array([1, 2], dtype=np.float64),
+        np.array([3, 4], dtype=np.float64),
+    ],
+    # Vec2DArrayLike: Sequence[Point2DLike]: Tuple[float, float]
+    [(1, 2), (3, 4)],
+    # Vec2DArrayLike: torch.tensor is np.ArrayLike
+    torch.tensor([(1, 2), (3, 4)], dtype=torch.float64),
+    # Vec2DArrayLike: Sequence[Point2DLike]: Sequence[float]
+    [1, 2, 3, 4],
+    # Vec2DArrayLike: npt.NDArray[np.float64]
+    np.array([[1, 2], [3, 4]], dtype=np.float64),
+    # Vec2DArrayLike: npt.NDArray[np.float64]
+    np.array([1, 2, 3, 4], dtype=np.float64),
+    # Vec2DArrayLike: npt.NDArray[np.float64]
+    np.array([1, 2, 3, 4], dtype=np.float64).reshape((2, 2, 1, 1, 1)),
+    # PyTorch array
+    torch.asarray([1, 2, 3, 4], dtype=torch.float64),
+]
+
+
+def dvec2ds_expected(obj: Any, type_: Any | None = None) -> Any:
+    if type_ is None:
+        type_ = DVec2DBatch
+
+    expected = none_empty_or_value(obj, [[1.0, 2.0], [3.0, 4.0]])
+
+    return type_._optional(expected)
 
 
 vec2ds_arrays: list[Vec2DArrayLike] = [

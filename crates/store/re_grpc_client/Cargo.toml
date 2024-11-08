@@ -1,0 +1,43 @@
+[package]
+name = "re_grpc_client"
+authors.workspace = true
+description = "gRCP client for the Rerun Data Platform gRPC prototocl"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[dependencies]
+re_chunk.workspace = true
+re_error.workspace = true
+re_log_types.workspace = true
+re_log.workspace = true
+re_protos.workspace = true
+re_smart_channel.workspace = true
+
+thiserror.workspace = true
+tokio-stream.workspace = true
+
+# Native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio.workspace = true
+tonic = { workspace = true, default-features = false, features = ["transport"] }
+
+
+# Web dependencies:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+tonic-web-wasm-client.workspace = true
+wasm-bindgen-futures.workspace = true
+tonic = { workspace = true, default-features = false }

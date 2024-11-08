@@ -4,39 +4,46 @@
 # a redeploy of `rerun.io`.
 
 # If `target` is set to `preview`, then this instead deploys a fresh preview
-# with an override for `release_commit`, and sets the `vercel_preview_url` output.
+# with an override for `release_commit`, and sets the following outputs:
+# - `vercel_preview_deployment_id`
+# - `vercel_preview_url`
+# - `vercel_preview_inspector_url`
+#
+# The `vercel_preview_deployment_id` may be used to wait for the deployment
+# to complete with the `wait-for-deployment` command, which outputs:
+# - `vercel_preview_result`, either "success" or "failure"
+# - `vercel_preview_url`
+# - `vercel_preview_inspector_url`
 
 name: "Deploy rerun.io"
+
+description: "Vercel utilities"
 
 # Changing these inputs also requires changing their usage in `index.mjs`
 inputs:
   vercel_token:
     description: "Vercel access token"
-    type: string
     required: true
   vercel_team_name:
     description: "Vercel team name under which `vercel_project_name` can be found"
-    type: string
     required: true
   vercel_project_name:
     description: "Vercel project name to update and redeploy"
-    type: string
     required: true
+  vercel_deployment_id:
+    description: "Vercel deployment ID used in `wait-for-deployment`"
+    required: false
   command:
-    description: "`deploy` or `update-env`"
-    type: string
+    description: "one of: `deploy`, `wait-for-deployment`, `update-env`"
     required: true
   release_commit:
     description: "Release commit to update the deployment to"
-    type: string
     required: false
   release_version:
     description: "Which release version to update the deployment to"
-    type: string
     required: false
   target:
     description: "Which Vercel environment to deploy to"
-    type: string
     required: false
 
 runs:
