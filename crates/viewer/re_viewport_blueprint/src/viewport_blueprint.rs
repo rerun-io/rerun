@@ -410,6 +410,8 @@ impl ViewportBlueprint {
         parent_container: Option<ContainerId>,
         position_in_parent: Option<usize>,
     ) -> Vec<SpaceViewId> {
+        let parent_container_id = parent_container.unwrap_or(self.root_container);
+
         let mut new_ids: Vec<_> = vec![];
 
         for space_view in space_views {
@@ -422,12 +424,38 @@ impl ViewportBlueprint {
             new_ids.push(space_view_id);
         }
 
-        for id in &new_ids {
-            self.send_tree_action(TreeAction::AddSpaceView(
-                *id,
-                parent_container,
-                position_in_parent,
-            ));
+        if !new_ids.is_empty() {
+            let mut container = self
+                .containers
+                .get(&parent_container_id)
+                .cloned()
+                .unwrap_or_else(|| {
+                    self.send_tree_action(TreeAction::AddContainer(
+                        egui_tiles::ContainerKind::Grid,
+                        None,
+                    ));
+                    ContainerBlueprint {
+                        id: parent_container_id,
+                        ..Default::default()
+                    }
+                });
+            for &space_view_id in &new_ids {
+                container.add_child(Contents::SpaceView(space_view_id));
+            }
+            re_log::trace!(
+                "Added {} space-views to container {parent_container_id}; now contains: {:?}",
+                new_ids.len(),
+                container.contents,
+            );
+            container.save_to_blueprint_store(ctx);
+
+            for id in &new_ids {
+                self.send_tree_action(TreeAction::AddSpaceView(
+                    *id,
+                    Some(parent_container_id),
+                    position_in_parent,
+                ));
+            }
         }
 
         new_ids

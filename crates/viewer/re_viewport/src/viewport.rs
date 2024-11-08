@@ -242,7 +242,9 @@ impl<'a> Viewport<'a> {
             re_log::trace!("Processing tree action: {tree_action:?}");
             match tree_action {
                 TreeAction::AddSpaceView(space_view_id, parent_container, position_in_parent) => {
-                    if self.blueprint.auto_layout() {
+                    // if self.blueprint.auto_layout()
+                    if false {
+                        // TODO: why was this code here?
                         // Re-run the auto-layout next frame:
                         re_log::trace!(
                             "Added a space view with no user edits yet - will re-run auto-layout"
