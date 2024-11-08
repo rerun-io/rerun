@@ -39,6 +39,7 @@ pub struct CanvasBuilder {
     world_bounds: Rect,
     bounding_rect: Rect,
     children_drag_delta: Vec2,
+    children_hovered: bool,
 }
 
 impl CanvasBuilder {
@@ -48,6 +49,7 @@ impl CanvasBuilder {
             show_debug: false,
             bounding_rect: Rect::NOTHING,
             children_drag_delta: Vec2::ZERO,
+            children_hovered: false,
         }
     }
 
@@ -83,7 +85,12 @@ impl CanvasBuilder {
             },
             bounding_rect: &mut self.bounding_rect,
             children_drag_delta: &mut self.children_drag_delta,
+            children_hovered: &mut self.children_hovered,
         });
+
+        // :warning: Currently, `children_drag_delta` and `children_hovered` only report events from the entity rectangles.
+        // TODO(grtlr): Would it makes sense to move the creation of the `Response` here and let `Canvas` only be a thin wrapper?
+        //              That way we would avoid the duplication between those objects and we would have single-responsibility.
 
         world_to_view.translation += self.children_drag_delta;
         if response.dragged() {
@@ -92,7 +99,7 @@ impl CanvasBuilder {
 
         if let Some(pointer) = ui.ctx().input(|i| i.pointer.hover_pos()) {
             // Note: doesn't catch zooming / panning if a button in this PanZoom container is hovered.
-            if response.hovered() {
+            if response.hovered() || self.children_hovered {
                 let pointer_in_world = world_to_window.inverse() * pointer;
                 let zoom_delta = ui.ctx().input(|i| i.zoom_delta());
                 let pan_delta = ui.ctx().input(|i| i.smooth_scroll_delta);
@@ -167,6 +174,7 @@ pub struct Canvas<'a> {
     context: CanvasContext,
     bounding_rect: &'a mut Rect,
     children_drag_delta: &'a mut Vec2,
+    children_hovered: &'a mut bool,
 }
 
 impl<'a> Canvas<'a> {
@@ -236,6 +244,10 @@ impl<'a> Canvas<'a> {
 
         if response.dragged() {
             *self.children_drag_delta += response.drag_delta();
+        }
+
+        if response.hovered() {
+            *self.children_hovered = true;
         }
 
         let id = response.layer_id;
