@@ -6,7 +6,8 @@ import numpy as np
 import numpy.typing as npt
 import pyarrow as pa
 
-from rerun.color_conversion import u8_array_to_rgba
+from ..color_conversion import u8_array_to_rgba
+from ..error_utils import _send_warning_or_raise
 
 if TYPE_CHECKING:
     from . import Rgba32ArrayLike, Rgba32Like
@@ -18,11 +19,13 @@ def _numpy_array_to_u32(data: npt.NDArray[np.uint8 | np.float32 | np.float64]) -
 
     if data.dtype.type in [np.float32, np.float64]:
         array = u8_array_to_rgba(np.asarray(np.round(np.asarray(data) * 255.0), np.uint8))
-    elif data.dtype.type == np.uint32:
-        array = np.asarray(data, dtype=np.uint32).flatten()
     else:
         array = u8_array_to_rgba(np.asarray(data, dtype=np.uint8))
     return array
+
+
+class RaisedWarning(Exception):
+    pass
 
 
 class Rgba32Ext:
@@ -71,21 +74,46 @@ class Rgba32Ext:
         else:
             # Try to coerce it to a numpy array
             try:
-                arr = np.asarray(data)
+                arr = np.asarray(data).squeeze()
+
+                # If the array is flat
+                if len(arr.shape) <= 1:
+                    # And not one of the known types
+                    if arr.dtype not in (np.uint8, np.float32, np.float64, np.uint32):
+                        # And not a length 3 or 4 array:
+                        if arr.size not in (3, 4):
+                            # We assume this is packed ints
+                            arr = arr.astype(np.uint32)
+                        else:
+                            # Otherwise, if all the values are less than 256
+                            if np.max(arr) < 256:
+                                # Then treat it as a single color
+                                arr = arr.reshape((1, -1))
+                            else:
+                                # But if not, then send a warning to the user
+                                _send_warning_or_raise(
+                                    "Ambiguous input for color. If using 0xRRGGBBAA values, please wrap as np.array with dtype=np.uint32",
+                                    # Wrap the warning in a ConversionWarning to avoid it being caught by the exception handler below
+                                    exception_type=RaisedWarning,
+                                    depth_to_user_code=2,
+                                )
+                                arr = arr.astype(np.uint32)
+
+                    elif arr.dtype != np.uint32:
+                        if len(arr.shape) <= 1:
+                            if arr.size > 4:
+                                # multiple RGBA colors
+                                arr = arr.reshape((-1, 4))
+                            else:
+                                # a single color
+                                arr = arr.reshape((1, -1))
 
                 if arr.dtype == np.uint32:
                     # these are already packed values
                     int_array = arr.flatten()
                 else:
-                    # these are component values
-                    if len(arr.shape) == 1:
-                        if arr.size > 4:
-                            # multiple RGBA colors
-                            arr = arr.reshape((-1, 4))
-                        else:
-                            # a single color
-                            arr = arr.reshape((1, -1))
-                    int_array = _numpy_array_to_u32(arr)
+                    int_array = _numpy_array_to_u32(arr)  # type: ignore[assignment]
+
             except (ValueError, TypeError, IndexError):
                 # Fallback support
                 data_list = list(data)  # type: ignore[arg-type]
@@ -103,5 +131,7 @@ class Rgba32Ext:
                 # `Rgba32`, thanks to its converter function and the
                 # auto-generated `__int__()` method.
                 int_array = np.array([Rgba32(datum) for datum in data_list], np.uint32)  # type: ignore[arg-type]
+            except RaisedWarning as e:
+                raise ValueError(str(e))
 
         return pa.array(int_array, type=data_type)
