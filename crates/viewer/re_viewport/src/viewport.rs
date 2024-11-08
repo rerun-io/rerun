@@ -79,7 +79,7 @@ impl<'a> Viewport<'a> {
                 &blueprint.space_views,
             );
             re_log::trace!(
-                "New auto-tree: {auto_tree:#?} based on {} space_views",
+                "Auto-generated new tree based on {} space_views: {auto_tree:#?}",
                 blueprint.space_views.len()
             );
             auto_tree

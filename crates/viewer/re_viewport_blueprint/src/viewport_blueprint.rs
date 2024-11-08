@@ -103,6 +103,7 @@ impl ViewportBlueprint {
             let mut container_ids_to_visit: Vec<ContainerId> = vec![root_container];
             while let Some(id) = container_ids_to_visit.pop() {
                 if let Some(container) = ContainerBlueprint::try_from_db(blueprint_db, query, id) {
+                    re_log::trace_once!("Container {id} contents: {:?}", container.contents);
                     for &content in &container.contents {
                         match content {
                             Contents::Container(id) => container_ids_to_visit.push(id),
@@ -112,6 +113,8 @@ impl ViewportBlueprint {
                         }
                     }
                     containers.insert(id, container);
+                } else {
+                    re_log::warn_once!("Failed to load container {id}");
                 }
             }
         }
@@ -419,14 +422,12 @@ impl ViewportBlueprint {
             new_ids.push(space_view_id);
         }
 
-        if !new_ids.is_empty() {
-            for id in &new_ids {
-                self.send_tree_action(TreeAction::AddSpaceView(
-                    *id,
-                    parent_container,
-                    position_in_parent,
-                ));
-            }
+        for id in &new_ids {
+            self.send_tree_action(TreeAction::AddSpaceView(
+                *id,
+                parent_container,
+                position_in_parent,
+            ));
         }
 
         new_ids

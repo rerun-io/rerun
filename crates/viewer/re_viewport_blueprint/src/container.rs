@@ -22,7 +22,7 @@ use re_viewer_context::{
 ///
 /// The main reason this exists is to handle type conversions that aren't yet
 /// well handled by the code-generated archetypes.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ContainerBlueprint {
     pub id: ContainerId,
     pub container_kind: egui_tiles::ContainerKind,
@@ -137,6 +137,24 @@ impl ContainerBlueprint {
 
     pub fn entity_path(&self) -> EntityPath {
         self.id.as_entity_path()
+    }
+
+    pub fn add_child(&mut self, content: Contents) {
+        self.contents.push(content);
+        match self.container_kind {
+            egui_tiles::ContainerKind::Tabs => {
+                self.active_tab = self.active_tab.or(Some(content));
+            }
+            egui_tiles::ContainerKind::Horizontal => {
+                self.col_shares.push(1.0);
+            }
+            egui_tiles::ContainerKind::Vertical => {
+                self.row_shares.push(1.0);
+            }
+            egui_tiles::ContainerKind::Grid => {
+                // dunno
+            }
+        }
     }
 
     /// Persist the entire [`ContainerBlueprint`] to the blueprint store.
