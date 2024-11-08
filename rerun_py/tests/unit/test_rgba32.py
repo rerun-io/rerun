@@ -99,10 +99,3 @@ def test_ambiguous_rgba() -> None:
             data = Rgba32Batch(input)
             assert data.as_arrow_array().to_pylist() == expected
             assert len(warnings) == 1
-
-
-def test_ambiguous_rgba_strict() -> None:
-    rr.init("rerun_example_ambiguous_rgba", strict=True)
-    for input, expected in AMBIGUOUS_CASES:
-        with pytest.raises(ValueError):
-            _ = Rgba32Batch(input)

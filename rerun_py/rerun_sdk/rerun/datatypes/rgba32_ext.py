@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Sequence
 
 import numpy as np
@@ -7,7 +8,7 @@ import numpy.typing as npt
 import pyarrow as pa
 
 from ..color_conversion import u8_array_to_rgba
-from ..error_utils import _send_warning_or_raise
+from ..error_utils import RerunWarning
 
 if TYPE_CHECKING:
     from . import Rgba32ArrayLike, Rgba32Like
@@ -22,10 +23,6 @@ def _numpy_array_to_u32(data: npt.NDArray[np.uint8 | np.float32 | np.float64]) -
     else:
         array = u8_array_to_rgba(np.asarray(data, dtype=np.uint8))
     return array
-
-
-class RaisedWarning(Exception):
-    pass
 
 
 class Rgba32Ext:
@@ -91,11 +88,10 @@ class Rgba32Ext:
                                 arr = arr.reshape((1, -1))
                             else:
                                 # But if not, then send a warning to the user
-                                _send_warning_or_raise(
-                                    "Ambiguous input for color. If using 0xRRGGBBAA values, please wrap as np.array with dtype=np.uint32",
-                                    # Wrap the warning in a ConversionWarning to avoid it being caught by the exception handler below
-                                    exception_type=RaisedWarning,
-                                    depth_to_user_code=2,
+                                warnings.warn(
+                                    f"Ambiguous input for colors of length {arr.size}. If using 0xRRGGBBAA values, please wrap as np.array with dtype=np.uint32",
+                                    category=RerunWarning,
+                                    stacklevel=2,
                                 )
                                 arr = arr.astype(np.uint32)
 
@@ -131,7 +127,5 @@ class Rgba32Ext:
                 # `Rgba32`, thanks to its converter function and the
                 # auto-generated `__int__()` method.
                 int_array = np.array([Rgba32(datum) for datum in data_list], np.uint32)  # type: ignore[arg-type]
-            except RaisedWarning as e:
-                raise ValueError(str(e))
 
         return pa.array(int_array, type=data_type)
