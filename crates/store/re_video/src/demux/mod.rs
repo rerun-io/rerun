@@ -61,7 +61,7 @@ pub struct VideoData {
     pub samples: Vec<Sample>,
 
     /// Meta information about the samples.
-    pub sample_statistics: SampleStatistics,
+    pub samples_statistics: SamplesStatistics,
 
     /// All the tracks in the mp4; not just the video track.
     ///
@@ -71,7 +71,7 @@ pub struct VideoData {
 
 /// Meta informationa about the video samples.
 #[derive(Clone, Debug)]
-pub struct SampleStatistics {
+pub struct SamplesStatistics {
     /// The smallest presentation timestamp observed in this video.
     ///
     /// This is typically 0, but in the presence of B-frames, it may be non-zero.
@@ -91,7 +91,7 @@ pub struct SampleStatistics {
     pub dts_always_equal_pts: bool,
 }
 
-impl SampleStatistics {
+impl SamplesStatistics {
     pub fn new(samples: &[Sample]) -> Self {
         re_tracing::profile_function!();
 
@@ -290,7 +290,7 @@ impl VideoData {
                 .map(|pts| {
                     pts.into_nanos_since_start(
                         self.timescale,
-                        self.sample_statistics.minimum_presentation_timestamp,
+                        self.samples_statistics.minimum_presentation_timestamp,
                     )
                 })
         })

@@ -9,7 +9,7 @@ pub use re_mp4::{TrackId, TrackKind};
 
 pub use self::{
     decode::{Chunk, Frame, PixelFormat},
-    demux::{Config, Sample, SampleStatistics, VideoData, VideoLoadError},
+    demux::{Config, Sample, SamplesStatistics, VideoData, VideoLoadError},
     time::{Time, Timescale},
 };
 
