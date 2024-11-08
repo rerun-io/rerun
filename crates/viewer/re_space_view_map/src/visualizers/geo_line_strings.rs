@@ -136,6 +136,9 @@ impl GeoLineStringsVisualizer {
         highlight: &SpaceViewHighlights,
     ) -> Result<(), LineDrawDataError> {
         let mut lines = re_renderer::LineDrawableBuilder::new(render_ctx);
+        lines.radius_boost_in_ui_points_for_outlines(
+            re_space_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+        );
 
         for (entity_path, batch) in &self.batches {
             let outline = highlight.entity_outline_mask(entity_path.hash());
