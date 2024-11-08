@@ -19,4 +19,5 @@ FixedSizeList<2, float64>
 
 ## Used by
 
+* [`GeoLineString`](../components/geo_line_string.md?speculative-link)
 * [`LatLon`](../components/lat_lon.md?speculative-link)

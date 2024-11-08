@@ -317,8 +317,18 @@ impl Drop for FfmpegProcessAndListener {
             .store(true, std::sync::atomic::Ordering::Release);
 
         // Kill the ffmpeg process itself.
+        // It's important that we wait for it to finish, otherwise the process may enter a zombie state, see https://en.wikipedia.org/wiki/Zombie_process.
+        // Also, a nice side effect of wait is that it ensures that stdin is closed.
         // This should wake up the listen thread if it is sleeping, but that may take a while.
-        self.ffmpeg.kill().ok();
+        {
+            let kill_result = self.ffmpeg.kill();
+            let wait_result = self.ffmpeg.wait();
+            re_log::debug!(
+                "FFmpeg kill result: {:?}, wait result: {:?}",
+                kill_result,
+                wait_result
+            );
+        }
 
         // Unfortunately, even with the above measures, it can still happen that the listen threads take occasionally 100ms and more to shut down.
         // (very much depending on the system & OS, typical times may be low with large outliers)

@@ -16,6 +16,7 @@ include "./components/entity_path.fbs";
 include "./components/fill_mode.fbs";
 include "./components/fill_ratio.fbs";
 include "./components/gamma_correction.fbs";
+include "./components/geo_line_string.fbs";
 include "./components/half_size2d.fbs";
 include "./components/half_size3d.fbs";
 include "./components/image_buffer.fbs";

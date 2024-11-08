@@ -2,8 +2,7 @@ use re_format::{format_f32, format_uint};
 use re_types::components::{LineStrip2D, LineStrip3D};
 use re_viewer_context::{MaybeMutRef, UiLayout, ViewerContext};
 
-/// Default number of ui points to show a number.
-const DEFAULT_NUMBER_WIDTH: f32 = 52.0;
+use crate::DEFAULT_NUMBER_WIDTH;
 
 fn singleline_view_line_strip_3d(
     _ctx: &ViewerContext<'_>,
@@ -94,7 +93,7 @@ fn multiline_view_line_strip_2d(
         .table(ui)
         .resizable(true)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
-        .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 3)
+        .columns(Column::initial(DEFAULT_NUMBER_WIDTH).clip(true), 2)
         .header(re_ui::DesignTokens::table_header_height(), |mut header| {
             re_ui::DesignTokens::setup_table_header(&mut header);
             header.col(|ui| {

@@ -78,10 +78,7 @@ message UpdateRecordingMetadataRequest {
     RecordingMetadata metadata = 2;
 }
 
-message UpdateRecordingMetadataResponse {
-    RecordingId id = 1;
-    RecordingMetadata metadata = 2;
-}
+message UpdateRecordingMetadataResponse {}
 
 // ---------------- Query -----------------
 

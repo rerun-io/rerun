@@ -18,6 +18,7 @@ entity_path.py linguist-generated=true
 fill_mode.py linguist-generated=true
 fill_ratio.py linguist-generated=true
 gamma_correction.py linguist-generated=true
+geo_line_string.py linguist-generated=true
 half_size2d.py linguist-generated=true
 half_size3d.py linguist-generated=true
 image_buffer.py linguist-generated=true

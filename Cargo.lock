@@ -3637,7 +3637,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.52.6",
+ "windows-targets 0.48.5",
 ]
 
 [[package]]
@@ -4943,7 +4943,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c1318b19085f08681016926435853bbf7858f9c082d0999b80550ff5d9abe15"
 dependencies = [
  "bytes",
- "heck 0.5.0",
+ "heck 0.4.1",
  "itertools 0.13.0",
  "log",
  "multimap",
@@ -5303,7 +5303,8 @@ dependencies = [
 [[package]]
 name = "re_arrow2"
 version = "0.17.6"
-source = "git+https://github.com/rerun-io/re_arrow2?rev=e4717d6debc6d4474ec10db8f629f823f57bad07#e4717d6debc6d4474ec10db8f629f823f57bad07"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "787fa1df3020f018e02c1f957edfc6890a73372444de397c36011cda61c9b489"
 dependencies = [
  "ahash",
  "arrow-array",
@@ -8888,8 +8889,7 @@ dependencies = [
 [[package]]
 name = "walkers"
 version = "0.28.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40c2f8ce4e3e8489bf3b75639aa26af4c3740f18b2e38ba6e90bf9468ec5eed5"
+source = "git+https://github.com/rerun-io/walkers?rev=8939cceb3fa49ca8648ee16fe1d8432f5ab0bdcc#8939cceb3fa49ca8648ee16fe1d8432f5ab0bdcc"
 dependencies = [
  "egui",
  "egui_extras",

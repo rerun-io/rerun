@@ -3,7 +3,7 @@ namespace rerun.components;
 
 // ---
 
-/// A geographical position expressed in EPSG:4326 latitude and longitude.
+/// A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
 struct LatLon (
   "attr.python.aliases": "npt.NDArray[np.float32], Sequence[float], Tuple[float, float]",
   "attr.python.array_aliases": "npt.NDArray[np.float32], Sequence[float]",
