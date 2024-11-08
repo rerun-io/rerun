@@ -47,8 +47,8 @@ const FLAG_CAP_START_EXTEND_OUTWARDS: u32 = 32u;
 const FLAG_COLOR_GRADIENT: u32 = 64u;
 const FLAG_FORCE_ORTHO_SPANNING: u32 = 128u;
 
-// Additional flags computed by the shader.
-const FLAG_ROUND_JOINT: u32 = 1024u;
+// Special flags used in the fragment shader.
+const FLAG_CAP_TRIANGLE: u32 = FLAG_CAP_START_TRIANGLE | FLAG_CAP_END_TRIANGLE;
 
 // A lot of the attributes don't need to be interpolated across triangles.
 // To document that and safe some time we mark them up with @interpolate(flat)
@@ -266,10 +266,14 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         center_position += quad_dir * (size_boost * select(-1.0, 1.0, is_at_quad_end));
     }
 
+    // Filtered list of flats that the fragment shader is interested in.
+    var fragment_flags = strip_data.flags & FLAG_COLOR_GRADIENT;
+
     // If this is a triangle cap, we blow up our ("virtual") quad by a given factor.
     if (is_end_cap_triangle && has_any_flag(strip_data.flags, FLAG_CAP_END_TRIANGLE)) ||
        (is_start_cap_triangle && has_any_flag(strip_data.flags, FLAG_CAP_START_TRIANGLE)) {
         strip_radius *= batch.triangle_cap_width_factor * triangle_cap_size_factor;
+        fragment_flags |= FLAG_CAP_TRIANGLE;
     }
 
     // Span up the vertex away from the line's axis, orthogonal to the direction to the camera
@@ -284,15 +288,11 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     }
 
     // Extend the line for rendering smooth joints, as well as round start/end caps.
-    var fragment_flags = strip_data.flags & FLAG_COLOR_GRADIENT;
-    // It's easier to list reasons for not having a joint rather than the other way about when there's _no_ joint:
-    let no_joint = is_cap_triangle ||
-                    (!has_any_flag(strip_data.flags, FLAG_CAP_START_ROUND) && !is_at_quad_end && is_first_quad_after_cap) ||
-                    (!has_any_flag(strip_data.flags, FLAG_CAP_END_ROUND) && is_at_quad_end && is_last_quad_before_cap);
-    if !no_joint {
+    if !is_cap_triangle &&
+        ((!is_at_quad_end && (!is_first_quad_after_cap || has_any_flag(strip_data.flags, FLAG_CAP_START_ROUND))) ||
+         (is_at_quad_end && (!is_last_quad_before_cap || has_any_flag(strip_data.flags, FLAG_CAP_END_ROUND)))) {
         let left_right_offset = quad_dir * strip_radius * select(-1.0, 1.0, is_at_quad_end);
         pos += left_right_offset;
-        fragment_flags |= FLAG_ROUND_JOINT;
     }
 
     // Output, transform to projection space and done.
@@ -324,7 +324,7 @@ fn distance_to_line(pos: vec3f, line_a: vec3f, line_b: vec3f) -> f32 {
 fn compute_coverage(in: VertexOut) -> f32 {
     var coverage = 1.0;
 
-    if has_any_flag(in.fragment_flags, FLAG_ROUND_JOINT) {
+    if !has_any_flag(in.fragment_flags, FLAG_CAP_TRIANGLE) {
         let distance_to_skeleton = distance_to_line(in.position_world, in.rounded_inner_line_begin, in.rounded_inner_line_end);
         let pixel_world_size = approx_pixel_world_size_at(length(in.position_world - frame.camera_position));
 
