@@ -39,7 +39,6 @@ pub fn draw_entity(
         },
         color,
     );
-    // }
 
     response
 }

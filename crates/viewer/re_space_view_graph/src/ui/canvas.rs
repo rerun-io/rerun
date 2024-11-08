@@ -194,7 +194,7 @@ impl<'a> Canvas<'a> {
     where
         F: for<'b> FnOnce(&'b mut Ui, &'b CanvasContext) -> Response,
     {
-        let response = Area::new(Id::new(id))
+        let response = Area::new(self.id.with(id))
             .fixed_pos(pos)
             .order(Order::Foreground)
             .constrain(false)
@@ -221,15 +221,15 @@ impl<'a> Canvas<'a> {
         rect: Rect,
         highlights: &SpaceViewHighlights,
     ) -> Response {
-        let response = Area::new(Id::new(entity))
+        let response = Area::new(self.id.with(entity))
             .fixed_pos(rect.min)
             .order(Order::Background)
             .constrain(false)
             .show(self.ui.ctx(), |ui| {
                 ui.set_clip_rect(self.context.clip_rect_world);
-                draw_entity(ui, rect, entity, highlights);
+                draw_entity(ui, rect, entity, highlights)
             })
-            .response;
+            .inner;
 
         let id = response.layer_id;
         self.ui
