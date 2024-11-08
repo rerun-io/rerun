@@ -9,7 +9,7 @@ use parking_lot::Mutex;
 use crate::{
     resource_managers::SourceImageDataFormat,
     video::{
-        player::{latest_at_idx, TimedDecodingError, VideoTexture},
+        player::{TimedDecodingError, VideoTexture},
         VideoPlayerError,
     },
     wgpu_resources::GpuTexture,
@@ -101,7 +101,7 @@ impl VideoChunkDecoder {
         let mut decoder_output = self.decoder_output.lock();
         let frames = &mut decoder_output.frames;
 
-        let Some(frame_idx) = latest_at_idx(
+        let Some(frame_idx) = re_video::demux::latest_at_idx(
             frames,
             |frame| frame.info.presentation_timestamp,
             &presentation_timestamp,

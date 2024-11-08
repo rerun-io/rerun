@@ -92,6 +92,13 @@ pub fn show_video_blob_info(
                         "More video statistics",
                         false,
                         |ui| {
+                            ui.list_item_flat_noninteractive(
+                                PropertyContent::new("Number of GOPs")
+                                    .value_text(data.gops.len().to_string()),
+                            )
+                            .on_hover_text(
+                                "The total number of Group of Pictures (GOPs) in the video.",
+                            );
                             samples_statistics_ui(ui, &data.samples_statistics);
                         },
                     );
@@ -110,9 +117,9 @@ pub fn show_video_blob_info(
         }
         Err(err) => {
             if ui_layout.is_single_line() {
-                ui.error_label(&format!("Failed to load video: {err}"));
+                ui.error_with_details_on_hover(&format!("Failed to load video: {err}"));
             } else {
-                ui.error_label_long(&format!("Failed to load video: {err}"));
+                ui.error_label(&format!("Failed to load video: {err}"));
             }
         }
     }
@@ -191,7 +198,7 @@ pub fn show_decoded_frame_info(
         }
 
         Err(err) => {
-            ui.error_label_long(&err.to_string());
+            ui.error_label(&err.to_string());
 
             if let re_renderer::video::VideoPlayerError::Decoding(
                 re_video::decode::Error::FfmpegNotInstalled {
@@ -260,6 +267,37 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
     )
     .on_hover_text("Raw presentation timestamp prior to applying the timescale.\n\
                     This specifies the time at which the frame should be shown relative to the start of a video stream.");
+
+    // Information about the current group of pictures this frame is part of.
+    // Lookup via decode timestamp is faster, but it may not always be available.
+    if let Some(gop_index) =
+        video_data.gop_index_containing_presentation_timestamp(frame_info.presentation_timestamp)
+    {
+        ui.list_item_flat_noninteractive(
+            PropertyContent::new("GOP index").value_text(gop_index.to_string()),
+        )
+        .on_hover_text("The index of the group of picture (GOP) that this sample belongs to.");
+
+        if let Some(gop) = video_data.gops.get(gop_index) {
+            let first_sample = video_data.samples.get(gop.sample_range.start as usize);
+            let last_sample = video_data
+                .samples
+                .get((gop.sample_range.end as usize).saturating_sub(1));
+
+            if let (Some(first_sample), Some(last_sample)) = (first_sample, last_sample) {
+                ui.list_item_flat_noninteractive(PropertyContent::new("GOP DTS range").value_text(
+                    format!("{} - {}", first_sample.decode_timestamp.0, last_sample.decode_timestamp.0)
+                ))
+                .on_hover_text(
+                    "The range of decode timestamps in the currently active group of picture (GOP).",
+                );
+            } else {
+                ui.error_label("GOP has invalid sample range"); // Should never happen.
+            }
+        } else {
+            ui.error_label("Invalid GOP index"); // Should never happen.
+        }
+    }
 }
 
 fn source_image_data_format_ui(ui: &mut egui::Ui, format: &SourceImageDataFormat) {

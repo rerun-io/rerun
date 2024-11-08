@@ -25,7 +25,7 @@ pub trait UiExt {
     }
 
     /// Shows a small error label with the given text on hover and copies the text to the clipboard on click.
-    fn error_label(&mut self, error_text: &str) -> egui::Response {
+    fn error_with_details_on_hover(&mut self, error_text: &str) -> egui::Response {
         let label = egui::Label::new(self.ui().ctx().error_text("Error"))
             .selectable(false)
             .sense(egui::Sense::click());
@@ -39,7 +39,7 @@ pub trait UiExt {
     /// Shows an error label with the entire error text and copies the text to the clipboard on click.
     ///
     /// Use this only if you have a lot of space to spare.
-    fn error_label_long(&mut self, error_text: &str) -> egui::Response {
+    fn error_label(&mut self, error_text: &str) -> egui::Response {
         let label = egui::Label::new(self.ui().ctx().error_text(error_text))
             .selectable(true)
             .sense(egui::Sense::click());
