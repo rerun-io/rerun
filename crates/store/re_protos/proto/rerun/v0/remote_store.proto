@@ -109,7 +109,10 @@ enum EncoderVersion {
 
 // ----------------- ListRecordings -----------------
 
-message ListRecordingsRequest {}
+message ListRecordingsRequest {
+    // define which columns should be returned / projected
+    repeated string columns = 1;
+}
 
 message ListRecordingsResponse {
     repeated RecordingMetadata recordings = 1;
