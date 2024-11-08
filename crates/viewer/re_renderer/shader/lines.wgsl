@@ -288,9 +288,10 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     }
 
     // Extend the line for rendering smooth joints, as well as round start/end caps.
-    if !is_cap_triangle &&
-        ((!is_at_quad_end && (!is_first_quad_after_cap || has_any_flag(strip_data.flags, FLAG_CAP_START_ROUND))) ||
-         (is_at_quad_end && (!is_last_quad_before_cap || has_any_flag(strip_data.flags, FLAG_CAP_END_ROUND)))) {
+    let is_at_inner_joint = !is_cap_triangle && !is_first_quad_after_cap && !is_last_quad_before_cap;
+    let is_at_quad_with_round_capped_start = !is_at_quad_end && is_first_quad_after_cap && has_any_flag(strip_data.flags, FLAG_CAP_START_ROUND);
+    let is_at_quad_with_round_capped_end = is_at_quad_end && is_last_quad_before_cap && has_any_flag(strip_data.flags, FLAG_CAP_END_ROUND);
+    if is_at_inner_joint || is_at_quad_with_round_capped_start || is_at_quad_with_round_capped_end {
         let left_right_offset = quad_dir * strip_radius * select(-1.0, 1.0, is_at_quad_end);
         pos += left_right_offset;
     }
