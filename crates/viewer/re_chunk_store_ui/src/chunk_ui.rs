@@ -146,7 +146,7 @@ impl ChunkUi {
                             crate::arrow_ui::arrow_ui(ui, &*data);
                         }
                         Some(Err(err)) => {
-                            ui.error_label("error").on_hover_ui(|ui| {
+                            ui.error_with_details_on_hover("error").on_hover_ui(|ui| {
                                 ui.label(format!("{err}"));
                             });
                         }
@@ -284,7 +284,9 @@ impl ChunkUi {
                     });
                 }
                 Err(err) => {
-                    ui.error_label(&format!("Failed to convert to tqransport: {err}"));
+                    ui.error_with_details_on_hover(&format!(
+                        "Failed to convert to tqransport: {err}"
+                    ));
                 }
             }
         });

@@ -117,9 +117,9 @@ pub fn show_video_blob_info(
         }
         Err(err) => {
             if ui_layout.is_single_line() {
-                ui.error_label(&format!("Failed to load video: {err}"));
+                ui.error_with_details_on_hover(&format!("Failed to load video: {err}"));
             } else {
-                ui.error_label_long(&format!("Failed to load video: {err}"));
+                ui.error_label(&format!("Failed to load video: {err}"));
             }
         }
     }
@@ -198,7 +198,7 @@ pub fn show_decoded_frame_info(
         }
 
         Err(err) => {
-            ui.error_label_long(&err.to_string());
+            ui.error_label(&err.to_string());
 
             if let re_renderer::video::VideoPlayerError::Decoding(
                 re_video::decode::Error::FfmpegNotInstalled {
