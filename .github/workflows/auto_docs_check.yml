@@ -55,3 +55,26 @@ jobs:
             printf $(git diff)
             exit 1
           fi
+
+      - name: Add success comment
+        # https://github.com/mshick/add-pr-comment
+        uses: mshick/add-pr-comment@v2.8.2
+        if: success()
+        with:
+          message-id: "cherry-pick-check"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            Your changes can be cherry-picked to `docs-latest` and will be deployed
+            immediately after merging.
+
+      - name: Add failure comment
+        # https://github.com/mshick/add-pr-comment
+        uses: mshick/add-pr-comment@v2.8.2
+        if: failure()
+        with:
+          message-id: "cherry-pick-check"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            Your changes cannot be automatically cherry-picked to `docs-latest`.
+
+            You should remove the `deploy docs` label and perform the cherry-pick manually after merging.
