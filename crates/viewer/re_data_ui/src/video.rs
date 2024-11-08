@@ -92,7 +92,7 @@ pub fn show_video_blob_info(
                         "More video statistics",
                         false,
                         |ui| {
-                            sample_statistics_ui(ui, &data.samples_statistics);
+                            samples_statistics_ui(ui, &data.samples_statistics);
                         },
                     );
                 }
@@ -205,15 +205,15 @@ pub fn show_decoded_frame_info(
     }
 }
 
-fn sample_statistics_ui(ui: &mut egui::Ui, sample_statistics: &SamplesStatistics) {
+fn samples_statistics_ui(ui: &mut egui::Ui, samples_statistics: &SamplesStatistics) {
     ui.list_item_flat_noninteractive(
-            PropertyContent::new("Minimum PTS").value_text(sample_statistics.minimum_presentation_timestamp.0.to_string())
+            PropertyContent::new("Minimum PTS").value_text(samples_statistics.minimum_presentation_timestamp.0.to_string())
         ).on_hover_text("The smallest presentation timestamp (PTS) observed in this video.\n\
                                          A non-zero value indicates that there are B-frames in the video.\n\
                                          Rerun will place the 0:00:00 time at this timestamp.");
     ui.list_item_flat_noninteractive(
             // `value_bool` doesn't look great for static values.
-            PropertyContent::new("All PTS equal DTS").value_text(sample_statistics.dts_always_equal_pts.to_string())
+            PropertyContent::new("All PTS equal DTS").value_text(samples_statistics.dts_always_equal_pts.to_string())
         ).on_hover_text("Whether all decode timestamps are equal to presentation timestamps. If true, the video typically has no B-frames.");
 }
 

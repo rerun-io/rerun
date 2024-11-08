@@ -111,13 +111,13 @@ impl WebVideoDecoder {
         let decoder = init_video_decoder(
             on_output.clone(),
             video.timescale,
-            video.sample_statistics.minimum_presentation_timestamp,
+            video.samples_statistics.minimum_presentation_timestamp,
         )?;
 
         Ok(Self {
             video_config: video.config.clone(),
             timescale: video.timescale,
-            minimum_presentation_timestamp: video.sample_statistics.minimum_presentation_timestamp,
+            minimum_presentation_timestamp: video.samples_statistics.minimum_presentation_timestamp,
             decoder,
             hw_acceleration,
             on_output,
