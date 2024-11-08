@@ -204,19 +204,18 @@ impl VideoPlayer {
         // In the presence of b-frames this order may be different!
 
         // Find sample which when decoded will be presented at the timestamp the user requested.
-        let Some(requested_sample_idx) = self
+        let requested_sample_idx = self
             .data
             .latest_sample_index_at_presentation_timestamp(presentation_timestamp)
-        else {
-            return Err(VideoPlayerError::EmptyVideo);
-        };
+            .ok_or(VideoPlayerError::EmptyVideo)?;
 
         // Find the GOP that contains the sample.
-        let Some(requested_gop_idx) = self.data.gop_index_containing_decode_timestamp(
-            self.data.samples[requested_sample_idx].decode_timestamp,
-        ) else {
-            return Err(VideoPlayerError::EmptyVideo);
-        };
+        let requested_gop_idx = self
+            .data
+            .gop_index_containing_decode_timestamp(
+                self.data.samples[requested_sample_idx].decode_timestamp,
+            )
+            .ok_or(VideoPlayerError::EmptyVideo)?;
 
         // Enqueue GOPs as needed.
 
