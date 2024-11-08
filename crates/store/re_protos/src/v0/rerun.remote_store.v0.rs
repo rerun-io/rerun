@@ -346,6 +346,13 @@ pub struct QueryResponse {
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListRecordingsRequest {
     /// define which columns should be returned / projected
+    /// we define a separate message to make it optional.
+    /// If not provided, all columns should be returned
+    #[prost(message, optional, tag = "1")]
+    pub columns: ::core::option::Option<SelectedColumns>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct SelectedColumns {
     #[prost(string, repeated, tag = "1")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
