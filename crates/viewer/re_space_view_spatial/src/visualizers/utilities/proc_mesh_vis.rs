@@ -8,13 +8,12 @@ use re_viewer_context::{
 };
 
 use crate::contexts::SpatialSceneEntityContext;
-use crate::instance_hash_conversions::picking_layer_id_from_instance_path_hash;
 use crate::proc_mesh::{self, ProcMeshKey};
 use crate::visualizers::{
     process_annotation_and_keypoint_slices, process_color_slice, process_labels_3d,
     process_radius_slice,
     utilities::{entity_iterator::clamped_or_nothing, LabeledBatch},
-    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    SpatialViewVisualizerData,
 };
 
 #[cfg(doc)]
@@ -76,7 +75,9 @@ where
         fallback: &'ctx Fb,
     ) -> Self {
         let mut line_builder = LineDrawableBuilder::new(render_ctx);
-        line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+        line_builder.radius_boost_in_ui_points_for_outlines(
+            re_space_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+        );
 
         ProcMeshDrawableBuilder {
             data,
@@ -225,7 +226,7 @@ where
                         gpu_mesh: solid_mesh.gpu_mesh,
                         world_from_mesh: world_from_instance,
                         outline_mask_ids: ent_context.highlight.index_outline_mask(instance),
-                        picking_layer_id: picking_layer_id_from_instance_path_hash(
+                        picking_layer_id: re_space_view::picking_layer_id_from_instance_path_hash(
                             InstancePathHash::instance(entity_path, instance),
                         ),
                         additive_tint: color,

@@ -64,6 +64,12 @@ pub struct DataLoaderSettings {
     /// The [`re_log_types::StoreId`] that is currently opened in the viewer, if any.
     pub opened_store_id: Option<re_log_types::StoreId>,
 
+    /// Whether `SetStoreInfo`s should be sent, regardless of the surrounding context.
+    ///
+    /// Only useful when creating a recording just-in-time directly in the viewer (which is what
+    /// happens when importing things into the welcome screen).
+    pub force_store_info: bool,
+
     /// What should the logged entity paths be prefixed with?
     pub entity_path_prefix: Option<EntityPath>,
 
@@ -79,6 +85,7 @@ impl DataLoaderSettings {
             opened_application_id: Default::default(),
             store_id: store_id.into(),
             opened_store_id: Default::default(),
+            force_store_info: false,
             entity_path_prefix: Default::default(),
             timepoint: Default::default(),
         }
@@ -91,6 +98,7 @@ impl DataLoaderSettings {
             opened_application_id,
             store_id,
             opened_store_id,
+            force_store_info: _,
             entity_path_prefix,
             timepoint,
         } = self;
@@ -150,6 +158,8 @@ impl DataLoaderSettings {
     }
 }
 
+pub type DataLoaderName = String;
+
 /// A [`DataLoader`] loads data from a file path and/or a file's contents.
 ///
 /// Files can be loaded in 3 different ways:
@@ -205,8 +215,8 @@ impl DataLoaderSettings {
 pub trait DataLoader: Send + Sync {
     /// Name of the [`DataLoader`].
     ///
-    /// Doesn't need to be unique.
-    fn name(&self) -> String;
+    /// Should be globally unique.
+    fn name(&self) -> DataLoaderName;
 
     /// Loads data from a file on the local filesystem and sends it to `tx`.
     ///
@@ -314,20 +324,31 @@ impl DataLoaderError {
 /// most convenient for them, whether it is raw components, arrow chunks or even
 /// full-on [`LogMsg`]s.
 pub enum LoadedData {
-    Chunk(re_log_types::StoreId, Chunk),
-    ArrowMsg(re_log_types::StoreId, ArrowMsg),
-    LogMsg(LogMsg),
+    Chunk(DataLoaderName, re_log_types::StoreId, Chunk),
+    ArrowMsg(DataLoaderName, re_log_types::StoreId, ArrowMsg),
+    LogMsg(DataLoaderName, LogMsg),
 }
 
 impl LoadedData {
+    /// Returns the name of the [`DataLoader`] that generated this data.
+    #[inline]
+    pub fn data_loader_name(&self) -> &DataLoaderName {
+        match self {
+            Self::Chunk(name, ..) | Self::ArrowMsg(name, ..) | Self::LogMsg(name, ..) => name,
+        }
+    }
+
     /// Pack the data into a [`LogMsg`].
+    #[inline]
     pub fn into_log_msg(self) -> ChunkResult<LogMsg> {
         match self {
-            Self::Chunk(store_id, chunk) => Ok(LogMsg::ArrowMsg(store_id, chunk.to_arrow_msg()?)),
+            Self::Chunk(_name, store_id, chunk) => {
+                Ok(LogMsg::ArrowMsg(store_id, chunk.to_arrow_msg()?))
+            }
 
-            Self::ArrowMsg(store_id, msg) => Ok(LogMsg::ArrowMsg(store_id, msg)),
+            Self::ArrowMsg(_name, store_id, msg) => Ok(LogMsg::ArrowMsg(store_id, msg)),
 
-            Self::LogMsg(msg) => Ok(msg),
+            Self::LogMsg(_name, msg) => Ok(msg),
         }
     }
 }

@@ -6,7 +6,7 @@ use std::{
 use ahash::HashMap;
 use once_cell::sync::Lazy;
 
-use crate::LoadedData;
+use crate::{DataLoader, LoadedData};
 
 // ---
 
@@ -321,7 +321,7 @@ fn decode_and_stream<R: std::io::Read>(
             }
         };
 
-        let data = LoadedData::LogMsg(msg);
+        let data = LoadedData::LogMsg(ExternalLoader::name(&ExternalLoader), msg);
         if tx.send(data).is_err() {
             break; // The other end has decided to hang up, not our problem.
         }

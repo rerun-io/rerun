@@ -30,6 +30,13 @@ from .entity_path import EntityPath, EntityPathBatch, EntityPathType
 from .fill_mode import FillMode, FillModeArrayLike, FillModeBatch, FillModeLike, FillModeType
 from .fill_ratio import FillRatio, FillRatioBatch, FillRatioType
 from .gamma_correction import GammaCorrection, GammaCorrectionBatch, GammaCorrectionType
+from .geo_line_string import (
+    GeoLineString,
+    GeoLineStringArrayLike,
+    GeoLineStringBatch,
+    GeoLineStringLike,
+    GeoLineStringType,
+)
 from .graph_edge import GraphEdge, GraphEdgeBatch, GraphEdgeType
 from .graph_node import GraphNode, GraphNodeBatch, GraphNodeType
 from .graph_type import GraphType, GraphTypeArrayLike, GraphTypeBatch, GraphTypeLike, GraphTypeType
@@ -156,6 +163,11 @@ __all__ = [
     "GammaCorrection",
     "GammaCorrectionBatch",
     "GammaCorrectionType",
+    "GeoLineString",
+    "GeoLineStringArrayLike",
+    "GeoLineStringBatch",
+    "GeoLineStringLike",
+    "GeoLineStringType",
     "GraphEdge",
     "GraphEdgeBatch",
     "GraphEdgeType",

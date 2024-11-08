@@ -16,6 +16,7 @@
 #include "archetypes/disconnected_space.hpp"
 #include "archetypes/ellipsoids3d.hpp"
 #include "archetypes/encoded_image.hpp"
+#include "archetypes/geo_line_strings.hpp"
 #include "archetypes/geo_points.hpp"
 #include "archetypes/graph_edges.hpp"
 #include "archetypes/graph_nodes.hpp"

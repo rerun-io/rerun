@@ -5,9 +5,14 @@ title: "Text"
 
 A string of text, e.g. for labels and text documents.
 
-## Fields
+## Rerun datatype
+[`Utf8`](../datatypes/utf8.md)
 
-* value: [`Utf8`](../datatypes/utf8.md)
+
+## Arrow datatype
+```
+utf8
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `Text`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Text.html)

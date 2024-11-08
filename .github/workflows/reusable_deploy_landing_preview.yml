@@ -40,8 +40,8 @@ jobs:
           full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
           echo "sha=$full_commit" >> "$GITHUB_OUTPUT"
 
-      - name: Re-deploy rerun.io
-        id: vercel
+      - name: Deploy rerun.io preview
+        id: vercel-initial-deploy
         uses: ./.github/actions/vercel
         with:
           command: "deploy"
@@ -51,14 +51,78 @@ jobs:
           release_commit: ${{ steps.get-sha.outputs.sha }}
           target: "preview"
 
+      - name: Create pending comment
+        # https://github.com/mshick/add-pr-comment
+        uses: mshick/add-pr-comment@v2.8.2
+        if: success()
+        with:
+          message-id: "vercel-preview"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            Latest documentation preview deployment is pending:
+            ${{ steps.vercel-initial-deploy.outputs.vercel_preview_inspector_url }}
+
+            | Result | Commit  | Link  |
+            | ------ | ------- | ----- |
+            | ⏳ | ${{ steps.get-sha.outputs.sha }} | unavailable |
+
+      - name: Wait for deployment
+        id: vercel
+        uses: ./.github/actions/vercel
+        if: success()
+        with:
+          command: "wait-for-deployment"
+          vercel_token: ${{ secrets.VERCEL_TOKEN }}
+          vercel_team_name: ${{ vars.VERCEL_TEAM_NAME }}
+          vercel_project_name: ${{ vars.VERCEL_PROJECT_NAME }}
+          vercel_deployment_id: ${{ steps.vercel-initial-deploy.outputs.vercel_preview_deployment_id }}
+
       - name: Create PR comment
         # https://github.com/mshick/add-pr-comment
         uses: mshick/add-pr-comment@v2.8.2
+        if: success() && steps.vercel.outputs.vercel_preview_result == 'success'
         with:
+          message-id: "vercel-preview"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message: |
-            ## Deployed docs
+            Latest documentation preview deployed successfully.
 
-            | Commit  | Link  |
-            | ------- | ----- |
-            | ${{ steps.get-sha.outputs.sha }} | https://${{ steps.vercel.outputs.vercel_preview_url }}/docs |
+            | Result | Commit  | Link  |
+            | ------ | ------- | ----- |
+            | ✅ | ${{ steps.get-sha.outputs.sha }} | https://${{ steps.vercel.outputs.vercel_preview_url }}/docs |
+
+            <sup>Note: This comment is updated whenever you push a commit.</sup>
+
+      - name: Create PR comment
+        # https://github.com/mshick/add-pr-comment
+        uses: mshick/add-pr-comment@v2.8.2
+        if: success() && steps.vercel.outputs.vercel_preview_result == 'failure'
+        with:
+          message-id: "vercel-preview"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            Latest documentation preview failed to deploy:
+            ${{ steps.vercel.outputs.vercel_preview_inspector_url }}
+
+            | Result | Commit  | Link  |
+            | ------ | ------- | ----- |
+            | ❌ | ${{ steps.get-sha.outputs.sha }} | unavailable |
+
+            <sup>Note: This comment is updated whenever you push a commit.</sup>
+
+      - name: Create PR comment
+        # https://github.com/mshick/add-pr-comment
+        uses: mshick/add-pr-comment@v2.8.2
+        if: failure()
+        with:
+          message-id: "vercel-preview"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            Latest documentation preview failed to deploy, check the CI for more details:
+            ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}?pr=${{ github.event.pull_request.number }}
+
+            | Result | Commit  | Link  |
+            | ------ | ------- | ----- |
+            | ❌ | ${{ steps.get-sha.outputs.sha }} | unavailable |
+
+            <sup>Note: This comment is updated whenever you push a commit.</sup>

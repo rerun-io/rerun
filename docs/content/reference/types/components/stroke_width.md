@@ -5,9 +5,14 @@ title: "StrokeWidth"
 
 The width of a stroke specified in UI points.
 
-## Fields
+## Rerun datatype
+[`Float32`](../datatypes/float32.md)
 
-* width: [`Float32`](../datatypes/float32.md)
+
+## Arrow datatype
+```
+float32
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `StrokeWidth`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1StrokeWidth.html)

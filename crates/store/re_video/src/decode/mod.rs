@@ -82,12 +82,15 @@ mod async_decoder_wrapper;
 #[cfg(with_dav1d)]
 mod av1;
 
+#[cfg(with_ffmpeg)]
+mod ffmpeg_h264;
+
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
 
 use crate::Time;
 
-#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
+#[derive(thiserror::Error, Debug, Clone)]
 pub enum Error {
     #[error("Unsupported codec: {0}")]
     UnsupportedCodec(String),
@@ -111,6 +114,19 @@ pub enum Error {
     #[cfg(target_arch = "wasm32")]
     #[error(transparent)]
     WebDecoder(#[from] webcodecs::Error),
+
+    #[cfg(with_ffmpeg)]
+    #[error(transparent)]
+    Ffmpeg(std::sync::Arc<ffmpeg_h264::Error>),
+
+    // We need to check for this one and don't want to infect more crates with the feature requirement.
+    #[error("Couldn't find an installation of the FFmpeg executable.")]
+    FfmpegNotInstalled {
+        /// Download URL for the latest version of `FFmpeg` on the current platform.
+        /// None if the platform is not supported.
+        // TODO(andreas): as of writing, ffmpeg-sidecar doesn't define a download URL for linux arm.
+        download_url: Option<&'static str>,
+    },
 
     #[error("Unsupported bits per component: {0}")]
     BadBitsPerComponent(usize),
@@ -151,8 +167,7 @@ pub fn new_decoder(
 
     #[cfg(target_arch = "wasm32")]
     return Ok(Box::new(webcodecs::WebVideoDecoder::new(
-        video.config.clone(),
-        video.timescale,
+        video,
         hw_acceleration,
         on_output,
     )?));
@@ -181,22 +196,40 @@ pub fn new_decoder(
             }
         }
 
+        #[cfg(with_ffmpeg)]
+        re_mp4::StsdBoxContent::Avc1(avc1_box) => {
+            re_log::trace!("Decoding H.264…");
+            Ok(Box::new(ffmpeg_h264::FfmpegCliH264Decoder::new(
+                debug_name.to_owned(),
+                avc1_box.clone(),
+                on_output,
+            )?))
+        }
+
         _ => Err(Error::UnsupportedCodec(video.human_readable_codec_string())),
     }
 }
 
-/// One chunk of encoded video data; usually one frame.
+/// One chunk of encoded video data, representing a single [`crate::Sample`].
 ///
-/// One loaded [`crate::Sample`].
+/// For details on how to interpret the data, see [`crate::Sample`].
 pub struct Chunk {
     /// The start of a new [`crate::demux::GroupOfPictures`]?
     pub is_sync: bool,
 
     pub data: Vec<u8>,
 
-    /// Presentation/composition timestamp for the sample in this chunk.
-    /// *not* decode timestamp.
-    pub composition_timestamp: Time,
+    /// Decode timestamp of this sample.
+    /// Chunks are expected to be submitted in the order of decode timestamp.
+    ///
+    /// `decode_timestamp <= presentation_timestamp`
+    pub decode_timestamp: Time,
+
+    /// Presentation timestamp for the sample in this chunk.
+    /// Often synonymous with `composition_timestamp`.
+    ///
+    /// `decode_timestamp <= presentation_timestamp`
+    pub presentation_timestamp: Time,
 
     pub duration: Time,
 }
@@ -229,6 +262,11 @@ pub struct FrameInfo {
     /// A duration of [`Time::MAX`] indicates that the frame is invalid or not yet available.
     // Implementation note: unlike with presentation timestamp we may be able fine with making this optional.
     pub duration: Time,
+
+    /// The decode timestamp of the last chunk that was needed to decode this frame.
+    ///
+    /// None indicates that the information is not available.
+    pub latest_decode_timestamp: Option<Time>,
 }
 
 impl Default for FrameInfo {
@@ -236,13 +274,14 @@ impl Default for FrameInfo {
         Self {
             presentation_timestamp: Time::MAX,
             duration: Time::MAX,
+            latest_decode_timestamp: None,
         }
     }
 }
 
 impl FrameInfo {
     /// Presentation timestamp range in which this frame is valid.
-    pub fn time_range(&self) -> std::ops::Range<Time> {
+    pub fn presentation_time_range(&self) -> std::ops::Range<Time> {
         self.presentation_timestamp..self.presentation_timestamp + self.duration
     }
 }
@@ -254,7 +293,7 @@ pub struct Frame {
 }
 
 /// Pixel format/layout used by [`FrameContent::data`].
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum PixelFormat {
     Rgb8Unorm,
     Rgba8Unorm,
@@ -265,14 +304,30 @@ pub enum PixelFormat {
         // TODO(andreas): color primaries should also apply to RGB data,
         // but for now we just always assume RGB to be BT.709 ~= sRGB.
         coefficients: YuvMatrixCoefficients,
+        // Note that we don't handle chroma sample location at all so far.
     },
+}
+
+impl PixelFormat {
+    pub fn bits_per_pixel(&self) -> u32 {
+        match self {
+            Self::Rgb8Unorm { .. } => 24,
+            Self::Rgba8Unorm { .. } => 32,
+            Self::Yuv { layout, .. } => match layout {
+                YuvPixelLayout::Y_U_V444 => 24,
+                YuvPixelLayout::Y_U_V422 => 16,
+                YuvPixelLayout::Y_U_V420 => 12,
+                YuvPixelLayout::Y400 => 8,
+            },
+        }
+    }
 }
 
 /// Pixel layout used by [`PixelFormat::Yuv`].
 ///
 /// For details see `re_renderer`'s `YuvPixelLayout` type.
 #[allow(non_camel_case_types)]
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum YuvPixelLayout {
     Y_U_V444,
     Y_U_V422,
@@ -283,7 +338,7 @@ pub enum YuvPixelLayout {
 /// Yuv value range used by [`PixelFormat::Yuv`].
 ///
 /// For details see `re_renderer`'s `YuvRange` type.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum YuvRange {
     Limited,
     Full,
@@ -292,7 +347,7 @@ pub enum YuvRange {
 /// Yuv matrix coefficients used by [`PixelFormat::Yuv`].
 ///
 /// For details see `re_renderer`'s `YuvMatrixCoefficients` type.
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum YuvMatrixCoefficients {
     /// Interpret YUV as GBR.
     Identity,

@@ -60,10 +60,55 @@ pub struct VideoData {
     /// and should be presented in composition-timestamp order.
     pub samples: Vec<Sample>,
 
+    /// Meta information about the samples.
+    pub samples_statistics: SamplesStatistics,
+
     /// All the tracks in the mp4; not just the video track.
     ///
     /// Can be nice to show in a UI.
     pub mp4_tracks: BTreeMap<TrackId, Option<TrackKind>>,
+}
+
+/// Meta informationa about the video samples.
+#[derive(Clone, Debug)]
+pub struct SamplesStatistics {
+    /// The smallest presentation timestamp observed in this video.
+    ///
+    /// This is typically 0, but in the presence of B-frames, it may be non-zero.
+    /// In fact, many formats don't require this to be zero, but video players typically
+    /// normalize the shown time to start at zero.
+    /// Note that timestamps in the [`Sample`]s are *not* automatically adjusted with this value.
+    // This is roughly equivalent to FFmpeg's internal `min_corrected_pts`
+    // https://github.com/FFmpeg/FFmpeg/blob/4047b887fc44b110bccb1da09bcb79d6e454b88b/libavformat/isom.h#L202
+    // (unlike us, this handles a bunch more edge cases but it fulfills the same role)
+    // To learn more about this I recommend reading the patch that introduced this in FFmpeg:
+    // https://patchwork.ffmpeg.org/project/ffmpeg/patch/20170606181601.25187-1-isasi@google.com/#12592
+    pub minimum_presentation_timestamp: Time,
+
+    /// Whether all decode timestamps are equal to presentation timestamps.
+    ///
+    /// If true, the video typically has no B-frames as those require frame reordering.
+    pub dts_always_equal_pts: bool,
+}
+
+impl SamplesStatistics {
+    pub fn new(samples: &[Sample]) -> Self {
+        re_tracing::profile_function!();
+
+        let minimum_presentation_timestamp = samples
+            .iter()
+            .map(|s| s.presentation_timestamp)
+            .min()
+            .unwrap_or_default();
+        let dts_always_equal_pts = samples
+            .iter()
+            .all(|s| s.decode_timestamp == s.presentation_timestamp);
+
+        Self {
+            minimum_presentation_timestamp,
+            dts_always_equal_pts,
+        }
+    }
 }
 
 impl VideoData {
@@ -93,7 +138,7 @@ impl VideoData {
     /// Length of the video.
     #[inline]
     pub fn duration(&self) -> std::time::Duration {
-        std::time::Duration::from_nanos(self.duration.into_nanos(self.timescale) as _)
+        self.duration.duration(self.timescale)
     }
 
     /// Natural width and height of the video
@@ -229,17 +274,25 @@ impl VideoData {
         }
     }
 
-    /// Determines the presentation timestamps of all frames inside a video, returning raw time values.
+    /// Determines the video timestamps of all frames inside a video, returning raw time values.
     ///
     /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
+    /// These are *not* necessarily the same as the presentation timestamps, as the returned timestamps are
+    /// normalized respect to the start of the video, see [`SamplesStatistics::minimum_presentation_timestamp`].
     pub fn frame_timestamps_ns(&self) -> impl Iterator<Item = i64> + '_ {
         // Segments are guaranteed to be sorted among each other, but within a segment,
         // presentation timestamps may not be sorted since this is sorted by decode timestamps.
         self.gops.iter().flat_map(|seg| {
             self.samples[seg.range()]
                 .iter()
-                .map(|sample| sample.composition_timestamp.into_nanos(self.timescale))
+                .map(|sample| sample.presentation_timestamp)
                 .sorted()
+                .map(|pts| {
+                    pts.into_nanos_since_start(
+                        self.timescale,
+                        self.samples_statistics.minimum_presentation_timestamp,
+                    )
+                })
         })
     }
 }
@@ -267,6 +320,20 @@ impl GroupOfPictures {
 }
 
 /// A single sample in a video.
+///
+/// This is equivalent to MP4's definition of a single sample.
+/// Note that in MP4, each sample is forms a single access unit,
+/// see 3.1.1 [ISO_IEC_14496-14](https://ossrs.io/lts/zh-cn/assets/files/ISO_IEC_14496-14-MP4-2003-9a3eb04879ded495406399602ff2e587.pdf):
+/// > 3.1.1 Elementary Stream Data
+/// > To maintain the goals of streaming protocol independence, the media data is stored in its most ‘natural’ format,
+/// > and not fragmented. This enables easy local manipulation of the media data. Therefore media-data is stored
+/// > as access units, a range of contiguous bytes for each access unit (a single access unit is the definition of a
+/// > ‘sample’ for an MPEG-4 media stream).
+///
+/// Access units in H.264/H.265 are always yielding a single frame upon decoding,
+/// see <https://en.wikipedia.org/wiki/Network_Abstraction_Layer#Access_Units/>:
+/// > A set of NAL units in a specified form is referred to as an access unit.
+/// > The decoding of each access unit results in one decoded picture.
 #[derive(Debug, Clone)]
 pub struct Sample {
     /// Is t his the start of a new [`GroupOfPictures`]?
@@ -276,15 +343,16 @@ pub struct Sample {
     ///
     /// Samples should be decoded in this order.
     ///
-    /// `decode_timestamp <= composition_timestamp`
+    /// `decode_timestamp <= presentation_timestamp`
     pub decode_timestamp: Time,
 
     /// Time at which this sample appears in the frame stream, in time units.
+    /// Often synonymous with `presentation_timestamp`.
     ///
     /// The frame should be shown at this time.
     ///
-    /// `decode_timestamp <= composition_timestamp`
-    pub composition_timestamp: Time,
+    /// `decode_timestamp <= presentation_timestamp`
+    pub presentation_timestamp: Time,
 
     /// Duration of the sample, in time units.
     pub duration: Time,
@@ -310,7 +378,8 @@ impl Sample {
             .to_vec();
         Some(Chunk {
             data,
-            composition_timestamp: self.composition_timestamp,
+            decode_timestamp: self.decode_timestamp,
+            presentation_timestamp: self.presentation_timestamp,
             duration: self.duration,
             is_sync: self.is_sync,
         })
@@ -336,6 +405,10 @@ pub struct Config {
 impl Config {
     pub fn is_av1(&self) -> bool {
         matches!(self.stsd.contents, re_mp4::StsdBoxContent::Av01 { .. })
+    }
+
+    pub fn is_h264(&self) -> bool {
+        matches!(self.stsd.contents, re_mp4::StsdBoxContent::Avc1 { .. })
     }
 }
 

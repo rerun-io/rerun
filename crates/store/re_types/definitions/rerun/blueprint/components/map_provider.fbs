@@ -13,17 +13,11 @@ enum MapProvider: ubyte (
     OpenStreetMap (default),
 
     /// Mapbox Streets is a minimalistic map designed by Mapbox.
-    ///
-    /// **Note**: Requires a Mapbox API key in the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
     MapboxStreets,
 
     /// Mapbox Dark is a dark-themed map designed by Mapbox.
-    ///
-    /// **Note**: Requires a Mapbox API key in the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
     MapboxDark,
 
     /// Mapbox Satellite is a satellite map designed by Mapbox.
-    ///
-    /// **Note**: Requires a Mapbox API key in the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
     MapboxSatellite,
 }

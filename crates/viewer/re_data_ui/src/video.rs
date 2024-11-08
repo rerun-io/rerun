@@ -4,16 +4,13 @@ use re_renderer::{
 };
 use re_types::components::VideoTimestamp;
 use re_ui::{list_item::PropertyContent, UiExt};
-use re_video::decode::FrameInfo;
+use re_video::{decode::FrameInfo, demux::SamplesStatistics};
 use re_viewer_context::UiLayout;
 
 pub fn show_video_blob_info(
-    render_ctx: Option<&re_renderer::RenderContext>,
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     video_result: &Result<re_renderer::video::Video, VideoLoadError>,
-    video_timestamp: Option<VideoTimestamp>,
-    blob: &re_types::datatypes::Blob,
 ) {
     #[allow(clippy::match_same_arms)]
     match video_result {
@@ -65,11 +62,11 @@ pub fn show_video_blob_info(
                         .value_text(format!("{}", re_log_types::Duration::from(data.duration()))),
                 );
                 // Some people may think that num_frames / duration = fps, but that's not true, videos may have variable frame rate.
-                // At the same time, we don't want to overload users with video codec/container specific stuff that they have to understand,
-                // and for all intents and purposes one sample = one frame.
-                // So the compromise is that we truthfully show the number of *samples* here and don't talk about frames.
+                // Video containers and codecs like talking about samples or chunks rather than frames, but for how we define a chunk today,
+                // a frame is always a single chunk of data is always a single sample, see [`re_video::decode::Chunk`].
+                // So for all practical purposes the sample count _is_ the number of frames, at least how we use it today.
                 ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Sample count")
+                    PropertyContent::new("Frame count")
                         .value_text(re_format::format_uint(data.num_samples())),
                 );
                 ui.list_item_flat_noninteractive(
@@ -91,71 +88,13 @@ pub fn show_video_blob_info(
                             );
                         }
                     });
-                }
-
-                if let Some(render_ctx) = render_ctx {
-                    // Show a mini-player for the video:
-
-                    let timestamp_in_seconds = if let Some(video_timestamp) = video_timestamp {
-                        video_timestamp.as_seconds()
-                    } else {
-                        // TODO(emilk): Some time controls would be nice,
-                        // but the point here is not to have a nice viewer,
-                        // but to show the user what they have selected
-                        ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
-                        ui.input(|i| i.time) % video.data().duration().as_secs_f64()
-                    };
-
-                    let player_stream_id = re_renderer::video::VideoPlayerStreamId(
-                        ui.id().with("video_player").value(),
+                    ui.list_item_collapsible_noninteractive_label(
+                        "More video statistics",
+                        false,
+                        |ui| {
+                            samples_statistics_ui(ui, &data.samples_statistics);
+                        },
                     );
-
-                    match video.frame_at(
-                        render_ctx,
-                        player_stream_id,
-                        timestamp_in_seconds,
-                        blob.as_slice(),
-                    ) {
-                        Ok(VideoFrameTexture {
-                            texture,
-                            is_pending,
-                            show_spinner,
-                            frame_info,
-                            source_pixel_format,
-                        }) => {
-                            let response = crate::image::texture_preview_ui(
-                                render_ctx,
-                                ui,
-                                ui_layout,
-                                "video_preview",
-                                re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture),
-                            );
-
-                            if is_pending {
-                                ui.ctx().request_repaint(); // Keep polling for an up-to-date texture
-                            }
-
-                            if show_spinner {
-                                // Shrink slightly:
-                                let smaller_rect = egui::Rect::from_center_size(
-                                    response.rect.center(),
-                                    0.75 * response.rect.size(),
-                                );
-                                egui::Spinner::new().paint_at(ui, smaller_rect);
-                            }
-
-                            decoded_frame_ui(
-                                ui,
-                                &frame_info,
-                                video.data().timescale,
-                                &source_pixel_format,
-                            );
-                        }
-
-                        Err(err) => {
-                            ui.error_label_long(&err.to_string());
-                        }
-                    }
                 }
             });
         }
@@ -179,39 +118,152 @@ pub fn show_video_blob_info(
     }
 }
 
-fn decoded_frame_ui(
+pub fn show_decoded_frame_info(
+    render_ctx: Option<&re_renderer::RenderContext>,
     ui: &mut egui::Ui,
-    frame_info: &FrameInfo,
-    timescale: re_video::Timescale,
-    source_image_format: &SourceImageDataFormat,
+    ui_layout: UiLayout,
+    video: &re_renderer::video::Video,
+    video_timestamp: Option<VideoTimestamp>,
+    blob: &re_types::datatypes::Blob,
 ) {
-    re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
-        let default_open = false;
-        ui.list_item_collapsible_noninteractive_label("Decoded frame info", default_open, |ui| {
-            frame_info_ui(ui, frame_info, timescale);
-            source_image_data_format_ui(ui, source_image_format);
-        });
-    });
+    let Some(render_ctx) = render_ctx else {
+        return;
+    };
+
+    let timestamp_in_seconds = if let Some(video_timestamp) = video_timestamp {
+        video_timestamp.as_seconds()
+    } else {
+        // TODO(emilk): Some time controls would be nice,
+        // but the point here is not to have a nice viewer,
+        // but to show the user what they have selected
+        ui.ctx().request_repaint(); // TODO(emilk): schedule a repaint just in time for the next frame of video
+        ui.input(|i| i.time) % video.data().duration().as_secs_f64()
+    };
+
+    let player_stream_id =
+        re_renderer::video::VideoPlayerStreamId(ui.id().with("video_player").value());
+
+    match video.frame_at(
+        render_ctx,
+        player_stream_id,
+        timestamp_in_seconds,
+        blob.as_slice(),
+    ) {
+        Ok(VideoFrameTexture {
+            texture,
+            is_pending,
+            show_spinner,
+            frame_info,
+            source_pixel_format,
+        }) => {
+            re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
+                let default_open = false;
+                ui.list_item_collapsible_noninteractive_label(
+                    "Current decoded frame",
+                    default_open,
+                    |ui| {
+                        frame_info_ui(ui, &frame_info, video.data());
+                        source_image_data_format_ui(ui, &source_pixel_format);
+                    },
+                );
+            });
+
+            let response = crate::image::texture_preview_ui(
+                render_ctx,
+                ui,
+                ui_layout,
+                "video_preview",
+                re_renderer::renderer::ColormappedTexture::from_unorm_rgba(texture),
+            );
+
+            if is_pending {
+                ui.ctx().request_repaint(); // Keep polling for an up-to-date texture
+            }
+
+            if show_spinner {
+                // Shrink slightly:
+                let smaller_rect = egui::Rect::from_center_size(
+                    response.rect.center(),
+                    0.75 * response.rect.size(),
+                );
+                egui::Spinner::new().paint_at(ui, smaller_rect);
+            }
+        }
+
+        Err(err) => {
+            ui.error_label_long(&err.to_string());
+
+            if let re_renderer::video::VideoPlayerError::Decoding(
+                re_video::decode::Error::FfmpegNotInstalled {
+                    download_url: Some(url),
+                },
+            ) = err
+            {
+                ui.markdown_ui(&format!("You can download a build of `FFmpeg` [here]({url}). For Rerun to be able to use it, its binaries need to be reachable from `PATH`."));
+            }
+        }
+    }
 }
 
-fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, timescale: re_video::Timescale) {
-    let time_range = frame_info.time_range();
+fn samples_statistics_ui(ui: &mut egui::Ui, samples_statistics: &SamplesStatistics) {
+    ui.list_item_flat_noninteractive(
+            PropertyContent::new("Minimum PTS").value_text(samples_statistics.minimum_presentation_timestamp.0.to_string())
+        ).on_hover_text("The smallest presentation timestamp (PTS) observed in this video.\n\
+                                         A non-zero value indicates that there are B-frames in the video.\n\
+                                         Rerun will place the 0:00:00 time at this timestamp.");
+    ui.list_item_flat_noninteractive(
+            // `value_bool` doesn't look great for static values.
+            PropertyContent::new("All PTS equal DTS").value_text(samples_statistics.dts_always_equal_pts.to_string())
+        ).on_hover_text("Whether all decode timestamps are equal to presentation timestamps. If true, the video typically has no B-frames.");
+}
+
+fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_video::VideoData) {
+    let time_range = frame_info.presentation_time_range();
     ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
         "{} - {}",
-        re_format::format_timestamp_seconds(time_range.start.into_secs(timescale),),
-        re_format::format_timestamp_seconds(time_range.end.into_secs(timescale),),
+        re_format::format_timestamp_seconds(time_range.start.into_secs_since_start(
+            video_data.timescale,
+            video_data.samples_statistics.minimum_presentation_timestamp
+        )),
+        re_format::format_timestamp_seconds(time_range.end.into_secs_since_start(
+            video_data.timescale,
+            video_data.samples_statistics.minimum_presentation_timestamp
+        )),
     )))
     .on_hover_text("Time range in which this frame is valid.");
 
+    fn value_fn_for_time(
+        time: re_video::Time,
+        video_data: &re_video::VideoData,
+    ) -> impl FnOnce(&mut egui::Ui, egui::style::WidgetVisuals) + '_ {
+        move |ui, _| {
+            ui.add(egui::Label::new(time.0.to_string()).truncate())
+                .on_hover_text(re_format::format_timestamp_seconds(
+                    time.into_secs_since_start(
+                        video_data.timescale,
+                        video_data.samples_statistics.minimum_presentation_timestamp,
+                    ),
+                ));
+        }
+    }
+
+    if let Some(dts) = frame_info.latest_decode_timestamp {
+        ui.list_item_flat_noninteractive(
+            PropertyContent::new("DTS").value_fn(value_fn_for_time(dts, video_data)),
+        )
+        .on_hover_text("Raw decode timestamp prior to applying the timescale.\n\
+                        If a frame is made up of multiple chunks, this is the last decode timestamp that was needed to decode the frame.");
+    }
+
     ui.list_item_flat_noninteractive(
-        PropertyContent::new("PTS").value_text(format!("{}", frame_info.presentation_timestamp.0)),
+        PropertyContent::new("PTS").value_fn(value_fn_for_time(frame_info.presentation_timestamp, video_data)),
     )
     .on_hover_text("Raw presentation timestamp prior to applying the timescale.\n\
                     This specifies the time at which the frame should be shown relative to the start of a video stream.");
 }
 
 fn source_image_data_format_ui(ui: &mut egui::Ui, format: &SourceImageDataFormat) {
-    let label = "Output format";
+    let label = "Decoder output format";
 
     match format {
         SourceImageDataFormat::WgpuCompatible(format) => {

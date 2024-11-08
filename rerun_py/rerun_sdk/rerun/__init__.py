@@ -12,7 +12,6 @@ import numpy as np
 __version__ = "0.20.0-alpha.1+dev"
 __version_info__ = (0, 20, 0, "alpha.1")
 
-
 if sys.version_info < (3, 9):
     warnings.warn(
         "Python 3.8 is past EOL (https://devguide.python.org/versions/). Rerun version 0.21 will drop support/testing of Python 3.8.",
@@ -31,6 +30,7 @@ from . import (
     dataframe as dataframe,
     experimental as experimental,
     notebook as notebook,
+    remote as remote,
 )
 from ._baseclasses import (
     ComponentColumn as ComponentColumn,
@@ -74,6 +74,7 @@ from .archetypes import (
     DisconnectedSpace as DisconnectedSpace,
     Ellipsoids3D as Ellipsoids3D,
     EncodedImage as EncodedImage,
+    GeoLineStrings as GeoLineStrings,
     GeoPoints as GeoPoints,
     GraphEdges as GraphEdges,
     GraphNodes as GraphNodes,

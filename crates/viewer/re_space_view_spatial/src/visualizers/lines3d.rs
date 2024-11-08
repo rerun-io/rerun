@@ -20,7 +20,7 @@ use crate::{
 
 use super::{
     filter_visualizable_3d_entities, process_annotation_and_keypoint_slices, process_color_slice,
-    process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    process_radius_slice, SpatialViewVisualizerData,
 };
 
 // ---
@@ -186,7 +186,9 @@ impl VisualizerSystem for Lines3DVisualizer {
         };
 
         let mut line_builder = re_renderer::LineDrawableBuilder::new(render_ctx);
-        line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+        line_builder.radius_boost_in_ui_points_for_outlines(
+            re_space_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+        );
 
         use super::entity_iterator::{iter_primitive_array_list, process_archetype};
         process_archetype::<Self, LineStrips3D, _>(

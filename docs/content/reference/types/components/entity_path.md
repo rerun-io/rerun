@@ -5,9 +5,14 @@ title: "EntityPath"
 
 A path to an entity, usually to reference some data that is part of the target entity.
 
-## Fields
+## Rerun datatype
+[`EntityPath`](../datatypes/entity_path.md)
 
-* value: [`EntityPath`](../datatypes/entity_path.md)
+
+## Arrow datatype
+```
+utf8
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `EntityPath`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1EntityPath.html)

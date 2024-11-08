@@ -121,14 +121,19 @@ impl VideoPlayer {
     pub fn frame_at(
         &mut self,
         render_ctx: &RenderContext,
-        presentation_timestamp_s: f64,
+        time_since_video_start_in_seconds: f64,
         video_data: &[u8],
     ) -> Result<VideoFrameTexture, VideoPlayerError> {
-        if presentation_timestamp_s < 0.0 {
+        if time_since_video_start_in_seconds < 0.0 {
             return Err(VideoPlayerError::NegativeTimestamp);
         }
-        let presentation_timestamp = Time::from_secs(presentation_timestamp_s, self.data.timescale);
-        let presentation_timestamp = presentation_timestamp.min(self.data.duration); // Don't seek past the end of the video.
+        let presentation_timestamp = Time::from_secs_since_start(
+            time_since_video_start_in_seconds,
+            self.data.timescale,
+            self.data.samples_statistics.minimum_presentation_timestamp,
+        );
+        let presentation_timestamp = presentation_timestamp
+            .min(self.data.duration + self.data.samples_statistics.minimum_presentation_timestamp); // Don't seek past the end of the video.
 
         let error_on_last_frame_at = self.last_error.is_some();
         let result = self.frame_at_internal(render_ctx, presentation_timestamp, video_data);
@@ -138,7 +143,7 @@ impl VideoPlayer {
                 let is_active_frame = self
                     .video_texture
                     .frame_info
-                    .time_range()
+                    .presentation_time_range()
                     .contains(&presentation_timestamp);
 
                 let is_pending = !is_active_frame;
@@ -151,7 +156,7 @@ impl VideoPlayer {
                     self.video_texture.frame_info = FrameInfo::default();
                 }
 
-                let time_range = self.video_texture.frame_info.time_range();
+                let time_range = self.video_texture.frame_info.presentation_time_range();
                 let show_spinner = if presentation_timestamp < time_range.start {
                     // We're seeking backwards and somehow forgot to reset.
                     true
@@ -159,9 +164,7 @@ impl VideoPlayer {
                     false // it is an active frame
                 } else {
                     let how_outdated = presentation_timestamp - time_range.end;
-                    if how_outdated.into_secs(self.data.timescale)
-                        < DECODING_GRACE_DELAY.as_secs_f64()
-                    {
+                    if how_outdated.duration(self.data.timescale) < DECODING_GRACE_DELAY {
                         false // Just outdated by a little bit - show no spinner
                     } else {
                         true // Very old frame - show spinner
@@ -196,8 +199,9 @@ impl VideoPlayer {
         //     = determines the decoding order of samples
         //
         // Note: `decode <= composition` for any given sample.
-        //       For some codecs, the two timestamps are the same.
+        //       For some codecs & videos, the two timestamps are the same.
         // We must enqueue samples in decode order, but show them in composition order.
+        // In the presence of b-frames this order may be different!
 
         // 1. Find the latest sample where `decode_timestamp <= presentation_timestamp`.
         //    Because `decode <= composition`, we never have to look further ahead in the
@@ -211,11 +215,11 @@ impl VideoPlayer {
         };
 
         // 2. Search _backwards_, starting at `decode_sample_idx`, looking for
-        //    the first sample where `sample.composition_timestamp <= presentation_timestamp`.
+        //    the first sample where `sample.presentation_timestamp <= presentation_timestamp`.
         //    This is the sample which when decoded will be presented at the timestamp the user requested.
         let Some(requested_sample_idx) = self.data.samples[..=decode_sample_idx]
             .iter()
-            .rposition(|sample| sample.composition_timestamp <= presentation_timestamp)
+            .rposition(|sample| sample.presentation_timestamp <= presentation_timestamp)
         else {
             return Err(VideoPlayerError::EmptyVideo);
         };
@@ -288,7 +292,7 @@ impl VideoPlayer {
         );
 
         if let Err(err) = result {
-            if err == VideoPlayerError::EmptyBuffer {
+            if matches!(err, VideoPlayerError::EmptyBuffer) {
                 // No buffered frames
 
                 // Might this be due to an error?

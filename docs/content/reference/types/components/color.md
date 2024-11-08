@@ -8,9 +8,14 @@ An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear 
 The color is stored as a 32-bit integer, where the most significant
 byte is `R` and the least significant byte is `A`.
 
-## Fields
+## Rerun datatype
+[`Rgba32`](../datatypes/rgba32.md)
 
-* rgba: [`Rgba32`](../datatypes/rgba32.md)
+
+## Arrow datatype
+```
+uint32
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `Color`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Color.html)
@@ -27,6 +32,7 @@ byte is `R` and the least significant byte is `A`.
 * [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Capsules3D`](../archetypes/capsules3d.md?speculative-link)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
+* [`GeoLineStrings`](../archetypes/geo_line_strings.md?speculative-link)
 * [`GeoPoints`](../archetypes/geo_points.md?speculative-link)
 * [`GraphNodes`](../archetypes/graph_nodes.md?speculative-link)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)

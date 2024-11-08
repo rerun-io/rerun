@@ -6,9 +6,28 @@ title: "RotationAxisAngle"
 3D rotation represented by a rotation around a given axis.
 
 ## Fields
+#### `axis`
+Type: [`Vec3D`](../datatypes/vec3d.md)
 
-* axis: [`Vec3D`](../datatypes/vec3d.md)
-* angle: [`Angle`](../datatypes/angle.md)
+Axis to rotate around.
+
+This is not required to be normalized.
+If normalization fails (typically because the vector is length zero), the rotation is silently
+ignored.
+
+#### `angle`
+Type: [`Angle`](../datatypes/angle.md)
+
+How much to rotate around the axis.
+
+
+## Arrow datatype
+```
+Struct {
+    axis: FixedSizeList<3, float32>
+    angle: float32
+}
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `RotationAxisAngle`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1RotationAxisAngle.html)

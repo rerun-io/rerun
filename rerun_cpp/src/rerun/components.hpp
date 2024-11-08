@@ -18,6 +18,7 @@
 #include "components/fill_mode.hpp"
 #include "components/fill_ratio.hpp"
 #include "components/gamma_correction.hpp"
+#include "components/geo_line_string.hpp"
 #include "components/graph_edge.hpp"
 #include "components/graph_node.hpp"
 #include "components/graph_type.hpp"

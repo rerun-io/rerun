@@ -88,11 +88,11 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/a1291641639f4dc3864e84259c70089a96bfcb1a/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/a1291641639f4dc3864e84259c70089a96bfcb1a/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/a1291641639f4dc3864e84259c70089a96bfcb1a/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/a1291641639f4dc3864e84259c70089a96bfcb1a/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/a1291641639f4dc3864e84259c70089a96bfcb1a/1200w.png">
+  <img src="https://static.rerun.io/crates/35c2f18eb941ec321c6d19f5a763f0ac542ca2ed/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/35c2f18eb941ec321c6d19f5a763f0ac542ca2ed/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/35c2f18eb941ec321c6d19f5a763f0ac542ca2ed/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/35c2f18eb941ec321c6d19f5a763f0ac542ca2ed/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/35c2f18eb941ec321c6d19f5a763f0ac542ca2ed/1200w.png">
 </picture>
 
 
@@ -162,13 +162,13 @@ Update instructions:
 
 | Crate                 | Description                                                              |
 |-----------------------|--------------------------------------------------------------------------|
-| re_entity_db          | In-memory storage of Rerun entities                                      |
-| re_query              | Querying data in the re_chunk_store                                      |
 | re_dataframe          | The Rerun public data APIs.                                              |
-| re_remote_store_types | Rerun remote store gRPC API types                                        |
+| re_entity_db          | In-memory storage of Rerun entities                                      |
+| re_log_encoding       | Helpers for encoding and transporting Rerun log messages                 |
+| re_protos             | Rerun remote store gRPC API types                                        |
+| re_query              | Querying data in the re_chunk_store                                      |
 | re_types              | The built-in Rerun data types, component types, and archetypes.          |
 | re_types_blueprint    | The core traits and types that power Rerun's Blueprint sub-system.       |
-| re_log_encoding       | Helpers for encoding and transporting Rerun log messages                 |
 
 
 ### Low-level store
@@ -188,10 +188,10 @@ Update instructions:
 |----------------------|--------------------------------------------------------------------------------------------------------|
 | re_data_loader       | Handles loading of Rerun data from file using data loader plugins                                      |
 | re_data_source       | Handles loading of Rerun data from different sources                                                   |
+| re_grpc_client       | Communicate with the Rerun Data Platform over gRPC                                                     |
 | re_sdk_comms         | TCP communication between Rerun SDK and Rerun Server                                                   |
 | re_web_viewer_server | Serves the Rerun web viewer (Wasm and HTML) over HTTP                                                  |
 | re_ws_comms          | WebSocket communication library (encoding, decoding, client, server) between a Rerun server and Viewer |
-| re_rrdp_comms        | Communicate with the Rerun Data Platform over gRPC                                                     |
 
 
 ### Build support
@@ -200,9 +200,9 @@ Update instructions:
 |-------------------------------|------------------------------------------------------------------|
 | re_build_info                 | Information about the build. Use together with re_build_tools    |
 | re_build_tools                | build.rs helpers for generating build info                       |
-| re_remote_store_types_builder | Generates code for Rerun remote store gRPC API                   |
-| re_types_builder              | Generates code for Rerun's SDKs from flatbuffers definitions.    |
 | re_dev_tools                  | Various tools for Rerun development. Each tool has a subcommand. |
+| re_protos_builder             | Generates code for Rerun remote store gRPC API                   |
+| re_types_builder              | Generates code for Rerun's SDKs from flatbuffers definitions.    |
 
 
 ### Utilities

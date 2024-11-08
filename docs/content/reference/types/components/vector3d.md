@@ -5,9 +5,14 @@ title: "Vector3D"
 
 A vector in 3D space.
 
-## Fields
+## Rerun datatype
+[`Vec3D`](../datatypes/vec3d.md)
 
-* vector: [`Vec3D`](../datatypes/vec3d.md)
+
+## Arrow datatype
+```
+FixedSizeList<3, float32>
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `Vector3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Vector3D.html)

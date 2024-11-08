@@ -14,10 +14,8 @@ use re_viewer_context::{
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
 use crate::{
-    contexts::TransformContext,
-    instance_hash_conversions::picking_layer_id_from_instance_path_hash, query_pinhole,
-    space_camera_3d::SpaceCamera3D, ui::SpatialSpaceViewState,
-    visualizers::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    contexts::TransformContext, query_pinhole, space_camera_3d::SpaceCamera3D,
+    ui::SpatialSpaceViewState,
 };
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
@@ -150,7 +148,8 @@ impl CamerasVisualizer {
         let radius = re_renderer::Size::new_ui_points(1.0);
         let instance_path_for_picking =
             re_entity_db::InstancePathHash::instance(ent_path, instance);
-        let instance_layer_id = picking_layer_id_from_instance_path_hash(instance_path_for_picking);
+        let instance_layer_id =
+            re_space_view::picking_layer_id_from_instance_path_hash(instance_path_for_picking);
 
         let mut batch = line_builder
             .batch(ent_path.to_string())
@@ -210,7 +209,9 @@ impl VisualizerSystem for CamerasVisualizer {
         // Counting all cameras ahead of time is a bit wasteful, but we also don't expect a huge amount,
         // so let re_renderer's allocator internally decide what buffer sizes to pick & grow them as we go.
         let mut line_builder = re_renderer::LineDrawableBuilder::new(render_ctx);
-        line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+        line_builder.radius_boost_in_ui_points_for_outlines(
+            re_space_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+        );
 
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             let time_query = re_chunk_store::LatestAtQuery::new(query.timeline, query.latest_at);

@@ -16,13 +16,13 @@ use re_memory::AccountingAllocator;
 static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
     AccountingAllocator::new(mimalloc::MiMalloc);
 
-#[cfg(feature = "rrdp")]
+#[cfg(feature = "grpc")]
 #[tokio::main]
 async fn main() -> std::process::ExitCode {
     main_impl()
 }
 
-#[cfg(not(feature = "rrdp"))]
+#[cfg(not(feature = "grpc"))]
 fn main() -> std::process::ExitCode {
     main_impl()
 }

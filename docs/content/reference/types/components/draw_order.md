@@ -10,9 +10,14 @@ Within an entity draw order is governed by the order of the components.
 
 Draw order for entities with the same draw order is generally undefined.
 
-## Fields
+## Rerun datatype
+[`Float32`](../datatypes/float32.md)
 
-* value: [`Float32`](../datatypes/float32.md)
+
+## Arrow datatype
+```
+float32
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `DrawOrder`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1DrawOrder.html)

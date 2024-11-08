@@ -11,9 +11,14 @@ Used to adjust the gamma of a color or scalar value between 0 and 1 before rende
 Valid range is from 0 (excluding) to max float.
 Defaults to 1.0 unless otherwise specified.
 
-## Fields
+## Rerun datatype
+[`Float32`](../datatypes/float32.md)
 
-* gamma: [`Float32`](../datatypes/float32.md)
+
+## Arrow datatype
+```
+float32
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `GammaCorrection`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1GammaCorrection.html)

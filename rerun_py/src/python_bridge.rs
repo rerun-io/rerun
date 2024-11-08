@@ -175,6 +175,9 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // dataframes
     crate::dataframe::register(m)?;
 
+    #[cfg(feature = "remote")]
+    crate::remote::register(m)?;
+
     Ok(())
 }
 
@@ -311,9 +314,21 @@ fn shutdown(py: Python<'_>) {
     re_log::debug!("Shutting down the Rerun SDK");
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
-        for (_, recording) in all_recordings().drain() {
+        // NOTE: Do **NOT** try and drain() `all_recordings` here.
+        //
+        // Doing so would drop the last remaining reference to these recordings, and therefore
+        // trigger their deallocation as well as the deallocation of all the Python and C++ data
+        // that they might transitively reference, but this is _NOT_ the right place to do so.
+        // This method is called automatically during shutdown via python's `atexit`, which is not
+        // a safepoint for deallocating these things, quite far from it.
+        //
+        // Calling `disconnect()` will already take care of flushing everything that can be flushed,
+        // and cleaning up everything that can be safely cleaned up, anyhow.
+        // Whatever's left can wait for the OS to clean it up.
+        for (_, recording) in all_recordings().iter() {
             recording.disconnect();
         }
+
         flush_garbage_queue();
     });
 }

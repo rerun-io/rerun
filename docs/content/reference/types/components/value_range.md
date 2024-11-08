@@ -5,9 +5,14 @@ title: "ValueRange"
 
 Range of expected or valid values, specifying a lower and upper bound.
 
-## Fields
+## Rerun datatype
+[`Range1D`](../datatypes/range1d.md)
 
-* range: [`Range1D`](../datatypes/range1d.md)
+
+## Arrow datatype
+```
+FixedSizeList<2, float64>
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `ValueRange`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ValueRange.html)

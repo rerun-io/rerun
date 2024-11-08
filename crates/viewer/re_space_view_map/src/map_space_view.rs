@@ -1,9 +1,10 @@
-use egui::{Context, NumExt as _};
+use egui::{Context, NumExt as _, Rect, Response};
 use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
 use re_data_ui::{item_ui, DataUi};
+use re_entity_db::InstancePathHash;
 use re_log_types::EntityPath;
-use re_space_view::suggest_space_view_for_each_entity;
+use re_renderer::{RenderContext, ViewBuilder};
 use re_types::{
     blueprint::{
         archetypes::{MapBackground, MapZoom},
@@ -14,31 +15,36 @@ use re_types::{
 };
 use re_ui::list_item;
 use re_viewer_context::{
-    Item, SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, UiLayout,
-    ViewQuery, ViewerContext,
+    gpu_bridge, IdentifiedViewSystem as _, Item, SpaceViewClass, SpaceViewClassLayoutPriority,
+    SpaceViewClassRegistryError, SpaceViewHighlights, SpaceViewId, SpaceViewSpawnHeuristics,
+    SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError,
+    SpaceViewSystemRegistrator, SystemExecutionOutput, UiLayout, ViewQuery, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use crate::map_overlays;
-use crate::visualizers::geo_points::GeoPointsVisualizer;
+use crate::visualizers::{update_span, GeoLineStringsVisualizer, GeoPointsVisualizer};
 
 #[derive(Default)]
 pub struct MapSpaceViewState {
     tiles: Option<HttpTiles>,
     map_memory: MapMemory,
     selected_provider: MapProvider,
+
+    /// Because `re_renderer` can have varying, multiple frames of delay, we must keep track of the
+    /// last picked results for when picking results is not available on a given frame.
+    last_gpu_picking_result: Option<InstancePathHash>,
 }
 
 impl MapSpaceViewState {
     // This method ensures that tiles is initialized and returns mutable references to tiles and map_memory.
     pub fn ensure_and_get_mut_refs(
         &mut self,
-        ctx: &egui::Context,
+        ctx: &ViewerContext<'_>,
+        egui_ctx: &egui::Context,
     ) -> Result<(&mut HttpTiles, &mut MapMemory), SpaceViewSystemExecutionError> {
         if self.tiles.is_none() {
-            let tiles = get_tile_manager(self.selected_provider, ctx);
+            let tiles = get_tile_manager(ctx, self.selected_provider, egui_ctx);
             self.tiles = Some(tiles);
         }
 
@@ -96,7 +102,8 @@ Displays geospatial primitives on a map.
         &self,
         system_registry: &mut SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        system_registry.register_visualizer::<GeoPointsVisualizer>()
+        system_registry.register_visualizer::<GeoPointsVisualizer>()?;
+        system_registry.register_visualizer::<GeoLineStringsVisualizer>()
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
@@ -109,11 +116,29 @@ Displays geospatial primitives on a map.
     }
 
     fn layout_priority(&self) -> SpaceViewClassLayoutPriority {
-        SpaceViewClassLayoutPriority::Low
+        SpaceViewClassLayoutPriority::default()
     }
 
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
-        suggest_space_view_for_each_entity::<GeoPointsVisualizer>(ctx, self)
+        re_tracing::profile_function!();
+
+        // Spawn a single map view at the root if any geospatial entity exists.
+        let any_map_entity = [
+            GeoPointsVisualizer::identifier(),
+            GeoLineStringsVisualizer::identifier(),
+        ]
+        .iter()
+        .any(|system_id| {
+            ctx.indicated_entities_per_visualizer
+                .get(system_id)
+                .is_some_and(|indicated_entities| !indicated_entities.is_empty())
+        });
+
+        if any_map_entity {
+            SpaceViewSpawnHeuristics::root()
+        } else {
+            SpaceViewSpawnHeuristics::default()
+        }
     }
 
     fn selection_ui(
@@ -154,6 +179,9 @@ Displays geospatial primitives on a map.
         );
 
         let geo_points_visualizer = system_output.view_systems.get::<GeoPointsVisualizer>()?;
+        let geo_line_strings_visualizers = system_output
+            .view_systems
+            .get::<GeoLineStringsVisualizer>()?;
 
         //
         // Map Provider
@@ -181,7 +209,9 @@ Displays geospatial primitives on a map.
         // changes in walkers
         // TODO(#7884): support more elaborate auto-pan/zoom modes.
 
-        let span = geo_points_visualizer.span();
+        let mut span = None;
+        update_span(&mut span, geo_points_visualizer.span());
+        update_span(&mut span, geo_line_strings_visualizers.span());
 
         let default_center_position = span
             .as_ref()
@@ -211,67 +241,27 @@ Displays geospatial primitives on a map.
         // Map UI
         //
 
-        let (tiles, map_memory) = match state.ensure_and_get_mut_refs(ui.ctx()) {
+        let (tiles, map_memory) = match state.ensure_and_get_mut_refs(ctx, ui.ctx()) {
             Ok(refs) => refs,
             Err(err) => return Err(err),
         };
-        egui::Frame::default().show(ui, |ui| {
-            let mut picked_instance = None;
+        let attribution = tiles.attribution();
 
-            let some_tiles_manager: Option<&mut dyn Tiles> = Some(tiles);
-            let mut map_response = ui.add(
-                Map::new(some_tiles_manager, map_memory, default_center_position).with_plugin(
-                    geo_points_visualizer.plugin(ctx, query.space_view_id, &mut picked_instance),
-                ),
-            );
-            let map_rect = map_response.rect;
+        let some_tiles_manager: Option<&mut dyn Tiles> = Some(tiles);
+        let map_response = ui.add(Map::new(
+            some_tiles_manager,
+            map_memory,
+            default_center_position,
+        ));
+        let map_rect = map_response.rect;
+        let projector = walkers::Projector::new(map_rect, map_memory, default_center_position);
 
-            if let Some(picked_instance) = picked_instance {
-                map_response = map_response.on_hover_ui_at_pointer(|ui| {
-                    list_item::list_item_scope(ui, "map_hover", |ui| {
-                        item_ui::instance_path_button(
-                            ctx,
-                            &query.latest_at_query(),
-                            ctx.recording(),
-                            ui,
-                            Some(query.space_view_id),
-                            &picked_instance.instance_path,
-                        );
-                        picked_instance
-                            .instance_path
-                            .data_ui_recording(ctx, ui, UiLayout::Tooltip);
-                    });
-                });
-
-                ctx.select_hovered_on_click(
-                    &map_response,
-                    Item::DataResult(query.space_view_id, picked_instance.instance_path.clone()),
-                );
-
-                // double click selects the entire entity
-                if map_response.double_clicked() {
-                    // Select the entire entity
-                    ctx.selection_state().set_selection(Item::DataResult(
-                        query.space_view_id,
-                        picked_instance.instance_path.entity_path.clone().into(),
-                    ));
-                }
-            } else if map_response.clicked() {
-                // clicked elsewhere, select the view
-                ctx.selection_state()
-                    .set_selection(Item::SpaceView(query.space_view_id));
+        if map_response.double_clicked() {
+            map_memory.follow_my_position();
+            if let Some(zoom_level) = default_zoom_level {
+                let _ = map_memory.set_zoom(zoom_level);
             }
-
-            if map_response.double_clicked() {
-                map_memory.follow_my_position();
-                if let Some(zoom_level) = default_zoom_level {
-                    let _ = map_memory.set_zoom(zoom_level);
-                }
-            }
-
-            map_overlays::zoom_buttons_overlay(ui, &map_rect, map_memory);
-            map_overlays::acknowledgement_overlay(ui, &map_rect, &tiles.attribution());
-        });
+        }
 
         //
         // Save Blueprint
@@ -284,12 +274,214 @@ Displays geospatial primitives on a map.
             );
         }
 
+        //
+        // Draw all objects using re_renderer
+        //
+
+        let Some(render_ctx) = ctx.render_ctx else {
+            return Err(SpaceViewSystemExecutionError::NoRenderContextError);
+        };
+
+        let mut view_builder =
+            create_view_builder(render_ctx, ui.ctx(), map_rect, &query.highlights);
+
+        geo_line_strings_visualizers.queue_draw_data(
+            render_ctx,
+            &mut view_builder,
+            &projector,
+            &query.highlights,
+        )?;
+        geo_points_visualizer.queue_draw_data(
+            render_ctx,
+            &mut view_builder,
+            &projector,
+            &query.highlights,
+        )?;
+
+        handle_picking_and_ui_interactions(
+            ctx,
+            render_ctx,
+            ui.ctx(),
+            &mut view_builder,
+            query,
+            state,
+            map_response,
+            map_rect,
+        )?;
+
+        ui.painter().add(gpu_bridge::new_renderer_callback(
+            view_builder,
+            map_rect,
+            re_renderer::Rgba::TRANSPARENT,
+        ));
+
+        //
+        // Attribution overlay
+        //
+
+        map_overlays::acknowledgement_overlay(ui, &map_rect, &attribution);
+
         Ok(())
     }
 }
 
-fn get_tile_manager(provider: MapProvider, egui_ctx: &Context) -> HttpTiles {
-    let mapbox_access_token = std::env::var("RERUN_MAPBOX_ACCESS_TOKEN").unwrap_or_default();
+/// Create a view builder mapped to the provided rectangle.
+///
+/// The scene coordinates are 1:1 mapped to egui UI points.
+//TODO(ab): this utility potentially has more general usefulness.
+fn create_view_builder(
+    render_ctx: &RenderContext,
+    egui_ctx: &egui::Context,
+    view_rect: Rect,
+    highlights: &SpaceViewHighlights,
+) -> ViewBuilder {
+    let pixels_per_point = egui_ctx.pixels_per_point();
+    let resolution_in_pixel =
+        gpu_bridge::viewport_resolution_in_pixels(view_rect, pixels_per_point);
+
+    re_renderer::ViewBuilder::new(
+        render_ctx,
+        re_renderer::view_builder::TargetConfiguration {
+            name: "MapView".into(),
+            resolution_in_pixel,
+
+            // Camera looking at a ui coordinate world.
+            view_from_world: re_math::IsoTransform::from_translation(-glam::vec3(
+                view_rect.left(),
+                view_rect.top(),
+                0.0,
+            )),
+            projection_from_view: re_renderer::view_builder::Projection::Orthographic {
+                camera_mode:
+                    re_renderer::view_builder::OrthographicCameraMode::TopLeftCornerAndExtendZ,
+                vertical_world_size: view_rect.height(),
+                far_plane_distance: 100.0,
+            },
+            // No transform after view/projection needed.
+            viewport_transformation: re_renderer::RectTransform::IDENTITY,
+            pixels_per_point,
+            outline_config: highlights
+                .any_outlines()
+                .then(|| re_space_view::outline_config(egui_ctx)),
+
+            // Make sure the map in the background is not completely overwritten
+            blend_with_background: true,
+        },
+    )
+}
+
+/// Handle picking and related ui interactions.
+#[allow(clippy::too_many_arguments)]
+fn handle_picking_and_ui_interactions(
+    ctx: &ViewerContext<'_>,
+    render_ctx: &RenderContext,
+    egui_ctx: &egui::Context,
+    view_builder: &mut ViewBuilder,
+    query: &ViewQuery<'_>,
+    state: &mut MapSpaceViewState,
+    map_response: Response,
+    map_rect: Rect,
+) -> Result<(), SpaceViewSystemExecutionError> {
+    let picking_readback_identifier = query.space_view_id.hash();
+
+    if let Some(pointer_in_ui) = map_response.hover_pos() {
+        let pixels_per_point = egui_ctx.pixels_per_point();
+        let mut pointer_in_pixel = pointer_in_ui.to_vec2();
+        pointer_in_pixel -= map_rect.min.to_vec2();
+        pointer_in_pixel *= pixels_per_point;
+
+        let picking_result = picking_gpu(
+            render_ctx,
+            picking_readback_identifier,
+            glam::vec2(pointer_in_pixel.x, pointer_in_pixel.y),
+            &mut state.last_gpu_picking_result,
+        );
+
+        handle_ui_interactions(ctx, query, map_response, picking_result);
+
+        // TODO(ab, andreas): this part is copy-pasted-modified from spatial space view and should be factored as an utility
+
+        /// Radius in which cursor interactions may snap to the nearest object even if the cursor
+        /// does not hover it directly.
+        ///
+        /// Note that this needs to be scaled when zooming is applied by the virtual->visible ui rect transform.
+        pub const UI_INTERACTION_RADIUS: f32 = 5.0;
+
+        let picking_rect_size = UI_INTERACTION_RADIUS * pixels_per_point;
+        // Make the picking rect bigger than necessary so we can use it to counter-act delays.
+        // (by the time the picking rectangle is read back, the cursor may have moved on).
+        let picking_rect_size = (picking_rect_size * 2.0)
+            .ceil()
+            .at_least(8.0)
+            .at_most(128.0) as u32;
+        // ------
+
+        view_builder.schedule_picking_rect(
+            render_ctx,
+            re_renderer::RectInt::from_middle_and_extent(
+                glam::ivec2(pointer_in_pixel.x as _, pointer_in_pixel.y as _),
+                glam::uvec2(picking_rect_size, picking_rect_size),
+            ),
+            picking_readback_identifier,
+            (),
+            ctx.app_options.show_picking_debug_overlay,
+        )?;
+    } else {
+        // TODO(andreas): should we keep flushing out the gpu picking results? Does spatial view do this?
+        state.last_gpu_picking_result = None;
+    }
+    Ok(())
+}
+
+/// Handle all UI interactions based on the currently picked instance (if any).
+fn handle_ui_interactions(
+    ctx: &ViewerContext<'_>,
+    query: &ViewQuery<'_>,
+    mut map_response: Response,
+    picked_instance: Option<InstancePathHash>,
+) {
+    if let Some(instance_path) = picked_instance.and_then(|hash| hash.resolve(ctx.recording())) {
+        map_response = map_response.on_hover_ui_at_pointer(|ui| {
+            list_item::list_item_scope(ui, "map_hover", |ui| {
+                item_ui::instance_path_button(
+                    ctx,
+                    &query.latest_at_query(),
+                    ctx.recording(),
+                    ui,
+                    Some(query.space_view_id),
+                    &instance_path,
+                );
+
+                instance_path.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+            });
+        });
+
+        ctx.select_hovered_on_click(
+            &map_response,
+            Item::DataResult(query.space_view_id, instance_path.clone()),
+        );
+
+        // double click selects the entire entity
+        if map_response.double_clicked() {
+            // Select the entire entity
+            ctx.selection_state().set_selection(Item::DataResult(
+                query.space_view_id,
+                instance_path.entity_path.clone().into(),
+            ));
+        }
+    } else if map_response.clicked() {
+        // clicked elsewhere, select the view
+        ctx.selection_state()
+            .set_selection(Item::SpaceView(query.space_view_id));
+    }
+}
+
+fn get_tile_manager(
+    ctx: &ViewerContext<'_>,
+    provider: MapProvider,
+    egui_ctx: &Context,
+) -> HttpTiles {
+    let mapbox_access_token = ctx.app_options.mapbox_access_token().unwrap_or_default();
 
     match provider {
         MapProvider::OpenStreetMap => {
@@ -323,3 +515,74 @@ fn get_tile_manager(provider: MapProvider, egui_ctx: &Context) -> HttpTiles {
 }
 
 re_viewer_context::impl_component_fallback_provider!(MapSpaceView => []);
+
+// TODO(ab, andreas): this is a partial copy past of re_space_view_spatial::picking_gpu. Should be
+// turned into a utility function.
+fn picking_gpu(
+    render_ctx: &re_renderer::RenderContext,
+    gpu_readback_identifier: u64,
+    pointer_in_pixel: glam::Vec2,
+    last_gpu_picking_result: &mut Option<InstancePathHash>,
+) -> Option<InstancePathHash> {
+    re_tracing::profile_function!();
+
+    // Only look at newest available result, discard everything else.
+    let mut gpu_picking_result = None;
+    while let Some(picking_result) = re_renderer::PickingLayerProcessor::next_readback_result::<()>(
+        render_ctx,
+        gpu_readback_identifier,
+    ) {
+        gpu_picking_result = Some(picking_result);
+    }
+
+    if let Some(gpu_picking_result) = gpu_picking_result {
+        // TODO(ab, andreas): the block inside this particular branch is so reusable, it should probably live on re_renderer! (on picking result?)
+
+        // First, figure out where on the rect the cursor is by now.
+        // (for simplicity, we assume the screen hasn't been resized)
+        let pointer_on_picking_rect = pointer_in_pixel - gpu_picking_result.rect.min.as_vec2();
+        // The cursor might have moved outside of the rect. Clamp it back in.
+        let pointer_on_picking_rect = pointer_on_picking_rect.clamp(
+            glam::Vec2::ZERO,
+            (gpu_picking_result.rect.extent - glam::UVec2::ONE).as_vec2(),
+        );
+
+        // Find closest non-zero pixel to the cursor.
+        let mut picked_id = re_renderer::PickingLayerId::default();
+        let mut closest_rect_distance_sq = f32::INFINITY;
+
+        for (i, id) in gpu_picking_result.picking_id_data.iter().enumerate() {
+            if id.object.0 != 0 {
+                let current_pos_on_picking_rect = glam::uvec2(
+                    i as u32 % gpu_picking_result.rect.extent.x,
+                    i as u32 / gpu_picking_result.rect.extent.x,
+                )
+                .as_vec2()
+                    + glam::vec2(0.5, 0.5); // Use pixel center for distances.
+                let distance_sq =
+                    current_pos_on_picking_rect.distance_squared(pointer_on_picking_rect);
+                if distance_sq < closest_rect_distance_sq {
+                    closest_rect_distance_sq = distance_sq;
+                    picked_id = *id;
+                }
+            }
+        }
+
+        let new_result = if picked_id == re_renderer::PickingLayerId::default() {
+            // Nothing found.
+            None
+        } else {
+            Some(re_space_view::instance_path_hash_from_picking_layer_id(
+                picked_id,
+            ))
+        };
+
+        *last_gpu_picking_result = new_result;
+        new_result
+    } else {
+        // It is possible that some frames we don't get a picking result and the frame after we get several.
+        // We need to cache the last picking result and use it until we get a new one or the mouse leaves the screen.
+        // (Andreas: On my mac this *actually* happens in very simple scenes, I get occasional frames with 0 and then with 2 picking results!)
+        *last_gpu_picking_result
+    }
+}

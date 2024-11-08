@@ -25,7 +25,7 @@ use crate::{
 use super::{
     filter_visualizable_2d_entities,
     utilities::{process_labels_2d, LabeledBatch},
-    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+    SpatialViewVisualizerData,
 };
 
 // ---
@@ -197,14 +197,16 @@ impl VisualizerSystem for Points2DVisualizer {
         };
 
         let mut point_builder = PointCloudBuilder::new(render_ctx);
-        point_builder
-            .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
+        point_builder.radius_boost_in_ui_points_for_outlines(
+            re_space_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+        );
 
         // We need lines from keypoints. The number of lines we'll have is harder to predict, so we'll
         // go with the dynamic allocation approach.
         let mut line_builder = LineDrawableBuilder::new(render_ctx);
-        line_builder
-            .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
+        line_builder.radius_boost_in_ui_points_for_outlines(
+            re_space_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+        );
 
         use super::entity_iterator::{iter_primitive_array, process_archetype};
         process_archetype::<Self, Points2D, _>(

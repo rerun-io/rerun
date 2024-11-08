@@ -150,6 +150,7 @@ const MAX_ZOOM_FACTOR: f32 = 5.0;
 struct PendingFilePromise {
     recommended_application_id: Option<ApplicationId>,
     recommended_recording_id: Option<re_log_types::StoreId>,
+    force_store_info: bool,
     promise: poll_promise::Promise<Vec<re_data_source::FileContents>>,
 }
 
@@ -455,7 +456,7 @@ impl App {
                 self.rx.retain(|r| match r.source() {
                     SmartChannelSource::File(_)
                     | SmartChannelSource::RrdHttpStream { .. }
-                    | SmartChannelSource::RrdpStream { .. } => false,
+                    | SmartChannelSource::RerunGrpcStream { .. } => false,
 
                     SmartChannelSource::WsClient { .. }
                     | SmartChannelSource::JsChannel { .. }
@@ -513,25 +514,34 @@ impl App {
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
-                // We only want to update the blueprint if the "inspect blueprint timeline" mode is
-                // disabled. This is because the blueprint inspector allows you to change the
-                // blueprint query time, which in turn updates the displayed state of the UI itself.
-                // This means any updates we receive while in this mode may be relative to a historical
-                // blueprint state and would conflict with the current true blueprint state.
+                let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
 
-                // TODO(jleibs): When the blueprint is in "follow-mode" we should actually be able
-                // to apply updates here, but this needs more validation and testing to be safe.
-                if !self.state.app_options.inspect_blueprint_timeline {
-                    let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
-                    for chunk in updates {
-                        match blueprint_db.add_chunk(&Arc::new(chunk)) {
-                            Ok(_store_events) => {}
-                            Err(err) => {
-                                re_log::warn_once!("Failed to store blueprint delta: {err}");
-                            }
+                if self.state.app_options.inspect_blueprint_timeline {
+                    // We may we viewing a historical blueprint, and doing an edit based on that.
+                    // We therefor throw away everything after the currently viewed time (like an undo)
+                    let last_kept_event_time = self.state.blueprint_query_for_viewer().at();
+                    let first_dropped_event_time = last_kept_event_time.inc();
+                    blueprint_db.drop_time_range(
+                        &re_viewer_context::blueprint_timeline(),
+                        re_log_types::ResolvedTimeRange::new(
+                            first_dropped_event_time,
+                            re_chunk::TimeInt::MAX,
+                        ),
+                    );
+                }
+
+                for chunk in updates {
+                    match blueprint_db.add_chunk(&Arc::new(chunk)) {
+                        Ok(_store_events) => {}
+                        Err(err) => {
+                            re_log::warn_once!("Failed to store blueprint delta: {err}");
                         }
                     }
                 }
+
+                // If we inspect the timeline, make sure we show the latest state:
+                let mut time_ctrl = self.state.blueprint_cfg.time_ctrl.write();
+                time_ctrl.set_play_state(blueprint_db.times_per_timeline(), PlayState::Following);
             }
             SystemCommand::DropEntity(blueprint_id, entity_path) => {
                 let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
@@ -573,17 +583,33 @@ impl App {
         store_context: Option<&StoreContext<'_>>,
         cmd: UICommand,
     ) {
+        let mut force_store_info = false;
         let active_application_id = store_context
             .and_then(|ctx| {
                 ctx.hub
                     .active_app()
                     // Don't redirect data to the welcome screen.
                     .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
+                    .cloned()
             })
-            .cloned();
+            // If we don't have any application ID to recommend (which means we are on the welcome screen),
+            // then just generate a new one using a UUID.
+            .or_else(|| Some(uuid::Uuid::new_v4().to_string().into()));
         let active_recording_id = store_context
-            .and_then(|ctx| ctx.hub.active_recording_id())
-            .cloned();
+            .and_then(|ctx| ctx.hub.active_recording_id().cloned())
+            .or_else(|| {
+                // When we're on the welcome screen, there is no recording ID to recommend.
+                // But we want one, otherwise multiple things being dropped simultaneously on the
+                // welcome screen would end up in different recordings!
+
+                // We're creating a recording just-in-time, directly from the viewer.
+                // We need those store infos or the data will just be silently ignored.
+                force_store_info = true;
+
+                // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
+                // this can only be a recording.
+                Some(re_log_types::StoreId::random(StoreKind::Recording))
+            });
 
         match cmd {
             UICommand::SaveRecording => {
@@ -615,6 +641,7 @@ impl App {
                             FileSource::FileDialog {
                                 recommended_application_id: None,
                                 recommended_recording_id: None,
+                                force_store_info,
                             },
                             file_path,
                         )));
@@ -624,9 +651,6 @@ impl App {
             UICommand::Open => {
                 let egui_ctx = egui_ctx.clone();
 
-                // Open: we want to try and load into a new dedicated recording.
-                let recommended_application_id = None;
-                let recommended_recording_id = None;
                 let promise = poll_promise::Promise::spawn_local(async move {
                     let file = async_open_rrd_dialog().await;
                     egui_ctx.request_repaint(); // Wake ui thread
@@ -634,8 +658,9 @@ impl App {
                 });
 
                 self.open_files_promise = Some(PendingFilePromise {
-                    recommended_application_id,
-                    recommended_recording_id,
+                    recommended_application_id: None,
+                    recommended_recording_id: None,
+                    force_store_info,
                     promise,
                 });
             }
@@ -648,6 +673,7 @@ impl App {
                             FileSource::FileDialog {
                                 recommended_application_id: active_application_id.clone(),
                                 recommended_recording_id: active_recording_id.clone(),
+                                force_store_info,
                             },
                             file_path,
                         )));
@@ -657,10 +683,6 @@ impl App {
             UICommand::Import => {
                 let egui_ctx = egui_ctx.clone();
 
-                // Import: we want to try and load into the current recording.
-                let recommended_application_id = active_application_id;
-                let recommended_recording_id = active_recording_id;
-
                 let promise = poll_promise::Promise::spawn_local(async move {
                     let file = async_open_rrd_dialog().await;
                     egui_ctx.request_repaint(); // Wake ui thread
@@ -668,8 +690,9 @@ impl App {
                 });
 
                 self.open_files_promise = Some(PendingFilePromise {
-                    recommended_application_id,
-                    recommended_recording_id,
+                    recommended_application_id: active_application_id.clone(),
+                    recommended_recording_id: active_recording_id.clone(),
+                    force_store_info,
                     promise,
                 });
             }
@@ -748,6 +771,10 @@ impl App {
 
             UICommand::ToggleFullscreen => {
                 self.toggle_fullscreen();
+            }
+
+            UICommand::Settings => {
+                self.state.show_settings_ui = true;
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -1364,17 +1391,33 @@ impl App {
             return;
         }
 
+        let mut force_store_info = false;
         let active_application_id = store_ctx
             .and_then(|ctx| {
                 ctx.hub
                     .active_app()
                     // Don't redirect data to the welcome screen.
                     .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
+                    .cloned()
             })
-            .cloned();
+            // If we don't have any application ID to recommend (which means we are on the welcome screen),
+            // then just generate a new one using a UUID.
+            .or_else(|| Some(uuid::Uuid::new_v4().to_string().into()));
         let active_recording_id = store_ctx
-            .and_then(|ctx| ctx.hub.active_recording_id())
-            .cloned();
+            .and_then(|ctx| ctx.hub.active_recording_id().cloned())
+            .or_else(|| {
+                // When we're on the welcome screen, there is no recording ID to recommend.
+                // But we want one, otherwise multiple things being dropped simultaneously on the
+                // welcome screen would end up in different recordings!
+
+                // We're creating a recording just-in-time, directly from the viewer.
+                // We need those store infos or the data will just be silently ignored.
+                force_store_info = true;
+
+                // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
+                // this can only be a recording.
+                Some(re_log_types::StoreId::random(StoreKind::Recording))
+            });
 
         for file in dropped_files {
             if let Some(bytes) = file.bytes {
@@ -1384,6 +1427,7 @@ impl App {
                         FileSource::DragAndDrop {
                             recommended_application_id: active_application_id.clone(),
                             recommended_recording_id: active_recording_id.clone(),
+                            force_store_info,
                         },
                         FileContents {
                             name: file.name.clone(),
@@ -1400,6 +1444,7 @@ impl App {
                     FileSource::DragAndDrop {
                         recommended_application_id: active_application_id.clone(),
                         recommended_recording_id: active_recording_id.clone(),
+                        force_store_info,
                     },
                     path,
                 )));
@@ -1421,7 +1466,7 @@ impl App {
             match &*source {
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
-                | SmartChannelSource::RrdpStream { .. }
+                | SmartChannelSource::RerunGrpcStream { .. }
                 | SmartChannelSource::Stdin
                 | SmartChannelSource::RrdWebEventListener
                 | SmartChannelSource::Sdk
@@ -1650,6 +1695,7 @@ impl eframe::App for App {
         if let Some(PendingFilePromise {
             recommended_application_id,
             recommended_recording_id,
+            force_store_info,
             promise,
         }) = &self.open_files_promise
         {
@@ -1660,6 +1706,7 @@ impl eframe::App for App {
                             FileSource::FileDialog {
                                 recommended_application_id: recommended_application_id.clone(),
                                 recommended_recording_id: recommended_recording_id.clone(),
+                                force_store_info: *force_store_info,
                             },
                             file.clone(),
                         )));

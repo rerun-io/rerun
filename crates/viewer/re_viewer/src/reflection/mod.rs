@@ -463,6 +463,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <GeoLineString as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A geospatial line string expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).",
+                custom_placeholder: Some(GeoLineString::default().to_arrow()?),
+                datatype: GeoLineString::arrow_datatype(),
+            },
+        ),
+        (
             <HalfSize2D as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "Half-size (radius) of a 2D box.\n\nMeasured in its local coordinate system.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
@@ -513,7 +521,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <LatLon as Loggable>::name(),
             ComponentReflection {
-                docstring_md: "A geographical position expressed in EPSG:4326 latitude and longitude.",
+                docstring_md: "A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).",
                 custom_placeholder: Some(LatLon::default().to_arrow()?),
                 datatype: LatLon::arrow_datatype(),
             },
@@ -1261,16 +1269,37 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             },
         ),
         (
+            ArchetypeName::new("rerun.archetypes.GeoLineStrings"),
+            ArchetypeReflection {
+                display_name: "Geo line strings",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.GeoLineString".into(), display_name :
+                    "Line strings", docstring_md :
+                    "The line strings, expressed in [EPSG:4326](https://epsg.io/4326) coordinates (North/East-positive degrees).",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Radius".into(), display_name : "Radii",
+                    docstring_md :
+                    "Optional radii for the line strings.\n\n*Note*: scene units radiii are interpreted as meters. Currently, the display scale only considers the latitude of\nthe first vertex of each line string (see [this issue](https://github.com/rerun-io/rerun/issues/8013)).",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Colors",
+                    docstring_md : "Optional colors for the line strings.", is_required :
+                    false, },
+                ],
+            },
+        ),
+        (
             ArchetypeName::new("rerun.archetypes.GeoPoints"),
             ArchetypeReflection {
                 display_name: "Geo points",
                 fields: vec![
                     ArchetypeFieldReflection { component_name : "rerun.components.LatLon"
                     .into(), display_name : "Positions", docstring_md :
-                    "The EPSG:4326 coordinates for the points.", is_required : true, },
-                    ArchetypeFieldReflection { component_name : "rerun.components.Radius"
-                    .into(), display_name : "Radii", docstring_md :
-                    "Optional radii for the points, effectively turning them into circles.",
+                    "The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Radius".into(), display_name : "Radii",
+                    docstring_md :
+                    "Optional radii for the points, effectively turning them into circles.\n\n*Note*: scene units radiii are interpreted as meters.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.Color".into(), display_name : "Colors",
                     docstring_md : "Optional colors for the points.", is_required :
@@ -1745,7 +1774,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.VideoTimestamp".into(), display_name : "Timestamp",
                     docstring_md :
-                    "References the closest video frame to this timestamp.\n\nNote that this uses the closest video frame instead of the latest at this timestamp\nin order to be more forgiving of rounding errors for inprecise timestamp types.",
+                    "References the closest video frame to this timestamp.\n\nNote that this uses the closest video frame instead of the latest at this timestamp\nin order to be more forgiving of rounding errors for inprecise timestamp types.\n\nTimestamps are relative to the start of the video, i.e. a timestamp of 0 always corresponds to the first frame.\nThis is oftentimes equivalent to presentation timestamps (known as PTS), but in the presence of B-frames\n(bidirectionally predicted frames) there may be an offset on the first presentation timestamp in the video.",
                     is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.EntityPath".into(), display_name :
                     "Video reference", docstring_md :

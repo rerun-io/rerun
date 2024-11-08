@@ -73,7 +73,7 @@ impl AsyncDecoderWrapper {
         let comms = Comms::default();
 
         let thread = std::thread::Builder::new()
-            .name("av1_decoder".into())
+            .name(format!("decoder of {debug_name}"))
             .spawn({
                 let comms = comms.clone();
                 move || {

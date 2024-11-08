@@ -9,7 +9,7 @@
 use rerun::{
     external::{anyhow, re_build_info, re_data_loader, re_log},
     log::{Chunk, RowId},
-    EntityPath, LoadedData, TimePoint,
+    DataLoader as _, EntityPath, LoadedData, TimePoint,
 };
 
 fn main() -> anyhow::Result<std::process::ExitCode> {
@@ -81,7 +81,7 @@ fn hash_and_log(
         .opened_store_id
         .clone()
         .unwrap_or_else(|| settings.store_id.clone());
-    let data = LoadedData::Chunk(store_id, chunk);
+    let data = LoadedData::Chunk(HashLoader::name(&HashLoader), store_id, chunk);
     tx.send(data).ok();
 
     Ok(())

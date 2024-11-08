@@ -5,9 +5,20 @@ title: "ImageFormat"
 
 The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).
 
-## Fields
+## Rerun datatype
+[`ImageFormat`](../datatypes/image_format.md)
 
-* image_format: [`ImageFormat`](../datatypes/image_format.md)
+
+## Arrow datatype
+```
+Struct {
+    width: uint32
+    height: uint32
+    pixel_format: nullable uint8
+    color_model: nullable uint8
+    channel_datatype: nullable uint8
+}
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `ImageFormat`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ImageFormat.html)

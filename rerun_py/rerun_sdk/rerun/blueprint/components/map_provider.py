@@ -28,25 +28,13 @@ class MapProvider(Enum):
     """`OpenStreetMap` is the default map provider."""
 
     MapboxStreets = 2
-    """
-    Mapbox Streets is a minimalistic map designed by Mapbox.
-
-    **Note**: Requires a Mapbox API key in the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
-    """
+    """Mapbox Streets is a minimalistic map designed by Mapbox."""
 
     MapboxDark = 3
-    """
-    Mapbox Dark is a dark-themed map designed by Mapbox.
-
-    **Note**: Requires a Mapbox API key in the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
-    """
+    """Mapbox Dark is a dark-themed map designed by Mapbox."""
 
     MapboxSatellite = 4
-    """
-    Mapbox Satellite is a satellite map designed by Mapbox.
-
-    **Note**: Requires a Mapbox API key in the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
-    """
+    """Mapbox Satellite is a satellite map designed by Mapbox."""
 
     @classmethod
     def auto(cls, val: str | int | MapProvider) -> MapProvider:

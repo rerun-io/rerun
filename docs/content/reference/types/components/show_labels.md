@@ -9,9 +9,14 @@ The main purpose of this component existing separately from the labels themselve
 is to be overridden when desired, to allow hiding and showing from the viewer and
 blueprints.
 
-## Fields
+## Rerun datatype
+[`Bool`](../datatypes/bool.md)
 
-* show_labels: [`Bool`](../datatypes/bool.md)
+
+## Arrow datatype
+```
+boolean
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `ShowLabels`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ShowLabels.html)

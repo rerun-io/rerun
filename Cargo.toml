@@ -37,7 +37,7 @@ version = "0.20.0-alpha.1+dev"
 re_build_info = { path = "crates/build/re_build_info", version = "=0.20.0-alpha.1", default-features = false }
 re_build_tools = { path = "crates/build/re_build_tools", version = "=0.20.0-alpha.1", default-features = false }
 re_dev_tools = { path = "crates/build/re_dev_tools", version = "=0.20.0-alpha.1", default-features = false }
-re_remote_store_types_builder = { path = "crates/build/re_remote_store_types_builder", version = "=0.20.0-alpha.1", default-features = false }
+re_protos_builder = { path = "crates/build/re_protos_builder", version = "=0.20.0-alpha.1", default-features = false }
 re_types_builder = { path = "crates/build/re_types_builder", version = "=0.20.0-alpha.1", default-features = false }
 
 # crates/store:
@@ -48,11 +48,11 @@ re_data_source = { path = "crates/store/re_data_source", version = "=0.20.0-alph
 re_dataframe = { path = "crates/store/re_dataframe", version = "=0.20.0-alpha.1", default-features = false }
 re_entity_db = { path = "crates/store/re_entity_db", version = "=0.20.0-alpha.1", default-features = false }
 re_format_arrow = { path = "crates/store/re_format_arrow", version = "=0.20.0-alpha.1", default-features = false }
+re_grpc_client = { path = "crates/store/re_grpc_client", version = "=0.20.0-alpha.1", default-features = false }
+re_protos = { path = "crates/store/re_protos", version = "=0.20.0-alpha.1", default-features = false }
 re_log_encoding = { path = "crates/store/re_log_encoding", version = "=0.20.0-alpha.1", default-features = false }
 re_log_types = { path = "crates/store/re_log_types", version = "=0.20.0-alpha.1", default-features = false }
 re_query = { path = "crates/store/re_query", version = "=0.20.0-alpha.1", default-features = false }
-re_rrdp_comms = { path = "crates/store/re_rrdp_comms", version = "=0.20.0-alpha.1", default-features = false }
-re_remote_store_types = { path = "crates/store/re_remote_store_types", version = "=0.20.0-alpha.1", default-features = false }
 re_sdk_comms = { path = "crates/store/re_sdk_comms", version = "=0.20.0-alpha.1", default-features = false }
 re_types = { path = "crates/store/re_types", version = "=0.20.0-alpha.1", default-features = false }
 re_types_blueprint = { path = "crates/store/re_types_blueprint", version = "=0.20.0-alpha.1", default-features = false }
@@ -179,6 +179,7 @@ econtext = "0.2" # Prints error contexts on crashes
 ehttp = "0.5.0"
 enumset = "1.0.12"
 env_logger = { version = "0.10", default-features = false }
+ffmpeg-sidecar = { version = "2.0.2", default-features = false }
 fixed = { version = "1.28", default-features = false }
 flatbuffers = "23.0"
 futures-channel = "0.3"
@@ -216,6 +217,7 @@ notify = { version = "6.1.1", features = ["macos_kqueue"] }
 num-derive = "0.4"
 num-traits = "0.2"
 numpy = "0.22"
+object_store = { version = "0.10.2" }
 once_cell = "1.17" # No lazy_static - use `std::sync::OnceLock` or `once_cell` instead
 ordered-float = "4.3.0"
 parking_lot = "0.12"
@@ -287,6 +289,7 @@ url = "2.3"
 uuid = "1.1"
 vec1 = "1.8"
 walkdir = "2.0"
+walkers = "0.28"
 # NOTE: `rerun_js/web-viewer/build-wasm.mjs` is HIGHLY sensitive to changes in `wasm-bindgen`.
 #       Whenever updating `wasm-bindgen`, update this and the narrower dependency specifications in
 #       `crates/viewer/re_viewer/Cargo.toml`, and make sure that the build script still works.
@@ -569,6 +572,8 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # egui_tiles = { path = "../egui_tiles" }
 
 # egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "7a9dc755bfa351a3796274cb8ca87129b051c084" } # https://github.com/lampsitter/egui_commonmark/pull/65
+
+walkers = { git = "https://github.com/rerun-io/walkers", rev = "8939cceb3fa49ca8648ee16fe1d8432f5ab0bdcc" } # https://github.com/podusowski/walkers/pull/222
 
 # commit on `rerun-io/re_arrow2` `main` branch
 # https://github.com/rerun-io/re_arrow2/commit/e4717d6debc6d4474ec10db8f629f823f57bad07
