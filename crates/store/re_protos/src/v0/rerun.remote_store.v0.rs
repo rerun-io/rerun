@@ -349,10 +349,10 @@ pub struct ListRecordingsRequest {
     /// we define a separate message to make it optional.
     /// If not provided, all columns should be returned
     #[prost(message, optional, tag = "1")]
-    pub columns: ::core::option::Option<SelectedColumns>,
+    pub column_projection: ::core::option::Option<ColumnProjection>,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
-pub struct SelectedColumns {
+pub struct ColumnProjection {
     #[prost(string, repeated, tag = "1")]
     pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
 }
