@@ -31868,7 +31868,7 @@ packages:
   name: osm-data
   version: 0.1.0
   path: examples/python/osm_data
-  sha256: f85288a297bbaa6b87aec0f1a48b1f6dda3cbdba16b5c6c058f5b428b4408ce4
+  sha256: 88fbd4e3e7234b4bcdcdc603d46db2f95640d9bc282e3f6d1f8ff745731d5356
   requires_dist:
   - requests
   - rerun-sdk
