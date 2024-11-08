@@ -9,7 +9,7 @@ pub fn draw_entity(
     entity_path: &EntityPath,
     highlights: &SpaceViewHighlights,
 ) -> Response {
-    let (rect, response) = ui.allocate_at_least(rect.size(), Sense::click());
+    let (rect, response) = ui.allocate_at_least(rect.size(), Sense::drag());
 
     let color = if highlights
         .entity_outline_mask(entity_path.hash())

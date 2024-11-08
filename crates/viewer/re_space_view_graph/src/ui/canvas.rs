@@ -38,6 +38,7 @@ pub struct CanvasBuilder {
     show_debug: bool,
     world_bounds: Rect,
     bounding_rect: Rect,
+    children_drag_delta: Vec2,
 }
 
 impl CanvasBuilder {
@@ -46,6 +47,7 @@ impl CanvasBuilder {
             world_bounds: world_bounds.into(),
             show_debug: false,
             bounding_rect: Rect::NOTHING,
+            children_drag_delta: Vec2::ZERO,
         }
     }
 
@@ -65,13 +67,28 @@ impl CanvasBuilder {
 
         let mut world_to_view = fit_to_world_rect(clip_rect_window, self.world_bounds);
 
+        let view_to_window = TSTransform::from_translation(ui.min_rect().left_top().to_vec2());
+        let world_to_window = view_to_window * world_to_view;
+        let clip_rect_world = world_to_window.inverse() * clip_rect_window;
+
+        let window_layer = ui.layer_id();
+
+        add_canvas_contents(Canvas {
+            ui,
+            id,
+            window_layer,
+            context: CanvasContext {
+                clip_rect_world,
+                world_to_window,
+            },
+            bounding_rect: &mut self.bounding_rect,
+            children_drag_delta: &mut self.children_drag_delta,
+        });
+
+        world_to_view.translation += self.children_drag_delta;
         if response.dragged() {
             world_to_view.translation += response.drag_delta();
         }
-
-        let view_to_window = TSTransform::from_translation(ui.min_rect().left_top().to_vec2());
-
-        let world_to_window = view_to_window * world_to_view;
 
         if let Some(pointer) = ui.ctx().input(|i| i.pointer.hover_pos()) {
             // Note: doesn't catch zooming / panning if a button in this PanZoom container is hovered.
@@ -90,21 +107,6 @@ impl CanvasBuilder {
                 world_to_view = TSTransform::from_translation(pan_delta) * world_to_view;
             }
         }
-
-        let clip_rect_world = world_to_window.inverse() * clip_rect_window;
-
-        let window_layer = ui.layer_id();
-
-        add_canvas_contents(Canvas {
-            ui,
-            id,
-            window_layer,
-            context: CanvasContext {
-                clip_rect_world,
-                world_to_window,
-            },
-            bounding_rect: &mut self.bounding_rect,
-        });
 
         // We need to draw the debug information after the rest to ensure that we have the correct bounding box.
         if self.show_debug {
@@ -164,6 +166,7 @@ pub struct Canvas<'a> {
     window_layer: LayerId,
     context: CanvasContext,
     bounding_rect: &'a mut Rect,
+    children_drag_delta: &'a mut Vec2,
 }
 
 impl<'a> Canvas<'a> {
@@ -230,6 +233,10 @@ impl<'a> Canvas<'a> {
                 draw_entity(ui, rect, entity, highlights)
             })
             .inner;
+
+        if response.dragged() {
+            *self.children_drag_delta += response.drag_delta();
+        }
 
         let id = response.layer_id;
         self.ui
