@@ -91,7 +91,7 @@ class Rgba32Ext:
                                 warnings.warn(
                                     f"Ambiguous input for colors of length {arr.size}. If using 0xRRGGBBAA values, please wrap as np.array with dtype=np.uint32",
                                     category=RerunWarning,
-                                    stacklevel=2,
+                                    stacklevel=7,
                                 )
                                 arr = arr.astype(np.uint32)
 
