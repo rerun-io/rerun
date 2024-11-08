@@ -2,18 +2,20 @@
 title = "OSM Data"
 tags = ["Map", "Blueprint"]
 thumbnail_dimensions = [480, 480]
--->
-
-<!-- TODO(ab): add this to frontmatter
-
-thumbnail = "https://static.rerun.io/nuscenes/9c50bf5cadb879ef818ac3d35fe75696a9586cb4/480w.png"
+thumbnail = "https://static.rerun.io/osm_data/6d598e50c3d4c7c4a293fbc4bd34e0163563b602/480w.png"
 channel = "release"
 -->
 
+
 Download [`OpenStreetMap`](https://www.openstreetmap.org) data via the [Overpass](https://overpass-api.de) API and display it on a [map view](https://www.rerun.io/docs/reference/types/view/map_view).
 
-<!-- TODO(ab): screenshot -->
-
+<picture>
+  <img src="https://static.rerun.io/osm-data/926e89e0587b0d66a1cd620b3f5b77ac79eca272/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/osm-data/926e89e0587b0d66a1cd620b3f5b77ac79eca272/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/osm-data/926e89e0587b0d66a1cd620b3f5b77ac79eca272/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/osm-data/926e89e0587b0d66a1cd620b3f5b77ac79eca272/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/osm-data/926e89e0587b0d66a1cd620b3f5b77ac79eca272/1200w.png">
+</picture>
 
 ## Run the code
 
