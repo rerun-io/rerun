@@ -54,7 +54,7 @@ impl PyConnection {
     /// List all recordings registered with the node.
     fn list_recordings(&mut self) -> PyResult<Vec<PyRecordingMetadata>> {
         self.runtime.block_on(async {
-            let request = ListRecordingsRequest {};
+            let request = ListRecordingsRequest { columns: None };
 
             let resp = self
                 .client
