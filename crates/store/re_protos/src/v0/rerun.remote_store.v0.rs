@@ -316,13 +316,8 @@ pub struct UpdateRecordingMetadataRequest {
     #[prost(message, optional, tag = "2")]
     pub metadata: ::core::option::Option<RecordingMetadata>,
 }
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct UpdateRecordingMetadataResponse {
-    #[prost(message, optional, tag = "1")]
-    pub id: ::core::option::Option<RecordingId>,
-    #[prost(message, optional, tag = "2")]
-    pub metadata: ::core::option::Option<RecordingMetadata>,
-}
+#[derive(Clone, Copy, PartialEq, ::prost::Message)]
+pub struct UpdateRecordingMetadataResponse {}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct QueryRequest {
     /// unique identifier of the recording
