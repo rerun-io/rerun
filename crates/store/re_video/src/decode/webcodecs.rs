@@ -141,7 +141,10 @@ impl AsyncDecoder for WebVideoDecoder {
                 .into_micros_since_start(self.timescale, self.minimum_presentation_timestamp),
             type_,
         );
-        web_chunk.set_duration(video_chunk.duration.duration(self.timescale).as_secs_f64() * 1e6); // as_millis_f64 is experimental Rust api and there's no as_micros_f64
+
+        let duration_millis =
+            1e-3 * video_chunk.duration.duration(self.timescale).as_nanos() as f64;
+        web_chunk.set_duration(duration_millis);
         let web_chunk = EncodedVideoChunk::new(&web_chunk)
             .map_err(|err| Error::CreateChunk(js_error_to_string(&err)))?;
         self.decoder
