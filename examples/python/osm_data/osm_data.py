@@ -19,7 +19,7 @@ OVERPASS_API_URL = "https://overpass-api.de/api/interpreter"
 
 # Find some hotels in the area of Lausanne, Switzerland
 # This uses the Overpass API query language: https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL
-QUERY = """
+HOTELS_IN_LAUSANNE_QUERY = """
 [out:json][timeout:90];
 (
     nw["tourism"="hotel"]
@@ -96,7 +96,7 @@ def main() -> None:
 
     rr.script_setup(args, "rerun_example_osm_data", default_blueprint=blueprint)
 
-    data = execute_query(QUERY)
+    data = execute_query(HOTELS_IN_LAUSANNE_QUERY)
     log_data(data)
 
 
