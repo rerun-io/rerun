@@ -7,7 +7,7 @@
 
 pub mod mp4;
 
-use std::{collections::BTreeMap, ops::Range};
+use std::{collections::BTreeMap, ops::Range, usize};
 
 use itertools::Itertools as _;
 
@@ -296,34 +296,78 @@ impl VideoData {
         })
     }
 
-    /// For a given decode (!) timestamp, returns the index of the latest sample whose
+    /// For a given decode (!) timestamp, returns the index of the first sample whose
     /// decode timestamp is lesser than or equal to the given timestamp.
-    pub fn latest_sample_index_at_decode_timestamp(&self, decode_time: Time) -> Option<usize> {
-        latest_at_idx(
-            &self.samples,
-            |sample| sample.decode_timestamp,
-            &decode_time,
-        )
+    fn latest_sample_index_at_decode_timestamp(
+        samples: &[Sample],
+        decode_time: Time,
+    ) -> Option<usize> {
+        latest_at_idx(samples, |sample| sample.decode_timestamp, &decode_time)
     }
 
-    /// For a given presentation timestamp, return the index of the latest sample
-    /// whose presentation timestamp is lesser than or equal to the given timestamp.
-    pub fn latest_sample_index_at_presentation_timestamp(
-        &self,
+    /// See [`Self::latest_sample_index_at_presentation_timestamp`], split out for testing purposes.
+    fn latest_sample_index_at_presentation_timestamp_internal(
+        samples: &[Sample],
         presentation_timestamp: Time,
     ) -> Option<usize> {
         // Find the latest sample where `decode_timestamp <= presentation_timestamp`.
         // Because `decode <= presentation`, we never have to look further backwards in the
         // video than this.
         let decode_sample_idx =
-            self.latest_sample_index_at_decode_timestamp(presentation_timestamp)?;
+            Self::latest_sample_index_at_decode_timestamp(samples, presentation_timestamp)?;
 
         // Search backwards, starting at `decode_sample_idx`, looking for
         // the first sample where `sample.presentation_timestamp <= presentation_timestamp`.
-        // this is the sample which when decoded will be presented at the timestamp the user requested.
-        self.samples[..=decode_sample_idx]
-            .iter()
-            .rposition(|sample| sample.presentation_timestamp <= presentation_timestamp)
+        // I.e. the sample with the biggest PTS that is smaller or equal to the requested PTS.
+        //
+        // The tricky part is that we can't just take the first sample with a presentation timestamp that matches
+        // since smaller presentation timestamps may still show up further back!
+        let mut best_index = usize::MAX;
+        let mut best_pts = Time::MIN;
+        for sample_idx in (0..=decode_sample_idx).rev() {
+            let sample = &samples[sample_idx];
+
+            if sample.presentation_timestamp == presentation_timestamp {
+                // Clean hit. Take this one, no questions asked :)
+                // (assuming that each PTS is unique!)
+                return Some(sample_idx);
+            }
+
+            if sample.presentation_timestamp < presentation_timestamp
+                && sample.presentation_timestamp > best_pts
+            {
+                best_pts = sample.presentation_timestamp;
+                best_index = sample_idx;
+            }
+
+            // The next DTS is smaller (we're walking backwards) than the current DTS.
+            // Each DTS is smaller equal than its corresponding PTS.
+            // Therefore, the next PTS is bigger equal than the next DTS.
+            // Therefore, the next PTS is bigger than the current DTS.
+
+            // TODO: is there a way to have a lower bound on this search?
+        }
+
+        if best_pts != Time::MIN {
+            Some(best_index)
+        } else {
+            None
+        }
+    }
+
+    /// For a given presentation timestamp, return the index of the first sample
+    /// whose presentation timestamp is lesser than or equal to the given timestamp.
+    ///
+    /// Remember that samples after (i.e. with higher index) may have a *lower* presentation time
+    /// if the stream has sample reordering!
+    pub fn latest_sample_index_at_presentation_timestamp(
+        &self,
+        presentation_timestamp: Time,
+    ) -> Option<usize> {
+        Self::latest_sample_index_at_presentation_timestamp_internal(
+            &self.samples,
+            presentation_timestamp,
+        )
     }
 
     /// For a given decode (!) timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
@@ -552,5 +596,71 @@ mod tests {
         assert_eq!(latest_at_idx(&v, |v| *v, &10), Some(9));
         assert_eq!(latest_at_idx(&v, |v| *v, &11), Some(9));
         assert_eq!(latest_at_idx(&v, |v| *v, &1000), Some(9));
+    }
+
+    #[test]
+    fn test_latest_sample_index_at_presentation_timestamp() {
+        // This is a snippet of real world data!
+        let pts = [
+            512, 1536, 1024, 768, 1280, 2560, 2048, 1792, 2304, 3584, 3072, 2816, 3328, 4608, 4096,
+            3840, 4352, 5376, 4864, 5120, 6400, 5888, 5632, 6144, 7424, 6912, 6656, 7168, 8448,
+            7936, 7680, 8192, 9472, 8960, 8704, 9216, 10496, 9984, 9728, 10240, 11520, 11008,
+            10752, 11264, 12544, 12032, 11776, 12288, 13568, 13056,
+        ];
+        let dts = [
+            0, 256, 512, 768, 1024, 1280, 1536, 1792, 2048, 2304, 2560, 2816, 3072, 3328, 3584,
+            3840, 4096, 4352, 4608, 4864, 5120, 5376, 5632, 5888, 6144, 6400, 6656, 6912, 7168,
+            7424, 7680, 7936, 8192, 8448, 8704, 8960, 9216, 9472, 9728, 9984, 10240, 10496, 10752,
+            11008, 11264, 11520, 11776, 12032, 12288, 12544,
+        ];
+
+        // Checking our basic assumptions about this data:
+        assert_eq!(pts.len(), dts.len());
+        assert!(pts.iter().zip(dts.iter()).all(|(pts, dts)| dts <= pts));
+
+        // Create fake samples from this.
+        let samples = pts
+            .into_iter()
+            .zip(dts.into_iter())
+            .map(|(pts, dts)| Sample {
+                is_sync: false,
+                decode_timestamp: Time(dts),
+                presentation_timestamp: Time(pts),
+                duration: Time(1),
+                byte_offset: 0,
+                byte_length: 0,
+            })
+            .collect::<Vec<_>>();
+
+        // Test queries on the samples.
+        let query_pts = VideoData::latest_sample_index_at_presentation_timestamp_internal;
+
+        // Querying before the first sample.
+        assert_eq!(None, query_pts(&samples, Time(0)));
+        assert_eq!(None, query_pts(&samples, Time(123)));
+
+        // Querying for the first sample
+        assert_eq!(Some(0), query_pts(&samples, Time(512)));
+        assert_eq!(Some(0), query_pts(&samples, Time(513)));
+        assert_eq!(Some(0), query_pts(&samples, Time(600)));
+        assert_eq!(Some(0), query_pts(&samples, Time(767)));
+
+        // The next sample is a jump in index!
+        assert_eq!(Some(3), query_pts(&samples, Time(768)));
+        assert_eq!(Some(3), query_pts(&samples, Time(769)));
+        assert_eq!(Some(3), query_pts(&samples, Time(800)));
+        assert_eq!(Some(3), query_pts(&samples, Time(1023)));
+
+        // And the one after that should jump back again.
+        assert_eq!(Some(2), query_pts(&samples, Time(1024)));
+        assert_eq!(Some(2), query_pts(&samples, Time(1025)));
+        assert_eq!(Some(2), query_pts(&samples, Time(1100)));
+        assert_eq!(Some(2), query_pts(&samples, Time(1279)));
+
+        // And another one!
+        assert_eq!(Some(4), query_pts(&samples, Time(1280)));
+        assert_eq!(Some(4), query_pts(&samples, Time(1281)));
+
+        // Prod the reordering properties of the PTS, very visivble in the first few samples
     }
 }
