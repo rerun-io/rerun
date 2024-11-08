@@ -121,14 +121,19 @@ impl VideoPlayer {
     pub fn frame_at(
         &mut self,
         render_ctx: &RenderContext,
-        presentation_timestamp_s: f64,
+        time_since_video_start_in_seconds: f64,
         video_data: &[u8],
     ) -> Result<VideoFrameTexture, VideoPlayerError> {
-        if presentation_timestamp_s < 0.0 {
+        if time_since_video_start_in_seconds < 0.0 {
             return Err(VideoPlayerError::NegativeTimestamp);
         }
-        let presentation_timestamp = Time::from_secs(presentation_timestamp_s, self.data.timescale);
-        let presentation_timestamp = presentation_timestamp.min(self.data.duration); // Don't seek past the end of the video.
+        let presentation_timestamp = Time::from_secs_since_start(
+            time_since_video_start_in_seconds,
+            self.data.timescale,
+            self.data.samples_statistics.minimum_presentation_timestamp,
+        );
+        let presentation_timestamp = presentation_timestamp
+            .min(self.data.duration + self.data.samples_statistics.minimum_presentation_timestamp); // Don't seek past the end of the video.
 
         let error_on_last_frame_at = self.last_error.is_some();
         let result = self.frame_at_internal(render_ctx, presentation_timestamp, video_data);
@@ -138,7 +143,7 @@ impl VideoPlayer {
                 let is_active_frame = self
                     .video_texture
                     .frame_info
-                    .time_range()
+                    .presentation_time_range()
                     .contains(&presentation_timestamp);
 
                 let is_pending = !is_active_frame;
@@ -151,7 +156,7 @@ impl VideoPlayer {
                     self.video_texture.frame_info = FrameInfo::default();
                 }
 
-                let time_range = self.video_texture.frame_info.time_range();
+                let time_range = self.video_texture.frame_info.presentation_time_range();
                 let show_spinner = if presentation_timestamp < time_range.start {
                     // We're seeking backwards and somehow forgot to reset.
                     true
@@ -159,9 +164,7 @@ impl VideoPlayer {
                     false // it is an active frame
                 } else {
                     let how_outdated = presentation_timestamp - time_range.end;
-                    if how_outdated.into_secs(self.data.timescale)
-                        < DECODING_GRACE_DELAY.as_secs_f64()
-                    {
+                    if how_outdated.duration(self.data.timescale) < DECODING_GRACE_DELAY {
                         false // Just outdated by a little bit - show no spinner
                     } else {
                         true // Very old frame - show spinner

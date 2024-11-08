@@ -116,6 +116,10 @@ namespace rerun::archetypes {
         ///
         /// Note that this uses the closest video frame instead of the latest at this timestamp
         /// in order to be more forgiving of rounding errors for inprecise timestamp types.
+        ///
+        /// Timestamps are relative to the start of the video, i.e. a timestamp of 0 always corresponds to the first frame.
+        /// This is oftentimes equivalent to presentation timestamps (known as PTS), but in the presence of B-frames
+        /// (bidirectionally predicted frames) there may be an offset on the first presentation timestamp in the video.
         rerun::components::VideoTimestamp timestamp;
 
         /// Optional reference to an entity with a `archetypes::AssetVideo`.

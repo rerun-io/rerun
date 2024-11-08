@@ -18,14 +18,37 @@
 #include <vector>
 
 namespace rerun::archetypes {
-    /// **Archetype**: Geospatial points with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
+    /// **Archetype**: Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.
     ///
     /// **Note**: Geospatial entities are experimental.
+    ///
+    /// ## Example
+    ///
+    /// ### Log a geospatial point
+    /// ![image](https://static.rerun.io/geopoint_simple/146b0783c5aea1c1b6a9aab938879942b7c820e2/full.png)
+    ///
+    /// ```cpp
+    /// #include <rerun.hpp>
+    ///
+    /// int main() {
+    ///     const auto rec = rerun::RecordingStream("rerun_example_geo_points");
+    ///     rec.spawn().exit_on_failure();
+    ///
+    ///     rec.log(
+    ///         "rerun_hq",
+    ///         rerun::GeoPoints::from_lat_lon({{59.319221, 18.075631}})
+    ///             .with_radii(rerun::Radius::ui_points(10.0f))
+    ///             .with_colors(rerun::Color(255, 0, 0))
+    ///     );
+    /// }
+    /// ```
     struct GeoPoints {
-        /// The EPSG:4326 coordinates for the points.
+        /// The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).
         Collection<rerun::components::LatLon> positions;
 
         /// Optional radii for the points, effectively turning them into circles.
+        ///
+        /// *Note*: scene units radiii are interpreted as meters.
         std::optional<Collection<rerun::components::Radius>> radii;
 
         /// Optional colors for the points.
@@ -38,6 +61,16 @@ namespace rerun::archetypes {
         /// Indicator component, used to identify the archetype when converting to a list of components.
         using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
+      public: // START of extensions from geo_points_ext.cpp:
+        /// Creates a new GeoPoints object based on [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
+        static GeoPoints from_lat_lon(Collection<components::LatLon> positions_) {
+            GeoPoints points;
+            points.positions = std::move(positions_);
+            return points;
+        }
+
+        // END of extensions from geo_points_ext.cpp, start of generated code:
+
       public:
         GeoPoints() = default;
         GeoPoints(GeoPoints&& other) = default;
@@ -46,6 +79,8 @@ namespace rerun::archetypes {
             : positions(std::move(_positions)) {}
 
         /// Optional radii for the points, effectively turning them into circles.
+        ///
+        /// *Note*: scene units radiii are interpreted as meters.
         GeoPoints with_radii(Collection<rerun::components::Radius> _radii) && {
             radii = std::move(_radii);
             // See: https://github.com/rerun-io/rerun/issues/4027

@@ -30,6 +30,13 @@ from .entity_path import EntityPath, EntityPathBatch, EntityPathType
 from .fill_mode import FillMode, FillModeArrayLike, FillModeBatch, FillModeLike, FillModeType
 from .fill_ratio import FillRatio, FillRatioBatch, FillRatioType
 from .gamma_correction import GammaCorrection, GammaCorrectionBatch, GammaCorrectionType
+from .geo_line_string import (
+    GeoLineString,
+    GeoLineStringArrayLike,
+    GeoLineStringBatch,
+    GeoLineStringLike,
+    GeoLineStringType,
+)
 from .half_size2d import HalfSize2D, HalfSize2DBatch, HalfSize2DType
 from .half_size3d import HalfSize3D, HalfSize3DBatch, HalfSize3DType
 from .image_buffer import ImageBuffer, ImageBufferBatch, ImageBufferType
@@ -153,6 +160,11 @@ __all__ = [
     "GammaCorrection",
     "GammaCorrectionBatch",
     "GammaCorrectionType",
+    "GeoLineString",
+    "GeoLineStringArrayLike",
+    "GeoLineStringBatch",
+    "GeoLineStringLike",
+    "GeoLineStringType",
     "HalfSize2D",
     "HalfSize2DBatch",
     "HalfSize2DType",

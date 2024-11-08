@@ -18,6 +18,7 @@
 #include "components/fill_mode.hpp"
 #include "components/fill_ratio.hpp"
 #include "components/gamma_correction.hpp"
+#include "components/geo_line_string.hpp"
 #include "components/half_size2d.hpp"
 #include "components/half_size3d.hpp"
 #include "components/image_buffer.hpp"

@@ -11,7 +11,7 @@
 #include <memory>
 
 namespace rerun::components {
-    /// **Component**: A geographical position expressed in EPSG:4326 latitude and longitude.
+    /// **Component**: A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
     struct LatLon {
         rerun::datatypes::DVec2D lat_lon;
 
