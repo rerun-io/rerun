@@ -3,7 +3,6 @@ use std::collections::{BTreeSet, HashSet};
 use ahash::HashMap;
 use egui::{self, Vec2};
 
-use fjadra::{Center, Link, ManyBody, PositionX, PositionY, SimulationBuilder};
 use re_log::external::log;
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
@@ -23,6 +22,7 @@ use re_viewport_blueprint::ViewProperty;
 
 use crate::{
     graph::NodeIndex,
+    layout::LayoutProvider,
     ui::{bounding_rect_from_iter, canvas::CanvasBuilder, GraphSpaceViewState},
     visualizers::{EdgesVisualizer, NodeVisualizer},
 };
@@ -68,11 +68,8 @@ impl SpaceViewClass for GraphSpaceView {
 
         let (width, height) = state.world_bounds.map_or_else(
             || {
-                let bbox = bounding_rect_from_iter(layout.1.values());
-                (
-                    (bbox.max.x - bbox.min.x).abs(),
-                    (bbox.max.y - bbox.min.y).abs(),
-                )
+                let bbox = layout.bounding_rect();
+                (bbox.width().abs(), bbox.height().abs())
             },
             |bounds| {
                 (
@@ -160,71 +157,21 @@ impl SpaceViewClass for GraphSpaceView {
 
         let layout_was_empty = state.layout.is_none();
 
-        // For now, we reset the layout at every frame. Eventually, we want
-        // to keep information between frames so that the nodes don't jump around.
-        // let (layout_time, layout) = state
-        //     .layout
-        //     .insert(((query.timeline, query.latest_at), Default::default()));
-
-        let layout = match state.layout {
-            Some(ref mut layout)
-                if (layout.0 .0, layout.0 .1) == (query.timeline, query.latest_at) =>
-            {
-                &mut layout.1
+        let layout = match &mut state.layout {
+            Some(layout) if !layout.needs_update(query.timeline, query.latest_at) => {
+                layout // Layout is up to date, reuse it.
             }
             _ => {
-                log::debug!("recomputing graph layout");
+                log::debug!("Recomputing graph layout");
 
-                let layout = state
-                    .layout
-                    .insert(((query.timeline, query.latest_at), Default::default()));
+                let layout = LayoutProvider::compute(
+                    query.timeline,
+                    query.latest_at,
+                    node_data.iter(),
+                    edge_data.iter(),
+                );
 
-                let mut node_index: HashMap<NodeIndex, usize> = HashMap::default();
-                let mut all_nodes = node_data
-                    .values()
-                    .flat_map(|data| data.nodes.iter().map(|n| n.index))
-                    .enumerate()
-                    .map(|(o, n)| {
-                        node_index.insert(n, o);
-                        n
-                    })
-                    .collect::<Vec<_>>();
-
-                let mut all_edges: Vec<(usize, usize)> = Vec::new();
-                for edge in edge_data.values().flat_map(|data| data.edges.iter()) {
-                    let source = *node_index.entry(edge.source_index).or_insert_with(|| {
-                        all_nodes.push(edge.source_index);
-                        all_nodes.len() - 1
-                    });
-
-                    let target = *node_index.entry(edge.target_index).or_insert_with(|| {
-                        all_nodes.push(edge.target_index);
-                        all_nodes.len() - 1
-                    });
-                    all_edges.push((source, target));
-                }
-
-                let mut simulation = SimulationBuilder::default()
-                    .build(all_nodes.iter().map(|_| Option::<[f64; 2]>::None))
-                    .add_force(
-                        "link",
-                        Link::new(all_edges.into_iter()),
-                    )
-                    .add_force("charge", ManyBody::new())
-                    .add_force("x", PositionX::new())
-                    .add_force("y", PositionY::new());
-
-                let positions = simulation.iter().last().expect("simulation should run");
-                for (node, i) in node_index {
-                    layout.1.entry(node).or_insert_with(|| {
-                        let pos = positions[i];
-                        let pos = egui::Pos2::new(pos[0] as f32, pos[1] as f32);
-                        let size = egui::Vec2::ZERO;
-                        egui::Rect::from_min_size(pos, size)
-                    });
-                }
-
-                &mut layout.1
+                state.layout.insert(layout)
             }
         };
 
@@ -238,10 +185,6 @@ impl SpaceViewClass for GraphSpaceView {
             viewer.show_debug();
         }
 
-        // We keep track of the nodes in the data to clean up the layout.
-        // TODO(grtlr): once we settle on a design, it might make sense to create a
-        // `Layout` struct that keeps track of the layout and the nodes that
-        // get added and removed and cleans up automatically (guard pattern).
         let mut seen: HashSet<NodeIndex> = HashSet::new();
 
         let (new_world_bounds, response) = viewer.canvas(ui, |mut scene| {
@@ -251,17 +194,16 @@ impl SpaceViewClass for GraphSpaceView {
 
             for entity in entities {
                 // We keep track of the size of the current entity.
+
                 let mut entity_rect = egui::Rect::NOTHING;
                 if let Some(data) = node_data.get(entity) {
                     for node in &data.nodes {
                         seen.insert(node.index);
-                        let current = layout.entry(node.index).or_insert(scene.initial_rect(node));
-
-                        let response = scene.explicit_node(current.min + entity_offset, node);
-
-                        // TODO(grtlr): ⚠️ This is hacky:
-                        // We need to undo the `entity_offset` otherwise the offset will increase each frame.
-                        *current = response.rect.translate(-entity_offset);
+                        let pos = layout
+                            .get(&node.index)
+                            .expect("explicit node should be in layout");
+                        let response = scene.explicit_node(pos.min, node);
+                        layout.update(&node.index, response.rect);
                         entity_rect = entity_rect.union(response.rect);
                     }
                 }
@@ -275,29 +217,19 @@ impl SpaceViewClass for GraphSpaceView {
                         .filter(|n| !seen.contains(&NodeIndex::from_entity_node(entity, n)))
                         .collect::<Vec<_>>();
 
-                    // TODO(grtlr): The following logic is quite hacky, because we have to place the implicit nodes somewhere.
-                    // A lot of this logic will probably go away once we ship auto-layouts.
-                    let mut current_implicit_offset =
-                        Vec2::new(entity_rect.min.x, entity_rect.height() + 40.0);
                     for node in implicit_nodes {
                         let ix = NodeIndex::from_entity_node(entity, node);
                         seen.insert(ix);
-                        let current = layout.entry(ix).or_insert(
-                            egui::Rect::ZERO
-                                .translate(entity_offset)
-                                .translate(current_implicit_offset),
-                        );
+                        let current = layout.get(&ix).expect("implicit node should be in layout");
                         let response = scene.implicit_node(current.min, node);
-                        *current = response.rect.translate(-entity_offset);
-                        // entity_rect = entity_rect.union(response.rect);
-                        current_implicit_offset.x += 10.0;
+                        layout.update(&ix, response.rect);
+                        entity_rect = entity_rect.union(response.rect);
                     }
 
                     for edge in &data.edges {
-                        if let (Some(source_pos), Some(target_pos)) = (
-                            layout.get(&edge.source_index),
-                            layout.get(&edge.target_index),
-                        ) {
+                        if let (Some(source_pos), Some(target_pos)) =
+                            (layout.get(&edge.source_index), layout.get(&edge.target_index))
+                        {
                             scene.edge(
                                 source_pos.translate(entity_offset),
                                 target_pos.translate(entity_offset),
@@ -308,21 +240,16 @@ impl SpaceViewClass for GraphSpaceView {
                     }
                 }
 
-                // if entity_rect.is_positive() {
-                //     let response = scene.entity(entity, entity_rect, &query.highlights);
+                if entity_rect.is_positive() {
+                    let response = scene.entity(entity, entity_rect, &query.highlights);
 
-                //     let instance_path = InstancePath::entity_all(entity.clone());
-                //     ctx.select_hovered_on_click(
-                //         &response,
-                //         vec![(Item::DataResult(query.space_view_id, instance_path), None)]
-                //             .into_iter(),
-                //     );
-
-                //     // TODO(grtlr): Should take padding from `draw_entity` into account.
-                //     // It's very likely that this part of the code is going to change once we introduce auto-layout.
-                //     let between_entities = 80.0;
-                //     // entity_offset.x += entity_rect.width() + between_entities;
-                // }
+                    let instance_path = InstancePath::entity_all(entity.clone());
+                    ctx.select_hovered_on_click(
+                        &response,
+                        vec![(Item::DataResult(query.space_view_id, instance_path), None)]
+                            .into_iter(),
+                    );
+                }
             }
         });
 
