@@ -219,7 +219,7 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
         }
 
         let quoted_view_types = obj
-            .archtype_view_types()
+            .archetype_view_types()
             .unwrap_or_default()
             .iter()
             .map(|view_type| {

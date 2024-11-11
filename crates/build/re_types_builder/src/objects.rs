@@ -538,7 +538,7 @@ impl Object {
         self.attrs.has(name)
     }
 
-    pub fn archtype_view_types(&self) -> Option<Vec<ViewReference>> {
+    pub fn archetype_view_types(&self) -> Option<Vec<ViewReference>> {
         let view_types = self.try_get_attr::<String>(crate::ATTR_DOCS_VIEW_TYPES)?;
 
         Some(

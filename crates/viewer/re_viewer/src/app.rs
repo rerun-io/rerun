@@ -1294,7 +1294,7 @@ impl App {
         }
     }
 
-    /// After loading some data; check if the laoded data makes sense.
+    /// After loading some data; check if the loaded data makes sense.
     fn validate_loaded_events(&self, store_events: &[re_chunk_store::ChunkStoreEvent]) {
         for event in store_events {
             let chunk = &event.diff.chunk;

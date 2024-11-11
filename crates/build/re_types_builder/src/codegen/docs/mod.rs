@@ -137,7 +137,7 @@ on [Entities and Components](../../concepts/entity-component.md).",
 fn collect_view_types_per_archetype(objects: &Objects) -> ViewsPerArchetype {
     let mut view_types_per_object = ViewsPerArchetype::new();
     for object in objects.objects.values() {
-        if let Some(view_types) = object.archtype_view_types() {
+        if let Some(view_types) = object.archetype_view_types() {
             view_types_per_object.insert(object.fqname.clone(), view_types);
         }
     }
