@@ -2334,8 +2334,9 @@ dependencies = [
 
 [[package]]
 name = "ewebsock"
-version = "0.7.0"
-source = "git+https://github.com/rerun-io/ewebsock?rev=ac6552ecb70f058d81dd8fafaecd4b1daba24685#ac6552ecb70f058d81dd8fafaecd4b1daba24685"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "679247b4a005c82218a5f13b713239b0b6d484ec25347a719f5b7066152a748a"
 dependencies = [
  "document-features",
  "js-sys",

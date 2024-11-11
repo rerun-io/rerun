@@ -107,7 +107,7 @@ re_viewport_blueprint = { path = "crates/viewer/re_viewport_blueprint", version 
 re_web_viewer_server = { path = "crates/viewer/re_web_viewer_server", version = "=0.20.0-alpha.1", default-features = false }
 
 # Rerun crates in other repos:
-ewebsock = "0.7.0"
+ewebsock = "0.8.0"
 re_math = "0.20.0"
 
 # If this package fails to build, install `nasm` locally, or build through `pixi`.
@@ -582,6 +582,3 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 
 # Commit on `main` branch of `re_mp4`
 re_mp4 = { git = "https://github.com/rerun-io/re_mp4", rev = "7d38361ee5b05f5a2b83a8029057c8a24d2e9023" }
-
-# Commit on `main` branch of `ewebsock`
-ewebsock = { git = "https://github.com/rerun-io/ewebsock", rev = "ac6552ecb70f058d81dd8fafaecd4b1daba24685" }
