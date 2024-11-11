@@ -1,11 +1,11 @@
 [project]
-name = "osm_data"
+name = "openstreetmap_data"
 version = "0.1.0"
 readme = "README.md"
 dependencies = ["requests", "rerun-sdk"]
 
 [project.scripts]
-osm_data = "osm_data:main"
+openstreetmap_data = "openstreetmap_data:main"
 
 [build-system]
 requires = ["hatchling"]

@@ -2557,7 +2557,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/osm_data
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -2951,7 +2951,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/osm_data
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -3328,7 +3328,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/osm_data
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -3706,7 +3706,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/osm_data
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -4083,7 +4083,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/osm_data
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -4504,7 +4504,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/osm_data
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -4850,7 +4850,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/osm_data
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -5180,7 +5180,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/osm_data
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -5511,7 +5511,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/osm_data
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -5842,7 +5842,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/osm_data
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -9076,7 +9076,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/osm_data
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -9564,7 +9564,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/osm_data
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -10034,7 +10034,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/osm_data
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -10505,7 +10505,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/osm_data
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -10955,7 +10955,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
-      - pypi: examples/python/osm_data
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -31742,6 +31742,15 @@ packages:
   size: 2544654
   timestamp: 1725410973572
 - kind: pypi
+  name: openstreetmap-data
+  version: 0.1.0
+  path: examples/python/openstreetmap_data
+  sha256: 3b19fd64cb7d102a75ac934cd188cdd110fddca78c72701f10596f0ed8a0dff5
+  requires_dist:
+  - requests
+  - rerun-sdk
+  editable: true
+- kind: pypi
   name: opt-einsum
   version: 3.4.0
   url: https://files.pythonhosted.org/packages/23/cd/066e86230ae37ed0be70aae89aabf03ca8d9f39c8aea0dec8029455b5540/opt_einsum-3.4.0-py3-none-any.whl
@@ -31864,15 +31873,6 @@ packages:
   purls: []
   size: 1184634
   timestamp: 1727242386732
-- kind: pypi
-  name: osm-data
-  version: 0.1.0
-  path: examples/python/osm_data
-  sha256: 88fbd4e3e7234b4bcdcdc603d46db2f95640d9bc282e3f6d1f8ff745731d5356
-  requires_dist:
-  - requests
-  - rerun-sdk
-  editable: true
 - kind: pypi
   name: overrides
   version: 7.7.0
