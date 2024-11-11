@@ -855,6 +855,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.AnnotationContext"),
             ArchetypeReflection {
                 display_name: "Annotation context",
+                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.AnnotationContext".into(), display_name :
@@ -868,6 +869,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Arrows2D"),
             ArchetypeReflection {
                 display_name: "Arrows 2D",
+                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.Vector2D".into(), display_name : "Vectors",
@@ -907,6 +909,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Arrows3D"),
             ArchetypeReflection {
                 display_name: "Arrows 3D",
+                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.Vector3D".into(), display_name : "Vectors",
@@ -942,6 +945,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Asset3D"),
             ArchetypeReflection {
                 display_name: "Asset 3D",
+                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name : "rerun.components.Blob"
                     .into(), display_name : "Blob", docstring_md : "The asset's bytes.",
@@ -961,6 +965,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.AssetVideo"),
             ArchetypeReflection {
                 display_name: "Asset video",
+                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name : "rerun.components.Blob"
                     .into(), display_name : "Blob", docstring_md : "The asset's bytes.",
@@ -976,6 +981,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.BarChart"),
             ArchetypeReflection {
                 display_name: "Bar chart",
+                view_types: &["BarChartView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.TensorData".into(), display_name : "Values",
@@ -991,6 +997,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Boxes2D"),
             ArchetypeReflection {
                 display_name: "Boxes 2D",
+                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.HalfSize2D".into(), display_name : "Half sizes",
@@ -1029,6 +1036,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Boxes3D"),
             ArchetypeReflection {
                 display_name: "Boxes 3D",
+                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.HalfSize3D".into(), display_name : "Half sizes",
@@ -1076,6 +1084,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Capsules3D"),
             ArchetypeReflection {
                 display_name: "Capsules 3D",
+                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name : "rerun.components.Length"
                     .into(), display_name : "Lengths", docstring_md :
@@ -1118,6 +1127,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Clear"),
             ArchetypeReflection {
                 display_name: "Clear",
+                view_types: &["Spatial2DView", "Spatial3DView", "TimeSeriesView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.ClearIsRecursive".into(), display_name :
@@ -1129,6 +1139,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.DepthImage"),
             ArchetypeReflection {
                 display_name: "Depth image",
+                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.ImageBuffer".into(), display_name : "Buffer",
@@ -1164,6 +1175,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.DisconnectedSpace"),
             ArchetypeReflection {
                 display_name: "Disconnected space",
+                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.DisconnectedSpace".into(), display_name :
@@ -1177,6 +1189,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Ellipsoids3D"),
             ArchetypeReflection {
                 display_name: "Ellipsoids 3D",
+                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.HalfSize3D".into(), display_name : "Half sizes",
@@ -1224,6 +1237,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.EncodedImage"),
             ArchetypeReflection {
                 display_name: "Encoded image",
+                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name : "rerun.components.Blob"
                     .into(), display_name : "Blob", docstring_md :
@@ -1248,6 +1262,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.GeoLineStrings"),
             ArchetypeReflection {
                 display_name: "Geo line strings",
+                view_types: &["MapView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.GeoLineString".into(), display_name :
@@ -1268,6 +1283,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.GeoPoints"),
             ArchetypeReflection {
                 display_name: "Geo points",
+                view_types: &["MapView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name : "rerun.components.LatLon"
                     .into(), display_name : "Positions", docstring_md :
@@ -1287,6 +1303,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Image"),
             ArchetypeReflection {
                 display_name: "Image",
+                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.ImageBuffer".into(), display_name : "Buffer",
@@ -1310,6 +1327,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.InstancePoses3D"),
             ArchetypeReflection {
                 display_name: "Instance poses 3D",
+                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.PoseTranslation3D".into(), display_name :
@@ -1334,6 +1352,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.LineStrips2D"),
             ArchetypeReflection {
                 display_name: "Line strips 2D",
+                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.LineStrip2D".into(), display_name : "Strips",
@@ -1369,6 +1388,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.LineStrips3D"),
             ArchetypeReflection {
                 display_name: "Line strips 3D",
+                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.LineStrip3D".into(), display_name : "Strips",
@@ -1400,6 +1420,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Mesh3D"),
             ArchetypeReflection {
                 display_name: "Mesh 3D",
+                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.Position3D".into(), display_name :
@@ -1443,6 +1464,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Pinhole"),
             ArchetypeReflection {
                 display_name: "Pinhole",
+                view_types: &["Spatial2DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.PinholeProjection".into(), display_name :
@@ -1468,6 +1490,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Points2D"),
             ArchetypeReflection {
                 display_name: "Points 2D",
+                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.Position2D".into(), display_name : "Positions",
@@ -1508,6 +1531,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Points3D"),
             ArchetypeReflection {
                 display_name: "Points 3D",
+                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.Position3D".into(), display_name : "Positions",
@@ -1544,6 +1568,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Scalar"),
             ArchetypeReflection {
                 display_name: "Scalar",
+                view_types: &["TimeSeriesView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name : "rerun.components.Scalar"
                     .into(), display_name : "Scalar", docstring_md :
@@ -1555,6 +1580,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.SegmentationImage"),
             ArchetypeReflection {
                 display_name: "Segmentation image",
+                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.ImageBuffer".into(), display_name : "Buffer",
@@ -1578,6 +1604,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.SeriesLine"),
             ArchetypeReflection {
                 display_name: "Series line",
+                view_types: &["TimeSeriesView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name : "rerun.components.Color"
                     .into(), display_name : "Color", docstring_md :
@@ -1600,6 +1627,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.SeriesPoint"),
             ArchetypeReflection {
                 display_name: "Series point",
+                view_types: &["TimeSeriesView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name : "rerun.components.Color"
                     .into(), display_name : "Color", docstring_md :
@@ -1620,6 +1648,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Tensor"),
             ArchetypeReflection {
                 display_name: "Tensor",
+                view_types: &["TensorView", "BarChartView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.TensorData".into(), display_name : "Data",
@@ -1636,6 +1665,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.TextDocument"),
             ArchetypeReflection {
                 display_name: "Text document",
+                view_types: &["TextDocumentView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name : "rerun.components.Text"
                     .into(), display_name : "Text", docstring_md :
@@ -1652,6 +1682,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.TextLog"),
             ArchetypeReflection {
                 display_name: "Text log",
+                view_types: &["TextLogView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name : "rerun.components.Text"
                     .into(), display_name : "Text", docstring_md :
@@ -1671,6 +1702,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.Transform3D"),
             ArchetypeReflection {
                 display_name: "Transform 3D",
+                view_types: &["Spatial3DView", "Spatial2DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.Translation3D".into(), display_name :
@@ -1703,6 +1735,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.VideoFrameReference"),
             ArchetypeReflection {
                 display_name: "Video frame reference",
+                view_types: &["Spatial2DView", "Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.VideoTimestamp".into(), display_name : "Timestamp",
@@ -1720,6 +1753,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.ViewCoordinates"),
             ArchetypeReflection {
                 display_name: "View coordinates",
+                view_types: &["Spatial3DView"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.ViewCoordinates".into(), display_name : "Xyz",
@@ -1732,6 +1766,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.Background"),
             ArchetypeReflection {
                 display_name: "Background",
+                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.BackgroundKind".into(), display_name :
@@ -1747,6 +1782,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.ContainerBlueprint"),
             ArchetypeReflection {
                 display_name: "Container blueprint",
+                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ContainerKind".into(), display_name :
@@ -1786,6 +1822,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.DataframeQuery"),
             ArchetypeReflection {
                 display_name: "Dataframe query",
+                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.TimelineName".into(), display_name :
@@ -1815,6 +1852,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.MapBackground"),
             ArchetypeReflection {
                 display_name: "Map background",
+                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.MapProvider".into(), display_name :
@@ -1828,6 +1866,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.MapZoom"),
             ArchetypeReflection {
                 display_name: "Map zoom",
+                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ZoomLevel".into(), display_name : "Zoom",
@@ -1841,6 +1880,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.PanelBlueprint"),
             ArchetypeReflection {
                 display_name: "Panel blueprint",
+                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.PanelState".into(), display_name :
@@ -1852,6 +1892,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.PlotLegend"),
             ArchetypeReflection {
                 display_name: "Plot legend",
+                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.Corner2D".into(), display_name :
@@ -1869,6 +1910,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.ScalarAxis"),
             ArchetypeReflection {
                 display_name: "Scalar axis",
+                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.Range1D".into(), display_name : "Range",
@@ -1886,6 +1928,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.SpaceViewBlueprint"),
             ArchetypeReflection {
                 display_name: "Space view blueprint",
+                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.SpaceViewClass".into(), display_name :
@@ -1909,6 +1952,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.SpaceViewContents"),
             ArchetypeReflection {
                 display_name: "Space view contents",
+                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.QueryExpression".into(), display_name :
@@ -1922,6 +1966,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.TensorScalarMapping"),
             ArchetypeReflection {
                 display_name: "Tensor scalar mapping",
+                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.MagnificationFilter".into(), display_name :
@@ -1942,6 +1987,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.TensorSliceSelection"),
             ArchetypeReflection {
                 display_name: "Tensor slice selection",
+                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.TensorWidthDimension".into(), display_name :
@@ -1967,6 +2013,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.TensorViewFit"),
             ArchetypeReflection {
                 display_name: "Tensor view fit",
+                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ViewFit".into(), display_name :
@@ -1979,6 +2026,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.ViewportBlueprint"),
             ArchetypeReflection {
                 display_name: "Viewport blueprint",
+                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.RootContainer".into(), display_name :
@@ -2006,6 +2054,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.VisibleTimeRanges"),
             ArchetypeReflection {
                 display_name: "Visible time ranges",
+                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.VisibleTimeRange".into(), display_name :
@@ -2019,6 +2068,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.blueprint.archetypes.VisualBounds2D"),
             ArchetypeReflection {
                 display_name: "Visual bounds 2D",
+                view_types: &[],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.VisualBounds2D".into(), display_name :
