@@ -206,7 +206,7 @@ memory-stats = "1.1"
 mimalloc = "0.1.43"
 mime_guess2 = "2.0" # infer MIME type by file extension, and map mime to file extension
 mint = "0.5.9"
-re_mp4 = "0.1.0"
+re_mp4 = "0.2.0"
 natord = "1.0.9"
 ndarray = "0.16"
 ndarray-rand = "0.15"
@@ -579,6 +579,3 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2", rev = "e4717d6debc6d4474ec10db8f629f823f57bad07" }
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }
-
-# Commit on `main` branch of `re_mp4`
-re_mp4 = { git = "https://github.com/rerun-io/re_mp4", rev = "7d38361ee5b05f5a2b83a8029057c8a24d2e9023" }
