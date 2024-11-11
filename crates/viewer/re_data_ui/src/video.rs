@@ -271,13 +271,16 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
     // Judging the following to be a bit too obscure to be of relevance outside of debugging Rerun itself.
     #[cfg(debug_assertions)]
     {
-        if !video_data.samples_statistics.dts_always_equal_pts {
-            // If the DTS==PTS, then the presentation timestamp is always the highest PTS encountered so far.
+        if let Some(has_sample_highest_pts_so_far) = video_data
+            .samples_statistics
+            .has_sample_highest_pts_so_far
+            .as_ref()
+        {
             if let Some(sample_idx) = video_data
                 .latest_sample_index_at_presentation_timestamp(frame_info.presentation_timestamp)
             {
                 ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Highest PTS so far").value_text(video_data.samples_statistics.has_sample_highest_pts_so_far[sample_idx].to_string())
+                    PropertyContent::new("Highest PTS so far").value_text(has_sample_highest_pts_so_far[sample_idx].to_string())
                 ).on_hover_text("Whether the presentation timestamp (PTS) at the this frame is the highest encountered so far. If false there are lower PTS values prior in the list.");
             }
         }

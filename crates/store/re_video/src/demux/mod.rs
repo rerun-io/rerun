@@ -7,8 +7,9 @@
 
 pub mod mp4;
 
-use std::{collections::BTreeMap, ops::Range, usize};
+use std::{collections::BTreeMap, ops::Range};
 
+use bit_vec::BitVec;
 use itertools::Itertools as _;
 
 use super::{Time, Timescale};
@@ -91,9 +92,9 @@ pub struct SamplesStatistics {
     pub dts_always_equal_pts: bool,
 
     /// If `dts_always_equal_pts` is false, then this gives for each sample whether its PTS is the highest seen so far.
-    /// If `dts_always_equal_pts` is true, then this is left empty.
+    /// If `dts_always_equal_pts` is true, then this is left as `None`.
     /// This is used for optimizing PTS search.
-    pub has_sample_highest_pts_so_far: Vec<bool>,
+    pub has_sample_highest_pts_so_far: Option<BitVec>,
 }
 
 impl SamplesStatistics {
@@ -110,17 +111,19 @@ impl SamplesStatistics {
             .all(|s| s.decode_timestamp == s.presentation_timestamp);
 
         let mut biggest_pts_so_far = Time::MIN;
-        let has_sample_highest_pts_so_far = samples
-            .iter()
-            .map(move |sample| {
-                if sample.presentation_timestamp > biggest_pts_so_far {
-                    biggest_pts_so_far = sample.presentation_timestamp;
-                    true
-                } else {
-                    false
-                }
-            })
-            .collect();
+        let has_sample_highest_pts_so_far = (!dts_always_equal_pts).then(|| {
+            samples
+                .iter()
+                .map(move |sample| {
+                    if sample.presentation_timestamp > biggest_pts_so_far {
+                        biggest_pts_so_far = sample.presentation_timestamp;
+                        true
+                    } else {
+                        false
+                    }
+                })
+                .collect()
+        });
 
         Self {
             minimum_presentation_timestamp,
@@ -337,9 +340,13 @@ impl VideoData {
             Self::latest_sample_index_at_decode_timestamp(samples, presentation_timestamp)?;
 
         // It's very common that dts==pts in which case we're done!
-        if sample_statistics.dts_always_equal_pts {
+        let Some(has_sample_highest_pts_so_far) =
+            sample_statistics.has_sample_highest_pts_so_far.as_ref()
+        else {
+            debug_assert!(!sample_statistics.dts_always_equal_pts);
             return Some(decode_sample_idx);
-        }
+        };
+        debug_assert!(has_sample_highest_pts_so_far.len() == samples.len());
 
         // Search backwards, starting at `decode_sample_idx`, looking for
         // the first sample where `sample.presentation_timestamp <= presentation_timestamp`.
@@ -365,8 +372,7 @@ impl VideoData {
                 best_index = sample_idx;
             }
 
-            if best_pts != Time::MIN && sample_statistics.has_sample_highest_pts_so_far[sample_idx]
-            {
+            if best_pts != Time::MIN && has_sample_highest_pts_so_far[sample_idx] {
                 // We won't see any bigger PTS values anymore, meaning we're as close as we can get to the requested PTS!
                 return Some(best_index);
             }
@@ -642,7 +648,7 @@ mod tests {
         // Create fake samples from this.
         let samples = pts
             .into_iter()
-            .zip(dts.into_iter())
+            .zip(dts)
             .map(|(pts, dts)| Sample {
                 is_sync: false,
                 decode_timestamp: Time(dts),
@@ -655,7 +661,7 @@ mod tests {
 
         let sample_statistics = SamplesStatistics::new(&samples);
         assert_eq!(sample_statistics.minimum_presentation_timestamp, Time(512));
-        assert_eq!(sample_statistics.dts_always_equal_pts, false);
+        assert!(!sample_statistics.dts_always_equal_pts);
 
         // Test queries on the samples.
         let query_pts = |pts| {
