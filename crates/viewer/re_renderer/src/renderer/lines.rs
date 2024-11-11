@@ -236,6 +236,13 @@ bitflags! {
         ///
         /// TODO(andreas): Could be moved to per batch flags.
         const FLAG_FORCE_ORTHO_SPANNING = 0b1000_0000;
+
+        /// Combination of flags to extend lines outwards with round caps.
+        const FLAGS_OUTWARD_EXTENDING_ROUND_CAPS =
+            LineStripFlags::FLAG_CAP_START_ROUND.bits() |
+            LineStripFlags::FLAG_CAP_END_ROUND.bits() |
+            LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS.bits() |
+            LineStripFlags::FLAG_CAP_END_EXTEND_OUTWARDS.bits();
     }
 }
 

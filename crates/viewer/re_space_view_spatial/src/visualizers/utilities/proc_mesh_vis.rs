@@ -197,12 +197,7 @@ where
                             .radius(radius)
                             .picking_instance_id(PickingLayerInstanceId(instance_index as _))
                             // Looped lines should be connected with rounded corners.
-                            .flags(
-                                LineStripFlags::FLAG_CAP_START_ROUND
-                                    | LineStripFlags::FLAG_CAP_END_ROUND
-                                    | LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS
-                                    | LineStripFlags::FLAG_CAP_END_EXTEND_OUTWARDS,
-                            );
+                            .flags(LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS);
 
                         if let Some(outline_mask_ids) = ent_context
                             .highlight

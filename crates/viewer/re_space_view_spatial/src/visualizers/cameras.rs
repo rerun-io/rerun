@@ -124,25 +124,27 @@ impl CamerasVisualizer {
 
         let up_triangle = [
             pinhole.unproject(vec3(0.4 * w, 0.0, z)),
-            pinhole.unproject(vec3(0.6 * w, 0.0, z)),
             pinhole.unproject(vec3(0.5 * w, -0.1 * w, z)),
+            pinhole.unproject(vec3(0.6 * w, 0.0, z)),
         ];
 
-        let segments = [
-            // Frustum corners:
-            (glam::Vec3::ZERO, corners[0]),
-            (glam::Vec3::ZERO, corners[1]),
-            (glam::Vec3::ZERO, corners[2]),
-            (glam::Vec3::ZERO, corners[3]),
-            // Rectangle around "far plane":
-            (corners[0], corners[1]),
-            (corners[1], corners[2]),
-            (corners[2], corners[3]),
-            (corners[3], corners[0]),
+        let strips = vec![
+            // Frustum rectangle, connected with zero point.
+            vec![
+                corners[0],
+                corners[1],
+                glam::Vec3::ZERO,
+                corners[2],
+                corners[3],
+                glam::Vec3::ZERO,
+                corners[0],
+                corners[3],
+                glam::Vec3::ZERO,
+            ],
+            // Missing piece of the rectangle at the far plane.
+            vec![corners[1], corners[2]],
             // Triangle indicating up direction:
-            (up_triangle[0], up_triangle[1]),
-            (up_triangle[1], up_triangle[2]),
-            (up_triangle[2], up_triangle[0]),
+            vec![up_triangle[0], up_triangle[1], up_triangle[2]],
         ];
 
         let radius = re_renderer::Size::new_ui_points(1.0);
@@ -160,15 +162,18 @@ impl CamerasVisualizer {
             )
             .outline_mask_ids(entity_highlight.overall)
             .picking_object_id(instance_layer_id.object);
-        let lines = batch
-            .add_segments(segments.into_iter())
-            .radius(radius)
-            .color(CAMERA_COLOR)
-            .flags(LineStripFlags::FLAG_CAP_END_ROUND | LineStripFlags::FLAG_CAP_START_ROUND)
-            .picking_instance_id(instance_layer_id.instance);
 
-        if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance) {
-            lines.outline_mask_ids(*outline_mask_ids);
+        for strip in strips {
+            let lines = batch
+                .add_strip(strip.into_iter())
+                .radius(radius)
+                .color(CAMERA_COLOR)
+                .flags(LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS)
+                .picking_instance_id(instance_layer_id.instance);
+
+            if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance) {
+                lines.outline_mask_ids(*outline_mask_ids);
+            }
         }
 
         // world_from_camera is the transform to the pinhole origin

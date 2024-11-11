@@ -174,12 +174,7 @@ impl GeoLineStringsVisualizer {
                             .unwrap_or(walkers::Position::from_lat_lon(0.0, 0.0)),
                     ))
                     // Looped lines should be connected with rounded corners, so we always add outward extending caps.
-                    .flags(
-                        LineStripFlags::FLAG_CAP_START_ROUND
-                            | LineStripFlags::FLAG_CAP_END_ROUND
-                            | LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS
-                            | LineStripFlags::FLAG_CAP_END_EXTEND_OUTWARDS,
-                    )
+                    .flags(LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS)
                     .color(*color)
                     .picking_instance_id(*instance)
                     .outline_mask_ids(
