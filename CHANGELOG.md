@@ -53,7 +53,7 @@ TODO: add link to release video
 - Fix playback of HDR AV1 videos in native viewer [#7978](https://github.com/rerun-io/rerun/pull/7978)
 - Consistent open/import/log_file behaviors in all common scenarios [#7966](https://github.com/rerun-io/rerun/pull/7966)
 - ChunkStore: fix row-id computation when removing dangling static chunks [#8020](https://github.com/rerun-io/rerun/pull/8020)
-- Fix some videos having offseted (incorrect) timestamps [#8029](https://github.com/rerun-io/rerun/pull/8029)
+- Fix some videos having offsetted (incorrect) timestamps [#8029](https://github.com/rerun-io/rerun/pull/8029)
 - Fix video backward seeking / stepping back sometimes getting stuck (in the presence of b-frames) [#8053](https://github.com/rerun-io/rerun/pull/8053)
 
 #### 🌁 Viewer improvements
