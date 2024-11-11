@@ -1,7 +1,10 @@
 use std::collections::{BTreeSet, HashSet};
 
+use ahash::HashMap;
 use egui::{self, Vec2};
 
+use fjadra::{Center, Link, ManyBody, PositionX, PositionY, SimulationBuilder};
+use re_log::external::log;
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
 use re_types::{
@@ -65,7 +68,7 @@ impl SpaceViewClass for GraphSpaceView {
 
         let (width, height) = state.world_bounds.map_or_else(
             || {
-                let bbox = bounding_rect_from_iter(layout.values());
+                let bbox = bounding_rect_from_iter(layout.1.values());
                 (
                     (bbox.max.x - bbox.min.x).abs(),
                     (bbox.max.y - bbox.min.y).abs(),
@@ -159,7 +162,71 @@ impl SpaceViewClass for GraphSpaceView {
 
         // For now, we reset the layout at every frame. Eventually, we want
         // to keep information between frames so that the nodes don't jump around.
-        let layout = state.layout.insert(Default::default());
+        // let (layout_time, layout) = state
+        //     .layout
+        //     .insert(((query.timeline, query.latest_at), Default::default()));
+
+        let layout = match state.layout {
+            Some(ref mut layout)
+                if (layout.0 .0, layout.0 .1) == (query.timeline, query.latest_at) =>
+            {
+                &mut layout.1
+            }
+            _ => {
+                log::debug!("recomputing graph layout");
+
+                let layout = state
+                    .layout
+                    .insert(((query.timeline, query.latest_at), Default::default()));
+
+                let mut node_index: HashMap<NodeIndex, usize> = HashMap::default();
+                let mut all_nodes = node_data
+                    .values()
+                    .flat_map(|data| data.nodes.iter().map(|n| n.index))
+                    .enumerate()
+                    .map(|(o, n)| {
+                        node_index.insert(n, o);
+                        n
+                    })
+                    .collect::<Vec<_>>();
+
+                let mut all_edges: Vec<(usize, usize)> = Vec::new();
+                for edge in edge_data.values().flat_map(|data| data.edges.iter()) {
+                    let source = *node_index.entry(edge.source_index).or_insert_with(|| {
+                        all_nodes.push(edge.source_index);
+                        all_nodes.len() - 1
+                    });
+
+                    let target = *node_index.entry(edge.target_index).or_insert_with(|| {
+                        all_nodes.push(edge.target_index);
+                        all_nodes.len() - 1
+                    });
+                    all_edges.push((source, target));
+                }
+
+                let mut simulation = SimulationBuilder::default()
+                    .build(all_nodes.iter().map(|_| Option::<[f64; 2]>::None))
+                    .add_force(
+                        "link",
+                        Link::new(all_edges.into_iter()),
+                    )
+                    .add_force("charge", ManyBody::new())
+                    .add_force("x", PositionX::new())
+                    .add_force("y", PositionY::new());
+
+                let positions = simulation.iter().last().expect("simulation should run");
+                for (node, i) in node_index {
+                    layout.1.entry(node).or_insert_with(|| {
+                        let pos = positions[i];
+                        let pos = egui::Pos2::new(pos[0] as f32, pos[1] as f32);
+                        let size = egui::Vec2::ZERO;
+                        egui::Rect::from_min_size(pos, size)
+                    });
+                }
+
+                &mut layout.1
+            }
+        };
 
         state.world_bounds = Some(bounds);
         let bounds_rect: egui::Rect = bounds.into();
@@ -241,21 +308,21 @@ impl SpaceViewClass for GraphSpaceView {
                     }
                 }
 
-                if entity_rect.is_positive() {
-                    let response = scene.entity(entity, entity_rect, &query.highlights);
+                // if entity_rect.is_positive() {
+                //     let response = scene.entity(entity, entity_rect, &query.highlights);
 
-                    let instance_path = InstancePath::entity_all(entity.clone());
-                    ctx.select_hovered_on_click(
-                        &response,
-                        vec![(Item::DataResult(query.space_view_id, instance_path), None)]
-                            .into_iter(),
-                    );
+                //     let instance_path = InstancePath::entity_all(entity.clone());
+                //     ctx.select_hovered_on_click(
+                //         &response,
+                //         vec![(Item::DataResult(query.space_view_id, instance_path), None)]
+                //             .into_iter(),
+                //     );
 
-                    // TODO(grtlr): Should take padding from `draw_entity` into account.
-                    // It's very likely that this part of the code is going to change once we introduce auto-layout.
-                    let between_entities = 80.0;
-                    entity_offset.x += entity_rect.width() + between_entities;
-                }
+                //     // TODO(grtlr): Should take padding from `draw_entity` into account.
+                //     // It's very likely that this part of the code is going to change once we introduce auto-layout.
+                //     let between_entities = 80.0;
+                //     // entity_offset.x += entity_rect.width() + between_entities;
+                // }
             }
         });
 

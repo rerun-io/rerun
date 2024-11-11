@@ -5,9 +5,14 @@ title: "GraphNode"
 
 A string-based ID representing a node in a graph.
 
-## Fields
+## Rerun datatype
+[`Utf8`](../datatypes/utf8.md)
 
-* id: [`Utf8`](../datatypes/utf8.md)
+
+## Arrow datatype
+```
+utf8
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `GraphNode`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1GraphNode.html?speculative-link)

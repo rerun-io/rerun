@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use re_chunk::{TimeInt, Timeline};
 use re_format::format_f32;
 use re_types::blueprint::components::VisualBounds2D;
 use re_ui::UiExt;
@@ -16,7 +17,7 @@ use super::bounding_rect_from_iter;
 pub struct GraphSpaceViewState {
     /// Positions of the nodes in world space. If the layout is `None`, the
     /// nodes were never layed out.
-    pub layout: Option<HashMap<NodeIndex, egui::Rect>>,
+    pub layout: Option<((Timeline, TimeInt), HashMap<NodeIndex, egui::Rect>)>,
 
     pub show_debug: bool,
 
@@ -32,7 +33,7 @@ impl GraphSpaceViewState {
             .on_hover_text("The bounding box encompassing all entities in the view right now");
         ui.vertical(|ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-            let egui::Rect { min, max } = bounding_rect_from_iter(layout.values());
+            let egui::Rect { min, max } = bounding_rect_from_iter(layout.1.values());
             ui.label(format!("x [{} - {}]", format_f32(min.x), format_f32(max.x),));
             ui.label(format!("y [{} - {}]", format_f32(min.y), format_f32(max.y),));
         });
