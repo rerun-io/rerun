@@ -6144,6 +6144,7 @@ dependencies = [
 name = "re_space_view_map"
 version = "0.20.0-alpha.1+dev"
 dependencies = [
+ "directories",
  "egui",
  "glam",
  "itertools 0.13.0",
