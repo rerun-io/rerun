@@ -17,7 +17,7 @@ use re_log_types::{
 };
 use re_query::QueryCache;
 use re_types::Archetype;
-use re_types_core::Loggable as _;
+use re_types_core::Component as _;
 
 // ---
 

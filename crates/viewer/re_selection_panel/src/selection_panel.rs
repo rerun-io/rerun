@@ -1185,7 +1185,7 @@ fn visible_interactive_toggle_ui(
     data_result: &DataResult,
 ) {
     use re_types::blueprint::components::Visible;
-    use re_types::Loggable as _;
+    use re_types::Component as _;
 
     {
         let visible_before = data_result.is_visible(ctx.viewer_ctx);

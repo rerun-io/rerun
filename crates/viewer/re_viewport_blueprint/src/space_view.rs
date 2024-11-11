@@ -459,7 +459,7 @@ mod tests {
         example_components::{MyColor, MyLabel, MyPoint},
         StoreId, StoreKind, TimePoint,
     };
-    use re_types::{ComponentBatch, ComponentName, Loggable as _};
+    use re_types::{Component as _, ComponentName};
     use re_viewer_context::{
         test_context::TestContext, ApplicableEntities, DataResult, IndicatedEntities, OverridePath,
         PerVisualizer, StoreContext, VisualizableEntities,
@@ -534,8 +534,8 @@ mod tests {
         );
 
         struct Scenario {
-            recursive_overrides: Vec<(EntityPath, Box<dyn ComponentBatch>)>,
-            individual_overrides: Vec<(EntityPath, Box<dyn ComponentBatch>)>,
+            recursive_overrides: Vec<(EntityPath, Box<dyn re_types_core::ComponentBatch>)>,
+            individual_overrides: Vec<(EntityPath, Box<dyn re_types_core::ComponentBatch>)>,
             expected_overrides: HashMap<EntityPath, HashMap<ComponentName, EntityPath>>,
         }
 
@@ -704,17 +704,18 @@ mod tests {
             // Reset blueprint store for each scenario.
             test_ctx.blueprint_store = EntityDb::new(StoreId::random(StoreKind::Blueprint));
 
-            let mut add_to_blueprint = |path: &EntityPath, batch: &dyn ComponentBatch| {
-                let chunk = Chunk::builder(path.clone())
-                    .with_component_batch(RowId::new(), TimePoint::default(), batch as _)
-                    .build()
-                    .unwrap();
+            let mut add_to_blueprint =
+                |path: &EntityPath, batch: &dyn re_types_core::ComponentBatch| {
+                    let chunk = Chunk::builder(path.clone())
+                        .with_component_batch(RowId::new(), TimePoint::default(), batch as _)
+                        .build()
+                        .unwrap();
 
-                test_ctx
-                    .blueprint_store
-                    .add_chunk(&Arc::new(chunk))
-                    .unwrap();
-            };
+                    test_ctx
+                        .blueprint_store
+                        .add_chunk(&Arc::new(chunk))
+                        .unwrap();
+                };
 
             // log individual and override components as instructed.
             for (entity_path, batch) in recursive_overrides {

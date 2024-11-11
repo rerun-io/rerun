@@ -72,13 +72,6 @@ impl std::ops::DerefMut for HalfSize3D {
 ::re_types_core::macros::impl_into_cow!(HalfSize3D);
 
 impl ::re_types_core::Loggable for HalfSize3D {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.HalfSize3D".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Vec3D::arrow_datatype()
@@ -114,5 +107,12 @@ impl ::re_types_core::Loggable for HalfSize3D {
         Self: Sized,
     {
         crate::datatypes::Vec3D::from_arrow(arrow_data).map(bytemuck::cast_vec)
+    }
+}
+
+impl ::re_types_core::Component for HalfSize3D {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.HalfSize3D".into()
     }
 }

@@ -64,13 +64,6 @@ impl From<Mat3x3> for [f32; 9usize] {
 ::re_types_core::macros::impl_into_cow!(Mat3x3);
 
 impl ::re_types_core::Loggable for Mat3x3 {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.Mat3x3".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

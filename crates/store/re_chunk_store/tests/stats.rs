@@ -7,7 +7,7 @@ use re_log_types::{
     example_components::{MyColor, MyPoint},
     EntityPath, Timeline,
 };
-use re_types_core::Loggable as _;
+use re_types_core::Component as _;
 
 #[test]
 fn stats() -> anyhow::Result<()> {

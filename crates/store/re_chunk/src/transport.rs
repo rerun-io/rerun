@@ -13,7 +13,7 @@ use arrow2::{
 };
 
 use re_log_types::{EntityPath, Timeline};
-use re_types_core::{Loggable as _, SizeBytes};
+use re_types_core::{Component as _, Loggable as _, SizeBytes};
 
 use crate::{Chunk, ChunkError, ChunkId, ChunkResult, RowId, TimeColumn};
 

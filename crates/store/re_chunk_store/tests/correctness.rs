@@ -10,7 +10,7 @@ use re_log_types::{
     build_frame_nr, build_log_time, Duration, EntityPath, Time, TimeInt, TimePoint, TimeType,
     Timeline,
 };
-use re_types_core::Loggable as _;
+use re_types_core::Component as _;
 
 // ---
 

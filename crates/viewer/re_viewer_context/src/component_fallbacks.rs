@@ -101,7 +101,7 @@ macro_rules! impl_component_fallback_provider {
                 _component_name: re_types::ComponentName,
             ) -> $crate::ComponentFallbackProviderResult {
                 $(
-                    if _component_name == <$component as re_types::Loggable>::name() {
+                    if _component_name == <$component as re_types::Component>::name() {
                         return  $crate::TypedComponentFallbackProvider::<$component>::fallback_for(self, _ctx).into();
                     }
                 )*

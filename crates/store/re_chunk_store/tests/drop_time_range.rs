@@ -7,7 +7,7 @@ use re_chunk::{Chunk, RowId};
 use re_chunk_store::{ChunkStore, ChunkStoreConfig};
 use re_log_types::{example_components::MyColor, ResolvedTimeRange};
 use re_log_types::{EntityPath, TimePoint, Timeline};
-use re_types_core::Loggable as _;
+use re_types_core::Component as _;
 
 #[test]
 fn drop_time_range() -> anyhow::Result<()> {

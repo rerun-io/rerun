@@ -45,13 +45,6 @@ impl ::re_types_core::SizeBytes for TensorDimensionIndexSelection {
 ::re_types_core::macros::impl_into_cow!(TensorDimensionIndexSelection);
 
 impl ::re_types_core::Loggable for TensorDimensionIndexSelection {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.TensorDimensionIndexSelection".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

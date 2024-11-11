@@ -18,6 +18,8 @@ pub struct Tuid {
 }
 
 impl Tuid {
+    pub const NAME: &'static str = "rerun.datatypes.TUID";
+
     /// Returns the total size of `self` on the heap, in bytes.
     ///
     /// NOTE: This crate cannot depend on `re_types_core`, therefore the actual implementation of

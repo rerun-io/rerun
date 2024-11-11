@@ -7,7 +7,7 @@ use re_space_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_types::{
     archetypes::GeoLineStrings,
     components::{Color, GeoLineString, Radius},
-    Loggable as _,
+    Component as _,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, SpaceViewHighlights,

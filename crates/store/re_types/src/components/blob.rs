@@ -69,13 +69,6 @@ impl std::ops::DerefMut for Blob {
 ::re_types_core::macros::impl_into_cow!(Blob);
 
 impl ::re_types_core::Loggable for Blob {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.Blob".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Blob::arrow_datatype()
@@ -103,5 +96,12 @@ impl ::re_types_core::Loggable for Blob {
     {
         crate::datatypes::Blob::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+    }
+}
+
+impl ::re_types_core::Component for Blob {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.Blob".into()
     }
 }

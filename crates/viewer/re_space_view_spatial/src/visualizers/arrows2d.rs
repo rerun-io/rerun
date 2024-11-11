@@ -6,7 +6,7 @@ use re_types::{
     components::{
         ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, ShowLabels, Text, Vector2D,
     },
-    ArrowString, Loggable as _,
+    ArrowString, Component as _,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,

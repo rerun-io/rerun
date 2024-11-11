@@ -3,7 +3,7 @@ use re_log_types::{
     example_components::{MyColor, MyLabel, MyPoint},
     ResolvedTimeRange,
 };
-use re_types_core::Loggable as _;
+use re_types_core::Component as _;
 
 // ---
 

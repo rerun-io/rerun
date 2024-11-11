@@ -7,7 +7,7 @@ use re_types::{
         AlbedoFactor, ClassId, Color, ImageBuffer, ImageFormat, Position3D, Texcoord2D,
         TriangleIndices, Vector3D,
     },
-    Loggable as _,
+    Component as _,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,

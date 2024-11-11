@@ -69,13 +69,6 @@ impl std::ops::DerefMut for Interactive {
 ::re_types_core::macros::impl_into_cow!(Interactive);
 
 impl ::re_types_core::Loggable for Interactive {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.components.Interactive".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Bool::arrow_datatype()
@@ -103,5 +96,12 @@ impl ::re_types_core::Loggable for Interactive {
     {
         crate::datatypes::Bool::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+    }
+}
+
+impl ::re_types_core::Component for Interactive {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.Interactive".into()
     }
 }

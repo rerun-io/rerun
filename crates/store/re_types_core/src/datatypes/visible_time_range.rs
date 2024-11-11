@@ -43,13 +43,6 @@ impl crate::SizeBytes for VisibleTimeRange {
 crate::macros::impl_into_cow!(VisibleTimeRange);
 
 impl crate::Loggable for VisibleTimeRange {
-    type Name = crate::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.VisibleTimeRange".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

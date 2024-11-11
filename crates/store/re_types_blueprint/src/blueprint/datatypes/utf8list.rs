@@ -52,13 +52,6 @@ impl From<Utf8List> for Vec<::re_types_core::ArrowString> {
 ::re_types_core::macros::impl_into_cow!(Utf8List);
 
 impl ::re_types_core::Loggable for Utf8List {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.datatypes.Utf8List".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

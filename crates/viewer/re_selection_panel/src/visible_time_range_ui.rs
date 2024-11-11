@@ -83,7 +83,7 @@ fn visible_time_range_ui(
     time_range_override_path: &EntityPath,
     is_space_view: bool,
 ) {
-    use re_types::Loggable as _;
+    use re_types::Component as _;
 
     let ranges = ctx
         .blueprint_db()

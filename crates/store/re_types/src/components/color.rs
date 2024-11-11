@@ -70,13 +70,6 @@ impl std::ops::DerefMut for Color {
 ::re_types_core::macros::impl_into_cow!(Color);
 
 impl ::re_types_core::Loggable for Color {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.Color".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Rgba32::arrow_datatype()
@@ -112,5 +105,12 @@ impl ::re_types_core::Loggable for Color {
         Self: Sized,
     {
         crate::datatypes::Rgba32::from_arrow(arrow_data).map(bytemuck::cast_vec)
+    }
+}
+
+impl ::re_types_core::Component for Color {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.Color".into()
     }
 }

@@ -851,13 +851,6 @@ fn quote_trait_impls_for_datatype_or_component(
 
     let name = format_ident!("{name}");
 
-    let quoted_kind = if *kind == ObjectKind::Datatype {
-        quote!(Datatype)
-    } else {
-        quote!(Component)
-    };
-    let kind_name = format_ident!("{quoted_kind}Name");
-
     let datatype = arrow_registry.get(fqname);
 
     let optimize_for_buffer_slice = should_optimize_buffer_slice_deserialize(obj, arrow_registry);
@@ -1002,17 +995,21 @@ fn quote_trait_impls_for_datatype_or_component(
         }
     };
 
+    let quoted_impl_component = (obj.kind == ObjectKind::Component).then(|| {
+        quote! {
+            impl ::re_types_core::Component for #name {
+                #[inline]
+                fn name() -> ComponentName {
+                    #fqname.into()
+                }
+            }
+        }
+    });
+
     quote! {
         ::re_types_core::macros::impl_into_cow!(#name);
 
         impl ::re_types_core::Loggable for #name {
-            type Name = ::re_types_core::#kind_name;
-
-            #[inline]
-            fn name() -> Self::Name {
-                #fqname.into()
-            }
-
             #quoted_arrow_datatype
 
             #quoted_serializer
@@ -1029,6 +1026,8 @@ fn quote_trait_impls_for_datatype_or_component(
 
             #quoted_from_arrow
         }
+
+        #quoted_impl_component
     }
 }
 

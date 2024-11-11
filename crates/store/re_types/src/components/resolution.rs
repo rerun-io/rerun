@@ -68,13 +68,6 @@ impl std::ops::DerefMut for Resolution {
 ::re_types_core::macros::impl_into_cow!(Resolution);
 
 impl ::re_types_core::Loggable for Resolution {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.Resolution".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Vec2D::arrow_datatype()
@@ -110,5 +103,12 @@ impl ::re_types_core::Loggable for Resolution {
         Self: Sized,
     {
         crate::datatypes::Vec2D::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
+    }
+}
+
+impl ::re_types_core::Component for Resolution {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.Resolution".into()
     }
 }
