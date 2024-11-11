@@ -1296,6 +1296,8 @@ impl App {
 
     /// After loading some data; check if the loaded data makes sense.
     fn validate_loaded_events(&self, store_events: &[re_chunk_store::ChunkStoreEvent]) {
+        re_tracing::profile_function!();
+
         for event in store_events {
             let chunk = &event.diff.chunk;
             for component in chunk.component_names() {
