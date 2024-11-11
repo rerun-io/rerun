@@ -33,7 +33,6 @@ re_ui.workspace = true
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
 
-directories.workspace = true
 egui.workspace = true
 glam.workspace = true
 itertools.workspace = true

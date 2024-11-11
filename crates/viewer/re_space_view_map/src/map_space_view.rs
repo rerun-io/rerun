@@ -479,21 +479,17 @@ fn handle_ui_interactions(
 /// Return http options for tile downloads.
 ///
 /// On native targets, it configures a cache directory.
-fn http_options() -> walkers::HttpOptions {
-    if cfg!(target_arch = "wasm32") {
-        Default::default()
-    } else {
-        let cache = directories::ProjectDirs::from("io", "rerun", "Rerun").map(|dirs| {
-            let mut path = dirs.cache_dir().to_owned();
-            path.push("map_view_cache");
-            path
-        });
+fn http_options(_ctx: &ViewerContext<'_>) -> walkers::HttpOptions {
+    #[cfg(not(target_arch = "wasm32"))]
+    let options = walkers::HttpOptions {
+        cache: _ctx.app_options.cache_subdirectory("map_view"),
+        ..Default::default()
+    };
 
-        walkers::HttpOptions {
-            cache,
-            ..Default::default()
-        }
-    }
+    #[cfg(target_arch = "wasm32")]
+    let options = Default::default();
+
+    options
 }
 
 fn get_tile_manager(
@@ -503,7 +499,7 @@ fn get_tile_manager(
 ) -> HttpTiles {
     let mapbox_access_token = ctx.app_options.mapbox_access_token().unwrap_or_default();
 
-    let options = http_options();
+    let options = http_options(ctx);
 
     match provider {
         MapProvider::OpenStreetMap => {
