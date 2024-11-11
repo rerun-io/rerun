@@ -716,8 +716,11 @@ impl StoreHub {
                     time_budget: re_entity_db::DEFAULT_GC_TIME_BUDGET,
                     protected_time_ranges,
                 });
-                if let Some(caches) = self.caches_per_recording.get_mut(blueprint_id) {
-                    caches.on_store_events(&store_events);
+                if !store_events.is_empty() {
+                    re_log::debug!("Garbage-collected blueprint store");
+                    if let Some(caches) = self.caches_per_recording.get_mut(blueprint_id) {
+                        caches.on_store_events(&store_events);
+                    }
                 }
 
                 self.blueprint_last_gc

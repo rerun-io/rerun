@@ -65,6 +65,7 @@ impl BlueprintUndoState {
             self.current_time = Some(previous);
         } else {
             // nothing to undo to
+            re_log::debug!("Nothing to undo");
         }
     }
 
@@ -73,6 +74,7 @@ impl BlueprintUndoState {
             self.current_time = self.inflection_points.range(time.inc()..).next().copied();
         } else {
             // If we have no time, we're at latest, and have nothing to redo
+            re_log::debug!("Nothing to redo");
         }
     }
 
