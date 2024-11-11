@@ -69,6 +69,8 @@ namespace rerun::datatypes {
                 } break;
                 case detail::AffixFuzzer4Tag::None: {
                 } break;
+                default:
+                    assert(false && "unreachable");
             }
         }
 
@@ -100,6 +102,8 @@ namespace rerun::datatypes {
                     using TypeAlias = rerun::Collection<rerun::datatypes::AffixFuzzer3>;
                     _data.many_required.~TypeAlias();
                 } break;
+                default:
+                    assert(false && "unreachable");
             }
         }
 

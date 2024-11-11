@@ -147,6 +147,8 @@ namespace rerun::datatypes {
                 } break;
                 case detail::TensorBufferTag::None: {
                 } break;
+                default:
+                    assert(false && "unreachable");
             }
         }
 
@@ -214,6 +216,8 @@ namespace rerun::datatypes {
                     using TypeAlias = rerun::Collection<double>;
                     _data.f64.~TypeAlias();
                 } break;
+                default:
+                    assert(false && "unreachable");
             }
         }
 
