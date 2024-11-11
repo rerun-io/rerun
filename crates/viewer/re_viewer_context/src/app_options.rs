@@ -46,7 +46,7 @@ pub struct AppOptions {
     /// to [`directories::ProjectDirs::cache_dir`].
     ///
     /// *NOTE*: subsystems making use of the cache directory should use a unique sub-directory name,
-    /// see [`cache_subdirectory`].
+    /// see [`AppOptions::cache_subdirectory`].
     #[cfg(not(target_arch = "wasm32"))]
     pub cache_directory: Option<std::path::PathBuf>,
 }
