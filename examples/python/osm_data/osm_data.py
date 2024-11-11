@@ -85,7 +85,7 @@ def log_data(data: dict[str, Any]) -> None:
 
 
 def main() -> None:
-    parser = ArgumentParser(description="Visualize OSM data")
+    parser = ArgumentParser(description="Visualize OpenStreetMap data")
     rr.script_add_args(parser)
     args = parser.parse_args()
 
