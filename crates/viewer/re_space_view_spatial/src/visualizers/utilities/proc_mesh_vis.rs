@@ -1,6 +1,6 @@
 use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
-use re_renderer::renderer::GpuMeshInstance;
+use re_renderer::renderer::{GpuMeshInstance, LineStripFlags};
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, RenderContext};
 use re_types::components::{self, FillMode};
 use re_viewer_context::{
@@ -195,7 +195,14 @@ where
                             )
                             .color(color)
                             .radius(radius)
-                            .picking_instance_id(PickingLayerInstanceId(instance_index as _));
+                            .picking_instance_id(PickingLayerInstanceId(instance_index as _))
+                            // Looped lines should be connected with rounded corners.
+                            .flags(
+                                LineStripFlags::FLAG_CAP_START_ROUND
+                                    | LineStripFlags::FLAG_CAP_END_ROUND
+                                    | LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS
+                                    | LineStripFlags::FLAG_CAP_END_EXTEND_OUTWARDS,
+                            );
 
                         if let Some(outline_mask_ids) = ent_context
                             .highlight
