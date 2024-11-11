@@ -106,7 +106,16 @@ enum EncoderVersion {
 
 // ----------------- ListRecordings -----------------
 
-message ListRecordingsRequest {}
+message ListRecordingsRequest {
+    // define which columns should be returned / projected
+    // we define a separate message to make it optional.
+    // If not provided, all columns should be returned
+    ColumnProjection column_projection = 1;
+}
+
+message ColumnProjection {
+    repeated string columns = 1;
+}
 
 message ListRecordingsResponse {
     repeated RecordingMetadata recordings = 1;

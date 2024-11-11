@@ -338,8 +338,19 @@ pub struct QueryResponse {
     #[prost(bytes = "vec", tag = "2")]
     pub payload: ::prost::alloc::vec::Vec<u8>,
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct ListRecordingsRequest {}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ListRecordingsRequest {
+    /// define which columns should be returned / projected
+    /// we define a separate message to make it optional.
+    /// If not provided, all columns should be returned
+    #[prost(message, optional, tag = "1")]
+    pub column_projection: ::core::option::Option<ColumnProjection>,
+}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct ColumnProjection {
+    #[prost(string, repeated, tag = "1")]
+    pub columns: ::prost::alloc::vec::Vec<::prost::alloc::string::String>,
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct ListRecordingsResponse {
     #[prost(message, repeated, tag = "1")]
