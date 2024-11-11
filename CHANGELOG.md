@@ -75,7 +75,7 @@ TODO: add link to release video
 
 #### 🧑‍🏫 Examples
 - Fix Rust dna sample writing to a temporary file [#7827](https://github.com/rerun-io/rerun/pull/7827)
-- Add  ml_depth_pro example [#7832](https://github.com/rerun-io/rerun/pull/7832) (thanks [@oxkitsune](https://github.com/oxkitsune)!)
+- Add ml_depth_pro example [#7832](https://github.com/rerun-io/rerun/pull/7832) (thanks [@oxkitsune](https://github.com/oxkitsune)!)
 - Add map view to nuscenes python example [#8034](https://github.com/rerun-io/rerun/pull/8034) (thanks [@tfoldi](https://github.com/tfoldi)!)
 - Add an example to display OpenStreetMap-sourced data on the map view [#8044](https://github.com/rerun-io/rerun/pull/8044)
 
