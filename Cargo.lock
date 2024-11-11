@@ -3637,7 +3637,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4979f22fdb869068da03c9f7528f8297c6fd2606bc3a4affe42e6a823fdb8da4"
 dependencies = [
  "cfg-if",
- "windows-targets 0.48.5",
+ "windows-targets 0.52.6",
 ]
 
 [[package]]
@@ -4943,7 +4943,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0c1318b19085f08681016926435853bbf7858f9c082d0999b80550ff5d9abe15"
 dependencies = [
  "bytes",
- "heck 0.4.1",
+ "heck 0.5.0",
  "itertools 0.13.0",
  "log",
  "multimap",
@@ -6477,6 +6477,7 @@ dependencies = [
 name = "re_video"
 version = "0.20.0-alpha.1+dev"
 dependencies = [
+ "bit-vec",
  "cfg_aliases 0.2.1",
  "criterion",
  "crossbeam",
@@ -8888,8 +8889,9 @@ dependencies = [
 
 [[package]]
 name = "walkers"
-version = "0.28.0"
-source = "git+https://github.com/rerun-io/walkers?rev=8939cceb3fa49ca8648ee16fe1d8432f5ab0bdcc#8939cceb3fa49ca8648ee16fe1d8432f5ab0bdcc"
+version = "0.29.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b0688ad9bfb3bd49d997a6fb831e9ef21e251f4698c07e2f9902dcdb72d254bd"
 dependencies = [
  "egui",
  "egui_extras",
