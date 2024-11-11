@@ -112,6 +112,8 @@ namespace rerun {
                         static_cast<arrow::NullBuilder*>(variant_builder_untyped);
                     ARROW_RETURN_NOT_OK(variant_builder->AppendNull());
                 } break;
+                default:
+                    assert(false && "unreachable");
             }
         }
 

@@ -39,6 +39,16 @@ pub struct AppOptions {
     ///
     /// Can also be set using the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
     pub mapbox_access_token: String,
+
+    /// Path to the directory suitable for storing cache data.
+    ///
+    /// By cache data, we mean data that is safe to be garbage collected by the OS. Defaults to
+    /// to [`directories::ProjectDirs::cache_dir`].
+    ///
+    /// *NOTE*: subsystems making use of the cache directory should use a unique sub-directory name,
+    /// see [`AppOptions::cache_subdirectory`].
+    #[cfg(not(target_arch = "wasm32"))]
+    pub cache_directory: Option<std::path::PathBuf>,
 }
 
 impl Default for AppOptions {
@@ -65,6 +75,9 @@ impl Default for AppOptions {
             video_decoder_hw_acceleration: Default::default(),
 
             mapbox_access_token: String::new(),
+
+            #[cfg(not(target_arch = "wasm32"))]
+            cache_directory: Self::default_cache_directory(),
         }
     }
 }
@@ -76,5 +89,21 @@ impl AppOptions {
         } else {
             Some(self.mapbox_access_token.clone())
         }
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn cache_subdirectory(
+        &self,
+        sub_dir: impl AsRef<std::path::Path>,
+    ) -> Option<std::path::PathBuf> {
+        self.cache_directory
+            .as_ref()
+            .map(|cache_dir| cache_dir.join(sub_dir))
+    }
+
+    /// Default cache directory
+    pub fn default_cache_directory() -> Option<std::path::PathBuf> {
+        directories::ProjectDirs::from("io", "rerun", "Rerun")
+            .map(|dirs| dirs.cache_dir().to_owned())
     }
 }

@@ -343,7 +343,7 @@ impl VideoData {
         let Some(has_sample_highest_pts_so_far) =
             sample_statistics.has_sample_highest_pts_so_far.as_ref()
         else {
-            debug_assert!(!sample_statistics.dts_always_equal_pts);
+            debug_assert!(sample_statistics.dts_always_equal_pts);
             return Some(decode_sample_idx);
         };
         debug_assert!(has_sample_highest_pts_so_far.len() == samples.len());

@@ -107,7 +107,7 @@ re_viewport_blueprint = { path = "crates/viewer/re_viewport_blueprint", version 
 re_web_viewer_server = { path = "crates/viewer/re_web_viewer_server", version = "=0.20.0-alpha.1", default-features = false }
 
 # Rerun crates in other repos:
-ewebsock = "0.7.0"
+ewebsock = "0.8.0"
 re_math = "0.20.0"
 
 # If this package fails to build, install `nasm` locally, or build through `pixi`.
@@ -206,7 +206,7 @@ memory-stats = "1.1"
 mimalloc = "0.1.43"
 mime_guess2 = "2.0" # infer MIME type by file extension, and map mime to file extension
 mint = "0.5.9"
-re_mp4 = "0.1.0"
+re_mp4 = "0.2.0"
 natord = "1.0.9"
 ndarray = "0.16"
 ndarray-rand = "0.15"
@@ -579,9 +579,3 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2", rev = "e4717d6debc6d4474ec10db8f629f823f57bad07" }
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }
-
-# Commit on `main` branch of `re_mp4`
-re_mp4 = { git = "https://github.com/rerun-io/re_mp4", rev = "7d38361ee5b05f5a2b83a8029057c8a24d2e9023" }
-
-# Commit on `main` branch of `ewebsock`
-ewebsock = { git = "https://github.com/rerun-io/ewebsock", rev = "ac6552ecb70f058d81dd8fafaecd4b1daba24685" }

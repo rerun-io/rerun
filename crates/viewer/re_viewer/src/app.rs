@@ -1189,6 +1189,8 @@ impl App {
                     if let Some(caches) = store_hub.active_caches() {
                         caches.on_store_events(&store_events);
                     }
+
+                    self.validate_loaded_events(&store_events);
                 }
 
                 Err(err) => {
@@ -1288,6 +1290,32 @@ impl App {
             if start.elapsed() > web_time::Duration::from_millis(10) {
                 egui_ctx.request_repaint(); // make sure we keep receiving messages asap
                 break; // don't block the main thread for too long
+            }
+        }
+    }
+
+    /// After loading some data; check if the loaded data makes sense.
+    fn validate_loaded_events(&self, store_events: &[re_chunk_store::ChunkStoreEvent]) {
+        re_tracing::profile_function!();
+
+        for event in store_events {
+            let chunk = &event.diff.chunk;
+            for component in chunk.component_names() {
+                if let Some(archetype_name) = component.indicator_component_archetype() {
+                    if let Some(archetype) = self
+                        .reflection
+                        .archetype_reflection_from_short_name(&archetype_name)
+                    {
+                        for &view_type in archetype.view_types {
+                            // TODO(#7876): remove once `map_view` feature is gone
+                            if !cfg!(feature = "map_view") && view_type == "MapView" {
+                                re_log::warn_once!("Found map-related archetype, but viewer was not compiled with the `map_view` feature.");
+                            }
+                        }
+                    } else {
+                        re_log::debug_once!("Unknown archetype: {archetype_name}");
+                    }
+                }
             }
         }
     }
