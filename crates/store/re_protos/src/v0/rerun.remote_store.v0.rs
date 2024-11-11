@@ -182,6 +182,19 @@ pub struct ComponentColumnSelector {
     #[prost(message, optional, tag = "2")]
     pub component: ::core::option::Option<Component>,
 }
+/// Application level error - use as `details` in the `google.rpc.Status` message
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct RemoteStoreError {
+    /// error code
+    #[prost(enumeration = "ErrorCode", tag = "1")]
+    pub code: i32,
+    /// unique identifier associated with the request (e.g. recording id, recording storage url)
+    #[prost(string, tag = "2")]
+    pub id: ::prost::alloc::string::String,
+    /// human readable details about the error
+    #[prost(string, tag = "3")]
+    pub message: ::prost::alloc::string::String,
+}
 /// Specifies how null values should be filled in the returned dataframe.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord, ::prost::Enumeration)]
 #[repr(i32)]
@@ -276,19 +289,6 @@ pub struct RegisterRecordingResponse {
     /// or 3/ do it always
     #[prost(message, optional, tag = "2")]
     pub metadata: ::core::option::Option<RecordingMetadata>,
-}
-/// Server can include details about the error as part of gRPC error (Status)
-#[derive(Clone, PartialEq, ::prost::Message)]
-pub struct RegistrationError {
-    /// error code
-    #[prost(enumeration = "ErrorCode", tag = "1")]
-    pub code: i32,
-    /// storage url of the recording that failed to register
-    #[prost(string, tag = "2")]
-    pub storage_url: ::prost::alloc::string::String,
-    /// human readable details about the error
-    #[prost(string, tag = "3")]
-    pub message: ::prost::alloc::string::String,
 }
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct GetRecordingMetadataRequest {
