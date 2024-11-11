@@ -258,7 +258,15 @@ impl VideoPlayer {
             // special case: handle seeking backwards within a single GOP
             // this is super inefficient, but it's the only way to handle it
             // while maintaining a buffer of only 2 GOPs
-            if requested_sample_idx < self.current_sample_idx {
+            //
+            // Note that due to sample reordering (in the presence of b-frames), if can happen
+            // that `self.current_sample_idx` is *behind* the `requested_sample_idx` even if we're
+            // seeking backwards!
+            // Therefore, it's important to compare presentation timestamps instead of sample indices.
+            // (comparing decode timestamps should be equivalent to comparing sample indices)
+            let current_pts = self.data.samples[self.current_sample_idx].presentation_timestamp;
+            let requested_pts = self.data.samples[requested_sample_idx].presentation_timestamp;
+            if requested_pts < current_pts {
                 self.reset()?;
                 self.enqueue_gop(requested_gop_idx, video_data)?;
                 self.enqueue_gop(requested_gop_idx + 1, video_data)?;

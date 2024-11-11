@@ -516,12 +516,6 @@ fn read_ffmpeg_output(
                 // How do we know how large this buffer needs to be?
                 // Whenever the highest known DTS is behind the PTS, we need to wait until the DTS catches up.
                 // Otherwise, we'd assign the wrong PTS to the frame that just came in.
-                //
-                // Example how presentation timestamps and decode timestamps
-                // can play out in the presence of B-frames to illustrate this:
-                //    PTS: 1 4 2 3
-                //    DTS: 1 2 3 4
-                // Stream: I P B B
                 let frame_info = loop {
                     let oldest_pts_in_buffer =
                         pending_frame_infos.first_key_value().map(|(pts, _)| *pts);
