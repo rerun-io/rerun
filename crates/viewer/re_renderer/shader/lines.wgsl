@@ -266,7 +266,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
         center_position += quad_dir * (size_boost * select(-1.0, 1.0, is_at_quad_end));
     }
 
-    // Filtered list of flats that the fragment shader is interested in.
+    // Filtered list of flags that the fragment shader is interested in.
     var fragment_flags = strip_data.flags & FLAG_COLOR_GRADIENT;
 
     // If this is a triangle cap, we blow up our ("virtual") quad by a given factor.
@@ -313,7 +313,7 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
 fn distance_to_line_sq(pos: vec3f, line_a: vec3f, line_b: vec3f) -> f32 {
     let a_to_pos = pos - line_a;
     let a_to_b = line_b - line_a;
-    let h = clamp(dot(a_to_pos, a_to_b) / dot(a_to_b, a_to_b), 0.0, 1.0);
+    let h = saturate(dot(a_to_pos, a_to_b) / dot(a_to_b, a_to_b));
     let to_line = a_to_pos - a_to_b * h;
     return dot(to_line, to_line);
 }
