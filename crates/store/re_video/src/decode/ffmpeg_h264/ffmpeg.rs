@@ -99,6 +99,10 @@ struct FFmpegFrameInfo {
     /// This probably means this is a _keyframe_, and that and entire frame
     /// can be decoded from only this one sample (though I'm not 100% sure).
     is_sync: bool,
+
+    /// Which sample is this in the video?
+    sample_idx: usize,
+
     presentation_timestamp: Time,
     duration: Time,
     decode_timestamp: Time,
@@ -576,6 +580,7 @@ fn read_ffmpeg_output(
                     },
                     info: FrameInfo {
                         is_sync: Some(frame_info.is_sync),
+                        sample_idx: Some(frame_info.sample_idx),
                         presentation_timestamp: frame_info.presentation_timestamp,
                         duration: frame_info.duration,
                         latest_decode_timestamp: Some(frame_info.decode_timestamp),
@@ -705,6 +710,7 @@ impl AsyncDecoder for FFmpegCliH264Decoder {
         // Chunks are defined to always yield a single frame.
         let frame_info = FFmpegFrameInfo {
             is_sync: chunk.is_sync,
+            sample_idx: chunk.sample_idx,
             presentation_timestamp: chunk.presentation_timestamp,
             decode_timestamp: chunk.decode_timestamp,
             duration: chunk.duration,

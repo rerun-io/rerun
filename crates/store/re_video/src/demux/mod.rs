@@ -59,6 +59,8 @@ pub struct VideoData {
     ///
     /// Samples must be decoded in decode-timestamp order,
     /// and should be presented in composition-timestamp order.
+    ///
+    /// In MP4, one sample is one frame.
     pub samples: Vec<Sample>,
 
     /// Meta information about the samples.
@@ -463,6 +465,9 @@ pub struct Sample {
     /// can be decoded from only this one sample (though I'm not 100% sure).
     pub is_sync: bool,
 
+    /// Which sample is this in the video?
+    pub sample_idx: usize,
+
     /// Time at which this sample appears in the decoded bitstream, in time units.
     ///
     /// Samples should be decoded in this order.
@@ -502,6 +507,7 @@ impl Sample {
             .to_vec();
         Some(Chunk {
             data,
+            sample_idx: self.sample_idx,
             decode_timestamp: self.decode_timestamp,
             presentation_timestamp: self.presentation_timestamp,
             duration: self.duration,

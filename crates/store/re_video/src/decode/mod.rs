@@ -207,6 +207,8 @@ pub fn new_decoder(
 /// One chunk of encoded video data, representing a single [`crate::Sample`].
 ///
 /// For details on how to interpret the data, see [`crate::Sample`].
+///
+/// In MP4, one sample is one frame.
 pub struct Chunk {
     /// The start of a new [`crate::demux::GroupOfPictures`]?
     ///
@@ -215,6 +217,9 @@ pub struct Chunk {
     pub is_sync: bool,
 
     pub data: Vec<u8>,
+
+    /// Which sample (frame) did this chunk come from?
+    pub sample_idx: usize,
 
     /// Decode timestamp of this sample.
     /// Chunks are expected to be submitted in the order of decode timestamp.
@@ -252,8 +257,15 @@ pub struct FrameInfo {
     /// This probably means this is a _keyframe_, and that and entire frame
     /// can be decoded from only this one sample (though I'm not 100% sure).
     ///
-    /// None indicates that the information is not available.
+    /// None = unknown.
     pub is_sync: Option<bool>,
+
+    /// Which sample in the video is this from?
+    ///
+    /// In MP4, one sample is one frame, but we may be reordering samples when decoding.
+    ///
+    /// None = unknown.
+    pub sample_idx: Option<usize>,
 
     /// The presentation timestamp of the frame.
     pub presentation_timestamp: Time,
@@ -263,7 +275,7 @@ pub struct FrameInfo {
 
     /// The decode timestamp of the last chunk that was needed to decode this frame.
     ///
-    /// None indicates that the information is not available.
+    /// None = unknown.
     pub latest_decode_timestamp: Option<Time>,
 }
 

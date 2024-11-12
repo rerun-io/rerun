@@ -166,6 +166,7 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoData) {
                     let sample = &video_data.samples[sample_idx];
                     let re_video::Sample {
                         is_sync,
+                        sample_idx: _,
                         decode_timestamp,
                         presentation_timestamp,
                         duration,
@@ -189,10 +190,10 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoData) {
                         }
                     });
                     row.col(|ui| {
-                        ui.monospace(re_format::format_int(decode_timestamp.0));
+                        timestamp_ui(ui, video_data, decode_timestamp);
                     });
                     row.col(|ui| {
-                        ui.monospace(re_format::format_int(presentation_timestamp.0));
+                        timestamp_ui(ui, video_data, presentation_timestamp);
                     });
 
                     row.col(|ui| {
@@ -206,6 +207,18 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoData) {
                     });
                 },
             );
+        });
+}
+
+fn timestamp_ui(ui: &mut egui::Ui, video_data: &VideoData, timestamp: re_video::Time) {
+    ui.monospace(re_format::format_int(timestamp.0))
+        .on_hover_ui(|ui| {
+            ui.monospace(re_format::format_timestamp_seconds(
+                timestamp.into_secs_since_start(
+                    video_data.timescale,
+                    video_data.samples_statistics.minimum_presentation_timestamp,
+                ),
+            ));
         });
 }
 
@@ -322,6 +335,7 @@ fn samples_statistics_ui(ui: &mut egui::Ui, samples_statistics: &SamplesStatisti
 fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_video::VideoData) {
     let FrameInfo {
         is_sync,
+        sample_idx,
         presentation_timestamp,
         duration,
         latest_decode_timestamp,
@@ -354,14 +368,17 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
         video_data: &re_video::VideoData,
     ) -> impl FnOnce(&mut egui::Ui, egui::style::WidgetVisuals) + '_ {
         move |ui, _| {
-            ui.add(egui::Label::new(time.0.to_string()).truncate())
-                .on_hover_text(re_format::format_timestamp_seconds(
-                    time.into_secs_since_start(
-                        video_data.timescale,
-                        video_data.samples_statistics.minimum_presentation_timestamp,
-                    ),
-                ));
+            timestamp_ui(ui, video_data, time);
         }
+    }
+
+    if let Some(sample_idx) = sample_idx {
+        ui.list_item_flat_noninteractive(PropertyContent::new("Sample").value_fn(move |ui, _| {
+            ui.monospace(re_format::format_uint(sample_idx));
+        }))
+        .on_hover_text(
+            "The sample number of this frame in the video. In MP4, one sample is one frame, but not necessareily in the same order!",
+        );
     }
 
     if let Some(dts) = latest_decode_timestamp {
@@ -414,7 +431,7 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
 
             if let (Some(first_sample), Some(last_sample)) = (first_sample, last_sample) {
                 ui.list_item_flat_noninteractive(PropertyContent::new("GOP DTS range").value_text(
-                    format!("{} - {}", first_sample.decode_timestamp.0, last_sample.decode_timestamp.0)
+                    format!("{} - {}", re_format::format_int(first_sample.decode_timestamp.0), re_format::format_int(last_sample.decode_timestamp.0))
                 ))
                 .on_hover_text(
                     "The range of decode timestamps in the currently active group of picture (GOP).",
