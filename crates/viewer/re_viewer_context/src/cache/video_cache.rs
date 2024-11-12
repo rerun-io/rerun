@@ -40,7 +40,7 @@ impl VideoCache {
         blob_row_id: RowId,
         video_data: &re_types::datatypes::Blob,
         media_type: Option<&MediaType>,
-        decode_settings: &DecodeSettings,
+        decode_settings: DecodeSettings,
     ) -> Arc<Result<Video, VideoLoadError>> {
         re_tracing::profile_function!(&debug_name);
 

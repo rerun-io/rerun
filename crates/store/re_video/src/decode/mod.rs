@@ -372,10 +372,16 @@ pub enum DecodeHardwareAcceleration {
     PreferHardware,
 }
 
+/// Settings for video decoding.
 #[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub struct DecodeSettings {
+    /// How the video should be decoded.
     pub hw_acceleration: DecodeHardwareAcceleration,
+
+    /// Custom path for the ffmpeg binary.
+    ///
+    /// If not provided, we use the path automatically determined by `ffmpeg_sidecar`.
     pub ffmpeg_path: Option<std::path::PathBuf>,
 }
 

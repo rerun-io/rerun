@@ -94,18 +94,14 @@ impl Video {
     ///
     /// Currently supports the following media types:
     /// - `video/mp4`
-    pub fn load(
-        debug_name: String,
-        data: Arc<VideoData>,
-        decode_settings: &DecodeSettings,
-    ) -> Self {
+    pub fn load(debug_name: String, data: Arc<VideoData>, decode_settings: DecodeSettings) -> Self {
         let players = Mutex::new(HashMap::default());
 
         Self {
             debug_name,
             data,
             players,
-            decode_settings: decode_settings.clone(),
+            decode_settings,
         }
     }
 

@@ -2,7 +2,6 @@ use egui::NumExt as _;
 
 use re_log_types::TimeZone;
 use re_ui::UiExt as _;
-use re_video::decode::DecodeHardwareAcceleration;
 use re_viewer_context::AppOptions;
 
 pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_open: &mut bool) {
@@ -120,29 +119,58 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
     ui.strong("Video");
 
-    let hardware_acceleration = &mut app_options.video_decoder_settings.hw_acceleration;
-    ui.horizontal(|ui| {
-        ui.label("Decoder:");
-        egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
-            .selected_text(hardware_acceleration.to_string())
-            .show_ui(ui, |ui| {
-                ui.selectable_value(
-                    hardware_acceleration,
-                    DecodeHardwareAcceleration::Auto,
-                    DecodeHardwareAcceleration::Auto.to_string(),
-                ) | ui.selectable_value(
-                    hardware_acceleration,
-                    DecodeHardwareAcceleration::PreferSoftware,
-                    DecodeHardwareAcceleration::PreferSoftware.to_string(),
-                ) | ui.selectable_value(
-                    hardware_acceleration,
-                    DecodeHardwareAcceleration::PreferHardware,
-                    DecodeHardwareAcceleration::PreferHardware.to_string(),
-                )
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        ui.re_checkbox(
+            &mut app_options.video_decoder_override_ffmpeg_path,
+            "Override ffmpeg path",
+        )
+        .on_hover_ui(|ui| {
+            ui.markdown_ui(
+                "By default, the viewer tries to automatically find a suitable `ffmpeg` binary in \
+                the system's `PATH`. Enabling this option allows you to specify a custom path to \
+                the `ffmpeg` binary.",
+            );
+        });
+
+        ui.add_enabled_ui(app_options.video_decoder_override_ffmpeg_path, |ui| {
+            ui.horizontal(|ui| {
+                ui.label("Path:");
+
+                ui.add(egui::TextEdit::singleline(
+                    &mut app_options.video_decoder_ffmpeg_path,
+                ));
             });
-        // Note that the setting is part of the video's cache key, so, if it changes, the cache
-        // entries outdate automatically.
-    });
+        });
+    }
+
+    // This affects only the web target, so we dont need to show it on native.
+    #[cfg(target_arch = "wasm32")]
+    {
+        let hardware_acceleration = &mut app_options.video_decoder_settings.hw_acceleration;
+        ui.horizontal(|ui| {
+            ui.label("Decoder:");
+            egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
+                .selected_text(hardware_acceleration.to_string())
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(
+                        hardware_acceleration,
+                        DecodeHardwareAcceleration::Auto,
+                        DecodeHardwareAcceleration::Auto.to_string(),
+                    ) | ui.selectable_value(
+                        hardware_acceleration,
+                        DecodeHardwareAcceleration::PreferSoftware,
+                        DecodeHardwareAcceleration::PreferSoftware.to_string(),
+                    ) | ui.selectable_value(
+                        hardware_acceleration,
+                        DecodeHardwareAcceleration::PreferHardware,
+                        DecodeHardwareAcceleration::PreferHardware.to_string(),
+                    )
+                });
+            // Note that the setting is part of the video's cache key, so, if it changes, the cache
+            // entries outdate automatically.
+        });
+    }
 
     //
     // Experimental features

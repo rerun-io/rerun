@@ -52,7 +52,7 @@ fn main() {
     let mut decoder = re_video::decode::new_decoder(
         &video_path.to_string(),
         &video,
-        re_video::decode::DecodeHardwareAcceleration::Auto,
+        &re_video::decode::DecodeSettings::default(),
         on_output,
     )
     .expect("Failed to create decoder");
