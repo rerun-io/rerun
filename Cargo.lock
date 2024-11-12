@@ -6478,7 +6478,6 @@ dependencies = [
 name = "re_video"
 version = "0.20.0-alpha.4+dev"
 dependencies = [
- "anyhow",
  "bit-vec",
  "cfg_aliases 0.2.1",
  "criterion",

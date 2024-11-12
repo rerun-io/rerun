@@ -47,7 +47,6 @@ re_build_info.workspace = true
 re_log.workspace = true
 re_tracing.workspace = true
 
-anyhow.workspace = true
 bit-vec.workspace = true
 crossbeam.workspace = true
 econtext.workspace = true
