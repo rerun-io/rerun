@@ -26,10 +26,12 @@ use crate::{
     PixelFormat, Time,
 };
 
+use super::version::FFmpegVersionParseError;
+
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("Couldn't find an installation of the FFmpeg executable.")]
-    FfmpegNotInstalled,
+    FFmpegNotInstalled,
 
     #[error("Failed to start FFmpeg: {0}")]
     FailedToStartFfmpeg(std::io::Error),
@@ -37,18 +39,14 @@ pub enum Error {
     #[error("FFmpeg version is {actual_version}. Only versions >= {minimum_version_major}.{minimum_version_minor} are officially supported.")]
     UnsupportedFFmpegVersion {
         actual_version: FFmpegVersion,
-
-        /// Copy of [`FFMPEG_MINIMUM_VERSION_MAJOR`].
         minimum_version_major: u32,
-
-        /// Copy of [`FFMPEG_MINIMUM_VERSION_MINOR`].
         minimum_version_minor: u32,
     },
 
     // TODO(andreas): This error can have a variety of reasons and is as such redundant to some of the others.
     // It works with an inner error because some of the error sources are behind an anyhow::Error inside of ffmpeg-sidecar.
-    #[error("Failed to determine FFmpeg version: {0}")]
-    FailedToDetermineFFmpegVersion(anyhow::Error),
+    #[error(transparent)]
+    FailedToDetermineFFmpegVersion(FFmpegVersionParseError),
 
     #[error("Failed to get stdin handle")]
     NoStdin,
@@ -95,7 +93,7 @@ impl From<Error> for crate::decode::Error {
 
 /// ffmpeg does not tell us the timestamp/duration of a given frame, so we need to remember it.
 #[derive(Clone)]
-struct FfmpegFrameInfo {
+struct FFmpegFrameInfo {
     /// The start of a new [`crate::demux::GroupOfPictures`]?
     ///
     /// This probably means this is a _keyframe_, and that and entire frame
@@ -106,7 +104,7 @@ struct FfmpegFrameInfo {
     decode_timestamp: Time,
 }
 
-enum FfmpegFrameData {
+enum FFmpegFrameData {
     Chunk(Chunk),
     EndOfStream,
 }
@@ -141,14 +139,14 @@ impl std::io::Write for StdinWithShutdown {
     }
 }
 
-struct FfmpegProcessAndListener {
+struct FFmpegProcessAndListener {
     ffmpeg: FfmpegChild,
 
     /// For sending frame timestamps to the ffmpeg listener thread.
-    frame_info_tx: Sender<FfmpegFrameInfo>,
+    frame_info_tx: Sender<FFmpegFrameInfo>,
 
     /// For sending chunks to the ffmpeg write thread.
-    frame_data_tx: Sender<FfmpegFrameData>,
+    frame_data_tx: Sender<FFmpegFrameData>,
 
     listen_thread: Option<std::thread::JoinHandle<()>>,
     write_thread: Option<std::thread::JoinHandle<()>>,
@@ -160,7 +158,7 @@ struct FfmpegProcessAndListener {
     on_output: Arc<Mutex<Option<Arc<OutputCallback>>>>,
 }
 
-impl FfmpegProcessAndListener {
+impl FFmpegProcessAndListener {
     fn new(
         debug_name: &str,
         on_output: Arc<OutputCallback>,
@@ -301,7 +299,7 @@ impl FfmpegProcessAndListener {
     }
 }
 
-impl Drop for FfmpegProcessAndListener {
+impl Drop for FFmpegProcessAndListener {
     fn drop(&mut self) {
         re_tracing::profile_function!();
 
@@ -313,7 +311,7 @@ impl Drop for FfmpegProcessAndListener {
         }
 
         // Notify (potentially wake up) the stdin write thread to stop it (it might be sleeping).
-        self.frame_data_tx.send(FfmpegFrameData::EndOfStream).ok();
+        self.frame_data_tx.send(FFmpegFrameData::EndOfStream).ok();
         // Kill stdin for the write thread. This helps cancelling ongoing stream write operations.
         self.stdin_shutdown
             .store(true, std::sync::atomic::Ordering::Release);
@@ -361,7 +359,7 @@ impl Drop for FfmpegProcessAndListener {
 
 fn write_ffmpeg_input(
     ffmpeg_stdin: &mut dyn std::io::Write,
-    frame_data_rx: &Receiver<FfmpegFrameData>,
+    frame_data_rx: &Receiver<FFmpegFrameData>,
     on_output: &Mutex<Option<Arc<OutputCallback>>>,
     avcc: &re_mp4::Avc1Box,
 ) {
@@ -369,8 +367,8 @@ fn write_ffmpeg_input(
 
     while let Ok(data) = frame_data_rx.recv() {
         let chunk = match data {
-            FfmpegFrameData::Chunk(chunk) => chunk,
-            FfmpegFrameData::EndOfStream => break,
+            FFmpegFrameData::Chunk(chunk) => chunk,
+            FFmpegFrameData::EndOfStream => break,
         };
 
         if let Err(err) = write_avc_chunk_to_nalu_stream(avcc, ffmpeg_stdin, &chunk, &mut state) {
@@ -396,7 +394,7 @@ fn write_ffmpeg_input(
 fn read_ffmpeg_output(
     debug_name: &str,
     ffmpeg_iterator: ffmpeg_sidecar::iter::FfmpegIterator,
-    frame_info_rx: &Receiver<FfmpegFrameInfo>,
+    frame_info_rx: &Receiver<FFmpegFrameInfo>,
     pixel_format: &PixelFormat,
     on_output: &Mutex<Option<Arc<OutputCallback>>>,
 ) -> Option<()> {
@@ -644,14 +642,14 @@ fn read_ffmpeg_output(
 }
 
 /// Decode H.264 video via ffmpeg over CLI
-pub struct FfmpegCliH264Decoder {
+pub struct FFmpegCliH264Decoder {
     debug_name: String,
-    ffmpeg: FfmpegProcessAndListener,
+    ffmpeg: FFmpegProcessAndListener,
     avcc: re_mp4::Avc1Box,
     on_output: Arc<OutputCallback>,
 }
 
-impl FfmpegCliH264Decoder {
+impl FFmpegCliH264Decoder {
     pub fn new(
         debug_name: String,
         avcc: re_mp4::Avc1Box,
@@ -677,13 +675,18 @@ impl FfmpegCliH264Decoder {
                     });
                 }
             }
+            Err(FFmpegVersionParseError::ParseVersion { raw_version }) => {
+                // This happens quite often, don't fail playing video over it!
+                re_log::warn_once!("Failed to parse FFmpeg version: {raw_version}");
+            }
+
             Err(err) => {
                 return Err(Error::FailedToDetermineFFmpegVersion(err));
             }
         }
 
         let on_output = Arc::new(on_output);
-        let ffmpeg = FfmpegProcessAndListener::new(&debug_name, on_output.clone(), avcc.clone())?;
+        let ffmpeg = FFmpegProcessAndListener::new(&debug_name, on_output.clone(), avcc.clone())?;
 
         Ok(Self {
             debug_name,
@@ -694,19 +697,19 @@ impl FfmpegCliH264Decoder {
     }
 }
 
-impl AsyncDecoder for FfmpegCliH264Decoder {
+impl AsyncDecoder for FFmpegCliH264Decoder {
     fn submit_chunk(&mut self, chunk: Chunk) -> crate::decode::Result<()> {
         re_tracing::profile_function!();
 
         // We send the information about this chunk first.
         // Chunks are defined to always yield a single frame.
-        let frame_info = FfmpegFrameInfo {
+        let frame_info = FFmpegFrameInfo {
             is_sync: chunk.is_sync,
             presentation_timestamp: chunk.presentation_timestamp,
             decode_timestamp: chunk.decode_timestamp,
             duration: chunk.duration,
         };
-        let chunk = FfmpegFrameData::Chunk(chunk);
+        let chunk = FFmpegFrameData::Chunk(chunk);
 
         if self.ffmpeg.frame_info_tx.send(frame_info).is_err()
             || self.ffmpeg.frame_data_tx.send(chunk).is_err()
@@ -729,7 +732,7 @@ impl AsyncDecoder for FfmpegCliH264Decoder {
 
     fn reset(&mut self) -> crate::decode::Result<()> {
         re_log::debug!("Resetting ffmpeg decoder {}", self.debug_name);
-        self.ffmpeg = FfmpegProcessAndListener::new(
+        self.ffmpeg = FFmpegProcessAndListener::new(
             &self.debug_name,
             self.on_output.clone(),
             self.avcc.clone(),

@@ -86,7 +86,7 @@ mod av1;
 mod ffmpeg_h264;
 
 #[cfg(with_ffmpeg)]
-pub use ffmpeg_h264::{ffmpeg_download_url, Error as FfmpegError};
+pub use ffmpeg_h264::{ffmpeg_download_url, Error as FFmpegError, FFmpegVersionParseError};
 
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
@@ -120,7 +120,7 @@ pub enum Error {
 
     #[cfg(with_ffmpeg)]
     #[error(transparent)]
-    Ffmpeg(std::sync::Arc<FfmpegError>),
+    Ffmpeg(std::sync::Arc<FFmpegError>),
 
     #[error("Unsupported bits per component: {0}")]
     BadBitsPerComponent(usize),
@@ -193,7 +193,7 @@ pub fn new_decoder(
         #[cfg(with_ffmpeg)]
         re_mp4::StsdBoxContent::Avc1(avc1_box) => {
             re_log::trace!("Decoding H.264…");
-            Ok(Box::new(ffmpeg_h264::FfmpegCliH264Decoder::new(
+            Ok(Box::new(ffmpeg_h264::FFmpegCliH264Decoder::new(
                 debug_name.to_owned(),
                 avc1_box.clone(),
                 on_output,

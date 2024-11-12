@@ -3,8 +3,11 @@ mod nalu;
 mod sps;
 mod version;
 
-pub use ffmpeg::{Error, FfmpegCliH264Decoder};
-pub use version::{FFmpegVersion, FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR};
+pub use ffmpeg::{Error, FFmpegCliH264Decoder};
+pub use version::{
+    FFmpegVersion, FFmpegVersionParseError, FFMPEG_MINIMUM_VERSION_MAJOR,
+    FFMPEG_MINIMUM_VERSION_MINOR,
+};
 
 /// Download URL for the latest version of `FFmpeg` on the current platform.
 /// None if the platform is not supported.

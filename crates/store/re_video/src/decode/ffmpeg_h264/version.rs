@@ -23,6 +23,18 @@ impl std::fmt::Display for FFmpegVersion {
     }
 }
 
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum FFmpegVersionParseError {
+    #[error("Failed to retrieve file modification time of FFmpeg executable: {0}")]
+    RetrieveFileModificationTime(String),
+
+    #[error("Failed to determine FFmpeg version: {0}")]
+    RunFFmpeg(String),
+
+    #[error("Failed to parse FFmpeg version: {raw_version}")]
+    ParseVersion { raw_version: String },
+}
+
 impl FFmpegVersion {
     pub fn parse(raw_version: &str) -> Option<Self> {
         // Version strings can get pretty wild!
@@ -58,9 +70,18 @@ impl FFmpegVersion {
     ///
     /// If none is passed for the path, it uses `ffmpeg` from PATH.
     ///
+    /// Error indicates issues running `FFmpeg`. Ok(None) indicates that we weren't able to parse the
+    /// version string. Since version strings can get pretty wild, we don't want to fail in this case.
+    ///
     /// Internally caches the result per path together with its modification time to re-run/parse the version only if the file has changed.
-    pub fn for_executable(path: Option<&std::path::Path>) -> anyhow::Result<Self> {
-        type VersionMap = HashMap<PathBuf, (Option<std::time::SystemTime>, FFmpegVersion)>;
+    pub fn for_executable(path: Option<&std::path::Path>) -> Result<Self, FFmpegVersionParseError> {
+        type VersionMap = HashMap<
+            PathBuf,
+            (
+                Option<std::time::SystemTime>,
+                Result<FFmpegVersion, FFmpegVersionParseError>,
+            ),
+        >;
         static CACHE: Lazy<Mutex<VersionMap>> = Lazy::new(|| Mutex::new(HashMap::new()));
 
         re_tracing::profile_function!();
@@ -68,7 +89,9 @@ impl FFmpegVersion {
         // Retrieve file modification time first.
         let modification_time = if let Some(path) = path {
             path.metadata()
-                .map_err(|err| anyhow::anyhow!("Failed to read file: {err}"))?
+                .map_err(|err| {
+                    FFmpegVersionParseError::RetrieveFileModificationTime(err.to_string())
+                })?
                 .modified()
                 .ok()
         } else {
@@ -80,7 +103,7 @@ impl FFmpegVersion {
         let cache_key = path.unwrap_or(std::path::Path::new("ffmpeg"));
         if let Some(cached) = cache.get(cache_key) {
             if modification_time == cached.0 {
-                return Ok(cached.1.clone());
+                return cached.1.clone();
             }
         }
 
@@ -89,15 +112,23 @@ impl FFmpegVersion {
             ffmpeg_sidecar::version::ffmpeg_version_with_path(path)
         } else {
             ffmpeg_sidecar::version::ffmpeg_version()
-        }?;
-        let version = Self::parse(&raw_version)
-            .ok_or_else(|| anyhow::anyhow!("Failed to parse FFmpeg version: {raw_version}"))?;
+        }
+        .map_err(|err| FFmpegVersionParseError::RunFFmpeg(err.to_string()))?;
+
+        let version = if let Some(version) = Self::parse(&raw_version) {
+            Ok(version)
+        } else {
+            Err(FFmpegVersionParseError::ParseVersion {
+                raw_version: raw_version.clone(),
+            })
+        };
+
         cache.insert(
             cache_key.to_path_buf(),
             (modification_time, version.clone()),
         );
 
-        Ok(version)
+        version
     }
 
     /// Returns true if this version is compatible with Rerun's minimum requirements.

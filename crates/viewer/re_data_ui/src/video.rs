@@ -209,9 +209,9 @@ pub fn show_decoded_frame_info(
             ) = &err
             {
                 match err.as_ref() {
-                    re_video::decode::FfmpegError::UnsupportedFFmpegVersion { .. }
-                    | re_video::decode::FfmpegError::FailedToDetermineFFmpegVersion(_)
-                    | re_video::decode::FfmpegError::FfmpegNotInstalled => {
+                    re_video::decode::FFmpegError::UnsupportedFFmpegVersion { .. }
+                    | re_video::decode::FFmpegError::FailedToDetermineFFmpegVersion(_)
+                    | re_video::decode::FFmpegError::FfmpegNotInstalled => {
                         if let Some(download_url) = re_video::decode::ffmpeg_download_url() {
                             ui.markdown_ui(&format!("You can download a build of `FFmpeg` [here]({download_url}). For Rerun to be able to use it, its binaries need to be reachable from `PATH`."));
                         }
