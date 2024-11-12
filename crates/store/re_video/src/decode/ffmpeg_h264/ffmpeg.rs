@@ -429,6 +429,108 @@ fn write_ffmpeg_input(
     }
 }
 
+struct FrameBuffer {
+    /// Received frame-infos, waiting to be matched to output frames.
+    ///
+    /// Sorted by their presentation timestamp.
+    pending: BTreeMap<Time, FFmpegFrameInfo>,
+
+    /// Hightess DTC (Decoder timestamp) encountered so far.
+    highest_dts: Time,
+}
+
+impl FrameBuffer {
+    fn new() -> Self {
+        Self {
+            pending: BTreeMap::new(),
+            highest_dts: Time::MIN,
+        }
+    }
+
+    fn on_frame(
+        &mut self,
+        debug_name: &str,
+        pixel_format: &PixelFormat,
+        frame_info_rx: &Receiver<FFmpegFrameInfo>,
+        frame: ffmpeg_sidecar::event::OutputVideoFrame,
+    ) -> Option<Frame> {
+        // We input frames into ffmpeg in decode (DTS) order, and so that's
+        // also the order we will receive the `FrameInfo`s from `frame_info_rx`.
+        // However, `ffmpeg` will re-order the frames to output them in presentation (PTS) order.
+        // We want to accurately match the `FrameInfo` with its corresponding output frame.
+        // To do that, we need to buffer frames that come out of ffmpeg.
+        //
+        // How do we know how large this buffer needs to be?
+        // Whenever the highest known DTS is behind the PTS, we need to wait until the DTS catches up.
+        // Otherwise, we'd assign the wrong PTS to the frame that just came in.
+        let frame_info = loop {
+            let oldest_pts_in_buffer = self.pending.first_key_value().map(|(pts, _)| *pts);
+            let is_caught_up = oldest_pts_in_buffer.is_some_and(|pts| pts <= self.highest_dts);
+            if is_caught_up {
+                // There must be an element here, otherwise we wouldn't be here.
+                #[allow(clippy::unwrap_used)]
+                break self.pending.pop_first().unwrap().1;
+            } else {
+                // We're behind:
+                let Ok(frame_info) = frame_info_rx.try_recv() else {
+                    return None;
+                };
+
+                // If the decodetimestamp did not increase, we're probably seeking backwards!
+                // We'd expect the video player to do a reset prior to that and close the channel as part of that, but we may not have noticed that in here yet!
+                // In any case, we'll have to just run with this as the new highest timestamp, not much else we can do.
+                if self.highest_dts > frame_info.decode_timestamp {
+                    re_log::warn!("Video decode timestamps are expected to monotonically increase unless there was a decoder reset.\n\
+                                It went from {:?} to {:?} for the decoder of {debug_name}. This is probably a bug in Rerun.", self.highest_dts, frame_info.decode_timestamp);
+                }
+                self.highest_dts = frame_info.decode_timestamp;
+
+                self.pending
+                    .insert(frame_info.presentation_timestamp, frame_info);
+            }
+        };
+
+        let ffmpeg_sidecar::event::OutputVideoFrame {
+            frame_num: _, // This is made up by ffmpeg sidecar.
+            pix_fmt,
+            width,
+            height,
+            data,
+            output_index: _, // This is the stream index. for all we do it's always 0.
+            timestamp: _, // This is a timestamp made up by ffmpeg_sidecar based on limited information it has.
+        } = frame;
+
+        re_log::trace!(
+            "{debug_name} received frame: sample {} dts {:?} cts {:?} fmt {pix_fmt:?} size {width}x{height}. pending: {}",
+            frame_info.sample_idx,
+            frame_info.decode_timestamp,
+            frame_info.presentation_timestamp,
+            self.pending.len(),
+        );
+
+        debug_assert_eq!(
+            data.len() * 8,
+            (width * height * pixel_format.bits_per_pixel()) as usize
+        );
+
+        Some(Frame {
+            content: FrameContent {
+                data,
+                width,
+                height,
+                format: pixel_format.clone(),
+            },
+            info: FrameInfo {
+                is_sync: Some(frame_info.is_sync),
+                sample_idx: Some(frame_info.sample_idx),
+                presentation_timestamp: frame_info.presentation_timestamp,
+                duration: frame_info.duration,
+                latest_decode_timestamp: Some(frame_info.decode_timestamp),
+            },
+        })
+    }
+}
+
 fn read_ffmpeg_output(
     debug_name: &str,
     ffmpeg_iterator: ffmpeg_sidecar::iter::FfmpegIterator,
@@ -436,9 +538,7 @@ fn read_ffmpeg_output(
     pixel_format: &PixelFormat,
     on_output: &Mutex<Option<Arc<OutputCallback>>>,
 ) -> Option<()> {
-    // Pending frames, sorted by their presentation timestamp.
-    let mut pending_frame_infos = BTreeMap::new();
-    let mut highest_dts = Time::MIN; // Highest dts encountered so far.
+    let mut buffer = FrameBuffer::new();
 
     for event in ffmpeg_iterator {
         #[allow(clippy::match_same_arms)]
@@ -544,82 +644,10 @@ fn read_ffmpeg_output(
                 // By default this triggers every 5s.
             }
 
-            FfmpegEvent::OutputFrame(frame) => {
-                // We input frames into ffmpeg in decode (DTS) order, and so that's
-                // also the order we will receive the `FrameInfo`s from `frame_info_rx`.
-                // However, `ffmpeg` will re-order the frames to output them in presentation (PTS) order.
-                // We want to accurately match the `FrameInfo` with its corresponding output frame.
-                // To do that, we need to buffer frames that come out of ffmpeg.
-                //
-                // How do we know how large this buffer needs to be?
-                // Whenever the highest known DTS is behind the PTS, we need to wait until the DTS catches up.
-                // Otherwise, we'd assign the wrong PTS to the frame that just came in.
-                let frame_info = loop {
-                    let oldest_pts_in_buffer =
-                        pending_frame_infos.first_key_value().map(|(pts, _)| *pts);
-                    let is_caught_up = oldest_pts_in_buffer.is_some_and(|pts| pts <= highest_dts);
-                    if is_caught_up {
-                        // There must be an element here, otherwise we wouldn't be here.
-                        #[allow(clippy::unwrap_used)]
-                        break pending_frame_infos.pop_first().unwrap().1;
-                    } else {
-                        // We're behind:
-                        let Ok(frame_info) = frame_info_rx.try_recv() else {
-                            re_log::debug!(
-                                "{debug_name} ffmpeg decoder frame info channel disconnected"
-                            );
-                            return None;
-                        };
-
-                        // If the decodetimestamp did not increase, we're probably seeking backwards!
-                        // We'd expect the video player to do a reset prior to that and close the channel as part of that, but we may not have noticed that in here yet!
-                        // In any case, we'll have to just run with this as the new highest timestamp, not much else we can do.
-                        if highest_dts > frame_info.decode_timestamp {
-                            re_log::warn!("Video decode timestamps are expected to monotonically increase unless there was a decoder reset.\n\
-                                                It went from {:?} to {:?} for the decoder of {debug_name}. This is probably a bug in Rerun.", highest_dts, frame_info.decode_timestamp);
-                        }
-                        highest_dts = frame_info.decode_timestamp;
-
-                        pending_frame_infos.insert(frame_info.presentation_timestamp, frame_info);
-                    }
-                };
-
-                let ffmpeg_sidecar::event::OutputVideoFrame {
-                    frame_num: _, // This is made up by ffmpeg sidecar.
-                    pix_fmt,
-                    width,
-                    height,
-                    data,
-                    output_index: _, // This is the stream index. for all we do it's always 0.
-                    timestamp: _, // This is a timestamp made up by ffmpeg_sidecar based on limited information it has.
-                } = frame;
-
-                re_log::trace!(
-                    "{debug_name} received frame: dts {:?} cts {:?} fmt {pix_fmt:?} size {width}x{height}",
-                    frame_info.decode_timestamp,
-                    frame_info.presentation_timestamp
-                );
-
-                debug_assert_eq!(
-                    data.len() * 8,
-                    (width * height * pixel_format.bits_per_pixel()) as usize
-                );
-
-                (on_output.lock().as_ref()?)(Ok(Frame {
-                    content: FrameContent {
-                        data,
-                        width,
-                        height,
-                        format: pixel_format.clone(),
-                    },
-                    info: FrameInfo {
-                        is_sync: Some(frame_info.is_sync),
-                        sample_idx: Some(frame_info.sample_idx),
-                        presentation_timestamp: frame_info.presentation_timestamp,
-                        duration: frame_info.duration,
-                        latest_decode_timestamp: Some(frame_info.decode_timestamp),
-                    },
-                }));
+            FfmpegEvent::OutputFrame(ffmpeg_frame) => {
+                let frame =
+                    buffer.on_frame(debug_name, pixel_format, frame_info_rx, ffmpeg_frame)?;
+                (on_output.lock().as_ref()?)(Ok(frame));
             }
 
             FfmpegEvent::Done => {
