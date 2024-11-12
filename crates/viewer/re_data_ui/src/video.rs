@@ -239,9 +239,7 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
         ui.list_item_flat_noninteractive(PropertyContent::new("Sync").value_bool(is_sync))
             .on_hover_text(
                 "The start of a new GOP (Group of Frames)?\n\
-                \n\
-                If true, an entire frame can be decoded from this one sample, \
-                otherwise it needs the context of other samples.",
+                If true, it likely means the frame is a keyframe.",
             );
     }
 

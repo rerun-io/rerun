@@ -459,8 +459,8 @@ impl GroupOfPictures {
 pub struct Sample {
     /// Is this the start of a new [`GroupOfPictures`]?
     ///
-    /// If true, an entire frame can be decoded from this one sample,
-    /// otherwise it needs the context of other samples.
+    /// This probably means this is a _keyframe_, and that and entire frame
+    /// can be decoded from only this one sample (though I'm not 100% sure).
     pub is_sync: bool,
 
     /// Time at which this sample appears in the decoded bitstream, in time units.

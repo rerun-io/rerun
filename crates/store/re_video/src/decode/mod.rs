@@ -216,8 +216,8 @@ pub fn new_decoder(
 pub struct Chunk {
     /// The start of a new [`crate::demux::GroupOfPictures`]?
     ///
-    /// If true, an entire frame can be decoded from this one sample,
-    /// otherwise it needs the context of other samples.
+    /// This probably means this is a _keyframe_, and that and entire frame
+    /// can be decoded from only this one sample (though I'm not 100% sure).
     pub is_sync: bool,
 
     pub data: Vec<u8>,
@@ -255,8 +255,8 @@ pub type FrameContent = webcodecs::WebVideoFrame;
 pub struct FrameInfo {
     /// The start of a new [`crate::demux::GroupOfPictures`]?
     ///
-    /// If true, an entire frame can be decoded from this one sample,
-    /// otherwise it needs the context of other samples.
+    /// This probably means this is a _keyframe_, and that and entire frame
+    /// can be decoded from only this one sample (though I'm not 100% sure).
     ///
     /// None indicates that the information is not available.
     pub is_sync: Option<bool>,

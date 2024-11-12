@@ -95,8 +95,8 @@ impl From<Error> for crate::decode::Error {
 struct FfmpegFrameInfo {
     /// The start of a new [`crate::demux::GroupOfPictures`]?
     ///
-    /// If true, an entire frame can be decoded from this one sample,
-    /// otherwise it needs the context of other samples.
+    /// This probably means this is a _keyframe_, and that and entire frame
+    /// can be decoded from only this one sample (though I'm not 100% sure).
     is_sync: bool,
     presentation_timestamp: Time,
     duration: Time,
