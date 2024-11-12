@@ -381,10 +381,16 @@ fn recommended_space_views_with_image_splits(
         &DepthImage::indicator().name(),
     );
 
-    // If there are images of multiple dimensions, more than 1 image, or more than 1 depth image
-    // then split the space.
-    if found_image_dimensions.len() > 1 || image_count > 1 || depth_count > 1 {
-        // Otherwise, split the space and recurse
+    let video_count = count_non_nested_images_with_component(
+        image_dimensions,
+        entities,
+        ctx.recording(),
+        subtree,
+        &re_types::archetypes::AssetVideo::indicator().name(),
+    );
+
+    if found_image_dimensions.len() > 1 || image_count > 1 || depth_count > 1 || video_count > 1 {
+        // Split the space and recurse
 
         // If the root also had a visualizable entity, give it its own space.
         // TODO(jleibs): Maybe merge this entity into each child
