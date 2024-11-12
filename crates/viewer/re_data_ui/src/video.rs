@@ -228,14 +228,20 @@ fn samples_statistics_ui(ui: &mut egui::Ui, samples_statistics: &SamplesStatisti
 }
 
 fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_video::VideoData) {
-    let time_range = frame_info.presentation_time_range();
+    let FrameInfo {
+        presentation_timestamp,
+        duration,
+        latest_decode_timestamp,
+    } = *frame_info;
+
+    let presentation_time_range = presentation_timestamp..presentation_timestamp + duration;
     ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
         "{} - {}",
-        re_format::format_timestamp_seconds(time_range.start.into_secs_since_start(
+        re_format::format_timestamp_seconds(presentation_time_range.start.into_secs_since_start(
             video_data.timescale,
             video_data.samples_statistics.minimum_presentation_timestamp
         )),
-        re_format::format_timestamp_seconds(time_range.end.into_secs_since_start(
+        re_format::format_timestamp_seconds(presentation_time_range.end.into_secs_since_start(
             video_data.timescale,
             video_data.samples_statistics.minimum_presentation_timestamp
         )),
@@ -257,7 +263,7 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
         }
     }
 
-    if let Some(dts) = frame_info.latest_decode_timestamp {
+    if let Some(dts) = latest_decode_timestamp {
         ui.list_item_flat_noninteractive(
             PropertyContent::new("DTS").value_fn(value_fn_for_time(dts, video_data)),
         )
@@ -266,7 +272,7 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
     }
 
     ui.list_item_flat_noninteractive(
-        PropertyContent::new("PTS").value_fn(value_fn_for_time(frame_info.presentation_timestamp, video_data)),
+        PropertyContent::new("PTS").value_fn(value_fn_for_time(presentation_timestamp, video_data)),
     )
     .on_hover_text("Raw presentation timestamp prior to applying the timescale.\n\
                     This specifies the time at which the frame should be shown relative to the start of a video stream.");
@@ -279,8 +285,8 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
             .has_sample_highest_pts_so_far
             .as_ref()
         {
-            if let Some(sample_idx) = video_data
-                .latest_sample_index_at_presentation_timestamp(frame_info.presentation_timestamp)
+            if let Some(sample_idx) =
+                video_data.latest_sample_index_at_presentation_timestamp(presentation_timestamp)
             {
                 ui.list_item_flat_noninteractive(
                     PropertyContent::new("Highest PTS so far").value_text(has_sample_highest_pts_so_far[sample_idx].to_string())
@@ -292,7 +298,7 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
     // Information about the current group of pictures this frame is part of.
     // Lookup via decode timestamp is faster, but it may not always be available.
     if let Some(gop_index) =
-        video_data.gop_index_containing_presentation_timestamp(frame_info.presentation_timestamp)
+        video_data.gop_index_containing_presentation_timestamp(presentation_timestamp)
     {
         ui.list_item_flat_noninteractive(
             PropertyContent::new("GOP index").value_text(gop_index.to_string()),
