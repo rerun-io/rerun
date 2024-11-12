@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use ahash::HashSet;
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 
 use re_chunk::RowId;
 use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
@@ -160,6 +160,7 @@ impl EntityTree {
     pub fn on_store_deletions(
         &mut self,
         engine: &StorageEngineReadGuard<'_>,
+        entity_paths_with_deletions: &IntSet<EntityPath>,
         events: &[ChunkStoreEvent],
     ) {
         re_tracing::profile_function!();
@@ -171,9 +172,11 @@ impl EntityTree {
 
         self.children.retain(|_, entity| {
             // this is placed first, because we'll only know if the child entity is empty after telling it to clear itself.
-            entity.on_store_deletions(engine, events);
+            entity.on_store_deletions(engine, entity_paths_with_deletions, events);
 
-            !entity.is_empty(engine)
+            let has_deletion_events = entity_paths_with_deletions.contains(&entity.path);
+
+            !has_deletion_events || !entity.is_empty(engine)
         });
     }
 
