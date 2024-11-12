@@ -85,7 +85,7 @@ def log_data(data: dict[str, Any]) -> None:
 
 
 def main() -> None:
-    parser = ArgumentParser(description="Visualize OSM data")
+    parser = ArgumentParser(description="Visualize OpenStreetMap data")
     rr.script_add_args(parser)
     args = parser.parse_args()
 
@@ -94,7 +94,7 @@ def main() -> None:
         collapse_panels=True,
     )
 
-    rr.script_setup(args, "rerun_example_osm_data", default_blueprint=blueprint)
+    rr.script_setup(args, "rerun_example_openstreetmap_data", default_blueprint=blueprint)
 
     data = execute_query(HOTELS_IN_LAUSANNE_QUERY)
     log_data(data)

@@ -633,7 +633,7 @@ nuscenes_dataset = { path = "examples/python/nuscenes_dataset", editable = true 
 nv12 = { path = "examples/python/nv12", editable = true }
 objectron = { path = "examples/python/objectron", editable = true }
 open_photogrammetry_format = { path = "examples/python/open_photogrammetry_format", editable = true }
-osm_data = { path = "examples/python/osm_data", editable = true }
+openstreetmap_data = { path = "examples/python/openstreetmap_data", editable = true }
 plots = { path = "examples/python/plots", editable = true }
 raw_mesh = { path = "examples/python/raw_mesh", editable = true }
 rgbd = { path = "examples/python/rgbd", editable = true }

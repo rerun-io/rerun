@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "OSM data"
+title = "OpenStreetMap data"
 tags = ["Map", "Blueprint"]
 thumbnail_dimensions = [480, 480]
 thumbnail = "https://static.rerun.io/osm_data/0be94071469c49f98326d85456ed2a3af8d1733a/480w.png"
@@ -29,13 +29,13 @@ git checkout latest  # Check out the commit matching the latest SDK release
 ```
 Install the necessary libraries specified in the requirements file:
 ```bash
-pip install -e examples/python/osm_data
+pip install -e examples/python/openstreetmap_data
 ```
 To experiment with the provided example, simply execute the main Python script:
 ```bash
-python -m osm_data # run the example
+python -m openstreetmap_data # run the example
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python -m osm_data --help
+python -m openstreetmap_data --help
 ```
