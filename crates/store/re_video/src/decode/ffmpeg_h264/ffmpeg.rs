@@ -3,7 +3,10 @@
 use std::{
     collections::BTreeMap,
     process::ChildStdin,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{
+        atomic::{AtomicBool, AtomicI32, Ordering},
+        Arc,
+    },
 };
 
 use crossbeam::channel::{Receiver, Sender};
@@ -127,7 +130,7 @@ impl StdinWithShutdown {
 
 impl std::io::Write for StdinWithShutdown {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        if self.shutdown.load(std::sync::atomic::Ordering::Acquire) {
+        if self.shutdown.load(Ordering::Acquire) {
             Err(std::io::Error::new(Self::SHUTDOWN_ERROR_KIND, "shutdown"))
         } else {
             self.stdin.write(buf)
@@ -135,7 +138,7 @@ impl std::io::Write for StdinWithShutdown {
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        if self.shutdown.load(std::sync::atomic::Ordering::Acquire) {
+        if self.shutdown.load(Ordering::Acquire) {
             Err(std::io::Error::new(Self::SHUTDOWN_ERROR_KIND, "shutdown"))
         } else {
             self.stdin.flush()
@@ -157,6 +160,9 @@ struct FFmpegProcessAndListener {
 
     listen_thread: Option<std::thread::JoinHandle<()>>,
     write_thread: Option<std::thread::JoinHandle<()>>,
+
+    /// Number of samples submitted to ffmpeg that has not yet been outputted by ffmpeg.
+    outstanding_frames: Arc<AtomicI32>,
 
     /// If true, the write thread will not report errors. Used upon exit, so the write thread won't log spam on the hung up stdin.
     stdin_shutdown: Arc<AtomicBool>,
@@ -252,6 +258,7 @@ impl FFmpegProcessAndListener {
         let (frame_info_tx, frame_info_rx) = crossbeam::channel::unbounded();
         let (frame_data_tx, frame_data_rx) = crossbeam::channel::unbounded();
 
+        let outstanding_frames = Arc::new(AtomicI32::new(0));
         let stdin_shutdown = Arc::new(AtomicBool::new(false));
 
         // Mutex protect `on_output` so that we can shut down the threads at a defined point in time at which we
@@ -263,12 +270,14 @@ impl FFmpegProcessAndListener {
             .spawn({
                 let on_output = on_output.clone();
                 let debug_name = debug_name.to_owned();
+                let outstanding_frames = outstanding_frames.clone();
                 move || {
                     read_ffmpeg_output(
                         &debug_name,
                         ffmpeg_iterator,
                         &frame_info_rx,
                         &pixel_format,
+                        &outstanding_frames,
                         on_output.as_ref(),
                     );
                 }
@@ -296,6 +305,7 @@ impl FFmpegProcessAndListener {
 
         Ok(Self {
             ffmpeg,
+            outstanding_frames,
             frame_info_tx,
             frame_data_tx,
             listen_thread: Some(listen_thread),
@@ -327,6 +337,8 @@ impl FFmpegProcessAndListener {
                 },
             )
         } else {
+            self.outstanding_frames.fetch_add(1, Ordering::Relaxed);
+
             Ok(())
         }
     }
@@ -351,8 +363,7 @@ impl Drop for FFmpegProcessAndListener {
         // Notify (potentially wake up) the stdin write thread to stop it (it might be sleeping).
         self.frame_data_tx.send(FFmpegFrameData::Quit).ok();
         // Kill stdin for the write thread. This helps cancelling ongoing stream write operations.
-        self.stdin_shutdown
-            .store(true, std::sync::atomic::Ordering::Release);
+        self.stdin_shutdown.store(true, Ordering::Release);
 
         // Kill the ffmpeg process itself.
         // It's important that we wait for it to finish, otherwise the process may enter a zombie state, see https://en.wikipedia.org/wiki/Zombie_process.
@@ -392,6 +403,11 @@ impl Drop for FFmpegProcessAndListener {
                 }
             }
         }
+
+        re_log::trace!(
+            "Outstanding frames after shutting down ffmpeg: {}",
+            self.outstanding_frames.load(Ordering::Relaxed)
+        );
     }
 }
 
@@ -472,11 +488,13 @@ impl FrameBuffer {
                 break self.pending.pop_first().unwrap().1;
             } else {
                 // We're behind:
+
                 let Ok(frame_info) = frame_info_rx.try_recv() else {
+                    re_log::trace!("frame-tx channel closed, stopping ffmpeg decoder");
                     return None;
                 };
 
-                // If the decodetimestamp did not increase, we're probably seeking backwards!
+                // If the decode timestamp did not increase, we're probably seeking backwards!
                 // We'd expect the video player to do a reset prior to that and close the channel as part of that, but we may not have noticed that in here yet!
                 // In any case, we'll have to just run with this as the new highest timestamp, not much else we can do.
                 if self.highest_dts > frame_info.decode_timestamp {
@@ -492,21 +510,13 @@ impl FrameBuffer {
 
         let ffmpeg_sidecar::event::OutputVideoFrame {
             frame_num: _, // This is made up by ffmpeg sidecar.
-            pix_fmt,
+            pix_fmt: _,   // TODO(emilk); use this instead of the `pixel_format` argument.
             width,
             height,
             data,
             output_index: _, // This is the stream index. for all we do it's always 0.
             timestamp: _, // This is a timestamp made up by ffmpeg_sidecar based on limited information it has.
         } = frame;
-
-        re_log::trace!(
-            "{debug_name} received frame: sample {} dts {:?} cts {:?} fmt {pix_fmt:?} size {width}x{height}. pending: {}",
-            frame_info.sample_idx,
-            frame_info.decode_timestamp,
-            frame_info.presentation_timestamp,
-            self.pending.len(),
-        );
 
         debug_assert_eq!(
             data.len() * 8,
@@ -536,6 +546,7 @@ fn read_ffmpeg_output(
     ffmpeg_iterator: ffmpeg_sidecar::iter::FfmpegIterator,
     frame_info_rx: &Receiver<FFmpegFrameInfo>,
     pixel_format: &PixelFormat,
+    outstanding_frames: &AtomicI32,
     on_output: &Mutex<Option<Arc<OutputCallback>>>,
 ) -> Option<()> {
     let mut buffer = FrameBuffer::new();
@@ -645,8 +656,29 @@ fn read_ffmpeg_output(
             }
 
             FfmpegEvent::OutputFrame(ffmpeg_frame) => {
+                outstanding_frames.fetch_sub(1, Ordering::Relaxed);
+
                 let frame =
                     buffer.on_frame(debug_name, pixel_format, frame_info_rx, ffmpeg_frame)?;
+
+                {
+                    // Log
+                    let FrameContent {
+                        width,
+                        height,
+                        format,
+                        ..
+                    } = &frame.content;
+                    re_log::trace!(
+                        "{debug_name} received frame: sample {sample_idx:?} dts {dts:?} pts {pts:?} fmt {format:?} size {width}x{height}. buffered: {num_buffered}, outstanding: {num_outstanding}",
+                        sample_idx = frame.info.sample_idx,
+                        dts = frame.info.latest_decode_timestamp,
+                        pts = frame.info.presentation_timestamp,
+                        num_buffered = buffer.pending.len(),
+                        num_outstanding = outstanding_frames.load(Ordering::Relaxed),
+                    );
+                }
+
                 (on_output.lock().as_ref()?)(Ok(frame));
             }
 
@@ -777,8 +809,8 @@ impl AsyncDecoder for FFmpegCliH264Decoder {
 
             Err(err)
         } else {
-        Ok(())
-    }
+            Ok(())
+        }
     }
 
     fn end_of_video(&mut self) -> crate::decode::Result<()> {
