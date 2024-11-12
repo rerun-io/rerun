@@ -38,16 +38,16 @@ pub struct AppOptions {
     /// Preferred method for video decoding on web.
     pub video_decoder_hw_acceleration: DecodeHardwareAcceleration,
 
-    /// Override the path to the ffmpeg binary.
+    /// Override the path to the FFmpeg binary.
     ///
-    /// If set, use `video_decoder_ffmpeg_path` as the path to the ffmpeg binary.
+    /// If set, use `video_decoder_ffmpeg_path` as the path to the FFmpeg binary.
     /// Don't use this field directly, use [`AppOptions::video_decoder_settings`] instead.
     ///
     /// Implementation note: we avoid using `Option<PathBuf>` here to avoid loosing the user-defined
     /// path when disabling the override.
     pub video_decoder_override_ffmpeg_path: bool,
 
-    /// Custom path to the ffmpeg binary.
+    /// Custom path to the FFmpeg binary.
     ///
     /// Don't use this field directly, use [`AppOptions::video_decoder_settings`] instead.
     pub video_decoder_ffmpeg_path: String,

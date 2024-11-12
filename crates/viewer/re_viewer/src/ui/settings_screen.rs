@@ -123,13 +123,13 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     {
         ui.re_checkbox(
             &mut app_options.video_decoder_override_ffmpeg_path,
-            "Override ffmpeg path",
+            "Override the FFmpeg binary path",
         )
         .on_hover_ui(|ui| {
             ui.markdown_ui(
-                "By default, the viewer tries to automatically find a suitable `ffmpeg` binary in \
+                "By default, the viewer tries to automatically find a suitable FFmpeg binary in \
                 the system's `PATH`. Enabling this option allows you to specify a custom path to \
-                the `ffmpeg` binary.",
+                the FFmpeg binary.",
             );
         });
 
@@ -147,7 +147,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     // This affects only the web target, so we dont need to show it on native.
     #[cfg(target_arch = "wasm32")]
     {
-        let hardware_acceleration = &mut app_options.video_decoder_settings.hw_acceleration;
+        let hardware_acceleration = &mut app_options.video_decoder_hw_acceleration;
         ui.horizontal(|ui| {
             ui.label("Decoder:");
             egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
