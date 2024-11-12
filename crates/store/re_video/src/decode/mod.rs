@@ -85,6 +85,9 @@ mod av1;
 #[cfg(with_ffmpeg)]
 mod ffmpeg_h264;
 
+#[cfg(with_ffmpeg)]
+pub use ffmpeg_h264::{ffmpeg_download_url, Error as FFmpegError, FFmpegVersionParseError};
+
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
 
@@ -117,16 +120,7 @@ pub enum Error {
 
     #[cfg(with_ffmpeg)]
     #[error(transparent)]
-    Ffmpeg(std::sync::Arc<ffmpeg_h264::Error>),
-
-    // We need to check for this one and don't want to infect more crates with the feature requirement.
-    #[error("Couldn't find an installation of the FFmpeg executable.")]
-    FfmpegNotInstalled {
-        /// Download URL for the latest version of `FFmpeg` on the current platform.
-        /// None if the platform is not supported.
-        // TODO(andreas): as of writing, ffmpeg-sidecar doesn't define a download URL for linux arm.
-        download_url: Option<&'static str>,
-    },
+    Ffmpeg(std::sync::Arc<FFmpegError>),
 
     #[error("Unsupported bits per component: {0}")]
     BadBitsPerComponent(usize),
@@ -199,7 +193,7 @@ pub fn new_decoder(
         #[cfg(with_ffmpeg)]
         re_mp4::StsdBoxContent::Avc1(avc1_box) => {
             re_log::trace!("Decoding H.264…");
-            Ok(Box::new(ffmpeg_h264::FfmpegCliH264Decoder::new(
+            Ok(Box::new(ffmpeg_h264::FFmpegCliH264Decoder::new(
                 debug_name.to_owned(),
                 avc1_box.clone(),
                 on_output,

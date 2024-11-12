@@ -6487,6 +6487,7 @@ dependencies = [
  "indicatif",
  "itertools 0.13.0",
  "js-sys",
+ "once_cell",
  "parking_lot",
  "re_build_info",
  "re_build_tools",
