@@ -422,7 +422,22 @@ fn write_ffmpeg_input(
     while let Ok(data) = frame_data_rx.recv() {
         let chunk = match data {
             FFmpegFrameData::Chunk(chunk) => chunk,
-            FFmpegFrameData::Quit => break,
+            FFmpegFrameData::Quit => {
+                // Try to flush out the last frames from ffmpeg with an EndSequence/EndStream NAL units.
+                // Unfortunatelt this doesn't help, at least not for https://github.com/rerun-io/rerun/issues/8073
+                let end_nals: Vec<u8> = [
+                    NAL_START_CODE,
+                    &[NalHeader::new(NalUnitType::EndSequence, 0).0],
+                    NAL_START_CODE,
+                    &[NalHeader::new(NalUnitType::EndStream, 0).0],
+                ]
+                .concat();
+                write_bytes(ffmpeg_stdin, &end_nals).ok();
+
+                ffmpeg_stdin.flush().ok();
+
+                break;
+            }
         };
 
         if let Err(err) = write_avc_chunk_to_nalu_stream(avcc, ffmpeg_stdin, &chunk, &mut state) {
