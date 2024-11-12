@@ -116,10 +116,11 @@ pub fn show_video_blob_info(
             // See also `MediaTypeIsNotAVideo` case above.
         }
         Err(err) => {
+            let error_message = format!("Failed to load video: {err}");
             if ui_layout.is_single_line() {
-                ui.error_with_details_on_hover(&format!("Failed to load video: {err}"));
+                ui.error_with_details_on_hover(&error_message);
             } else {
-                ui.error_label(&format!("Failed to load video: {err}"));
+                ui.error_label(&error_message);
             }
         }
     }

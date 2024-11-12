@@ -7,7 +7,7 @@ use re_types::{
     archetypes::Pinhole, blueprint::components::VisualBounds2D, components::ViewCoordinates,
     image::ImageKind,
 };
-use re_ui::UiExt as _;
+use re_ui::{ContextExt as _, UiExt as _};
 use re_viewer_context::{
     HoverHighlight, SelectionHighlight, SpaceViewHighlights, SpaceViewState, ViewerContext,
 };
@@ -18,7 +18,7 @@ use crate::{
     picking::{PickableUiRect, PickingResult},
     scene_bounding_boxes::SceneBoundingBoxes,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{SpatialViewVisualizerData, UiLabel, UiLabelTarget},
+    visualizers::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget},
 };
 
 use super::{eye::Eye, ui_3d::View3DState};
@@ -214,13 +214,19 @@ pub fn create_labels(
         };
 
         let font_id = egui::TextStyle::Body.resolve(parent_ui.style());
+        let format = match label.style {
+            UiLabelStyle::Color(color) => egui::TextFormat::simple(font_id, color),
+            UiLabelStyle::Error => parent_ui.ctx().error_text_format(),
+        };
+        let text_color = format.color;
+
         let galley = parent_ui.fonts(|fonts| {
             fonts.layout_job({
                 egui::text::LayoutJob {
                     sections: vec![egui::text::LayoutSection {
                         leading_space: 0.0,
                         byte_range: 0..label.text.len(),
-                        format: egui::TextFormat::simple(font_id, label.color),
+                        format,
                     }],
                     text: label.text.clone(),
                     wrap: TextWrapping {
@@ -241,9 +247,9 @@ pub fn create_labels(
         let highlight = highlights
             .entity_highlight(label.labeled_instance.entity_path_hash)
             .index_highlight(label.labeled_instance.instance);
-        let fill_color = match highlight.hover {
+        let background_color = match highlight.hover {
             HoverHighlight::None => match highlight.selection {
-                SelectionHighlight::None => parent_ui.style().visuals.widgets.inactive.bg_fill,
+                SelectionHighlight::None => parent_ui.style().visuals.panel_fill,
                 SelectionHighlight::SiblingSelection => {
                     parent_ui.style().visuals.widgets.active.bg_fill
                 }
@@ -252,11 +258,11 @@ pub fn create_labels(
             HoverHighlight::Hovered => parent_ui.style().visuals.widgets.hovered.bg_fill,
         };
 
-        label_shapes.push(egui::Shape::rect_filled(bg_rect, 3.0, fill_color));
+        label_shapes.push(egui::Shape::rect_filled(bg_rect, 3.0, background_color));
         label_shapes.push(egui::Shape::galley(
             text_rect.center_top(),
             galley,
-            label.color,
+            text_color,
         ));
 
         ui_rects.push(PickableUiRect {

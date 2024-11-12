@@ -9,6 +9,11 @@ use crate::{DesignTokens, TopBarStyle};
 pub trait ContextExt {
     fn ctx(&self) -> &egui::Context;
 
+    // -----------------------------------------------------
+    // Style-related stuff.
+    // We could have this on a `StyleExt` trait, but we prefer to have it here on `Context`
+    // so that it is the same style everywhere (instead of being specific to the parent `ui.style`).
+
     /// Text format used for regular body.
     fn text_format_body(&self) -> egui::TextFormat {
         egui::TextFormat::simple(
@@ -56,17 +61,25 @@ pub trait ContextExt {
     #[must_use]
     fn warning_text(&self, text: impl Into<String>) -> egui::RichText {
         let style = self.ctx().style();
-        egui::RichText::new(text)
-            .italics()
-            .color(style.visuals.warn_fg_color)
+        egui::RichText::new(text).color(style.visuals.warn_fg_color)
     }
 
+    /// NOTE: duplicated in [`Self::error_text_format`]
     #[must_use]
     fn error_text(&self, text: impl Into<String>) -> egui::RichText {
         let style = self.ctx().style();
-        egui::RichText::new(text)
-            .italics()
-            .color(style.visuals.error_fg_color)
+        egui::RichText::new(text).color(style.visuals.error_fg_color)
+    }
+
+    /// NOTE: duplicated in [`Self::error_text`]
+    fn error_text_format(&self) -> egui::TextFormat {
+        let style = self.ctx().style();
+        let font_id = egui::TextStyle::Body.resolve(&style);
+        egui::TextFormat {
+            font_id,
+            color: style.visuals.error_fg_color,
+            ..Default::default()
+        }
     }
 
     fn top_bar_style(&self, style_like_web: bool) -> TopBarStyle {
