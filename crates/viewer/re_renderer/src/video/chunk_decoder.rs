@@ -80,7 +80,7 @@ impl VideoChunkDecoder {
     }
 
     /// Start decoding the given chunk.
-    pub fn decode(&mut self, chunk: Chunk, _is_keyframe: bool) -> Result<(), VideoPlayerError> {
+    pub fn decode(&mut self, chunk: Chunk) -> Result<(), VideoPlayerError> {
         self.decoder.submit_chunk(chunk)?;
         Ok(())
     }

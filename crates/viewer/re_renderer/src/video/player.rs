@@ -325,10 +325,9 @@ impl VideoPlayer {
 
         let samples = &self.data.samples[gop.decode_time_range()];
 
-        for (i, sample) in samples.iter().enumerate() {
+        for sample in samples {
             let chunk = sample.get(video_data).ok_or(VideoPlayerError::BadData)?;
-            let is_keyframe = i == 0;
-            self.chunk_decoder.decode(chunk, is_keyframe)?;
+            self.chunk_decoder.decode(chunk)?;
         }
 
         Ok(())
