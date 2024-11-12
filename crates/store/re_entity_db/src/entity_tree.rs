@@ -127,7 +127,7 @@ impl EntityTree {
     ///
     /// Checking for the absence of data is neither costly nor totally free: do it a few hundreds or
     /// thousands times a frame and it will absolutely kill framerate.
-    /// Don't blindly call this on every existing entity every frame: use [`StoreEvent`]s to make
+    /// Don't blindly call this on every existing entity every frame: use [`ChunkStoreEvent`]s to make
     /// sure anything changed at all first.
     pub fn check_is_empty(&self, engine: &StorageEngineReadGuard<'_>) -> bool {
         self.children.is_empty() && !engine.store().entity_has_data(&self.path)
