@@ -1,11 +1,16 @@
+use std::{collections::HashMap, path::PathBuf};
+
+use once_cell::sync::Lazy;
+use parking_lot::Mutex;
+
 // FFmpeg 5.1 "Riemann" is from 2022-07-22.
 // It's simply the oldest I tested manually as of writing. We might be able to go lower.
 // However, we also know that FFmpeg 4.4 is already no longer working.
 pub const FFMPEG_MINIMUM_VERSION_MAJOR: u32 = 5;
 pub const FFMPEG_MINIMUM_VERSION_MINOR: u32 = 1;
 
-/// A successfully parsed FFmpeg version.
-#[derive(Debug, PartialEq, Eq)]
+/// A successfully parsed `FFmpeg` version.
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FFmpegVersion {
     major: u32,
     minor: u32,
@@ -47,6 +52,52 @@ impl FFmpegVersion {
             minor,
             raw_version: raw_version.to_owned(),
         })
+    }
+
+    /// Try to parse the `FFmpeg` version for a given `FFmpeg` executable.
+    ///
+    /// If none is passed for the path, it uses `ffmpeg` from PATH.
+    ///
+    /// Internally caches the result per path together with its modification time to re-run/parse the version only if the file has changed.
+    pub fn for_executable(path: Option<&std::path::Path>) -> anyhow::Result<Self> {
+        type VersionMap = HashMap<PathBuf, (Option<std::time::SystemTime>, FFmpegVersion)>;
+        static CACHE: Lazy<Mutex<VersionMap>> = Lazy::new(|| Mutex::new(HashMap::new()));
+
+        re_tracing::profile_function!();
+
+        // Retrieve file modification time first.
+        let modification_time = if let Some(path) = path {
+            path.metadata()
+                .map_err(|err| anyhow::anyhow!("Failed to read file: {err}"))?
+                .modified()
+                .ok()
+        } else {
+            None
+        };
+
+        // Check first if we already have the version cached.
+        let mut cache = CACHE.lock();
+        let cache_key = path.unwrap_or(&std::path::Path::new("ffmpeg"));
+        if let Some(cached) = cache.get(cache_key) {
+            if modification_time == cached.0 {
+                return Ok(cached.1.clone());
+            }
+        }
+
+        // Run FFmpeg (or whatever was passed to us) to get the version.
+        let raw_version = if let Some(path) = path {
+            ffmpeg_sidecar::version::ffmpeg_version_with_path(path)
+        } else {
+            ffmpeg_sidecar::version::ffmpeg_version()
+        }?;
+        let version = Self::parse(&raw_version)
+            .ok_or_else(|| anyhow::anyhow!("Failed to parse FFmpeg version: {raw_version}"))?;
+        cache.insert(
+            cache_key.to_path_buf(),
+            (modification_time, version.clone()),
+        );
+
+        Ok(version)
     }
 
     /// Returns true if this version is compatible with Rerun's minimum requirements.

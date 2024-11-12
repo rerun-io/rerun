@@ -209,14 +209,12 @@ pub fn show_decoded_frame_info(
             ) = &err
             {
                 match err.as_ref() {
-                    re_video::decode::FfmpegError::UnsupportedFFmpegVersion {
-                        download_url: Some(url),
-                        ..
-                    }
-                    | re_video::decode::FfmpegError::FfmpegNotInstalled {
-                        download_url: Some(url),
-                    } => {
-                        ui.markdown_ui(&format!("You can download a build of `FFmpeg` [here]({url}). For Rerun to be able to use it, its binaries need to be reachable from `PATH`."));
+                    re_video::decode::FfmpegError::UnsupportedFFmpegVersion { .. }
+                    | re_video::decode::FfmpegError::FailedToDetermineFFmpegVersion(_)
+                    | re_video::decode::FfmpegError::FfmpegNotInstalled => {
+                        if let Some(download_url) = re_video::decode::ffmpeg_download_url() {
+                            ui.markdown_ui(&format!("You can download a build of `FFmpeg` [here]({download_url}). For Rerun to be able to use it, its binaries need to be reachable from `PATH`."));
+                        }
                     }
 
                     _ => {}

@@ -86,7 +86,7 @@ mod av1;
 mod ffmpeg_h264;
 
 #[cfg(with_ffmpeg)]
-pub use ffmpeg_h264::Error as FfmpegError;
+pub use ffmpeg_h264::{ffmpeg_download_url, Error as FfmpegError};
 
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;

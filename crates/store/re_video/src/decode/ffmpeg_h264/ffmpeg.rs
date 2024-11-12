@@ -29,15 +29,26 @@ use crate::{
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("Couldn't find an installation of the FFmpeg executable.")]
-    FfmpegNotInstalled {
-        /// Download URL for the latest version of `FFmpeg` on the current platform.
-        /// None if the platform is not supported.
-        // TODO(andreas): as of writing, ffmpeg-sidecar doesn't define a download URL for linux arm.
-        download_url: Option<&'static str>,
-    },
+    FfmpegNotInstalled,
 
     #[error("Failed to start FFmpeg: {0}")]
     FailedToStartFfmpeg(std::io::Error),
+
+    #[error("FFmpeg version is {actual_version}. Only versions >= {minimum_version_major}.{minimum_version_minor} are officially supported.")]
+    UnsupportedFFmpegVersion {
+        actual_version: FFmpegVersion,
+
+        /// Copy of [`FFMPEG_MINIMUM_VERSION_MAJOR`].
+        minimum_version_major: u32,
+
+        /// Copy of [`FFMPEG_MINIMUM_VERSION_MINOR`].
+        minimum_version_minor: u32,
+    },
+
+    // TODO(andreas): This error can have a variety of reasons and is as such redundant to some of the others.
+    // It works with an inner error because some of the error sources are behind an anyhow::Error inside of ffmpeg-sidecar.
+    #[error("Failed to determine FFmpeg version: {0}")]
+    FailedToDetermineFFmpegVersion(anyhow::Error),
 
     #[error("Failed to get stdin handle")]
     NoStdin,
@@ -74,21 +85,6 @@ pub enum Error {
 
     #[error("Failed to parse sequence parameter set.")]
     SpsParsing,
-
-    #[error("FFmpeg version is {actual_version}. Only versions >= {minimum_version_major}.{minimum_version_minor} are officially supported.")]
-    UnsupportedFFmpegVersion {
-        actual_version: FFmpegVersion,
-        /// Download URL for the latest version of `FFmpeg` on the current platform.
-        /// None if the platform is not supported.
-        // TODO(andreas): as of writing, ffmpeg-sidecar doesn't define a download URL for linux arm.
-        download_url: Option<&'static str>,
-
-        /// Copy of [`FFMPEG_MINIMUM_VERSION_MAJOR`].
-        minimum_version_major: u32,
-
-        /// Copy of [`FFMPEG_MINIMUM_VERSION_MINOR`].
-        minimum_version_minor: u32,
-    },
 }
 
 impl From<Error> for crate::decode::Error {
@@ -171,12 +167,6 @@ impl FfmpegProcessAndListener {
         avcc: re_mp4::Avc1Box,
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
-
-        if !ffmpeg_sidecar::command::ffmpeg_is_installed() {
-            return Err(Error::FfmpegNotInstalled {
-                download_url: ffmpeg_sidecar::download::ffmpeg_download_url().ok(),
-            });
-        }
 
         let sps_result = H264Sps::parse_from_avcc(&avcc);
         if let Ok(sps) = &sps_result {
@@ -602,8 +592,6 @@ fn read_ffmpeg_output(
             }
 
             FfmpegEvent::ParsedVersion(ffmpeg_version) => {
-                re_log::debug_once!("FFmpeg version is {}", ffmpeg_version.version);
-
                 fn download_advice() -> String {
                     if let Ok(download_url) = ffmpeg_sidecar::download::ffmpeg_download_url() {
                         format!("\nYou can download an up to date version for your system at {download_url}.")
@@ -618,7 +606,6 @@ fn read_ffmpeg_output(
                     if !ffmpeg_version.is_compatible() {
                         (on_output.lock().as_ref()?)(Err(Error::UnsupportedFFmpegVersion {
                             actual_version: ffmpeg_version,
-                            download_url: ffmpeg_sidecar::download::ffmpeg_download_url().ok(),
                             minimum_version_major: FFMPEG_MINIMUM_VERSION_MAJOR,
                             minimum_version_minor: FFMPEG_MINIMUM_VERSION_MINOR,
                         }
@@ -671,6 +658,29 @@ impl FfmpegCliH264Decoder {
         on_output: impl Fn(crate::decode::Result<Frame>) + Send + Sync + 'static,
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
+
+        // TODO(ab): Pass exectuable path here.
+        if !ffmpeg_sidecar::command::ffmpeg_is_installed() {
+            return Err(Error::FfmpegNotInstalled);
+        }
+
+        // Check the version once ahead of running FFmpeg.
+        // The error is still handled if it happens while running FFmpeg, but it's a bit unclear if we can get it to start in the first place then.
+        // TODO(ab): Pass exectuable path here.
+        match FFmpegVersion::for_executable(None) {
+            Ok(version) => {
+                if !version.is_compatible() {
+                    return Err(Error::UnsupportedFFmpegVersion {
+                        actual_version: version,
+                        minimum_version_major: FFMPEG_MINIMUM_VERSION_MAJOR,
+                        minimum_version_minor: FFMPEG_MINIMUM_VERSION_MINOR,
+                    });
+                }
+            }
+            Err(err) => {
+                return Err(Error::FailedToDetermineFFmpegVersion(err));
+            }
+        }
 
         let on_output = Arc::new(on_output);
         let ffmpeg = FfmpegProcessAndListener::new(&debug_name, on_output.clone(), avcc.clone())?;

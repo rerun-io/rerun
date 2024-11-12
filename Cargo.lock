@@ -6478,6 +6478,7 @@ dependencies = [
 name = "re_video"
 version = "0.20.0-alpha.4+dev"
 dependencies = [
+ "anyhow",
  "bit-vec",
  "cfg_aliases 0.2.1",
  "criterion",
@@ -6487,6 +6488,7 @@ dependencies = [
  "indicatif",
  "itertools 0.13.0",
  "js-sys",
+ "once_cell",
  "parking_lot",
  "re_build_info",
  "re_build_tools",
