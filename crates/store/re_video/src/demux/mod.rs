@@ -658,8 +658,10 @@ mod tests {
         let samples = pts
             .into_iter()
             .zip(dts)
-            .map(|(pts, dts)| Sample {
+            .enumerate()
+            .map(|(sample_idx, (pts, dts))| Sample {
                 is_sync: false,
+                sample_idx,
                 decode_timestamp: Time(dts),
                 presentation_timestamp: Time(pts),
                 duration: Time(1),
