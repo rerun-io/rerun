@@ -28,14 +28,22 @@ The Rerun command-line interface:
 "#;
 
 // Place the important help _last_, to make it most visible in the terminal.
-const EXAMPLES: &str = r#"
+const ENVIRONMENT_VARIABLES_AND_EXAMPLES: &str = r#"
 Environment variables:
+    RERUN_CHUNK_MAX_BYTES     Maximum chunk size thershold for the compactor.            
+    RERUN_CHUNK_MAX_ROWS      Maximum chunk row count threshold for the compactor (sorted chunks). 
+    RERUN_CHUNK_MAX_ROWS_IF_UNSORTED
+                              Maximum chunk row count threshold for the compactor (unsorted chunks).
     RERUN_SHADER_PATH         The search path for shader/shader-imports. Only available in developer builds.
-    RERUN_TRACK_ALLOCATIONS   Track memory allocations to diagnose memory leaks in the viewer. WARNING: slows down the viewer by a lot!
+    RERUN_TRACK_ALLOCATIONS   Track memory allocations to diagnose memory leaks in the viewer.
+                              WARNING: slows down the viewer by a lot!
+    RERUN_MAPBOX_ACCESS_TOKEN The Mapbox access token to use the Mapbox-provided backgrounds in the map view.                               
     RUST_LOG                  Change the log level of the viewer, e.g. `RUST_LOG=debug`.
     WGPU_BACKEND              Overwrites the graphics backend used, must be one of `vulkan`, `metal` or `gl`.
-                              Default is `vulkan` everywhere except on Mac where we use `metal`. What is supported depends on your OS.
-    WGPU_POWER_PREF           Overwrites the power setting used for choosing a graphics adapter, must be `high` or `low`. (Default is `high`)
+                              Default is `vulkan` everywhere except on Mac where we use `metal`. What is
+                              supported depends on your OS.
+    WGPU_POWER_PREF           Overwrites the power setting used for choosing a graphics adapter, must be `high`
+                              or `low`. (Default is `high`)
 
 
 Examples:
@@ -65,7 +73,7 @@ Examples:
 #[clap(
     long_about = LONG_ABOUT,
     // Place most of the help last, as that is most visible in the terminal.
-    after_long_help = EXAMPLES
+    after_long_help = ENVIRONMENT_VARIABLES_AND_EXAMPLES
 )]
 struct Args {
     // Note: arguments are sorted lexicographically for nicer `--help` message.
