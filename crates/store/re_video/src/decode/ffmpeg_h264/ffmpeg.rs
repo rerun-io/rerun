@@ -618,16 +618,22 @@ fn read_ffmpeg_output(
                 }
 
                 // Version strings can get pretty wild!
-                // E.g. choco installed ffmpeg on Windows gives me "7.1-essentials_build-www.gyan.dev".
-                let mut version_parts = ffmpeg_version.version.split('.');
+                // E.g.
+                // * choco installed ffmpeg on Windows gives me "7.1-essentials_build-www.gyan.dev".
+                // * Linux builds may come with `n7.0.2`
+                // Seems to be easiest to just strip out any non-digit first.
+                let stripped_version = ffmpeg_version
+                    .version
+                    .chars()
+                    .filter(|c| c.is_ascii_digit() || *c == '.')
+                    .collect::<String>();
+                let mut version_parts = stripped_version.split('.');
                 let major = version_parts
                     .next()
                     .and_then(|part| part.parse::<u32>().ok());
-                let minor = version_parts.next().and_then(|part| {
-                    part.split('-')
+                let minor = version_parts
                     .next()
-                        .and_then(|part| part.parse::<u32>().ok())
-                });
+                    .and_then(|part| part.parse::<u32>().ok());
 
                 if let (Some(major), Some(minor)) = (major, minor) {
                     re_log::debug_once!("Parsed FFmpeg version as {}.{}", major, minor);
