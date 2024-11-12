@@ -305,7 +305,7 @@ impl VideoData {
         // Segments are guaranteed to be sorted among each other, but within a segment,
         // presentation timestamps may not be sorted since this is sorted by decode timestamps.
         self.gops.iter().flat_map(|seg| {
-            self.samples[seg.decode_time_range()]
+            self.samples[seg.sample_range_usize()]
                 .iter()
                 .map(|sample| sample.presentation_timestamp)
                 .sorted()
@@ -432,7 +432,7 @@ pub struct GroupOfPictures {
 
 impl GroupOfPictures {
     /// The GOP's `sample_range` mapped to `usize` for slicing.
-    pub fn decode_time_range(&self) -> Range<usize> {
+    pub fn sample_range_usize(&self) -> Range<usize> {
         Range {
             start: self.sample_range.start as usize,
             end: self.sample_range.end as usize,

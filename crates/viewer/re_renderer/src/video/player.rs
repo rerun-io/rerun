@@ -323,7 +323,7 @@ impl VideoPlayer {
             return Ok(());
         };
 
-        let samples = &self.data.samples[gop.decode_time_range()];
+        let samples = &self.data.samples[gop.sample_range_usize()];
 
         for sample in samples {
             let chunk = sample.get(video_data).ok_or(VideoPlayerError::BadData)?;
