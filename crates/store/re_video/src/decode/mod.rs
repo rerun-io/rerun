@@ -215,6 +215,9 @@ pub fn new_decoder(
 /// For details on how to interpret the data, see [`crate::Sample`].
 pub struct Chunk {
     /// The start of a new [`crate::demux::GroupOfPictures`]?
+    ///
+    /// This probably means this is a _keyframe_, and that and entire frame
+    /// can be decoded from only this one sample (though I'm not 100% sure).
     pub is_sync: bool,
 
     pub data: Vec<u8>,
@@ -250,33 +253,24 @@ pub type FrameContent = webcodecs::WebVideoFrame;
 /// Meta information about a decoded video frame, as reported by the decoder.
 #[derive(Debug, Clone)]
 pub struct FrameInfo {
-    /// The presentation timestamp of the frame.
+    /// The start of a new [`crate::demux::GroupOfPictures`]?
     ///
-    /// Decoders are required to report this.
-    /// A timestamp of [`Time::MAX`] indicates that the frame is invalid or not yet available.
+    /// This probably means this is a _keyframe_, and that and entire frame
+    /// can be decoded from only this one sample (though I'm not 100% sure).
+    ///
+    /// None indicates that the information is not available.
+    pub is_sync: Option<bool>,
+
+    /// The presentation timestamp of the frame.
     pub presentation_timestamp: Time,
 
     /// How long the frame is valid.
-    ///
-    /// Decoders are required to report this.
-    /// A duration of [`Time::MAX`] indicates that the frame is invalid or not yet available.
-    // Implementation note: unlike with presentation timestamp we may be able fine with making this optional.
     pub duration: Time,
 
     /// The decode timestamp of the last chunk that was needed to decode this frame.
     ///
     /// None indicates that the information is not available.
     pub latest_decode_timestamp: Option<Time>,
-}
-
-impl Default for FrameInfo {
-    fn default() -> Self {
-        Self {
-            presentation_timestamp: Time::MAX,
-            duration: Time::MAX,
-            latest_decode_timestamp: None,
-        }
-    }
 }
 
 impl FrameInfo {

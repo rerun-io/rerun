@@ -58,7 +58,7 @@ impl VideoChunkDecoder {
                 Err(err) => {
                     // Many of the errors we get from a decoder are recoverable.
                     // They may be very frequent, but it's still useful to see them in the debug log for troubleshooting.
-                    re_log::debug!("Error during decoding of {debug_name}: {err}");
+                    re_log::debug_once!("Error during decoding of {debug_name}: {err}");
 
                     let err = VideoPlayerError::Decoding(err);
                     let mut output = decoder_output.lock();
@@ -80,7 +80,7 @@ impl VideoChunkDecoder {
     }
 
     /// Start decoding the given chunk.
-    pub fn decode(&mut self, chunk: Chunk, _is_keyframe: bool) -> Result<(), VideoPlayerError> {
+    pub fn decode(&mut self, chunk: Chunk) -> Result<(), VideoPlayerError> {
         self.decoder.submit_chunk(chunk)?;
         Ok(())
     }
@@ -119,9 +119,12 @@ impl VideoChunkDecoder {
 
         let frame_time_range = frame.info.presentation_time_range();
 
-        if frame_time_range.contains(&presentation_timestamp)
-            && video_texture.frame_info.presentation_time_range() != frame_time_range
-        {
+        let is_up_to_date = video_texture
+            .frame_info
+            .as_ref()
+            .is_some_and(|info| info.presentation_time_range() == frame_time_range);
+
+        if frame_time_range.contains(&presentation_timestamp) && !is_up_to_date {
             #[cfg(target_arch = "wasm32")]
             {
                 video_texture.source_pixel_format = copy_web_video_frame_to_texture(
@@ -139,7 +142,7 @@ impl VideoChunkDecoder {
                 )?;
             }
 
-            video_texture.frame_info = frame.info.clone();
+            video_texture.frame_info = Some(frame.info.clone());
         }
 
         Ok(())

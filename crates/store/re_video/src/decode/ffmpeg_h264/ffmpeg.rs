@@ -93,6 +93,11 @@ impl From<Error> for crate::decode::Error {
 /// ffmpeg does not tell us the timestamp/duration of a given frame, so we need to remember it.
 #[derive(Clone)]
 struct FfmpegFrameInfo {
+    /// The start of a new [`crate::demux::GroupOfPictures`]?
+    ///
+    /// This probably means this is a _keyframe_, and that and entire frame
+    /// can be decoded from only this one sample (though I'm not 100% sure).
+    is_sync: bool,
     presentation_timestamp: Time,
     duration: Time,
     decode_timestamp: Time,
@@ -575,6 +580,7 @@ fn read_ffmpeg_output(
                         format: pixel_format.clone(),
                     },
                     info: FrameInfo {
+                        is_sync: Some(frame_info.is_sync),
                         presentation_timestamp: frame_info.presentation_timestamp,
                         duration: frame_info.duration,
                         latest_decode_timestamp: Some(frame_info.decode_timestamp),
@@ -690,6 +696,7 @@ impl AsyncDecoder for FfmpegCliH264Decoder {
         // We send the information about this chunk first.
         // Chunks are defined to always yield a single frame.
         let frame_info = FfmpegFrameInfo {
+            is_sync: chunk.is_sync,
             presentation_timestamp: chunk.presentation_timestamp,
             decode_timestamp: chunk.decode_timestamp,
             duration: chunk.duration,

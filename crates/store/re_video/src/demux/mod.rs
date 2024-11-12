@@ -457,7 +457,10 @@ impl GroupOfPictures {
 /// > The decoding of each access unit results in one decoded picture.
 #[derive(Debug, Clone)]
 pub struct Sample {
-    /// Is t his the start of a new [`GroupOfPictures`]?
+    /// Is this the start of a new [`GroupOfPictures`]?
+    ///
+    /// This probably means this is a _keyframe_, and that and entire frame
+    /// can be decoded from only this one sample (though I'm not 100% sure).
     pub is_sync: bool,
 
     /// Time at which this sample appears in the decoded bitstream, in time units.

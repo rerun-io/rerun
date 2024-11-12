@@ -152,9 +152,14 @@ impl<'a> PropertyContent<'a> {
     /// Show a read-only boolean in the value column.
     #[inline]
     pub fn value_bool(self, mut b: bool) -> Self {
-        self.value_fn(move |ui: &mut Ui, _| {
-            ui.add_enabled_ui(false, |ui| ui.re_checkbox(&mut b, ""));
-        })
+        if true {
+            self.value_text(b.to_string())
+        } else {
+            // This is not readable, which is why it is disabled
+            self.value_fn(move |ui: &mut Ui, _| {
+                ui.add_enabled_ui(false, |ui| ui.re_checkbox(&mut b, ""));
+            })
+        }
     }
 
     /// Show an editable boolean in the value column.

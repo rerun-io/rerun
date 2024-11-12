@@ -1,7 +1,7 @@
 mod chunk_decoder;
 mod player;
 
-use std::{collections::hash_map::Entry, ops::Range, sync::Arc};
+use std::{collections::hash_map::Entry, sync::Arc};
 
 use ahash::HashMap;
 use parking_lot::Mutex;
@@ -64,14 +64,7 @@ pub struct VideoFrameTexture {
     pub source_pixel_format: SourceImageDataFormat,
 
     /// Meta information about the decoded frame.
-    pub frame_info: re_video::decode::FrameInfo,
-}
-
-impl VideoFrameTexture {
-    pub fn presentation_time_range(&self) -> Range<re_video::Time> {
-        self.frame_info.presentation_timestamp
-            ..self.frame_info.presentation_timestamp + self.frame_info.duration
-    }
+    pub frame_info: Option<re_video::decode::FrameInfo>,
 }
 
 /// Identifier for an independent video decoding stream.

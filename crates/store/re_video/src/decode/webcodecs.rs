@@ -204,9 +204,10 @@ fn init_video_decoder(
             on_output(Ok(Frame {
                 content: WebVideoFrame(frame),
                 info: FrameInfo {
+                    is_sync: None,
                     presentation_timestamp,
                     duration,
-                    ..Default::default()
+                    latest_decode_timestamp: None,
                 },
             }));
         }) as Box<dyn Fn(web_sys::VideoFrame)>)
