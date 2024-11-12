@@ -144,7 +144,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
         });
     }
 
-    // This affects only the web target, so we dont need to show it on native.
+    // This affects only the web target, so we don't need to show it on native.
     #[cfg(target_arch = "wasm32")]
     {
         let hardware_acceleration = &mut app_options.video_decoder_hw_acceleration;
@@ -155,16 +155,16 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
                 .show_ui(ui, |ui| {
                     ui.selectable_value(
                         hardware_acceleration,
-                        DecodeHardwareAcceleration::Auto,
-                        DecodeHardwareAcceleration::Auto.to_string(),
+                        re_video::decode::DecodeHardwareAcceleration::Auto,
+                        re_video::decode::DecodeHardwareAcceleration::Auto.to_string(),
                     ) | ui.selectable_value(
                         hardware_acceleration,
-                        DecodeHardwareAcceleration::PreferSoftware,
-                        DecodeHardwareAcceleration::PreferSoftware.to_string(),
+                        re_video::decode::DecodeHardwareAcceleration::PreferSoftware,
+                        re_video::decode::DecodeHardwareAcceleration::PreferSoftware.to_string(),
                     ) | ui.selectable_value(
                         hardware_acceleration,
-                        DecodeHardwareAcceleration::PreferHardware,
-                        DecodeHardwareAcceleration::PreferHardware.to_string(),
+                        re_video::decode::DecodeHardwareAcceleration::PreferHardware,
+                        re_video::decode::DecodeHardwareAcceleration::PreferHardware.to_string(),
                     )
                 });
             // Note that the setting is part of the video's cache key, so, if it changes, the cache
