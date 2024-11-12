@@ -85,6 +85,14 @@ impl VideoChunkDecoder {
         Ok(())
     }
 
+    /// Called after submitting the last chunk.
+    ///
+    /// Should flush all pending frames.
+    pub fn end_of_video(&mut self) -> Result<(), VideoPlayerError> {
+        self.decoder.end_of_video()?;
+        Ok(())
+    }
+
     /// Get the latest decoded frame at the given time
     /// and copy it to the given texture.
     ///

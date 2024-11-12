@@ -139,6 +139,13 @@ pub trait AsyncDecoder: Send + Sync {
     /// Chunks are expected to come in the order of their decoding timestamp.
     fn submit_chunk(&mut self, chunk: Chunk) -> Result<()>;
 
+    /// Called after submitting the last chunk.
+    ///
+    /// Should flush all pending frames.
+    fn end_of_video(&mut self) -> Result<()> {
+        Ok(())
+    }
+
     /// Resets the decoder.
     ///
     /// This does not block, all chunks sent to `decode` before this point will be discarded.

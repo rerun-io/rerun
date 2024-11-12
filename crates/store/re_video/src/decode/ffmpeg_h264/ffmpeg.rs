@@ -92,7 +92,7 @@ impl From<Error> for crate::decode::Error {
 }
 
 /// ffmpeg does not tell us the timestamp/duration of a given frame, so we need to remember it.
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 struct FFmpegFrameInfo {
     /// The start of a new [`crate::demux::GroupOfPictures`]?
     ///
@@ -110,7 +110,7 @@ struct FFmpegFrameInfo {
 
 enum FFmpegFrameData {
     Chunk(Chunk),
-    EndOfStream,
+    Quit,
 }
 
 /// Wraps an stdin with a shared shutdown boolean.
@@ -315,7 +315,7 @@ impl Drop for FFmpegProcessAndListener {
         }
 
         // Notify (potentially wake up) the stdin write thread to stop it (it might be sleeping).
-        self.frame_data_tx.send(FFmpegFrameData::EndOfStream).ok();
+        self.frame_data_tx.send(FFmpegFrameData::Quit).ok();
         // Kill stdin for the write thread. This helps cancelling ongoing stream write operations.
         self.stdin_shutdown
             .store(true, std::sync::atomic::Ordering::Release);
@@ -372,7 +372,7 @@ fn write_ffmpeg_input(
     while let Ok(data) = frame_data_rx.recv() {
         let chunk = match data {
             FFmpegFrameData::Chunk(chunk) => chunk,
-            FFmpegFrameData::EndOfStream => break,
+            FFmpegFrameData::Quit => break,
         };
 
         if let Err(err) = write_avc_chunk_to_nalu_stream(avcc, ffmpeg_stdin, &chunk, &mut state) {
@@ -649,6 +649,7 @@ fn read_ffmpeg_output(
 /// Decode H.264 video via ffmpeg over CLI
 pub struct FFmpegCliH264Decoder {
     debug_name: String,
+    // Restarted on reset
     ffmpeg: FFmpegProcessAndListener,
     avcc: re_mp4::Avc1Box,
     on_output: Arc<OutputCallback>,
@@ -715,10 +716,11 @@ impl AsyncDecoder for FFmpegCliH264Decoder {
             decode_timestamp: chunk.decode_timestamp,
             duration: chunk.duration,
         };
-        let chunk = FFmpegFrameData::Chunk(chunk);
+
+        let data = FFmpegFrameData::Chunk(chunk);
 
         if self.ffmpeg.frame_info_tx.send(frame_info).is_err()
-            || self.ffmpeg.frame_data_tx.send(chunk).is_err()
+            || self.ffmpeg.frame_data_tx.send(data).is_err()
         {
             let err: crate::decode::Error =
                 if let Ok(exit_code) = self.ffmpeg.ffmpeg.as_inner_mut().try_wait() {
@@ -736,7 +738,15 @@ impl AsyncDecoder for FFmpegCliH264Decoder {
         Ok(())
     }
 
+    fn end_of_video(&mut self) -> crate::decode::Result<()> {
+        re_log::debug!("End of video - flushing ffmpeg decoder {}", self.debug_name);
+        // Close stdin. That will let ffmpeg know that it should flush its buffers.
+        self.ffmpeg.frame_data_tx.send(FFmpegFrameData::Quit).ok();
+        Ok(())
+    }
+
     fn reset(&mut self) -> crate::decode::Result<()> {
+        re_tracing::profile_function!();
         re_log::debug!("Resetting ffmpeg decoder {}", self.debug_name);
         self.ffmpeg = FFmpegProcessAndListener::new(
             &self.debug_name,

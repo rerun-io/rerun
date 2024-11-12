@@ -330,6 +330,13 @@ impl VideoPlayer {
             self.chunk_decoder.decode(chunk)?;
         }
 
+        if gop_idx + 1 == self.data.gops.len() {
+            // Last GOP - there is nothing more to decode,
+            // so flush out any pending frames:
+            // See https://github.com/rerun-io/rerun/issues/8073
+            self.chunk_decoder.end_of_video()?;
+        }
+
         Ok(())
     }
 
