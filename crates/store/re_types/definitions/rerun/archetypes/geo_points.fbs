@@ -5,7 +5,6 @@ namespace rerun.archetypes;
 /// **Note**: Geospatial entities are experimental.
 ///
 /// \example archetypes/geo_point_simple title="Log a geospatial point" image="https://static.rerun.io/geopoint_simple/146b0783c5aea1c1b6a9aab938879942b7c820e2/1200w.png"
-// TODO(ab): screenshot
 table GeoPoints (
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate",
