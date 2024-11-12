@@ -14,6 +14,7 @@ use re_types_core::ComponentName;
 /// A recursive, manually updated [`ChunkStoreSubscriber`] that maintains the entity hierarchy.
 ///
 /// The tree contains a list of subtrees, and so on recursively.
+#[derive(Debug)]
 pub struct EntityTree {
     /// Full path prefix to the root of this (sub)tree.
     pub path: EntityPath,
@@ -123,7 +124,12 @@ impl EntityTree {
     }
 
     /// Returns `true` if this entity has no children and no data.
-    pub fn is_empty(&self, engine: &StorageEngineReadGuard<'_>) -> bool {
+    ///
+    /// Checking for the absence of data is neither costly nor totally free: do it a few hundreds or
+    /// thousands times a frame and it will absolutely kill framerate.
+    /// Don't blindly call this on every existing entity every frame: use [`StoreEvent`]s to make
+    /// sure anything changed at all first.
+    pub fn check_is_empty(&self, engine: &StorageEngineReadGuard<'_>) -> bool {
         self.children.is_empty() && !engine.store().entity_has_data(&self.path)
     }
 
@@ -174,9 +180,20 @@ impl EntityTree {
             // this is placed first, because we'll only know if the child entity is empty after telling it to clear itself.
             entity.on_store_deletions(engine, entity_paths_with_deletions, events);
 
-            let has_deletion_events = entity_paths_with_deletions.contains(&entity.path);
+            let has_children = || !entity.children.is_empty();
+            // Checking for lack of data is not free, so make sure there is any reason to believe
+            // that any relevant data has changed first.
+            let has_recursive_deletion_events = || {
+                entity_paths_with_deletions
+                    .iter()
+                    .any(|removed_entity_path| removed_entity_path.starts_with(&entity.path))
+            };
+            let has_data = || engine.store().entity_has_data(&entity.path);
 
-            !has_deletion_events || !entity.is_empty(engine)
+            let should_be_removed =
+                !has_children() && (has_recursive_deletion_events() && !has_data());
+
+            !should_be_removed
         });
     }
 
@@ -311,8 +328,6 @@ mod tests {
             let grandchild = db
                 .tree()
                 .find_first_child_recursive(|entity_path| *entity_path == entity_path_grandchild);
-
-            dbg!(db.tree());
 
             assert!(db.tree().check_is_empty(&db.storage_engine()));
             assert!(parent.is_none());
