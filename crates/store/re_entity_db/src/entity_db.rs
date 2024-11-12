@@ -450,7 +450,7 @@ impl EntityDb {
         store_events
     }
 
-    fn gc(&mut self, gc_options: &GarbageCollectionOptions) -> Vec<ChunkStoreEvent> {
+    pub(crate) fn gc(&mut self, gc_options: &GarbageCollectionOptions) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
         let mut engine = self.storage_engine.write();
