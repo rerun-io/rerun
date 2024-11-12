@@ -247,9 +247,9 @@ pub fn create_labels(
         let highlight = highlights
             .entity_highlight(label.labeled_instance.entity_path_hash)
             .index_highlight(label.labeled_instance.instance);
-        let fill_color = match highlight.hover {
+        let background_color = match highlight.hover {
             HoverHighlight::None => match highlight.selection {
-                SelectionHighlight::None => parent_ui.style().visuals.widgets.inactive.bg_fill,
+                SelectionHighlight::None => parent_ui.style().visuals.panel_fill,
                 SelectionHighlight::SiblingSelection => {
                     parent_ui.style().visuals.widgets.active.bg_fill
                 }
@@ -258,7 +258,7 @@ pub fn create_labels(
             HoverHighlight::Hovered => parent_ui.style().visuals.widgets.hovered.bg_fill,
         };
 
-        label_shapes.push(egui::Shape::rect_filled(bg_rect, 3.0, fill_color));
+        label_shapes.push(egui::Shape::rect_filled(bg_rect, 3.0, background_color));
         label_shapes.push(egui::Shape::galley(
             text_rect.center_top(),
             galley,
