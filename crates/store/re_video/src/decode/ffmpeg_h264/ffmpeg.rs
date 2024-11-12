@@ -893,6 +893,8 @@ fn should_ignore_log_msg(msg: &str) -> bool {
         // Size etc. *is* specified in SPS & PPS, unclear why it's missing that.
         // Observed on Windows FFmpeg 7.1, but not with the same version on Mac with the same video.
         "Could not find codec parameters for stream 0 (Video: h264, none): unspecified size",
+        // We sometimes get a `[NULL @ 0x14f107150]`, which is not very actionable
+        "[NULL @ ",
     ];
 
     // Why would we get an empty message? Observed on Windows FFmpeg 7.1.
