@@ -61,18 +61,14 @@ pub trait ContextExt {
     #[must_use]
     fn warning_text(&self, text: impl Into<String>) -> egui::RichText {
         let style = self.ctx().style();
-        egui::RichText::new(text)
-            .italics()
-            .color(style.visuals.warn_fg_color)
+        egui::RichText::new(text).color(style.visuals.warn_fg_color)
     }
 
     /// NOTE: duplicated in [`Self::text_format_error`]
     #[must_use]
     fn error_text(&self, text: impl Into<String>) -> egui::RichText {
         let style = self.ctx().style();
-        egui::RichText::new(text)
-            .italics()
-            .color(style.visuals.error_fg_color)
+        egui::RichText::new(text).color(style.visuals.error_fg_color)
     }
 
     /// NOTE: duplicated in [`Self::text_format_error`]
@@ -82,7 +78,6 @@ pub trait ContextExt {
         egui::TextFormat {
             font_id,
             color: style.visuals.error_fg_color,
-            italics: true,
             ..Default::default()
         }
     }
