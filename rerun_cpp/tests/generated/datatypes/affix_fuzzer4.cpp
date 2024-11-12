@@ -100,6 +100,8 @@ namespace rerun {
                         "Failed to serialize AffixFuzzer4::many_required: objects (Object(\"rerun.testing.datatypes.AffixFuzzer3\")) in unions not yet implemented"
                     );
                 } break;
+                default:
+                    assert(false && "unreachable");
             }
         }
 

@@ -15,8 +15,7 @@ use re_viewer_context::{
 #[derive(Debug, Default)]
 pub struct GeoPointBatch {
     pub positions: Vec<walkers::Position>,
-    //TODO(#7872): to be converted to scene vs. ui
-    pub radii: Vec<f32>,
+    pub radii: Vec<Radius>,
     pub colors: Vec<re_renderer::Color32>,
     pub instance_id: Vec<PickingLayerInstanceId>,
 }
@@ -90,7 +89,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
                         position.latitude(),
                         position.longitude(),
                     ));
-                    batch_data.radii.push(radius.0.abs());
+                    batch_data.radii.push(*radius);
                     batch_data.colors.push(color.0.into());
                     batch_data
                         .instance_id
@@ -138,20 +137,16 @@ impl GeoPointsVisualizer {
         );
 
         for (entity_path, batch) in &self.batches {
-            let positions = batch
+            let (positions, radii): (Vec<_>, Vec<_>) = batch
                 .positions
                 .iter()
-                .map(|pos| {
+                .zip(&batch.radii)
+                .map(|(pos, radius)| {
+                    let size = super::radius_to_size(*radius, projector, *pos);
                     let ui_position = projector.project(*pos);
-                    glam::vec3(ui_position.x, ui_position.y, 0.0)
+                    (glam::vec3(ui_position.x, ui_position.y, 0.0), size)
                 })
-                .collect::<Vec<_>>();
-
-            let radii = batch
-                .radii
-                .iter()
-                .map(|radius| re_renderer::Size(*radius))
-                .collect::<Vec<_>>();
+                .unzip();
 
             let outline = highlight.entity_outline_mask(entity_path.hash());
 
@@ -190,7 +185,7 @@ impl TypedComponentFallbackProvider<Color> for GeoPointsVisualizer {
 
 impl TypedComponentFallbackProvider<Radius> for GeoPointsVisualizer {
     fn fallback_for(&self, _ctx: &QueryContext<'_>) -> Radius {
-        Radius::from(5.0)
+        Radius::new_ui_points(5.0)
     }
 }
 

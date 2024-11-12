@@ -9,7 +9,7 @@ use parking_lot::Mutex;
 use crate::{
     resource_managers::SourceImageDataFormat,
     video::{
-        player::{latest_at_idx, TimedDecodingError, VideoTexture},
+        player::{TimedDecodingError, VideoTexture},
         VideoPlayerError,
     },
     wgpu_resources::GpuTexture,
@@ -47,7 +47,10 @@ impl VideoChunkDecoder {
             let decoder_output = decoder_output.clone();
             move |frame: re_video::decode::Result<Frame>| match frame {
                 Ok(frame) => {
-                    re_log::trace!("Decoded frame at {:?}", frame.info.presentation_timestamp);
+                    re_log::trace!(
+                        "Decoded frame at PTS {:?}",
+                        frame.info.presentation_timestamp
+                    );
                     let mut output = decoder_output.lock();
                     output.frames.push(frame);
                     output.error = None; // We successfully decoded a frame, reset the error state.
@@ -98,7 +101,7 @@ impl VideoChunkDecoder {
         let mut decoder_output = self.decoder_output.lock();
         let frames = &mut decoder_output.frames;
 
-        let Some(frame_idx) = latest_at_idx(
+        let Some(frame_idx) = re_video::demux::latest_at_idx(
             frames,
             |frame| frame.info.presentation_timestamp,
             &presentation_timestamp,
@@ -114,10 +117,10 @@ impl VideoChunkDecoder {
         let frame_idx = 0;
         let frame = &frames[frame_idx];
 
-        let frame_time_range = frame.info.time_range();
+        let frame_time_range = frame.info.presentation_time_range();
 
         if frame_time_range.contains(&presentation_timestamp)
-            && video_texture.frame_info.time_range() != frame_time_range
+            && video_texture.frame_info.presentation_time_range() != frame_time_range
         {
             #[cfg(target_arch = "wasm32")]
             {

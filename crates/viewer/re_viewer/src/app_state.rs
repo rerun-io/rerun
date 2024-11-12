@@ -29,7 +29,7 @@ pub struct AppState {
 
     /// Configuration for the current recording (found in [`EntityDb`]).
     recording_configs: HashMap<StoreId, RecordingConfig>,
-    blueprint_cfg: RecordingConfig,
+    pub blueprint_cfg: RecordingConfig,
 
     selection_panel: re_selection_panel::SelectionPanel,
     time_panel: re_time_panel::TimePanel,
@@ -513,7 +513,13 @@ impl AppState {
     /// blueprint `time_ctrl`. Otherwise, we use a latest query from the blueprint timeline.
     pub fn blueprint_query_for_viewer(&self) -> LatestAtQuery {
         if self.app_options.inspect_blueprint_timeline {
-            self.blueprint_cfg.time_ctrl.read().current_query().clone()
+            let time_ctrl = self.blueprint_cfg.time_ctrl.read();
+            if time_ctrl.play_state() == PlayState::Following {
+                // Special-case just to make sure we include stuff added in this frame
+                LatestAtQuery::latest(blueprint_timeline())
+            } else {
+                time_ctrl.current_query().clone()
+            }
         } else {
             LatestAtQuery::latest(blueprint_timeline())
         }

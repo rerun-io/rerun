@@ -5,7 +5,6 @@ use re_data_ui::{item_ui, DataUi};
 use re_entity_db::InstancePathHash;
 use re_log_types::EntityPath;
 use re_renderer::{RenderContext, ViewBuilder};
-use re_space_view::suggest_space_view_for_each_entity;
 use re_types::{
     blueprint::{
         archetypes::{MapBackground, MapZoom},
@@ -16,15 +15,15 @@ use re_types::{
 };
 use re_ui::list_item;
 use re_viewer_context::{
-    gpu_bridge, Item, SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError,
-    SpaceViewHighlights, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
-    SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
-    SystemExecutionOutput, UiLayout, ViewQuery, ViewerContext,
+    gpu_bridge, IdentifiedViewSystem as _, Item, SpaceViewClass, SpaceViewClassLayoutPriority,
+    SpaceViewClassRegistryError, SpaceViewHighlights, SpaceViewId, SpaceViewSpawnHeuristics,
+    SpaceViewState, SpaceViewStateExt as _, SpaceViewSystemExecutionError,
+    SpaceViewSystemRegistrator, SystemExecutionOutput, UiLayout, ViewQuery, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use crate::map_overlays;
-use crate::visualizers::geo_points::GeoPointsVisualizer;
+use crate::visualizers::{update_span, GeoLineStringsVisualizer, GeoPointsVisualizer};
 
 #[derive(Default)]
 pub struct MapSpaceViewState {
@@ -103,7 +102,8 @@ Displays geospatial primitives on a map.
         &self,
         system_registry: &mut SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
-        system_registry.register_visualizer::<GeoPointsVisualizer>()
+        system_registry.register_visualizer::<GeoPointsVisualizer>()?;
+        system_registry.register_visualizer::<GeoLineStringsVisualizer>()
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
@@ -116,11 +116,29 @@ Displays geospatial primitives on a map.
     }
 
     fn layout_priority(&self) -> SpaceViewClassLayoutPriority {
-        SpaceViewClassLayoutPriority::Low
+        SpaceViewClassLayoutPriority::default()
     }
 
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
-        suggest_space_view_for_each_entity::<GeoPointsVisualizer>(ctx, self)
+        re_tracing::profile_function!();
+
+        // Spawn a single map view at the root if any geospatial entity exists.
+        let any_map_entity = [
+            GeoPointsVisualizer::identifier(),
+            GeoLineStringsVisualizer::identifier(),
+        ]
+        .iter()
+        .any(|system_id| {
+            ctx.indicated_entities_per_visualizer
+                .get(system_id)
+                .is_some_and(|indicated_entities| !indicated_entities.is_empty())
+        });
+
+        if any_map_entity {
+            SpaceViewSpawnHeuristics::root()
+        } else {
+            SpaceViewSpawnHeuristics::default()
+        }
     }
 
     fn selection_ui(
@@ -161,6 +179,9 @@ Displays geospatial primitives on a map.
         );
 
         let geo_points_visualizer = system_output.view_systems.get::<GeoPointsVisualizer>()?;
+        let geo_line_strings_visualizers = system_output
+            .view_systems
+            .get::<GeoLineStringsVisualizer>()?;
 
         //
         // Map Provider
@@ -188,7 +209,9 @@ Displays geospatial primitives on a map.
         // changes in walkers
         // TODO(#7884): support more elaborate auto-pan/zoom modes.
 
-        let span = geo_points_visualizer.span();
+        let mut span = None;
+        update_span(&mut span, geo_points_visualizer.span());
+        update_span(&mut span, geo_line_strings_visualizers.span());
 
         let default_center_position = span
             .as_ref()
@@ -262,6 +285,12 @@ Displays geospatial primitives on a map.
         let mut view_builder =
             create_view_builder(render_ctx, ui.ctx(), map_rect, &query.highlights);
 
+        geo_line_strings_visualizers.queue_draw_data(
+            render_ctx,
+            &mut view_builder,
+            &projector,
+            &query.highlights,
+        )?;
         geo_points_visualizer.queue_draw_data(
             render_ctx,
             &mut view_builder,
@@ -447,6 +476,22 @@ fn handle_ui_interactions(
     }
 }
 
+/// Return http options for tile downloads.
+///
+/// On native targets, it configures a cache directory.
+fn http_options(_ctx: &ViewerContext<'_>) -> walkers::HttpOptions {
+    #[cfg(not(target_arch = "wasm32"))]
+    let options = walkers::HttpOptions {
+        cache: _ctx.app_options.cache_subdirectory("map_view"),
+        ..Default::default()
+    };
+
+    #[cfg(target_arch = "wasm32")]
+    let options = Default::default();
+
+    options
+}
+
 fn get_tile_manager(
     ctx: &ViewerContext<'_>,
     provider: MapProvider,
@@ -454,32 +499,37 @@ fn get_tile_manager(
 ) -> HttpTiles {
     let mapbox_access_token = ctx.app_options.mapbox_access_token().unwrap_or_default();
 
+    let options = http_options(ctx);
+
     match provider {
         MapProvider::OpenStreetMap => {
-            HttpTiles::new(walkers::sources::OpenStreetMap, egui_ctx.clone())
+            HttpTiles::with_options(walkers::sources::OpenStreetMap, options, egui_ctx.clone())
         }
-        MapProvider::MapboxStreets => HttpTiles::new(
+        MapProvider::MapboxStreets => HttpTiles::with_options(
             walkers::sources::Mapbox {
                 style: walkers::sources::MapboxStyle::Streets,
                 access_token: mapbox_access_token.clone(),
                 high_resolution: false,
             },
+            options,
             egui_ctx.clone(),
         ),
-        MapProvider::MapboxDark => HttpTiles::new(
+        MapProvider::MapboxDark => HttpTiles::with_options(
             walkers::sources::Mapbox {
                 style: walkers::sources::MapboxStyle::Dark,
                 access_token: mapbox_access_token.clone(),
                 high_resolution: false,
             },
+            options,
             egui_ctx.clone(),
         ),
-        MapProvider::MapboxSatellite => HttpTiles::new(
+        MapProvider::MapboxSatellite => HttpTiles::with_options(
             walkers::sources::Mapbox {
                 style: walkers::sources::MapboxStyle::Satellite,
                 access_token: mapbox_access_token.clone(),
                 high_resolution: true,
             },
+            options,
             egui_ctx.clone(),
         ),
     }

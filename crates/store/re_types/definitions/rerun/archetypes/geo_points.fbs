@@ -1,25 +1,27 @@
 namespace rerun.archetypes;
 
-// ---
-
-/// Geospatial points with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
+/// Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.
 ///
 /// **Note**: Geospatial entities are experimental.
-// TODO(ab): add snippet and screenshot
+///
+/// \example archetypes/geo_point_simple title="Log a geospatial point" image="https://static.rerun.io/geopoint_simple/146b0783c5aea1c1b6a9aab938879942b7c820e2/1200w.png"
 table GeoPoints (
   "attr.rust.derive": "PartialEq",
+  "attr.rust.new_pub_crate",
   "attr.docs.category": "Geospatial",
   "attr.docs.view_types": "MapView",
   "attr.docs.unreleased"
 ) {
   // --- Required ---
 
-  /// The EPSG:4326 coordinates for the points.
+  /// The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).
   positions: [rerun.components.LatLon] ("attr.rerun.component_required", order: 1000);
 
   // --- Recommended ---
 
   /// Optional radii for the points, effectively turning them into circles.
+  ///
+  /// *Note*: scene units radiii are interpreted as meters.
   radii: [rerun.components.Radius] ("attr.rerun.component_recommended", nullable, order: 2000);
 
   /// Optional colors for the points.

@@ -514,25 +514,34 @@ impl App {
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
-                // We only want to update the blueprint if the "inspect blueprint timeline" mode is
-                // disabled. This is because the blueprint inspector allows you to change the
-                // blueprint query time, which in turn updates the displayed state of the UI itself.
-                // This means any updates we receive while in this mode may be relative to a historical
-                // blueprint state and would conflict with the current true blueprint state.
+                let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
 
-                // TODO(jleibs): When the blueprint is in "follow-mode" we should actually be able
-                // to apply updates here, but this needs more validation and testing to be safe.
-                if !self.state.app_options.inspect_blueprint_timeline {
-                    let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
-                    for chunk in updates {
-                        match blueprint_db.add_chunk(&Arc::new(chunk)) {
-                            Ok(_store_events) => {}
-                            Err(err) => {
-                                re_log::warn_once!("Failed to store blueprint delta: {err}");
-                            }
+                if self.state.app_options.inspect_blueprint_timeline {
+                    // We may we viewing a historical blueprint, and doing an edit based on that.
+                    // We therefor throw away everything after the currently viewed time (like an undo)
+                    let last_kept_event_time = self.state.blueprint_query_for_viewer().at();
+                    let first_dropped_event_time = last_kept_event_time.inc();
+                    blueprint_db.drop_time_range(
+                        &re_viewer_context::blueprint_timeline(),
+                        re_log_types::ResolvedTimeRange::new(
+                            first_dropped_event_time,
+                            re_chunk::TimeInt::MAX,
+                        ),
+                    );
+                }
+
+                for chunk in updates {
+                    match blueprint_db.add_chunk(&Arc::new(chunk)) {
+                        Ok(_store_events) => {}
+                        Err(err) => {
+                            re_log::warn_once!("Failed to store blueprint delta: {err}");
                         }
                     }
                 }
+
+                // If we inspect the timeline, make sure we show the latest state:
+                let mut time_ctrl = self.state.blueprint_cfg.time_ctrl.write();
+                time_ctrl.set_play_state(blueprint_db.times_per_timeline(), PlayState::Following);
             }
             SystemCommand::DropEntity(blueprint_id, entity_path) => {
                 let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
@@ -1180,6 +1189,8 @@ impl App {
                     if let Some(caches) = store_hub.active_caches() {
                         caches.on_store_events(&store_events);
                     }
+
+                    self.validate_loaded_events(&store_events);
                 }
 
                 Err(err) => {
@@ -1279,6 +1290,32 @@ impl App {
             if start.elapsed() > web_time::Duration::from_millis(10) {
                 egui_ctx.request_repaint(); // make sure we keep receiving messages asap
                 break; // don't block the main thread for too long
+            }
+        }
+    }
+
+    /// After loading some data; check if the loaded data makes sense.
+    fn validate_loaded_events(&self, store_events: &[re_chunk_store::ChunkStoreEvent]) {
+        re_tracing::profile_function!();
+
+        for event in store_events {
+            let chunk = &event.diff.chunk;
+            for component in chunk.component_names() {
+                if let Some(archetype_name) = component.indicator_component_archetype() {
+                    if let Some(archetype) = self
+                        .reflection
+                        .archetype_reflection_from_short_name(&archetype_name)
+                    {
+                        for &view_type in archetype.view_types {
+                            // TODO(#7876): remove once `map_view` feature is gone
+                            if !cfg!(feature = "map_view") && view_type == "MapView" {
+                                re_log::warn_once!("Found map-related archetype, but viewer was not compiled with the `map_view` feature.");
+                            }
+                        }
+                    } else {
+                        re_log::debug_once!("Unknown archetype: {archetype_name}");
+                    }
+                }
             }
         }
     }

@@ -18,15 +18,44 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-/// **Archetype**: Geospatial points with positions expressed in EPSG:4326 altitude and longitude, and optional colors and radii.
+/// **Archetype**: Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.
 ///
 /// **Note**: Geospatial entities are experimental.
+///
+/// ## Example
+///
+/// ### Log a geospatial point
+/// ```ignore
+/// fn main() -> Result<(), Box<dyn std::error::Error>> {
+///     let rec = rerun::RecordingStreamBuilder::new("rerun_example_geo_points").spawn()?;
+///
+///     rec.log(
+///         "rerun_hq",
+///         &rerun::GeoPoints::from_lat_lon([(59.319221, 18.075631)])
+///             .with_radii([rerun::Radius::new_ui_points(10.0)])
+///             .with_colors([rerun::Color::from_rgb(255, 0, 0)]),
+///     )?;
+///
+///     Ok(())
+/// }
+/// ```
+/// <center>
+/// <picture>
+///   <source media="(max-width: 480px)" srcset="https://static.rerun.io/geopoint_simple/146b0783c5aea1c1b6a9aab938879942b7c820e2/480w.png">
+///   <source media="(max-width: 768px)" srcset="https://static.rerun.io/geopoint_simple/146b0783c5aea1c1b6a9aab938879942b7c820e2/768w.png">
+///   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/geopoint_simple/146b0783c5aea1c1b6a9aab938879942b7c820e2/1024w.png">
+///   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/geopoint_simple/146b0783c5aea1c1b6a9aab938879942b7c820e2/1200w.png">
+///   <img src="https://static.rerun.io/geopoint_simple/146b0783c5aea1c1b6a9aab938879942b7c820e2/full.png" width="640">
+/// </picture>
+/// </center>
 #[derive(Clone, Debug, PartialEq)]
 pub struct GeoPoints {
-    /// The EPSG:4326 coordinates for the points.
+    /// The [EPSG:4326](https://epsg.io/4326) coordinates for the points (North/East-positive degrees).
     pub positions: Vec<crate::components::LatLon>,
 
     /// Optional radii for the points, effectively turning them into circles.
+    ///
+    /// *Note*: scene units radiii are interpreted as meters.
     pub radii: Option<Vec<crate::components::Radius>>,
 
     /// Optional colors for the points.
@@ -200,7 +229,9 @@ impl ::re_types_core::ArchetypeReflectionMarker for GeoPoints {}
 impl GeoPoints {
     /// Create a new `GeoPoints`.
     #[inline]
-    pub fn new(positions: impl IntoIterator<Item = impl Into<crate::components::LatLon>>) -> Self {
+    pub(crate) fn new(
+        positions: impl IntoIterator<Item = impl Into<crate::components::LatLon>>,
+    ) -> Self {
         Self {
             positions: positions.into_iter().map(Into::into).collect(),
             radii: None,
@@ -209,6 +240,8 @@ impl GeoPoints {
     }
 
     /// Optional radii for the points, effectively turning them into circles.
+    ///
+    /// *Note*: scene units radiii are interpreted as meters.
     #[inline]
     pub fn with_radii(
         mut self,

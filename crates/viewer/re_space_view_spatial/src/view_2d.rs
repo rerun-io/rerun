@@ -381,10 +381,25 @@ fn recommended_space_views_with_image_splits(
         &DepthImage::indicator().name(),
     );
 
-    // If there are images of multiple dimensions, more than 1 image, or more than 1 depth image
-    // then split the space.
-    if found_image_dimensions.len() > 1 || image_count > 1 || depth_count > 1 {
-        // Otherwise, split the space and recurse
+    let video_count = count_non_nested_images_with_component(
+        image_dimensions,
+        entities,
+        ctx.recording(),
+        subtree,
+        &re_types::archetypes::AssetVideo::indicator().name(),
+    );
+
+    let all_have_same_size = found_image_dimensions.len() <= 1;
+
+    // NOTE: we allow stacking segmentation images, since that can be quite useful sometimes.
+    let overlap = all_have_same_size && image_count + video_count <= 1 && depth_count <= 1;
+
+    if overlap {
+        // If there are multiple images of the same size but of different types, then we can overlap them on top of each other.
+        // This can be useful for comparing a segmentation image on top of an RGB image, for instance.
+        recommended.push(RecommendedSpaceView::new_subtree(recommended_root.clone()));
+    } else {
+        // Split the space and recurse
 
         // If the root also had a visualizable entity, give it its own space.
         // TODO(jleibs): Maybe merge this entity into each child
@@ -412,8 +427,5 @@ fn recommended_space_views_with_image_splits(
                 );
             }
         }
-    } else {
-        // Otherwise we can use the space as it is.
-        recommended.push(RecommendedSpaceView::new_subtree(recommended_root.clone()));
     }
 }

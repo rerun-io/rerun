@@ -9,9 +9,8 @@ from uuid import UUID
 
 import numpy as np
 
-__version__ = "0.20.0-alpha.1+dev"
-__version_info__ = (0, 20, 0, "alpha.1")
-
+__version__ = "0.20.0-alpha.3+dev"
+__version_info__ = (0, 20, 0, "alpha.3")
 
 if sys.version_info < (3, 9):
     warnings.warn(
@@ -75,6 +74,7 @@ from .archetypes import (
     DisconnectedSpace as DisconnectedSpace,
     Ellipsoids3D as Ellipsoids3D,
     EncodedImage as EncodedImage,
+    GeoLineStrings as GeoLineStrings,
     GeoPoints as GeoPoints,
     Image as Image,
     InstancePoses3D as InstancePoses3D,

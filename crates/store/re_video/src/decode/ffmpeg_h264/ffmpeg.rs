@@ -317,8 +317,18 @@ impl Drop for FfmpegProcessAndListener {
             .store(true, std::sync::atomic::Ordering::Release);
 
         // Kill the ffmpeg process itself.
+        // It's important that we wait for it to finish, otherwise the process may enter a zombie state, see https://en.wikipedia.org/wiki/Zombie_process.
+        // Also, a nice side effect of wait is that it ensures that stdin is closed.
         // This should wake up the listen thread if it is sleeping, but that may take a while.
-        self.ffmpeg.kill().ok();
+        {
+            let kill_result = self.ffmpeg.kill();
+            let wait_result = self.ffmpeg.wait();
+            re_log::debug!(
+                "FFmpeg kill result: {:?}, wait result: {:?}",
+                kill_result,
+                wait_result
+            );
+        }
 
         // Unfortunately, even with the above measures, it can still happen that the listen threads take occasionally 100ms and more to shut down.
         // (very much depending on the system & OS, typical times may be low with large outliers)
@@ -506,12 +516,6 @@ fn read_ffmpeg_output(
                 // How do we know how large this buffer needs to be?
                 // Whenever the highest known DTS is behind the PTS, we need to wait until the DTS catches up.
                 // Otherwise, we'd assign the wrong PTS to the frame that just came in.
-                //
-                // Example how presentation timestamps and decode timestamps
-                // can play out in the presence of B-frames to illustrate this:
-                //    PTS: 1 4 2 3
-                //    DTS: 1 2 3 4
-                // Stream: I P B B
                 let frame_info = loop {
                     let oldest_pts_in_buffer =
                         pending_frame_infos.first_key_value().map(|(pts, _)| *pts);

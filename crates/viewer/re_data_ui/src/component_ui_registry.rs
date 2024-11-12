@@ -46,7 +46,7 @@ pub fn add_to_registry<C: EntityDataUi + re_types::Component>(registry: &mut Com
                     }
                 },
                 Err(err) => {
-                    ui.error_label("(failed to deserialize)")
+                    ui.error_with_details_on_hover("(failed to deserialize)")
                         .on_hover_text(err.to_string());
                 }
             },
