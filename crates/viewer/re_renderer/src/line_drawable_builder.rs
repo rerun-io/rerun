@@ -89,10 +89,7 @@ impl<'ctx> LineDrawableBuilder<'ctx> {
     }
 
     pub fn default_box_flags() -> LineStripFlags {
-        LineStripFlags::FLAG_CAP_END_ROUND
-            | LineStripFlags::FLAG_CAP_START_ROUND
-            | LineStripFlags::FLAG_CAP_END_EXTEND_OUTWARDS
-            | LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS
+        LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS
     }
 }
 
@@ -307,7 +304,6 @@ impl<'a, 'ctx> LineBatchBuilder<'a, 'ctx> {
 
     /// Add box outlines from a unit cube transformed by `transform`.
     ///
-    /// Internally adds 12 line segments with rounded line heads.
     /// Disables color gradient since we don't support gradients in this setup yet (i.e. enabling them does not look good)
     #[inline]
     pub fn add_box_outline_from_transform(
@@ -324,36 +320,15 @@ impl<'a, 'ctx> LineBatchBuilder<'a, 'ctx> {
             transform.transform_point3(glam::vec3(0.5, 0.5, -0.5)),
             transform.transform_point3(glam::vec3(0.5, 0.5, 0.5)),
         ];
-        self.add_segments(
-            [
-                // bottom:
-                (corners[0b000], corners[0b001]),
-                (corners[0b000], corners[0b010]),
-                (corners[0b011], corners[0b001]),
-                (corners[0b011], corners[0b010]),
-                // top:
-                (corners[0b100], corners[0b101]),
-                (corners[0b100], corners[0b110]),
-                (corners[0b111], corners[0b101]),
-                (corners[0b111], corners[0b110]),
-                // sides:
-                (corners[0b000], corners[0b100]),
-                (corners[0b001], corners[0b101]),
-                (corners[0b010], corners[0b110]),
-                (corners[0b011], corners[0b111]),
-            ]
-            .into_iter(),
-        )
-        .flags(LineDrawableBuilder::default_box_flags())
+        self.add_box_from_corners(corners)
     }
 
     /// Add box outlines.
     ///
-    /// Internally adds 12 line segments with rounded line heads.
+    /// Internally a single closed line strip.
     /// Disables color gradient since we don't support gradients in this setup yet (i.e. enabling them does not look good)
     ///
     /// Returns None for empty and non-finite boxes.
-    #[inline]
     pub fn add_box_outline(
         &mut self,
         bbox: &re_math::BoundingBox,
@@ -362,35 +337,54 @@ impl<'a, 'ctx> LineBatchBuilder<'a, 'ctx> {
             return None;
         }
 
-        let corners = bbox.corners();
-        Some(
-            self.add_segments(
-                [
-                    // bottom:
-                    (corners[0b000], corners[0b001]),
-                    (corners[0b000], corners[0b010]),
-                    (corners[0b011], corners[0b001]),
-                    (corners[0b011], corners[0b010]),
-                    // top:
-                    (corners[0b100], corners[0b101]),
-                    (corners[0b100], corners[0b110]),
-                    (corners[0b111], corners[0b101]),
-                    (corners[0b111], corners[0b110]),
-                    // sides:
-                    (corners[0b000], corners[0b100]),
-                    (corners[0b001], corners[0b101]),
-                    (corners[0b010], corners[0b110]),
-                    (corners[0b011], corners[0b111]),
-                ]
-                .into_iter(),
-            )
-            .flags(LineDrawableBuilder::default_box_flags()),
+        Some(self.add_box_from_corners(bbox.corners()))
+    }
+
+    fn add_box_from_corners(&mut self, corners: [glam::Vec3; 8]) -> LineStripBuilder<'_, 'ctx> {
+        let mut strip_index = self.0.strips_buffer.len() as u32;
+
+        // Bottom plus connection to top.
+        self.add_vertices(
+            [
+                // bottom loop
+                corners[0b000],
+                corners[0b001],
+                corners[0b011],
+                corners[0b010],
+                corners[0b000],
+                // joined to top loop
+                corners[0b100],
+                corners[0b101],
+                corners[0b111],
+                corners[0b110],
+                corners[0b100],
+            ]
+            .into_iter(),
+            strip_index,
         )
+        .ok_or_log_error_once();
+        strip_index += 1;
+
+        // remaining side edges.
+        for line in [
+            [corners[0b001], corners[0b101]],
+            [corners[0b010], corners[0b110]],
+            [corners[0b011], corners[0b111]],
+        ] {
+            self.add_vertices(line.into_iter(), strip_index)
+                .ok_or_log_error_once();
+            strip_index += 1;
+        }
+
+        let num_strips_added = 4;
+        let num_vertices_added = 10 + 3 * 2;
+        self.create_strip_builder(num_strips_added, num_vertices_added)
+            .flags(LineDrawableBuilder::default_box_flags())
     }
 
     /// Add rectangle outlines.
     ///
-    /// Internally adds 4 line segments with rounded line heads.
+    /// Internally adds a single linestrip with 5 vertices.
     /// Disables color gradient since we don't support gradients in this setup yet (i.e. enabling them does not look good)
     #[inline]
     pub fn add_rectangle_outline(
@@ -399,18 +393,13 @@ impl<'a, 'ctx> LineBatchBuilder<'a, 'ctx> {
         extent_u: glam::Vec3,
         extent_v: glam::Vec3,
     ) -> LineStripBuilder<'_, 'ctx> {
-        self.add_segments(
+        self.add_strip(
             [
-                (top_left_corner, top_left_corner + extent_u),
-                (
-                    top_left_corner + extent_u,
-                    top_left_corner + extent_u + extent_v,
-                ),
-                (
-                    top_left_corner + extent_u + extent_v,
-                    top_left_corner + extent_v,
-                ),
-                (top_left_corner + extent_v, top_left_corner),
+                top_left_corner,
+                top_left_corner + extent_u,
+                top_left_corner + extent_u + extent_v,
+                top_left_corner + extent_v,
+                top_left_corner,
             ]
             .into_iter(),
         )

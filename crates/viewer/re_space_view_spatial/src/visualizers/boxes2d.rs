@@ -226,9 +226,9 @@ impl VisualizerSystem for Boxes2DVisualizer {
                     return Ok(());
                 }
 
-                // Each box consists of 4 independent lines of 2 vertices each.
-                line_builder.reserve_strips(num_boxes * 4)?;
-                line_builder.reserve_vertices(num_boxes * 4 * 2)?;
+                // Each box consists of one strip with a total of 5 vertices each.
+                line_builder.reserve_strips(num_boxes)?;
+                line_builder.reserve_vertices(num_boxes * 5)?;
 
                 let timeline = ctx.query.timeline();
                 let all_half_sizes_indexed = iter_primitive_array::<2, f32>(
