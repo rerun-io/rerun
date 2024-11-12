@@ -27,6 +27,8 @@ namespace rerun::archetypes {
     /// ## Example
     ///
     /// ### Log a geospatial line string
+    /// ![image](https://static.rerun.io/geo_line_strings_simple/5669983eb10906ace303755b5b5039cad75b917f/full.png)
+    ///
     /// ```cpp
     /// #include <rerun.hpp>
     ///
