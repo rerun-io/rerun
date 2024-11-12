@@ -18,6 +18,12 @@ pub trait UiExt {
     fn ui(&self) -> &egui::Ui;
     fn ui_mut(&mut self) -> &mut egui::Ui;
 
+    /// Show the label with a success color.
+    fn success_label(&mut self, text: &str) -> egui::Response {
+        let label = egui::Label::new(self.ui().ctx().success_text(text));
+        self.ui_mut().add(label)
+    }
+
     /// Shows a warning label.
     fn warning_label(&mut self, warning_text: &str) -> egui::Response {
         let label = egui::Label::new(self.ui().ctx().warning_text(warning_text));

@@ -1,7 +1,9 @@
-use egui::NumExt as _;
+use egui::{NumExt as _, Ui};
+use std::path::Path;
 
 use re_log_types::TimeZone;
 use re_ui::UiExt as _;
+use re_video::decode::{FFmpegVersion, FFmpegVersionParseError};
 use re_viewer_context::AppOptions;
 
 pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_open: &mut bool) {
@@ -99,6 +101,9 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     ui.strong("Map view");
 
     ui.horizontal(|ui| {
+        // TODO(ab): needed for alignment, we should use egui flex instead
+        ui.set_height(19.0);
+
         ui.label("Mapbox access token:").on_hover_ui(|ui| {
             ui.markdown_ui(
                 "This token is used toe enable Mapbox-based map view backgrounds.\n\n\
@@ -116,9 +121,26 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     //
 
     separator_with_some_space(ui);
-
     ui.strong("Video");
+    video_section_ui(ui, app_options);
 
+    //
+    // Experimental features
+    //
+
+    // Currently, the wasm target does not have any experimental features. If/when that changes,
+    // move the conditional compilation flag to the respective checkbox code.
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        separator_with_some_space(ui);
+        ui.strong("Experimental features");
+        ui
+            .re_checkbox(&mut app_options.experimental_space_view_screenshots, "Space view screenshots")
+            .on_hover_text("Allow taking screenshots of 2D and 3D space views via their context menu. Does not contain labels.");
+    }
+}
+
+fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
     #[cfg(not(target_arch = "wasm32"))]
     {
         ui.re_checkbox(
@@ -135,6 +157,9 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
         ui.add_enabled_ui(app_options.video_decoder_override_ffmpeg_path, |ui| {
             ui.horizontal(|ui| {
+                // TODO(ab): needed for alignment, we should use egui flex instead
+                ui.set_height(19.0);
+
                 ui.label("Path:");
 
                 ui.add(egui::TextEdit::singleline(
@@ -142,6 +167,8 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
                 ));
             });
         });
+
+        ffmpeg_path_status_ui(ui, app_options);
     }
 
     // This affects only the web target, so we don't need to show it on native.
@@ -171,20 +198,38 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
             // entries outdate automatically.
         });
     }
+}
 
-    //
-    // Experimental features
-    //
+fn ffmpeg_path_status_ui(ui: &mut Ui, app_options: &AppOptions) {
+    let path = app_options
+        .video_decoder_override_ffmpeg_path
+        .then(|| Path::new(&app_options.video_decoder_ffmpeg_path));
 
-    // Currently, the wasm target does not have any experimental features. If/when that changes,
-    // move the conditional compilation flag to the respective checkbox code.
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        separator_with_some_space(ui);
-        ui.strong("Experimental features");
-        ui
-            .re_checkbox(&mut app_options.experimental_space_view_screenshots, "Space view screenshots")
-            .on_hover_text("Allow taking screenshots of 2D and 3D space views via their context menu. Does not contain labels.");
+    if let Some(path) = path {
+        if !path.is_file() {
+            ui.error_label("The specified FFmpeg binary path does not exist or is not a file.");
+            return;
+        }
+    }
+
+    let res = FFmpegVersion::for_executable(path);
+    match res {
+        Ok(version) => {
+            if version.is_compatible() {
+                ui.success_label(&format!("FFmpeg found (version {version})"));
+            } else {
+                ui.error_label(&format!("Incompatible FFmpeg version: {version}"));
+            }
+        }
+        Err(FFmpegVersionParseError::ParseVersion { raw_version }) => {
+            ui.warning_label(&format!(
+                "FFmpeg binary found but unable to parse version: {raw_version}"
+            ));
+        }
+
+        Err(err) => {
+            ui.error_label(&format!("Unable to check FFmpeg version: {err}"));
+        }
     }
 }
 

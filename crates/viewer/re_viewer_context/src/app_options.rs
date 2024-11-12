@@ -45,11 +45,13 @@ pub struct AppOptions {
     ///
     /// Implementation note: we avoid using `Option<PathBuf>` here to avoid loosing the user-defined
     /// path when disabling the override.
+    #[allow(clippy::doc_markdown)]
     pub video_decoder_override_ffmpeg_path: bool,
 
     /// Custom path to the FFmpeg binary.
     ///
     /// Don't use this field directly, use [`AppOptions::video_decoder_settings`] instead.
+    #[allow(clippy::doc_markdown)]
     pub video_decoder_ffmpeg_path: String,
 
     /// Mapbox API key (used to enable Mapbox-based map view backgrounds).
