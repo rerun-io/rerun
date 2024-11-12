@@ -16,6 +16,9 @@ import tqdm
 
 test_assets = [
     "video/Big_Buck_Bunny_1080_10s_av1.mp4",
+    "video/Big_Buck_Bunny_1080_10s_h264.mp4",
+    "video/Big_Buck_Bunny_1080_10s_h265.mp4",
+    "video/Big_Buck_Bunny_1080_10s_vp9.mp4",
     "video/Sintel_1080_10s_av1.mp4",
 ]
 
