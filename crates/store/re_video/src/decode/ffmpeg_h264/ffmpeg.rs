@@ -19,17 +19,12 @@ use crate::{
         ffmpeg_h264::{
             nalu::{NalHeader, NalUnitType, NAL_START_CODE},
             sps::H264Sps,
+            FFmpegVersion, FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR,
         },
         AsyncDecoder, Chunk, Frame, FrameContent, FrameInfo, OutputCallback,
     },
     PixelFormat, Time,
 };
-
-// FFmpeg 5.1 "Riemann" is from 2022-07-22.
-// It's simply the oldest I tested manually as of writing. We might be able to go lower.
-// However, we also know that FFmpeg 4.4 is already no longer working.
-const FFMPEG_MINIMUM_VERSION_MAJOR: u32 = 5;
-const FFMPEG_MINIMUM_VERSION_MINOR: u32 = 1;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -82,7 +77,7 @@ pub enum Error {
 
     #[error("FFmpeg version is {actual_version}. Only versions >= {minimum_version_major}.{minimum_version_minor} are officially supported.")]
     UnsupportedFFmpegVersion {
-        actual_version: String,
+        actual_version: FFmpegVersion,
         /// Download URL for the latest version of `FFmpeg` on the current platform.
         /// None if the platform is not supported.
         // TODO(andreas): as of writing, ffmpeg-sidecar doesn't define a download URL for linux arm.
@@ -617,15 +612,12 @@ fn read_ffmpeg_output(
                     }
                 }
 
-                if let Some((major, minor)) = parse_ffmpeg_version(&ffmpeg_version.version) {
-                    re_log::debug_once!("Parsed FFmpeg version as {}.{}", major, minor);
+                if let Some(ffmpeg_version) = FFmpegVersion::parse(&ffmpeg_version.version) {
+                    re_log::debug_once!("Parsed FFmpeg version: {ffmpeg_version}");
 
-                    if major < FFMPEG_MINIMUM_VERSION_MAJOR
-                        || (major == FFMPEG_MINIMUM_VERSION_MAJOR
-                            && minor < FFMPEG_MINIMUM_VERSION_MINOR)
-                    {
+                    if !ffmpeg_version.is_compatible() {
                         (on_output.lock().as_ref()?)(Err(Error::UnsupportedFFmpegVersion {
-                            actual_version: ffmpeg_version.version.clone(),
+                            actual_version: ffmpeg_version,
                             download_url: ffmpeg_sidecar::download::ffmpeg_download_url().ok(),
                             minimum_version_major: FFMPEG_MINIMUM_VERSION_MAJOR,
                             minimum_version_minor: FFMPEG_MINIMUM_VERSION_MINOR,
@@ -662,33 +654,6 @@ fn read_ffmpeg_output(
     }
 
     Some(())
-}
-
-/// Returns major, minor version numbers.
-fn parse_ffmpeg_version(ffmpeg_version: &str) -> Option<(u32, u32)> {
-    // Version strings can get pretty wild!
-    // E.g.
-    // * choco installed ffmpeg on Windows gives me "7.1-essentials_build-www.gyan.dev".
-    // * Linux builds may come with `n7.0.2`
-    // Seems to be easiest to just strip out any non-digit first.
-    let stripped_version = ffmpeg_version
-        .chars()
-        .filter(|c| c.is_ascii_digit() || *c == '.')
-        .collect::<String>();
-    let mut version_parts = stripped_version.split('.');
-
-    // Major version is a strict requirement.
-    let major = version_parts
-        .next()
-        .and_then(|part| part.parse::<u32>().ok())?;
-
-    // Minor version is optional.
-    let minor = version_parts
-        .next()
-        .and_then(|part| part.parse::<u32>().ok())
-        .unwrap_or(0);
-
-    Some((major, minor))
 }
 
 /// Decode H.264 video via ffmpeg over CLI
@@ -948,8 +913,6 @@ fn sanitize_ffmpeg_log_message(msg: &str) -> String {
 
 #[cfg(test)]
 mod tests {
-    use crate::decode::ffmpeg_h264::ffmpeg::parse_ffmpeg_version;
-
     use super::sanitize_ffmpeg_log_message;
 
     #[test]
@@ -991,21 +954,5 @@ mod tests {
             sanitize_ffmpeg_log_message("swscaler @ 0x148db8000] something is wrong here"),
             "swscaler @ 0x148db8000] something is wrong here"
         );
-    }
-
-    #[test]
-    fn test_parse_ffmpeg_version() {
-        // Real world examples:
-        assert_eq!(parse_ffmpeg_version("7.1"), Some((7, 1)));
-        assert_eq!(parse_ffmpeg_version("4.4.5"), Some((4, 4)));
-        assert_eq!(
-            parse_ffmpeg_version("7.1.2-essentials_build-www.gyan.dev"),
-            Some((7, 1))
-        );
-        assert_eq!(parse_ffmpeg_version("n7.0.2"), Some((7, 0)));
-
-        // Made up stuff:
-        assert_eq!(parse_ffmpeg_version("123"), Some((123, 0)));
-        assert_eq!(parse_ffmpeg_version("lol321wut.23"), Some((321, 23)));
     }
 }
