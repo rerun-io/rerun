@@ -215,6 +215,9 @@ pub fn new_decoder(
 /// For details on how to interpret the data, see [`crate::Sample`].
 pub struct Chunk {
     /// The start of a new [`crate::demux::GroupOfPictures`]?
+    ///
+    /// If true, an entire frame can be decoded from this one sample,
+    /// otherwise it needs the context of other samples.
     pub is_sync: bool,
 
     pub data: Vec<u8>,
@@ -250,8 +253,15 @@ pub type FrameContent = webcodecs::WebVideoFrame;
 /// Meta information about a decoded video frame, as reported by the decoder.
 #[derive(Debug, Clone)]
 pub struct FrameInfo {
-    /// The presentation timestamp of the frame.
+    /// The start of a new [`crate::demux::GroupOfPictures`]?
     ///
+    /// If true, an entire frame can be decoded from this one sample,
+    /// otherwise it needs the context of other samples.
+    ///
+    /// None indicates that the information is not available.
+    pub is_sync: Option<bool>,
+
+    /// The presentation timestamp of the frame.
     pub presentation_timestamp: Time,
 
     /// How long the frame is valid.

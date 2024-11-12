@@ -167,14 +167,14 @@ pub fn show_decoded_frame_info(
             re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
                 let default_open = false;
                 if let Some(frame_info) = frame_info {
-                ui.list_item_collapsible_noninteractive_label(
-                    "Current decoded frame",
-                    default_open,
-                    |ui| {
-                        frame_info_ui(ui, &frame_info, video.data());
-                        source_image_data_format_ui(ui, &source_pixel_format);
-                    },
-                );
+                    ui.list_item_collapsible_noninteractive_label(
+                        "Current decoded frame",
+                        default_open,
+                        |ui| {
+                            frame_info_ui(ui, &frame_info, video.data());
+                            source_image_data_format_ui(ui, &source_pixel_format);
+                        },
+                    );
                 }
             });
 
@@ -229,10 +229,21 @@ fn samples_statistics_ui(ui: &mut egui::Ui, samples_statistics: &SamplesStatisti
 
 fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_video::VideoData) {
     let FrameInfo {
+        is_sync,
         presentation_timestamp,
         duration,
         latest_decode_timestamp,
     } = *frame_info;
+
+    if let Some(is_sync) = is_sync {
+        ui.list_item_flat_noninteractive(PropertyContent::new("Sync").value_bool(is_sync))
+            .on_hover_text(
+                "The start of a new GOP (Group of Frames)?\n\
+                \n\
+                If true, an entire frame can be decoded from this one sample, \
+                otherwise it needs the context of other samples.",
+            );
+    }
 
     let presentation_time_range = presentation_timestamp..presentation_timestamp + duration;
     ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
