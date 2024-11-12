@@ -58,7 +58,7 @@ impl VideoChunkDecoder {
                 Err(err) => {
                     // Many of the errors we get from a decoder are recoverable.
                     // They may be very frequent, but it's still useful to see them in the debug log for troubleshooting.
-                    re_log::debug!("Error during decoding of {debug_name}: {err}");
+                    re_log::debug_once!("Error during decoding of {debug_name}: {err}");
 
                     let err = VideoPlayerError::Decoding(err);
                     let mut output = decoder_output.lock();
