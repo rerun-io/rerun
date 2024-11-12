@@ -4,10 +4,10 @@ use re_renderer::{
 };
 use re_types::components::VideoTimestamp;
 use re_ui::{list_item::PropertyContent, UiExt};
-use re_video::{decode::FrameInfo, demux::SamplesStatistics};
+use re_video::{decode::FrameInfo, demux::SamplesStatistics, VideoData};
 use re_viewer_context::UiLayout;
 
-pub fn show_video_blob_info(
+pub fn video_result_ui(
     ui: &mut egui::Ui,
     ui_layout: UiLayout,
     video_result: &Result<re_renderer::video::Video, VideoLoadError>,
@@ -15,95 +15,11 @@ pub fn show_video_blob_info(
     #[allow(clippy::match_same_arms)]
     match video_result {
         Ok(video) => {
-            if ui_layout.is_single_line() {
-                return;
+            if !ui_layout.is_single_line() {
+                re_ui::list_item::list_item_scope(ui, "video_blob_info", |ui| {
+                    video_data_ui(ui, ui_layout, video.data());
+                });
             }
-
-            let data = video.data();
-
-            re_ui::list_item::list_item_scope(ui, "video_blob_info", |ui| {
-                ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Dimensions").value_text(format!(
-                        "{}x{}",
-                        data.width(),
-                        data.height()
-                    )),
-                );
-                if let Some(bit_depth) = data.config.stsd.contents.bit_depth() {
-                    ui.list_item_flat_noninteractive(PropertyContent::new("Bit depth").value_fn(
-                        |ui, _| {
-                            ui.label(bit_depth.to_string());
-                            if 8 < bit_depth {
-                                // TODO(#7594): HDR videos
-                                ui.warning_label("HDR").on_hover_ui(|ui| {
-                                    ui.label(
-                                        "High-dynamic-range videos not yet supported by Rerun",
-                                    );
-                                    ui.hyperlink("https://github.com/rerun-io/rerun/issues/7594");
-                                });
-                            }
-                            if data.is_monochrome() == Some(true) {
-                                ui.label("(monochrome)");
-                            }
-                        },
-                    ));
-                }
-                if let Some(subsampling_mode) = data.subsampling_mode() {
-                    // Don't show subsampling mode for monochrome, doesn't make sense usually.
-                    if data.is_monochrome() != Some(true) {
-                        ui.list_item_flat_noninteractive(
-                            PropertyContent::new("Subsampling")
-                                .value_text(subsampling_mode.to_string()),
-                        );
-                    }
-                }
-                ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Duration")
-                        .value_text(format!("{}", re_log_types::Duration::from(data.duration()))),
-                );
-                // Some people may think that num_frames / duration = fps, but that's not true, videos may have variable frame rate.
-                // Video containers and codecs like talking about samples or chunks rather than frames, but for how we define a chunk today,
-                // a frame is always a single chunk of data is always a single sample, see [`re_video::decode::Chunk`].
-                // So for all practical purposes the sample count _is_ the number of frames, at least how we use it today.
-                ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Frame count")
-                        .value_text(re_format::format_uint(data.num_samples())),
-                );
-                ui.list_item_flat_noninteractive(
-                    PropertyContent::new("Codec").value_text(data.human_readable_codec_string()),
-                );
-
-                if ui_layout != UiLayout::Tooltip {
-                    ui.list_item_collapsible_noninteractive_label("MP4 tracks", true, |ui| {
-                        for (track_id, track_kind) in &data.mp4_tracks {
-                            let track_kind_string = match track_kind {
-                                Some(re_video::TrackKind::Audio) => "audio",
-                                Some(re_video::TrackKind::Subtitle) => "subtitle",
-                                Some(re_video::TrackKind::Video) => "video",
-                                None => "unknown",
-                            };
-                            ui.list_item_flat_noninteractive(
-                                PropertyContent::new(format!("Track {track_id}"))
-                                    .value_text(track_kind_string),
-                            );
-                        }
-                    });
-                    ui.list_item_collapsible_noninteractive_label(
-                        "More video statistics",
-                        false,
-                        |ui| {
-                            ui.list_item_flat_noninteractive(
-                                PropertyContent::new("Number of GOPs")
-                                    .value_text(data.gops.len().to_string()),
-                            )
-                            .on_hover_text(
-                                "The total number of Group of Pictures (GOPs) in the video.",
-                            );
-                            samples_statistics_ui(ui, &data.samples_statistics);
-                        },
-                    );
-                }
-            });
         }
         Err(VideoLoadError::MimeTypeIsNotAVideo { .. }) => {
             // Don't show an error if this wasn't a video in the first place.
@@ -123,6 +39,74 @@ pub fn show_video_blob_info(
                 ui.error_label(&error_message);
             }
         }
+    }
+}
+
+fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, data: &VideoData) {
+    ui.list_item_flat_noninteractive(PropertyContent::new("Dimensions").value_text(format!(
+        "{}x{}",
+        data.width(),
+        data.height()
+    )));
+    if let Some(bit_depth) = data.config.stsd.contents.bit_depth() {
+        ui.list_item_flat_noninteractive(PropertyContent::new("Bit depth").value_fn(|ui, _| {
+            ui.label(bit_depth.to_string());
+            if 8 < bit_depth {
+                // TODO(#7594): HDR videos
+                ui.warning_label("HDR").on_hover_ui(|ui| {
+                    ui.label("High-dynamic-range videos not yet supported by Rerun");
+                    ui.hyperlink("https://github.com/rerun-io/rerun/issues/7594");
+                });
+            }
+            if data.is_monochrome() == Some(true) {
+                ui.label("(monochrome)");
+            }
+        }));
+    }
+    if let Some(subsampling_mode) = data.subsampling_mode() {
+        // Don't show subsampling mode for monochrome, doesn't make sense usually.
+        if data.is_monochrome() != Some(true) {
+            ui.list_item_flat_noninteractive(
+                PropertyContent::new("Subsampling").value_text(subsampling_mode.to_string()),
+            );
+        }
+    }
+    ui.list_item_flat_noninteractive(
+        PropertyContent::new("Duration")
+            .value_text(format!("{}", re_log_types::Duration::from(data.duration()))),
+    );
+    // Some people may think that num_frames / duration = fps, but that's not true, videos may have variable frame rate.
+    // Video containers and codecs like talking about samples or chunks rather than frames, but for how we define a chunk today,
+    // a frame is always a single chunk of data is always a single sample, see [`re_video::decode::Chunk`].
+    // So for all practical purposes the sample count _is_ the number of frames, at least how we use it today.
+    ui.list_item_flat_noninteractive(
+        PropertyContent::new("Frame count").value_text(re_format::format_uint(data.num_samples())),
+    );
+    ui.list_item_flat_noninteractive(
+        PropertyContent::new("Codec").value_text(data.human_readable_codec_string()),
+    );
+
+    if ui_layout != UiLayout::Tooltip {
+        ui.list_item_collapsible_noninteractive_label("MP4 tracks", true, |ui| {
+            for (track_id, track_kind) in &data.mp4_tracks {
+                let track_kind_string = match track_kind {
+                    Some(re_video::TrackKind::Audio) => "audio",
+                    Some(re_video::TrackKind::Subtitle) => "subtitle",
+                    Some(re_video::TrackKind::Video) => "video",
+                    None => "unknown",
+                };
+                ui.list_item_flat_noninteractive(
+                    PropertyContent::new(format!("Track {track_id}")).value_text(track_kind_string),
+                );
+            }
+        });
+        ui.list_item_collapsible_noninteractive_label("More video statistics", false, |ui| {
+            ui.list_item_flat_noninteractive(
+                PropertyContent::new("Number of GOPs").value_text(data.gops.len().to_string()),
+            )
+            .on_hover_text("The total number of Group of Pictures (GOPs) in the video.");
+            samples_statistics_ui(ui, &data.samples_statistics);
+        });
     }
 }
 
