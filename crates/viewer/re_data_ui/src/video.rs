@@ -166,6 +166,7 @@ pub fn show_decoded_frame_info(
         }) => {
             re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
                 let default_open = false;
+                if let Some(frame_info) = frame_info {
                 ui.list_item_collapsible_noninteractive_label(
                     "Current decoded frame",
                     default_open,
@@ -174,6 +175,7 @@ pub fn show_decoded_frame_info(
                         source_image_data_format_ui(ui, &source_pixel_format);
                     },
                 );
+                }
             });
 
             let response = crate::image::texture_preview_ui(

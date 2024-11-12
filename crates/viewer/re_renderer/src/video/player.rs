@@ -41,7 +41,7 @@ impl TimedDecodingError {
 /// A texture of a specific video frame.
 pub struct VideoTexture {
     pub texture: GpuTexture2D,
-    pub frame_info: FrameInfo,
+    pub frame_info: Option<FrameInfo>,
     pub source_pixel_format: SourceImageDataFormat,
 }
 
@@ -101,7 +101,7 @@ impl VideoPlayer {
 
             video_texture: VideoTexture {
                 texture,
-                frame_info: FrameInfo::default(),
+                frame_info: None,
                 source_pixel_format: SourceImageDataFormat::WgpuCompatible(
                     wgpu::TextureFormat::Rgba8Unorm,
                 ),
@@ -136,28 +136,25 @@ impl VideoPlayer {
             .min(self.data.duration + self.data.samples_statistics.minimum_presentation_timestamp); // Don't seek past the end of the video.
 
         let error_on_last_frame_at = self.last_error.is_some();
-        let result = self.frame_at_internal(render_ctx, presentation_timestamp, video_data);
+        self.frame_at_internal(render_ctx, presentation_timestamp, video_data)?;
 
-        match result {
-            Ok(()) => {
-                let is_active_frame = self
-                    .video_texture
-                    .frame_info
-                    .presentation_time_range()
-                    .contains(&presentation_timestamp);
+        let frame_info = self.video_texture.frame_info.clone();
+
+        if let Some(frame_info) = frame_info {
+            let time_range = frame_info.presentation_time_range();
+            let is_active_frame = time_range.contains(&presentation_timestamp);
 
                 let is_pending = !is_active_frame;
-                if is_pending && error_on_last_frame_at {
+
+            let show_spinner = if is_pending && error_on_last_frame_at {
                     // If we switched from error to pending, clear the texture.
                     // This is important to avoid flickering, in particular when switching from
                     // benign errors like DecodingError::NegativeTimestamp.
                     // If we don't do this, we see the last valid texture which can look really weird.
                     clear_texture(render_ctx, &self.video_texture.texture);
-                    self.video_texture.frame_info = FrameInfo::default();
-                }
-
-                let time_range = self.video_texture.frame_info.presentation_time_range();
-                let show_spinner = if presentation_timestamp < time_range.start {
+                self.video_texture.frame_info = None;
+                true
+            } else if presentation_timestamp < time_range.start {
                     // We're seeking backwards and somehow forgot to reset.
                     true
                 } else if presentation_timestamp < time_range.end {
@@ -170,17 +167,21 @@ impl VideoPlayer {
                         true // Very old frame - show spinner
                     }
                 };
-
                 Ok(VideoFrameTexture {
                     texture: self.video_texture.texture.clone(),
                     is_pending,
                     show_spinner,
-                    frame_info: self.video_texture.frame_info.clone(),
+                frame_info: Some(frame_info),
+                source_pixel_format: self.video_texture.source_pixel_format,
+            })
+        } else {
+            Ok(VideoFrameTexture {
+                texture: self.video_texture.texture.clone(),
+                is_pending: true,
+                show_spinner: true,
+                frame_info: None,
                     source_pixel_format: self.video_texture.source_pixel_format,
                 })
-            }
-
-            Err(err) => Err(err),
         }
     }
 

@@ -119,9 +119,12 @@ impl VideoChunkDecoder {
 
         let frame_time_range = frame.info.presentation_time_range();
 
-        if frame_time_range.contains(&presentation_timestamp)
-            && video_texture.frame_info.presentation_time_range() != frame_time_range
-        {
+        let is_up_to_date = video_texture
+            .frame_info
+            .as_ref()
+            .is_some_and(|info| info.presentation_time_range() == frame_time_range);
+
+        if frame_time_range.contains(&presentation_timestamp) && !is_up_to_date {
             #[cfg(target_arch = "wasm32")]
             {
                 video_texture.source_pixel_format = copy_web_video_frame_to_texture(
@@ -139,7 +142,7 @@ impl VideoChunkDecoder {
                 )?;
             }
 
-            video_texture.frame_info = frame.info.clone();
+            video_texture.frame_info = Some(frame.info.clone());
         }
 
         Ok(())
