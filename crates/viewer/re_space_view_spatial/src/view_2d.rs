@@ -389,7 +389,16 @@ fn recommended_space_views_with_image_splits(
         &re_types::archetypes::AssetVideo::indicator().name(),
     );
 
-    if found_image_dimensions.len() > 1 || image_count > 1 || depth_count > 1 || video_count > 1 {
+    let all_have_same_size = found_image_dimensions.len() <= 1;
+
+    // NOTE: we allow stacking segmentation images, since that can be quite useful sometimes.
+    let overlap = all_have_same_size && image_count + video_count <= 1 && depth_count <= 1;
+
+    if overlap {
+        // If there are multiple images of the same size but of different types, then we can overlap them on top of each other.
+        // This can be useful for comparing a segmentation image on top of an RGB image, for instance.
+        recommended.push(RecommendedSpaceView::new_subtree(recommended_root.clone()));
+    } else {
         // Split the space and recurse
 
         // If the root also had a visualizable entity, give it its own space.
@@ -418,8 +427,5 @@ fn recommended_space_views_with_image_splits(
                 );
             }
         }
-    } else {
-        // Otherwise we can use the space as it is.
-        recommended.push(RecommendedSpaceView::new_subtree(recommended_root.clone()));
     }
 }
