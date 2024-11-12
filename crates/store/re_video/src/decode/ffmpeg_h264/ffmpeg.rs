@@ -659,14 +659,14 @@ impl FfmpegCliH264Decoder {
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
-        // TODO(ab): Pass exectuable path here.
+        // TODO(ab): Pass executable path here.
         if !ffmpeg_sidecar::command::ffmpeg_is_installed() {
             return Err(Error::FfmpegNotInstalled);
         }
 
         // Check the version once ahead of running FFmpeg.
         // The error is still handled if it happens while running FFmpeg, but it's a bit unclear if we can get it to start in the first place then.
-        // TODO(ab): Pass exectuable path here.
+        // TODO(ab): Pass executable path here.
         match FFmpegVersion::for_executable(None) {
             Ok(version) => {
                 if !version.is_compatible() {

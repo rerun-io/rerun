@@ -77,7 +77,7 @@ impl FFmpegVersion {
 
         // Check first if we already have the version cached.
         let mut cache = CACHE.lock();
-        let cache_key = path.unwrap_or(&std::path::Path::new("ffmpeg"));
+        let cache_key = path.unwrap_or(std::path::Path::new("ffmpeg"));
         if let Some(cached) = cache.get(cache_key) {
             if modification_time == cached.0 {
                 return Ok(cached.1.clone());
