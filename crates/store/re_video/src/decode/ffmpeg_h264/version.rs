@@ -19,7 +19,11 @@ pub struct FFmpegVersion {
 
 impl std::fmt::Display for FFmpegVersion {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}.{} ({})", self.major, self.minor, self.raw_version)
+        // Alternative with more information:
+        //write!(f, "{}.{} ({})", self.major, self.minor, self.raw_version)
+        // The drawback of that is that it can look repetitive for trivial versions.
+        // So let's show just the raw version instead since that's the more important information.
+        self.raw_version.fmt(f)
     }
 }
 
