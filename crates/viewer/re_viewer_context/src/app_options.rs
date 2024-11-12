@@ -32,8 +32,8 @@ pub struct AppOptions {
     #[serde(rename = "time_zone_for_timestamps")]
     pub time_zone: TimeZone,
 
-    /// Hardware acceleration settings for video decoding.
-    pub video_decoder_hw_acceleration: re_video::decode::DecodeHardwareAcceleration,
+    /// Settings for video decoding.
+    pub video_decoder_settings: re_video::decode::DecodeSettings,
 
     /// Mapbox API key (used to enable Mapbox-based map view backgrounds).
     ///
@@ -72,7 +72,7 @@ impl Default for AppOptions {
 
             time_zone: TimeZone::Utc,
 
-            video_decoder_hw_acceleration: Default::default(),
+            video_decoder_settings: Default::default(),
 
             mapbox_access_token: String::new(),
 

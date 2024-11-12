@@ -110,7 +110,8 @@ pub enum Error {
     #[error("To enabled native AV1 decoding, compile Rerun with the `nasm` feature enabled.")]
     Dav1dWithoutNasm,
 
-    #[error("Rerun does not yet support native AV1 decoding on Linux ARM64. See https://github.com/rerun-io/rerun/issues/7755")]
+    #[error("Rerun does not yet support native AV1 decoding on Linux ARM64. See https://github.com/rerun-io/rerun/issues/7755"
+    )]
     #[cfg(linux_arm64)]
     NoDav1dOnLinuxArm64,
 
@@ -149,7 +150,7 @@ pub trait AsyncDecoder: Send + Sync {
 pub fn new_decoder(
     debug_name: &str,
     video: &crate::VideoData,
-    hw_acceleration: DecodeHardwareAcceleration,
+    decode_settings: &DecodeSettings,
     on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
 ) -> Result<Box<dyn AsyncDecoder>> {
     #![allow(unused_variables, clippy::needless_return)] // With some feature flags
@@ -162,7 +163,7 @@ pub fn new_decoder(
     #[cfg(target_arch = "wasm32")]
     return Ok(Box::new(webcodecs::WebVideoDecoder::new(
         video,
-        hw_acceleration,
+        decode_settings.hw_acceleration,
         on_output,
     )?));
 
@@ -197,6 +198,7 @@ pub fn new_decoder(
                 debug_name.to_owned(),
                 avc1_box.clone(),
                 on_output,
+                decode_settings.ffmpeg_path.clone(),
             )?))
         }
 
@@ -368,6 +370,13 @@ pub enum DecodeHardwareAcceleration {
     ///
     /// If no hardware decoder is present, this may cause decoding to fail.
     PreferHardware,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct DecodeSettings {
+    pub hw_acceleration: DecodeHardwareAcceleration,
+    pub ffmpeg_path: Option<std::path::PathBuf>,
 }
 
 impl std::fmt::Display for DecodeHardwareAcceleration {

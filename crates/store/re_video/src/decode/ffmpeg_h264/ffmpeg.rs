@@ -163,6 +163,7 @@ impl FFmpegProcessAndListener {
         debug_name: &str,
         on_output: Arc<OutputCallback>,
         avcc: re_mp4::Avc1Box,
+        ffmpeg_path: Option<&std::path::Path>,
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
@@ -204,7 +205,13 @@ impl FFmpegProcessAndListener {
             }
         };
 
-        let mut ffmpeg = FfmpegCommand::new()
+        let mut ffmpeg_command = if let Some(ffmpeg_path) = ffmpeg_path {
+            FfmpegCommand::new_with_path(ffmpeg_path)
+        } else {
+            FfmpegCommand::new()
+        };
+
+        let mut ffmpeg = ffmpeg_command
             // Keep banner enabled so we can check on the version more easily.
             //.hide_banner()
             // "Reduce the latency introduced by buffering during initial input streams analysis."
@@ -647,6 +654,7 @@ pub struct FFmpegCliH264Decoder {
     ffmpeg: FFmpegProcessAndListener,
     avcc: re_mp4::Avc1Box,
     on_output: Arc<OutputCallback>,
+    ffmpeg_path: Option<std::path::PathBuf>,
 }
 
 impl FFmpegCliH264Decoder {
@@ -654,6 +662,7 @@ impl FFmpegCliH264Decoder {
         debug_name: String,
         avcc: re_mp4::Avc1Box,
         on_output: impl Fn(crate::decode::Result<Frame>) + Send + Sync + 'static,
+        ffmpeg_path: Option<std::path::PathBuf>,
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
@@ -686,13 +695,19 @@ impl FFmpegCliH264Decoder {
         }
 
         let on_output = Arc::new(on_output);
-        let ffmpeg = FFmpegProcessAndListener::new(&debug_name, on_output.clone(), avcc.clone())?;
+        let ffmpeg = FFmpegProcessAndListener::new(
+            &debug_name,
+            on_output.clone(),
+            avcc.clone(),
+            ffmpeg_path.as_deref(),
+        )?;
 
         Ok(Self {
             debug_name,
             ffmpeg,
             avcc,
             on_output,
+            ffmpeg_path,
         })
     }
 }
@@ -736,6 +751,7 @@ impl AsyncDecoder for FFmpegCliH264Decoder {
             &self.debug_name,
             self.on_output.clone(),
             self.avcc.clone(),
+            self.ffmpeg_path.as_deref(),
         )?;
         Ok(())
     }

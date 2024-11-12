@@ -120,7 +120,7 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
 
     ui.strong("Video");
 
-    let hardware_acceleration = &mut app_options.video_decoder_hw_acceleration;
+    let hardware_acceleration = &mut app_options.video_decoder_settings.hw_acceleration;
     ui.horizontal(|ui| {
         ui.label("Decoder:");
         egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
