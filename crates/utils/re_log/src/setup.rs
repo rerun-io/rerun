@@ -39,7 +39,8 @@ pub fn setup_logging() {
                 use std::io::Write as _;
                 writeln!(
                     buf,
-                    "{}:{} {}",
+                    "{} {}:{} {}",
+                    record.level(),
                     record.file().unwrap_or_default(),
                     record.line().unwrap_or_default(),
                     record.args()
