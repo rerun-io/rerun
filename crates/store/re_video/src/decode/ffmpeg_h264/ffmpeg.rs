@@ -659,7 +659,7 @@ impl FFmpegCliH264Decoder {
 
         // TODO(ab): Pass executable path here.
         if !ffmpeg_sidecar::command::ffmpeg_is_installed() {
-            return Err(Error::FfmpegNotInstalled);
+            return Err(Error::FFmpegNotInstalled);
         }
 
         // Check the version once ahead of running FFmpeg.
