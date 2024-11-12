@@ -469,7 +469,7 @@ def publish_unpublished_crates_in_parallel(all_crates: dict[str, Crate], version
 
     # walk the dependency graph in parallel and publish each crate
     print(f"Publishing {len(unpublished_crates)} crates…")
-    env = {**os.environ.copy(), "RERUN_IS_PUBLISHING": "yes"}
+    env = {**os.environ.copy(), "RERUN_IS_PUBLISHING_CRATES": "yes"}
     DAG(dependency_graph).walk_parallel(
         lambda name: publish_crate(unpublished_crates[name], token, version, env),  # noqa: E731
         # 30 tokens per minute (burst limit in crates.io)
