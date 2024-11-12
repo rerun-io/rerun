@@ -29,7 +29,7 @@ all-features = true
 [advisories]
 version = 2
 ignore = [
-  "RUSTSEC-2023-0086", # TODO(#3741): Waiting for https://github.com/apache/arrow-rs/pull/6401
+  "RUSTSEC-2024-0384", # Waiting for https://github.com/console-rs/indicatif/pull/666
 ]
 
 

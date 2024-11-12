@@ -287,6 +287,18 @@ pub fn reset_viewer_persistence() -> anyhow::Result<()> {
         } else {
             re_log::info!("Rerun state was already cleared.");
         }
+
+        // Clear the default cache directory if it exists
+        //TODO(#8064): should clear the _actual_ cache directory, not the default one
+        if let Some(cache_dir) = re_viewer_context::AppOptions::default_cache_directory() {
+            if let Err(err) = std::fs::remove_dir_all(&cache_dir) {
+                if err.kind() != std::io::ErrorKind::NotFound {
+                    anyhow::bail!("Failed to remove {cache_dir:?}: {err}");
+                }
+            } else {
+                re_log::info!("Cleared {cache_dir:?}.");
+            }
+        }
     }
     #[cfg(target_arch = "wasm32")]
     {

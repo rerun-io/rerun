@@ -112,6 +112,9 @@ pub fn default_log_filter() -> String {
         }
     }
 
+    //TODO(#8077): should be removed as soon as the upstream issue is resolved
+    rust_log += ",walkers::download=off";
+
     rust_log
 }
 

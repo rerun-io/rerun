@@ -169,9 +169,9 @@ impl VisualizerSystem for Boxes3DVisualizer {
 
                 match fill_mode {
                     FillMode::DenseWireframe | FillMode::MajorWireframe => {
-                        // Each box consists of 12 independent lines with 2 vertices each.
-                        builder.line_builder.reserve_strips(num_boxes * 12)?;
-                        builder.line_builder.reserve_vertices(num_boxes * 12 * 2)?;
+                        // Each box consists of 4 strips with a total of 16 vertices
+                        builder.line_builder.reserve_strips(num_boxes * 4)?;
+                        builder.line_builder.reserve_vertices(num_boxes * 16)?;
                     }
                     FillMode::Solid => {
                         // No lines.

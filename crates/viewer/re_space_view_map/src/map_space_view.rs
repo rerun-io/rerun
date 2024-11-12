@@ -476,6 +476,22 @@ fn handle_ui_interactions(
     }
 }
 
+/// Return http options for tile downloads.
+///
+/// On native targets, it configures a cache directory.
+fn http_options(_ctx: &ViewerContext<'_>) -> walkers::HttpOptions {
+    #[cfg(not(target_arch = "wasm32"))]
+    let options = walkers::HttpOptions {
+        cache: _ctx.app_options.cache_subdirectory("map_view"),
+        ..Default::default()
+    };
+
+    #[cfg(target_arch = "wasm32")]
+    let options = Default::default();
+
+    options
+}
+
 fn get_tile_manager(
     ctx: &ViewerContext<'_>,
     provider: MapProvider,
@@ -483,32 +499,37 @@ fn get_tile_manager(
 ) -> HttpTiles {
     let mapbox_access_token = ctx.app_options.mapbox_access_token().unwrap_or_default();
 
+    let options = http_options(ctx);
+
     match provider {
         MapProvider::OpenStreetMap => {
-            HttpTiles::new(walkers::sources::OpenStreetMap, egui_ctx.clone())
+            HttpTiles::with_options(walkers::sources::OpenStreetMap, options, egui_ctx.clone())
         }
-        MapProvider::MapboxStreets => HttpTiles::new(
+        MapProvider::MapboxStreets => HttpTiles::with_options(
             walkers::sources::Mapbox {
                 style: walkers::sources::MapboxStyle::Streets,
                 access_token: mapbox_access_token.clone(),
                 high_resolution: false,
             },
+            options,
             egui_ctx.clone(),
         ),
-        MapProvider::MapboxDark => HttpTiles::new(
+        MapProvider::MapboxDark => HttpTiles::with_options(
             walkers::sources::Mapbox {
                 style: walkers::sources::MapboxStyle::Dark,
                 access_token: mapbox_access_token.clone(),
                 high_resolution: false,
             },
+            options,
             egui_ctx.clone(),
         ),
-        MapProvider::MapboxSatellite => HttpTiles::new(
+        MapProvider::MapboxSatellite => HttpTiles::with_options(
             walkers::sources::Mapbox {
                 style: walkers::sources::MapboxStyle::Satellite,
                 access_token: mapbox_access_token.clone(),
                 high_resolution: true,
             },
+            options,
             egui_ctx.clone(),
         ),
     }

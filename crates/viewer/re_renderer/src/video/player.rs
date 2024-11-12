@@ -193,9 +193,9 @@ impl VideoPlayer {
         re_tracing::profile_function!();
 
         // Some terminology:
-        //   - presentation timestamp = composition timestamp
+        //   - presentation timestamp (PTS) == composition timestamp
         //     = the time at which the frame should be shown
-        //   - decode timestamp
+        //   - decode timestamp (DTS)
         //     = determines the decoding order of samples
         //
         // Note: `decode <= composition` for any given sample.
@@ -203,38 +203,21 @@ impl VideoPlayer {
         // We must enqueue samples in decode order, but show them in composition order.
         // In the presence of b-frames this order may be different!
 
-        // 1. Find the latest sample where `decode_timestamp <= presentation_timestamp`.
-        //    Because `decode <= composition`, we never have to look further ahead in the
-        //    video than this.
-        let Some(decode_sample_idx) = latest_at_idx(
-            &self.data.samples,
-            |sample| sample.decode_timestamp,
-            &presentation_timestamp,
-        ) else {
-            return Err(VideoPlayerError::EmptyVideo);
-        };
+        // Find sample which when decoded will be presented at the timestamp the user requested.
+        let requested_sample_idx = self
+            .data
+            .latest_sample_index_at_presentation_timestamp(presentation_timestamp)
+            .ok_or(VideoPlayerError::EmptyVideo)?;
 
-        // 2. Search _backwards_, starting at `decode_sample_idx`, looking for
-        //    the first sample where `sample.presentation_timestamp <= presentation_timestamp`.
-        //    This is the sample which when decoded will be presented at the timestamp the user requested.
-        let Some(requested_sample_idx) = self.data.samples[..=decode_sample_idx]
-            .iter()
-            .rposition(|sample| sample.presentation_timestamp <= presentation_timestamp)
-        else {
-            return Err(VideoPlayerError::EmptyVideo);
-        };
+        // Find the GOP that contains the sample.
+        let requested_gop_idx = self
+            .data
+            .gop_index_containing_decode_timestamp(
+                self.data.samples[requested_sample_idx].decode_timestamp,
+            )
+            .ok_or(VideoPlayerError::EmptyVideo)?;
 
-        // 3. Do a binary search through GOPs by the decode timestamp of the found sample
-        //    to find the GOP that contains the sample.
-        let Some(requested_gop_idx) = latest_at_idx(
-            &self.data.gops,
-            |gop| gop.start,
-            &self.data.samples[requested_sample_idx].decode_timestamp,
-        ) else {
-            return Err(VideoPlayerError::EmptyVideo);
-        };
-
-        // 4. Enqueue GOPs as needed.
+        // Enqueue GOPs as needed.
 
         // First, check for decoding errors that may have been set asynchronously and reset.
         if let Some(error) = self.chunk_decoder.take_error() {
@@ -275,7 +258,15 @@ impl VideoPlayer {
             // special case: handle seeking backwards within a single GOP
             // this is super inefficient, but it's the only way to handle it
             // while maintaining a buffer of only 2 GOPs
-            if requested_sample_idx < self.current_sample_idx {
+            //
+            // Note that due to sample reordering (in the presence of b-frames), if can happen
+            // that `self.current_sample_idx` is *behind* the `requested_sample_idx` even if we're
+            // seeking backwards!
+            // Therefore, it's important to compare presentation timestamps instead of sample indices.
+            // (comparing decode timestamps should be equivalent to comparing sample indices)
+            let current_pts = self.data.samples[self.current_sample_idx].presentation_timestamp;
+            let requested_pts = self.data.samples[requested_sample_idx].presentation_timestamp;
+            if requested_pts < current_pts {
                 self.reset()?;
                 self.enqueue_gop(requested_gop_idx, video_data)?;
                 self.enqueue_gop(requested_gop_idx + 1, video_data)?;
@@ -331,7 +322,7 @@ impl VideoPlayer {
             return Ok(());
         };
 
-        let samples = &self.data.samples[gop.range()];
+        let samples = &self.data.samples[gop.decode_time_range()];
 
         for (i, sample) in samples.iter().enumerate() {
             let chunk = sample.get(video_data).ok_or(VideoPlayerError::BadData)?;
@@ -409,48 +400,4 @@ fn clear_texture(render_ctx: &RenderContext, texture: &GpuTexture2D) {
             })],
             ..Default::default()
         });
-}
-
-/// Returns the index of:
-/// - The index of `needle` in `v`, if it exists
-/// - The index of the first element in `v` that is lesser than `needle`, if it exists
-/// - `None`, if `v` is empty OR `needle` is greater than all elements in `v`
-pub fn latest_at_idx<T, K: Ord>(v: &[T], key: impl Fn(&T) -> K, needle: &K) -> Option<usize> {
-    if v.is_empty() {
-        return None;
-    }
-
-    let idx = v.partition_point(|x| key(x) <= *needle);
-
-    if idx == 0 {
-        // If idx is 0, then all elements are greater than the needle
-        if &key(&v[0]) > needle {
-            return None;
-        }
-    }
-
-    Some(idx.saturating_sub(1))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_latest_at_idx() {
-        let v = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        assert_eq!(latest_at_idx(&v, |v| *v, &0), None);
-        assert_eq!(latest_at_idx(&v, |v| *v, &1), Some(0));
-        assert_eq!(latest_at_idx(&v, |v| *v, &2), Some(1));
-        assert_eq!(latest_at_idx(&v, |v| *v, &3), Some(2));
-        assert_eq!(latest_at_idx(&v, |v| *v, &4), Some(3));
-        assert_eq!(latest_at_idx(&v, |v| *v, &5), Some(4));
-        assert_eq!(latest_at_idx(&v, |v| *v, &6), Some(5));
-        assert_eq!(latest_at_idx(&v, |v| *v, &7), Some(6));
-        assert_eq!(latest_at_idx(&v, |v| *v, &8), Some(7));
-        assert_eq!(latest_at_idx(&v, |v| *v, &9), Some(8));
-        assert_eq!(latest_at_idx(&v, |v| *v, &10), Some(9));
-        assert_eq!(latest_at_idx(&v, |v| *v, &11), Some(9));
-        assert_eq!(latest_at_idx(&v, |v| *v, &1000), Some(9));
-    }
 }
