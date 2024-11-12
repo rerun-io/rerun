@@ -203,13 +203,24 @@ pub fn show_decoded_frame_info(
         Err(err) => {
             ui.error_label(&err.to_string());
 
+            #[cfg(not(target_arch = "wasm32"))]
             if let re_renderer::video::VideoPlayerError::Decoding(
-                re_video::decode::Error::FfmpegNotInstalled {
-                    download_url: Some(url),
-                },
-            ) = err
+                re_video::decode::Error::Ffmpeg(err),
+            ) = &err
             {
-                ui.markdown_ui(&format!("You can download a build of `FFmpeg` [here]({url}). For Rerun to be able to use it, its binaries need to be reachable from `PATH`."));
+                match err.as_ref() {
+                    re_video::decode::FfmpegError::UnsupportedFFmpegVersion {
+                        download_url: Some(url),
+                        ..
+                    }
+                    | re_video::decode::FfmpegError::FfmpegNotInstalled {
+                        download_url: Some(url),
+                    } => {
+                        ui.markdown_ui(&format!("You can download a build of `FFmpeg` [here]({url}). For Rerun to be able to use it, its binaries need to be reachable from `PATH`."));
+                    }
+
+                    _ => {}
+                }
             }
         }
     }

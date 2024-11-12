@@ -27,6 +27,7 @@ use crate::{
 
 // FFmpeg 5.1 "Riemann" is from 2022-07-22.
 // It's simply the oldest I tested manually as of writing. We might be able to go lower.
+// However, we also know that FFmpeg 4.4 is already no longer working.
 const FFMPEG_MINIMUM_VERSION_MAJOR: u32 = 5;
 const FFMPEG_MINIMUM_VERSION_MINOR: u32 = 1;
 
@@ -78,15 +79,26 @@ pub enum Error {
 
     #[error("Failed to parse sequence parameter set.")]
     SpsParsing,
+
+    #[error("FFmpeg version is {actual_version}. Only versions >= {minimum_version_major}.{minimum_version_minor} are officially supported.")]
+    UnsupportedFFmpegVersion {
+        actual_version: String,
+        /// Download URL for the latest version of `FFmpeg` on the current platform.
+        /// None if the platform is not supported.
+        // TODO(andreas): as of writing, ffmpeg-sidecar doesn't define a download URL for linux arm.
+        download_url: Option<&'static str>,
+
+        /// Copy of [`FFMPEG_MINIMUM_VERSION_MAJOR`].
+        minimum_version_major: u32,
+
+        /// Copy of [`FFMPEG_MINIMUM_VERSION_MINOR`].
+        minimum_version_minor: u32,
+    },
 }
 
 impl From<Error> for crate::decode::Error {
     fn from(err: Error) -> Self {
-        if let Error::FfmpegNotInstalled { download_url } = err {
-            Self::FfmpegNotInstalled { download_url }
-        } else {
-            Self::Ffmpeg(std::sync::Arc::new(err))
-        }
+        Self::Ffmpeg(std::sync::Arc::new(err))
     }
 }
 
@@ -613,7 +625,7 @@ fn read_ffmpeg_output(
                     .and_then(|part| part.parse::<u32>().ok());
                 let minor = version_parts.next().and_then(|part| {
                     part.split('-')
-                        .next()
+                    .next()
                         .and_then(|part| part.parse::<u32>().ok())
                 });
 
@@ -624,10 +636,13 @@ fn read_ffmpeg_output(
                         || (major == FFMPEG_MINIMUM_VERSION_MAJOR
                             && minor < FFMPEG_MINIMUM_VERSION_MINOR)
                     {
-                        re_log::warn_once!(
-                            "FFmpeg version is {}. Only versions >= {FFMPEG_MINIMUM_VERSION_MAJOR}.{FFMPEG_MINIMUM_VERSION_MINOR} are officially supported.{}",
-                            ffmpeg_version.version, download_advice()
-                        );
+                        (on_output.lock().as_ref()?)(Err(Error::UnsupportedFFmpegVersion {
+                            actual_version: ffmpeg_version.version.clone(),
+                            download_url: ffmpeg_sidecar::download::ffmpeg_download_url().ok(),
+                            minimum_version_major: FFMPEG_MINIMUM_VERSION_MAJOR,
+                            minimum_version_minor: FFMPEG_MINIMUM_VERSION_MINOR,
+                        }
+                        .into()));
                     }
                 } else {
                     re_log::warn_once!(
