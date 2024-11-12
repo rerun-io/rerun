@@ -9,7 +9,7 @@ impl Timescale {
 }
 
 /// A value in time units.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Default, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Time(pub i64);
 
 impl Time {
@@ -89,6 +89,12 @@ impl Time {
     #[inline]
     pub fn into_nanos_since_start(self, timescale: Timescale, start_time: Self) -> i64 {
         (self.into_secs_since_start(timescale, start_time) * 1e9).round() as i64
+    }
+}
+
+impl std::fmt::Debug for Time {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.0.fmt(f)
     }
 }
 
