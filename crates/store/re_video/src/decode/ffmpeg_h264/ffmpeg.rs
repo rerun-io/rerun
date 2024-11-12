@@ -143,6 +143,9 @@ impl std::io::Write for StdinWithShutdown {
     }
 }
 
+/// Encapsulates the running of an ffmpeg process.
+///
+/// Dropping this closes the process.
 struct FFmpegProcessAndListener {
     ffmpeg: FfmpegChild,
 
@@ -300,6 +303,37 @@ impl FFmpegProcessAndListener {
             stdin_shutdown,
             on_output,
         })
+    }
+
+    fn submit_chunk(&mut self, chunk: Chunk) -> Result<(), Error> {
+        // We send the information about this chunk first.
+        // Chunks are defined to always yield a single frame.
+        let frame_info = FFmpegFrameInfo {
+            is_sync: chunk.is_sync,
+            sample_idx: chunk.sample_idx,
+            presentation_timestamp: chunk.presentation_timestamp,
+            decode_timestamp: chunk.decode_timestamp,
+            duration: chunk.duration,
+        };
+
+        let data = FFmpegFrameData::Chunk(chunk);
+
+        if self.frame_info_tx.send(frame_info).is_err() || self.frame_data_tx.send(data).is_err() {
+            Err(
+                if let Ok(exit_code) = self.ffmpeg.as_inner_mut().try_wait() {
+                    Error::FfmpegUnexpectedExit(exit_code)
+                } else {
+                    Error::BrokenFrameInfoChannel
+                },
+            )
+        } else {
+            Ok(())
+        }
+    }
+
+    fn end_of_video(&mut self) {
+        // Close stdin. That will let ffmpeg know that it should flush its buffers.
+        self.frame_data_tx.send(FFmpegFrameData::Quit).ok();
     }
 }
 
@@ -707,41 +741,21 @@ impl AsyncDecoder for FFmpegCliH264Decoder {
     fn submit_chunk(&mut self, chunk: Chunk) -> crate::decode::Result<()> {
         re_tracing::profile_function!();
 
-        // We send the information about this chunk first.
-        // Chunks are defined to always yield a single frame.
-        let frame_info = FFmpegFrameInfo {
-            is_sync: chunk.is_sync,
-            sample_idx: chunk.sample_idx,
-            presentation_timestamp: chunk.presentation_timestamp,
-            decode_timestamp: chunk.decode_timestamp,
-            duration: chunk.duration,
-        };
+        if let Err(err) = self.ffmpeg.submit_chunk(chunk) {
+            let err = crate::decode::Error::from(err);
 
-        let data = FFmpegFrameData::Chunk(chunk);
-
-        if self.ffmpeg.frame_info_tx.send(frame_info).is_err()
-            || self.ffmpeg.frame_data_tx.send(data).is_err()
-        {
-            let err: crate::decode::Error =
-                if let Ok(exit_code) = self.ffmpeg.ffmpeg.as_inner_mut().try_wait() {
-                    Error::FfmpegUnexpectedExit(exit_code)
-                } else {
-                    Error::BrokenFrameInfoChannel
-                }
-                .into();
-
-            // Report the error on the decoding stream.
+            // Report the error on the decoding stream aswell.
             (self.on_output)(Err(err.clone()));
-            return Err(err);
-        }
 
+            Err(err)
+        } else {
         Ok(())
+    }
     }
 
     fn end_of_video(&mut self) -> crate::decode::Result<()> {
         re_log::debug!("End of video - flushing ffmpeg decoder {}", self.debug_name);
-        // Close stdin. That will let ffmpeg know that it should flush its buffers.
-        self.ffmpeg.frame_data_tx.send(FFmpegFrameData::Quit).ok();
+        self.ffmpeg.end_of_video();
         Ok(())
     }
 
