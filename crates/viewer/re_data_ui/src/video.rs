@@ -1,9 +1,10 @@
+use egui_extras::Column;
 use re_renderer::{
     external::re_video::VideoLoadError, resource_managers::SourceImageDataFormat,
     video::VideoFrameTexture,
 };
 use re_types::components::VideoTimestamp;
-use re_ui::{list_item::PropertyContent, UiExt};
+use re_ui::{list_item::PropertyContent, DesignTokens, UiExt};
 use re_video::{decode::FrameInfo, demux::SamplesStatistics, VideoData};
 use re_viewer_context::UiLayout;
 
@@ -12,6 +13,8 @@ pub fn video_result_ui(
     ui_layout: UiLayout,
     video_result: &Result<re_renderer::video::Video, VideoLoadError>,
 ) {
+    re_tracing::profile_function!();
+
     #[allow(clippy::match_same_arms)]
     match video_result {
         Ok(video) => {
@@ -42,13 +45,15 @@ pub fn video_result_ui(
     }
 }
 
-fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, data: &VideoData) {
+fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoData) {
+    re_tracing::profile_function!();
+
     ui.list_item_flat_noninteractive(PropertyContent::new("Dimensions").value_text(format!(
         "{}x{}",
-        data.width(),
-        data.height()
+        video_data.width(),
+        video_data.height()
     )));
-    if let Some(bit_depth) = data.config.stsd.contents.bit_depth() {
+    if let Some(bit_depth) = video_data.config.stsd.contents.bit_depth() {
         ui.list_item_flat_noninteractive(PropertyContent::new("Bit depth").value_fn(|ui, _| {
             ui.label(bit_depth.to_string());
             if 8 < bit_depth {
@@ -58,37 +63,38 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, data: &VideoData) {
                     ui.hyperlink("https://github.com/rerun-io/rerun/issues/7594");
                 });
             }
-            if data.is_monochrome() == Some(true) {
+            if video_data.is_monochrome() == Some(true) {
                 ui.label("(monochrome)");
             }
         }));
     }
-    if let Some(subsampling_mode) = data.subsampling_mode() {
+    if let Some(subsampling_mode) = video_data.subsampling_mode() {
         // Don't show subsampling mode for monochrome, doesn't make sense usually.
-        if data.is_monochrome() != Some(true) {
+        if video_data.is_monochrome() != Some(true) {
             ui.list_item_flat_noninteractive(
                 PropertyContent::new("Subsampling").value_text(subsampling_mode.to_string()),
             );
         }
     }
-    ui.list_item_flat_noninteractive(
-        PropertyContent::new("Duration")
-            .value_text(format!("{}", re_log_types::Duration::from(data.duration()))),
-    );
+    ui.list_item_flat_noninteractive(PropertyContent::new("Duration").value_text(format!(
+        "{}",
+        re_log_types::Duration::from(video_data.duration())
+    )));
     // Some people may think that num_frames / duration = fps, but that's not true, videos may have variable frame rate.
     // Video containers and codecs like talking about samples or chunks rather than frames, but for how we define a chunk today,
     // a frame is always a single chunk of data is always a single sample, see [`re_video::decode::Chunk`].
     // So for all practical purposes the sample count _is_ the number of frames, at least how we use it today.
     ui.list_item_flat_noninteractive(
-        PropertyContent::new("Frame count").value_text(re_format::format_uint(data.num_samples())),
+        PropertyContent::new("Frame count")
+            .value_text(re_format::format_uint(video_data.num_samples())),
     );
     ui.list_item_flat_noninteractive(
-        PropertyContent::new("Codec").value_text(data.human_readable_codec_string()),
+        PropertyContent::new("Codec").value_text(video_data.human_readable_codec_string()),
     );
 
     if ui_layout != UiLayout::Tooltip {
         ui.list_item_collapsible_noninteractive_label("MP4 tracks", true, |ui| {
-            for (track_id, track_kind) in &data.mp4_tracks {
+            for (track_id, track_kind) in &video_data.mp4_tracks {
                 let track_kind_string = match track_kind {
                     Some(re_video::TrackKind::Audio) => "audio",
                     Some(re_video::TrackKind::Subtitle) => "subtitle",
@@ -100,14 +106,107 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, data: &VideoData) {
                 );
             }
         });
+
         ui.list_item_collapsible_noninteractive_label("More video statistics", false, |ui| {
             ui.list_item_flat_noninteractive(
-                PropertyContent::new("Number of GOPs").value_text(data.gops.len().to_string()),
+                PropertyContent::new("Number of GOPs")
+                    .value_text(video_data.gops.len().to_string()),
             )
             .on_hover_text("The total number of Group of Pictures (GOPs) in the video.");
-            samples_statistics_ui(ui, &data.samples_statistics);
+            samples_statistics_ui(ui, &video_data.samples_statistics);
+        });
+
+        ui.list_item_collapsible_noninteractive_label("Video samples", false, |ui| {
+            samples_table_ui(ui, video_data);
         });
     }
+}
+
+fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoData) {
+    re_tracing::profile_function!();
+
+    egui_extras::TableBuilder::new(ui)
+        .auto_shrink([false, true])
+        .vscroll(true)
+        .max_scroll_height(800.0)
+        .columns(Column::auto(), 7)
+        .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
+        .header(DesignTokens::table_header_height(), |mut header| {
+            DesignTokens::setup_table_header(&mut header);
+            header.col(|ui| {
+                ui.strong("Sample");
+            });
+            header.col(|ui| {
+                ui.strong("GOP");
+            });
+            header.col(|ui| {
+                ui.strong("Sync");
+            });
+            header.col(|ui| {
+                ui.strong("DTS").on_hover_text("Decode timestamp");
+            });
+            header.col(|ui| {
+                ui.strong("PTS").on_hover_text("Presentation timestamp");
+            });
+            header.col(|ui| {
+                ui.strong("Duration");
+            });
+            header.col(|ui| {
+                ui.strong("Size");
+            });
+        })
+        .body(|mut body| {
+            DesignTokens::setup_table_body(&mut body);
+
+            body.rows(
+                DesignTokens::table_line_height(),
+                video_data.samples.len(),
+                |mut row| {
+                    let sample_idx = row.index();
+                    let sample = &video_data.samples[sample_idx];
+                    let re_video::Sample {
+                        is_sync,
+                        decode_timestamp,
+                        presentation_timestamp,
+                        duration,
+                        byte_offset: _,
+                        byte_length,
+                    } = *sample;
+
+                    row.col(|ui| {
+                        ui.monospace(sample_idx.to_string());
+                    });
+                    row.col(|ui| {
+                        if let Some(gop_index) = video_data
+                            .gop_index_containing_presentation_timestamp(presentation_timestamp)
+                        {
+                            ui.monospace(re_format::format_uint(gop_index));
+                        }
+                    });
+                    row.col(|ui| {
+                        if is_sync {
+                            ui.label("sync");
+                        }
+                    });
+                    row.col(|ui| {
+                        ui.monospace(re_format::format_int(decode_timestamp.0));
+                    });
+                    row.col(|ui| {
+                        ui.monospace(re_format::format_int(presentation_timestamp.0));
+                    });
+
+                    row.col(|ui| {
+                        ui.monospace(
+                            re_log_types::Duration::from(duration.duration(video_data.timescale))
+                                .to_string(),
+                        );
+                    });
+                    row.col(|ui| {
+                        ui.monospace(re_format::format_bytes(byte_length as _));
+                    });
+                },
+            );
+        });
 }
 
 pub fn show_decoded_frame_info(
