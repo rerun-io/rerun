@@ -56,8 +56,8 @@ impl VideoData {
                     gop_sample_start_index = samples.len();
                 }
 
-                let decode_timestamp = Time::new(sample.decode_timestamp as i64);
-                let presentation_timestamp = Time::new(sample.composition_timestamp as i64);
+                let decode_timestamp = Time::new(sample.decode_timestamp);
+                let presentation_timestamp = Time::new(sample.composition_timestamp);
                 let duration = Time::new(sample.duration as i64);
 
                 let byte_offset = sample.offset as u32;
