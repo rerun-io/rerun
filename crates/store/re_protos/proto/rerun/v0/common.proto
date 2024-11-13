@@ -161,25 +161,3 @@ enum SparseFillStrategy {
     NONE = 0;
     LATEST_AT_GLOBAL = 1;
 }
-
-// Application level error - use as `details` in the `google.rpc.Status` message
-message RemoteStoreError {
-    // error code
-    ErrorCode code = 1;
-    // unique identifier associated with the request (e.g. recording id, recording storage url)
-    string id = 2;
-    // human readable details about the error
-    string message = 3;
-}
-
-// Error codes for application level errors
-enum ErrorCode {
-    // unused
-    _UNUSED = 0;
-
-    // object store access error
-    OBJECT_STORE_ERROR = 1;
-
-    // metadata database access error
-    METADATA_DB_ERROR = 2;
-}
