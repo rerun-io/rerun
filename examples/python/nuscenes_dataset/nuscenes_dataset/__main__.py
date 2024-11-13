@@ -294,6 +294,9 @@ def main() -> None:
         rrb.Spatial2DView(
             name=sensor_name,
             origin=f"world/ego_vehicle/{sensor_name}",
+            contents=["$origin/**", "world/anns"],
+            # TODO(#6670): Can't specify rr.components.FillMode.MajorWireframe right now, need to use batch type instead.
+            overrides={"world/anns": [rr.components.FillModeBatch("majorwireframe")]},
         )
         for sensor_name in nuscene_sensor_names(nusc, args.scene_name)
     ]
