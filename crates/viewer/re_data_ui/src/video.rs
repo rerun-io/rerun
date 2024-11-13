@@ -4,7 +4,10 @@ use re_renderer::{
     video::VideoFrameTexture,
 };
 use re_types::components::VideoTimestamp;
-use re_ui::{list_item::PropertyContent, DesignTokens, UiExt};
+use re_ui::{
+    list_item::{self, PropertyContent},
+    DesignTokens, UiExt,
+};
 use re_video::{decode::FrameInfo, demux::SamplesStatistics, VideoData};
 use re_viewer_context::UiLayout;
 
@@ -93,7 +96,7 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoData)
     );
 
     if ui_layout != UiLayout::Tooltip {
-        ui.list_item_collapsible_noninteractive_label("MP4 tracks", true, |ui| {
+        ui.list_item_collapsible_noninteractive_label("MP4 tracks", false, |ui| {
             for (track_id, track_kind) in &video_data.mp4_tracks {
                 let track_kind_string = match track_kind {
                     Some(re_video::TrackKind::Audio) => "audio",
@@ -274,19 +277,31 @@ pub fn show_decoded_frame_info(
             frame_info,
             source_pixel_format,
         }) => {
-            re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
-                let default_open = false;
-                if let Some(frame_info) = frame_info {
-                    ui.list_item_collapsible_noninteractive_label(
-                        "Current decoded frame",
-                        default_open,
-                        |ui| {
-                            frame_info_ui(ui, &frame_info, video.data());
-                            source_image_data_format_ui(ui, &source_pixel_format);
-                        },
-                    );
-                }
-            });
+            if let Some(frame_info) = frame_info {
+                re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
+                    let id = ui.id().with("decoded_frame_collapsible");
+                    let default_open = false;
+                    let label = if let Some(frame_nr) = frame_info.frame_nr {
+                        format!("Decoded frame #{}", re_format::format_uint(frame_nr))
+                    } else {
+                        "Current decoded frame".to_owned()
+                    };
+                    ui.list_item()
+                        .interactive(false)
+                        .show_hierarchical_with_children(
+                            ui,
+                            id,
+                            default_open,
+                            list_item::LabelContent::new(label),
+                            |ui| {
+                                list_item::list_item_scope(ui, id, |ui| {
+                                    frame_info_ui(ui, &frame_info, video.data());
+                                    source_image_data_format_ui(ui, &source_pixel_format);
+                                });
+                            },
+                        )
+                });
+            }
 
             let response = crate::image::texture_preview_ui(
                 render_ctx,
