@@ -8,7 +8,7 @@ use egui::{
 use crate::{
     design_tokens, icons, list_item,
     list_item::{LabelContent, ListItem},
-    ContextExt, DesignTokens, Icon, LabelStyle,
+    DesignTokens, Icon, LabelStyle,
 };
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
