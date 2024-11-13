@@ -56,8 +56,12 @@ def log_node(node: dict[str, Any]) -> None:
     node_id = node["id"]
     entity_path = f"nodes/{node_id}"
 
-    rr.log(entity_path, rr.GeoPoints(lat_lon=[node["lat"], node["lon"]], radii=rr.components.Radius.ui_points(7.0)))
-    rr.log(entity_path, rr.AnyValues(**node.get("tags", {})))
+    rr.log(
+        entity_path,
+        rr.GeoPoints(lat_lon=[node["lat"], node["lon"]], radii=rr.components.Radius.ui_points(7.0)),
+        rr.AnyValues(**node.get("tags", {})),
+        static=True,
+    )
 
 
 def log_way(way: dict[str, Any]) -> None:
@@ -66,14 +70,18 @@ def log_way(way: dict[str, Any]) -> None:
 
     coords = [(node["lat"], node["lon"]) for node in way["geometry"]]
 
-    rr.log(entity_path, rr.GeoLineStrings(lat_lon=[coords], radii=rr.components.Radius.ui_points(2.0)))
-    rr.log(entity_path, rr.AnyValues(**way.get("tags", {})))
+    rr.log(
+        entity_path,
+        rr.GeoLineStrings(lat_lon=[coords], radii=rr.components.Radius.ui_points(2.0)),
+        rr.AnyValues(**way.get("tags", {})),
+        static=True,
+    )
 
 
 def log_data(data: dict[str, Any]) -> None:
     try:
         copyright_text = data["osm3s"]["copyright"]
-        rr.log_components("copyright", [rr.components.Text(copyright_text)])
+        rr.log_components("copyright", [rr.components.Text(copyright_text)], static=True)
     except KeyError:
         pass
 
