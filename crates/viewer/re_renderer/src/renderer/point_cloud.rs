@@ -151,6 +151,22 @@ pub struct PointCloudBatchInfo {
     pub depth_offset: DepthOffset,
 }
 
+impl Default for PointCloudBatchInfo {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            label: DebugLabel::default(),
+            world_from_obj: glam::Affine3A::IDENTITY,
+            flags: PointCloudBatchFlags::FLAG_ENABLE_SHADING,
+            point_count: 0,
+            overall_outline_mask_ids: OutlineMaskPreference::NONE,
+            additional_outline_mask_ids_vertex_ranges: Vec::new(),
+            picking_object_id: Default::default(),
+            depth_offset: 0,
+        }
+    }
+}
+
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PointCloudDrawDataError {
     #[error("Failed to transfer data to the GPU: {0}")]
