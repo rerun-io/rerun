@@ -75,19 +75,6 @@ pub struct VideoData {
 /// Meta informationa about the video samples.
 #[derive(Clone, Debug)]
 pub struct SamplesStatistics {
-    /// The smallest presentation timestamp observed in this video.
-    ///
-    /// This is typically 0, but in the presence of B-frames, it may be non-zero.
-    /// In fact, many formats don't require this to be zero, but video players typically
-    /// normalize the shown time to start at zero.
-    /// Note that timestamps in the [`Sample`]s are *not* automatically adjusted with this value.
-    // This is roughly equivalent to FFmpeg's internal `min_corrected_pts`
-    // https://github.com/FFmpeg/FFmpeg/blob/4047b887fc44b110bccb1da09bcb79d6e454b88b/libavformat/isom.h#L202
-    // (unlike us, this handles a bunch more edge cases but it fulfills the same role)
-    // To learn more about this I recommend reading the patch that introduced this in FFmpeg:
-    // https://patchwork.ffmpeg.org/project/ffmpeg/patch/20170606181601.25187-1-isasi@google.com/#12592
-    pub minimum_presentation_timestamp: Time,
-
     /// Whether all decode timestamps are equal to presentation timestamps.
     ///
     /// If true, the video typically has no B-frames as those require frame reordering.
@@ -103,11 +90,6 @@ impl SamplesStatistics {
     pub fn new(samples: &[Sample]) -> Self {
         re_tracing::profile_function!();
 
-        let minimum_presentation_timestamp = samples
-            .iter()
-            .map(|s| s.presentation_timestamp)
-            .min()
-            .unwrap_or_default();
         let dts_always_equal_pts = samples
             .iter()
             .all(|s| s.decode_timestamp == s.presentation_timestamp);
@@ -128,7 +110,6 @@ impl SamplesStatistics {
         });
 
         Self {
-            minimum_presentation_timestamp,
             dts_always_equal_pts,
             has_sample_highest_pts_so_far,
         }
@@ -301,8 +282,6 @@ impl VideoData {
     /// Determines the video timestamps of all frames inside a video, returning raw time values.
     ///
     /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
-    /// These are *not* necessarily the same as the presentation timestamps, as the returned timestamps are
-    /// normalized respect to the start of the video, see [`SamplesStatistics::minimum_presentation_timestamp`].
     pub fn frame_timestamps_ns(&self) -> impl Iterator<Item = i64> + '_ {
         // Segments are guaranteed to be sorted among each other, but within a segment,
         // presentation timestamps may not be sorted since this is sorted by decode timestamps.
@@ -311,12 +290,7 @@ impl VideoData {
                 .iter()
                 .map(|sample| sample.presentation_timestamp)
                 .sorted()
-                .map(|pts| {
-                    pts.into_nanos_since_start(
-                        self.timescale,
-                        self.samples_statistics.minimum_presentation_timestamp,
-                    )
-                })
+                .map(|pts| pts.into_nanos(self.timescale))
         })
     }
 
@@ -637,6 +611,7 @@ mod tests {
     #[test]
     fn test_latest_sample_index_at_presentation_timestamp() {
         // This is a snippet of real world data!
+        // TODO:
         let pts = [
             512, 1536, 1024, 768, 1280, 2560, 2048, 1792, 2304, 3584, 3072, 2816, 3328, 4608, 4096,
             3840, 4352, 5376, 4864, 5120, 6400, 5888, 5632, 6144, 7424, 6912, 6656, 7168, 8448,
@@ -671,7 +646,6 @@ mod tests {
             .collect::<Vec<_>>();
 
         let sample_statistics = SamplesStatistics::new(&samples);
-        assert_eq!(sample_statistics.minimum_presentation_timestamp, Time(512));
         assert!(!sample_statistics.dts_always_equal_pts);
 
         // Test queries on the samples.

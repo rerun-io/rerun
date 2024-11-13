@@ -127,13 +127,9 @@ impl VideoPlayer {
         if time_since_video_start_in_seconds < 0.0 {
             return Err(VideoPlayerError::NegativeTimestamp);
         }
-        let presentation_timestamp = Time::from_secs_since_start(
-            time_since_video_start_in_seconds,
-            self.data.timescale,
-            self.data.samples_statistics.minimum_presentation_timestamp,
-        );
-        let presentation_timestamp = presentation_timestamp
-            .min(self.data.duration + self.data.samples_statistics.minimum_presentation_timestamp); // Don't seek past the end of the video.
+        let presentation_timestamp =
+            Time::from_secs(time_since_video_start_in_seconds, self.data.timescale);
+        let presentation_timestamp = presentation_timestamp.min(self.data.duration); // Don't seek past the end of the video.
 
         let error_on_last_frame_at = self.last_error.is_some();
         self.frame_at_internal(render_ctx, presentation_timestamp, video_data)?;
