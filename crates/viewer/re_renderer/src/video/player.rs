@@ -132,7 +132,7 @@ impl VideoPlayer {
         let presentation_timestamp = presentation_timestamp.min(self.data.duration); // Don't seek past the end of the video.
 
         let error_on_last_frame_at = self.last_error.is_some();
-        self.unqueue_samples(presentation_timestamp, video_data)?;
+        self.enqueue_samples(presentation_timestamp, video_data)?;
         self.update_video_texture(render_ctx, presentation_timestamp)?;
 
         let frame_info = self.video_texture.frame_info.clone();
@@ -182,7 +182,7 @@ impl VideoPlayer {
         }
     }
 
-    fn unqueue_samples(
+    fn enqueue_samples(
         &mut self,
         presentation_timestamp: Time,
         video_data: &[u8],
