@@ -313,7 +313,12 @@ def main() -> None:
     ]
     blueprint = rrb.Vertical(
         rrb.Horizontal(
-            rrb.Spatial3DView(name="3D", origin="world"),
+            rrb.Spatial3DView(
+                name="3D",
+                origin="world",
+                # Set the image plane distance to 5m for all camera visualizations.
+                defaults=[rr.components.ImagePlaneDistance(5.0)],
+            ),
             rrb.Vertical(
                 rrb.TextDocumentView(origin="description", name="Description"),
                 rrb.MapView(
