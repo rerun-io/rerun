@@ -132,7 +132,8 @@ impl VideoPlayer {
         let presentation_timestamp = presentation_timestamp.min(self.data.duration); // Don't seek past the end of the video.
 
         let error_on_last_frame_at = self.last_error.is_some();
-        self.frame_at_internal(render_ctx, presentation_timestamp, video_data)?;
+        self.unqueue_samples(presentation_timestamp, video_data)?;
+        self.update_video_texture(render_ctx, presentation_timestamp)?;
 
         let frame_info = self.video_texture.frame_info.clone();
 
@@ -181,9 +182,8 @@ impl VideoPlayer {
         }
     }
 
-    fn frame_at_internal(
+    fn unqueue_samples(
         &mut self,
-        render_ctx: &RenderContext,
         presentation_timestamp: Time,
         video_data: &[u8],
     ) -> Result<(), VideoPlayerError> {
@@ -279,6 +279,14 @@ impl VideoPlayer {
         self.current_gop_idx = requested_gop_idx;
         self.current_sample_idx = requested_sample_idx;
 
+        Ok(())
+    }
+
+    fn update_video_texture(
+        &mut self,
+        render_ctx: &RenderContext,
+        presentation_timestamp: Time,
+    ) -> Result<(), VideoPlayerError> {
         let result = self.chunk_decoder.update_video_texture(
             render_ctx,
             &mut self.video_texture,
