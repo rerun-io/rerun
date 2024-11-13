@@ -27,3 +27,5 @@ To get an auto-generated PR description you can put "copilot:summary" or "copilo
 - [Wasm size tracking](https://build.rerun.io/graphs/sizes.html)
 
 To run all checks from `main`, comment on the PR with `@rerun-bot full-check`.
+
+To deploy documentation changes immediately after merging this PR, add the `deploy docs` label.
