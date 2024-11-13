@@ -22,8 +22,6 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 ///
 /// Also known as "line strips" or "polylines".
 ///
-/// **Note**: Geospatial entities are experimental.
-///
 /// ## Example
 ///
 /// ### Log a geospatial line string

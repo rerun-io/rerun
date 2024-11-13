@@ -7,8 +7,6 @@ Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/
 
 Also known as "line strips" or "polylines".
 
-**Note**: Geospatial entities are experimental.
-
 ## Components
 
 **Required**: [`GeoLineString`](../components/geo_line_string.md)

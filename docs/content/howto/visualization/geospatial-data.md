@@ -3,7 +3,7 @@ title: Visualize geospatial data
 order: 300
 ---
 
-Rerun 0.20 introduced a new, experimental [map view](../../reference/types/views/map_view.md).
+Rerun 0.20 introduced a new [map view](../../reference/types/views/map_view.md).
 This guide provides a short overview on how to use it to visualise geospatial data.
 
 ## Coordinate system

@@ -22,8 +22,6 @@ namespace rerun::archetypes {
     ///
     /// Also known as "line strips" or "polylines".
     ///
-    /// **Note**: Geospatial entities are experimental.
-    ///
     /// ## Example
     ///
     /// ### Log a geospatial line string
