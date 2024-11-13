@@ -122,8 +122,8 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoData)
                 .resizable([false, true])
                 .max_height(611.0) // Odd value so the user can see half-hidden rows
                 .show(ui, |ui| {
-            samples_table_ui(ui, video_data);
-        });
+                    samples_table_ui(ui, video_data);
+                });
         });
     }
 }
