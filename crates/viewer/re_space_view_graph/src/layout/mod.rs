@@ -3,11 +3,11 @@ use fjadra as fj;
 
 use crate::{
     graph::{Graph, NodeIndex},
-    types::NodeInstance,
     ui::bounding_rect_from_iter,
+    visualizers::NodeInstance,
 };
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Layout {
     extents: ahash::HashMap<NodeIndex, Rect>,
 }
@@ -31,7 +31,7 @@ impl Layout {
 
 impl<'a> From<&'a NodeInstance> for fj::Node {
     fn from(instance: &'a NodeInstance) -> Self {
-        let mut node = fj::Node::default();
+        let mut node = Self::default();
         if let Some(pos) = instance.position {
             node = node.fixed_position(pos.x as f64, pos.y as f64);
         }
@@ -42,7 +42,7 @@ impl<'a> From<&'a NodeInstance> for fj::Node {
 pub struct ForceLayout;
 
 impl ForceLayout {
-    pub fn compute<'a>(graph: &Graph<'a>) -> Layout {
+    pub fn compute(graph: &Graph<'_>) -> Layout {
         let explicit = graph.nodes_explicit().map(|n| (n.index, fj::Node::from(n)));
         let implicit = graph
             .nodes_implicit()

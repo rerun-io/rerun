@@ -16,11 +16,19 @@ use re_viewer_context::{
 };
 
 use crate::graph::NodeIndex;
-use crate::types::NodeInstance;
 
 #[derive(Default)]
 pub struct NodeVisualizer {
     pub data: ahash::HashMap<EntityPath, NodeData>,
+}
+
+pub struct NodeInstance {
+    pub node: components::GraphNode,
+    pub index: NodeIndex,
+    pub label: Option<ArrowString>,
+    pub color: Option<egui::Color32>,
+    pub position: Option<egui::Pos2>,
+    pub radius: Option<components::Radius>,
 }
 
 pub struct NodeData {

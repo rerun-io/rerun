@@ -1,7 +1,6 @@
 use egui::{Frame, Label, Response, RichText, Sense, Stroke, TextWrapMode, Ui, Vec2};
-use re_types::components::GraphNode;
 
-use crate::{graph::NodeInstanceImplicit, types::NodeInstance, ui::canvas::CanvasContext};
+use crate::{graph::NodeInstanceImplicit, ui::canvas::CanvasContext, visualizers::NodeInstance};
 
 /// The `world_to_ui_scale` parameter is used to convert between world and ui coordinates.
 pub fn draw_explicit(ui: &mut Ui, ctx: &CanvasContext, node: &NodeInstance) -> Response {

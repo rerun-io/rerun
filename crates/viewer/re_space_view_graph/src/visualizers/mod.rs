@@ -3,8 +3,8 @@ mod nodes;
 
 use std::collections::BTreeSet;
 
-pub use edges::{EdgeData, EdgesVisualizer};
-pub use nodes::{NodeData, NodeVisualizer};
+pub use edges::{EdgeData, EdgeInstance, EdgesVisualizer};
+pub use nodes::{NodeData, NodeInstance, NodeVisualizer};
 
 use re_chunk::EntityPath;
 
@@ -13,7 +13,6 @@ pub fn merge<'a>(
     node_data: &'a ahash::HashMap<EntityPath, NodeData>,
     edge_data: &'a ahash::HashMap<EntityPath, EdgeData>,
 ) -> impl Iterator<Item = (&'a EntityPath, Option<&'a NodeData>, Option<&'a EdgeData>)> + 'a {
-
     // We sort the entities to ensure that we always process them in the same order.
     let unique_entities = node_data
         .keys()

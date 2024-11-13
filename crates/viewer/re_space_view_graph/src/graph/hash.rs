@@ -3,7 +3,7 @@ use re_types::components;
 
 /// A 64 bit hash of [`components::GraphNode`] with very small risk of collision.
 #[derive(Copy, Clone, Eq, PartialOrd, Ord)]
-pub(crate) struct GraphNodeHash(Hash64);
+pub struct GraphNodeHash(Hash64);
 
 impl nohash_hasher::IsEnabled for GraphNodeHash {}
 

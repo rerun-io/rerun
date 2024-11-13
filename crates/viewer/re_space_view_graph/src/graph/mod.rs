@@ -5,10 +5,7 @@ pub(crate) use index::NodeIndex;
 
 use re_types::components::{GraphNode, GraphType};
 
-use crate::{
-    types::{EdgeInstance, NodeInstance},
-    visualizers::{EdgeData, NodeData},
-};
+use crate::visualizers::{EdgeData, EdgeInstance, NodeData, NodeInstance};
 
 pub struct NodeInstanceImplicit {
     pub node: GraphNode,
