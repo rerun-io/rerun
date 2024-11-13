@@ -2,7 +2,7 @@ use std::iter;
 
 use re_types::{
     archetypes::Ellipsoids3D,
-    components::{ClassId, Color, FillMode, HalfSize3D, KeypointId, Radius, ShowLabels, Text},
+    components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels, Text},
     ArrowString, Loggable as _,
 };
 use re_viewer_context::{
@@ -69,7 +69,6 @@ impl Ellipsoids3DVisualizer {
                     colors: batch.colors,
                     labels: &batch.labels,
                     show_labels: batch.show_labels,
-                    keypoint_ids: batch.keypoint_ids,
                     class_ids: batch.class_ids,
                 },
             )?;
@@ -89,7 +88,6 @@ struct Ellipsoids3DComponentData<'a> {
     colors: &'a [Color],
     line_radii: &'a [Radius],
     labels: Vec<ArrowString>,
-    keypoint_ids: &'a [KeypointId],
     class_ids: &'a [ClassId],
 
     // Non-repeated
@@ -174,17 +172,15 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                 let all_fill_modes = results.iter_as(timeline, FillMode::name());
                 let all_labels = results.iter_as(timeline, Text::name());
                 let all_class_ids = results.iter_as(timeline, ClassId::name());
-                let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
                 let all_show_labels = results.iter_as(timeline, ShowLabels::name());
 
-                let data = re_query::range_zip_1x7(
+                let data = re_query::range_zip_1x6(
                     all_half_sizes_indexed,
                     all_colors.primitive::<u32>(),
                     all_line_radii.primitive::<f32>(),
                     all_fill_modes.component::<FillMode>(),
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
-                    all_keypoint_ids.primitive::<u16>(),
                     all_show_labels.component::<ShowLabels>(),
                 )
                 .map(
@@ -196,7 +192,6 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                         fill_modes,
                         labels,
                         class_ids,
-                        keypoint_ids,
                         show_labels,
                     )| {
                         Ellipsoids3DComponentData {
@@ -213,8 +208,6 @@ impl VisualizerSystem for Ellipsoids3DVisualizer {
                             labels: labels.unwrap_or_default(),
                             class_ids: class_ids
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
-                            keypoint_ids: keypoint_ids
-                                .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
                             show_labels: show_labels.unwrap_or_default().first().copied(),
                         }
                     },

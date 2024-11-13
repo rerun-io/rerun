@@ -60,6 +60,7 @@ class GeoPoints(GeoPointsExt, Archetype):
             positions=None,  # type: ignore[arg-type]
             radii=None,  # type: ignore[arg-type]
             colors=None,  # type: ignore[arg-type]
+            class_ids=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -97,6 +98,17 @@ class GeoPoints(GeoPointsExt, Archetype):
     #
     # The colors are interpreted as RGB or RGBA in sRGB gamma-space,
     # As either 0-1 floats or 0-255 integers, with separate alpha.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    class_ids: components.ClassIdBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.ClassIdBatch._optional,  # type: ignore[misc]
+    )
+    # Optional class Ids for the points.
+    #
+    # The [`components.ClassId`][rerun.components.ClassId] provides colors if not specified explicitly.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

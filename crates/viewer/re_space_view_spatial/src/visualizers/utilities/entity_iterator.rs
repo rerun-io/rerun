@@ -1,16 +1,12 @@
-use itertools::Either;
-
 use re_log_types::{TimeInt, Timeline};
-use re_space_view::{DataResultQuery as _, HybridResults};
+use re_space_view::{AnnotationSceneContext, DataResultQuery as _, HybridResults};
 use re_types::Archetype;
 use re_viewer_context::{
     IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError, ViewContext,
     ViewContextCollection, ViewQuery,
 };
 
-use crate::contexts::{
-    AnnotationSceneContext, EntityDepthOffsets, SpatialSceneEntityContext, TransformContext,
-};
+use crate::contexts::{EntityDepthOffsets, SpatialSceneEntityContext, TransformContext};
 
 // ---
 
@@ -21,23 +17,6 @@ use crate::contexts::{
 pub fn clamped_or<'a, T>(values: &'a [T], if_empty: &'a T) -> impl Iterator<Item = &'a T> + Clone {
     let repeated = values.last().unwrap_or(if_empty);
     values.iter().chain(std::iter::repeat(repeated))
-}
-
-/// Clamp the last value in `values` in order to reach a length of `clamped_len`.
-///
-/// Returns an empty iterator if values is empty.
-#[inline]
-pub fn clamped_or_nothing<T>(values: &[T], clamped_len: usize) -> impl Iterator<Item = &T> + Clone {
-    let Some(last) = values.last() else {
-        return Either::Left(std::iter::empty());
-    };
-
-    Either::Right(
-        values
-            .iter()
-            .chain(std::iter::repeat(last))
-            .take(clamped_len),
-    )
 }
 
 /// Clamp the last value in `values` in order to reach a length of `clamped_len`.

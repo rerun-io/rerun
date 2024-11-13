@@ -6083,8 +6083,10 @@ dependencies = [
 name = "re_space_view"
 version = "0.20.0-alpha.4+dev"
 dependencies = [
+ "ahash",
  "bytemuck",
  "egui",
+ "glam",
  "itertools 0.13.0",
  "nohash-hasher",
  "re_chunk_store",
@@ -6094,6 +6096,7 @@ dependencies = [
  "re_query",
  "re_renderer",
  "re_tracing",
+ "re_types",
  "re_types_core",
  "re_ui",
  "re_viewer_context",
@@ -6145,6 +6148,7 @@ dependencies = [
 name = "re_space_view_map"
 version = "0.20.0-alpha.4+dev"
 dependencies = [
+ "bytemuck",
  "egui",
  "glam",
  "itertools 0.13.0",

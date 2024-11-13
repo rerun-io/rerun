@@ -4,6 +4,8 @@
 
 pub mod controls;
 
+mod annotation_context_utils;
+mod annotation_scene_context;
 mod heuristics;
 mod instance_hash_conversions;
 mod outlines;
@@ -12,6 +14,10 @@ mod results_ext;
 mod screenshot;
 mod view_property_ui;
 
+pub use annotation_context_utils::{
+    process_annotation_and_keypoint_slices, process_annotation_slices, process_color_slice,
+};
+pub use annotation_scene_context::AnnotationSceneContext;
 pub use heuristics::suggest_space_view_for_each_entity;
 pub use instance_hash_conversions::{
     instance_path_hash_from_picking_layer_id, picking_layer_id_from_instance_path_hash,
@@ -52,4 +58,21 @@ pub fn diff_component_filter<T: re_types_core::Component>(
                 .filter_map(|array| array.and_then(|array| T::from_arrow(&*array).ok()))
                 .any(|instances| instances.iter().any(filter))
         })
+}
+
+/// Clamp the last value in `values` in order to reach a length of `clamped_len`.
+///
+/// Returns an empty iterator if values is empty.
+#[inline]
+pub fn clamped_or_nothing<T>(values: &[T], clamped_len: usize) -> impl Iterator<Item = &T> + Clone {
+    let Some(last) = values.last() else {
+        return itertools::Either::Left(std::iter::empty());
+    };
+
+    itertools::Either::Right(
+        values
+            .iter()
+            .chain(std::iter::repeat(last))
+            .take(clamped_len),
+    )
 }
