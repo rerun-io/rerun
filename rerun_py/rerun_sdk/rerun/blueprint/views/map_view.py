@@ -45,11 +45,11 @@ class MapView(SpaceView):
     ```
     <center>
     <picture>
-      <source media="(max-width: 480px)" srcset="https://static.rerun.io/map-view/8b2cc15e3f3313e2181667f6c29816ebe75e16e6/480w.png">
-      <source media="(max-width: 768px)" srcset="https://static.rerun.io/map-view/8b2cc15e3f3313e2181667f6c29816ebe75e16e6/768w.png">
-      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/map-view/8b2cc15e3f3313e2181667f6c29816ebe75e16e6/1024w.png">
-      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/map-view/8b2cc15e3f3313e2181667f6c29816ebe75e16e6/1200w.png">
-      <img src="https://static.rerun.io/map-view/8b2cc15e3f3313e2181667f6c29816ebe75e16e6/full.png" width="640">
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/map_view/9d0a5ba3a6e8d4693ba98e1b3cfcc15d166fd41d/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/map_view/9d0a5ba3a6e8d4693ba98e1b3cfcc15d166fd41d/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/map_view/9d0a5ba3a6e8d4693ba98e1b3cfcc15d166fd41d/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/map_view/9d0a5ba3a6e8d4693ba98e1b3cfcc15d166fd41d/1200w.png">
+      <img src="https://static.rerun.io/map_view/9d0a5ba3a6e8d4693ba98e1b3cfcc15d166fd41d/full.png" width="640">
     </picture>
     </center>
 
