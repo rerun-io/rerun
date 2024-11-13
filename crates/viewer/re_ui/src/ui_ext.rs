@@ -13,6 +13,41 @@ use crate::{
 
 static FULL_SPAN_TAG: &str = "rerun_full_span";
 
+fn error_label_bg_color(fg_color: Color32) -> Color32 {
+    fg_color.gamma_multiply(0.35)
+}
+
+fn warning_or_error_label(
+    ui: &mut egui::Ui,
+    fg_color: Color32,
+    visible_text: &str,
+    full_text: &str,
+) -> egui::Response {
+    egui::Frame::none()
+        .stroke((1.0, fg_color))
+        .fill(error_label_bg_color(fg_color))
+        .rounding(4.0)
+        .inner_margin(4.0)
+        .show(ui, |ui| {
+            ui.horizontal(|ui| {
+                ui.spacing_mut().item_spacing.x = 4.0;
+                ui.colored_label(fg_color, "⚠");
+                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
+                let response = ui.strong(visible_text).on_hover_ui(|ui| {
+                    if visible_text != full_text {
+                        ui.label(full_text);
+                        ui.add_space(8.0);
+                    }
+                    ui.label("Click to copy text.");
+                });
+                if response.clicked() {
+                    ui.ctx().copy_text(full_text.to_owned());
+                };
+            });
+        })
+        .response
+}
+
 /// Rerun custom extensions to [`egui::Ui`].
 pub trait UiExt {
     fn ui(&self) -> &egui::Ui;
@@ -32,28 +67,26 @@ pub trait UiExt {
 
     /// Shows a small error label with the given text on hover and copies the text to the clipboard on click.
     fn error_with_details_on_hover(&mut self, error_text: &str) -> egui::Response {
-        let label = egui::Label::new(self.ui().ctx().error_text("Error"))
-            .selectable(false)
-            .sense(egui::Sense::click());
-        let response = self.ui_mut().add(label);
-        if response.clicked() {
-            self.ui().ctx().copy_text(error_text.to_owned());
+        let ui = self.ui_mut();
+        warning_or_error_label(ui, ui.style().visuals.error_fg_color, "Error", error_text)
         }
-        response.on_hover_text(error_text)
+
+    fn error_label_background_color(&self) -> egui::Color32 {
+        error_label_bg_color(self.ui().style().visuals.error_fg_color)
     }
 
     /// Shows an error label with the entire error text and copies the text to the clipboard on click.
     ///
-    /// Use this only if you have a lot of space to spare.
+    /// Use this only if the error message is short, or you have a lot of room.
+    /// Otherwise, use [`Self::error_with_details_on_hover`].
     fn error_label(&mut self, error_text: &str) -> egui::Response {
-        let label = egui::Label::new(self.ui().ctx().error_text(error_text))
-            .selectable(true)
-            .sense(egui::Sense::click());
-        let response = self.ui_mut().add(label).on_hover_text("Click to copy.");
-        if response.clicked() {
-            self.ui().ctx().copy_text(error_text.to_owned());
-        }
-        response
+        let ui = self.ui_mut();
+        warning_or_error_label(
+            ui,
+            ui.style().visuals.error_fg_color,
+            error_text,
+            error_text,
+        )
     }
 
     fn small_icon_button(&mut self, icon: &Icon) -> egui::Response {
