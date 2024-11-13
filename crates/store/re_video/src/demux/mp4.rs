@@ -66,6 +66,7 @@ impl VideoData {
                 samples.push(Sample {
                     is_sync: sample.is_sync,
                     sample_idx,
+                    frame_nr: 0, // filled in after the loop
                     decode_timestamp,
                     presentation_timestamp,
                     duration,
@@ -75,6 +76,7 @@ impl VideoData {
             }
         }
 
+        // Append the last GOP if there are any samples left:
         if !samples.is_empty() {
             let start = samples[gop_sample_start_index].decode_timestamp;
             let sample_range = gop_sample_start_index as u32..samples.len() as u32;
@@ -82,6 +84,29 @@ impl VideoData {
                 decode_start_time: start,
                 sample_range,
             });
+        }
+
+        {
+            re_tracing::profile_scope!("Sanity-check samples");
+            let mut samples_are_in_decode_order = true;
+            for window in samples.windows(2) {
+                samples_are_in_decode_order &=
+                    window[0].decode_timestamp <= window[1].decode_timestamp;
+            }
+            if !samples_are_in_decode_order {
+                re_log::warn!(
+                    "Video samples are NOT in decode order. This implies either invalid video data or a bug in parsing the mp4."
+                );
+            }
+        }
+
+        {
+            re_tracing::profile_scope!("Calculate frame numbers");
+            let mut samples_sorted_by_pts = samples.iter_mut().collect::<Vec<_>>();
+            samples_sorted_by_pts.sort_by_key(|s| s.presentation_timestamp);
+            for (frame_nr, sample) in samples_sorted_by_pts.into_iter().enumerate() {
+                sample.frame_nr = frame_nr;
+            }
         }
 
         let samples_statistics = SamplesStatistics::new(&samples);

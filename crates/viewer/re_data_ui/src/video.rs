@@ -4,7 +4,10 @@ use re_renderer::{
     video::VideoFrameTexture,
 };
 use re_types::components::VideoTimestamp;
-use re_ui::{list_item::PropertyContent, DesignTokens, UiExt};
+use re_ui::{
+    list_item::{self, PropertyContent},
+    DesignTokens, UiExt,
+};
 use re_video::{decode::FrameInfo, demux::SamplesStatistics, VideoData};
 use re_viewer_context::UiLayout;
 
@@ -93,7 +96,7 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoData)
     );
 
     if ui_layout != UiLayout::Tooltip {
-        ui.list_item_collapsible_noninteractive_label("MP4 tracks", true, |ui| {
+        ui.list_item_collapsible_noninteractive_label("MP4 tracks", false, |ui| {
             for (track_id, track_kind) in &video_data.mp4_tracks {
                 let track_kind_string = match track_kind {
                     Some(re_video::TrackKind::Audio) => "audio",
@@ -117,7 +120,13 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoData)
         });
 
         ui.list_item_collapsible_noninteractive_label("Video samples", false, |ui| {
-            samples_table_ui(ui, video_data);
+            egui::Resize::default()
+                .with_stroke(true)
+                .resizable([false, true])
+                .max_height(611.0) // Odd value so the user can see half-hidden rows
+                .show(ui, |ui| {
+                    samples_table_ui(ui, video_data);
+                });
         });
     }
 }
@@ -128,13 +137,16 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoData) {
     egui_extras::TableBuilder::new(ui)
         .auto_shrink([false, true])
         .vscroll(true)
-        .max_scroll_height(800.0)
-        .columns(Column::auto(), 7)
+        .max_scroll_height(611.0) // Odd value so the user can see half-hidden rows
+        .columns(Column::auto(), 8)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .header(DesignTokens::table_header_height(), |mut header| {
             DesignTokens::setup_table_header(&mut header);
             header.col(|ui| {
                 ui.strong("Sample");
+            });
+            header.col(|ui| {
+                ui.strong("Frame");
             });
             header.col(|ui| {
                 ui.strong("GOP");
@@ -166,16 +178,21 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoData) {
                     let sample = &video_data.samples[sample_idx];
                     let re_video::Sample {
                         is_sync,
-                        sample_idx: _,
+                        sample_idx: sample_idx_in_sample,
+                        frame_nr,
                         decode_timestamp,
                         presentation_timestamp,
                         duration,
                         byte_offset: _,
                         byte_length,
                     } = *sample;
+                    debug_assert_eq!(sample_idx, sample_idx_in_sample);
 
                     row.col(|ui| {
-                        ui.monospace(sample_idx.to_string());
+                        ui.monospace(re_format::format_uint(sample_idx));
+                    });
+                    row.col(|ui| {
+                        ui.monospace(re_format::format_uint(frame_nr));
                     });
                     row.col(|ui| {
                         if let Some(gop_index) = video_data
@@ -260,19 +277,31 @@ pub fn show_decoded_frame_info(
             frame_info,
             source_pixel_format,
         }) => {
-            re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
-                let default_open = false;
-                if let Some(frame_info) = frame_info {
-                    ui.list_item_collapsible_noninteractive_label(
-                        "Current decoded frame",
-                        default_open,
-                        |ui| {
-                            frame_info_ui(ui, &frame_info, video.data());
-                            source_image_data_format_ui(ui, &source_pixel_format);
-                        },
-                    );
-                }
-            });
+            if let Some(frame_info) = frame_info {
+                re_ui::list_item::list_item_scope(ui, "decoded_frame_ui", |ui| {
+                    let id = ui.id().with("decoded_frame_collapsible");
+                    let default_open = false;
+                    let label = if let Some(frame_nr) = frame_info.frame_nr {
+                        format!("Decoded frame #{}", re_format::format_uint(frame_nr))
+                    } else {
+                        "Current decoded frame".to_owned()
+                    };
+                    ui.list_item()
+                        .interactive(false)
+                        .show_hierarchical_with_children(
+                            ui,
+                            id,
+                            default_open,
+                            list_item::LabelContent::new(label),
+                            |ui| {
+                                list_item::list_item_scope(ui, id, |ui| {
+                                    frame_info_ui(ui, &frame_info, video.data());
+                                    source_image_data_format_ui(ui, &source_pixel_format);
+                                });
+                            },
+                        )
+                });
+            }
 
             let response = crate::image::texture_preview_ui(
                 render_ctx,
@@ -336,6 +365,7 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
     let FrameInfo {
         is_sync,
         sample_idx,
+        frame_nr,
         presentation_timestamp,
         duration,
         latest_decode_timestamp,
@@ -379,6 +409,13 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
         .on_hover_text(
             "The sample number of this frame in the video. In MP4, one sample is one frame, but not necessareily in the same order!",
         );
+    }
+
+    if let Some(frame_nr) = frame_nr {
+        ui.list_item_flat_noninteractive(PropertyContent::new("Frame").value_fn(move |ui, _| {
+            ui.monospace(re_format::format_uint(frame_nr));
+        }))
+        .on_hover_text("The frame number, as ordered by presentation time");
     }
 
     if let Some(dts) = latest_decode_timestamp {
