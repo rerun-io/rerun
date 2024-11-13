@@ -77,22 +77,24 @@ impl VideoData {
         }
 
         // Generate data for `test_latest_sample_index_at_presentation_timestamp` test.
-        // re_log::info!(
-        //     "pts: {:?}",
-        //     samples
-        //         .iter()
-        //         .take(50)
-        //         .map(|s| s.presentation_timestamp.0)
-        //         .collect::<Vec<_>>()
-        // );
-        // re_log::info!(
-        //     "dts: {:?}",
-        //     samples
-        //         .iter()
-        //         .take(50)
-        //         .map(|s| s.decode_timestamp.0)
-        //         .collect::<Vec<_>>()
-        // );
+        if false {
+            re_log::info!(
+                "pts: {:?}",
+                samples
+                    .iter()
+                    .take(50)
+                    .map(|s| s.presentation_timestamp.0)
+                    .collect::<Vec<_>>()
+            );
+            re_log::info!(
+                "dts: {:?}",
+                samples
+                    .iter()
+                    .take(50)
+                    .map(|s| s.decode_timestamp.0)
+                    .collect::<Vec<_>>()
+            );
+        }
 
         // Append the last GOP if there are any samples left:
         if !samples.is_empty() {
