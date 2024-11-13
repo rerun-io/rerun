@@ -49,3 +49,23 @@ The map view supports several types of background maps, including a few from [Ma
 A Mapbox access token is required to use them.
 It must be provided either using the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable or configured in the settings screen ("Settings…" item in the Rerun menu).
 An access token may be freely obtained by creating a Mapbox account.
+
+
+## Creating a map view from code
+
+Like other views, the map view can be configured using the [blueprint API](https://rerun.io/docs/howto/configure-viewer-through-code):
+
+```python
+import rerun.blueprint as rrb
+
+blueprint = rrb.Blueprint(
+    rrb.MapView(
+        origin="/robot/position",
+        name="map view",
+        zoom=16.0,
+        background=rrb.MapProvider.OpenStreetMap,
+    ),
+)
+```
+
+Check the [map view](../../reference/types/views/map_view.md) reference for details.
