@@ -7,7 +7,7 @@ use re_types::{
     archetypes::Pinhole, blueprint::components::VisualBounds2D, components::ViewCoordinates,
     image::ImageKind,
 };
-use re_ui::{ContextExt as _, UiExt as _};
+use re_ui::UiExt as _;
 use re_viewer_context::{
     HoverHighlight, SelectionHighlight, SpaceViewHighlights, SpaceViewState, ViewerContext,
 };
@@ -214,11 +214,12 @@ pub fn create_labels(
         };
 
         let font_id = egui::TextStyle::Body.resolve(parent_ui.style());
-        let format = match label.style {
-            UiLabelStyle::Color(color) => egui::TextFormat::simple(font_id, color),
-            UiLabelStyle::Error => parent_ui.ctx().error_text_format(),
+        let is_error = matches!(label.style, UiLabelStyle::Error);
+        let text_color = match label.style {
+            UiLabelStyle::Color(color) => color,
+            UiLabelStyle::Error => parent_ui.style().visuals.strong_text_color(),
         };
-        let text_color = format.color;
+        let format = egui::TextFormat::simple(font_id, text_color);
 
         let galley = parent_ui.fonts(|fonts| {
             fonts.layout_job({
@@ -249,7 +250,13 @@ pub fn create_labels(
             .index_highlight(label.labeled_instance.instance);
         let background_color = match highlight.hover {
             HoverHighlight::None => match highlight.selection {
-                SelectionHighlight::None => parent_ui.style().visuals.panel_fill,
+                SelectionHighlight::None => {
+                    if is_error {
+                        parent_ui.error_label_background_color()
+                    } else {
+                        parent_ui.style().visuals.panel_fill
+                    }
+                }
                 SelectionHighlight::SiblingSelection => {
                     parent_ui.style().visuals.widgets.active.bg_fill
                 }
@@ -258,7 +265,16 @@ pub fn create_labels(
             HoverHighlight::Hovered => parent_ui.style().visuals.widgets.hovered.bg_fill,
         };
 
-        label_shapes.push(egui::Shape::rect_filled(bg_rect, 3.0, background_color));
+        let rect_stroke = if is_error {
+            egui::Stroke::new(1.0, parent_ui.style().visuals.error_fg_color)
+        } else {
+            egui::Stroke::NONE
+        };
+
+        label_shapes.push(
+            egui::epaint::RectShape::new(bg_rect.expand(4.0), 4.0, background_color, rect_stroke)
+                .into(),
+        );
         label_shapes.push(egui::Shape::galley(
             text_rect.center_top(),
             galley,
