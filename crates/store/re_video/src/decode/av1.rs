@@ -253,7 +253,8 @@ fn create_frame(debug_name: &str, picture: &dav1d::Picture) -> Result<Frame> {
             format,
         },
         info: FrameInfo {
-            is_sync: None, // TODO(emilk)
+            is_sync: None,    // TODO(emilk)
+            sample_idx: None, // TODO(emilk),
             presentation_timestamp: Time(picture.timestamp().unwrap_or(0)),
             duration: Time(picture.duration()),
             latest_decode_timestamp: None,

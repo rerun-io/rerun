@@ -204,6 +204,7 @@ fn init_video_decoder(
             on_output(Ok(Frame {
                 content: WebVideoFrame(frame),
                 info: FrameInfo {
+                    sample_idx: None,
                     is_sync: None,
                     presentation_timestamp,
                     duration,

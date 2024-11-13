@@ -45,7 +45,7 @@ impl VideoData {
         {
             re_tracing::profile_scope!("copy samples & build gops");
 
-            for sample in &track.samples {
+            for (sample_idx, sample) in track.samples.iter().enumerate() {
                 if sample.is_sync && !samples.is_empty() {
                     let start = samples[gop_sample_start_index].decode_timestamp;
                     let sample_range = gop_sample_start_index as u32..samples.len() as u32;
@@ -65,6 +65,7 @@ impl VideoData {
 
                 samples.push(Sample {
                     is_sync: sample.is_sync,
+                    sample_idx,
                     decode_timestamp,
                     presentation_timestamp,
                     duration,
