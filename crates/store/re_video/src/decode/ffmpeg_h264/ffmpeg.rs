@@ -448,6 +448,8 @@ fn write_ffmpeg_input(
                 .concat();
                 write_bytes(ffmpeg_stdin, &end_nals).ok();
 
+                // NOTE(emilk): I've also tried writing `NalUnitType::AccessUnitDelimiter` here, but to no avail.
+
                 ffmpeg_stdin.flush().ok();
 
                 break;
