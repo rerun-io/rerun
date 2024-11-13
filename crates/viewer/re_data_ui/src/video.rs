@@ -117,7 +117,13 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoData)
         });
 
         ui.list_item_collapsible_noninteractive_label("Video samples", false, |ui| {
+            egui::Resize::default()
+                .with_stroke(true)
+                .resizable([false, true])
+                .max_height(611.0) // Odd value so the user can see half-hidden rows
+                .show(ui, |ui| {
             samples_table_ui(ui, video_data);
+        });
         });
     }
 }
@@ -128,7 +134,7 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoData) {
     egui_extras::TableBuilder::new(ui)
         .auto_shrink([false, true])
         .vscroll(true)
-        .max_scroll_height(800.0)
+        .max_scroll_height(611.0) // Odd value so the user can see half-hidden rows
         .columns(Column::auto(), 8)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .header(DesignTokens::table_header_height(), |mut header| {
