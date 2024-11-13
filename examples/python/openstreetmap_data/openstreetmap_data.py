@@ -66,7 +66,7 @@ def log_way(way: dict[str, Any]) -> None:
 
     coords = [(node["lat"], node["lon"]) for node in way["geometry"]]
 
-    rr.log(entity_path, rr.GeoLineStrings(lat_lon=[coords], radii=rr.components.Radius.ui_points(2.0)))
+    rr.qlog(entity_path, rr.GeoLineStrings(lat_lon=[coords], radii=rr.components.Radius.ui_points(2.0)))
     rr.log(entity_path, rr.AnyValues(**way.get("tags", {})))
 
 

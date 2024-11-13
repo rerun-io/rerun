@@ -172,6 +172,8 @@ fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
     // This affects only the web target, so we don't need to show it on native.
     #[cfg(target_arch = "wasm32")]
     {
+        use re_video::decode::DecodeHardwareAcceleration;
+
         let hardware_acceleration = &mut app_options.video_decoder_hw_acceleration;
         ui.horizontal(|ui| {
             ui.label("Decoder:");
@@ -180,17 +182,19 @@ fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
                 .show_ui(ui, |ui| {
                     ui.selectable_value(
                         hardware_acceleration,
-                        re_video::decode::DecodeHardwareAcceleration::Auto,
-                        re_video::decode::DecodeHardwareAcceleration::Auto.to_string(),
-                    ) | ui.selectable_value(
+                        DecodeHardwareAcceleration::Auto,
+                        DecodeHardwareAcceleration::Auto.to_string(),
+                    );
+                    ui.selectable_value(
                         hardware_acceleration,
-                        re_video::decode::DecodeHardwareAcceleration::PreferSoftware,
-                        re_video::decode::DecodeHardwareAcceleration::PreferSoftware.to_string(),
-                    ) | ui.selectable_value(
+                        DecodeHardwareAcceleration::PreferSoftware,
+                        DecodeHardwareAcceleration::PreferSoftware.to_string(),
+                    );
+                    ui.selectable_value(
                         hardware_acceleration,
-                        re_video::decode::DecodeHardwareAcceleration::PreferHardware,
-                        re_video::decode::DecodeHardwareAcceleration::PreferHardware.to_string(),
-                    )
+                        DecodeHardwareAcceleration::PreferHardware,
+                        DecodeHardwareAcceleration::PreferHardware.to_string(),
+                    );
                 });
             // Note that the setting is part of the video's cache key, so, if it changes, the cache
             // entries outdate automatically.
@@ -223,6 +227,8 @@ fn ffmpeg_path_status_ui(ui: &mut Ui, app_options: &AppOptions) {
             }
         }
         Err(FFmpegVersionParseError::ParseVersion { raw_version }) => {
+            // We make this one a warning instead of an error because version parsing is flaky, and
+            // it might end up still working.
             ui.warning_label(&format!(
                 "FFmpeg binary found but unable to parse version: {raw_version}"
             ));
