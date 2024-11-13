@@ -266,8 +266,14 @@ impl VideoPlayer {
             // Therefore, it's important to compare presentation timestamps instead of sample indices.
             // (comparing decode timestamps should be equivalent to comparing sample indices)
             let current_pts = self.data.samples[self.current_sample_idx].presentation_timestamp;
-            let requested_pts = self.data.samples[requested_sample_idx].presentation_timestamp;
-            if requested_pts < current_pts {
+            let requested_sample = &self.data.samples[requested_sample_idx];
+
+            re_log::trace!(
+                "Seeking to sample {requested_sample_idx} (frame_nr {})",
+                requested_sample.frame_nr
+            );
+
+            if requested_sample.presentation_timestamp < current_pts {
                 self.reset()?;
                 self.enqueue_gop(requested_gop_idx, video_data)?;
                 self.enqueue_gop(requested_gop_idx + 1, video_data)?;
@@ -324,6 +330,8 @@ impl VideoPlayer {
         };
 
         let samples = &self.data.samples[gop.sample_range_usize()];
+
+        re_log::trace!("Enqueueing GOP {gop_idx} ({} samples)", samples.len());
 
         for sample in samples {
             let chunk = sample.get(video_data).ok_or(VideoPlayerError::BadData)?;

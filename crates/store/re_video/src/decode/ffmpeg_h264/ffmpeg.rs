@@ -103,8 +103,21 @@ struct FFmpegFrameInfo {
     /// can be decoded from only this one sample (though I'm not 100% sure).
     is_sync: bool,
 
-    /// Which sample is this in the video?
+    /// Which sample in the video is this from?
+    ///
+    /// In MP4, one sample is one frame, but we may be reordering samples when decoding.
+    ///
+    /// This is the order of which the samples appear in the container,
+    /// which is usually ordered by [`Self::decode_timestamp`].
     sample_idx: usize,
+
+    /// Which frame is this?
+    ///
+    /// This is on the assumption that each sample produces a single frame,
+    /// which is true for MP4.
+    ///
+    /// This is the index of frames ordered by [`Self::presentation_timestamp`].
+    frame_nr: usize,
 
     presentation_timestamp: Time,
     duration: Time,
@@ -321,6 +334,7 @@ impl FFmpegProcessAndListener {
         let frame_info = FFmpegFrameInfo {
             is_sync: chunk.is_sync,
             sample_idx: chunk.sample_idx,
+            frame_nr: chunk.frame_nr,
             presentation_timestamp: chunk.presentation_timestamp,
             decode_timestamp: chunk.decode_timestamp,
             duration: chunk.duration,
@@ -549,6 +563,7 @@ impl FrameBuffer {
             info: FrameInfo {
                 is_sync: Some(frame_info.is_sync),
                 sample_idx: Some(frame_info.sample_idx),
+                frame_nr: Some(frame_info.frame_nr),
                 presentation_timestamp: frame_info.presentation_timestamp,
                 duration: frame_info.duration,
                 latest_decode_timestamp: Some(frame_info.decode_timestamp),

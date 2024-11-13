@@ -204,8 +204,9 @@ fn init_video_decoder(
             on_output(Ok(Frame {
                 content: WebVideoFrame(frame),
                 info: FrameInfo {
-                    sample_idx: None,
-                    is_sync: None,
+                    is_sync: None,    // TODO(emilk)
+                    sample_idx: None, // TODO(emilk)
+                    frame_nr: None,   // TODO(emilk)
                     presentation_timestamp,
                     duration,
                     latest_decode_timestamp: None,

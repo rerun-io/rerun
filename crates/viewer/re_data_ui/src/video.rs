@@ -129,12 +129,15 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoData) {
         .auto_shrink([false, true])
         .vscroll(true)
         .max_scroll_height(800.0)
-        .columns(Column::auto(), 7)
+        .columns(Column::auto(), 8)
         .cell_layout(egui::Layout::left_to_right(egui::Align::Center))
         .header(DesignTokens::table_header_height(), |mut header| {
             DesignTokens::setup_table_header(&mut header);
             header.col(|ui| {
                 ui.strong("Sample");
+            });
+            header.col(|ui| {
+                ui.strong("Frame");
             });
             header.col(|ui| {
                 ui.strong("GOP");
@@ -166,16 +169,21 @@ fn samples_table_ui(ui: &mut egui::Ui, video_data: &VideoData) {
                     let sample = &video_data.samples[sample_idx];
                     let re_video::Sample {
                         is_sync,
-                        sample_idx: _,
+                        sample_idx: sample_idx_in_sample,
+                        frame_nr,
                         decode_timestamp,
                         presentation_timestamp,
                         duration,
                         byte_offset: _,
                         byte_length,
                     } = *sample;
+                    debug_assert_eq!(sample_idx, sample_idx_in_sample);
 
                     row.col(|ui| {
-                        ui.monospace(sample_idx.to_string());
+                        ui.monospace(re_format::format_uint(sample_idx));
+                    });
+                    row.col(|ui| {
+                        ui.monospace(re_format::format_uint(frame_nr));
                     });
                     row.col(|ui| {
                         if let Some(gop_index) = video_data
@@ -336,6 +344,7 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
     let FrameInfo {
         is_sync,
         sample_idx,
+        frame_nr,
         presentation_timestamp,
         duration,
         latest_decode_timestamp,
@@ -379,6 +388,13 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
         .on_hover_text(
             "The sample number of this frame in the video. In MP4, one sample is one frame, but not necessareily in the same order!",
         );
+    }
+
+    if let Some(frame_nr) = frame_nr {
+        ui.list_item_flat_noninteractive(PropertyContent::new("Frame").value_fn(move |ui, _| {
+            ui.monospace(re_format::format_uint(frame_nr));
+        }))
+        .on_hover_text("The frame number, as ordered by presentation time");
     }
 
     if let Some(dts) = latest_decode_timestamp {
