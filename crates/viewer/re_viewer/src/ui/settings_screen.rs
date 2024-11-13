@@ -1,5 +1,4 @@
 use egui::{NumExt as _, Ui};
-use std::path::Path;
 
 use re_log_types::TimeZone;
 use re_ui::UiExt as _;
@@ -205,7 +204,7 @@ fn ffmpeg_path_status_ui(ui: &mut Ui, app_options: &AppOptions) {
 
     let path = app_options
         .video_decoder_override_ffmpeg_path
-        .then(|| Path::new(&app_options.video_decoder_ffmpeg_path));
+        .then(|| std::path::Path::new(&app_options.video_decoder_ffmpeg_path));
 
     if let Some(path) = path {
         if !path.is_file() {
