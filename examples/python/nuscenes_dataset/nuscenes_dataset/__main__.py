@@ -143,14 +143,14 @@ def log_lidar_and_ego_pose(
                 rotation=rr.Quaternion(xyzw=rotation_xyzw),
                 from_parent=False,
             ),
-            rr.GeoPoints(lat_lon=position_lat_lon, colors=0xFF0000FF),
+            rr.GeoPoints(lat_lon=position_lat_lon, radii=rr.Radius.ui_points(8.0), colors=0xFF0000FF),
         )
         # TODO(#6889): We don't want the radius for the trajectory line to be the same as the radius of the points.
         # However, rr.GeoPoints uses the same `rr.components.Radius` for this, so these two archetypes would influence each other
         # if logged on the same entity. In the future, they will have different tags, which will allow them to live side by side.
         rr.log(
             "world/ego_vehicle/trajectory",
-            rr.GeoLineStrings(lat_lon=ego_trajectory_lat_lon, radii=1.0, colors=0xFF0000FF),
+            rr.GeoLineStrings(lat_lon=ego_trajectory_lat_lon, radii=rr.Radius.ui_points(1.0), colors=0xFF0000FF),
         )
 
         current_lidar_token = sample_data["next"]
@@ -241,9 +241,8 @@ def log_annotations(location: str, first_sample_token: str, nusc: nuscenes.NuSce
         )
         current_sample_token = sample_data["next"]
 
-    # skipping for now since labels take too much space in 3D view (see https://github.com/rerun-io/rerun/issues/4451)
-    # annotation_context = [(i, label) for label, i in label2id.items()]
-    # rr.log("world/anns", rr.AnnotationContext(annotation_context), static=True)
+    annotation_context = [(i, label) for label, i in label2id.items()]
+    rr.log("world/anns", rr.AnnotationContext(annotation_context), static=True)
 
 
 def log_sensor_calibration(sample_data: dict[str, Any], nusc: nuscenes.NuScenes) -> None:
