@@ -110,7 +110,7 @@ def log_nuscenes(nusc: nuscenes.NuScenes, scene_name: str, max_time_sec: float) 
     log_lidar_and_ego_pose(location, first_lidar_token, nusc, max_timestamp_us)
     log_cameras(first_camera_tokens, nusc, max_timestamp_us)
     log_radars(first_radar_tokens, nusc, max_timestamp_us)
-    log_annotations(first_sample_token, nusc, max_timestamp_us)
+    log_annotations(location, first_sample_token, nusc, max_timestamp_us)
 
 
 def log_lidar_and_ego_pose(
@@ -131,6 +131,7 @@ def log_lidar_and_ego_pose(
 
         ego_pose = nusc.get("ego_pose", sample_data["ego_pose_token"])
         rotation_xyzw = np.roll(ego_pose["rotation"], shift=-1)  # go from wxyz to xyzw
+
         rr.log(
             "world/ego_vehicle",
             rr.Transform3D(
@@ -138,15 +139,9 @@ def log_lidar_and_ego_pose(
                 rotation=rr.Quaternion(xyzw=rotation_xyzw),
                 from_parent=False,
             ),
+            rr.GeoPoints(lat_lon=derive_latlon(location, ego_pose)),
         )
         current_lidar_token = sample_data["next"]
-
-        # log GPS data
-        (lat, long) = derive_latlon(location, ego_pose)
-        rr.log(
-            "world/ego_vehicle",
-            rr.GeoPoints(lat_lon=[[lat, long]]),
-        )
 
         data_file_path = nusc.dataroot / sample_data["filename"]
         pointcloud = nuscenes.LidarPointCloud.from_file(str(data_file_path))
@@ -193,7 +188,7 @@ def log_radars(first_radar_tokens: list[str], nusc: nuscenes.NuScenes, max_times
             current_camera_token = sample_data["next"]
 
 
-def log_annotations(first_sample_token: str, nusc: nuscenes.NuScenes, max_timestamp_us: float) -> None:
+def log_annotations(location: str, first_sample_token: str, nusc: nuscenes.NuScenes, max_timestamp_us: float) -> None:
     """Log 3D bounding boxes."""
     label2id: dict[str, int] = {}
     current_sample_token = first_sample_token
@@ -207,6 +202,7 @@ def log_annotations(first_sample_token: str, nusc: nuscenes.NuScenes, max_timest
         centers = []
         quaternions = []
         class_ids = []
+        lat_lon = []
         for ann_token in ann_tokens:
             ann = nusc.get("sample_annotation", ann_token)
 
@@ -218,6 +214,7 @@ def log_annotations(first_sample_token: str, nusc: nuscenes.NuScenes, max_timest
             if ann["category_name"] not in label2id:
                 label2id[ann["category_name"]] = len(label2id)
             class_ids.append(label2id[ann["category_name"]])
+            lat_lon.append(derive_latlon(location, ann))
 
         rr.log(
             "world/anns",
@@ -228,6 +225,7 @@ def log_annotations(first_sample_token: str, nusc: nuscenes.NuScenes, max_timest
                 class_ids=class_ids,
                 fill_mode=rr.components.FillMode.Solid,
             ),
+            rr.GeoPoints(lat_lon=lat_lon),
         )
         current_sample_token = sample_data["next"]
 
@@ -305,7 +303,7 @@ def main() -> None:
             rrb.Vertical(
                 rrb.TextDocumentView(origin="description", name="Description"),
                 rrb.MapView(
-                    origin="world/ego_vehicle",
+                    origin="world",
                     name="MapView",
                     zoom=rrb.archetypes.MapZoom(18.0),
                     background=rrb.archetypes.MapBackground(rrb.components.MapProvider.OpenStreetMap),
