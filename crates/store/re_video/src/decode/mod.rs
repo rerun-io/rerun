@@ -161,6 +161,8 @@ pub fn new_decoder(
 ) -> Result<Box<dyn AsyncDecoder>> {
     #![allow(unused_variables, clippy::needless_return)] // With some feature flags
 
+    re_tracing::profile_function!();
+
     re_log::trace!(
         "Looking for decoder for {}",
         video.human_readable_codec_string()
@@ -226,7 +228,18 @@ pub struct Chunk {
     pub data: Vec<u8>,
 
     /// Which sample (frame) did this chunk come from?
+    ///
+    /// This is the order of which the samples appear in the container,
+    /// which is usually ordered by [`Self::decode_timestamp`].
     pub sample_idx: usize,
+
+    /// Which frame does this chunk belong to?
+    ///
+    /// This is on the assumption that each sample produces a single frame,
+    /// which is true for MP4.
+    ///
+    /// This is the index of samples ordered by [`Self::presentation_timestamp`].
+    pub frame_nr: usize,
 
     /// Decode timestamp of this sample.
     /// Chunks are expected to be submitted in the order of decode timestamp.
@@ -271,8 +284,21 @@ pub struct FrameInfo {
     ///
     /// In MP4, one sample is one frame, but we may be reordering samples when decoding.
     ///
+    /// This is the order of which the samples appear in the container,
+    /// which is usually ordered by [`Self::latest_decode_timestamp`].
+    ///
     /// None = unknown.
     pub sample_idx: Option<usize>,
+
+    /// Which frame is this?
+    ///
+    /// This is on the assumption that each sample produces a single frame,
+    /// which is true for MP4.
+    ///
+    /// This is the index of frames ordered by [`Self::presentation_timestamp`].
+    ///
+    /// None = unknown.
+    pub frame_nr: Option<usize>,
 
     /// The presentation timestamp of the frame.
     pub presentation_timestamp: Time,

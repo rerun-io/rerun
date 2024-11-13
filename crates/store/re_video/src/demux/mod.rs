@@ -440,7 +440,18 @@ pub struct Sample {
     pub is_sync: bool,
 
     /// Which sample is this in the video?
+    ///
+    /// This is the order of which the samples appear in the container,
+    /// which is usually ordered by [`Self::decode_timestamp`].
     pub sample_idx: usize,
+
+    /// Which frame does this sample belong to?
+    ///
+    /// This is on the assumption that each sample produces a single frame,
+    /// which is true for MP4.
+    ///
+    /// This is the index of samples ordered by [`Self::presentation_timestamp`].
+    pub frame_nr: usize,
 
     /// Time at which this sample appears in the decoded bitstream, in time units.
     ///
@@ -482,6 +493,7 @@ impl Sample {
         Some(Chunk {
             data,
             sample_idx: self.sample_idx,
+            frame_nr: self.frame_nr,
             decode_timestamp: self.decode_timestamp,
             presentation_timestamp: self.presentation_timestamp,
             duration: self.duration,
@@ -636,6 +648,7 @@ mod tests {
             .map(|(sample_idx, (pts, dts))| Sample {
                 is_sync: false,
                 sample_idx,
+                frame_nr: 0, // unused
                 decode_timestamp: Time(dts),
                 presentation_timestamp: Time(pts),
                 duration: Time(1),

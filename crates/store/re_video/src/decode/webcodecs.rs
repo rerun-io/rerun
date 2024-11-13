@@ -168,6 +168,28 @@ impl AsyncDecoder for WebVideoDecoder {
 
         Ok(())
     }
+
+    /// Called after submitting the last chunk.
+    ///
+    /// Should flush all pending frames.
+    fn end_of_video(&mut self) -> Result<()> {
+        // This returns a promise that resolves once all pending messages have been processed.
+        // https://developer.mozilla.org/en-US/docs/Web/API/VideoDecoder/flush
+        //
+        // It has been observed that if we don't call this, it can happen that the last few frames are never decoded.
+        // Notably, MDN writes about flush methods in general here https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API#processing_model
+        // """
+        // Methods named flush() can be used to wait for the completion of all work that was pending at the time flush() was called.
+        // However, it should generally only be called once all desired work is queued.
+        // It is not intended to force progress at regular intervals.
+        // Calling it unnecessarily will affect encoder quality and cause decoders to require the next input to be a key frame.
+        // """
+        // -> Nothing of this indicates that we _have_ to call it and rather discourages it,
+        // but it points out that it might be a good idea once "all desired work is queued".
+        let _ = self.decoder.flush();
+
+        Ok(())
+    }
 }
 
 fn init_video_decoder(
@@ -186,8 +208,9 @@ fn init_video_decoder(
             on_output(Ok(Frame {
                 content: WebVideoFrame(frame),
                 info: FrameInfo {
-                    sample_idx: None,
-                    is_sync: None,
+                    is_sync: None,    // TODO(emilk)
+                    sample_idx: None, // TODO(emilk)
+                    frame_nr: None,   // TODO(emilk)
                     presentation_timestamp,
                     duration,
                     latest_decode_timestamp: None,
