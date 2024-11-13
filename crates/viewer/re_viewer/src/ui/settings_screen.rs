@@ -3,7 +3,6 @@ use std::path::Path;
 
 use re_log_types::TimeZone;
 use re_ui::UiExt as _;
-use re_video::decode::{FFmpegVersion, FFmpegVersionParseError};
 use re_viewer_context::AppOptions;
 
 pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_open: &mut bool) {
@@ -200,7 +199,10 @@ fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
     }
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 fn ffmpeg_path_status_ui(ui: &mut Ui, app_options: &AppOptions) {
+    use re_video::decode::{FFmpegVersion, FFmpegVersionParseError};
+
     let path = app_options
         .video_decoder_override_ffmpeg_path
         .then(|| Path::new(&app_options.video_decoder_ffmpeg_path));
