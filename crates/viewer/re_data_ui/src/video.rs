@@ -116,8 +116,11 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoData)
                     .value_text(video_data.gops.len().to_string()),
             )
             .on_hover_text("The total number of Group of Pictures (GOPs) in the video.");
+
+            let re_video::SamplesStatistics {dts_always_equal_pts, has_sample_highest_pts_so_far: _} = &video_data.samples_statistics;
+
             ui.list_item_flat_noninteractive(
-                PropertyContent::new("All PTS equal DTS").value_bool(video_data.samples_statistics.dts_always_equal_pts)
+                PropertyContent::new("All PTS equal DTS").value_bool(*dts_always_equal_pts)
             ).on_hover_text("Whether all decode timestamps are equal to presentation timestamps. If true, the video typically has no B-frames.");
         });
 
