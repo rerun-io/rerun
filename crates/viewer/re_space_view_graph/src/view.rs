@@ -1,9 +1,5 @@
-use std::collections::{BTreeSet, HashSet};
+use egui::{self};
 
-use ahash::HashMap;
-use egui::{self, Vec2};
-
-use re_log::external::log;
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
 use re_types::{
@@ -21,10 +17,10 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
-    graph::NodeIndex,
-    layout::LayoutProvider,
-    ui::{bounding_rect_from_iter, canvas::CanvasBuilder, GraphSpaceViewState},
-    visualizers::{EdgesVisualizer, NodeVisualizer},
+    graph::Graph,
+    layout::ForceLayout,
+    ui::{canvas::CanvasBuilder, GraphSpaceViewState},
+    visualizers::{merge, EdgesVisualizer, NodeVisualizer},
 };
 
 #[derive(Default)]
@@ -64,22 +60,19 @@ impl SpaceViewClass for GraphSpaceView {
 
     fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32> {
         let state = state.downcast_ref::<GraphSpaceViewState>().ok()?;
-        let layout = state.layout.as_ref()?;
 
-        let (width, height) = state.world_bounds.map_or_else(
-            || {
-                let bbox = layout.bounding_rect();
-                (bbox.width().abs(), bbox.height().abs())
-            },
-            |bounds| {
-                (
-                    bounds.x_range.abs_len() as f32,
-                    bounds.y_range.abs_len() as f32,
-                )
-            },
-        );
+        if let Some(bounds) = state.world_bounds {
+            let width = bounds.x_range.abs_len() as f32;
+            let height = bounds.y_range.abs_len() as f32;
+            return Some(width / height);
+        }
 
-        Some(width / height)
+        if let Some(rect) = state.layout.bounding_rect() {
+            let width = rect.width().abs();
+            let height = rect.height().abs();
+            return Some(width / height);
+        }
+        None
     }
 
     // TODO(grtlr): implement `recommended_root_for_entities`
@@ -138,11 +131,8 @@ impl SpaceViewClass for GraphSpaceView {
         let node_data = &system_output.view_systems.get::<NodeVisualizer>()?.data;
         let edge_data = &system_output.view_systems.get::<EdgesVisualizer>()?.data;
 
-        // We need to sort the entities to ensure that we are always drawing them in the right order.
-        let entities = node_data
-            .keys()
-            .chain(edge_data.keys())
-            .collect::<BTreeSet<_>>();
+        let graphs =
+            merge(node_data, edge_data).map(|(ent, nodes, edges)| (ent, Graph::new(nodes, edges)));
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
@@ -157,24 +147,6 @@ impl SpaceViewClass for GraphSpaceView {
 
         let layout_was_empty = state.layout.is_none();
 
-        let layout = match &mut state.layout {
-            Some(layout) if !layout.needs_update(query.timeline, query.latest_at) => {
-                layout // Layout is up to date, reuse it.
-            }
-            _ => {
-                log::debug!("Recomputing graph layout");
-
-                let layout = LayoutProvider::compute(
-                    query.timeline,
-                    query.latest_at,
-                    node_data.iter(),
-                    edge_data.iter(),
-                );
-
-                state.layout.insert(layout)
-            }
-        };
-
         state.world_bounds = Some(bounds);
         let bounds_rect: egui::Rect = bounds.into();
 
@@ -185,63 +157,44 @@ impl SpaceViewClass for GraphSpaceView {
             viewer.show_debug();
         }
 
-        let mut seen: HashSet<NodeIndex> = HashSet::new();
-
         let (new_world_bounds, response) = viewer.canvas(ui, |mut scene| {
-            // We store the offset to draw entities next to each other.
-            // This is a workaround and will probably be removed once we have auto-layout.
-            let mut entity_offset = egui::Vec2::ZERO;
+            for (entity, graph) in graphs {
+                // We compute the layout once to find good starting positions for the nodes.
+                let mut layout = ForceLayout::compute(&graph);
 
-            for entity in entities {
-                // We keep track of the size of the current entity.
+                // Draw explicit nodes.
+                for node in graph.nodes_explicit() {
+                    let pos = layout
+                        .get(&node.index)
+                        .expect("explicit node should be in layout");
+                    let response = scene.explicit_node(pos.min, node);
+                    layout.update(&node.index, response.rect);
+                }
 
-                let mut entity_rect = egui::Rect::NOTHING;
-                if let Some(data) = node_data.get(entity) {
-                    for node in &data.nodes {
-                        seen.insert(node.index);
-                        let pos = layout
-                            .get(&node.index)
-                            .expect("explicit node should be in layout");
-                        let response = scene.explicit_node(pos.min, node);
-                        layout.update(&node.index, response.rect);
-                        entity_rect = entity_rect.union(response.rect);
+                // Draw implicit nodes.
+                for node in graph.nodes_implicit() {
+                    let current = layout
+                        .get(&node.index)
+                        .expect("implicit node should be in layout");
+                    let response = scene.implicit_node(current.min, node);
+                    layout.update(&node.index, response.rect);
+                }
+
+                // Draw edges.
+                for edge in graph.edges() {
+                    if let (Some(from), Some(to)) = (
+                        layout.get(&edge.source_index),
+                        layout.get(&edge.target_index),
+                    ) {
+                        let show_arrow = graph.kind() == components::GraphType::Directed;
+                        scene.edge(from, to, edge, show_arrow);
                     }
                 }
 
-                if let Some(data) = edge_data.get(entity) {
-                    // An implicit node is a node that is not explicitly specified in the `GraphNodes` archetype.
-                    let implicit_nodes = data
-                        .edges
-                        .iter()
-                        .flat_map(|e| e.nodes())
-                        .filter(|n| !seen.contains(&NodeIndex::from_entity_node(entity, n)))
-                        .collect::<Vec<_>>();
-
-                    for node in implicit_nodes {
-                        let ix = NodeIndex::from_entity_node(entity, node);
-                        seen.insert(ix);
-                        let current = layout.get(&ix).expect("implicit node should be in layout");
-                        let response = scene.implicit_node(current.min, node);
-                        layout.update(&ix, response.rect);
-                        entity_rect = entity_rect.union(response.rect);
-                    }
-
-                    for edge in &data.edges {
-                        if let (Some(source_pos), Some(target_pos)) =
-                            (layout.get(&edge.source_index), layout.get(&edge.target_index))
-                        {
-                            scene.edge(
-                                source_pos.translate(entity_offset),
-                                target_pos.translate(entity_offset),
-                                edge,
-                                data.graph_type == components::GraphType::Directed,
-                            );
-                        }
-                    }
-                }
-
-                if entity_rect.is_positive() {
-                    let response = scene.entity(entity, entity_rect, &query.highlights);
+                // Draw entity rect.
+                let rect = layout.bounding_rect();
+                if rect.is_positive() {
+                    let response = scene.entity(entity, rect, &query.highlights);
 
                     let instance_path = InstancePath::entity_all(entity.clone());
                     ctx.select_hovered_on_click(

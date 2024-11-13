@@ -10,7 +10,7 @@ use re_types::{
 use re_viewer_context::SpaceViewHighlights;
 use std::hash::Hash;
 
-use crate::types::{EdgeInstance, NodeInstance};
+use crate::{graph::NodeInstanceImplicit, types::{EdgeInstance, NodeInstance}};
 
 use super::draw::{draw_edge, draw_entity, draw_explicit, draw_implicit};
 
@@ -178,17 +178,6 @@ pub struct Canvas<'a> {
 }
 
 impl<'a> Canvas<'a> {
-    /// Try to estimate a good starting `Rect` for a node that has not been layed out yet.
-    pub fn initial_rect(&self, node: &NodeInstance) -> Rect {
-        let size = node
-            .radius
-            .map(|r| self.context.radius_to_world(r))
-            .unwrap_or(0.0)
-            * 2.0;
-        let pos = node.position.unwrap_or(Pos2::ZERO);
-        Rect::from_center_size(pos, Vec2::splat(size))
-    }
-
     /// Draws a regular node, i.e. an explicit node instance.
     pub fn explicit_node(&mut self, pos: Pos2, node: &NodeInstance) -> Response {
         self.node_wrapper(node.index, pos, |ui, world_to_ui| {
@@ -196,8 +185,8 @@ impl<'a> Canvas<'a> {
         })
     }
 
-    pub fn implicit_node(&mut self, pos: Pos2, node: &GraphNode) -> Response {
-        self.node_wrapper(node, pos, |ui, _| draw_implicit(ui, node))
+    pub fn implicit_node(&mut self, pos: Pos2, node: &NodeInstanceImplicit) -> Response {
+        self.node_wrapper(node.index, pos, |ui, _| draw_implicit(ui, node))
     }
 
     /// `pos` is the top-left position of the node in world coordinates.

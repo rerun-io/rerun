@@ -1,7 +1,7 @@
 use egui::{Frame, Label, Response, RichText, Sense, Stroke, TextWrapMode, Ui, Vec2};
 use re_types::components::GraphNode;
 
-use crate::{types::NodeInstance, ui::canvas::CanvasContext};
+use crate::{graph::NodeInstanceImplicit, types::NodeInstance, ui::canvas::CanvasContext};
 
 /// The `world_to_ui_scale` parameter is used to convert between world and ui coordinates.
 pub fn draw_explicit(ui: &mut Ui, ctx: &CanvasContext, node: &NodeInstance) -> Response {
@@ -47,7 +47,7 @@ pub fn draw_explicit(ui: &mut Ui, ctx: &CanvasContext, node: &NodeInstance) -> R
 }
 
 /// Draws an implicit node instance (dummy node).
-pub fn draw_implicit(ui: &mut egui::Ui, node: &GraphNode) -> Response {
+pub fn draw_implicit(ui: &mut egui::Ui, node: &NodeInstanceImplicit) -> Response {
     let fg = ui.style().visuals.gray_out(ui.style().visuals.text_color());
     let r = 4.0;
 
@@ -63,5 +63,5 @@ pub fn draw_implicit(ui: &mut egui::Ui, node: &GraphNode) -> Response {
             })
         })
         .response
-        .on_hover_text(format!("Implicit Node: `{}`", node.as_str(),))
+        .on_hover_text(format!("Implicit Node: `{}`", node.node.as_str(),))
 }

@@ -13,17 +13,9 @@ impl TypedComponentFallbackProvider<VisualBounds2D> for GraphSpaceView {
             return VisualBounds2D::default();
         };
 
-        let Some(layout) = &state.layout else {
-            return VisualBounds2D::default();
-        };
-
-        let default_scene_rect = layout.bounding_rect();
-
-        if valid_bound(&default_scene_rect) {
-            default_scene_rect.into()
-        } else {
-            // Nothing in scene, probably.
-            VisualBounds2D::default()
+        match state.layout.bounding_rect() {
+            Some(rect) if valid_bound(&rect) => rect.into(),
+            _ => VisualBounds2D::default(),
         }
     }
 }

@@ -1,44 +1,28 @@
 mod edges;
 mod nodes;
 
+use std::collections::BTreeSet;
+
 pub use edges::{EdgeData, EdgesVisualizer};
 pub use nodes::{NodeData, NodeVisualizer};
+
 use re_chunk::EntityPath;
 
-use crate::graph::NodeIndex;
+/// Iterates over all entities and joins the node and edge data.
+pub fn merge<'a>(
+    node_data: &'a ahash::HashMap<EntityPath, NodeData>,
+    edge_data: &'a ahash::HashMap<EntityPath, EdgeData>,
+) -> impl Iterator<Item = (&'a EntityPath, Option<&'a NodeData>, Option<&'a EdgeData>)> + 'a {
 
-/// Gathers all nodes, explicit and implicit, from the visualizers.
-///
-/// Explicit nodes are nodes that are defined through the `GraphNode` archetype.
-/// Implicit nodes are nodes that _only_ appear in edges defined by the `GraphEdge` archetype.
-pub fn all_nodes<'a>(
-    nodes: impl IntoIterator<Item = (&'a EntityPath, &'a NodeData)>,
-    edges: impl IntoIterator<Item = (&'a EntityPath, &'a EdgeData)>,
-) -> impl Iterator<Item = (&'a EntityPath, NodeIndex)> {
-    let explicit = nodes
-        .into_iter()
-        .flat_map(|(entity, data)| data.nodes.iter().map(move |n| (entity, n.index)));
+    // We sort the entities to ensure that we always process them in the same order.
+    let unique_entities = node_data
+        .keys()
+        .chain(edge_data.keys())
+        .collect::<BTreeSet<_>>();
 
-    let implicit = edges.into_iter().flat_map(|(entity, data)| {
-        data.edges.iter().flat_map(move |edge| {
-            edge.nodes()
-                .map(move |n| (entity, NodeIndex::from_entity_node(entity, n)))
-        })
-    });
-
-    explicit.chain(implicit)
-}
-
-/// Gathers all edges as tuples of `NodeIndex` from the visualizer.
-pub fn all_edges<'a>(
-    edges: impl IntoIterator<Item = (&'a EntityPath, &'a EdgeData)>,
-) -> impl Iterator<Item = (&'a EntityPath, (NodeIndex, NodeIndex))> {
-    edges.into_iter().flat_map(|(entity, data)| {
-        data.edges.iter().map(move |edge| {
-            let source = NodeIndex::from_entity_node(entity, &edge.source);
-            let target = NodeIndex::from_entity_node(entity, &edge.target);
-
-            (entity, (source, target))
-        })
+    unique_entities.into_iter().map(|entity| {
+        let nodes = node_data.get(entity);
+        let edges = edge_data.get(entity);
+        (entity, nodes, edges)
     })
 }
