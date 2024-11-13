@@ -25,15 +25,31 @@ use re_viewport_blueprint::ViewProperty;
 use crate::map_overlays;
 use crate::visualizers::{update_span, GeoLineStringsVisualizer, GeoPointsVisualizer};
 
-#[derive(Default)]
 pub struct MapSpaceViewState {
     tiles: Option<HttpTiles>,
     map_memory: MapMemory,
     selected_provider: MapProvider,
 
+    last_center_position: walkers::Position,
+
     /// Because `re_renderer` can have varying, multiple frames of delay, we must keep track of the
     /// last picked results for when picking results is not available on a given frame.
     last_gpu_picking_result: Option<InstancePathHash>,
+}
+
+impl Default for MapSpaceViewState {
+    fn default() -> Self {
+        Self {
+            tiles: None,
+            map_memory: Default::default(),
+            selected_provider: Default::default(),
+
+            // default to Rerun HQ whenever we have no data (either now or historically) to provide
+            // a better location
+            last_center_position: walkers::Position::from_lat_lon(59.319224, 18.075514),
+            last_gpu_picking_result: None,
+        }
+    }
 }
 
 impl MapSpaceViewState {
@@ -213,10 +229,10 @@ Displays geospatial primitives on a map.
         update_span(&mut span, geo_points_visualizer.span());
         update_span(&mut span, geo_line_strings_visualizers.span());
 
-        let default_center_position = span
-            .as_ref()
-            .map(|span| span.center())
-            .unwrap_or(walkers::Position::from_lat_lon(59.319224, 18.075514)); // Rerun HQ
+        if let Some(span) = &span {
+            state.last_center_position = span.center();
+        }
+        let default_center_position = state.last_center_position;
 
         let blueprint_zoom_level = map_zoom
             .component_or_empty::<ZoomLevel>()?
