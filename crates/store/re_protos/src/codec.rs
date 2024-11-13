@@ -32,16 +32,16 @@ pub enum CodecError {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Default)]
-pub struct MessageHader(pub u8);
+pub struct MessageHeader(pub u8);
 
-impl MessageHader {
+impl MessageHeader {
     pub const NO_DATA: Self = Self(1);
     pub const RECORD_BATCH: Self = Self(2);
 
     pub const SIZE_BYTES: usize = 1;
 }
 
-impl MessageHader {
+impl MessageHeader {
     fn decode(read: &mut impl std::io::Read) -> Result<Self, CodecError> {
         let mut buffer = [0_u8; Self::SIZE_BYTES];
         read.read_exact(&mut buffer)
@@ -72,12 +72,12 @@ impl TransportMessageV0 {
         match self {
             Self::NoData => {
                 let mut data: Vec<u8> = Vec::new();
-                MessageHader::NO_DATA.encode(&mut data)?;
+                MessageHeader::NO_DATA.encode(&mut data)?;
                 Ok(data)
             }
             Self::RecordBatch(chunk) => {
                 let mut data: Vec<u8> = Vec::new();
-                MessageHader::RECORD_BATCH.encode(&mut data)?;
+                MessageHeader::RECORD_BATCH.encode(&mut data)?;
 
                 write_arrow_to_bytes(&mut data, &chunk.schema, &chunk.data)?;
 
@@ -88,11 +88,11 @@ impl TransportMessageV0 {
 
     fn from_bytes(data: &[u8]) -> Result<Self, CodecError> {
         let mut reader = std::io::Cursor::new(data);
-        let header = MessageHader::decode(&mut reader)?;
+        let header = MessageHeader::decode(&mut reader)?;
 
         match header {
-            MessageHader::NO_DATA => Ok(Self::NoData),
-            MessageHader::RECORD_BATCH => {
+            MessageHeader::NO_DATA => Ok(Self::NoData),
+            MessageHeader::RECORD_BATCH => {
                 let (schema, data) = read_arrow_from_bytes(&mut reader)?;
 
                 let tc = TransportChunk {
