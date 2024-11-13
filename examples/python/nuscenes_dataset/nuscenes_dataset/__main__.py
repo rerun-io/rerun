@@ -119,6 +119,8 @@ def log_lidar_and_ego_pose(
     """Log lidar data and vehicle pose."""
     current_lidar_token = first_lidar_token
 
+    ego_trajectory_lat_lon = []
+
     while current_lidar_token != "":
         sample_data = nusc.get("sample_data", current_lidar_token)
         sensor_name = sample_data["channel"]
@@ -131,6 +133,8 @@ def log_lidar_and_ego_pose(
 
         ego_pose = nusc.get("ego_pose", sample_data["ego_pose_token"])
         rotation_xyzw = np.roll(ego_pose["rotation"], shift=-1)  # go from wxyz to xyzw
+        position_lat_lon = derive_latlon(location, ego_pose)
+        ego_trajectory_lat_lon.append(position_lat_lon)
 
         rr.log(
             "world/ego_vehicle",
@@ -139,8 +143,16 @@ def log_lidar_and_ego_pose(
                 rotation=rr.Quaternion(xyzw=rotation_xyzw),
                 from_parent=False,
             ),
-            rr.GeoPoints(lat_lon=derive_latlon(location, ego_pose)),
+            rr.GeoPoints(lat_lon=position_lat_lon, colors=0xFF0000FF),
         )
+        # TODO(#6889): We don't want the radius for the trajectory line to be the same as the radius of the points.
+        # However, rr.GeoPoints uses the same `rr.components.Radius` for this, so these two archetypes would influence each other
+        # if logged on the same entity. In the future, they will have different tags, which will allow them to live side by side.
+        rr.log(
+            "world/ego_vehicle/trajectory",
+            rr.GeoLineStrings(lat_lon=ego_trajectory_lat_lon, radii=1.0, colors=0xFF0000FF),
+        )
+
         current_lidar_token = sample_data["next"]
 
         data_file_path = nusc.dataroot / sample_data["filename"]
