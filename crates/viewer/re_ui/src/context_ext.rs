@@ -1,5 +1,6 @@
 use egui::{emath::Float, pos2, Align2, Color32, Mesh, Rect, Shape, Vec2};
 
+use crate::toasts::SUCCESS_COLOR;
 use crate::{DesignTokens, TopBarStyle};
 
 /// Extension trait for [`egui::Context`].
@@ -56,6 +57,11 @@ pub trait ContextExt {
         // let color = self.ctx().style().visuals.selection.bg_fill;
         // let stroke_width = self.ctx().style().visuals.selection.stroke.width;
         // egui::Stroke::new(stroke_width, color)
+    }
+
+    #[must_use]
+    fn success_text(&self, text: impl Into<String>) -> egui::RichText {
+        egui::RichText::new(text).color(SUCCESS_COLOR)
     }
 
     #[must_use]

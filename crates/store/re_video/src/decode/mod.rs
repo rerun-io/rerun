@@ -86,7 +86,9 @@ mod av1;
 mod ffmpeg_h264;
 
 #[cfg(with_ffmpeg)]
-pub use ffmpeg_h264::{ffmpeg_download_url, Error as FFmpegError, FFmpegVersionParseError};
+pub use ffmpeg_h264::{
+    ffmpeg_download_url, Error as FFmpegError, FFmpegVersion, FFmpegVersionParseError,
+};
 
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
@@ -156,7 +158,7 @@ pub trait AsyncDecoder: Send + Sync {
 pub fn new_decoder(
     debug_name: &str,
     video: &crate::VideoData,
-    hw_acceleration: DecodeHardwareAcceleration,
+    decode_settings: &DecodeSettings,
     on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
 ) -> Result<Box<dyn AsyncDecoder>> {
     #![allow(unused_variables, clippy::needless_return)] // With some feature flags
@@ -171,7 +173,7 @@ pub fn new_decoder(
     #[cfg(target_arch = "wasm32")]
     return Ok(Box::new(webcodecs::WebVideoDecoder::new(
         video,
-        hw_acceleration,
+        decode_settings.hw_acceleration,
         on_output,
     )?));
 
@@ -206,6 +208,7 @@ pub fn new_decoder(
                 debug_name.to_owned(),
                 avc1_box.clone(),
                 on_output,
+                decode_settings.ffmpeg_path.clone(),
             )?))
         }
 
@@ -413,6 +416,19 @@ pub enum DecodeHardwareAcceleration {
     ///
     /// If no hardware decoder is present, this may cause decoding to fail.
     PreferHardware,
+}
+
+/// Settings for video decoding.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct DecodeSettings {
+    /// How the video should be decoded.
+    pub hw_acceleration: DecodeHardwareAcceleration,
+
+    /// Custom path for the ffmpeg binary.
+    ///
+    /// If not provided, we use the path automatically determined by `ffmpeg_sidecar`.
+    pub ffmpeg_path: Option<std::path::PathBuf>,
 }
 
 impl std::fmt::Display for DecodeHardwareAcceleration {

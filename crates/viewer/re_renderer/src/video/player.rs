@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 use web_time::Instant;
 
 use re_video::{
-    decode::{DecodeHardwareAcceleration, FrameInfo},
+    decode::{DecodeSettings, FrameInfo},
     Time,
 };
 
@@ -68,7 +68,7 @@ impl VideoPlayer {
         debug_name: &str,
         render_ctx: &RenderContext,
         data: Arc<re_video::VideoData>,
-        hw_acceleration: DecodeHardwareAcceleration,
+        decode_settings: &DecodeSettings,
     ) -> Result<Self, VideoPlayerError> {
         let debug_name = format!(
             "{debug_name}, codec: {}",
@@ -85,7 +85,7 @@ impl VideoPlayer {
         }
 
         let chunk_decoder = VideoChunkDecoder::new(debug_name.clone(), |on_output| {
-            re_video::decode::new_decoder(&debug_name, &data, hw_acceleration, on_output)
+            re_video::decode::new_decoder(&debug_name, &data, decode_settings, on_output)
         })?;
 
         let texture = alloc_video_frame_texture(

@@ -6,12 +6,11 @@ use std::{collections::hash_map::Entry, sync::Arc};
 use ahash::HashMap;
 use parking_lot::Mutex;
 
-use re_video::{decode::DecodeHardwareAcceleration, VideoData};
-
 use crate::{
     resource_managers::{GpuTexture2D, SourceImageDataFormat},
     RenderContext,
 };
+use re_video::{decode::DecodeSettings, VideoData};
 
 /// Error that can occur during playing videos.
 #[derive(thiserror::Error, Debug, Clone)]
@@ -87,7 +86,7 @@ pub struct Video {
     debug_name: String,
     data: Arc<re_video::VideoData>,
     players: Mutex<HashMap<VideoPlayerStreamId, PlayerEntry>>,
-    decode_hw_acceleration: DecodeHardwareAcceleration,
+    decode_settings: DecodeSettings,
 }
 
 impl Video {
@@ -95,18 +94,14 @@ impl Video {
     ///
     /// Currently supports the following media types:
     /// - `video/mp4`
-    pub fn load(
-        debug_name: String,
-        data: Arc<VideoData>,
-        decode_hw_acceleration: DecodeHardwareAcceleration,
-    ) -> Self {
+    pub fn load(debug_name: String, data: Arc<VideoData>, decode_settings: DecodeSettings) -> Self {
         let players = Mutex::new(HashMap::default());
 
         Self {
             debug_name,
             data,
             players,
-            decode_hw_acceleration,
+            decode_settings,
         }
     }
 
@@ -161,7 +156,7 @@ impl Video {
                     &self.debug_name,
                     render_context,
                     self.data.clone(),
-                    self.decode_hw_acceleration,
+                    &self.decode_settings,
                 )?;
                 vacant_entry.insert(PlayerEntry {
                     player: new_player,
