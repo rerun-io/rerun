@@ -11,11 +11,11 @@ Download [`OpenStreetMap`](https://www.openstreetmap.org) data via the [Overpass
 and display it on a [map view](https://www.rerun.io/docs/reference/types/view/map_view?speculative-link).
 
 <picture>
-  <img src="https://static.rerun.io/osm-data/926e89e0587b0d66a1cd620b3f5b77ac79eca272/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/osm-data/926e89e0587b0d66a1cd620b3f5b77ac79eca272/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/osm-data/926e89e0587b0d66a1cd620b3f5b77ac79eca272/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/osm-data/926e89e0587b0d66a1cd620b3f5b77ac79eca272/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/osm-data/926e89e0587b0d66a1cd620b3f5b77ac79eca272/1200w.png">
+  <img src="https://static.rerun.io/openstreetmap_data/5da23e9244d5cfead76ad484d09ba70cf62c4e57/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/openstreetmap_data/5da23e9244d5cfead76ad484d09ba70cf62c4e57/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/openstreetmap_data/5da23e9244d5cfead76ad484d09ba70cf62c4e57/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/openstreetmap_data/5da23e9244d5cfead76ad484d09ba70cf62c4e57/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/openstreetmap_data/5da23e9244d5cfead76ad484d09ba70cf62c4e57/1200w.png">
 </picture>
 
 ## Run the code

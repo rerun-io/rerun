@@ -23,7 +23,7 @@ namespace rerun::archetypes {
     /// ## Example
     ///
     /// ### Log a geospatial point
-    /// ![image](https://static.rerun.io/geopoint_simple/146b0783c5aea1c1b6a9aab938879942b7c820e2/full.png)
+    /// ![image](https://static.rerun.io/geopoint_simple/b86ce83e5871837587bd33a0ad639358b96e9010/full.png)
     ///
     /// ```cpp
     /// #include <rerun.hpp>
