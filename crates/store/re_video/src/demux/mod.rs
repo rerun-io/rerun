@@ -674,6 +674,7 @@ mod tests {
             .map(|(sample_idx, (pts, dts))| Sample {
                 is_sync: false,
                 sample_idx,
+                frame_nr: 0, // unused
                 decode_timestamp: Time(dts),
                 presentation_timestamp: Time(pts),
                 duration: Time(1),
