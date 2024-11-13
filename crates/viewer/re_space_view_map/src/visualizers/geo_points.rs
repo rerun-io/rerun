@@ -132,9 +132,8 @@ impl GeoPointsVisualizer {
         highlight: &SpaceViewHighlights,
     ) -> Result<(), PointCloudDrawDataError> {
         let mut points = re_renderer::PointCloudBuilder::new(render_ctx);
-        points.radius_boost_in_ui_points_for_outlines(
-            re_space_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
-        );
+        // NOTE: Do not `points.radius_boost_in_ui_points_for_outlines`! The points are not shaded,
+        // so boosting the outline radius would make it erreously large.
 
         for (entity_path, batch) in &self.batches {
             let (positions, radii): (Vec<_>, Vec<_>) = batch
