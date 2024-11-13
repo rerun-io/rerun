@@ -5823,9 +5823,9 @@ dependencies = [
 
 [[package]]
 name = "re_mp4"
-version = "0.2.1"
+version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cb588af9f28ae35e59681c71c0d6379884e1209a074ffb1b3b18291abac2585a"
+checksum = "751650322999417b64a5a89b034b4e34e4596826e5dfee9327856db77ca511e3"
 dependencies = [
  "byteorder",
  "bytes",
