@@ -144,7 +144,7 @@ def log_lidar_and_ego_pose(
         # log GPS data
         (lat, long) = derive_latlon(location, ego_pose)
         rr.log(
-            "world/ego_vehicle/gps",
+            "world/ego_vehicle",
             rr.GeoPoints(lat_lon=[[lat, long]]),
         )
 
@@ -305,7 +305,7 @@ def main() -> None:
             rrb.Vertical(
                 rrb.TextDocumentView(origin="description", name="Description"),
                 rrb.MapView(
-                    origin="world/ego_vehicle/gps",
+                    origin="world/ego_vehicle",
                     name="MapView",
                     zoom=rrb.archetypes.MapZoom(18.0),
                     background=rrb.archetypes.MapBackground(rrb.components.MapProvider.OpenStreetMap),
