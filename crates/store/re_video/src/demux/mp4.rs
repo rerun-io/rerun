@@ -56,8 +56,8 @@ impl VideoData {
                     gop_sample_start_index = samples.len();
                 }
 
-                let decode_timestamp = Time::new(sample.decode_timestamp as i64);
-                let presentation_timestamp = Time::new(sample.composition_timestamp as i64);
+                let decode_timestamp = Time::new(sample.decode_timestamp);
+                let presentation_timestamp = Time::new(sample.composition_timestamp);
                 let duration = Time::new(sample.duration as i64);
 
                 let byte_offset = sample.offset as u32;
@@ -74,6 +74,26 @@ impl VideoData {
                     byte_length,
                 });
             }
+        }
+
+        // Generate data for `test_latest_sample_index_at_presentation_timestamp` test.
+        if false {
+            re_log::info!(
+                "pts: {:?}",
+                samples
+                    .iter()
+                    .take(50)
+                    .map(|s| s.presentation_timestamp.0)
+                    .collect::<Vec<_>>()
+            );
+            re_log::info!(
+                "dts: {:?}",
+                samples
+                    .iter()
+                    .take(50)
+                    .map(|s| s.decode_timestamp.0)
+                    .collect::<Vec<_>>()
+            );
         }
 
         // Append the last GOP if there are any samples left:

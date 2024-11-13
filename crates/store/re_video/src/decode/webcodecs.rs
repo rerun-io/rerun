@@ -34,7 +34,6 @@ impl std::ops::Deref for WebVideoFrame {
 pub struct WebVideoDecoder {
     video_config: Config,
     timescale: Timescale,
-    minimum_presentation_timestamp: Time,
     decoder: web_sys::VideoDecoder,
     hw_acceleration: DecodeHardwareAcceleration,
     on_output: Arc<OutputCallback>,
@@ -108,16 +107,11 @@ impl WebVideoDecoder {
         on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
     ) -> Result<Self, Error> {
         let on_output = Arc::new(on_output);
-        let decoder = init_video_decoder(
-            on_output.clone(),
-            video.timescale,
-            video.samples_statistics.minimum_presentation_timestamp,
-        )?;
+        let decoder = init_video_decoder(on_output.clone(), video.timescale)?;
 
         Ok(Self {
             video_config: video.config.clone(),
             timescale: video.timescale,
-            minimum_presentation_timestamp: video.samples_statistics.minimum_presentation_timestamp,
             decoder,
             hw_acceleration,
             on_output,
@@ -138,7 +132,7 @@ impl AsyncDecoder for WebVideoDecoder {
             &data,
             video_chunk
                 .presentation_timestamp
-                .into_micros_since_start(self.timescale, self.minimum_presentation_timestamp),
+                .into_micros(self.timescale),
             type_,
         );
 
@@ -162,11 +156,7 @@ impl AsyncDecoder for WebVideoDecoder {
             // At least on Firefox, it can happen that reset on a previous error fails.
             // In that case, start over completely and try again!
             re_log::debug!("Video decoder reset failed, recreating decoder.");
-            self.decoder = init_video_decoder(
-                self.on_output.clone(),
-                self.timescale,
-                self.minimum_presentation_timestamp,
-            )?;
+            self.decoder = init_video_decoder(self.on_output.clone(), self.timescale)?;
         };
 
         self.decoder
@@ -205,23 +195,15 @@ impl AsyncDecoder for WebVideoDecoder {
 fn init_video_decoder(
     on_output_callback: Arc<OutputCallback>,
     timescale: Timescale,
-    minimum_presentation_timestamp: Time,
 ) -> Result<web_sys::VideoDecoder, Error> {
     let on_output = {
         let on_output = on_output_callback.clone();
         Closure::wrap(Box::new(move |frame: web_sys::VideoFrame| {
             // We assume that the timestamp returned by the decoder is in time since start,
             // and does not represent demuxed "raw" presentation timestamps.
-            let presentation_timestamp = Time::from_micros_since_start(
-                frame.timestamp().unwrap_or(0.0),
-                timescale,
-                minimum_presentation_timestamp,
-            );
-            let duration = Time::from_micros_since_start(
-                frame.duration().unwrap_or(0.0),
-                timescale,
-                minimum_presentation_timestamp,
-            );
+            let presentation_timestamp =
+                Time::from_micros(frame.timestamp().unwrap_or(0.0), timescale);
+            let duration = Time::from_micros(frame.duration().unwrap_or(0.0), timescale);
 
             on_output(Ok(Frame {
                 content: WebVideoFrame(frame),

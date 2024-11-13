@@ -8,7 +8,7 @@ use re_ui::{
     list_item::{self, PropertyContent},
     DesignTokens, UiExt,
 };
-use re_video::{decode::FrameInfo, demux::SamplesStatistics, VideoData};
+use re_video::{decode::FrameInfo, VideoData};
 use re_viewer_context::UiLayout;
 
 pub fn video_result_ui(
@@ -116,7 +116,12 @@ fn video_data_ui(ui: &mut egui::Ui, ui_layout: UiLayout, video_data: &VideoData)
                     .value_text(video_data.gops.len().to_string()),
             )
             .on_hover_text("The total number of Group of Pictures (GOPs) in the video.");
-            samples_statistics_ui(ui, &video_data.samples_statistics);
+
+            let re_video::SamplesStatistics {dts_always_equal_pts, has_sample_highest_pts_so_far: _} = &video_data.samples_statistics;
+
+            ui.list_item_flat_noninteractive(
+                PropertyContent::new("All PTS equal DTS").value_bool(*dts_always_equal_pts)
+            ).on_hover_text("Whether all decode timestamps are equal to presentation timestamps. If true, the video typically has no B-frames.");
         });
 
         ui.list_item_collapsible_noninteractive_label("Video samples", false, |ui| {
@@ -231,10 +236,7 @@ fn timestamp_ui(ui: &mut egui::Ui, video_data: &VideoData, timestamp: re_video::
     ui.monospace(re_format::format_int(timestamp.0))
         .on_hover_ui(|ui| {
             ui.monospace(re_format::format_timestamp_seconds(
-                timestamp.into_secs_since_start(
-                    video_data.timescale,
-                    video_data.samples_statistics.minimum_presentation_timestamp,
-                ),
+                timestamp.into_secs(video_data.timescale),
             ));
         });
 }
@@ -349,18 +351,6 @@ pub fn show_decoded_frame_info(
     }
 }
 
-fn samples_statistics_ui(ui: &mut egui::Ui, samples_statistics: &SamplesStatistics) {
-    ui.list_item_flat_noninteractive(
-            PropertyContent::new("Minimum PTS").value_text(samples_statistics.minimum_presentation_timestamp.0.to_string())
-        ).on_hover_text("The smallest presentation timestamp (PTS) observed in this video.\n\
-                                         A non-zero value indicates that there are B-frames in the video.\n\
-                                         Rerun will place the 0:00:00 time at this timestamp.");
-    ui.list_item_flat_noninteractive(
-            // `value_bool` doesn't look great for static values.
-            PropertyContent::new("All PTS equal DTS").value_text(samples_statistics.dts_always_equal_pts.to_string())
-        ).on_hover_text("Whether all decode timestamps are equal to presentation timestamps. If true, the video typically has no B-frames.");
-}
-
 fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_video::VideoData) {
     let FrameInfo {
         is_sync,
@@ -382,13 +372,11 @@ fn frame_info_ui(ui: &mut egui::Ui, frame_info: &FrameInfo, video_data: &re_vide
     let presentation_time_range = presentation_timestamp..presentation_timestamp + duration;
     ui.list_item_flat_noninteractive(PropertyContent::new("Time range").value_text(format!(
         "{} - {}",
-        re_format::format_timestamp_seconds(presentation_time_range.start.into_secs_since_start(
-            video_data.timescale,
-            video_data.samples_statistics.minimum_presentation_timestamp
+        re_format::format_timestamp_seconds(presentation_time_range.start.into_secs(
+            video_data.timescale
         )),
-        re_format::format_timestamp_seconds(presentation_time_range.end.into_secs_since_start(
-            video_data.timescale,
-            video_data.samples_statistics.minimum_presentation_timestamp
+        re_format::format_timestamp_seconds(presentation_time_range.end.into_secs(
+            video_data.timescale
         )),
     )))
     .on_hover_text("Time range in which this frame is valid.");
