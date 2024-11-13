@@ -151,7 +151,11 @@ impl GeoPointsVisualizer {
             let outline = highlight.entity_outline_mask(entity_path.hash());
 
             let mut point_batch = points
-                .batch(entity_path.to_string())
+                .batch_with_info(re_renderer::renderer::PointCloudBatchInfo {
+                    label: entity_path.to_string().into(),
+                    flags: re_renderer::renderer::PointCloudBatchFlags::empty(),
+                    ..re_renderer::renderer::PointCloudBatchInfo::default()
+                })
                 .picking_object_id(re_renderer::PickingLayerObjectId(entity_path.hash64()))
                 .outline_mask_ids(outline.overall);
 
