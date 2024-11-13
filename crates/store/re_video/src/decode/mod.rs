@@ -285,7 +285,7 @@ pub struct FrameInfo {
     /// In MP4, one sample is one frame, but we may be reordering samples when decoding.
     ///
     /// This is the order of which the samples appear in the container,
-    /// which is usually ordered by [`Self::decode_timestamp`].
+    /// which is usually ordered by [`Self::latest_decode_timestamp`].
     ///
     /// None = unknown.
     pub sample_idx: Option<usize>,
