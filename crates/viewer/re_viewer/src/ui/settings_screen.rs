@@ -204,40 +204,39 @@ fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn ffmpeg_path_status_ui(ui: &mut Ui, app_options: &AppOptions) {
+    use re_ui::ContextExt as _;
     use re_video::decode::{FFmpegVersion, FFmpegVersionParseError};
 
     let path = app_options
         .video_decoder_override_ffmpeg_path
         .then(|| std::path::Path::new(&app_options.video_decoder_ffmpeg_path));
 
-    if let Some(path) = path {
-        if !path.is_file() {
-            ui.error_label("The specified FFmpeg binary path does not exist or is not a file.");
-            return;
-        }
-    }
+    let ctx = ui.ctx();
+    let label_text = if path.is_some_and(|path| !path.is_file()) {
+        ctx.error_text("The specified FFmpeg binary path does not exist or is not a file.")
+    } else {
+        let res = FFmpegVersion::for_executable(path);
 
-    let res = FFmpegVersion::for_executable(path);
-    match res {
-        Ok(version) => {
-            if version.is_compatible() {
-                ui.success_label(&format!("FFmpeg found (version {version})"));
-            } else {
-                ui.error_label(&format!("Incompatible FFmpeg version: {version}"));
+        match res {
+            Ok(version) => {
+                if version.is_compatible() {
+                    ctx.success_text(format!("FFmpeg found (version {version})"))
+                } else {
+                    ctx.error_text(format!("Incompatible FFmpeg version: {version}"))
+                }
             }
-        }
-        Err(FFmpegVersionParseError::ParseVersion { raw_version }) => {
-            // We make this one a warning instead of an error because version parsing is flaky, and
-            // it might end up still working.
-            ui.warning_label(&format!(
-                "FFmpeg binary found but unable to parse version: {raw_version}"
-            ));
-        }
+            Err(FFmpegVersionParseError::ParseVersion { raw_version }) => {
+                // We make this one a warning instead of an error because version parsing is flaky, and
+                // it might end up still working.
+                ctx.warning_text(format!(
+                    "FFmpeg binary found but unable to parse version: {raw_version}"
+                ))
+            }
 
-        Err(err) => {
-            ui.error_label(&format!("Unable to check FFmpeg version: {err}"));
+            Err(err) => ctx.error_text(format!("Unable to check FFmpeg version: {err}")),
         }
-    }
+    };
+    ui.label(label_text);
 }
 
 fn separator_with_some_space(ui: &mut egui::Ui) {
