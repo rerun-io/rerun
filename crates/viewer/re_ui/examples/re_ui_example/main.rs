@@ -457,14 +457,19 @@ impl egui_tiles::Behavior<Tab> for MyTileTreeBehavior {
         _tile_id: egui_tiles::TileId,
         _pane: &mut Tab,
     ) -> egui_tiles::UiResponse {
-        egui::warn_if_debug_build(ui);
-        ui.label("Hover me for a tooltip")
-            .on_hover_text("This is a tooltip");
+        egui::Frame::none().inner_margin(4.0).show(ui, |ui| {
+            egui::warn_if_debug_build(ui);
+            ui.label("Hover me for a tooltip")
+                .on_hover_text("This is a tooltip");
 
-        ui.label(
-            egui::RichText::new("Welcome to the ReUi example")
-                .text_style(DesignTokens::welcome_screen_h1()),
-        );
+            ui.label(
+                egui::RichText::new("Welcome to the ReUi example")
+                    .text_style(DesignTokens::welcome_screen_h1()),
+            );
+
+            ui.error_label("This is an example of a long error label.");
+            ui.warning_label("This is an example of a long warning label.");
+        });
 
         Default::default()
     }
