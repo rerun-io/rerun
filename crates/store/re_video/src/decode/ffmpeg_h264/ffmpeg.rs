@@ -456,6 +456,7 @@ fn write_ffmpeg_input(
             }
         } else {
             ffmpeg_stdin.flush().ok();
+            re_log::trace!("Wrote chunk {} to ffmpeg", chunk.sample_idx);
         }
     }
 }
@@ -673,6 +674,8 @@ fn read_ffmpeg_output(
             FfmpegEvent::OutputFrame(ffmpeg_frame) => {
                 outstanding_frames.fetch_sub(1, Ordering::Relaxed);
 
+                let frame_num = ffmpeg_frame.frame_num; // sequence-number made up by ffmpeg sidecar.
+
                 let frame =
                     buffer.on_frame(debug_name, pixel_format, frame_info_rx, ffmpeg_frame)?;
 
@@ -685,7 +688,7 @@ fn read_ffmpeg_output(
                         ..
                     } = &frame.content;
                     re_log::trace!(
-                        "{debug_name} received frame: sample {sample_idx:?} dts {dts:?} pts {pts:?} fmt {format:?} size {width}x{height}. buffered: {num_buffered}, outstanding: {num_outstanding}",
+                        "{debug_name} received frame {frame_num}: sample {sample_idx:?} dts {dts:?} pts {pts:?} fmt {format:?} size {width}x{height}. buffered: {num_buffered}, outstanding: {num_outstanding}",
                         sample_idx = frame.info.sample_idx,
                         dts = frame.info.latest_decode_timestamp,
                         pts = frame.info.presentation_timestamp,
@@ -862,6 +865,7 @@ fn write_avc_chunk_to_nalu_stream(
     state: &mut NaluStreamState,
 ) -> Result<(), Error> {
     re_tracing::profile_function!();
+
     let avcc = &avcc.avcc;
 
     // We expect the stream of chunks to not have any SPS (Sequence Parameter Set) & PPS (Picture Parameter Set)
