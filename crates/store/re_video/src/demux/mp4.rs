@@ -75,6 +75,24 @@ impl VideoData {
             }
         }
 
+        // Generate data for `test_latest_sample_index_at_presentation_timestamp` test.
+        // re_log::info!(
+        //     "pts: {:?}",
+        //     samples
+        //         .iter()
+        //         .take(50)
+        //         .map(|s| s.presentation_timestamp.0)
+        //         .collect::<Vec<_>>()
+        // );
+        // re_log::info!(
+        //     "dts: {:?}",
+        //     samples
+        //         .iter()
+        //         .take(50)
+        //         .map(|s| s.decode_timestamp.0)
+        //         .collect::<Vec<_>>()
+        // );
+
         if !samples.is_empty() {
             let start = samples[gop_sample_start_index].decode_timestamp;
             let sample_range = gop_sample_start_index as u32..samples.len() as u32;

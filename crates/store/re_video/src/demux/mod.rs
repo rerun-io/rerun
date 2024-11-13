@@ -611,18 +611,17 @@ mod tests {
     #[test]
     fn test_latest_sample_index_at_presentation_timestamp() {
         // This is a snippet of real world data!
-        // TODO:
         let pts = [
-            512, 1536, 1024, 768, 1280, 2560, 2048, 1792, 2304, 3584, 3072, 2816, 3328, 4608, 4096,
-            3840, 4352, 5376, 4864, 5120, 6400, 5888, 5632, 6144, 7424, 6912, 6656, 7168, 8448,
-            7936, 7680, 8192, 9472, 8960, 8704, 9216, 10496, 9984, 9728, 10240, 11520, 11008,
-            10752, 11264, 12544, 12032, 11776, 12288, 13568, 13056,
+            0, 1024, 512, 256, 768, 2048, 1536, 1280, 1792, 3072, 2560, 2304, 2816, 4096, 3584,
+            3328, 3840, 4864, 4352, 4608, 5888, 5376, 5120, 5632, 6912, 6400, 6144, 6656, 7936,
+            7424, 7168, 7680, 8960, 8448, 8192, 8704, 9984, 9472, 9216, 9728, 11008, 10496, 10240,
+            10752, 12032, 11520, 11264, 11776, 13056, 12544,
         ];
         let dts = [
-            0, 256, 512, 768, 1024, 1280, 1536, 1792, 2048, 2304, 2560, 2816, 3072, 3328, 3584,
-            3840, 4096, 4352, 4608, 4864, 5120, 5376, 5632, 5888, 6144, 6400, 6656, 6912, 7168,
-            7424, 7680, 7936, 8192, 8448, 8704, 8960, 9216, 9472, 9728, 9984, 10240, 10496, 10752,
-            11008, 11264, 11520, 11776, 12032, 12288, 12544,
+            -512, -256, 0, 256, 512, 768, 1024, 1280, 1536, 1792, 2048, 2304, 2560, 2816, 3072,
+            3328, 3584, 3840, 4096, 4352, 4608, 4864, 5120, 5376, 5632, 5888, 6144, 6400, 6656,
+            6912, 7168, 7424, 7680, 7936, 8192, 8448, 8704, 8960, 9216, 9472, 9728, 9984, 10240,
+            10496, 10752, 11008, 11264, 11520, 11776, 12032,
         ];
 
         // Checking our basic assumptions about this data:
@@ -678,30 +677,30 @@ mod tests {
         // A few hardcoded cases - both for illustrative purposes and to make sure the generic tests above are correct.
 
         // Querying before the first sample.
-        assert_eq!(None, query_pts(Time(0)));
-        assert_eq!(None, query_pts(Time(123)));
+        assert_eq!(None, query_pts(Time(-1)));
+        assert_eq!(None, query_pts(Time(-123)));
 
         // Querying for the first sample
-        assert_eq!(Some(0), query_pts(Time(512)));
-        assert_eq!(Some(0), query_pts(Time(513)));
-        assert_eq!(Some(0), query_pts(Time(600)));
-        assert_eq!(Some(0), query_pts(Time(767)));
+        assert_eq!(Some(0), query_pts(Time(0)));
+        assert_eq!(Some(0), query_pts(Time(1)));
+        assert_eq!(Some(0), query_pts(Time(88)));
+        assert_eq!(Some(0), query_pts(Time(255)));
 
         // The next sample is a jump in index!
-        assert_eq!(Some(3), query_pts(Time(768)));
-        assert_eq!(Some(3), query_pts(Time(769)));
-        assert_eq!(Some(3), query_pts(Time(800)));
-        assert_eq!(Some(3), query_pts(Time(1023)));
+        assert_eq!(Some(3), query_pts(Time(256)));
+        assert_eq!(Some(3), query_pts(Time(257)));
+        assert_eq!(Some(3), query_pts(Time(400)));
+        assert_eq!(Some(3), query_pts(Time(511)));
 
         // And the one after that should jump back again.
-        assert_eq!(Some(2), query_pts(Time(1024)));
-        assert_eq!(Some(2), query_pts(Time(1025)));
-        assert_eq!(Some(2), query_pts(Time(1100)));
-        assert_eq!(Some(2), query_pts(Time(1279)));
+        assert_eq!(Some(2), query_pts(Time(512)));
+        assert_eq!(Some(2), query_pts(Time(513)));
+        assert_eq!(Some(2), query_pts(Time(600)));
+        assert_eq!(Some(2), query_pts(Time(767)));
 
         // And another one!
-        assert_eq!(Some(4), query_pts(Time(1280)));
-        assert_eq!(Some(4), query_pts(Time(1281)));
+        assert_eq!(Some(4), query_pts(Time(768)));
+        assert_eq!(Some(4), query_pts(Time(1023)));
 
         // Test way outside of the range.
         // (this is not the last element in the list since that one doesn't have the highest PTS)
