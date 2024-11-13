@@ -70,22 +70,10 @@ pub trait ContextExt {
         egui::RichText::new(text).color(style.visuals.warn_fg_color)
     }
 
-    /// NOTE: duplicated in [`Self::error_text_format`]
     #[must_use]
     fn error_text(&self, text: impl Into<String>) -> egui::RichText {
         let style = self.ctx().style();
         egui::RichText::new(text).color(style.visuals.error_fg_color)
-    }
-
-    /// NOTE: duplicated in [`Self::error_text`]
-    fn error_text_format(&self) -> egui::TextFormat {
-        let style = self.ctx().style();
-        let font_id = egui::TextStyle::Body.resolve(&style);
-        egui::TextFormat {
-            font_id,
-            color: style.visuals.error_fg_color,
-            ..Default::default()
-        }
     }
 
     fn top_bar_style(&self, style_like_web: bool) -> TopBarStyle {
