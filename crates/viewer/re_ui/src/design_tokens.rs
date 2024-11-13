@@ -243,6 +243,7 @@ impl DesignTokens {
         egui_style.visuals.image_loading_spinners = false;
 
         egui_style.visuals.error_fg_color = egui::Color32::from_rgb(0xAB, 0x01, 0x16);
+        egui_style.visuals.warn_fg_color = egui::Color32::from_rgb(0xFF, 0x7A, 0x0C);
 
         ctx.set_style(egui_style);
     }

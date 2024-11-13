@@ -53,23 +53,26 @@ pub trait UiExt {
     fn ui(&self) -> &egui::Ui;
     fn ui_mut(&mut self) -> &mut egui::Ui;
 
-    /// Show the label with a success color.
-    fn success_label(&mut self, text: &str) -> egui::Response {
-        let label = egui::Label::new(self.ui().ctx().success_text(text));
-        self.ui_mut().add(label)
-    }
-
-    /// Shows a warning label.
+    /// Shows a warning label with a large border.
+    ///
+    /// If you don't want a border, use [`crate::ContextExt::warning_text`].
     fn warning_label(&mut self, warning_text: &str) -> egui::Response {
-        let label = egui::Label::new(self.ui().ctx().warning_text(warning_text));
-        self.ui_mut().add(label)
+        let ui = self.ui_mut();
+        warning_or_error_label(
+            ui,
+            ui.style().visuals.warn_fg_color,
+            warning_text,
+            warning_text,
+        )
     }
 
-    /// Shows a small error label with the given text on hover and copies the text to the clipboard on click.
+    /// Shows a small error label with the given text on hover and copies the text to the clipboard on click with a large border.
+    ///
+    /// This has a large border! If you don't want a border, use [`crate::ContextExt::error_text`].
     fn error_with_details_on_hover(&mut self, error_text: &str) -> egui::Response {
         let ui = self.ui_mut();
         warning_or_error_label(ui, ui.style().visuals.error_fg_color, "Error", error_text)
-        }
+    }
 
     fn error_label_background_color(&self) -> egui::Color32 {
         error_label_bg_color(self.ui().style().visuals.error_fg_color)
@@ -79,6 +82,8 @@ pub trait UiExt {
     ///
     /// Use this only if the error message is short, or you have a lot of room.
     /// Otherwise, use [`Self::error_with_details_on_hover`].
+    ///
+    /// This has a large border! If you don't want a border, use [`crate::ContextExt::error_text`].
     fn error_label(&mut self, error_text: &str) -> egui::Response {
         let ui = self.ui_mut();
         warning_or_error_label(
