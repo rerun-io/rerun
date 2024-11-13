@@ -94,8 +94,8 @@ impl VideoData {
                     window[0].decode_timestamp <= window[1].decode_timestamp;
             }
             if !samples_are_in_decode_order {
-                re_log::debug!(
-                    "Video samples are NOT in decode order. This is weird an inefficient."
+                re_log::warn!(
+                    "Video samples are NOT in decode order. This implies either invalid video data or a bug in parsing the mp4."
                 );
             }
         }
