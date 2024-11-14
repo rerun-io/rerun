@@ -352,7 +352,6 @@ SECTION_TABLE: Final[list[Section]] = [
             "get_recording_id",
             "get_thread_local_data_recording",
             "is_enabled",
-            "log_components",
             "new_recording",
             "set_global_data_recording",
             "set_thread_local_data_recording",

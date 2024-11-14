@@ -93,10 +93,10 @@ def specimen_archetype_with_latest_at_semantics():
     )
 
     set_frame_time(0)
-    rr.log_components("/archetype_chunk_with_latest_at_semantics", [rr.Points2D.indicator()])
+    rr.log("/archetype_chunk_with_latest_at_semantics", [rr.Points2D.indicator()])
 
     set_frame_time(5)
-    rr.log_components("/archetype_chunk_with_latest_at_semantics", [rrc.RadiusBatch(2)])
+    rr.log("/archetype_chunk_with_latest_at_semantics", [rrc.RadiusBatch(2)])
 
 
 def specimen_archetype_with_clamp_join_semantics_two_chunks():
@@ -161,7 +161,7 @@ def specimen_many_rows_with_mismatched_instance_count():
             rrc.ColorBatch(colors).partition(colors_partitions),
         ],
     )
-    rr.log_components("/many_rows_with_mismatched_instance_count", [rr.Points2D.indicator()], static=True)
+    rr.log("/many_rows_with_mismatched_instance_count", [rr.Points2D.indicator()], static=True)
 
 
 # TODO(ab): add variants (unordered, overlapping timestamps, etc.)
@@ -195,7 +195,7 @@ def specimen_archetype_chunk_with_clear():
     )
 
     set_frame_time(0)
-    rr.log_components("/archetype_chunk_with_clear", [rr.Points2D.indicator(), rrc.RadiusBatch(2)])
+    rr.log("/archetype_chunk_with_clear", [rr.Points2D.indicator(), rrc.RadiusBatch(2)])
 
     set_frame_time(5)
     rr.log("/archetype_chunk_with_clear", rr.Clear(recursive=False))

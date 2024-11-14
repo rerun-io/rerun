@@ -87,8 +87,6 @@ def log(
     )
     ```
 
-    See also: [`rerun.log_components`][].
-
     Parameters
     ----------
     entity_path:
