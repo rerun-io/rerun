@@ -24,9 +24,9 @@ instances.
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `Capsules3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Capsules3D.html?speculative-link)
- * 🐍 [Python API docs for `Capsules3D`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.Capsules3D)
- * 🦀 [Rust API docs for `Capsules3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Capsules3D.html?speculative-link)
+ * 🌊 [C++ API docs for `Capsules3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Capsules3D.html)
+ * 🐍 [Python API docs for `Capsules3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Capsules3D)
+ * 🦀 [Rust API docs for `Capsules3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Capsules3D.html)
 
 ## Example
 

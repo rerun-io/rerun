@@ -18,9 +18,9 @@ Also known as "line strips" or "polylines".
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `GeoLineStrings`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1GeoLineStrings.html?speculative-link)
- * 🐍 [Python API docs for `GeoLineStrings`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.GeoLineStrings)
- * 🦀 [Rust API docs for `GeoLineStrings`](https://docs.rs/rerun/latest/rerun/archetypes/struct.GeoLineStrings.html?speculative-link)
+ * 🌊 [C++ API docs for `GeoLineStrings`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1GeoLineStrings.html)
+ * 🐍 [Python API docs for `GeoLineStrings`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.GeoLineStrings)
+ * 🦀 [Rust API docs for `GeoLineStrings`](https://docs.rs/rerun/latest/rerun/archetypes/struct.GeoLineStrings.html)
 
 ## Example
 

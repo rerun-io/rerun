@@ -23,7 +23,7 @@ def is_recording_enabled(recording: RecordingStream | None) -> bool:
 
 @deprecated(
     """Please migrate to `rr.connect_tcp(…)`.
-  See: https://www.rerun.io/docs/reference/migration-0-20?speculative-link for more details."""
+  See: https://www.rerun.io/docs/reference/migration-0-20 for more details."""
 )
 def connect(
     addr: str | None = None,
@@ -37,7 +37,7 @@ def connect(
 
     !!! Warning "Deprecated"
         Please migrate to [rerun.connect_tcp][].
-        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-20?speculative-link) for more details.
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-20) for more details.
 
     Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
 
@@ -249,7 +249,7 @@ def disconnect(recording: RecordingStream | None = None) -> None:
 
 @deprecated(
     """Please migrate to `rr.serve_web(…)`.
-  See: https://www.rerun.io/docs/reference/migration-0-20?speculative-link for more details."""
+  See: https://www.rerun.io/docs/reference/migration-0-20 for more details."""
 )
 def serve(
     *,
@@ -265,7 +265,7 @@ def serve(
 
     !!! Warning "Deprecated"
         Please migrate to [rerun.serve_web][].
-        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-20?speculative-link) for more details.
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-20) for more details.
 
     You can also connect to this server with the native viewer using `rerun localhost:9090`.
 
