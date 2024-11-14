@@ -38,7 +38,10 @@ types = [
 
 def blueprint() -> rrb.BlueprintLike:
     entities = [f"bgr_{type}" for (type, _) in types] + [f"bgra_{type}" for (type, _) in types] + ["rgb_u8"]
-    return rrb.Grid(contents=[rrb.Spatial2DView(origin=path) for path in entities])
+    return rrb.Grid(
+        rrb.Grid(contents=[rrb.Spatial2DView(origin=path) for path in entities]),
+        rrb.TextDocumentView(origin="readme", name="Instructions"),
+    )
 
 
 def log_readme() -> None:
