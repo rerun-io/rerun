@@ -12,7 +12,9 @@ In all SDKs:
 * `connect()` is now deprecated in favor `connect_tcp()`
 * `serve()` is now deprecated in favor `serve_web()`
 
-The rationale behind this change is that it was common for users (see https://github.com/rerun-io/rerun/issues/7766).
+The old methods will be removed in a future release.
+
+The rationale behind this change is that it was easy to confuse what these functions do exactly:
 
 We frequently had reports from users that were understandably expecting a serving process (`rr.serve()`) to be ready to accept connections from other processes (`rr.connect()`), when in reality the two things are completely unrelated: one is hosting a websocket server to be polled by the web-viewer, while the other is trying to connect to the TCP SDK comms pipeline.
 
