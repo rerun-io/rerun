@@ -98,7 +98,7 @@ We tested the following codecs in more detail:
 | ---------- | ------------- | ---------------- | ------------- | ------------ | ------------ | --------------- | ------------------ |
 | AV1        | ✅             | ✅                | ✅             | ✅            | 🚧[^4]        | ✅               | ✅                  |
 | H.264/avc  | ✅[^4]         | ✅                | ✅             | ✅            | ✅            | ✅               | ✅                  |
-| H.265/hevc | ❌             | ❌                | ❌             | ✅            | 🚧[^6]        | ❌               | 🚧[^7]              |
+| H.265/hevc | ❌             | ❌                | ❌             | ✅            | 🚧[^5]        | ❌               | 🚧[^6]              |
 
 [^1]: Firefox on Linux has been observed to [stutter when playing back H.264 video](https://github.com/rerun-io/rerun/issues/7532).
 [^2]: Any Chromium-based browser should work, but we don't test all of them.
