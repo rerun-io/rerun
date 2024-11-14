@@ -4,8 +4,6 @@
 
 ## [0.20.0](https://github.com/rerun-io/rerun/compare/0.19.1...0.20.0) - Map view & native H.264 video support
 
-TODO(andreas): add link to release video
-
 📖 Release blogpost: TODO(andreas): add link
 🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-20
 
@@ -19,7 +17,7 @@ TODO(andreas): add link to release video
 * 📂 Logging files now uses the active app/recording id, allowing to combine several rrd files in the viewer.
   * Relatedly, there's now an `Import File` option in the menu to import arbitrary files into the active recording.
 * ☰ Dataframe queries are now streamed, reducing memory usage.
-* 💊 Add capsule archetype.
+* 💊 Add [capsule archetype](https://rerun.io/docs/reference/types/archetypes/capsules3d).
 * 📚 Doc improvements
   * Arrow schemas are now documented for all types.
   * Better structure to the [how to](https://rerun.io/docs/howto) section and a few more pages
