@@ -30,14 +30,14 @@ The Rerun command-line interface:
 // Place the important help _last_, to make it most visible in the terminal.
 const ENVIRONMENT_VARIABLES_AND_EXAMPLES: &str = r#"
 Environment variables:
-    RERUN_CHUNK_MAX_BYTES     Maximum chunk size thershold for the compactor.            
-    RERUN_CHUNK_MAX_ROWS      Maximum chunk row count threshold for the compactor (sorted chunks). 
+    RERUN_CHUNK_MAX_BYTES     Maximum chunk size threshold for the compactor.
+    RERUN_CHUNK_MAX_ROWS      Maximum chunk row count threshold for the compactor (sorted chunks).
     RERUN_CHUNK_MAX_ROWS_IF_UNSORTED
                               Maximum chunk row count threshold for the compactor (unsorted chunks).
     RERUN_SHADER_PATH         The search path for shader/shader-imports. Only available in developer builds.
     RERUN_TRACK_ALLOCATIONS   Track memory allocations to diagnose memory leaks in the viewer.
                               WARNING: slows down the viewer by a lot!
-    RERUN_MAPBOX_ACCESS_TOKEN The Mapbox access token to use the Mapbox-provided backgrounds in the map view.                               
+    RERUN_MAPBOX_ACCESS_TOKEN The Mapbox access token to use the Mapbox-provided backgrounds in the map view.
     RUST_LOG                  Change the log level of the viewer, e.g. `RUST_LOG=debug`.
     WGPU_BACKEND              Overwrites the graphics backend used, must be one of `vulkan`, `metal` or `gl`.
                               Default is `vulkan` everywhere except on Mac where we use `metal`. What is
