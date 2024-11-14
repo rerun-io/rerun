@@ -129,7 +129,7 @@ Reference:
 * [🌊 C++ `save`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a555a7940a076c93d951de5b139d14918)
 
 <!--
-## Logging data on native and visualizing it on the web.
+Logging data on native and visualizing it on the web.
 
 TODO(#8046): incoming.
 -->
@@ -172,22 +172,24 @@ rerun --port 6789 image.jpg &
 
 <!--
 
-### What happens when I use `rr.spawn()` from my SDK of choice?
+(these are headings, not marked as such since it confuses svelte's link checking)
+
+What happens when I use `rr.spawn()` from my SDK of choice?
 
 TODO(#8046): incoming.
 
 
-### What happens when I use `rr.serve()` from my SDK of choice?
+What happens when I use `rr.serve()` from my SDK of choice?
 
 TODO(#8046): incoming.
 
 
-### What happens when I use `rerun --serve`?
+What happens when I use `rerun --serve`?
 
 TODO(#8046): incoming.
 
 
-### Can the **Native Viewer** pull data from a **WebSocket Server**, like the **Web Viewer** does?
+Can the **Native Viewer** pull data from a **WebSocket Server**, like the **Web Viewer** does?
 
 TODO(#8046): incoming.
 
