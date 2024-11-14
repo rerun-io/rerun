@@ -89,6 +89,40 @@ impl<C: Component> AsComponents for C {
     }
 }
 
+impl AsComponents for dyn ComponentBatch {
+    #[inline]
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+        vec![MaybeOwnedComponentBatch::Ref(self)]
+    }
+}
+
+impl<const N: usize> AsComponents for [&dyn ComponentBatch; N] {
+    #[inline]
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+        self.iter()
+            .map(|batch| MaybeOwnedComponentBatch::Ref(*batch))
+            .collect()
+    }
+}
+
+impl AsComponents for &[&dyn ComponentBatch] {
+    #[inline]
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+        self.iter()
+            .map(|batch| MaybeOwnedComponentBatch::Ref(*batch))
+            .collect()
+    }
+}
+
+impl AsComponents for Vec<&dyn ComponentBatch> {
+    #[inline]
+    fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
+        self.iter()
+            .map(|batch| MaybeOwnedComponentBatch::Ref(*batch))
+            .collect()
+    }
+}
+
 // ---
 
 mod archetype;
