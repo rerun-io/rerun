@@ -45,16 +45,6 @@ message RegisterRecordingResponse {
     RecordingMetadata metadata = 2;
 }
 
-// Server can include details about the error as part of gRPC error (Status)
-message RegistrationError {
-    // error code
-    ErrorCode code = 1;
-    // storage url of the recording that failed to register
-    string storage_url = 2;
-    // human readable details about the error
-    string message = 3;
-}
-
 // ---------------- GetRecordingMetadata  -----------------
 
 message GetRecordingMetadataRequest {
@@ -140,4 +130,29 @@ message FetchRecordingResponse {
     EncoderVersion encoder_version = 1;
     // payload is raw bytes that the relevant codec can interpret
     bytes payload = 2;
+}
+
+// Application level error - use as `details` in the `google.rpc.Status` message
+message RemoteStoreError {
+    // error code
+    ErrorCode code = 1;
+    // unique identifier associated with the request (e.g. recording id, recording storage url)
+    string id = 2;
+    // human readable details about the error
+    string message = 3;
+}
+
+// Error codes for application level errors
+enum ErrorCode {
+    // unused
+    _UNUSED = 0;
+
+    // object store access error
+    OBJECT_STORE_ERROR = 1;
+
+    // metadata database access error
+    METADATA_DB_ERROR = 2;
+
+    // Encoding / decoding error
+    CODEC_ERROR = 3;
 }

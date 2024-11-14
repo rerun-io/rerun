@@ -333,13 +333,13 @@ pub mod v0 {
     }
 
     // ------- Application level errors -------
-    impl std::error::Error for RegistrationError {}
+    impl std::error::Error for RemoteStoreError {}
 
-    impl std::fmt::Display for RegistrationError {
+    impl std::fmt::Display for RemoteStoreError {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             f.write_fmt(format_args!(
-                "Failed to register recording: {}, error code: {}, error message: {}",
-                self.storage_url, self.code, self.message
+                "Remote store error. Request identifier: {}, error msg: {}, error code: {}",
+                self.id, self.message, self.code
             ))
         }
     }
