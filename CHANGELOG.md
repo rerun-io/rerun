@@ -80,6 +80,7 @@ TODO(andreas): add link to release video
 - Consistent open/import/log_file behaviors in all common scenarios [#7966](https://github.com/rerun-io/rerun/pull/7966)
 - ChunkStore: fix row-id computation when removing dangling static chunks [#8020](https://github.com/rerun-io/rerun/pull/8020)
 - `EntityTree`: only check for entity deletions when necessary [#8103](https://github.com/rerun-io/rerun/pull/8103)
+- WebSocket server now indefinitely keeps track of non-data RPC commands [#8146](https://github.com/rerun-io/rerun/pull/8146)
 
 #### 🌁 Viewer improvements
 - A Rerun Viewer session now matches 1:1 to a Rerun TCP server [#6951](https://github.com/rerun-io/rerun/pull/6951) (thanks [@petertheprocess](https://github.com/petertheprocess)!)
@@ -88,6 +89,8 @@ TODO(andreas): add link to release video
 - Expose additional information about decoded frames in the viewer [#7932](https://github.com/rerun-io/rerun/pull/7932)
 - Update crates, including `rfd` for better file dialogs [#7953](https://github.com/rerun-io/rerun/pull/7953)
 - Line strips are no longer a disconnected series of quads [#8065](https://github.com/rerun-io/rerun/pull/8065)
+- Show data density graph in collapsed time panel [#8137](https://github.com/rerun-io/rerun/pull/8137)
+- Show the root entity "/" in the streams panel [#8142](https://github.com/rerun-io/rerun/pull/8142)
 
 #### 🚀 Performance improvements
 - Don't keep around additional CPU copy of loaded mesh files [#7824](https://github.com/rerun-io/rerun/pull/7824)
@@ -100,6 +103,7 @@ TODO(andreas): add link to release video
 - Add `ml_depth_pro` example [#7832](https://github.com/rerun-io/rerun/pull/7832) (thanks [@oxkitsune](https://github.com/oxkitsune)!)
 - Add map view to nuscenes python example [#8034](https://github.com/rerun-io/rerun/pull/8034) (thanks [@tfoldi](https://github.com/tfoldi)!)
 - Add an example to display OpenStreetMap-sourced data on the map view [#8044](https://github.com/rerun-io/rerun/pull/8044)
+- Improve NuScenes example with more geo data & blueprint [#8130](https://github.com/rerun-io/rerun/pull/8130)
 
 #### 📚 Docs
 - Clarify viewport documentation and reference the type list for view classes [#7826](https://github.com/rerun-io/rerun/pull/7826)
