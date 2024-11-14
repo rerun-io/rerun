@@ -10,7 +10,7 @@ use re_types::{
     image::ImageKind,
     static_assert_struct_has_fields, Archetype, ComponentName, Loggable,
 };
-use re_ui::{ContextExt as _, UiExt as _};
+use re_ui::UiExt as _;
 use re_viewer_context::{
     gpu_bridge::image_data_range_heuristic, ColormapWithRange, HoverHighlight, ImageInfo,
     ImageStatsCache, Item, UiLayout, ViewerContext,
@@ -46,11 +46,7 @@ impl DataUi for InstancePath {
                 .store()
                 .all_components_on_timeline(&query.timeline(), entity_path)
         } else {
-            ui_layout.label(
-                ui,
-                ui.ctx()
-                    .error_text(format!("Unknown entity: {entity_path:?}")),
-            );
+            ui.error_label(&format!("Unknown entity: {entity_path:?}"));
             return;
         };
         let Some(components) = component else {

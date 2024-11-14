@@ -59,33 +59,30 @@ pub trait ContextExt {
         // egui::Stroke::new(stroke_width, color)
     }
 
+    /// Text colored to indicate success.
     #[must_use]
     fn success_text(&self, text: impl Into<String>) -> egui::RichText {
         egui::RichText::new(text).color(SUCCESS_COLOR)
     }
 
+    /// Text colored to indicate a warning.
+    ///
+    /// For most cases, you should use [`crate::UiExt::warning_label`] instead,
+    /// which has a nice fat border around it.
     #[must_use]
     fn warning_text(&self, text: impl Into<String>) -> egui::RichText {
         let style = self.ctx().style();
         egui::RichText::new(text).color(style.visuals.warn_fg_color)
     }
 
-    /// NOTE: duplicated in [`Self::error_text_format`]
+    /// Text colored to indicate an error.
+    ///
+    /// For most cases, you should use [`crate::UiExt::error_label`] instead,
+    /// which has a nice fat border around it.
     #[must_use]
     fn error_text(&self, text: impl Into<String>) -> egui::RichText {
         let style = self.ctx().style();
         egui::RichText::new(text).color(style.visuals.error_fg_color)
-    }
-
-    /// NOTE: duplicated in [`Self::error_text`]
-    fn error_text_format(&self) -> egui::TextFormat {
-        let style = self.ctx().style();
-        let font_id = egui::TextStyle::Body.resolve(&style);
-        egui::TextFormat {
-            font_id,
-            color: style.visuals.error_fg_color,
-            ..Default::default()
-        }
     }
 
     fn top_bar_style(&self, style_like_web: bool) -> TopBarStyle {

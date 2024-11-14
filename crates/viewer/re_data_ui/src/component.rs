@@ -3,7 +3,7 @@ use egui::NumExt;
 use re_chunk_store::UnitChunkShared;
 use re_entity_db::InstancePath;
 use re_log_types::{ComponentPath, Instance, TimeInt};
-use re_ui::{ContextExt as _, SyntaxHighlighting as _};
+use re_ui::{ContextExt as _, SyntaxHighlighting as _, UiExt};
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::DataUi;
@@ -81,11 +81,11 @@ impl<'a> DataUi for ComponentPathLatestAtResults<'a> {
                         *component_name,
                     );
                 if temporal_message_count > 0 {
-                    ui.label(ui.ctx().error_text(format!(
+                    ui.error_label(&format!(
                         "Static component has {} event{} logged on timelines",
                         temporal_message_count,
                         if temporal_message_count > 1 { "s" } else { "" }
-                    )))
+                    ))
                     .on_hover_text(
                         "Components should be logged either as static or on timelines, but \
                         never both. Values for static components logged to timelines cannot be \
