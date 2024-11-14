@@ -48,11 +48,11 @@ Examples:
     Open an .rrd file and stream it to a Web Viewer:
         rerun recording.rrd --web-viewer
 
-    Host a Rerun Server which listens for incoming TCP connections from the logging SDK, buffer the log messages, and host the results over WebSocket:
-        rerun --serve
+    Host a Rerun TCP server which listens for incoming TCP connections from the logging SDK, buffer the log messages, and serves the results over WebSockets:
+        rerun --serve-web
 
     Host a Rerun Server which serves a recording over WebSocket to any connecting Rerun Viewers:
-        rerun --serve recording.rrd
+        rerun --serve-web recording.rrd
 
     Connect to a Rerun Server:
         rerun ws://localhost:9877
@@ -101,7 +101,7 @@ Example: `16GB` or `50%` (of system total)."
     #[clap(
         long,
         default_value = "25%",
-        long_help = r"An upper limit on how much memory the WebSocket server should use.
+        long_help = r"An upper limit on how much memory the WebSocket server (`--serve-web`) should use.
 The server buffers log messages for the benefit of late-arriving viewers.
 When this limit is reached, Rerun will drop the oldest data.
 Example: `16GB` or `50%` (of system total)."
@@ -138,16 +138,19 @@ When persisted, the state will be stored at the following locations:
     #[clap(long)]
     screenshot_to: Option<std::path::PathBuf>,
 
+    /// Deprecated: use `--serve-web` instead.
+    #[clap(long)]
+    serve: bool,
+
     /// Serve the recordings over WebSocket to one or more Rerun Viewers.
     ///
     /// This will also host a web-viewer over HTTP that can connect to the WebSocket address,
     /// but you can also connect with the native binary.
     ///
-    /// `rerun --serve` will act like a proxy,
-    /// listening for incoming TCP connection from logging SDKs, and forwarding it to
-    /// Rerun viewers.
+    /// `rerun --serve-web` will act like a proxy, listening for incoming TCP connection from
+    /// logging SDKs, and forwarding it to Rerun viewers.
     #[clap(long)]
-    serve: bool,
+    serve_web: bool,
 
     /// This is a hint that we expect a recording to stream in very soon.
     ///
@@ -190,7 +193,7 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     ///
     /// Requires Rerun to have been compiled with the `web_viewer` feature.
     ///
-    /// This implies `--serve`.
+    /// This implies `--serve-web`.
     #[clap(long)]
     web_viewer: bool,
 
@@ -550,6 +553,7 @@ where
 
     if args.web_viewer {
         args.serve = true;
+        args.serve_web = true;
     }
 
     if args.version {
@@ -724,7 +728,7 @@ fn run_impl(
     } else if let Some(rrd_path) = args.save {
         let rx = ReceiveSet::new(rxs);
         Ok(stream_to_rrd_on_disk(&rx, &rrd_path.into())?)
-    } else if args.serve {
+    } else if args.serve || args.serve_web {
         #[cfg(not(feature = "server"))]
         {
             _ = (call_source, rxs);
