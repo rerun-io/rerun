@@ -10,6 +10,9 @@ import rerun.blueprint as rrb
 README = """\
 # Video support
 
+Known issues:
+* TODO(#8073): The last frame of the video is not working, so you might need to go back a couple of frames.
+
 Make sure video plays on all views unless lack of support is mentioned:
 
 * `AV1` is expected to work on web & release version native.
