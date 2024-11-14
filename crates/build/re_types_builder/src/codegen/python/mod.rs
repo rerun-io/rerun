@@ -1868,7 +1868,6 @@ fn quote_arrow_support_from_obj(
 
     let datatype = quote_arrow_datatype(&arrow_registry.get(fqname));
     let extension_batch = format!("{name}Batch");
-    let extension_type = format!("{name}Type");
 
     let native_to_pa_array_impl = match quote_arrow_serialization(
         reporter,
@@ -1900,12 +1899,6 @@ fn quote_arrow_support_from_obj(
                 )
             }
         }
-    };
-
-    let type_superclass_decl = if type_superclasses.is_empty() {
-        String::new()
-    } else {
-        format!("({})", type_superclasses.join(","))
     };
 
     let batch_superclass_decl = if batch_superclasses.is_empty() {
