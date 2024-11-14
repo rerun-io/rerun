@@ -77,7 +77,7 @@ By default rerun will look for a system installed `FFmpeg` installation in `PATH
 but you can specify a custom path in the viewer's settings.
 
 If you select a video that failed to play due to missing or incompatible `FFmpeg` binaries it will offer a download link to a build of `FFmpeg` for your platform.
-<!-- TODO(#8004): there should be a download button that updates the path in the settings --> 
+<!-- TODO(#8004): there should be a download button that updates the path in the settings -->
 
 ### Web viewer
 Video playback in the Rerun Web Viewer is done using the browser's own video decoder, so the exact supported codecs depend on your browser.
