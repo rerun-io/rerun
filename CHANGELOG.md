@@ -15,6 +15,8 @@ TODO(andreas): add link to release video
 * 📽️ Videos now load a lot faster use less RAM.
 * 📂 Logging files now uses the active app/recording id, allowing to combine several rrd files in the viewer.
   * Relatedly, there's now an `Import File` option in the menu to import arbitrary files into the active recording.
+* ☰ Dataframe queries are now streamed, reducing memory usage 
+* 💊 Add capsule archetype
 
 ### ⚠️ Breaking changes
 * 🐍 Python 3.8 is being deprecated
