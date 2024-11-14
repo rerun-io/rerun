@@ -2,7 +2,7 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
-## [0.20.0](https://github.com/rerun-io/rerun/compare/0.19.1...0.20.0) - Experimental Map & native H.264 support
+## [0.20.0](https://github.com/rerun-io/rerun/compare/0.19.1...0.20.0) - Map view & native H.264 video support
 
 TODO: add link to release video
 
@@ -10,25 +10,26 @@ TODO: add link to release video
 🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-20
 
 ### ✨ Overview & highlights
-* 🗺️ There is now an experimental map view!
-* 🎬 Native viewer supports now H.264 video if ffmpeg is installed.
-* 📽️ Videos load now a lot faster and take less memory.
+* 🗺️ There is now an map view!
+* 🎬 Native viewer now supports H.264 video if ffmpeg is installed.
+* 📽️ Videos now load a lot faster use less RAM.
 * 📂 Logging files now uses the active app/recording id, allowing to combine several rrd files in the viewer.
   * Relatedly, there's now an `Import File` option in the menu to import arbitrary files into the active recording.
 
 ### ⚠️ Breaking changes
-* 🎨 In Python, lists of numbers without type information are noweassumed to be packed integer color representations, unless the length is exactly 3 or 4.
 * 🐍 Python 3.8 is being deprecated
+* 🎨 In Python, lists of numbers without type information are now assumed to be packed integer color representations, unless the length is exactly 3 or 4
 🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-20
 
 ### 🔎 Details
 
 #### 🎬 Video
 - Support H.264 video on native via user installed ffmpeg executable [#7962](https://github.com/rerun-io/rerun/pull/7962)
+- Make mp4 parsing **a lot** faster & tremendously lower memory overhead [#7860](https://github.com/rerun-io/rerun/pull/7860)
+- Fix playback of HDR AV1 videos in native viewer [#7978](https://github.com/rerun-io/rerun/pull/7978)
 - Show all samples/frames in a video in a nice table [#8102](https://github.com/rerun-io/rerun/pull/8102)
 - Calculate and show video frame number [#8112](https://github.com/rerun-io/rerun/pull/8112)
 - Expose basic information about group of pictures in video data in the selection panel [#8043](https://github.com/rerun-io/rerun/pull/8043)
-- Fix playback of HDR AV1 videos in native viewer [#7978](https://github.com/rerun-io/rerun/pull/7978)
 - Fix some videos having offsetted (incorrect) timestamps [#8029](https://github.com/rerun-io/rerun/pull/8029)
 - Fix video backward seeking / stepping back sometimes getting stuck (in the presence of b-frames) [#8053](https://github.com/rerun-io/rerun/pull/8053)
 - Make sure videos all end up in different space views [#8085](https://github.com/rerun-io/rerun/pull/8085)
@@ -39,6 +40,7 @@ TODO: add link to release video
 - Update re_mp4 to fix integer overflow bug [#8096](https://github.com/rerun-io/rerun/pull/8096)
 
 #### 🪵 Log API
+- Add `Capsules3D` archetype [#7574](https://github.com/rerun-io/rerun/pull/7574) (thanks [@kpreid](https://github.com/kpreid)!)
 - `rr.log_file_from_path` now defaults to the active app/recording ID [#7864](https://github.com/rerun-io/rerun/pull/7864)
 - Allow overriding albedo color on `Asset3D` [#7458](https://github.com/rerun-io/rerun/pull/7458) (thanks [@EtaLoop](https://github.com/EtaLoop)!)
 - `rr.serve` -> `rr.serve_web`, `rr.connect` -> `rr.connect_tcp` [#7906](https://github.com/rerun-io/rerun/pull/7906)
@@ -74,7 +76,6 @@ TODO: add link to release video
 - A Rerun Viewer session now matches 1:1 to a Rerun TCP server [#6951](https://github.com/rerun-io/rerun/pull/6951) (thanks [@petertheprocess](https://github.com/petertheprocess)!)
 - Implement support for in-place drag-n-drop [#7880](https://github.com/rerun-io/rerun/pull/7880)
 - Implement `Menu > Import` and associated command [#7882](https://github.com/rerun-io/rerun/pull/7882)
-- Add `Capsules3D` archetype [#7574](https://github.com/rerun-io/rerun/pull/7574) (thanks [@kpreid](https://github.com/kpreid)!)
 - Expose additional information about decoded frames in the viewer [#7932](https://github.com/rerun-io/rerun/pull/7932)
 - Update crates, including `rfd` for better file dialogs [#7953](https://github.com/rerun-io/rerun/pull/7953)
 - Line strips are no longer a disconnected series of quads [#8065](https://github.com/rerun-io/rerun/pull/8065)
@@ -86,8 +87,8 @@ TODO: add link to release video
 - Implement support for fully asynchronous `QueryHandle`s [#7964](https://github.com/rerun-io/rerun/pull/7964)
 
 #### 🧑‍🏫 Examples
-- Fix Rust dna sample writing to a temporary file [#7827](https://github.com/rerun-io/rerun/pull/7827)
-- Add ml_depth_pro example [#7832](https://github.com/rerun-io/rerun/pull/7832) (thanks [@oxkitsune](https://github.com/oxkitsune)!)
+- Fix Rust DNA sample writing to a temporary file [#7827](https://github.com/rerun-io/rerun/pull/7827)
+- Add `ml_depth_pro` example [#7832](https://github.com/rerun-io/rerun/pull/7832) (thanks [@oxkitsune](https://github.com/oxkitsune)!)
 - Add map view to nuscenes python example [#8034](https://github.com/rerun-io/rerun/pull/8034) (thanks [@tfoldi](https://github.com/tfoldi)!)
 - Add an example to display OpenStreetMap-sourced data on the map view [#8044](https://github.com/rerun-io/rerun/pull/8044)
 
@@ -107,14 +108,13 @@ TODO: add link to release video
 - Much nicer looking error and warning messages [#8127](https://github.com/rerun-io/rerun/pull/8127)
 
 #### 🧑‍💻 Dev-experience
-- Show list of enabled feature with `rerun --version` [#7885](https://github.com/rerun-io/rerun/pull/7885)
+- Show list of enabled features with `rerun --version` [#7885](https://github.com/rerun-io/rerun/pull/7885) [#8095](https://github.com/rerun-io/rerun/pull/8095)
 
 #### 📦 Dependencies
 - Bump numpy -> 0.23, pyo3 -> 0.22.5, and arrow -> 53.1 [#7834](https://github.com/rerun-io/rerun/pull/7834)
 
 #### 🤷‍ Other
 - Implement safe storage handles [#7934](https://github.com/rerun-io/rerun/pull/7934)
-- Fix listing of enabled features in `rerun --version` [#8095](https://github.com/rerun-io/rerun/pull/8095)
 
 
 ## [0.19.1](https://github.com/rerun-io/rerun/compare/0.19.0..0.19.1) - Web viewer fix
