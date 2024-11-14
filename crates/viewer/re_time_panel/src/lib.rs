@@ -548,7 +548,7 @@ impl TimePanel {
                 }
 
                 // Show "/" on top?
-                let show_root = false;
+                let show_root = true;
 
                 if show_root {
                     self.show_tree(
