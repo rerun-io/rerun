@@ -10,16 +10,16 @@ import requests
 import tqdm
 
 MINISPLIT_SCENES = [
-    "scene-0061",
-    "scene-0103",
-    "scene-0553",
-    "scene-0655",
-    "scene-0757",
-    "scene-0796",
-    "scene-0916",
-    "scene-1077",
-    "scene-1094",
-    "scene-1100",
+    "scene-0061",  # Driving around a corner.
+    "scene-0103",  # Driving straight on a city road.
+    "scene-0553",  # Standing in front of a traffic light.
+    "scene-0655",  # Drive straight only.
+    "scene-0757",  # Goes straight rather slowly.
+    "scene-0796",  # Drive straight only.
+    "scene-0916",  # Driving in a circle on a parking lot.
+    "scene-1077",  # Straight drive on an artery road at night.
+    "scene-1094",  # Slow drive at night.
+    "scene-1100",  # Standing on front of traffic light at night.
 ]
 MINISPLIT_URL = "https://www.nuscenes.org/data/v1.0-mini.tgz"
 
