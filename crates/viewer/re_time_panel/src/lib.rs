@@ -158,6 +158,8 @@ impl TimePanel {
             return;
         }
 
+        self.data_density_graph_painter.begin_frame(ui.ctx());
+
         // Naturally, many parts of the time panel need the time control.
         // Copy it once, read/edit, and then write back at the end if there was a change.
         let time_ctrl_before = rec_cfg.time_ctrl.read().clone();
@@ -343,8 +345,6 @@ impl TimePanel {
         time_ctrl: &mut TimeControl,
     ) {
         re_tracing::profile_function!();
-
-        self.data_density_graph_painter.begin_frame(ui.ctx());
 
         //               |timeline            |
         // ------------------------------------
