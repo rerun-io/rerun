@@ -11,8 +11,7 @@ table GeoLineStrings (
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate",
   "attr.docs.category": "Geospatial",
-  "attr.docs.view_types": "MapView",
-  "attr.docs.unreleased"
+  "attr.docs.view_types": "MapView"
 ) {
   // --- Required ---
 

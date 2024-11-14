@@ -5,8 +5,7 @@ namespace rerun.blueprint.archetypes;
 //TODO(ab): Turn this archetype into `MapArea` and include a `center: LatLon` componnent or similar
 table MapZoom (
     "attr.rerun.scope": "blueprint",
-    "attr.python.aliases": "datatypes.Float64Like",
-    "attr.docs.unreleased"
+    "attr.python.aliases": "datatypes.Float64Like"
 ) {
     // --- Optional ---
 

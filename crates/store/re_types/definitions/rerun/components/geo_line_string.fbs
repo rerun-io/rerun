@@ -9,8 +9,7 @@ table GeoLineString (
   "attr.python.array_aliases": "npt.NDArray[np.float64]",
   "attr.rust.derive": "Default, PartialEq",
   "attr.rust.repr": "transparent",
-  "attr.cpp.no_field_ctors",
-  "attr.docs.unreleased"
+  "attr.cpp.no_field_ctors"
 ) {
   lat_lon: [rerun.datatypes.DVec2D] (order: 100);
 }

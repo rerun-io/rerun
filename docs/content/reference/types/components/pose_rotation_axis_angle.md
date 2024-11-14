@@ -26,6 +26,6 @@ Struct {
 ## Used by
 
 * [`Boxes3D`](../archetypes/boxes3d.md)
-* [`Capsules3D`](../archetypes/capsules3d.md?speculative-link)
+* [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
 * [`InstancePoses3D`](../archetypes/instance_poses3d.md)

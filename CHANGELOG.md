@@ -1,8 +1,131 @@
 # Rerun changelog
 
-
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
+## [0.20.0](https://github.com/rerun-io/rerun/compare/0.19.1...0.20.0) - Map view & native H.264 video support
+
+📖 Release blogpost: TODO(andreas): add link
+🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-20
+
+### ✨ Overview & highlights
+* 🗺️ There is now an map view!
+* 🎬 Native viewer now supports H.264 video if ffmpeg is installed.
+* 📽️ Videos now load a lot faster use less RAM.
+* 📂 Improvements to the existing `Open` (Viewer) & `log_file` (SDK) workflows, and addition of a new `Import` workflow.
+  * Blueprints can now easily be [re-used across different applications, recordings and SDKs](https://rerun.io/docs/howto/visualization/reuse-blueprints)
+  * The new `Import` feature allows you to drag-and-drop any data into an existing recording, directly in the viewer.
+* 📂 Logging files now uses the active app/recording id, allowing to combine several rrd files in the viewer.
+  * Relatedly, there's now an `Import File` option in the menu to import arbitrary files into the active recording.
+* ☰ Dataframe queries are now streamed, reducing memory usage.
+* 💊 Add [capsule archetype](https://rerun.io/docs/reference/types/archetypes/capsules3d).
+* 📚 Doc improvements
+  * Arrow schemas are now documented for all types.
+  * Better structure to the [how to](https://rerun.io/docs/howto) section and a few more pages
+
+### ⚠️ Breaking changes & deprecations
+* 🐍 Python 3.8 is being deprecated
+* 🔌 `connect` & `serve` got deprecated in favor of `connect_tcp` & `serve_web`
+* 🎨 In Python, lists of numbers without type information are now assumed to be packed integer color representations, unless the length is exactly 3 or 4
+🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-20
+
+### 🔎 Details
+
+#### 🎬 Video
+- Support H.264 video on native via user installed ffmpeg executable [#7962](https://github.com/rerun-io/rerun/pull/7962)
+- Make mp4 parsing **a lot** faster & tremendously lower memory overhead [#7860](https://github.com/rerun-io/rerun/pull/7860)
+- Fix playback of HDR AV1 videos in native viewer [#7978](https://github.com/rerun-io/rerun/pull/7978)
+- Show all samples/frames in a video in a nice table [#8102](https://github.com/rerun-io/rerun/pull/8102)
+- Calculate and show video frame number [#8112](https://github.com/rerun-io/rerun/pull/8112)
+- Expose basic information about group of pictures in video data in the selection panel [#8043](https://github.com/rerun-io/rerun/pull/8043)
+- Fix some videos having offsetted (incorrect) timestamps [#8029](https://github.com/rerun-io/rerun/pull/8029)
+- Fix video backward seeking / stepping back sometimes getting stuck (in the presence of b-frames) [#8053](https://github.com/rerun-io/rerun/pull/8053)
+- Make sure videos all end up in different space views [#8085](https://github.com/rerun-io/rerun/pull/8085)
+- Fix video on web sometimes not showing last few frames for some videos [#8117](https://github.com/rerun-io/rerun/pull/8117)
+- Fix issues with seeking in some H.264 videos on native & web [#8111](https://github.com/rerun-io/rerun/pull/8111)
+- Fix view creation heuristics for videos [#7869](https://github.com/rerun-io/rerun/pull/7869)
+- Improve video doc page [#8007](https://github.com/rerun-io/rerun/pull/8007)
+- Update re_mp4 to fix integer overflow bug [#8096](https://github.com/rerun-io/rerun/pull/8096)
+
+#### 🪵 Log API
+- Add `Capsules3D` archetype [#7574](https://github.com/rerun-io/rerun/pull/7574) (thanks [@kpreid](https://github.com/kpreid)!)
+- `rr.log_file_from_path` now defaults to the active app/recording ID [#7864](https://github.com/rerun-io/rerun/pull/7864)
+- Allow overriding albedo color on `Asset3D` [#7458](https://github.com/rerun-io/rerun/pull/7458) (thanks [@EtaLoop](https://github.com/EtaLoop)!)
+- `rr.serve` -> `rr.serve_web`, `rr.connect` -> `rr.connect_tcp` [#7906](https://github.com/rerun-io/rerun/pull/7906)
+
+#### 🌊 C++ API
+- C++: Improve error message when finding X11 macro `Unsorted` [#7855](https://github.com/rerun-io/rerun/pull/7855)
+- Forward `CMAKE_TOOLCHAIN_FILE` to arrow build for sdk cross-compilation [#7866](https://github.com/rerun-io/rerun/pull/7866) (thanks [@SunDoge](https://github.com/SunDoge)!)
+- Update the python package to support python 3.13, update C++ arrow to 18.0.0 [#7930](https://github.com/rerun-io/rerun/pull/7930)
+
+#### 🐍 Python API
+- Allow passing seconds/nanoseconds to `VideoFrameReference` archetype [#7833](https://github.com/rerun-io/rerun/pull/7833)
+- Officially deprecate support for python 3.8 [#7933](https://github.com/rerun-io/rerun/pull/7933)
+- Update the python package to support python 3.13, update C++ arrow to 18.0.0 [#7930](https://github.com/rerun-io/rerun/pull/7930)
+- Remove the upper bound constraint on python version [#7949](https://github.com/rerun-io/rerun/pull/7949)
+- Enable dataframe streaming across Python FFI [#7935](https://github.com/rerun-io/rerun/pull/7935)
+- Fix python SDK's shutdown unsafely dropping cross-FFI resources [#8038](https://github.com/rerun-io/rerun/pull/8038)
+- Improve edge-cases and warn on ambiguity for Rgba32 datatype [#8054](https://github.com/rerun-io/rerun/pull/8054)
+- Check rerun notebook version on first import [#8030](https://github.com/rerun-io/rerun/pull/8030)
+
+#### 🦀 Rust API
+- Allow logging individual components directly (Impl `AsComponents` for all `ObjectKind::Component`) [#7756](https://github.com/rerun-io/rerun/pull/7756) (thanks [@oxkitsune](https://github.com/oxkitsune)!)
+- `re_query::Caches` -> `re_query::QueryCache` [#7915](https://github.com/rerun-io/rerun/pull/7915)
+
+#### 🪳 Bug fixes
+- [bugfix] Make sure blueprint gets sent to the notebook view being created [#7811](https://github.com/rerun-io/rerun/pull/7811)
+- Fix too short picking ray in pinhole-only scenarios [#7899](https://github.com/rerun-io/rerun/pull/7899)
+- Update zune-jpeg to fix crash on bad JPEGs [#7952](https://github.com/rerun-io/rerun/pull/7952)
+- Consistent open/import/log_file behaviors in all common scenarios [#7966](https://github.com/rerun-io/rerun/pull/7966)
+- ChunkStore: fix row-id computation when removing dangling static chunks [#8020](https://github.com/rerun-io/rerun/pull/8020)
+- `EntityTree`: only check for entity deletions when necessary [#8103](https://github.com/rerun-io/rerun/pull/8103)
+- WebSocket server now indefinitely keeps track of non-data RPC commands [#8146](https://github.com/rerun-io/rerun/pull/8146)
+
+#### 🌁 Viewer improvements
+- A Rerun Viewer session now matches 1:1 to a Rerun TCP server [#6951](https://github.com/rerun-io/rerun/pull/6951) (thanks [@petertheprocess](https://github.com/petertheprocess)!)
+- Implement support for in-place drag-n-drop [#7880](https://github.com/rerun-io/rerun/pull/7880)
+- Implement `Menu > Import` and associated command [#7882](https://github.com/rerun-io/rerun/pull/7882)
+- Expose additional information about decoded frames in the viewer [#7932](https://github.com/rerun-io/rerun/pull/7932)
+- Update crates, including `rfd` for better file dialogs [#7953](https://github.com/rerun-io/rerun/pull/7953)
+- Line strips are no longer a disconnected series of quads [#8065](https://github.com/rerun-io/rerun/pull/8065)
+- Show data density graph in collapsed time panel [#8137](https://github.com/rerun-io/rerun/pull/8137)
+- Show the root entity "/" in the streams panel [#8142](https://github.com/rerun-io/rerun/pull/8142)
+
+#### 🚀 Performance improvements
+- Don't keep around additional CPU copy of loaded mesh files [#7824](https://github.com/rerun-io/rerun/pull/7824)
+- Make mp4 parsing **a lot** faster & tremendously lower memory overhead [#7860](https://github.com/rerun-io/rerun/pull/7860)
+- Fix slow receive when using native WebSocket [#7875](https://github.com/rerun-io/rerun/pull/7875)
+- Implement support for fully asynchronous `QueryHandle`s [#7964](https://github.com/rerun-io/rerun/pull/7964)
+
+#### 🧑‍🏫 Examples
+- Fix Rust DNA sample writing to a temporary file [#7827](https://github.com/rerun-io/rerun/pull/7827)
+- Add `ml_depth_pro` example [#7832](https://github.com/rerun-io/rerun/pull/7832) (thanks [@oxkitsune](https://github.com/oxkitsune)!)
+- Add map view to nuscenes python example [#8034](https://github.com/rerun-io/rerun/pull/8034) (thanks [@tfoldi](https://github.com/tfoldi)!)
+- Add an example to display OpenStreetMap-sourced data on the map view [#8044](https://github.com/rerun-io/rerun/pull/8044)
+- Improve NuScenes example with more geo data & blueprint [#8130](https://github.com/rerun-io/rerun/pull/8130)
+
+#### 📚 Docs
+- Clarify viewport documentation and reference the type list for view classes [#7826](https://github.com/rerun-io/rerun/pull/7826)
+- Finish dataframe reference page [#7865](https://github.com/rerun-io/rerun/pull/7865)
+- Docs: static data [#7856](https://github.com/rerun-io/rerun/pull/7856)
+- Docs: concepts > recordings [#7896](https://github.com/rerun-io/rerun/pull/7896)
+- Docs: "How-to: reuse blueprints across languages" [#7886](https://github.com/rerun-io/rerun/pull/7886)
+- Docs: application model part 1: native workflows [#7905](https://github.com/rerun-io/rerun/pull/7905)
+- Document arrow datatypes [#7986](https://github.com/rerun-io/rerun/pull/7986)
+
+#### 🖼 UI improvements
+- Map View and `GeoPoints` archetype [#6561](https://github.com/rerun-io/rerun/pull/6561) (thanks [@tfoldi](https://github.com/tfoldi)!)
+- Replace the "Options" submenu with a settings screen [#8001](https://github.com/rerun-io/rerun/pull/8001)
+- Improve error message style slightly [#8092](https://github.com/rerun-io/rerun/pull/8092)
+- Much nicer looking error and warning messages [#8127](https://github.com/rerun-io/rerun/pull/8127)
+
+#### 🧑‍💻 Dev-experience
+- Show list of enabled features with `rerun --version` [#7885](https://github.com/rerun-io/rerun/pull/7885) [#8095](https://github.com/rerun-io/rerun/pull/8095)
+
+#### 📦 Dependencies
+- Bump numpy -> 0.23, pyo3 -> 0.22.5, and arrow -> 53.1 [#7834](https://github.com/rerun-io/rerun/pull/7834)
+
+#### 🤷‍ Other
+- Implement safe storage handles [#7934](https://github.com/rerun-io/rerun/pull/7934)
 
 
 ## [0.19.1](https://github.com/rerun-io/rerun/compare/0.19.0..0.19.1) - Web viewer fix

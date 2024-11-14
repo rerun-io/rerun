@@ -18,8 +18,7 @@ table Capsules3D (
   "attr.rust.new_pub_crate",
   "attr.cpp.no_field_ctors",
   "attr.docs.category": "Spatial 3D",
-  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
-  "attr.docs.unreleased"
+  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection"
 ) {
   // --- Required ---
 
