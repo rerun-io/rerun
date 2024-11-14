@@ -1005,6 +1005,8 @@ fn collapsed_time_marker_and_time(
         time_range_rect.max.x -= space_needed_for_current_time;
 
         if time_range_rect.width() > 50.0 {
+            ui.allocate_rect(time_range_rect, egui::Sense::hover());
+
             let time_ranges_ui =
                 initialize_time_ranges_ui(entity_db, time_ctrl, time_range_rect.x_range(), None);
             time_ranges_ui.snap_time_control(time_ctrl);
@@ -1033,8 +1035,6 @@ fn collapsed_time_marker_and_time(
                 &painter,
                 &time_range_rect,
             );
-
-            ui.allocate_rect(time_range_rect, egui::Sense::hover());
         }
     }
 
