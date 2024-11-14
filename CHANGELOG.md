@@ -15,11 +15,12 @@ TODO(andreas): add link to release video
 * 📽️ Videos now load a lot faster use less RAM.
 * 📂 Logging files now uses the active app/recording id, allowing to combine several rrd files in the viewer.
   * Relatedly, there's now an `Import File` option in the menu to import arbitrary files into the active recording.
-* ☰ Dataframe queries are now streamed, reducing memory usage
-* 💊 Add capsule archetype
+* ☰ Dataframe queries are now streamed, reducing memory usage.
+* 💊 Add capsule archetype.
 
-### ⚠️ Breaking changes
+### ⚠️ Breaking changes & deprecations
 * 🐍 Python 3.8 is being deprecated
+* 🔌 `connect` & `serve` got deprecated in favor of `connect_tcp` & `serve_web`
 * 🎨 In Python, lists of numbers without type information are now assumed to be packed integer color representations, unless the length is exactly 3 or 4
 🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-20
 
