@@ -5,12 +5,6 @@ use re_viewer_context::{Annotations, QueryContext, ResolvedAnnotationInfos};
 
 use crate::clamped_or_nothing;
 
-#[inline]
-fn to_egui_color(color: &Color) -> egui::Color32 {
-    let [r, g, b, a] = color.to_array();
-    egui::Color32::from_rgba_unmultiplied(r, g, b, a)
-}
-
 /// Process [`Color`] components using annotations and default colors.
 pub fn process_color_slice<'a>(
     ctx: &QueryContext<'_>,
@@ -19,20 +13,20 @@ pub fn process_color_slice<'a>(
     annotation_infos: &'a ResolvedAnnotationInfos,
     colors: &'a [Color],
 ) -> Vec<egui::Color32> {
-    // NOTE: Do not put tracing scopes here, this is called for every entity/timestamp in a frame.
+    re_tracing::profile_function_if!(10_000 < num_instances);
 
     if let Some(last_color) = colors.last() {
         // If we have colors we can ignore the annotation infos/contexts.
 
         if colors.len() == num_instances {
             // Common happy path
-            colors.iter().map(to_egui_color).collect()
+            colors.iter().map(|c| egui::Color32::from(*c)).collect()
         } else if colors.len() == 1 {
             // Common happy path
-            vec![to_egui_color(last_color); num_instances]
+            vec![egui::Color32::from(*last_color); num_instances]
         } else {
             let colors = clamped_or_nothing(colors, num_instances);
-            colors.map(to_egui_color).collect()
+            colors.map(|c| egui::Color32::from(*c)).collect()
         }
     } else {
         match annotation_infos {
