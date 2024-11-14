@@ -7,7 +7,10 @@ use re_types::{components::Radius, datatypes::Float32};
 use re_viewer_context::SpaceViewHighlights;
 use std::hash::Hash;
 
-use crate::{graph::NodeInstanceImplicit, visualizers::{EdgeInstance, NodeInstance}};
+use crate::{
+    graph::NodeInstanceImplicit,
+    visualizers::{EdgeInstance, NodeInstance},
+};
 
 use super::draw::{draw_edge, draw_entity, draw_explicit, draw_implicit};
 

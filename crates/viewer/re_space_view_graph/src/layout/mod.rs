@@ -43,10 +43,12 @@ pub struct ForceLayout;
 
 impl ForceLayout {
     pub fn compute<'a>(graphs: impl Iterator<Item = &'a Graph<'a>> + Clone) -> Layout {
-        let explicit =
-            graphs.clone().flat_map(|g| g.nodes_explicit().map(|n| (n.index, fj::Node::from(n))));
-        let implicit =
-            graphs.clone().flat_map(|g| g.nodes_implicit().map(|n| (n.index, fj::Node::default())));
+        let explicit = graphs
+            .clone()
+            .flat_map(|g| g.nodes_explicit().map(|n| (n.index, fj::Node::from(n))));
+        let implicit = graphs
+            .clone()
+            .flat_map(|g| g.nodes_implicit().map(|n| (n.index, fj::Node::default())));
 
         let mut node_index = ahash::HashMap::default();
         let all_nodes: Vec<fj::Node> = explicit
