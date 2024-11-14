@@ -41,6 +41,7 @@ TODO: add link to release video
 - Enable dataframe streaming across Python FFI [#7935](https://github.com/rerun-io/rerun/pull/7935)
 - Fix python SDK's shutdown unsafely dropping cross-FFI resources [#8038](https://github.com/rerun-io/rerun/pull/8038)
 - Improve edge-cases and warn on ambiguity for Rgba32 datatype [#8054](https://github.com/rerun-io/rerun/pull/8054)
+- Check rerun notebook version on first import [#8030](https://github.com/rerun-io/rerun/pull/8030)
 
 #### 🦀 Rust API
 - Allow logging individual components directly (Impl `AsComponents` for all `ObjectKind::Component`) [#7756](https://github.com/rerun-io/rerun/pull/7756) (thanks [@oxkitsune](https://github.com/oxkitsune)!)
@@ -55,9 +56,13 @@ TODO: add link to release video
 - ChunkStore: fix row-id computation when removing dangling static chunks [#8020](https://github.com/rerun-io/rerun/pull/8020)
 - Fix some videos having offsetted (incorrect) timestamps [#8029](https://github.com/rerun-io/rerun/pull/8029)
 - Fix video backward seeking / stepping back sometimes getting stuck (in the presence of b-frames) [#8053](https://github.com/rerun-io/rerun/pull/8053)
+- Make sure videos all end up in different space views [#8085](https://github.com/rerun-io/rerun/pull/8085)
+- `EntityTree`: only check for entity deletions when necessary [#8103](https://github.com/rerun-io/rerun/pull/8103)
+- Fix video on web sometimes not showing last few frames for some videos [#8117](https://github.com/rerun-io/rerun/pull/8117)
+- Fix issues with seeking in some H.264 videos on native & web [#8111](https://github.com/rerun-io/rerun/pull/8111)
 
 #### 🌁 Viewer improvements
-- Fix view heuristics for videos [#7869](https://github.com/rerun-io/rerun/pull/7869)
+- Fix view creation heuristics for videos [#7869](https://github.com/rerun-io/rerun/pull/7869)
 - A Rerun Viewer session now matches 1:1 to a Rerun TCP server [#6951](https://github.com/rerun-io/rerun/pull/6951) (thanks [@petertheprocess](https://github.com/petertheprocess)!)
 - Implement support for in-place drag-n-drop [#7880](https://github.com/rerun-io/rerun/pull/7880)
 - Implement `Menu > Import` and associated command [#7882](https://github.com/rerun-io/rerun/pull/7882)
@@ -66,9 +71,11 @@ TODO: add link to release video
 - Update crates, including `rfd` for better file dialogs [#7953](https://github.com/rerun-io/rerun/pull/7953)
 - Support H.264 on native via user installed ffmpeg executable [#7962](https://github.com/rerun-io/rerun/pull/7962)
 - Expose basic information about group of pictures in video data in the selection panel [#8043](https://github.com/rerun-io/rerun/pull/8043)
+- Line strips are no longer a disconnected series of quads [#8065](https://github.com/rerun-io/rerun/pull/8065)
+- Calculate and show video frame number [#8112](https://github.com/rerun-io/rerun/pull/8112)
 
 #### 🚀 Performance improvements
-- Don't keep around additional cpu copy of loaded mesh files [#7824](https://github.com/rerun-io/rerun/pull/7824)
+- Don't keep around additional CPU copy of loaded mesh files [#7824](https://github.com/rerun-io/rerun/pull/7824)
 - Make mp4 parsing **a lot** faster & tremendously lower memory overhead [#7860](https://github.com/rerun-io/rerun/pull/7860)
 - Fix slow receive when using native WebSocket [#7875](https://github.com/rerun-io/rerun/pull/7875)
 - Implement support for fully asynchronous `QueryHandle`s [#7964](https://github.com/rerun-io/rerun/pull/7964)
@@ -92,15 +99,20 @@ TODO: add link to release video
 #### 🖼 UI improvements
 - Map View and `GeoPoints` archetype [#6561](https://github.com/rerun-io/rerun/pull/6561) (thanks [@tfoldi](https://github.com/tfoldi)!)
 - Replace the "Options" submenu with a settings screen [#8001](https://github.com/rerun-io/rerun/pull/8001)
+- Improve error message style slightly [#8092](https://github.com/rerun-io/rerun/pull/8092)
+- Show all samples/frames in a video in a nice table [#8102](https://github.com/rerun-io/rerun/pull/8102)
+- Much nicer looking error and warning messages [#8127](https://github.com/rerun-io/rerun/pull/8127)
 
 #### 🧑‍💻 Dev-experience
 - Show list of enabled feature with `rerun --version` [#7885](https://github.com/rerun-io/rerun/pull/7885)
 
 #### 📦 Dependencies
 - Bump numpy -> 0.23, pyo3 -> 0.22.5, and arrow -> 53.1 [#7834](https://github.com/rerun-io/rerun/pull/7834)
+- Update re_mp4 to fix integer overflow bug [#8096](https://github.com/rerun-io/rerun/pull/8096)
 
 #### 🤷‍ Other
 - Implement safe storage handles [#7934](https://github.com/rerun-io/rerun/pull/7934)
+- Fix listing of enabled features in `rerun --version` [#8095](https://github.com/rerun-io/rerun/pull/8095)
 
 
 ## [0.19.1](https://github.com/rerun-io/rerun/compare/0.19.0..0.19.1) - Web viewer fix
