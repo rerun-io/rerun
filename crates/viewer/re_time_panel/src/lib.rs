@@ -1049,7 +1049,7 @@ fn collapsed_time_marker_and_time(
                 ui.painter(),
                 ui,
                 &time_ranges_ui,
-                time_range_rect.shrink2(egui::vec2(0.0, 8.0)),
+                time_range_rect.shrink2(egui::vec2(0.0, 10.0)),
                 &TimePanelItem::entity_path(EntityPath::root()),
             );
 
