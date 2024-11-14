@@ -23,6 +23,21 @@ TODO: add link to release video
 
 ### 🔎 Details
 
+#### 🎬 Video
+- Support H.264 video on native via user installed ffmpeg executable [#7962](https://github.com/rerun-io/rerun/pull/7962)
+- Show all samples/frames in a video in a nice table [#8102](https://github.com/rerun-io/rerun/pull/8102)
+- Calculate and show video frame number [#8112](https://github.com/rerun-io/rerun/pull/8112)
+- Expose basic information about group of pictures in video data in the selection panel [#8043](https://github.com/rerun-io/rerun/pull/8043)
+- Fix playback of HDR AV1 videos in native viewer [#7978](https://github.com/rerun-io/rerun/pull/7978)
+- Fix some videos having offsetted (incorrect) timestamps [#8029](https://github.com/rerun-io/rerun/pull/8029)
+- Fix video backward seeking / stepping back sometimes getting stuck (in the presence of b-frames) [#8053](https://github.com/rerun-io/rerun/pull/8053)
+- Make sure videos all end up in different space views [#8085](https://github.com/rerun-io/rerun/pull/8085)
+- Fix video on web sometimes not showing last few frames for some videos [#8117](https://github.com/rerun-io/rerun/pull/8117)
+- Fix issues with seeking in some H.264 videos on native & web [#8111](https://github.com/rerun-io/rerun/pull/8111)
+- Fix view creation heuristics for videos [#7869](https://github.com/rerun-io/rerun/pull/7869)
+- Improve video doc page [#8007](https://github.com/rerun-io/rerun/pull/8007)
+- Update re_mp4 to fix integer overflow bug [#8096](https://github.com/rerun-io/rerun/pull/8096)
+
 #### 🪵 Log API
 - `rr.log_file_from_path` now defaults to the active app/recording ID [#7864](https://github.com/rerun-io/rerun/pull/7864)
 - Allow overriding albedo color on `Asset3D` [#7458](https://github.com/rerun-io/rerun/pull/7458) (thanks [@EtaLoop](https://github.com/EtaLoop)!)
@@ -51,28 +66,18 @@ TODO: add link to release video
 - [bugfix] Make sure blueprint gets sent to the notebook view being created [#7811](https://github.com/rerun-io/rerun/pull/7811)
 - Fix too short picking ray in pinhole-only scenarios [#7899](https://github.com/rerun-io/rerun/pull/7899)
 - Update zune-jpeg to fix crash on bad JPEGs [#7952](https://github.com/rerun-io/rerun/pull/7952)
-- Fix playback of HDR AV1 videos in native viewer [#7978](https://github.com/rerun-io/rerun/pull/7978)
 - Consistent open/import/log_file behaviors in all common scenarios [#7966](https://github.com/rerun-io/rerun/pull/7966)
 - ChunkStore: fix row-id computation when removing dangling static chunks [#8020](https://github.com/rerun-io/rerun/pull/8020)
-- Fix some videos having offsetted (incorrect) timestamps [#8029](https://github.com/rerun-io/rerun/pull/8029)
-- Fix video backward seeking / stepping back sometimes getting stuck (in the presence of b-frames) [#8053](https://github.com/rerun-io/rerun/pull/8053)
-- Make sure videos all end up in different space views [#8085](https://github.com/rerun-io/rerun/pull/8085)
 - `EntityTree`: only check for entity deletions when necessary [#8103](https://github.com/rerun-io/rerun/pull/8103)
-- Fix video on web sometimes not showing last few frames for some videos [#8117](https://github.com/rerun-io/rerun/pull/8117)
-- Fix issues with seeking in some H.264 videos on native & web [#8111](https://github.com/rerun-io/rerun/pull/8111)
 
 #### 🌁 Viewer improvements
-- Fix view creation heuristics for videos [#7869](https://github.com/rerun-io/rerun/pull/7869)
 - A Rerun Viewer session now matches 1:1 to a Rerun TCP server [#6951](https://github.com/rerun-io/rerun/pull/6951) (thanks [@petertheprocess](https://github.com/petertheprocess)!)
 - Implement support for in-place drag-n-drop [#7880](https://github.com/rerun-io/rerun/pull/7880)
 - Implement `Menu > Import` and associated command [#7882](https://github.com/rerun-io/rerun/pull/7882)
 - Add `Capsules3D` archetype [#7574](https://github.com/rerun-io/rerun/pull/7574) (thanks [@kpreid](https://github.com/kpreid)!)
 - Expose additional information about decoded frames in the viewer [#7932](https://github.com/rerun-io/rerun/pull/7932)
 - Update crates, including `rfd` for better file dialogs [#7953](https://github.com/rerun-io/rerun/pull/7953)
-- Support H.264 on native via user installed ffmpeg executable [#7962](https://github.com/rerun-io/rerun/pull/7962)
-- Expose basic information about group of pictures in video data in the selection panel [#8043](https://github.com/rerun-io/rerun/pull/8043)
 - Line strips are no longer a disconnected series of quads [#8065](https://github.com/rerun-io/rerun/pull/8065)
-- Calculate and show video frame number [#8112](https://github.com/rerun-io/rerun/pull/8112)
 
 #### 🚀 Performance improvements
 - Don't keep around additional CPU copy of loaded mesh files [#7824](https://github.com/rerun-io/rerun/pull/7824)
@@ -94,13 +99,11 @@ TODO: add link to release video
 - Docs: "How-to: reuse blueprints across languages" [#7886](https://github.com/rerun-io/rerun/pull/7886)
 - Docs: application model part 1: native workflows [#7905](https://github.com/rerun-io/rerun/pull/7905)
 - Document arrow datatypes [#7986](https://github.com/rerun-io/rerun/pull/7986)
-- Improve video doc page [#8007](https://github.com/rerun-io/rerun/pull/8007)
 
 #### 🖼 UI improvements
 - Map View and `GeoPoints` archetype [#6561](https://github.com/rerun-io/rerun/pull/6561) (thanks [@tfoldi](https://github.com/tfoldi)!)
 - Replace the "Options" submenu with a settings screen [#8001](https://github.com/rerun-io/rerun/pull/8001)
 - Improve error message style slightly [#8092](https://github.com/rerun-io/rerun/pull/8092)
-- Show all samples/frames in a video in a nice table [#8102](https://github.com/rerun-io/rerun/pull/8102)
 - Much nicer looking error and warning messages [#8127](https://github.com/rerun-io/rerun/pull/8127)
 
 #### 🧑‍💻 Dev-experience
@@ -108,7 +111,6 @@ TODO: add link to release video
 
 #### 📦 Dependencies
 - Bump numpy -> 0.23, pyo3 -> 0.22.5, and arrow -> 53.1 [#7834](https://github.com/rerun-io/rerun/pull/7834)
-- Update re_mp4 to fix integer overflow bug [#8096](https://github.com/rerun-io/rerun/pull/8096)
 
 #### 🤷‍ Other
 - Implement safe storage handles [#7934](https://github.com/rerun-io/rerun/pull/7934)
