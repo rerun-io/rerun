@@ -734,6 +734,7 @@ impl TimePanel {
                     &self.time_ranges_ui,
                     row_rect,
                     &item,
+                    true,
                 );
             }
         }
@@ -909,6 +910,7 @@ impl TimePanel {
                         &self.time_ranges_ui,
                         row_rect,
                         &item,
+                        true,
                     );
                 }
             }
@@ -1051,6 +1053,7 @@ fn collapsed_time_marker_and_time(
                 &time_ranges_ui,
                 time_range_rect.shrink2(egui::vec2(0.0, 10.0)),
                 &TimePanelItem::entity_path(EntityPath::root()),
+                false,
             );
 
             time_marker_ui(
