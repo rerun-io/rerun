@@ -5,9 +5,7 @@ use std::collections::HashMap;
 use egui::Color32;
 
 pub const INFO_COLOR: Color32 = Color32::from_rgb(0, 155, 255);
-pub const WARNING_COLOR: Color32 = Color32::from_rgb(255, 212, 0);
-pub const ERROR_COLOR: Color32 = Color32::from_rgb(255, 32, 0);
-pub const SUCCESS_COLOR: Color32 = Color32::from_rgb(0, 255, 32);
+pub const SUCCESS_COLOR: Color32 = Color32::from_rgb(0, 240, 32);
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum ToastKind {
@@ -139,8 +137,8 @@ fn default_toast_contents(ui: &mut egui::Ui, toast: &Toast) -> egui::Response {
 
                 if toast.options.show_icon {
                     let (icon, icon_color) = match toast.kind {
-                        ToastKind::Warning => ("⚠", WARNING_COLOR),
-                        ToastKind::Error => ("❗", ERROR_COLOR),
+                        ToastKind::Warning => ("⚠", ui.style().visuals.warn_fg_color),
+                        ToastKind::Error => ("❗", ui.style().visuals.error_fg_color),
                         ToastKind::Success => ("✔", SUCCESS_COLOR),
                         _ => ("ℹ", INFO_COLOR),
                     };
