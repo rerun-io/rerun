@@ -12,19 +12,12 @@ from attrs import define, field
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .._converters import (
     str_or_none,
 )
 
-__all__ = [
-    "TensorDimension",
-    "TensorDimensionArrayLike",
-    "TensorDimensionBatch",
-    "TensorDimensionLike",
-    "TensorDimensionType",
-]
+__all__ = ["TensorDimension", "TensorDimensionArrayLike", "TensorDimensionBatch", "TensorDimensionLike"]
 
 
 @define(init=False)
@@ -65,22 +58,11 @@ TensorDimensionArrayLike = Union[
 ]
 
 
-class TensorDimensionType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.TensorDimension"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.struct([
-                pa.field("size", pa.uint64(), nullable=False, metadata={}),
-                pa.field("name", pa.utf8(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
-
-
 class TensorDimensionBatch(BaseBatch[TensorDimensionArrayLike]):
-    _ARROW_TYPE = TensorDimensionType()
+    _ARROW_DATATYPE = pa.struct([
+        pa.field("size", pa.uint64(), nullable=False, metadata={}),
+        pa.field("name", pa.utf8(), nullable=True, metadata={}),
+    ])
 
     @staticmethod
     def _native_to_pa_array(data: TensorDimensionArrayLike, data_type: pa.DataType) -> pa.Array:

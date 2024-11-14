@@ -12,7 +12,7 @@ from rerun._baseclasses import (
 
 from .. import datatypes
 
-__all__ = ["AffixFuzzer15", "AffixFuzzer15Batch", "AffixFuzzer15Type"]
+__all__ = ["AffixFuzzer15", "AffixFuzzer15Batch"]
 
 
 class AffixFuzzer15(datatypes.AffixFuzzer3, ComponentMixin):
@@ -23,12 +23,8 @@ class AffixFuzzer15(datatypes.AffixFuzzer3, ComponentMixin):
     pass
 
 
-class AffixFuzzer15Type(datatypes.AffixFuzzer3Type):
-    _TYPE_NAME: str = "rerun.testing.components.AffixFuzzer15"
-
-
 class AffixFuzzer15Batch(datatypes.AffixFuzzer3Batch, ComponentBatchMixin):
-    _ARROW_TYPE = AffixFuzzer15Type()
+    _COMPONENT_NAME: str = "rerun.testing.components.AffixFuzzer15"
 
 
 # This is patched in late to avoid circular dependencies.

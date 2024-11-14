@@ -11,7 +11,7 @@ from ..._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["LockRangeDuringZoom", "LockRangeDuringZoomBatch", "LockRangeDuringZoomType"]
+__all__ = ["LockRangeDuringZoom", "LockRangeDuringZoomBatch"]
 
 
 class LockRangeDuringZoom(datatypes.Bool, ComponentMixin):
@@ -28,12 +28,8 @@ class LockRangeDuringZoom(datatypes.Bool, ComponentMixin):
     pass
 
 
-class LockRangeDuringZoomType(datatypes.BoolType):
-    _TYPE_NAME: str = "rerun.blueprint.components.LockRangeDuringZoom"
-
-
 class LockRangeDuringZoomBatch(datatypes.BoolBatch, ComponentBatchMixin):
-    _ARROW_TYPE = LockRangeDuringZoomType()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.LockRangeDuringZoom"
 
 
 # This is patched in late to avoid circular dependencies.

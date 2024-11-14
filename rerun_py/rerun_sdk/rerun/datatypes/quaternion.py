@@ -14,14 +14,13 @@ from attrs import define, field
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .._converters import (
     to_np_float32,
 )
 from .quaternion_ext import QuaternionExt
 
-__all__ = ["Quaternion", "QuaternionArrayLike", "QuaternionBatch", "QuaternionLike", "QuaternionType"]
+__all__ = ["Quaternion", "QuaternionArrayLike", "QuaternionBatch", "QuaternionLike"]
 
 
 @define(init=False)
@@ -48,17 +47,8 @@ QuaternionArrayLike = Union[
 ]
 
 
-class QuaternionType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.Quaternion"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 4), self._TYPE_NAME
-        )
-
-
 class QuaternionBatch(BaseBatch[QuaternionArrayLike]):
-    _ARROW_TYPE = QuaternionType()
+    _ARROW_DATATYPE = pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 4)
 
     @staticmethod
     def _native_to_pa_array(data: QuaternionArrayLike, data_type: pa.DataType) -> pa.Array:

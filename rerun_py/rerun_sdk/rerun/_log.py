@@ -288,11 +288,6 @@ def log_components(
         else:
             added.add(name)
 
-        # Strip off the ExtensionArray if it's present. We will always log via component_name.
-        # TODO(jleibs): Maybe warn if there is a name mismatch here.
-        if isinstance(array, pa.ExtensionArray):
-            array = array.storage
-
         instanced[name] = array
 
     bindings.log_arrow_msg(  # pyright: ignore[reportGeneralTypeIssues]

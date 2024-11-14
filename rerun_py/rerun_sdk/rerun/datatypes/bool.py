@@ -13,10 +13,9 @@ from attrs import define, field
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 
-__all__ = ["Bool", "BoolArrayLike", "BoolBatch", "BoolLike", "BoolType"]
+__all__ = ["Bool", "BoolArrayLike", "BoolBatch", "BoolLike"]
 
 
 @define(init=False)
@@ -46,15 +45,8 @@ BoolArrayLike = Union[
 ]
 
 
-class BoolType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.Bool"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.bool_(), self._TYPE_NAME)
-
-
 class BoolBatch(BaseBatch[BoolArrayLike]):
-    _ARROW_TYPE = BoolType()
+    _ARROW_DATATYPE = pa.bool_()
 
     @staticmethod
     def _native_to_pa_array(data: BoolArrayLike, data_type: pa.DataType) -> pa.Array:

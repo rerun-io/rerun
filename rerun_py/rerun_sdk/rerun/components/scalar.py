@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["Scalar", "ScalarBatch", "ScalarType"]
+__all__ = ["Scalar", "ScalarBatch"]
 
 
 class Scalar(datatypes.Float64, ComponentMixin):
@@ -28,12 +28,8 @@ class Scalar(datatypes.Float64, ComponentMixin):
     pass
 
 
-class ScalarType(datatypes.Float64Type):
-    _TYPE_NAME: str = "rerun.components.Scalar"
-
-
 class ScalarBatch(datatypes.Float64Batch, ComponentBatchMixin):
-    _ARROW_TYPE = ScalarType()
+    _COMPONENT_NAME: str = "rerun.components.Scalar"
 
 
 # This is patched in late to avoid circular dependencies.

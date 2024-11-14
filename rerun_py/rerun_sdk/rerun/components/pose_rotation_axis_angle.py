@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["PoseRotationAxisAngle", "PoseRotationAxisAngleBatch", "PoseRotationAxisAngleType"]
+__all__ = ["PoseRotationAxisAngle", "PoseRotationAxisAngleBatch"]
 
 
 class PoseRotationAxisAngle(datatypes.RotationAxisAngle, ComponentMixin):
@@ -24,12 +24,8 @@ class PoseRotationAxisAngle(datatypes.RotationAxisAngle, ComponentMixin):
     pass
 
 
-class PoseRotationAxisAngleType(datatypes.RotationAxisAngleType):
-    _TYPE_NAME: str = "rerun.components.PoseRotationAxisAngle"
-
-
 class PoseRotationAxisAngleBatch(datatypes.RotationAxisAngleBatch, ComponentBatchMixin):
-    _ARROW_TYPE = PoseRotationAxisAngleType()
+    _COMPONENT_NAME: str = "rerun.components.PoseRotationAxisAngle"
 
 
 # This is patched in late to avoid circular dependencies.

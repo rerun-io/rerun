@@ -11,11 +11,10 @@ import pyarrow as pa
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
 )
 
-__all__ = ["FillMode", "FillModeArrayLike", "FillModeBatch", "FillModeLike", "FillModeType"]
+__all__ = ["FillMode", "FillModeArrayLike", "FillModeBatch", "FillModeLike"]
 
 
 from enum import Enum
@@ -76,15 +75,9 @@ FillModeLike = Union[
 FillModeArrayLike = Union[FillModeLike, Sequence[FillModeLike]]
 
 
-class FillModeType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.components.FillMode"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
-
-
 class FillModeBatch(BaseBatch[FillModeArrayLike], ComponentBatchMixin):
-    _ARROW_TYPE = FillModeType()
+    _ARROW_DATATYPE = pa.uint8()
+    _COMPONENT_NAME: str = "rerun.components.FillMode"
 
     @staticmethod
     def _native_to_pa_array(data: FillModeArrayLike, data_type: pa.DataType) -> pa.Array:

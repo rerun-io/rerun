@@ -14,11 +14,10 @@ from attrs import define, field
 from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .image_format_ext import ImageFormatExt
 
-__all__ = ["ImageFormat", "ImageFormatArrayLike", "ImageFormatBatch", "ImageFormatLike", "ImageFormatType"]
+__all__ = ["ImageFormat", "ImageFormatArrayLike", "ImageFormatBatch", "ImageFormatLike"]
 
 
 @define(init=False)
@@ -114,25 +113,14 @@ ImageFormatArrayLike = Union[
 ]
 
 
-class ImageFormatType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.ImageFormat"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.struct([
-                pa.field("width", pa.uint32(), nullable=False, metadata={}),
-                pa.field("height", pa.uint32(), nullable=False, metadata={}),
-                pa.field("pixel_format", pa.uint8(), nullable=True, metadata={}),
-                pa.field("color_model", pa.uint8(), nullable=True, metadata={}),
-                pa.field("channel_datatype", pa.uint8(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
-
-
 class ImageFormatBatch(BaseBatch[ImageFormatArrayLike]):
-    _ARROW_TYPE = ImageFormatType()
+    _ARROW_DATATYPE = pa.struct([
+        pa.field("width", pa.uint32(), nullable=False, metadata={}),
+        pa.field("height", pa.uint32(), nullable=False, metadata={}),
+        pa.field("pixel_format", pa.uint8(), nullable=True, metadata={}),
+        pa.field("color_model", pa.uint8(), nullable=True, metadata={}),
+        pa.field("channel_datatype", pa.uint8(), nullable=True, metadata={}),
+    ])
 
     @staticmethod
     def _native_to_pa_array(data: ImageFormatArrayLike, data_type: pa.DataType) -> pa.Array:
@@ -145,9 +133,9 @@ class ImageFormatBatch(BaseBatch[ImageFormatArrayLike]):
             [
                 pa.array(np.asarray([x.width for x in data], dtype=np.uint32)),
                 pa.array(np.asarray([x.height for x in data], dtype=np.uint32)),
-                PixelFormatBatch([x.pixel_format for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-                ColorModelBatch([x.color_model for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-                ChannelDatatypeBatch([x.channel_datatype for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                PixelFormatBatch([x.pixel_format for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                ColorModelBatch([x.color_model for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                ChannelDatatypeBatch([x.channel_datatype for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

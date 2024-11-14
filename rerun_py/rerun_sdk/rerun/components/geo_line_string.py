@@ -15,13 +15,12 @@ from attrs import define, field
 from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
     ComponentMixin,
 )
 from .geo_line_string_ext import GeoLineStringExt
 
-__all__ = ["GeoLineString", "GeoLineStringArrayLike", "GeoLineStringBatch", "GeoLineStringLike", "GeoLineStringType"]
+__all__ = ["GeoLineString", "GeoLineStringArrayLike", "GeoLineStringBatch", "GeoLineStringLike"]
 
 
 @define(init=False)
@@ -42,26 +41,16 @@ else:
 GeoLineStringArrayLike = Union[GeoLineString, Sequence[GeoLineStringLike], npt.NDArray[np.float64]]
 
 
-class GeoLineStringType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.components.GeoLineString"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.list_(
-                pa.field(
-                    "item",
-                    pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={}), 2),
-                    nullable=False,
-                    metadata={},
-                )
-            ),
-            self._TYPE_NAME,
-        )
-
-
 class GeoLineStringBatch(BaseBatch[GeoLineStringArrayLike], ComponentBatchMixin):
-    _ARROW_TYPE = GeoLineStringType()
+    _ARROW_DATATYPE = pa.list_(
+        pa.field(
+            "item",
+            pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={}), 2),
+            nullable=False,
+            metadata={},
+        )
+    )
+    _COMPONENT_NAME: str = "rerun.components.GeoLineString"
 
     @staticmethod
     def _native_to_pa_array(data: GeoLineStringArrayLike, data_type: pa.DataType) -> pa.Array:

@@ -11,11 +11,10 @@ import pyarrow as pa
 
 from ..._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
 )
 
-__all__ = ["PanelState", "PanelStateArrayLike", "PanelStateBatch", "PanelStateLike", "PanelStateType"]
+__all__ = ["PanelState", "PanelStateArrayLike", "PanelStateBatch", "PanelStateLike"]
 
 
 from enum import Enum
@@ -58,15 +57,9 @@ PanelStateLike = Union[PanelState, Literal["Collapsed", "Expanded", "Hidden", "c
 PanelStateArrayLike = Union[PanelStateLike, Sequence[PanelStateLike]]
 
 
-class PanelStateType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.blueprint.components.PanelState"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
-
-
 class PanelStateBatch(BaseBatch[PanelStateArrayLike], ComponentBatchMixin):
-    _ARROW_TYPE = PanelStateType()
+    _ARROW_DATATYPE = pa.uint8()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.PanelState"
 
     @staticmethod
     def _native_to_pa_array(data: PanelStateArrayLike, data_type: pa.DataType) -> pa.Array:

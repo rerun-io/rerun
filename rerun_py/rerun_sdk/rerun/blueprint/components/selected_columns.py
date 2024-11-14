@@ -11,7 +11,7 @@ from ..._baseclasses import (
 )
 from ...blueprint import datatypes as blueprint_datatypes
 
-__all__ = ["SelectedColumns", "SelectedColumnsBatch", "SelectedColumnsType"]
+__all__ = ["SelectedColumns", "SelectedColumnsBatch"]
 
 
 class SelectedColumns(blueprint_datatypes.SelectedColumns, ComponentMixin):
@@ -24,12 +24,8 @@ class SelectedColumns(blueprint_datatypes.SelectedColumns, ComponentMixin):
     pass
 
 
-class SelectedColumnsType(blueprint_datatypes.SelectedColumnsType):
-    _TYPE_NAME: str = "rerun.blueprint.components.SelectedColumns"
-
-
 class SelectedColumnsBatch(blueprint_datatypes.SelectedColumnsBatch, ComponentBatchMixin):
-    _ARROW_TYPE = SelectedColumnsType()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.SelectedColumns"
 
 
 # This is patched in late to avoid circular dependencies.

@@ -35,16 +35,16 @@ class GeoLineStringExt:
             if len(data) == 0:
                 inners = []
             elif data.ndim == 2:
-                inners = [DVec2DBatch(data).as_arrow_array().storage]
+                inners = [DVec2DBatch(data).as_arrow_array()]
             else:
                 o = 0
                 offsets = [o] + [o := next_offset(o, arr) for arr in data]
-                inner = DVec2DBatch(data.reshape(-1)).as_arrow_array().storage
+                inner = DVec2DBatch(data.reshape(-1)).as_arrow_array()
                 return pa.ListArray.from_arrays(offsets, inner, type=data_type)
 
         # pure-object
         elif isinstance(data, GeoLineString):
-            inners = [DVec2DBatch(data.lat_lon).as_arrow_array().storage]
+            inners = [DVec2DBatch(data.lat_lon).as_arrow_array()]
 
         # sequences
         elif isinstance(data, Sequence):
@@ -56,7 +56,7 @@ class GeoLineStringExt:
                 if isinstance(data[0], Sequence) and len(data[0]) > 0 and isinstance(data[0][0], numbers.Number):
                     if len(data[0]) == 2:  # type: ignore[arg-type]
                         # If any of the following elements are not sequence of length 2, DVec2DBatch should raise an error.
-                        inners = [DVec2DBatch(data).as_arrow_array().storage]  # type: ignore[arg-type]
+                        inners = [DVec2DBatch(data).as_arrow_array()]  # type: ignore[arg-type]
                     else:
                         raise ValueError(
                             "Expected a sequence of sequences of 2D vectors, but the inner sequence length was not equal to 2."
@@ -64,7 +64,7 @@ class GeoLineStringExt:
                 # It could be a sequence of the style `[np.array([0, 0]), np.array([1, 1])]` which is a single strip.
                 elif isinstance(data[0], np.ndarray) and data[0].shape == (2,):
                     # If any of the following elements are not np arrays of shape 2, DVec2DBatch should raise an error.
-                    inners = [DVec2DBatch(data).as_arrow_array().storage]  # type: ignore[arg-type]
+                    inners = [DVec2DBatch(data).as_arrow_array()]  # type: ignore[arg-type]
                 # .. otherwise assume that it's several strips.
                 else:
 
@@ -78,13 +78,13 @@ class GeoLineStringExt:
                                 )
                             return DVec2DBatch(strip)
 
-                    inners = [to_dvec2D_batch(strip).as_arrow_array().storage for strip in data]
+                    inners = [to_dvec2D_batch(strip).as_arrow_array() for strip in data]
         else:
-            inners = [DVec2DBatch(data).storage]
+            inners = [DVec2DBatch(data)]
 
         if len(inners) == 0:
             offsets = pa.array([0], type=pa.int32())
-            inner = DVec2DBatch([]).as_arrow_array().storage
+            inner = DVec2DBatch([]).as_arrow_array()
             return pa.ListArray.from_arrays(offsets, inner, type=data_type)
 
         o = 0

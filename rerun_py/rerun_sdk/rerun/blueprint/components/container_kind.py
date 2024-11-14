@@ -11,11 +11,10 @@ import pyarrow as pa
 
 from ..._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
 )
 
-__all__ = ["ContainerKind", "ContainerKindArrayLike", "ContainerKindBatch", "ContainerKindLike", "ContainerKindType"]
+__all__ = ["ContainerKind", "ContainerKindArrayLike", "ContainerKindBatch", "ContainerKindLike"]
 
 
 from enum import Enum
@@ -63,15 +62,9 @@ ContainerKindLike = Union[
 ContainerKindArrayLike = Union[ContainerKindLike, Sequence[ContainerKindLike]]
 
 
-class ContainerKindType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.blueprint.components.ContainerKind"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
-
-
 class ContainerKindBatch(BaseBatch[ContainerKindArrayLike], ComponentBatchMixin):
-    _ARROW_TYPE = ContainerKindType()
+    _ARROW_DATATYPE = pa.uint8()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.ContainerKind"
 
     @staticmethod
     def _native_to_pa_array(data: ContainerKindArrayLike, data_type: pa.DataType) -> pa.Array:

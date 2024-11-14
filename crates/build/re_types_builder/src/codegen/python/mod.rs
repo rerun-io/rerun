@@ -335,14 +335,13 @@ impl PythonCodeGenerator {
                     let name = &obj.name;
 
                     if obj.is_delegating_component() {
-                        vec![name.clone(), format!("{name}Batch"), format!("{name}Type")]
+                        vec![name.clone(), format!("{name}Batch")]
                     } else {
                         vec![
                             format!("{name}"),
                             format!("{name}ArrayLike"),
                             format!("{name}Batch"),
                             format!("{name}Like"),
-                            format!("{name}Type"),
                         ]
                     }
                 }
@@ -408,7 +407,6 @@ impl PythonCodeGenerator {
             from {rerun_path}error_utils import catch_and_log_exceptions
             from {rerun_path}_baseclasses import (
                 Archetype,
-                BaseExtensionType,
                 BaseBatch,
                 ComponentBatchMixin,
                 ComponentMixin,
@@ -1851,7 +1849,6 @@ fn quote_arrow_support_from_obj(
     };
 
     if obj.kind == ObjectKind::Datatype {
-        type_superclasses.push("BaseExtensionType".to_owned());
         batch_superclasses.push(format!("BaseBatch[{many_aliases}]"));
     } else if obj.kind == ObjectKind::Component {
         if let Some(data_type) = obj.delegate_datatype(objects) {
@@ -1864,7 +1861,6 @@ fn quote_arrow_support_from_obj(
             type_superclasses.push(data_extension_type);
             batch_superclasses.push(data_extension_array);
         } else {
-            type_superclasses.push("BaseExtensionType".to_owned());
             batch_superclasses.push(format!("BaseBatch[{many_aliases}]"));
         }
         batch_superclasses.push("ComponentBatchMixin".to_owned());
@@ -1918,20 +1914,26 @@ fn quote_arrow_support_from_obj(
         format!("({})", batch_superclasses.join(","))
     };
 
-    if obj.kind == ObjectKind::Datatype || obj.is_non_delegating_component() {
+    if obj.kind == ObjectKind::Datatype {
         // Datatypes and non-delegating components declare init
         let mut code = unindent(&format!(
             r#"
-            class {extension_type}{type_superclass_decl}:
-                _TYPE_NAME: str = "{fqname}"
-
-                def __init__(self) -> None:
-                    pa.ExtensionType.__init__(
-                        self, {datatype}, self._TYPE_NAME
-                    )
-
             class {extension_batch}{batch_superclass_decl}:
-                _ARROW_TYPE = {extension_type}()
+                _ARROW_DATATYPE = {datatype}
+
+                @staticmethod
+                def _native_to_pa_array(data: {many_aliases}, data_type: pa.DataType) -> pa.Array:
+            "#
+        ));
+        code.push_indented(2, native_to_pa_array_impl, 1);
+        code
+    } else if obj.is_non_delegating_component() {
+        // Datatypes and non-delegating components declare init
+        let mut code = unindent(&format!(
+            r#"
+            class {extension_batch}{batch_superclass_decl}:
+                _ARROW_DATATYPE = {datatype}
+                _COMPONENT_NAME: str = "{fqname}"
 
                 @staticmethod
                 def _native_to_pa_array(data: {many_aliases}, data_type: pa.DataType) -> pa.Array:
@@ -1943,11 +1945,8 @@ fn quote_arrow_support_from_obj(
         // Delegating components are already inheriting from their base type
         unindent(&format!(
             r#"
-            class {extension_type}{type_superclass_decl}:
-                _TYPE_NAME: str = "{fqname}"
-
             class {extension_batch}{batch_superclass_decl}:
-                _ARROW_TYPE = {extension_type}()
+                _COMPONENT_NAME: str = "{fqname}"
             "#
         ))
     }
@@ -2072,7 +2071,7 @@ fn quote_arrow_serialization(
                         // Type checker struggles with this occasionally, exact pattern is unclear.
                         // Tried casting the array earlier via `cast(Sequence[{name}], data)` but to no avail.
                         let field_fwd =
-                            format!("{field_batch_type}({field_array}).as_arrow_array().storage,  # type: ignore[misc, arg-type]");
+                            format!("{field_batch_type}({field_array}).as_arrow_array(),  # type: ignore[misc, arg-type]");
                         code.push_indented(2, &field_fwd, 1);
                     }
                 }
@@ -2165,9 +2164,7 @@ return pa.array(pa_data, type=data_type)
                 let variant_list_to_pa_array = match &field.typ {
                     Type::Object(fqname) => {
                         let field_type_name = &objects[fqname].name;
-                        format!(
-                            "{field_type_name}Batch({variant_kind_list}).as_arrow_array().storage"
-                        )
+                        format!("{field_type_name}Batch({variant_kind_list}).as_arrow_array()")
                     }
                     Type::Unit => {
                         format!("pa.nulls({variant_kind_list})")

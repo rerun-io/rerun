@@ -11,12 +11,11 @@ import pyarrow as pa
 from attrs import define, field
 from rerun._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
     ComponentMixin,
 )
 
-__all__ = ["AffixFuzzer13", "AffixFuzzer13ArrayLike", "AffixFuzzer13Batch", "AffixFuzzer13Like", "AffixFuzzer13Type"]
+__all__ = ["AffixFuzzer13", "AffixFuzzer13ArrayLike", "AffixFuzzer13Batch", "AffixFuzzer13Like"]
 
 
 @define(init=False)
@@ -39,17 +38,9 @@ AffixFuzzer13ArrayLike = Union[
 ]
 
 
-class AffixFuzzer13Type(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.testing.components.AffixFuzzer13"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={})), self._TYPE_NAME
-        )
-
-
 class AffixFuzzer13Batch(BaseBatch[AffixFuzzer13ArrayLike], ComponentBatchMixin):
-    _ARROW_TYPE = AffixFuzzer13Type()
+    _ARROW_DATATYPE = pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={}))
+    _COMPONENT_NAME: str = "rerun.testing.components.AffixFuzzer13"
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer13ArrayLike, data_type: pa.DataType) -> pa.Array:

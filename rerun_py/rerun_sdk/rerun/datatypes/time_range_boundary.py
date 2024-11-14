@@ -13,17 +13,10 @@ from attrs import define, field
 from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .time_range_boundary_ext import TimeRangeBoundaryExt
 
-__all__ = [
-    "TimeRangeBoundary",
-    "TimeRangeBoundaryArrayLike",
-    "TimeRangeBoundaryBatch",
-    "TimeRangeBoundaryLike",
-    "TimeRangeBoundaryType",
-]
+__all__ = ["TimeRangeBoundary", "TimeRangeBoundaryArrayLike", "TimeRangeBoundaryBatch", "TimeRangeBoundaryLike"]
 
 
 @define
@@ -78,24 +71,13 @@ else:
     TimeRangeBoundaryArrayLike = Any
 
 
-class TimeRangeBoundaryType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.TimeRangeBoundary"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.dense_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field("CursorRelative", pa.int64(), nullable=False, metadata={}),
-                pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
-                pa.field("Infinite", pa.null(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
-
-
 class TimeRangeBoundaryBatch(BaseBatch[TimeRangeBoundaryArrayLike]):
-    _ARROW_TYPE = TimeRangeBoundaryType()
+    _ARROW_DATATYPE = pa.dense_union([
+        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+        pa.field("CursorRelative", pa.int64(), nullable=False, metadata={}),
+        pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
+        pa.field("Infinite", pa.null(), nullable=True, metadata={}),
+    ])
 
     @staticmethod
     def _native_to_pa_array(data: TimeRangeBoundaryArrayLike, data_type: pa.DataType) -> pa.Array:
@@ -145,8 +127,8 @@ class TimeRangeBoundaryBatch(BaseBatch[TimeRangeBoundaryArrayLike]):
         ]
         children = [
             pa.nulls(num_nulls),
-            TimeIntBatch(variant_cursor_relative).as_arrow_array().storage,
-            TimeIntBatch(variant_absolute).as_arrow_array().storage,
+            TimeIntBatch(variant_cursor_relative).as_arrow_array(),
+            TimeIntBatch(variant_absolute).as_arrow_array(),
             pa.nulls(variant_infinite),
         ]
 

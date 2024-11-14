@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["Range1D", "Range1DBatch", "Range1DType"]
+__all__ = ["Range1D", "Range1DBatch"]
 
 
 class Range1D(datatypes.Range1D, ComponentMixin):
@@ -24,12 +24,8 @@ class Range1D(datatypes.Range1D, ComponentMixin):
     pass
 
 
-class Range1DType(datatypes.Range1DType):
-    _TYPE_NAME: str = "rerun.components.Range1D"
-
-
 class Range1DBatch(datatypes.Range1DBatch, ComponentBatchMixin):
-    _ARROW_TYPE = Range1DType()
+    _COMPONENT_NAME: str = "rerun.components.Range1D"
 
 
 # This is patched in late to avoid circular dependencies.

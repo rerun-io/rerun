@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["StrokeWidth", "StrokeWidthBatch", "StrokeWidthType"]
+__all__ = ["StrokeWidth", "StrokeWidthBatch"]
 
 
 class StrokeWidth(datatypes.Float32, ComponentMixin):
@@ -24,12 +24,8 @@ class StrokeWidth(datatypes.Float32, ComponentMixin):
     pass
 
 
-class StrokeWidthType(datatypes.Float32Type):
-    _TYPE_NAME: str = "rerun.components.StrokeWidth"
-
-
 class StrokeWidthBatch(datatypes.Float32Batch, ComponentBatchMixin):
-    _ARROW_TYPE = StrokeWidthType()
+    _COMPONENT_NAME: str = "rerun.components.StrokeWidth"
 
 
 # This is patched in late to avoid circular dependencies.

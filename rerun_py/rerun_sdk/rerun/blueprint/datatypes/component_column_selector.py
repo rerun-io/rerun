@@ -13,7 +13,6 @@ from attrs import define, field
 from ... import datatypes
 from ..._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .component_column_selector_ext import ComponentColumnSelectorExt
 
@@ -22,7 +21,6 @@ __all__ = [
     "ComponentColumnSelectorArrayLike",
     "ComponentColumnSelectorBatch",
     "ComponentColumnSelectorLike",
-    "ComponentColumnSelectorType",
 ]
 
 
@@ -72,22 +70,11 @@ ComponentColumnSelectorArrayLike = Union[
 ]
 
 
-class ComponentColumnSelectorType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.blueprint.datatypes.ComponentColumnSelector"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.struct([
-                pa.field("entity_path", pa.utf8(), nullable=False, metadata={}),
-                pa.field("component", pa.utf8(), nullable=False, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
-
-
 class ComponentColumnSelectorBatch(BaseBatch[ComponentColumnSelectorArrayLike]):
-    _ARROW_TYPE = ComponentColumnSelectorType()
+    _ARROW_DATATYPE = pa.struct([
+        pa.field("entity_path", pa.utf8(), nullable=False, metadata={}),
+        pa.field("component", pa.utf8(), nullable=False, metadata={}),
+    ])
 
     @staticmethod
     def _native_to_pa_array(data: ComponentColumnSelectorArrayLike, data_type: pa.DataType) -> pa.Array:

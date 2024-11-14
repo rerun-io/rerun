@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["Position2D", "Position2DBatch", "Position2DType"]
+__all__ = ["Position2D", "Position2DBatch"]
 
 
 class Position2D(datatypes.Vec2D, ComponentMixin):
@@ -24,12 +24,8 @@ class Position2D(datatypes.Vec2D, ComponentMixin):
     pass
 
 
-class Position2DType(datatypes.Vec2DType):
-    _TYPE_NAME: str = "rerun.components.Position2D"
-
-
 class Position2DBatch(datatypes.Vec2DBatch, ComponentBatchMixin):
-    _ARROW_TYPE = Position2DType()
+    _COMPONENT_NAME: str = "rerun.components.Position2D"
 
 
 # This is patched in late to avoid circular dependencies.

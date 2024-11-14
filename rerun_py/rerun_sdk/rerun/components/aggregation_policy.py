@@ -11,17 +11,10 @@ import pyarrow as pa
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
 )
 
-__all__ = [
-    "AggregationPolicy",
-    "AggregationPolicyArrayLike",
-    "AggregationPolicyBatch",
-    "AggregationPolicyLike",
-    "AggregationPolicyType",
-]
+__all__ = ["AggregationPolicy", "AggregationPolicyArrayLike", "AggregationPolicyBatch", "AggregationPolicyLike"]
 
 
 from enum import Enum
@@ -100,15 +93,9 @@ AggregationPolicyLike = Union[
 AggregationPolicyArrayLike = Union[AggregationPolicyLike, Sequence[AggregationPolicyLike]]
 
 
-class AggregationPolicyType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.components.AggregationPolicy"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
-
-
 class AggregationPolicyBatch(BaseBatch[AggregationPolicyArrayLike], ComponentBatchMixin):
-    _ARROW_TYPE = AggregationPolicyType()
+    _ARROW_DATATYPE = pa.uint8()
+    _COMPONENT_NAME: str = "rerun.components.AggregationPolicy"
 
     @staticmethod
     def _native_to_pa_array(data: AggregationPolicyArrayLike, data_type: pa.DataType) -> pa.Array:
