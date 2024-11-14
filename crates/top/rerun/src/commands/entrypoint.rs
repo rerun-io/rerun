@@ -795,6 +795,12 @@ fn run_impl(
                 .block(); // dropping should stop the server
             }
 
+            #[cfg(not(feature = "web_viewer"))]
+            {
+                // Returning from this function so soon would drop and therefore stop the server.
+                _ws_server.block();
+            }
+
             return Ok(());
         }
     } else if is_another_viewer_running {
