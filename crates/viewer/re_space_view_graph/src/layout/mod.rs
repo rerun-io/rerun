@@ -39,10 +39,13 @@ impl<'a> From<&'a NodeInstance> for fj::Node {
     }
 }
 
-pub struct ForceLayout;
+pub struct ForceLayout {
+    simulation: fj::Simulation,
+    node_index: ahash::HashMap<NodeIndex, usize>,
+}
 
 impl ForceLayout {
-    pub fn compute<'a>(graphs: impl Iterator<Item = &'a Graph<'a>> + Clone) -> Layout {
+    pub fn new<'a>(graphs: impl Iterator<Item = &'a Graph<'a>> + Clone) -> Self {
         let explicit = graphs
             .clone()
             .flat_map(|g| g.nodes_explicit().map(|n| (n.index, fj::Node::from(n))));
@@ -65,24 +68,31 @@ impl ForceLayout {
                 .map(|e| (node_index[&e.source_index], node_index[&e.target_index]))
         });
 
-        let mut simulation = fj::SimulationBuilder::default()
+        let simulation = fj::SimulationBuilder::default()
             .build(all_nodes)
             .add_force("link", fj::Link::new(all_edges))
-            .add_force("charge", fj::ManyBody::new().strength(-300.0))
+            .add_force("charge", fj::ManyBody::new())
             .add_force("x", fj::PositionX::new())
             .add_force("y", fj::PositionY::new());
 
-        let positions = simulation.iter().last().expect("simulation should run");
+        Self {
+            simulation,
+            node_index,
+        }
+    }
 
-        let extents = node_index
-            .into_iter()
-            .map(|(n, i)| {
-                let [x, y] = positions[i];
-                let pos = Pos2::new(x as f32, y as f32);
-                (n, Rect::from_center_size(pos, Vec2::ZERO))
-            })
-            .collect();
+    pub fn tick(&mut self, layout: &mut Layout) -> bool {
+        self.simulation.tick(1);
 
-        Layout { extents }
+        let positions = self.simulation.positions().collect::<Vec<_>>();
+
+        for (node, extent) in layout.extents.iter_mut() {
+            let i = self.node_index[node];
+            let [x, y] = positions[i];
+            let pos = Pos2::new(x as f32, y as f32);
+            extent.set_center(pos);
+        }
+
+        self.simulation.finished()
     }
 }

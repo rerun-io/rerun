@@ -146,7 +146,7 @@ impl SpaceViewClass for GraphSpaceView {
             bounds_property.component_or_fallback(ctx, self, state)?;
 
         let layout_was_empty = state.layout.is_none();
-        let layout = state.layout.get_or_compute(
+        let layout = state.layout.update(
             query.timeline,
             query.latest_at,
             graphs.iter().map(|(ent, graph)| graph),

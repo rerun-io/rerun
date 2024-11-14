@@ -76,7 +76,12 @@ impl Timestamp {
 pub enum LayoutState {
     #[default]
     None,
-    Current {
+    InProgress {
+        timestamp: Timestamp,
+        layout: Layout,
+        provider: ForceLayout,
+    },
+    Finished {
         timestamp: Timestamp,
         layout: Layout,
     },
@@ -85,7 +90,7 @@ pub enum LayoutState {
 impl LayoutState {
     pub fn bounding_rect(&self) -> Option<Rect> {
         match self {
-            Self::Current { layout, .. } => Some(layout.bounding_rect()),
+            Self::Finished { layout, .. } => Some(layout.bounding_rect()),
             Self::None => None,
         }
     }
@@ -94,15 +99,8 @@ impl LayoutState {
         matches!(self, Self::None)
     }
 
-    pub fn needs_update(&self, timeline: Timeline, time: TimeInt) -> bool {
-        match self {
-            Self::Current { timestamp, .. } => timestamp != &Timestamp { timeline, time },
-            Self::None => true,
-        }
-    }
-
     /// This method is lazy. A new layout is only computed if the current timestamp requires it.
-    pub fn get_or_compute<'a>(
+    pub fn update<'a>(
         &'a mut self,
         timeline: Timeline,
         time: TimeInt,
@@ -110,24 +108,23 @@ impl LayoutState {
     ) -> &'a mut Layout {
         let requested = Timestamp::new(timeline, time);
 
-        // Check if we need to update, and if not, return the current layout.
-        // The complexity of the logic here is due to the borrow checker.
-        if matches!(self, Self::Current { timestamp, .. } if timestamp == &requested) {
-            return match self {
-                Self::Current { layout, .. } => layout,
-                _ => unreachable!(), // We just checked that the state is `Self::Current`.
-            };
+        match self {
+            Self::Finished { timestamp, .. } if timestamp == &requested => {
+                return match self {
+                    Self::Finished { layout, .. } => layout,
+                    _ => unreachable!(), // We just checked that the state is `Self::Current`.
+                };
+            },
+            Self::Finished { .. } => (), // TODO(grtlr): repurpose old layout
         }
 
-        let layout = ForceLayout::compute(graphs);
-
-        *self = Self::Current {
+        *self = Self::Finished {
             timestamp: requested,
             layout,
         };
 
         match self {
-            Self::Current { layout, .. } => layout,
+            Self::Finished { layout, .. } => layout,
             _ => unreachable!(), // We just set the state to `Self::Current` above.
         }
     }
