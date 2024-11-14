@@ -1295,7 +1295,11 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.Color".into(), display_name : "Colors",
                     docstring_md : "Optional colors for the points.", is_required :
-                    false, },
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ClassId".into(), display_name : "Class ids",
+                    docstring_md :
+                    "Optional class Ids for the points.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors if not specified explicitly.",
+                    is_required : false, },
                 ],
             },
         ),

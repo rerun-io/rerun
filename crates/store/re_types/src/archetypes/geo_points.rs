@@ -58,6 +58,11 @@ pub struct GeoPoints {
 
     /// Optional colors for the points.
     pub colors: Option<Vec<crate::components::Color>>,
+
+    /// Optional class Ids for the points.
+    ///
+    /// The [`components::ClassId`][crate::components::ClassId] provides colors if not specified explicitly.
+    pub class_ids: Option<Vec<crate::components::ClassId>>,
 }
 
 impl ::re_types_core::SizeBytes for GeoPoints {
@@ -66,6 +71,7 @@ impl ::re_types_core::SizeBytes for GeoPoints {
         self.positions.heap_size_bytes()
             + self.radii.heap_size_bytes()
             + self.colors.heap_size_bytes()
+            + self.class_ids.heap_size_bytes()
     }
 
     #[inline]
@@ -73,6 +79,7 @@ impl ::re_types_core::SizeBytes for GeoPoints {
         <Vec<crate::components::LatLon>>::is_pod()
             && <Option<Vec<crate::components::Radius>>>::is_pod()
             && <Option<Vec<crate::components::Color>>>::is_pod()
+            && <Option<Vec<crate::components::ClassId>>>::is_pod()
     }
 }
 
@@ -88,22 +95,23 @@ static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
         ]
     });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
+    once_cell::sync::Lazy::new(|| ["rerun.components.ClassId".into()]);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.components.LatLon".into(),
             "rerun.components.Radius".into(),
             "rerun.components.Color".into(),
             "rerun.components.GeoPointsIndicator".into(),
+            "rerun.components.ClassId".into(),
         ]
     });
 
 impl GeoPoints {
-    /// The total number of components in the archetype: 1 required, 3 recommended, 0 optional
-    pub const NUM_COMPONENTS: usize = 4usize;
+    /// The total number of components in the archetype: 1 required, 3 recommended, 1 optional
+    pub const NUM_COMPONENTS: usize = 5usize;
 }
 
 /// Indicator component for the [`GeoPoints`] [`::re_types_core::Archetype`]
@@ -194,10 +202,23 @@ impl ::re_types_core::Archetype for GeoPoints {
         } else {
             None
         };
+        let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
+            Some({
+                <crate::components::ClassId>::from_arrow_opt(&**array)
+                    .with_context("rerun.archetypes.GeoPoints#class_ids")?
+                    .into_iter()
+                    .map(|v| v.ok_or_else(DeserializationError::missing_data))
+                    .collect::<DeserializationResult<Vec<_>>>()
+                    .with_context("rerun.archetypes.GeoPoints#class_ids")?
+            })
+        } else {
+            None
+        };
         Ok(Self {
             positions,
             radii,
             colors,
+            class_ids,
         })
     }
 }
@@ -213,6 +234,9 @@ impl ::re_types_core::AsComponents for GeoPoints {
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
             self.colors
+                .as_ref()
+                .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
+            self.class_ids
                 .as_ref()
                 .map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()),
         ]
@@ -234,6 +258,7 @@ impl GeoPoints {
             positions: positions.into_iter().map(Into::into).collect(),
             radii: None,
             colors: None,
+            class_ids: None,
         }
     }
 
@@ -256,6 +281,18 @@ impl GeoPoints {
         colors: impl IntoIterator<Item = impl Into<crate::components::Color>>,
     ) -> Self {
         self.colors = Some(colors.into_iter().map(Into::into).collect());
+        self
+    }
+
+    /// Optional class Ids for the points.
+    ///
+    /// The [`components::ClassId`][crate::components::ClassId] provides colors if not specified explicitly.
+    #[inline]
+    pub fn with_class_ids(
+        mut self,
+        class_ids: impl IntoIterator<Item = impl Into<crate::components::ClassId>>,
+    ) -> Self {
+        self.class_ids = Some(class_ids.into_iter().map(Into::into).collect());
         self
     }
 }

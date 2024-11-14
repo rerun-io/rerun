@@ -1,9 +1,8 @@
-mod annotation_context;
 mod depth_offsets;
 mod transform_context;
 
-pub use annotation_context::AnnotationSceneContext;
 pub use depth_offsets::EntityDepthOffsets;
+use re_space_view::AnnotationSceneContext;
 use re_types::SpaceViewClassIdentifier;
 pub use transform_context::{TransformContext, TransformInfo, TwoDInThreeDTransformInfo};
 

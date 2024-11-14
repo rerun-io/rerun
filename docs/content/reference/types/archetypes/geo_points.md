@@ -11,6 +11,8 @@ Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) 
 
 **Recommended**: [`Radius`](../components/radius.md), [`Color`](../components/color.md)
 
+**Optional**: [`ClassId`](../components/class_id.md)
+
 ## Shown in
 * [MapView](../views/map_view.md)
 * [DataframeView](../views/dataframe_view.md)

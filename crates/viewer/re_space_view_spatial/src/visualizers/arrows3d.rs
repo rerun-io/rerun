@@ -1,8 +1,9 @@
 use re_log_types::Instance;
 use re_renderer::{renderer::LineStripFlags, LineDrawableBuilder, PickingLayerInstanceId};
+use re_space_view::{process_annotation_slices, process_color_slice};
 use re_types::{
     archetypes::Arrows3D,
-    components::{ClassId, Color, KeypointId, Position3D, Radius, ShowLabels, Text, Vector3D},
+    components::{ClassId, Color, Position3D, Radius, ShowLabels, Text, Vector3D},
     ArrowString, Loggable as _,
 };
 use re_viewer_context::{
@@ -18,8 +19,8 @@ use crate::{
 };
 
 use super::{
-    entity_iterator::clamped_or, process_annotation_and_keypoint_slices, process_color_slice,
-    process_labels_3d, process_radius_slice, utilities::LabeledBatch, SpatialViewVisualizerData,
+    entity_iterator::clamped_or, process_labels_3d, process_radius_slice, utilities::LabeledBatch,
+    SpatialViewVisualizerData,
 };
 
 // ---
@@ -55,11 +56,9 @@ impl Arrows3DVisualizer {
                 continue;
             }
 
-            let (annotation_infos, _) = process_annotation_and_keypoint_slices(
+            let annotation_infos = process_annotation_slices(
                 query.latest_at,
                 num_instances,
-                data.vectors.iter().map(|_| glam::Vec3::ZERO),
-                data.keypoint_ids,
                 data.class_ids,
                 &ent_context.annotations,
             );
@@ -159,7 +158,6 @@ struct Arrows3DComponentData<'a> {
     colors: &'a [Color],
     radii: &'a [Radius],
     labels: Vec<ArrowString>,
-    keypoint_ids: &'a [KeypointId],
     class_ids: &'a [ClassId],
 
     // Non-repeated
@@ -234,31 +232,19 @@ impl VisualizerSystem for Arrows3DVisualizer {
                 let all_radii = results.iter_as(timeline, Radius::name());
                 let all_labels = results.iter_as(timeline, Text::name());
                 let all_class_ids = results.iter_as(timeline, ClassId::name());
-                let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
                 let all_show_labels = results.iter_as(timeline, ShowLabels::name());
 
-                let data = re_query::range_zip_1x7(
+                let data = re_query::range_zip_1x6(
                     all_vectors_indexed,
                     all_origins.primitive_array::<3, f32>(),
                     all_colors.primitive::<u32>(),
                     all_radii.primitive::<f32>(),
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
-                    all_keypoint_ids.primitive::<u16>(),
                     all_show_labels.component::<ShowLabels>(),
                 )
                 .map(
-                    |(
-                        _index,
-                        vectors,
-                        origins,
-                        colors,
-                        radii,
-                        labels,
-                        class_ids,
-                        keypoint_ids,
-                        show_labels,
-                    )| {
+                    |(_index, vectors, origins, colors, radii, labels, class_ids, show_labels)| {
                         Arrows3DComponentData {
                             vectors: bytemuck::cast_slice(vectors),
                             origins: origins.map_or(&[], |origins| bytemuck::cast_slice(origins)),
@@ -267,8 +253,6 @@ impl VisualizerSystem for Arrows3DVisualizer {
                             labels: labels.unwrap_or_default(),
                             class_ids: class_ids
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
-                            keypoint_ids: keypoint_ids
-                                .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
                             show_labels: show_labels.unwrap_or_default().first().copied(),
                         }
                     },

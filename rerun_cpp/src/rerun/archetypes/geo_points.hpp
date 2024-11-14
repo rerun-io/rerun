@@ -6,6 +6,7 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
+#include "../components/class_id.hpp"
 #include "../components/color.hpp"
 #include "../components/lat_lon.hpp"
 #include "../components/radius.hpp"
@@ -52,6 +53,11 @@ namespace rerun::archetypes {
         /// Optional colors for the points.
         std::optional<Collection<rerun::components::Color>> colors;
 
+        /// Optional class Ids for the points.
+        ///
+        /// The `components::ClassId` provides colors if not specified explicitly.
+        std::optional<Collection<rerun::components::ClassId>> class_ids;
+
       public:
         static constexpr const char IndicatorComponentName[] =
             "rerun.components.GeoPointsIndicator";
@@ -88,6 +94,15 @@ namespace rerun::archetypes {
         /// Optional colors for the points.
         GeoPoints with_colors(Collection<rerun::components::Color> _colors) && {
             colors = std::move(_colors);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Optional class Ids for the points.
+        ///
+        /// The `components::ClassId` provides colors if not specified explicitly.
+        GeoPoints with_class_ids(Collection<rerun::components::ClassId> _class_ids) && {
+            class_ids = std::move(_class_ids);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

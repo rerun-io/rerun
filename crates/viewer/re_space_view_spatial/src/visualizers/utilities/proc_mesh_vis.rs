@@ -2,6 +2,7 @@ use re_entity_db::InstancePathHash;
 use re_log_types::Instance;
 use re_renderer::renderer::{GpuMeshInstance, LineStripFlags};
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, RenderContext};
+use re_space_view::{clamped_or_nothing, process_annotation_slices, process_color_slice};
 use re_types::components::{self, FillMode};
 use re_viewer_context::{
     QueryContext, SpaceViewSystemExecutionError, TypedComponentFallbackProvider, ViewQuery,
@@ -10,10 +11,7 @@ use re_viewer_context::{
 use crate::contexts::SpatialSceneEntityContext;
 use crate::proc_mesh::{self, ProcMeshKey};
 use crate::visualizers::{
-    process_annotation_and_keypoint_slices, process_color_slice, process_labels_3d,
-    process_radius_slice,
-    utilities::{entity_iterator::clamped_or_nothing, LabeledBatch},
-    SpatialViewVisualizerData,
+    process_labels_3d, process_radius_slice, utilities::LabeledBatch, SpatialViewVisualizerData,
 };
 
 #[cfg(doc)]
@@ -58,7 +56,6 @@ pub struct ProcMeshBatch<'a, IMesh, IFill> {
     pub colors: &'a [components::Color],
     pub labels: &'a [re_types::ArrowString],
     pub show_labels: Option<components::ShowLabels>,
-    pub keypoint_ids: &'a [components::KeypointId],
     pub class_ids: &'a [components::ClassId],
 }
 
@@ -112,11 +109,9 @@ where
             .max(ent_context.transform_info.reference_from_instances.len());
         let half_sizes = clamped_or_nothing(batch.half_sizes, num_instances);
 
-        let (annotation_infos, _) = process_annotation_and_keypoint_slices(
+        let annotation_infos = process_annotation_slices(
             self.query.latest_at,
             num_instances,
-            std::iter::repeat(glam::Vec3::ZERO).take(num_instances),
-            batch.keypoint_ids,
             batch.class_ids,
             &ent_context.annotations,
         );
