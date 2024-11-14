@@ -7,7 +7,7 @@ While the [blueprint APIs](configure-viewer-through-code.md) are currently only 
 
 This enables you to re-use your saved blueprints both from any language we support as well as across different recordings that share a similar-enough structure, and makes it possible to share those blueprints with other users.
 
-For this you'll need to 1) create a blueprint file and B) _import_ that file when needed.
+For this you'll need to create a blueprint file and _import_ that file when needed.
 
 
 ## Creating a blueprint file
