@@ -23,6 +23,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Measured in its local coordinate system; consult the archetype in use to determine which
 /// axis or part of the entity this is the length of.
 #[derive(Clone, Debug, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
+#[repr(transparent)]
 pub struct Length(pub crate::datatypes::Float32);
 
 impl ::re_types_core::SizeBytes for Length {
