@@ -54,7 +54,7 @@ impl DataUi for InstancePath {
             ui_layout.label(
                 ui,
                 format!(
-                    "No components logged on timeline {:?}",
+                    "{self} has no components on timeline {:?}",
                     query.timeline().name()
                 ),
             );
