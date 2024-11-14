@@ -44,13 +44,11 @@ class DatasetSpec:
 
 
 DATASETS = {
-    "olympic": DatasetSpec(
-        "olympic_flame", "https://s3.amazonaws.com/mics.pix4d.com/example_datasets/olympic_flame.zip"
-    ),
+    "olympic": DatasetSpec("olympic_flame", "https://data.pix4d.com/misc/example_datasets/olympic_flame.zip"),
     "rainwater": DatasetSpec(
-        "catch_rainwater_demo", "https://s3.amazonaws.com/mics.pix4d.com/example_datasets/catch_rainwater_demo.zip"
+        "catch_rainwater_demo", "https://data.pix4d.com/misc/example_datasets/catch_rainwater_demo.zip"
     ),
-    "rivaz": DatasetSpec("rivaz_demo", "https://s3.amazonaws.com/mics.pix4d.com/example_datasets/rivaz_demo.zip"),
+    "rivaz": DatasetSpec("rivaz_demo", "https://data.pix4d.com/misc/example_datasets/rivaz_demo.zip"),
 }
 DATASET_DIR: Final = Path(__file__).parent / "dataset"
 
