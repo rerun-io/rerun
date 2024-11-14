@@ -6,8 +6,9 @@ use egui::{
 };
 
 use crate::{
-    design_tokens, icons, list_item,
-    list_item::{LabelContent, ListItem},
+    design_tokens, icons,
+    list_item::{self, LabelContent, ListItem},
+    toasts::SUCCESS_COLOR,
     DesignTokens, Icon, LabelStyle,
 };
 
@@ -17,9 +18,11 @@ fn error_label_bg_color(fg_color: Color32) -> Color32 {
     fg_color.gamma_multiply(0.35)
 }
 
-fn warning_or_error_label(
+/// success, warning, error…
+fn notification_label(
     ui: &mut egui::Ui,
     fg_color: Color32,
+    icon: &str,
     visible_text: &str,
     full_text: &str,
 ) -> egui::Response {
@@ -27,11 +30,12 @@ fn warning_or_error_label(
         .stroke((1.0, fg_color))
         .fill(error_label_bg_color(fg_color))
         .rounding(4.0)
-        .inner_margin(4.0)
+        .inner_margin(3.0)
+        .outer_margin(1.0) // HACK because we set clip_rect_margin. TODO(emilk): https://github.com/emilk/egui/issues/4019
         .show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 4.0;
-                ui.colored_label(fg_color, "⚠");
+                ui.colored_label(fg_color, icon);
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
                 let response = ui.strong(visible_text).on_hover_ui(|ui| {
                     if visible_text != full_text {
@@ -53,14 +57,23 @@ pub trait UiExt {
     fn ui(&self) -> &egui::Ui;
     fn ui_mut(&mut self) -> &mut egui::Ui;
 
+    /// Shows a success label with a large border.
+    ///
+    /// If you don't want a border, use [`crate::ContextExt::success_text`].
+    fn success_label(&mut self, success_text: &str) -> egui::Response {
+        let ui = self.ui_mut();
+        notification_label(ui, SUCCESS_COLOR, "✅", success_text, success_text)
+    }
+
     /// Shows a warning label with a large border.
     ///
     /// If you don't want a border, use [`crate::ContextExt::warning_text`].
     fn warning_label(&mut self, warning_text: &str) -> egui::Response {
         let ui = self.ui_mut();
-        warning_or_error_label(
+        notification_label(
             ui,
             ui.style().visuals.warn_fg_color,
+            "⚠",
             warning_text,
             warning_text,
         )
@@ -71,7 +84,13 @@ pub trait UiExt {
     /// This has a large border! If you don't want a border, use [`crate::ContextExt::error_text`].
     fn error_with_details_on_hover(&mut self, error_text: &str) -> egui::Response {
         let ui = self.ui_mut();
-        warning_or_error_label(ui, ui.style().visuals.error_fg_color, "Error", error_text)
+        notification_label(
+            ui,
+            ui.style().visuals.error_fg_color,
+            "⚠",
+            "Error",
+            error_text,
+        )
     }
 
     fn error_label_background_color(&self) -> egui::Color32 {
@@ -86,9 +105,10 @@ pub trait UiExt {
     /// This has a large border! If you don't want a border, use [`crate::ContextExt::error_text`].
     fn error_label(&mut self, error_text: &str) -> egui::Response {
         let ui = self.ui_mut();
-        warning_or_error_label(
+        notification_label(
             ui,
             ui.style().visuals.error_fg_color,
+            "⚠",
             error_text,
             error_text,
         )
