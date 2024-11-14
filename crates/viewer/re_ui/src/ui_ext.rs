@@ -31,7 +31,7 @@ fn notification_label(
         .fill(error_label_bg_color(fg_color))
         .rounding(4.0)
         .inner_margin(3.0)
-        .outer_margin(1.0) // HACK because we set clip_rect_margin. TODO(emilk): https://github.com/emilk/egui/issues/4019
+        .outer_margin(1.0) // Needed because we set clip_rect_margin. TODO(emilk): https://github.com/emilk/egui/issues/4019
         .show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = 4.0;
