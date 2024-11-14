@@ -298,7 +298,13 @@ impl TimePanel {
                         entity_db.times_per_timeline(),
                         ui,
                     );
-                    collapsed_time_marker_and_time(ui, ctx, entity_db, time_ctrl);
+                    collapsed_time_marker_and_time(
+                        ui,
+                        ctx,
+                        &mut self.data_density_graph_painter,
+                        entity_db,
+                        time_ctrl,
+                    );
                 });
             });
         } else {
@@ -318,7 +324,13 @@ impl TimePanel {
                 self.time_control_ui.fps_ui(time_ctrl, ui);
             }
 
-            collapsed_time_marker_and_time(ui, ctx, entity_db, time_ctrl);
+            collapsed_time_marker_and_time(
+                ui,
+                ctx,
+                &mut self.data_density_graph_painter,
+                entity_db,
+                time_ctrl,
+            );
         }
     }
 
@@ -983,6 +995,7 @@ fn highlight_timeline_row(
 fn collapsed_time_marker_and_time(
     ui: &mut egui::Ui,
     ctx: &ViewerContext<'_>,
+    data_density_graph_painter: &mut data_density_graph::DataDensityGraphPainter,
     entity_db: &re_entity_db::EntityDb,
     time_ctrl: &mut TimeControl,
 ) {
@@ -1027,6 +1040,19 @@ fn collapsed_time_marker_and_time(
                 time_range_rect.center().y,
                 ui.visuals().widgets.noninteractive.fg_stroke,
             );
+
+            data_density_graph::data_density_graph_ui(
+                data_density_graph_painter,
+                ctx,
+                time_ctrl,
+                entity_db,
+                ui.painter(),
+                ui,
+                &time_ranges_ui,
+                time_range_rect.shrink2(egui::vec2(0.0, 8.0)),
+                &TimePanelItem::entity_path(EntityPath::root()),
+            );
+
             time_marker_ui(
                 &time_ranges_ui,
                 time_ctrl,
