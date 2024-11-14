@@ -18,7 +18,7 @@ MINISPLIT_SCENES = [
     "scene-0796",  # Drive straight only.
     "scene-0916",  # Driving in a circle on a parking lot.
     "scene-1077",  # Straight drive on an artery road at night.
-    "scene-1094",  # Slow drive drive at night.
+    "scene-1094",  # Slow drive at night.
     "scene-1100",  # Standing on front of traffic light at night.
 ]
 MINISPLIT_URL = "https://www.nuscenes.org/data/v1.0-mini.tgz"

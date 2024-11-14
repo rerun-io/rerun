@@ -58,7 +58,7 @@ def ensure_scene_available(root_dir: pathlib.Path, dataset_version: str, scene_n
         raise ValueError(f"{scene_name=} not found in dataset")
 
 
-def nuscene_sensor_names(nusc: nuscenes.NuScenes, scene_name: str) -> set[str]:
+def nuscene_sensor_names(nusc: nuscenes.NuScenes, scene_name: str) -> list[str]:
     """Return all sensor names in the scene."""
 
     sensor_names = set()
@@ -75,7 +75,16 @@ def nuscene_sensor_names(nusc: nuscenes.NuScenes, scene_name: str) -> set[str]:
                 sensor_names.add(sensor_name)
                 current_camera_token = sample_data["next"]
 
-    return sensor_names
+    # For a known set of cameras, order the sensors in a circle.
+    ordering = {
+        "CAM_FRONT_LEFT": 0,
+        "CAM_FRONT": 1,
+        "CAM_FRONT_RIGHT": 2,
+        "CAM_BACK_RIGHT": 3,
+        "CAM_BACK": 4,
+        "CAM_BACK_LEFT": 5,
+    }
+    return sorted(list(sensor_names), key=lambda sensor_name: ordering.get(sensor_name, float("inf")))
 
 
 def log_nuscenes(nusc: nuscenes.NuScenes, scene_name: str, max_time_sec: float) -> None:
@@ -236,7 +245,6 @@ def log_annotations(location: str, first_sample_token: str, nusc: nuscenes.NuSce
                 centers=centers,
                 quaternions=quaternions,
                 class_ids=class_ids,
-                fill_mode=rr.components.FillMode.Solid,
             ),
             rr.GeoPoints(lat_lon=lat_lon),
         )
@@ -312,28 +320,33 @@ def main() -> None:
         )
         for sensor_name in nuscene_sensor_names(nusc, args.scene_name)
     ]
-    blueprint = rrb.Vertical(
-        rrb.Horizontal(
-            rrb.Spatial3DView(
-                name="3D",
-                origin="world",
-                # Set the image plane distance to 5m for all camera visualizations.
-                defaults=[rr.components.ImagePlaneDistance(5.0)],
-            ),
-            rrb.Vertical(
-                rrb.TextDocumentView(origin="description", name="Description"),
-                rrb.MapView(
+    blueprint = rrb.Blueprint(
+        rrb.Vertical(
+            rrb.Horizontal(
+                rrb.Spatial3DView(
+                    name="3D",
                     origin="world",
-                    name="MapView",
-                    zoom=rrb.archetypes.MapZoom(18.0),
-                    background=rrb.archetypes.MapBackground(rrb.components.MapProvider.OpenStreetMap),
+                    # Set the image plane distance to 5m for all camera visualizations.
+                    defaults=[rr.components.ImagePlaneDistance(5.0)],
+                    # TODO(#6670): Can't specify rr.components.FillMode.MajorWireframe right now, need to use batch type instead.
+                    overrides={"world/anns": [rr.components.FillModeBatch("solid")]},
                 ),
-                row_shares=[1, 1],
+                rrb.Vertical(
+                    rrb.TextDocumentView(origin="description", name="Description"),
+                    rrb.MapView(
+                        origin="world",
+                        name="MapView",
+                        zoom=rrb.archetypes.MapZoom(18.0),
+                        background=rrb.archetypes.MapBackground(rrb.components.MapProvider.OpenStreetMap),
+                    ),
+                    row_shares=[1, 1],
+                ),
+                column_shares=[3, 1],
             ),
-            column_shares=[3, 1],
+            rrb.Grid(*sensor_space_views),
+            row_shares=[4, 2],
         ),
-        rrb.Grid(*sensor_space_views),
-        row_shares=[4, 2],
+        rrb.TimePanel(state="collapsed"),
     )
 
     rr.script_setup(args, "rerun_example_nuscenes", default_blueprint=blueprint)
