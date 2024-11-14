@@ -11,6 +11,9 @@ README = """\
 
 This checks whether different UIs behave correctly with hover and selection.
 
+Known bugs:
+* TODO(#5138): Hovering over text document views does not highlight the corresponding entity in the blueprint tree.
+
 ### Hover
 For each of the views:
 * Hover the view and verify it shows up as highlighted in the blueprint tree.
