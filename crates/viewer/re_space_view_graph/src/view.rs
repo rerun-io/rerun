@@ -1,4 +1,4 @@
-use egui::{self};
+use egui::{self, emath::TSTransform};
 
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
@@ -18,7 +18,6 @@ use re_viewport_blueprint::ViewProperty;
 
 use crate::{
     graph::Graph,
-    layout::ForceLayout,
     ui::{canvas::CanvasBuilder, GraphSpaceViewState},
     visualizers::{merge, EdgesVisualizer, NodeVisualizer},
 };
@@ -131,8 +130,9 @@ impl SpaceViewClass for GraphSpaceView {
         let node_data = &system_output.view_systems.get::<NodeVisualizer>()?.data;
         let edge_data = &system_output.view_systems.get::<EdgesVisualizer>()?.data;
 
-        let graphs =
-            merge(node_data, edge_data).map(|(ent, nodes, edges)| (ent, Graph::new(nodes, edges)));
+        let graphs = merge(node_data, edge_data)
+            .map(|(ent, nodes, edges)| (ent, Graph::new(nodes, edges)))
+            .collect::<Vec<_>>();
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
@@ -146,6 +146,11 @@ impl SpaceViewClass for GraphSpaceView {
             bounds_property.component_or_fallback(ctx, self, state)?;
 
         let layout_was_empty = state.layout.is_none();
+        let layout = state.layout.get_or_compute(
+            query.timeline,
+            query.latest_at,
+            graphs.iter().map(|(ent, graph)| graph),
+        );
 
         state.world_bounds = Some(bounds);
         let bounds_rect: egui::Rect = bounds.into();
@@ -158,10 +163,7 @@ impl SpaceViewClass for GraphSpaceView {
         }
 
         let (new_world_bounds, response) = viewer.canvas(ui, |mut scene| {
-            for (entity, graph) in graphs {
-                // We compute the layout once to find good starting positions for the nodes.
-                let mut layout = ForceLayout::compute(&graph);
-
+            for (entity, graph) in &graphs {
                 // Draw explicit nodes.
                 for node in graph.nodes_explicit() {
                     let pos = layout
@@ -196,7 +198,7 @@ impl SpaceViewClass for GraphSpaceView {
                 if rect.is_positive() {
                     let response = scene.entity(entity, rect, &query.highlights);
 
-                    let instance_path = InstancePath::entity_all(entity.clone());
+                    let instance_path = InstancePath::entity_all((*entity).clone());
                     ctx.select_hovered_on_click(
                         &response,
                         vec![(Item::DataResult(query.space_view_id, instance_path), None)]

@@ -42,11 +42,11 @@ impl<'a> From<&'a NodeInstance> for fj::Node {
 pub struct ForceLayout;
 
 impl ForceLayout {
-    pub fn compute(graph: &Graph<'_>) -> Layout {
-        let explicit = graph.nodes_explicit().map(|n| (n.index, fj::Node::from(n)));
-        let implicit = graph
-            .nodes_implicit()
-            .map(|n| (n.index, fj::Node::default()));
+    pub fn compute<'a>(graphs: impl Iterator<Item = &'a Graph<'a>> + Clone) -> Layout {
+        let explicit =
+            graphs.clone().flat_map(|g| g.nodes_explicit().map(|n| (n.index, fj::Node::from(n))));
+        let implicit =
+            graphs.clone().flat_map(|g| g.nodes_implicit().map(|n| (n.index, fj::Node::default())));
 
         let mut node_index = ahash::HashMap::default();
         let all_nodes: Vec<fj::Node> = explicit
@@ -58,9 +58,10 @@ impl ForceLayout {
             })
             .collect();
 
-        let all_edges = graph
-            .edges()
-            .map(|e| (node_index[&e.source_index], node_index[&e.target_index]));
+        let all_edges = graphs.flat_map(|g| {
+            g.edges()
+                .map(|e| (node_index[&e.source_index], node_index[&e.target_index]))
+        });
 
         let mut simulation = fj::SimulationBuilder::default()
             .build(all_nodes)

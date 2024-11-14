@@ -1,14 +1,15 @@
-use ahash::HashMap;
 use egui::Rect;
-use re_chunk::{EntityPath, TimeInt, Timeline};
+use re_chunk::{TimeInt, Timeline};
 use re_format::format_f32;
+use re_log::external::log;
 use re_types::blueprint::components::VisualBounds2D;
 use re_ui::UiExt;
 use re_viewer_context::SpaceViewState;
 
-use crate::layout::Layout;
-
-use super::bounding_rect_from_iter;
+use crate::{
+    graph::Graph,
+    layout::{ForceLayout, Layout},
+};
 
 /// Space view state for the custom space view.
 ///
@@ -62,6 +63,12 @@ pub struct Timestamp {
     time: TimeInt,
 }
 
+impl Timestamp {
+    pub fn new(timeline: Timeline, time: TimeInt) -> Self {
+        Self { timeline, time }
+    }
+}
+
 /// The following is a simple state machine that keeps track of the different
 /// layouts and if they need to be recomputed. It also holds the state of the
 /// force-based simulation.
@@ -69,29 +76,59 @@ pub struct Timestamp {
 pub enum LayoutState {
     #[default]
     None,
-    Outdated {
+    Current {
         timestamp: Timestamp,
-        layouts: HashMap<EntityPath, Layout>,
-    },
-    Finished {
-        timestamp: Timestamp,
-        layouts: HashMap<EntityPath, Layout>,
+        layout: Layout,
     },
 }
 
 impl LayoutState {
     pub fn bounding_rect(&self) -> Option<Rect> {
         match self {
-            Self::Outdated { layouts, .. } | Self::Finished { layouts, .. } => {
-                let union_rect =
-                    bounding_rect_from_iter(layouts.values().map(|l| l.bounding_rect()));
-                Some(union_rect)
-            }
+            Self::Current { layout, .. } => Some(layout.bounding_rect()),
             Self::None => None,
         }
     }
 
     pub fn is_none(&self) -> bool {
         matches!(self, Self::None)
+    }
+
+    pub fn needs_update(&self, timeline: Timeline, time: TimeInt) -> bool {
+        match self {
+            Self::Current { timestamp, .. } => timestamp != &Timestamp { timeline, time },
+            Self::None => true,
+        }
+    }
+
+    /// This method is lazy. A new layout is only computed if the current timestamp requires it.
+    pub fn get_or_compute<'a>(
+        &'a mut self,
+        timeline: Timeline,
+        time: TimeInt,
+        graphs: impl Iterator<Item = &'a Graph<'a>> + Clone,
+    ) -> &'a mut Layout {
+        let requested = Timestamp::new(timeline, time);
+
+        // Check if we need to update, and if not, return the current layout.
+        // The complexity of the logic here is due to the borrow checker.
+        if matches!(self, Self::Current { timestamp, .. } if timestamp == &requested) {
+            return match self {
+                Self::Current { layout, .. } => layout,
+                _ => unreachable!(), // We just checked that the state is `Self::Current`.
+            };
+        }
+
+        let layout = ForceLayout::compute(graphs);
+
+        *self = Self::Current {
+            timestamp: requested,
+            layout,
+        };
+
+        match self {
+            Self::Current { layout, .. } => layout,
+            _ => unreachable!(), // We just set the state to `Self::Current` above.
+        }
     }
 }

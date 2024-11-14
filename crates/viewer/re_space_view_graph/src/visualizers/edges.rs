@@ -11,7 +11,7 @@ use re_viewer_context::{
     ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::{graph::NodeIndex};
+use crate::graph::NodeIndex;
 
 #[derive(Default)]
 pub struct EdgesVisualizer {
