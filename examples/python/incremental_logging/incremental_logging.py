@@ -25,7 +25,7 @@ radii = rr.components.RadiusBatch(np.repeat(0.1, 10))
 
 # Only log colors and radii once.
 rr.set_time_sequence("frame_nr", 0)
-rr.log_components("points", [colors, radii])
+rr.log("points", [colors, radii])
 
 rng = default_rng(12345)
 
@@ -51,9 +51,9 @@ radii = rr.components.RadiusBatch(0.1)
 
 # Only log colors and radii once.
 rr.set_time_sequence("frame_nr", 0)
-rr.log_components("points", [colors, radii])
+rr.log("points", [colors, radii])
 # Logging as static would also work.
-# rr.log_components("points", [colors, radii], static=True)
+# rr.log("points", [colors, radii], static=True)
 
 rng = default_rng(12345)
 

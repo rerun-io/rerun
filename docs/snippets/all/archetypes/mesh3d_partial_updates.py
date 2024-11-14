@@ -23,4 +23,4 @@ rr.log(
 factors = np.abs(np.sin(np.arange(1, 300, dtype=np.float32) * 0.04))
 for i, factor in enumerate(factors):
     rr.set_time_sequence("frame", i)
-    rr.log_components("triangle", [Position3DBatch(vertex_positions * factor)])
+    rr.log("triangle", [Position3DBatch(vertex_positions * factor)])

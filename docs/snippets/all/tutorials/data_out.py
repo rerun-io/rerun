@@ -40,7 +40,7 @@ rr.send_columns(
 
 # log a `Label` component to the face bounding box entity
 target_entity = "/video/detector/faces/0/bbox"
-rr.log_components(target_entity, [rr.components.ShowLabels(True)], static=True)
+rr.log(target_entity, [rr.components.ShowLabels(True)], static=True)
 rr.send_columns(
     target_entity,
     times=[rr.TimeSequenceColumn("frame_nr", df["frame_nr"])],

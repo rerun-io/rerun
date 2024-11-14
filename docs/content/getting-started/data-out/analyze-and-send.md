@@ -59,7 +59,7 @@ Next, let's send the same data as `Text` component:
 
 ```python
 target_entity = "/video/detector/faces/0/bbox"
-rr.log_components(target_entity, [rr.components.ShowLabels(True)], static=True)
+rr.log(target_entity, [rr.components.ShowLabels(True)], static=True)
 rr.send_columns(
     target_entity,
     times=[rr.TimeSequenceColumn("frame_nr", df["frame_nr"])],

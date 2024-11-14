@@ -81,7 +81,7 @@ def log_way(way: dict[str, Any]) -> None:
 def log_data(data: dict[str, Any]) -> None:
     try:
         copyright_text = data["osm3s"]["copyright"]
-        rr.log_components("copyright", [rr.components.Text(copyright_text)], static=True)
+        rr.log("copyright", [rr.components.Text(copyright_text)], static=True)
     except KeyError:
         pass
 

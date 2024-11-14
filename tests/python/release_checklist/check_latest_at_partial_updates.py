@@ -89,14 +89,14 @@ def log_points() -> None:
         "expected",
         rr.TextDocument(FRAME_43, media_type=rr.MediaType.MARKDOWN),
     )
-    rr.log_components("points", [rr.components.RadiusBatch(-20)])
+    rr.log("points", [rr.components.RadiusBatch(-20)])
 
     rr.set_time_sequence("frame", 44)
     rr.log(
         "expected",
         rr.TextDocument(FRAME_44, media_type=rr.MediaType.MARKDOWN),
     )
-    rr.log_components("points", [rr.components.ColorBatch([0, 0, 255])])
+    rr.log("points", [rr.components.ColorBatch([0, 0, 255])])
 
     rr.set_time_sequence("frame", 45)
     rr.log(
@@ -111,8 +111,8 @@ def log_points() -> None:
         rr.TextDocument(FRAME_46, media_type=rr.MediaType.MARKDOWN),
     )
     rr.log("points", rr.Points3D([[0, 0, 0], [1, 1, 1]]))
-    rr.log_components("points", [rr.components.RadiusBatch(-30)])
-    rr.log_components("points", [rr.components.ColorBatch([0, 255, 0])])
+    rr.log("points", [rr.components.RadiusBatch(-30)])
+    rr.log("points", [rr.components.ColorBatch([0, 255, 0])])
     rr.log("points", rr.Points3D([[0, 0, 1], [1, 1, 0]]))
 
 

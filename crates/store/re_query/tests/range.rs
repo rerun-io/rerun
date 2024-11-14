@@ -656,19 +656,19 @@ fn invalidation() {
 // # Expected: points=[[1,2,3]] colors=[]
 //
 // rr.set_time(2)
-// rr.log_components("points", rr.components.MyColor(0xFF0000))
+// rr.log("points", rr.components.MyColor(0xFF0000))
 //
 // # Do second query here: LatestAt(+inf)
 // # Expected: points=[[1,2,3]] colors=[0xFF0000]
 //
 // rr.set_time(3)
-// rr.log_components("points", rr.components.MyColor(0x0000FF))
+// rr.log("points", rr.components.MyColor(0x0000FF))
 //
 // # Do third query here: LatestAt(+inf)
 // # Expected: points=[[1,2,3]] colors=[0x0000FF]
 //
 // rr.set_time(3)
-// rr.log_components("points", rr.components.MyColor(0x00FF00))
+// rr.log("points", rr.components.MyColor(0x00FF00))
 //
 // # Do fourth query here: LatestAt(+inf)
 // # Expected: points=[[1,2,3]] colors=[0x00FF00]
