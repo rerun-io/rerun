@@ -77,6 +77,8 @@ namespace rerun::datatypes {
                 } break;
                 case detail::AffixFuzzer3Tag::None: {
                 } break;
+                default:
+                    assert(false && "unreachable");
             }
         }
 
@@ -113,6 +115,8 @@ namespace rerun::datatypes {
                 case detail::AffixFuzzer3Tag::empty_variant: {
                     // has a trivial destructor
                 } break;
+                default:
+                    assert(false && "unreachable");
             }
         }
 

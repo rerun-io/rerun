@@ -34,7 +34,6 @@ impl std::ops::Deref for WebVideoFrame {
 pub struct WebVideoDecoder {
     video_config: Config,
     timescale: Timescale,
-    minimum_presentation_timestamp: Time,
     decoder: web_sys::VideoDecoder,
     hw_acceleration: DecodeHardwareAcceleration,
     on_output: Arc<OutputCallback>,
@@ -108,16 +107,11 @@ impl WebVideoDecoder {
         on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
     ) -> Result<Self, Error> {
         let on_output = Arc::new(on_output);
-        let decoder = init_video_decoder(
-            on_output.clone(),
-            video.timescale,
-            video.samples_statistics.minimum_presentation_timestamp,
-        )?;
+        let decoder = init_video_decoder(on_output.clone(), video.timescale)?;
 
         Ok(Self {
             video_config: video.config.clone(),
             timescale: video.timescale,
-            minimum_presentation_timestamp: video.samples_statistics.minimum_presentation_timestamp,
             decoder,
             hw_acceleration,
             on_output,
@@ -138,7 +132,7 @@ impl AsyncDecoder for WebVideoDecoder {
             &data,
             video_chunk
                 .presentation_timestamp
-                .into_micros_since_start(self.timescale, self.minimum_presentation_timestamp),
+                .into_micros(self.timescale),
             type_,
         );
 
@@ -162,11 +156,7 @@ impl AsyncDecoder for WebVideoDecoder {
             // At least on Firefox, it can happen that reset on a previous error fails.
             // In that case, start over completely and try again!
             re_log::debug!("Video decoder reset failed, recreating decoder.");
-            self.decoder = init_video_decoder(
-                self.on_output.clone(),
-                self.timescale,
-                self.minimum_presentation_timestamp,
-            )?;
+            self.decoder = init_video_decoder(self.on_output.clone(), self.timescale)?;
         };
 
         self.decoder
@@ -178,35 +168,52 @@ impl AsyncDecoder for WebVideoDecoder {
 
         Ok(())
     }
+
+    /// Called after submitting the last chunk.
+    ///
+    /// Should flush all pending frames.
+    fn end_of_video(&mut self) -> Result<()> {
+        // This returns a promise that resolves once all pending messages have been processed.
+        // https://developer.mozilla.org/en-US/docs/Web/API/VideoDecoder/flush
+        //
+        // It has been observed that if we don't call this, it can happen that the last few frames are never decoded.
+        // Notably, MDN writes about flush methods in general here https://developer.mozilla.org/en-US/docs/Web/API/WebCodecs_API#processing_model
+        // """
+        // Methods named flush() can be used to wait for the completion of all work that was pending at the time flush() was called.
+        // However, it should generally only be called once all desired work is queued.
+        // It is not intended to force progress at regular intervals.
+        // Calling it unnecessarily will affect encoder quality and cause decoders to require the next input to be a key frame.
+        // """
+        // -> Nothing of this indicates that we _have_ to call it and rather discourages it,
+        // but it points out that it might be a good idea once "all desired work is queued".
+        let _ = self.decoder.flush();
+
+        Ok(())
+    }
 }
 
 fn init_video_decoder(
     on_output_callback: Arc<OutputCallback>,
     timescale: Timescale,
-    minimum_presentation_timestamp: Time,
 ) -> Result<web_sys::VideoDecoder, Error> {
     let on_output = {
         let on_output = on_output_callback.clone();
         Closure::wrap(Box::new(move |frame: web_sys::VideoFrame| {
             // We assume that the timestamp returned by the decoder is in time since start,
             // and does not represent demuxed "raw" presentation timestamps.
-            let presentation_timestamp = Time::from_micros_since_start(
-                frame.timestamp().unwrap_or(0.0),
-                timescale,
-                minimum_presentation_timestamp,
-            );
-            let duration = Time::from_micros_since_start(
-                frame.duration().unwrap_or(0.0),
-                timescale,
-                minimum_presentation_timestamp,
-            );
+            let presentation_timestamp =
+                Time::from_micros(frame.timestamp().unwrap_or(0.0), timescale);
+            let duration = Time::from_micros(frame.duration().unwrap_or(0.0), timescale);
 
             on_output(Ok(Frame {
                 content: WebVideoFrame(frame),
                 info: FrameInfo {
+                    is_sync: None,    // TODO(emilk)
+                    sample_idx: None, // TODO(emilk)
+                    frame_nr: None,   // TODO(emilk)
                     presentation_timestamp,
                     duration,
-                    ..Default::default()
+                    latest_decode_timestamp: None,
                 },
             }));
         }) as Box<dyn Fn(web_sys::VideoFrame)>)

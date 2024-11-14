@@ -95,6 +95,9 @@ namespace rerun {
                     new (&storage.vector_owned) std::vector<TElement>(other.storage.vector_owned);
                     break;
                 }
+
+                default:
+                    assert(false && "unreachable");
             }
         }
 
@@ -236,6 +239,9 @@ namespace rerun {
                             other.storage.borrowed = this_borrowed_data_old;
                             break;
                         }
+
+                        default:
+                            assert(false && "unreachable");
                     }
                     break;
                 }
@@ -253,9 +259,15 @@ namespace rerun {
                         case CollectionOwnership::VectorOwned:
                             std::swap(storage.vector_owned, other.storage.vector_owned);
                             break;
+
+                        default:
+                            assert(false && "unreachable");
                     }
                     break;
                 }
+
+                default:
+                    assert(false && "unreachable");
             }
 
             std::swap(ownership, other.ownership);
@@ -265,9 +277,13 @@ namespace rerun {
             switch (ownership) {
                 case CollectionOwnership::Borrowed:
                     break; // nothing to do.
+
                 case CollectionOwnership::VectorOwned:
                     storage.vector_owned.~vector(); // Deallocate the vector!
                     break;
+
+                default:
+                    assert(false && "unreachable");
             }
         }
 
@@ -276,8 +292,12 @@ namespace rerun {
             switch (ownership) {
                 case CollectionOwnership::Borrowed:
                     return storage.borrowed.num_instances;
+
                 case CollectionOwnership::VectorOwned:
                     return storage.vector_owned.size();
+
+                default:
+                    assert(false && "unreachable");
             }
             return 0;
         }
@@ -287,8 +307,12 @@ namespace rerun {
             switch (ownership) {
                 case CollectionOwnership::Borrowed:
                     return storage.borrowed.num_instances == 0;
+
                 case CollectionOwnership::VectorOwned:
                     return storage.vector_owned.empty();
+
+                default:
+                    assert(false && "unreachable");
             }
             return 0;
         }
@@ -304,8 +328,12 @@ namespace rerun {
             switch (ownership) {
                 case CollectionOwnership::Borrowed:
                     return storage.borrowed.data;
+
                 case CollectionOwnership::VectorOwned:
                     return storage.vector_owned.data();
+
+                default:
+                    assert(false && "unreachable");
             }
 
             // We need to return something to avoid compiler warnings.
@@ -359,9 +387,13 @@ namespace rerun {
                     result.insert(result.end(), begin(), end());
                     return result;
                 }
+
                 case CollectionOwnership::VectorOwned: {
                     return std::move(storage.vector_owned);
                 }
+
+                default:
+                    assert(false && "unreachable");
             }
             return std::vector<TElement>();
         }
@@ -375,6 +407,7 @@ namespace rerun {
                         size() * sizeof(TElement)
                     );
                 }
+
                 case CollectionOwnership::VectorOwned: {
                     auto ptr = reinterpret_cast<const uint8_t*>(data());
                     auto num_bytes = size() * sizeof(TElement);
@@ -382,6 +415,9 @@ namespace rerun {
                         std::vector<uint8_t>(ptr, ptr + num_bytes)
                     );
                 }
+
+                default:
+                    assert(false && "unreachable");
             }
             return Collection<uint8_t>();
         }

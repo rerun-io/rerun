@@ -85,10 +85,13 @@ pub fn texture_preview_ui(
         )
         .inner
     } else {
+        // TODO(emilk): we should limit the HEIGHT primarily,
+        // since if the image uses up too much vertical space,
+        // it is really annoying in the selection panel.
         let size_range = if ui_layout == UiLayout::Tooltip {
             egui::Rangef::new(64.0, 128.0)
         } else {
-            egui::Rangef::new(240.0, 640.0)
+            egui::Rangef::new(240.0, 320.0)
         };
         let preview_size = Vec2::splat(
             size_range

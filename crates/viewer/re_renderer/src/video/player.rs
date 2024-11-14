@@ -3,7 +3,7 @@ use std::{sync::Arc, time::Duration};
 use web_time::Instant;
 
 use re_video::{
-    decode::{DecodeHardwareAcceleration, FrameInfo},
+    decode::{DecodeSettings, FrameInfo},
     Time,
 };
 
@@ -41,7 +41,7 @@ impl TimedDecodingError {
 /// A texture of a specific video frame.
 pub struct VideoTexture {
     pub texture: GpuTexture2D,
-    pub frame_info: FrameInfo,
+    pub frame_info: Option<FrameInfo>,
     pub source_pixel_format: SourceImageDataFormat,
 }
 
@@ -68,7 +68,7 @@ impl VideoPlayer {
         debug_name: &str,
         render_ctx: &RenderContext,
         data: Arc<re_video::VideoData>,
-        hw_acceleration: DecodeHardwareAcceleration,
+        decode_settings: &DecodeSettings,
     ) -> Result<Self, VideoPlayerError> {
         let debug_name = format!(
             "{debug_name}, codec: {}",
@@ -85,7 +85,7 @@ impl VideoPlayer {
         }
 
         let chunk_decoder = VideoChunkDecoder::new(debug_name.clone(), |on_output| {
-            re_video::decode::new_decoder(&debug_name, &data, hw_acceleration, on_output)
+            re_video::decode::new_decoder(&debug_name, &data, decode_settings, on_output)
         })?;
 
         let texture = alloc_video_frame_texture(
@@ -101,7 +101,7 @@ impl VideoPlayer {
 
             video_texture: VideoTexture {
                 texture,
-                frame_info: FrameInfo::default(),
+                frame_info: None,
                 source_pixel_format: SourceImageDataFormat::WgpuCompatible(
                     wgpu::TextureFormat::Rgba8Unorm,
                 ),
@@ -127,75 +127,72 @@ impl VideoPlayer {
         if time_since_video_start_in_seconds < 0.0 {
             return Err(VideoPlayerError::NegativeTimestamp);
         }
-        let presentation_timestamp = Time::from_secs_since_start(
-            time_since_video_start_in_seconds,
-            self.data.timescale,
-            self.data.samples_statistics.minimum_presentation_timestamp,
-        );
-        let presentation_timestamp = presentation_timestamp
-            .min(self.data.duration + self.data.samples_statistics.minimum_presentation_timestamp); // Don't seek past the end of the video.
+        let presentation_timestamp =
+            Time::from_secs(time_since_video_start_in_seconds, self.data.timescale);
+        let presentation_timestamp = presentation_timestamp.min(self.data.duration); // Don't seek past the end of the video.
 
         let error_on_last_frame_at = self.last_error.is_some();
-        let result = self.frame_at_internal(render_ctx, presentation_timestamp, video_data);
+        self.enqueue_samples(presentation_timestamp, video_data)?;
+        self.update_video_texture(render_ctx, presentation_timestamp)?;
 
-        match result {
-            Ok(()) => {
-                let is_active_frame = self
-                    .video_texture
-                    .frame_info
-                    .presentation_time_range()
-                    .contains(&presentation_timestamp);
+        let frame_info = self.video_texture.frame_info.clone();
 
-                let is_pending = !is_active_frame;
-                if is_pending && error_on_last_frame_at {
-                    // If we switched from error to pending, clear the texture.
-                    // This is important to avoid flickering, in particular when switching from
-                    // benign errors like DecodingError::NegativeTimestamp.
-                    // If we don't do this, we see the last valid texture which can look really weird.
-                    clear_texture(render_ctx, &self.video_texture.texture);
-                    self.video_texture.frame_info = FrameInfo::default();
-                }
+        if let Some(frame_info) = frame_info {
+            let time_range = frame_info.presentation_time_range();
+            let is_active_frame = time_range.contains(&presentation_timestamp);
 
-                let time_range = self.video_texture.frame_info.presentation_time_range();
-                let show_spinner = if presentation_timestamp < time_range.start {
-                    // We're seeking backwards and somehow forgot to reset.
-                    true
-                } else if presentation_timestamp < time_range.end {
-                    false // it is an active frame
+            let is_pending = !is_active_frame;
+
+            let show_spinner = if is_pending && error_on_last_frame_at {
+                // If we switched from error to pending, clear the texture.
+                // This is important to avoid flickering, in particular when switching from
+                // benign errors like DecodingError::NegativeTimestamp.
+                // If we don't do this, we see the last valid texture which can look really weird.
+                clear_texture(render_ctx, &self.video_texture.texture);
+                self.video_texture.frame_info = None;
+                true
+            } else if presentation_timestamp < time_range.start {
+                // We're seeking backwards and somehow forgot to reset.
+                true
+            } else if presentation_timestamp < time_range.end {
+                false // it is an active frame
+            } else {
+                let how_outdated = presentation_timestamp - time_range.end;
+                if how_outdated.duration(self.data.timescale) < DECODING_GRACE_DELAY {
+                    false // Just outdated by a little bit - show no spinner
                 } else {
-                    let how_outdated = presentation_timestamp - time_range.end;
-                    if how_outdated.duration(self.data.timescale) < DECODING_GRACE_DELAY {
-                        false // Just outdated by a little bit - show no spinner
-                    } else {
-                        true // Very old frame - show spinner
-                    }
-                };
-
-                Ok(VideoFrameTexture {
-                    texture: self.video_texture.texture.clone(),
-                    is_pending,
-                    show_spinner,
-                    frame_info: self.video_texture.frame_info.clone(),
-                    source_pixel_format: self.video_texture.source_pixel_format,
-                })
-            }
-
-            Err(err) => Err(err),
+                    true // Very old frame - show spinner
+                }
+            };
+            Ok(VideoFrameTexture {
+                texture: self.video_texture.texture.clone(),
+                is_pending,
+                show_spinner,
+                frame_info: Some(frame_info),
+                source_pixel_format: self.video_texture.source_pixel_format,
+            })
+        } else {
+            Ok(VideoFrameTexture {
+                texture: self.video_texture.texture.clone(),
+                is_pending: true,
+                show_spinner: true,
+                frame_info: None,
+                source_pixel_format: self.video_texture.source_pixel_format,
+            })
         }
     }
 
-    fn frame_at_internal(
+    fn enqueue_samples(
         &mut self,
-        render_ctx: &RenderContext,
         presentation_timestamp: Time,
         video_data: &[u8],
     ) -> Result<(), VideoPlayerError> {
         re_tracing::profile_function!();
 
         // Some terminology:
-        //   - presentation timestamp = composition timestamp
+        //   - presentation timestamp (PTS) == composition timestamp
         //     = the time at which the frame should be shown
-        //   - decode timestamp
+        //   - decode timestamp (DTS)
         //     = determines the decoding order of samples
         //
         // Note: `decode <= composition` for any given sample.
@@ -203,38 +200,21 @@ impl VideoPlayer {
         // We must enqueue samples in decode order, but show them in composition order.
         // In the presence of b-frames this order may be different!
 
-        // 1. Find the latest sample where `decode_timestamp <= presentation_timestamp`.
-        //    Because `decode <= composition`, we never have to look further ahead in the
-        //    video than this.
-        let Some(decode_sample_idx) = latest_at_idx(
-            &self.data.samples,
-            |sample| sample.decode_timestamp,
-            &presentation_timestamp,
-        ) else {
-            return Err(VideoPlayerError::EmptyVideo);
-        };
+        // Find sample which when decoded will be presented at the timestamp the user requested.
+        let requested_sample_idx = self
+            .data
+            .latest_sample_index_at_presentation_timestamp(presentation_timestamp)
+            .ok_or(VideoPlayerError::EmptyVideo)?;
 
-        // 2. Search _backwards_, starting at `decode_sample_idx`, looking for
-        //    the first sample where `sample.presentation_timestamp <= presentation_timestamp`.
-        //    This is the sample which when decoded will be presented at the timestamp the user requested.
-        let Some(requested_sample_idx) = self.data.samples[..=decode_sample_idx]
-            .iter()
-            .rposition(|sample| sample.presentation_timestamp <= presentation_timestamp)
-        else {
-            return Err(VideoPlayerError::EmptyVideo);
-        };
+        // Find the GOP that contains the sample.
+        let requested_gop_idx = self
+            .data
+            .gop_index_containing_decode_timestamp(
+                self.data.samples[requested_sample_idx].decode_timestamp,
+            )
+            .ok_or(VideoPlayerError::EmptyVideo)?;
 
-        // 3. Do a binary search through GOPs by the decode timestamp of the found sample
-        //    to find the GOP that contains the sample.
-        let Some(requested_gop_idx) = latest_at_idx(
-            &self.data.gops,
-            |gop| gop.start,
-            &self.data.samples[requested_sample_idx].decode_timestamp,
-        ) else {
-            return Err(VideoPlayerError::EmptyVideo);
-        };
-
-        // 4. Enqueue GOPs as needed.
+        // Enqueue GOPs as needed.
 
         // First, check for decoding errors that may have been set asynchronously and reset.
         if let Some(error) = self.chunk_decoder.take_error() {
@@ -275,7 +255,21 @@ impl VideoPlayer {
             // special case: handle seeking backwards within a single GOP
             // this is super inefficient, but it's the only way to handle it
             // while maintaining a buffer of only 2 GOPs
-            if requested_sample_idx < self.current_sample_idx {
+            //
+            // Note that due to sample reordering (in the presence of b-frames), if can happen
+            // that `self.current_sample_idx` is *behind* the `requested_sample_idx` even if we're
+            // seeking backwards!
+            // Therefore, it's important to compare presentation timestamps instead of sample indices.
+            // (comparing decode timestamps should be equivalent to comparing sample indices)
+            let current_pts = self.data.samples[self.current_sample_idx].presentation_timestamp;
+            let requested_sample = &self.data.samples[requested_sample_idx];
+
+            re_log::trace!(
+                "Seeking to sample {requested_sample_idx} (frame_nr {})",
+                requested_sample.frame_nr
+            );
+
+            if requested_sample.presentation_timestamp < current_pts {
                 self.reset()?;
                 self.enqueue_gop(requested_gop_idx, video_data)?;
                 self.enqueue_gop(requested_gop_idx + 1, video_data)?;
@@ -285,6 +279,14 @@ impl VideoPlayer {
         self.current_gop_idx = requested_gop_idx;
         self.current_sample_idx = requested_sample_idx;
 
+        Ok(())
+    }
+
+    fn update_video_texture(
+        &mut self,
+        render_ctx: &RenderContext,
+        presentation_timestamp: Time,
+    ) -> Result<(), VideoPlayerError> {
         let result = self.chunk_decoder.update_video_texture(
             render_ctx,
             &mut self.video_texture,
@@ -331,12 +333,20 @@ impl VideoPlayer {
             return Ok(());
         };
 
-        let samples = &self.data.samples[gop.range()];
+        let samples = &self.data.samples[gop.sample_range_usize()];
 
-        for (i, sample) in samples.iter().enumerate() {
+        re_log::trace!("Enqueueing GOP {gop_idx} ({} samples)", samples.len());
+
+        for sample in samples {
             let chunk = sample.get(video_data).ok_or(VideoPlayerError::BadData)?;
-            let is_keyframe = i == 0;
-            self.chunk_decoder.decode(chunk, is_keyframe)?;
+            self.chunk_decoder.decode(chunk)?;
+        }
+
+        if gop_idx + 1 == self.data.gops.len() {
+            // Last GOP - there is nothing more to decode,
+            // so flush out any pending frames:
+            // See https://github.com/rerun-io/rerun/issues/8073
+            self.chunk_decoder.end_of_video()?;
         }
 
         Ok(())
@@ -409,48 +419,4 @@ fn clear_texture(render_ctx: &RenderContext, texture: &GpuTexture2D) {
             })],
             ..Default::default()
         });
-}
-
-/// Returns the index of:
-/// - The index of `needle` in `v`, if it exists
-/// - The index of the first element in `v` that is lesser than `needle`, if it exists
-/// - `None`, if `v` is empty OR `needle` is greater than all elements in `v`
-pub fn latest_at_idx<T, K: Ord>(v: &[T], key: impl Fn(&T) -> K, needle: &K) -> Option<usize> {
-    if v.is_empty() {
-        return None;
-    }
-
-    let idx = v.partition_point(|x| key(x) <= *needle);
-
-    if idx == 0 {
-        // If idx is 0, then all elements are greater than the needle
-        if &key(&v[0]) > needle {
-            return None;
-        }
-    }
-
-    Some(idx.saturating_sub(1))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_latest_at_idx() {
-        let v = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-        assert_eq!(latest_at_idx(&v, |v| *v, &0), None);
-        assert_eq!(latest_at_idx(&v, |v| *v, &1), Some(0));
-        assert_eq!(latest_at_idx(&v, |v| *v, &2), Some(1));
-        assert_eq!(latest_at_idx(&v, |v| *v, &3), Some(2));
-        assert_eq!(latest_at_idx(&v, |v| *v, &4), Some(3));
-        assert_eq!(latest_at_idx(&v, |v| *v, &5), Some(4));
-        assert_eq!(latest_at_idx(&v, |v| *v, &6), Some(5));
-        assert_eq!(latest_at_idx(&v, |v| *v, &7), Some(6));
-        assert_eq!(latest_at_idx(&v, |v| *v, &8), Some(7));
-        assert_eq!(latest_at_idx(&v, |v| *v, &9), Some(8));
-        assert_eq!(latest_at_idx(&v, |v| *v, &10), Some(9));
-        assert_eq!(latest_at_idx(&v, |v| *v, &11), Some(9));
-        assert_eq!(latest_at_idx(&v, |v| *v, &1000), Some(9));
-    }
 }

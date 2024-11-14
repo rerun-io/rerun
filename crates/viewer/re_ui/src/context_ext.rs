@@ -1,5 +1,6 @@
 use egui::{emath::Float, pos2, Align2, Color32, Mesh, Rect, Shape, Vec2};
 
+use crate::toasts::SUCCESS_COLOR;
 use crate::{DesignTokens, TopBarStyle};
 
 /// Extension trait for [`egui::Context`].
@@ -8,6 +9,11 @@ use crate::{DesignTokens, TopBarStyle};
 /// context.
 pub trait ContextExt {
     fn ctx(&self) -> &egui::Context;
+
+    // -----------------------------------------------------
+    // Style-related stuff.
+    // We could have this on a `StyleExt` trait, but we prefer to have it here on `Context`
+    // so that it is the same style everywhere (instead of being specific to the parent `ui.style`).
 
     /// Text format used for regular body.
     fn text_format_body(&self) -> egui::TextFormat {
@@ -53,20 +59,30 @@ pub trait ContextExt {
         // egui::Stroke::new(stroke_width, color)
     }
 
+    /// Text colored to indicate success.
+    #[must_use]
+    fn success_text(&self, text: impl Into<String>) -> egui::RichText {
+        egui::RichText::new(text).color(SUCCESS_COLOR)
+    }
+
+    /// Text colored to indicate a warning.
+    ///
+    /// For most cases, you should use [`crate::UiExt::warning_label`] instead,
+    /// which has a nice fat border around it.
     #[must_use]
     fn warning_text(&self, text: impl Into<String>) -> egui::RichText {
         let style = self.ctx().style();
-        egui::RichText::new(text)
-            .italics()
-            .color(style.visuals.warn_fg_color)
+        egui::RichText::new(text).color(style.visuals.warn_fg_color)
     }
 
+    /// Text colored to indicate an error.
+    ///
+    /// For most cases, you should use [`crate::UiExt::error_label`] instead,
+    /// which has a nice fat border around it.
     #[must_use]
     fn error_text(&self, text: impl Into<String>) -> egui::RichText {
         let style = self.ctx().style();
-        egui::RichText::new(text)
-            .italics()
-            .color(style.visuals.error_fg_color)
+        egui::RichText::new(text).color(style.visuals.error_fg_color)
     }
 
     fn top_bar_style(&self, style_like_web: bool) -> TopBarStyle {

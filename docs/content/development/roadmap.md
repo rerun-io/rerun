@@ -17,18 +17,15 @@ This page is meant to give an high level overview of ongoing and planned work.
 
 ## Roadmap of major feature areas
 
-### Near term: Q3 2024
-- Query API for reading back data from the SDK
+### Near term: Q4 2024
+- Video streaming: sending individual video encoded frames at a time
 - Improved support for working directly with Arrow data and the Rerun extension types
-- A generic multimodal table view
 
-### Medium term (Q4 2024)
-- Audio and maps support
-- Decoding h264 video in the viewer
+### Medium term (Q1 2025)
 - Official ROS2 bridge
 - Callbacks and the ability to build interactive applications with Rerun
     - For example: UI for tweaking configs, custom data annotation tools, etc
-- Rerun data platform (commercial)
+- Rerun data platform alpha (commercial)
     - Get in touch on hi@rerun.io if you're interested in becoming a design partner
 
 ### Longer term

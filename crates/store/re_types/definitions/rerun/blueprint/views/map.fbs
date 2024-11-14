@@ -2,7 +2,7 @@ namespace rerun.blueprint.views;
 
 /// A 2D map view to display geospatial primitives.
 ///
-/// \example views/map title="Use a blueprint to create a map view." image="https://static.rerun.io/map-view/8b2cc15e3f3313e2181667f6c29816ebe75e16e6/1200w.png"
+/// \example views/map title="Use a blueprint to create a map view." image="https://static.rerun.io/map_view/9d0a5ba3a6e8d4693ba98e1b3cfcc15d166fd41d/1200w.png"
 table MapView (
     "attr.rerun.view_identifier": "Map",
     "attr.docs.unreleased"

@@ -128,9 +128,11 @@ Reference:
 * [🦀 Rust `save`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.save)
 * [🌊 C++ `save`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a555a7940a076c93d951de5b139d14918)
 
+<!--
 ## Logging data on native and visualizing it on the web.
 
-TODO(cmc): incoming.
+TODO(#8046): incoming.
+-->
 
 
 ## FAQ
@@ -168,22 +170,25 @@ rerun --port 6789 &
 rerun --port 6789 image.jpg &
 ```
 
+<!--
 
 ### What happens when I use `rr.spawn()` from my SDK of choice?
 
-TODO(cmc): incoming.
+TODO(#8046): incoming.
 
 
 ### What happens when I use `rr.serve()` from my SDK of choice?
 
-TODO(cmc): incoming.
+TODO(#8046): incoming.
 
 
 ### What happens when I use `rerun --serve`?
 
-TODO(cmc): incoming.
+TODO(#8046): incoming.
 
 
 ### Can the **Native Viewer** pull data from a **WebSocket Server**, like the **Web Viewer** does?
 
-TODO(cmc): incoming.
+TODO(#8046): incoming.
+
+-->

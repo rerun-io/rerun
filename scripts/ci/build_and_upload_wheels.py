@@ -88,7 +88,6 @@ def build_and_upload(bucket: Bucket | None, mode: BuildMode, gcs_dir: str, targe
         f"--target {target} "
         f"{maturin_feature_flags} "
         f"--out {dist}",
-        env={**os.environ.copy(), "RERUN_IS_PUBLISHING": "yes"},  # stop `re_web_viewer` from building here
     )
 
     pkg = os.listdir(dist)[0]

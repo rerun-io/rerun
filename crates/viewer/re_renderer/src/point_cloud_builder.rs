@@ -68,14 +68,18 @@ impl<'ctx> PointCloudBuilder<'ctx> {
     pub fn batch(&mut self, label: impl Into<DebugLabel>) -> PointCloudBatchBuilder<'_, 'ctx> {
         self.batches.push(PointCloudBatchInfo {
             label: label.into(),
-            world_from_obj: glam::Affine3A::IDENTITY,
-            flags: PointCloudBatchFlags::FLAG_ENABLE_SHADING,
-            point_count: 0,
-            overall_outline_mask_ids: OutlineMaskPreference::NONE,
-            additional_outline_mask_ids_vertex_ranges: Vec::new(),
-            picking_object_id: Default::default(),
-            depth_offset: 0,
+            ..PointCloudBatchInfo::default()
         });
+
+        PointCloudBatchBuilder(self)
+    }
+
+    #[inline]
+    pub fn batch_with_info(
+        &mut self,
+        info: PointCloudBatchInfo,
+    ) -> PointCloudBatchBuilder<'_, 'ctx> {
+        self.batches.push(info);
 
         PointCloudBatchBuilder(self)
     }

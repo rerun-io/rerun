@@ -5,8 +5,8 @@ use parking_lot::Mutex;
 
 use re_chunk::{Chunk, ChunkResult, RowId, TimeInt};
 use re_chunk_store::{
-    ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreEvent, ChunkStoreHandle,
-    ChunkStoreSubscriber, GarbageCollectionOptions, GarbageCollectionTarget,
+    ChunkStore, ChunkStoreChunkStats, ChunkStoreConfig, ChunkStoreDiffKind, ChunkStoreEvent,
+    ChunkStoreHandle, ChunkStoreSubscriber, GarbageCollectionOptions, GarbageCollectionTarget,
 };
 use re_log_types::{
     ApplicationId, EntityPath, EntityPathHash, LogMsg, ResolvedTimeRange, ResolvedTimeRangeF,
@@ -385,7 +385,13 @@ impl EntityDb {
 
             // It is possible for writes to trigger deletions: specifically in the case of
             // overwritten static data leading to dangling chunks.
-            self.tree.on_store_deletions(&engine, &store_events);
+            let entity_paths_with_deletions = store_events
+                .iter()
+                .filter(|event| event.kind == ChunkStoreDiffKind::Deletion)
+                .map(|event| event.chunk.entity_path().clone())
+                .collect();
+            self.tree
+                .on_store_deletions(&engine, &entity_paths_with_deletions, &store_events);
 
             // We inform the stats last, since it measures e2e latency.
             self.stats.on_events(&store_events);
@@ -444,7 +450,7 @@ impl EntityDb {
         store_events
     }
 
-    fn gc(&mut self, gc_options: &GarbageCollectionOptions) -> Vec<ChunkStoreEvent> {
+    pub(crate) fn gc(&mut self, gc_options: &GarbageCollectionOptions) -> Vec<ChunkStoreEvent> {
         re_tracing::profile_function!();
 
         let mut engine = self.storage_engine.write();
@@ -544,7 +550,12 @@ impl EntityDb {
         time_histogram_per_timeline.on_events(store_events);
 
         let engine = engine.downgrade();
-        tree.on_store_deletions(&engine, store_events);
+        let entity_paths_with_deletions = store_events
+            .iter()
+            .filter(|event| event.kind == ChunkStoreDiffKind::Deletion)
+            .map(|event| event.chunk.entity_path().clone())
+            .collect();
+        tree.on_store_deletions(&engine, &entity_paths_with_deletions, store_events);
     }
 
     /// Key used for sorting recordings in the UI.

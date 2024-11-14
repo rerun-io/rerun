@@ -1,5 +1,5 @@
 use re_log_types::Instance;
-use re_renderer::PickingLayerInstanceId;
+use re_renderer::{renderer::LineStripFlags, PickingLayerInstanceId};
 use re_types::{
     archetypes::LineStrips3D,
     components::{ClassId, Color, KeypointId, LineStrip3D, Radius, ShowLabels, Text},
@@ -91,6 +91,8 @@ impl Lines3DVisualizer {
             {
                 let lines = line_batch
                     .add_strip(strip.iter().copied().map(Into::into))
+                    // Looped lines should be connected with rounded corners, so we always add outward extending caps.
+                    .flags(LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS)
                     .color(color)
                     .radius(radius)
                     .picking_instance_id(PickingLayerInstanceId(i as _));

@@ -42,7 +42,7 @@
 //! As long as we're not able to restart the strip (requires indices!), we can't discard a quad in a triangle strip setup.
 //! However, this could be solved with an index buffer which has the ability to restart triangle strips (something we haven't tried yet).
 //!
-//! Another much more tricky issue is handling of line miters:
+//! Another much more tricky issue is handling of line joints:
 //! Let's have a look at a corner between two line positions (line positions marked with `X`)
 //! ```raw
 //! o--------------------------o
@@ -53,36 +53,10 @@
 //!          /     //      /
 //!         o      X      o
 //! ```
-//! If we want to keep the line along its skeleton with constant radius, the top right corner
-//! would move further and further outward as we decrease the angle of the joint. Eventually it reaches infinity!
-//! (i.e. not great to fix it up with discard in the fragment shader either)
+//! The problem is that the top right corner would move further and further outward as we decrease the angle of the joint.
+//! Instead, we generate overlapping, detached quads and handle line joints as cut-outs in the fragment shader.
 //!
-//! To prevent this we need to generate this shape:
-//! ```raw
-//! a-------------------b
-//!                       \
-//! X=================X    \
-//!                  //     \
-//! c---------d     //      e
-//!          /     //      /
-//!         f      X      g
-//! ```
-//!
-//! To achieve this we need to do one of:
-//! 1) generating a new triangle at `[d,b,e]`
-//!     * can't do that without significant preprocessing, makes the entire pipeline much more complicated
-//! 2) twist one of the quads, making both quads overlap in the area of `[d,b,e]` (doesn't add any new vertices)
-//!    * unless (!) we duplicate vertices at one of the quads, the twist would need to continue for the rest of the strip!
-//! 3) make one quad stop before the joint by forming `[a,b,d,c]`, the other one taking over the joint by forming `[b,e,g,f]`
-//!    * implies breaking up the quads (point d would be part of one quad but not the other)
-//!
-//! (2) and (3) can be implemented relatively easy if we're using a triangle strip!
-//! (2) can be implemented in theory with a triangle list, but means that any joint has ripple effects on the rest of the list.
-//!
-//! TODO(andreas): Implement (3). Right now we don't implement line caps at all.
-//!
-//!
-//! Line start/end caps (arrows/rounded/etc.)
+//! Line start/end caps (arrows/etc.)
 //! -----------------------------------------------
 //! Yet another place where our triangle *strip* comes in handy is that we can take triangles from superfluous quads to form pointy arrows.
 //! Again, we keep all the geometry calculating logic in the vertex shader.
@@ -93,7 +67,6 @@
 //!             \ |  … n strip quads …  | \ | … m strip quads … | \
 //!              \|_____________________|__\|___________________|__\
 //! (start cap triangle only)         (start+end triangle)              (end triangle only)
-//!
 //!
 //!
 //! Things we might try in the future
@@ -263,6 +236,13 @@ bitflags! {
         ///
         /// TODO(andreas): Could be moved to per batch flags.
         const FLAG_FORCE_ORTHO_SPANNING = 0b1000_0000;
+
+        /// Combination of flags to extend lines outwards with round caps.
+        const FLAGS_OUTWARD_EXTENDING_ROUND_CAPS =
+            LineStripFlags::FLAG_CAP_START_ROUND.bits() |
+            LineStripFlags::FLAG_CAP_END_ROUND.bits() |
+            LineStripFlags::FLAG_CAP_START_EXTEND_OUTWARDS.bits() |
+            LineStripFlags::FLAG_CAP_END_EXTEND_OUTWARDS.bits();
     }
 }
 

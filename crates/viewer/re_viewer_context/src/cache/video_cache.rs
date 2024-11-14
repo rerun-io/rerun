@@ -11,7 +11,7 @@ use re_chunk_store::ChunkStoreEvent;
 use re_log_types::hash::Hash64;
 use re_renderer::{external::re_video::VideoLoadError, video::Video};
 use re_types::{components::MediaType, Loggable as _};
-use re_video::decode::DecodeHardwareAcceleration;
+use re_video::decode::DecodeSettings;
 
 use crate::Cache;
 
@@ -40,7 +40,7 @@ impl VideoCache {
         blob_row_id: RowId,
         video_data: &re_types::datatypes::Blob,
         media_type: Option<&MediaType>,
-        hw_acceleration: DecodeHardwareAcceleration,
+        decode_settings: DecodeSettings,
     ) -> Arc<Result<Video, VideoLoadError>> {
         re_tracing::profile_function!(&debug_name);
 
@@ -54,7 +54,7 @@ impl VideoCache {
             return Arc::new(Err(VideoLoadError::UnrecognizedMimeType));
         };
 
-        let inner_key = Hash64::hash((media_type.as_str(), hw_acceleration));
+        let inner_key = Hash64::hash((media_type.as_str(), decode_settings.hw_acceleration));
 
         let entry = self
             .0
@@ -63,7 +63,7 @@ impl VideoCache {
             .entry(inner_key)
             .or_insert_with(|| {
                 let video = re_video::VideoData::load_from_bytes(video_data, &media_type)
-                    .map(|data| Video::load(debug_name, Arc::new(data), hw_acceleration));
+                    .map(|data| Video::load(debug_name, Arc::new(data), decode_settings));
                 Entry {
                     used_this_frame: AtomicBool::new(true),
                     video: Arc::new(video),

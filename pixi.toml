@@ -136,18 +136,18 @@ man = "cargo --quiet run --package rerun-cli --all-features -- man > docs/conten
 # Compile and run the rerun viewer.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun = "cargo run --package rerun-cli --no-default-features --features native_viewer,nasm --"
+rerun = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer --"
 
 # Compile `rerun-cli` without the web-viewer.
-rerun-build = "cargo build --package rerun-cli --no-default-features --features native_viewer,nasm"
+rerun-build = "cargo build --package rerun-cli --no-default-features --features map_view,nasm,native_viewer"
 
 # Compile `rerun-cli` without the web-viewer.
-rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features native_viewer,nasm"
+rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features map_view,nasm,native_viewer"
 
 # Compile and run the rerun viewer with --release.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-release = "cargo run --package rerun-cli --no-default-features --features native_viewer,nasm --release --"
+rerun-release = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer --release --"
 
 # Compile `rerun-cli` with the same feature set as we build for releases.
 rerun-build-native-and-web = { cmd = "cargo build --package rerun-cli --no-default-features --features release --", depends_on = [
@@ -634,6 +634,7 @@ nuscenes_dataset = { path = "examples/python/nuscenes_dataset", editable = true 
 nv12 = { path = "examples/python/nv12", editable = true }
 objectron = { path = "examples/python/objectron", editable = true }
 open_photogrammetry_format = { path = "examples/python/open_photogrammetry_format", editable = true }
+openstreetmap_data = { path = "examples/python/openstreetmap_data", editable = true }
 plots = { path = "examples/python/plots", editable = true }
 raw_mesh = { path = "examples/python/raw_mesh", editable = true }
 rgbd = { path = "examples/python/rgbd", editable = true }

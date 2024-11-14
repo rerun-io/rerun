@@ -280,6 +280,13 @@ impl ObjectKind {
     }
 }
 
+pub struct ViewReference {
+    /// Typename of the view. Not a fully qualified name, just the name as specified on the attribute.
+    pub view_name: String,
+
+    pub explanation: Option<String>,
+}
+
 /// A high-level representation of a flatbuffers object, which can be either a struct, a union or
 /// an enum.
 #[derive(Debug, Clone)]
@@ -529,6 +536,25 @@ impl Object {
 
     pub fn is_attr_set(&self, name: impl AsRef<str>) -> bool {
         self.attrs.has(name)
+    }
+
+    pub fn archetype_view_types(&self) -> Option<Vec<ViewReference>> {
+        let view_types = self.try_get_attr::<String>(crate::ATTR_DOCS_VIEW_TYPES)?;
+
+        Some(
+            view_types
+                .split(',')
+                .map(|view_type| {
+                    let mut parts = view_type.splitn(2, ':');
+                    let view_name = parts.next().unwrap().trim().to_owned();
+                    let explanation = parts.next().map(|s| s.trim().to_owned());
+                    ViewReference {
+                        view_name,
+                        explanation,
+                    }
+                })
+                .collect(),
+        )
     }
 
     pub fn is_struct(&self) -> bool {

@@ -246,6 +246,7 @@ impl<'a> Viewport<'a> {
                         reset = true;
                     } else {
                         let parent_id = parent_container.unwrap_or(self.blueprint.root_container);
+                        re_log::trace!("Adding space-view {space_view_id} to parent {parent_id}");
                         let tile_id = self.tree.tiles.insert_pane(space_view_id);
                         let container_tile_id = blueprint_id_to_tile_id(&parent_id);
                         if let Some(egui_tiles::Tile::Container(container)) =
@@ -262,7 +263,7 @@ impl<'a> Viewport<'a> {
                                 );
                             }
                         } else {
-                            re_log::trace!("Root was not a container - will re-run auto-layout");
+                            re_log::trace!("Parent was not a container - will re-run auto-layout");
                             reset = true;
                         }
                     }
@@ -275,6 +276,7 @@ impl<'a> Viewport<'a> {
                         .tree
                         .tiles
                         .insert_container(egui_tiles::Container::new(container_kind, vec![]));
+                    re_log::trace!("Adding container {container_kind:?} to parent {parent_id}");
                     if let Some(egui_tiles::Tile::Container(container)) =
                         self.tree.tiles.get_mut(blueprint_id_to_tile_id(&parent_id))
                     {

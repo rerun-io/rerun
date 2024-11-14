@@ -1,3 +1,5 @@
+//! TODO(emilk): replace this whole file with <https://docs.rs/h264-reader/latest/h264_reader/nal/sps/struct.SeqParameterSet.html>
+
 use crate::decode::YuvPixelLayout;
 
 use super::nalu::{NalHeader, NalUnitType};

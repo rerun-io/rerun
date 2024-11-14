@@ -26,7 +26,7 @@ pub use depth_images::DepthImageVisualizer;
 pub use transform3d_arrows::{add_axis_arrows, AxisLengthDetector, Transform3DArrowsVisualizer};
 pub use utilities::{
     entity_iterator, process_labels_3d, textured_rect_from_image, SpatialViewVisualizerData,
-    UiLabel, UiLabelTarget,
+    UiLabel, UiLabelStyle, UiLabelTarget,
 };
 
 /// Shows a loading animation in a spatial view.

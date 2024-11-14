@@ -85,6 +85,11 @@ mod av1;
 #[cfg(with_ffmpeg)]
 mod ffmpeg_h264;
 
+#[cfg(with_ffmpeg)]
+pub use ffmpeg_h264::{
+    ffmpeg_download_url, Error as FFmpegError, FFmpegVersion, FFmpegVersionParseError,
+};
+
 #[cfg(target_arch = "wasm32")]
 mod webcodecs;
 
@@ -117,16 +122,7 @@ pub enum Error {
 
     #[cfg(with_ffmpeg)]
     #[error(transparent)]
-    Ffmpeg(std::sync::Arc<ffmpeg_h264::Error>),
-
-    // We need to check for this one and don't want to infect more crates with the feature requirement.
-    #[error("Couldn't find an installation of the FFmpeg executable.")]
-    FfmpegNotInstalled {
-        /// Download URL for the latest version of `FFmpeg` on the current platform.
-        /// None if the platform is not supported.
-        // TODO(andreas): as of writing, ffmpeg-sidecar doesn't define a download URL for linux arm.
-        download_url: Option<&'static str>,
-    },
+    Ffmpeg(std::sync::Arc<FFmpegError>),
 
     #[error("Unsupported bits per component: {0}")]
     BadBitsPerComponent(usize),
@@ -145,6 +141,13 @@ pub trait AsyncDecoder: Send + Sync {
     /// Chunks are expected to come in the order of their decoding timestamp.
     fn submit_chunk(&mut self, chunk: Chunk) -> Result<()>;
 
+    /// Called after submitting the last chunk.
+    ///
+    /// Should flush all pending frames.
+    fn end_of_video(&mut self) -> Result<()> {
+        Ok(())
+    }
+
     /// Resets the decoder.
     ///
     /// This does not block, all chunks sent to `decode` before this point will be discarded.
@@ -155,10 +158,12 @@ pub trait AsyncDecoder: Send + Sync {
 pub fn new_decoder(
     debug_name: &str,
     video: &crate::VideoData,
-    hw_acceleration: DecodeHardwareAcceleration,
+    decode_settings: &DecodeSettings,
     on_output: impl Fn(Result<Frame>) + Send + Sync + 'static,
 ) -> Result<Box<dyn AsyncDecoder>> {
     #![allow(unused_variables, clippy::needless_return)] // With some feature flags
+
+    re_tracing::profile_function!();
 
     re_log::trace!(
         "Looking for decoder for {}",
@@ -168,7 +173,7 @@ pub fn new_decoder(
     #[cfg(target_arch = "wasm32")]
     return Ok(Box::new(webcodecs::WebVideoDecoder::new(
         video,
-        hw_acceleration,
+        decode_settings.hw_acceleration,
         on_output,
     )?));
 
@@ -199,10 +204,11 @@ pub fn new_decoder(
         #[cfg(with_ffmpeg)]
         re_mp4::StsdBoxContent::Avc1(avc1_box) => {
             re_log::trace!("Decoding H.264…");
-            Ok(Box::new(ffmpeg_h264::FfmpegCliH264Decoder::new(
+            Ok(Box::new(ffmpeg_h264::FFmpegCliH264Decoder::new(
                 debug_name.to_owned(),
                 avc1_box.clone(),
                 on_output,
+                decode_settings.ffmpeg_path.clone(),
             )?))
         }
 
@@ -213,11 +219,30 @@ pub fn new_decoder(
 /// One chunk of encoded video data, representing a single [`crate::Sample`].
 ///
 /// For details on how to interpret the data, see [`crate::Sample`].
+///
+/// In MP4, one sample is one frame.
 pub struct Chunk {
     /// The start of a new [`crate::demux::GroupOfPictures`]?
+    ///
+    /// This probably means this is a _keyframe_, and that and entire frame
+    /// can be decoded from only this one sample (though I'm not 100% sure).
     pub is_sync: bool,
 
     pub data: Vec<u8>,
+
+    /// Which sample (frame) did this chunk come from?
+    ///
+    /// This is the order of which the samples appear in the container,
+    /// which is usually ordered by [`Self::decode_timestamp`].
+    pub sample_idx: usize,
+
+    /// Which frame does this chunk belong to?
+    ///
+    /// This is on the assumption that each sample produces a single frame,
+    /// which is true for MP4.
+    ///
+    /// This is the index of samples ordered by [`Self::presentation_timestamp`].
+    pub frame_nr: usize,
 
     /// Decode timestamp of this sample.
     /// Chunks are expected to be submitted in the order of decode timestamp.
@@ -250,33 +275,44 @@ pub type FrameContent = webcodecs::WebVideoFrame;
 /// Meta information about a decoded video frame, as reported by the decoder.
 #[derive(Debug, Clone)]
 pub struct FrameInfo {
-    /// The presentation timestamp of the frame.
+    /// The start of a new [`crate::demux::GroupOfPictures`]?
     ///
-    /// Decoders are required to report this.
-    /// A timestamp of [`Time::MAX`] indicates that the frame is invalid or not yet available.
+    /// This probably means this is a _keyframe_, and that and entire frame
+    /// can be decoded from only this one sample (though I'm not 100% sure).
+    ///
+    /// None = unknown.
+    pub is_sync: Option<bool>,
+
+    /// Which sample in the video is this from?
+    ///
+    /// In MP4, one sample is one frame, but we may be reordering samples when decoding.
+    ///
+    /// This is the order of which the samples appear in the container,
+    /// which is usually ordered by [`Self::latest_decode_timestamp`].
+    ///
+    /// None = unknown.
+    pub sample_idx: Option<usize>,
+
+    /// Which frame is this?
+    ///
+    /// This is on the assumption that each sample produces a single frame,
+    /// which is true for MP4.
+    ///
+    /// This is the index of frames ordered by [`Self::presentation_timestamp`].
+    ///
+    /// None = unknown.
+    pub frame_nr: Option<usize>,
+
+    /// The presentation timestamp of the frame.
     pub presentation_timestamp: Time,
 
     /// How long the frame is valid.
-    ///
-    /// Decoders are required to report this.
-    /// A duration of [`Time::MAX`] indicates that the frame is invalid or not yet available.
-    // Implementation note: unlike with presentation timestamp we may be able fine with making this optional.
     pub duration: Time,
 
     /// The decode timestamp of the last chunk that was needed to decode this frame.
     ///
-    /// None indicates that the information is not available.
+    /// None = unknown.
     pub latest_decode_timestamp: Option<Time>,
-}
-
-impl Default for FrameInfo {
-    fn default() -> Self {
-        Self {
-            presentation_timestamp: Time::MAX,
-            duration: Time::MAX,
-            latest_decode_timestamp: None,
-        }
-    }
 }
 
 impl FrameInfo {
@@ -380,6 +416,19 @@ pub enum DecodeHardwareAcceleration {
     ///
     /// If no hardware decoder is present, this may cause decoding to fail.
     PreferHardware,
+}
+
+/// Settings for video decoding.
+#[derive(Debug, Clone, PartialEq, Eq, Default, Hash)]
+#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
+pub struct DecodeSettings {
+    /// How the video should be decoded.
+    pub hw_acceleration: DecodeHardwareAcceleration,
+
+    /// Custom path for the ffmpeg binary.
+    ///
+    /// If not provided, we use the path automatically determined by `ffmpeg_sidecar`.
+    pub ffmpeg_path: Option<std::path::PathBuf>,
 }
 
 impl std::fmt::Display for DecodeHardwareAcceleration {

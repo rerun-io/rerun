@@ -1,5 +1,8 @@
 use re_log_types::{EntityPath, Instance};
-use re_renderer::{renderer::LineDrawDataError, PickingLayerInstanceId};
+use re_renderer::{
+    renderer::{LineDrawDataError, LineStripFlags},
+    PickingLayerInstanceId,
+};
 use re_space_view::{DataResultQuery as _, RangeResultsExt as _};
 use re_types::{
     archetypes::GeoLineStrings,
@@ -136,6 +139,9 @@ impl GeoLineStringsVisualizer {
         highlight: &SpaceViewHighlights,
     ) -> Result<(), LineDrawDataError> {
         let mut lines = re_renderer::LineDrawableBuilder::new(render_ctx);
+        lines.radius_boost_in_ui_points_for_outlines(
+            re_space_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+        );
 
         for (entity_path, batch) in &self.batches {
             let outline = highlight.entity_outline_mask(entity_path.hash());
@@ -167,6 +173,8 @@ impl GeoLineStringsVisualizer {
                             .copied()
                             .unwrap_or(walkers::Position::from_lat_lon(0.0, 0.0)),
                     ))
+                    // Looped lines should be connected with rounded corners, so we always add outward extending caps.
+                    .flags(LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS)
                     .color(*color)
                     .picking_instance_id(*instance)
                     .outline_mask_ids(

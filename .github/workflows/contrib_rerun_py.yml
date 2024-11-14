@@ -57,9 +57,6 @@ jobs:
           environments: wheel-test-min
 
       - name: Build rerun-cli
-        env:
-          # this stops `re_web_viewer_server/build.rs` from running
-          RERUN_IS_PUBLISHING: true
         run: |
           pixi run rerun-build-native-and-web-release
 

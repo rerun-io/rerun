@@ -7,8 +7,6 @@ Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/
 
 Also known as "line strips" or "polylines".
 
-**Note**: Geospatial entities are experimental.
-
 ## Components
 
 **Required**: [`GeoLineString`](../components/geo_line_string.md)
@@ -29,4 +27,12 @@ Also known as "line strips" or "polylines".
 ### Log a geospatial line string
 
 snippet: archetypes/geo_line_string_simple
+
+<picture data-inline-viewer="snippets/geo_line_string_simple">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/geo_line_strings_simple/5669983eb10906ace303755b5b5039cad75b917f/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/geo_line_strings_simple/5669983eb10906ace303755b5b5039cad75b917f/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/geo_line_strings_simple/5669983eb10906ace303755b5b5039cad75b917f/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/geo_line_strings_simple/5669983eb10906ace303755b5b5039cad75b917f/1200w.png">
+  <img src="https://static.rerun.io/geo_line_strings_simple/5669983eb10906ace303755b5b5039cad75b917f/full.png">
+</picture>
 

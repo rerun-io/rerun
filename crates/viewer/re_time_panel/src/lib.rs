@@ -1426,8 +1426,10 @@ fn time_marker_ui(
 
     // "click here to view time here"
     if let Some(pointer_pos) = pointer_pos {
-        let is_pointer_in_time_area_rect = time_area_painter.clip_rect().contains(pointer_pos);
-        let is_pointer_in_timeline_rect = timeline_rect.contains(pointer_pos);
+        let is_pointer_in_time_area_rect =
+            ui.ui_contains_pointer() && time_area_painter.clip_rect().contains(pointer_pos);
+        let is_pointer_in_timeline_rect =
+            ui.ui_contains_pointer() && timeline_rect.contains(pointer_pos);
 
         // Show preview?
         if !is_hovering_time_cursor

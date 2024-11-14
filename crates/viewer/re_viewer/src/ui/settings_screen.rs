@@ -1,8 +1,7 @@
-use egui::NumExt as _;
+use egui::{NumExt as _, Ui};
 
 use re_log_types::TimeZone;
 use re_ui::UiExt as _;
-use re_video::decode::DecodeHardwareAcceleration;
 use re_viewer_context::AppOptions;
 
 pub fn settings_screen_ui(ui: &mut egui::Ui, app_options: &mut AppOptions, keep_open: &mut bool) {
@@ -100,6 +99,9 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     ui.strong("Map view");
 
     ui.horizontal(|ui| {
+        // TODO(ab): needed for alignment, we should use egui flex instead
+        ui.set_height(19.0);
+
         ui.label("Mapbox access token:").on_hover_ui(|ui| {
             ui.markdown_ui(
                 "This token is used toe enable Mapbox-based map view backgrounds.\n\n\
@@ -117,32 +119,8 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     //
 
     separator_with_some_space(ui);
-
     ui.strong("Video");
-
-    let hardware_acceleration = &mut app_options.video_decoder_hw_acceleration;
-    ui.horizontal(|ui| {
-        ui.label("Decoder:");
-        egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
-            .selected_text(hardware_acceleration.to_string())
-            .show_ui(ui, |ui| {
-                ui.selectable_value(
-                    hardware_acceleration,
-                    DecodeHardwareAcceleration::Auto,
-                    DecodeHardwareAcceleration::Auto.to_string(),
-                ) | ui.selectable_value(
-                    hardware_acceleration,
-                    DecodeHardwareAcceleration::PreferSoftware,
-                    DecodeHardwareAcceleration::PreferSoftware.to_string(),
-                ) | ui.selectable_value(
-                    hardware_acceleration,
-                    DecodeHardwareAcceleration::PreferHardware,
-                    DecodeHardwareAcceleration::PreferHardware.to_string(),
-                )
-            });
-        // Note that the setting is part of the video's cache key, so, if it changes, the cache
-        // entries outdate automatically.
-    });
+    video_section_ui(ui, app_options);
 
     //
     // Experimental features
@@ -158,6 +136,106 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
             .re_checkbox(&mut app_options.experimental_space_view_screenshots, "Space view screenshots")
             .on_hover_text("Allow taking screenshots of 2D and 3D space views via their context menu. Does not contain labels.");
     }
+}
+
+fn video_section_ui(ui: &mut Ui, app_options: &mut AppOptions) {
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        ui.re_checkbox(
+            &mut app_options.video_decoder_override_ffmpeg_path,
+            "Override the FFmpeg binary path",
+        )
+        .on_hover_ui(|ui| {
+            ui.markdown_ui(
+                "By default, the viewer tries to automatically find a suitable FFmpeg binary in \
+                the system's `PATH`. Enabling this option allows you to specify a custom path to \
+                the FFmpeg binary.",
+            );
+        });
+
+        ui.add_enabled_ui(app_options.video_decoder_override_ffmpeg_path, |ui| {
+            ui.horizontal(|ui| {
+                // TODO(ab): needed for alignment, we should use egui flex instead
+                ui.set_height(19.0);
+
+                ui.label("Path:");
+
+                ui.add(egui::TextEdit::singleline(
+                    &mut app_options.video_decoder_ffmpeg_path,
+                ));
+            });
+        });
+
+        ffmpeg_path_status_ui(ui, app_options);
+    }
+
+    // This affects only the web target, so we don't need to show it on native.
+    #[cfg(target_arch = "wasm32")]
+    {
+        use re_video::decode::DecodeHardwareAcceleration;
+
+        let hardware_acceleration = &mut app_options.video_decoder_hw_acceleration;
+        ui.horizontal(|ui| {
+            ui.label("Decoder:");
+            egui::ComboBox::from_id_salt("video_decoder_hw_acceleration")
+                .selected_text(hardware_acceleration.to_string())
+                .show_ui(ui, |ui| {
+                    ui.selectable_value(
+                        hardware_acceleration,
+                        DecodeHardwareAcceleration::Auto,
+                        DecodeHardwareAcceleration::Auto.to_string(),
+                    );
+                    ui.selectable_value(
+                        hardware_acceleration,
+                        DecodeHardwareAcceleration::PreferSoftware,
+                        DecodeHardwareAcceleration::PreferSoftware.to_string(),
+                    );
+                    ui.selectable_value(
+                        hardware_acceleration,
+                        DecodeHardwareAcceleration::PreferHardware,
+                        DecodeHardwareAcceleration::PreferHardware.to_string(),
+                    );
+                });
+            // Note that the setting is part of the video's cache key, so, if it changes, the cache
+            // entries outdate automatically.
+        });
+    }
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+fn ffmpeg_path_status_ui(ui: &mut Ui, app_options: &AppOptions) {
+    use re_video::decode::{FFmpegVersion, FFmpegVersionParseError};
+
+    let path = app_options
+        .video_decoder_override_ffmpeg_path
+        .then(|| std::path::Path::new(&app_options.video_decoder_ffmpeg_path));
+
+    if path.is_some_and(|path| !path.is_file()) {
+        ui.error_label("The specified FFmpeg binary path does not exist or is not a file.");
+    } else {
+        let res = FFmpegVersion::for_executable(path);
+
+        match res {
+            Ok(version) => {
+                if version.is_compatible() {
+                    ui.success_label(&format!("FFmpeg found (version {version})"));
+                } else {
+                    ui.error_label(&format!("Incompatible FFmpeg version: {version}"));
+                }
+            }
+            Err(FFmpegVersionParseError::ParseVersion { raw_version }) => {
+                // We make this one a warning instead of an error because version parsing is flaky, and
+                // it might end up still working.
+                ui.warning_label(&format!(
+                    "FFmpeg binary found but unable to parse version: {raw_version}"
+                ));
+            }
+
+            Err(err) => {
+                ui.error_label(&format!("Unable to check FFmpeg version: {err}"));
+            }
+        }
+    };
 }
 
 fn separator_with_some_space(ui: &mut egui::Ui) {

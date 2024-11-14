@@ -13,7 +13,7 @@ use re_types::{
     datatypes::{TensorData, TensorDimension},
     SpaceViewClassIdentifier, View,
 };
-use re_ui::{list_item, ContextExt as _, UiExt as _};
+use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{
     gpu_bridge, ApplicableEntities, ColormapWithRange, IdentifiedViewSystem as _,
     IndicatedEntities, PerVisualizer, SpaceViewClass, SpaceViewClassRegistryError, SpaceViewId,
@@ -282,7 +282,7 @@ impl TensorSpaceView {
             if let Err(err) =
                 self.tensor_slice_ui(ctx, ui, state, view_id, dimension_labels, &slice_selection)
             {
-                ui.label(ui.ctx().error_text(err.to_string()));
+                ui.error_label(&err.to_string());
             }
         });
 

@@ -98,6 +98,7 @@ exclude = [
   'https://fonts.gstatic.com/',                                                  # Font API entrypoint, not a link.
   'https://tel.rerun.io/',                                                       # Analytics endpoint.
   'https://docs-assets.developer.apple.com/ml-research/datasets/arkitscenes/v1', # Used by arkit_scenes.
+  'https://overpass-api.de/api/interpreter',                                     # Used by openstreetmap_data example
 
   # Avoid rate limiting.
   'https://crates.io/crates/.*',                  # Avoid crates.io rate-limiting
@@ -111,6 +112,7 @@ exclude = [
   'https://link.to',
   'https://static.rerun.io/my_screenshot/',
   'https://your-hosted-asset-url.com/widget.js',
+  'file:///path/to/file',
 
   # Link fragments and data links in examples.
   'https://raw.githubusercontent.com/googlefonts/noto-emoji/', # URL fragment.

@@ -2558,6 +2558,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -2952,6 +2953,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -3329,6 +3331,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -3707,6 +3710,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -4084,6 +4088,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -4505,6 +4510,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -4851,6 +4857,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -5181,6 +5188,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -5512,6 +5520,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -5843,6 +5852,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -9077,6 +9087,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -9565,6 +9576,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -10035,6 +10047,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -10506,6 +10519,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -10956,6 +10970,7 @@ environments:
       - pypi: examples/python/nv12
       - pypi: examples/python/objectron
       - pypi: examples/python/open_photogrammetry_format
+      - pypi: examples/python/openstreetmap_data
       - pypi: examples/python/plots
       - pypi: examples/python/raw_mesh
       - pypi: examples/python/rgbd
@@ -32129,6 +32144,24 @@ packages:
   size: 2544654
   timestamp: 1725410973572
 - kind: pypi
+  name: openstreetmap-data
+  version: 0.1.0
+  path: examples/python/openstreetmap_data
+  sha256: 3b19fd64cb7d102a75ac934cd188cdd110fddca78c72701f10596f0ed8a0dff5
+  requires_dist:
+  - requests
+  - rerun-sdk
+  editable: true
+- kind: pypi
+  name: openstreetmap-data
+  version: 0.1.0
+  path: examples/python/openstreetmap_data
+  sha256: 3b19fd64cb7d102a75ac934cd188cdd110fddca78c72701f10596f0ed8a0dff5
+  requires_dist:
+  - requests
+  - rerun-sdk
+  editable: true
+- kind: pypi
   name: opt-einsum
   version: 3.4.0
   url: https://files.pythonhosted.org/packages/23/cd/066e86230ae37ed0be70aae89aabf03ca8d9f39c8aea0dec8029455b5540/opt_einsum-3.4.0-py3-none-any.whl
@@ -35347,9 +35380,9 @@ packages:
   - watchfiles ; extra == 'dev'
 - kind: pypi
   name: rerun-notebook
-  version: 0.20.0a1+dev
+  version: 0.20.0a4+dev
   path: rerun_notebook
-  sha256: f20def987d6c97a658313841861dd7ce129fde8a658647756571844989b1451e
+  sha256: 49897f2addf15f85f96f8af6dae5fac650aee0d9f1f648b3c76c54213039c56e
   requires_dist:
   - anywidget
   - jupyter-ui-poll
@@ -35441,9 +35474,9 @@ packages:
   requires_python: '>=3.8,<3.13'
 - kind: pypi
   name: rerun-sdk
-  version: 0.20.0a1+dev
+  version: 0.20.0a4+dev
   path: rerun_py
-  sha256: e794f5f2413d45a681aeb5f41547fad5e7a05285cc35f0f6723634b6f5faff01
+  sha256: 8cbedab3d2f873cf8d76548115d7016e1411b3fa7bfaa99f7b83a54c183a46e2
   requires_dist:
   - attrs>=23.1.0
   - numpy>=1.23,<2
@@ -35451,7 +35484,7 @@ packages:
   - pyarrow>=14.0.2
   - typing-extensions>=4.5
   - pytest==7.1.2 ; extra == 'tests'
-  - rerun-notebook==0.20.0a1+dev ; extra == 'notebook'
+  - rerun-notebook==0.20.0a4+dev ; extra == 'notebook'
   requires_python: '>=3.8'
   editable: true
 - kind: pypi

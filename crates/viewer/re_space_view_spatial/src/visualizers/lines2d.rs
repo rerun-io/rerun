@@ -1,5 +1,5 @@
 use re_log_types::Instance;
-use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
+use re_renderer::{renderer::LineStripFlags, LineDrawableBuilder, PickingLayerInstanceId};
 use re_types::{
     archetypes::LineStrips2D,
     components::{ClassId, Color, DrawOrder, KeypointId, LineStrip2D, Radius, ShowLabels, Text},
@@ -89,6 +89,8 @@ impl Lines2DVisualizer {
                     .add_strip_2d(strip.iter().copied().map(Into::into))
                     .color(color)
                     .radius(radius)
+                    // Looped lines should be connected with rounded corners, so we always add outward extending caps.
+                    .flags(LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS)
                     .picking_instance_id(PickingLayerInstanceId(i as _));
 
                 if let Some(outline_mask_ids) = ent_context

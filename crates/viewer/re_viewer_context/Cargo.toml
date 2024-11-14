@@ -42,6 +42,7 @@ anyhow.workspace = true
 bit-vec.workspace = true
 bitflags.workspace = true
 bytemuck.workspace = true
+directories.workspace = true
 egui_extras.workspace = true
 egui_tiles.workspace = true
 egui-wgpu.workspace = true

@@ -5,10 +5,14 @@ package rerun.remote_store.v0;
 import "rerun/v0/common.proto";
 
 service StorageNode {
-    rpc ListRecordings(ListRecordingsRequest) returns (ListRecordingsResponse) {}
+    // data API calls
     rpc Query(QueryRequest) returns (stream QueryResponse) {}
     rpc FetchRecording(FetchRecordingRequest) returns (stream FetchRecordingResponse) {}
+
+    // metadata API calls
+    rpc ListRecordings(ListRecordingsRequest) returns (ListRecordingsResponse) {}
     rpc GetRecordingMetadata(GetRecordingMetadataRequest) returns (GetRecordingMetadataResponse) {}
+    rpc UpdateRecordingMetadata(UpdateRecordingMetadataRequest) returns (UpdateRecordingMetadataResponse) {}
     rpc RegisterRecording(RegisterRecordingRequest) returns (RegisterRecordingResponse) {}
 }
 
@@ -67,6 +71,15 @@ message TimeMetadata {
     TimeRange time_range = 2;
 }
 
+// ---------------- UpdateRecordingMetadata  -----------------
+
+message UpdateRecordingMetadataRequest {
+    RecordingId recording_id = 1;
+    RecordingMetadata metadata = 2;
+}
+
+message UpdateRecordingMetadataResponse {}
+
 // ---------------- Query -----------------
 
 message QueryRequest {
@@ -93,7 +106,16 @@ enum EncoderVersion {
 
 // ----------------- ListRecordings -----------------
 
-message ListRecordingsRequest {}
+message ListRecordingsRequest {
+    // define which columns should be returned / projected
+    // we define a separate message to make it optional.
+    // If not provided, all columns should be returned
+    ColumnProjection column_projection = 1;
+}
+
+message ColumnProjection {
+    repeated string columns = 1;
+}
 
 message ListRecordingsResponse {
     repeated RecordingMetadata recordings = 1;

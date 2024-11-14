@@ -26,7 +26,7 @@ pub fn visualizer_ui(
         .lookup_result_by_path(entity_path)
         .cloned()
     else {
-        ui.error_label("Entity not found in view.");
+        ui.error_label("Entity not found in view");
         return;
     };
     let active_visualizers: Vec<_> = data_result.visualizers.iter().sorted().copied().collect();

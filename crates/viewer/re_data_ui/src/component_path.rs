@@ -1,5 +1,5 @@
 use re_log_types::ComponentPath;
-use re_ui::ContextExt as _;
+use re_ui::UiExt;
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::DataUi;
@@ -47,10 +47,7 @@ impl DataUi for ComponentPath {
                     ));
                 }
             } else {
-                ui.label(
-                    ui.ctx()
-                        .error_text(format!("Unknown component path: {self}")),
-                );
+                ui.error_label(&format!("Unknown component path: {self}"));
             }
         }
     }

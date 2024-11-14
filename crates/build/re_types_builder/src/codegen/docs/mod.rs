@@ -9,9 +9,8 @@ use itertools::Itertools;
 
 use crate::{
     codegen::{autogen_warning, common::ExampleInfo, Target},
-    objects::FieldKind,
+    objects::{FieldKind, ViewReference},
     CodeGenerator, GeneratedFiles, Object, ObjectField, ObjectKind, Objects, Reporter, Type,
-    ATTR_DOCS_VIEW_TYPES,
 };
 
 pub const DATAFRAME_VIEW_FQNAME: &str = "rerun.blueprint.views.DataframeView";
@@ -32,12 +31,6 @@ impl DocsCodeGenerator {
             docs_dir: docs_dir.into(),
         }
     }
-}
-
-struct ViewReference {
-    /// Typename of the view. Not a fully qualified name, just the name as specified on the attribute.
-    view_name: String,
-    explanation: Option<String>,
 }
 
 type ViewsPerArchetype = BTreeMap<String, Vec<ViewReference>>;
@@ -144,23 +137,9 @@ on [Entities and Components](../../concepts/entity-component.md).",
 fn collect_view_types_per_archetype(objects: &Objects) -> ViewsPerArchetype {
     let mut view_types_per_object = ViewsPerArchetype::new();
     for object in objects.objects.values() {
-        let Some(view_types) = object.try_get_attr::<String>(ATTR_DOCS_VIEW_TYPES) else {
-            continue;
-        };
-
-        let view_types = view_types
-            .split(',')
-            .map(|view_type| {
-                let mut parts = view_type.splitn(2, ':');
-                let view_name = parts.next().unwrap().trim().to_owned();
-                let explanation = parts.next().map(|s| s.trim().to_owned());
-                ViewReference {
-                    view_name,
-                    explanation,
-                }
-            })
-            .collect();
-        view_types_per_object.insert(object.fqname.clone(), view_types);
+        if let Some(view_types) = object.archetype_view_types() {
+            view_types_per_object.insert(object.fqname.clone(), view_types);
+        }
     }
 
     view_types_per_object

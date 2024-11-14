@@ -233,6 +233,11 @@ pub struct ArchetypeReflection {
     /// The name of the field in human case.
     pub display_name: &'static str,
 
+    /// The views that this archetype can be added to.
+    ///
+    /// e.g. `Spatial3DView`.
+    pub view_types: &'static [&'static str],
+
     /// All the component fields of the archetype, in the order they appear in the archetype.
     pub fields: Vec<ArchetypeFieldReflection>,
 }

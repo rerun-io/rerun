@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 
 use camino::Utf8PathBuf;
+use itertools::Itertools as _;
 use proc_macro2::TokenStream;
 use quote::{format_ident, quote};
 
@@ -217,9 +218,23 @@ fn generate_archetype_reflection(reporter: &Reporter, objects: &Objects) -> Toke
             .join("\n");
         }
 
+        let quoted_view_types = obj
+            .archetype_view_types()
+            .unwrap_or_default()
+            .iter()
+            .map(|view_type| {
+                let view_name = &view_type.view_name;
+                quote! { #view_name }
+            })
+            .collect_vec();
+
         let quoted_archetype_reflection = quote! {
             ArchetypeReflection {
                 display_name: #display_name,
+
+                view_types: &[
+                    #(#quoted_view_types,)*
+                ],
 
                 fields: vec![
                     #(#quoted_field_reflections,)*

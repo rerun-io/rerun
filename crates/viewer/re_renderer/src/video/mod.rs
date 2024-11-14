@@ -1,17 +1,16 @@
 mod chunk_decoder;
 mod player;
 
-use std::{collections::hash_map::Entry, ops::Range, sync::Arc};
+use std::{collections::hash_map::Entry, sync::Arc};
 
 use ahash::HashMap;
 use parking_lot::Mutex;
-
-use re_video::{decode::DecodeHardwareAcceleration, VideoData};
 
 use crate::{
     resource_managers::{GpuTexture2D, SourceImageDataFormat},
     RenderContext,
 };
+use re_video::{decode::DecodeSettings, VideoData};
 
 /// Error that can occur during playing videos.
 #[derive(thiserror::Error, Debug, Clone)]
@@ -64,14 +63,7 @@ pub struct VideoFrameTexture {
     pub source_pixel_format: SourceImageDataFormat,
 
     /// Meta information about the decoded frame.
-    pub frame_info: re_video::decode::FrameInfo,
-}
-
-impl VideoFrameTexture {
-    pub fn presentation_time_range(&self) -> Range<re_video::Time> {
-        self.frame_info.presentation_timestamp
-            ..self.frame_info.presentation_timestamp + self.frame_info.duration
-    }
+    pub frame_info: Option<re_video::decode::FrameInfo>,
 }
 
 /// Identifier for an independent video decoding stream.
@@ -94,7 +86,7 @@ pub struct Video {
     debug_name: String,
     data: Arc<re_video::VideoData>,
     players: Mutex<HashMap<VideoPlayerStreamId, PlayerEntry>>,
-    decode_hw_acceleration: DecodeHardwareAcceleration,
+    decode_settings: DecodeSettings,
 }
 
 impl Video {
@@ -102,18 +94,14 @@ impl Video {
     ///
     /// Currently supports the following media types:
     /// - `video/mp4`
-    pub fn load(
-        debug_name: String,
-        data: Arc<VideoData>,
-        decode_hw_acceleration: DecodeHardwareAcceleration,
-    ) -> Self {
+    pub fn load(debug_name: String, data: Arc<VideoData>, decode_settings: DecodeSettings) -> Self {
         let players = Mutex::new(HashMap::default());
 
         Self {
             debug_name,
             data,
             players,
-            decode_hw_acceleration,
+            decode_settings,
         }
     }
 
@@ -144,8 +132,6 @@ impl Video {
     /// empty.
     ///
     /// The time is specified in seconds since the start of the video.
-    /// This may not be equal to the presentation timestamp as it may have an offset applied,
-    /// see [`re_video::SamplesStatistics::minimum_presentation_timestamp`].
     pub fn frame_at(
         &self,
         render_context: &RenderContext,
@@ -170,7 +156,7 @@ impl Video {
                     &self.debug_name,
                     render_context,
                     self.data.clone(),
-                    self.decode_hw_acceleration,
+                    &self.decode_settings,
                 )?;
                 vacant_entry.insert(PlayerEntry {
                     player: new_player,

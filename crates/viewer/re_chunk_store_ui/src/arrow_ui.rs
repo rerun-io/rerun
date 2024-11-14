@@ -43,10 +43,7 @@ pub(crate) fn arrow_ui(ui: &mut egui::Ui, array: &dyn arrow2::array::Array) {
                 let mut string = String::new();
                 match display(&mut string, 0) {
                     Ok(_) => ui.monospace(&string),
-                    Err(err) => ui.error_label("error").on_hover_ui(|ui| {
-                        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Wrap);
-                        ui.error_label(&format!("{err}"));
-                    }),
+                    Err(err) => ui.error_with_details_on_hover(&err.to_string()),
                 };
                 return;
             } else {

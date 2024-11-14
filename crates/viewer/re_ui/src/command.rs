@@ -310,7 +310,14 @@ impl UICommand {
             Self::ToggleSelectionPanel => Some(ctrl_shift(Key::S)),
             Self::ToggleTimePanel => Some(ctrl_shift(Key::T)),
             Self::ToggleChunkStoreBrowser => Some(ctrl_shift(Key::D)),
-            Self::Settings => None,
+            Self::Settings => {
+                if cfg!(target_os = "macos") {
+                    Some(KeyboardShortcut::new(Modifiers::MAC_CMD, Key::Comma))
+                } else {
+                    // TODO(emilk): shortcut for web and non-mac too
+                    None
+                }
+            }
 
             #[cfg(debug_assertions)]
             Self::ToggleBlueprintInspectionPanel => Some(ctrl_shift(Key::I)),

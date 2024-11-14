@@ -93,9 +93,9 @@ impl Environment {
     pub fn detect() -> Self {
         let is_in_rerun_workspace = is_tracked_env_var_set("IS_IN_RERUN_WORKSPACE");
 
-        if is_tracked_env_var_set("RERUN_IS_PUBLISHING") {
-            // "RERUN_IS_PUBLISHING" is set by `scripts/ci/crates.py`
-            eprintln!("Environment: env-var RERUN_IS_PUBLISHING is set");
+        if is_tracked_env_var_set("RERUN_IS_PUBLISHING_CRATES") {
+            // "RERUN_IS_PUBLISHING_CRATES" is set by `scripts/ci/crates.py`
+            eprintln!("Environment: env-var RERUN_IS_PUBLISHING_CRATES is set");
             Self::PublishingCrates
         } else if is_in_rerun_workspace && std::env::var("CI").is_ok() {
             // `CI` is an env-var set by GitHub actions.

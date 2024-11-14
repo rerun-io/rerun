@@ -30,7 +30,8 @@ use crate::{
 };
 
 use super::{
-    entity_iterator::process_archetype, SpatialViewVisualizerData, UiLabel, UiLabelTarget,
+    entity_iterator::process_archetype, SpatialViewVisualizerData, UiLabel, UiLabelStyle,
+    UiLabelTarget,
 };
 
 pub struct VideoFrameReferenceVisualizer {
@@ -365,7 +366,7 @@ impl VideoFrameReferenceVisualizer {
         );
         self.data.ui_labels.push(UiLabel {
             text: error_string,
-            color: egui::Color32::LIGHT_RED,
+            style: UiLabelStyle::Error,
             target: UiLabelTarget::Rect(label_target_rect),
             labeled_instance: re_entity_db::InstancePathHash::entity_all(entity_path),
         });
@@ -422,7 +423,7 @@ fn latest_at_query_video_from_datastore(
             blob_row_id,
             &blob,
             media_type.as_ref(),
-            ctx.app_options.video_decoder_hw_acceleration,
+            ctx.app_options.video_decoder_settings(),
         )
     });
     Some((video, blob))

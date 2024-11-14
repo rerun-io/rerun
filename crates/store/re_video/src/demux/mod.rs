@@ -9,6 +9,7 @@ pub mod mp4;
 
 use std::{collections::BTreeMap, ops::Range};
 
+use bit_vec::BitVec;
 use itertools::Itertools as _;
 
 use super::{Time, Timescale};
@@ -58,6 +59,8 @@ pub struct VideoData {
     ///
     /// Samples must be decoded in decode-timestamp order,
     /// and should be presented in composition-timestamp order.
+    ///
+    /// In MP4, one sample is one frame.
     pub samples: Vec<Sample>,
 
     /// Meta information about the samples.
@@ -72,41 +75,43 @@ pub struct VideoData {
 /// Meta informationa about the video samples.
 #[derive(Clone, Debug)]
 pub struct SamplesStatistics {
-    /// The smallest presentation timestamp observed in this video.
-    ///
-    /// This is typically 0, but in the presence of B-frames, it may be non-zero.
-    /// In fact, many formats don't require this to be zero, but video players typically
-    /// normalize the shown time to start at zero.
-    /// Note that timestamps in the [`Sample`]s are *not* automatically adjusted with this value.
-    // This is roughly equivalent to FFmpeg's internal `min_corrected_pts`
-    // https://github.com/FFmpeg/FFmpeg/blob/4047b887fc44b110bccb1da09bcb79d6e454b88b/libavformat/isom.h#L202
-    // (unlike us, this handles a bunch more edge cases but it fulfills the same role)
-    // To learn more about this I recommend reading the patch that introduced this in FFmpeg:
-    // https://patchwork.ffmpeg.org/project/ffmpeg/patch/20170606181601.25187-1-isasi@google.com/#12592
-    pub minimum_presentation_timestamp: Time,
-
     /// Whether all decode timestamps are equal to presentation timestamps.
     ///
     /// If true, the video typically has no B-frames as those require frame reordering.
     pub dts_always_equal_pts: bool,
+
+    /// If `dts_always_equal_pts` is false, then this gives for each sample whether its PTS is the highest seen so far.
+    /// If `dts_always_equal_pts` is true, then this is left as `None`.
+    /// This is used for optimizing PTS search.
+    pub has_sample_highest_pts_so_far: Option<BitVec>,
 }
 
 impl SamplesStatistics {
     pub fn new(samples: &[Sample]) -> Self {
         re_tracing::profile_function!();
 
-        let minimum_presentation_timestamp = samples
-            .iter()
-            .map(|s| s.presentation_timestamp)
-            .min()
-            .unwrap_or_default();
         let dts_always_equal_pts = samples
             .iter()
             .all(|s| s.decode_timestamp == s.presentation_timestamp);
 
+        let mut biggest_pts_so_far = Time::MIN;
+        let has_sample_highest_pts_so_far = (!dts_always_equal_pts).then(|| {
+            samples
+                .iter()
+                .map(move |sample| {
+                    if sample.presentation_timestamp > biggest_pts_so_far {
+                        biggest_pts_so_far = sample.presentation_timestamp;
+                        true
+                    } else {
+                        false
+                    }
+                })
+                .collect()
+        });
+
         Self {
-            minimum_presentation_timestamp,
             dts_always_equal_pts,
+            has_sample_highest_pts_so_far,
         }
     }
 }
@@ -277,23 +282,115 @@ impl VideoData {
     /// Determines the video timestamps of all frames inside a video, returning raw time values.
     ///
     /// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
-    /// These are *not* necessarily the same as the presentation timestamps, as the returned timestamps are
-    /// normalized respect to the start of the video, see [`SamplesStatistics::minimum_presentation_timestamp`].
     pub fn frame_timestamps_ns(&self) -> impl Iterator<Item = i64> + '_ {
         // Segments are guaranteed to be sorted among each other, but within a segment,
         // presentation timestamps may not be sorted since this is sorted by decode timestamps.
         self.gops.iter().flat_map(|seg| {
-            self.samples[seg.range()]
+            self.samples[seg.sample_range_usize()]
                 .iter()
                 .map(|sample| sample.presentation_timestamp)
                 .sorted()
-                .map(|pts| {
-                    pts.into_nanos_since_start(
-                        self.timescale,
-                        self.samples_statistics.minimum_presentation_timestamp,
-                    )
-                })
+                .map(|pts| pts.into_nanos(self.timescale))
         })
+    }
+
+    /// For a given decode (!) timestamp, returns the index of the first sample whose
+    /// decode timestamp is lesser than or equal to the given timestamp.
+    fn latest_sample_index_at_decode_timestamp(
+        samples: &[Sample],
+        decode_time: Time,
+    ) -> Option<usize> {
+        latest_at_idx(samples, |sample| sample.decode_timestamp, &decode_time)
+    }
+
+    /// See [`Self::latest_sample_index_at_presentation_timestamp`], split out for testing purposes.
+    fn latest_sample_index_at_presentation_timestamp_internal(
+        samples: &[Sample],
+        sample_statistics: &SamplesStatistics,
+        presentation_timestamp: Time,
+    ) -> Option<usize> {
+        // Find the latest sample where `decode_timestamp <= presentation_timestamp`.
+        // Because `decode <= presentation`, we never have to look further backwards in the
+        // video than this.
+        let decode_sample_idx =
+            Self::latest_sample_index_at_decode_timestamp(samples, presentation_timestamp)?;
+
+        // It's very common that dts==pts in which case we're done!
+        let Some(has_sample_highest_pts_so_far) =
+            sample_statistics.has_sample_highest_pts_so_far.as_ref()
+        else {
+            debug_assert!(sample_statistics.dts_always_equal_pts);
+            return Some(decode_sample_idx);
+        };
+        debug_assert!(has_sample_highest_pts_so_far.len() == samples.len());
+
+        // Search backwards, starting at `decode_sample_idx`, looking for
+        // the first sample where `sample.presentation_timestamp <= presentation_timestamp`.
+        // I.e. the sample with the biggest PTS that is smaller or equal to the requested PTS.
+        //
+        // The tricky part is that we can't just take the first sample with a presentation timestamp that matches
+        // since smaller presentation timestamps may still show up further back!
+        let mut best_index = usize::MAX;
+        let mut best_pts = Time::MIN;
+        for sample_idx in (0..=decode_sample_idx).rev() {
+            let sample = &samples[sample_idx];
+
+            if sample.presentation_timestamp == presentation_timestamp {
+                // Clean hit. Take this one, no questions asked :)
+                // (assuming that each PTS is unique!)
+                return Some(sample_idx);
+            }
+
+            if sample.presentation_timestamp < presentation_timestamp
+                && sample.presentation_timestamp > best_pts
+            {
+                best_pts = sample.presentation_timestamp;
+                best_index = sample_idx;
+            }
+
+            if best_pts != Time::MIN && has_sample_highest_pts_so_far[sample_idx] {
+                // We won't see any bigger PTS values anymore, meaning we're as close as we can get to the requested PTS!
+                return Some(best_index);
+            }
+        }
+
+        None
+    }
+
+    /// For a given presentation timestamp, return the index of the first sample
+    /// whose presentation timestamp is lesser than or equal to the given timestamp.
+    ///
+    /// Remember that samples after (i.e. with higher index) may have a *lower* presentation time
+    /// if the stream has sample reordering!
+    pub fn latest_sample_index_at_presentation_timestamp(
+        &self,
+        presentation_timestamp: Time,
+    ) -> Option<usize> {
+        Self::latest_sample_index_at_presentation_timestamp_internal(
+            &self.samples,
+            &self.samples_statistics,
+            presentation_timestamp,
+        )
+    }
+
+    /// For a given decode (!) timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
+    pub fn gop_index_containing_decode_timestamp(&self, decode_time: Time) -> Option<usize> {
+        latest_at_idx(&self.gops, |gop| gop.decode_start_time, &decode_time)
+    }
+
+    /// For a given presentation timestamp, return the index of the group of pictures (GOP) index containing the given timestamp.
+    pub fn gop_index_containing_presentation_timestamp(
+        &self,
+        presentation_timestamp: Time,
+    ) -> Option<usize> {
+        let requested_sample_index =
+            self.latest_sample_index_at_presentation_timestamp(presentation_timestamp)?;
+
+        // Do a binary search through GOPs by the decode timestamp of the found sample
+        // to find the GOP that contains the sample.
+        self.gop_index_containing_decode_timestamp(
+            self.samples[requested_sample_index].decode_timestamp,
+        )
     }
 }
 
@@ -303,7 +400,7 @@ impl VideoData {
 #[derive(Debug, Clone)]
 pub struct GroupOfPictures {
     /// Decode timestamp of the first sample in this GOP, in time units.
-    pub start: Time,
+    pub decode_start_time: Time,
 
     /// Range of samples contained in this GOP.
     pub sample_range: Range<u32>,
@@ -311,7 +408,7 @@ pub struct GroupOfPictures {
 
 impl GroupOfPictures {
     /// The GOP's `sample_range` mapped to `usize` for slicing.
-    pub fn range(&self) -> Range<usize> {
+    pub fn sample_range_usize(&self) -> Range<usize> {
         Range {
             start: self.sample_range.start as usize,
             end: self.sample_range.end as usize,
@@ -336,8 +433,25 @@ impl GroupOfPictures {
 /// > The decoding of each access unit results in one decoded picture.
 #[derive(Debug, Clone)]
 pub struct Sample {
-    /// Is t his the start of a new [`GroupOfPictures`]?
+    /// Is this the start of a new [`GroupOfPictures`]?
+    ///
+    /// This probably means this is a _keyframe_, and that and entire frame
+    /// can be decoded from only this one sample (though I'm not 100% sure).
     pub is_sync: bool,
+
+    /// Which sample is this in the video?
+    ///
+    /// This is the order of which the samples appear in the container,
+    /// which is usually ordered by [`Self::decode_timestamp`].
+    pub sample_idx: usize,
+
+    /// Which frame does this sample belong to?
+    ///
+    /// This is on the assumption that each sample produces a single frame,
+    /// which is true for MP4.
+    ///
+    /// This is the index of samples ordered by [`Self::presentation_timestamp`].
+    pub frame_nr: usize,
 
     /// Time at which this sample appears in the decoded bitstream, in time units.
     ///
@@ -378,6 +492,8 @@ impl Sample {
             .to_vec();
         Some(Chunk {
             data,
+            sample_idx: self.sample_idx,
+            frame_nr: self.frame_nr,
             decode_timestamp: self.decode_timestamp,
             presentation_timestamp: self.presentation_timestamp,
             duration: self.duration,
@@ -458,5 +574,149 @@ impl std::fmt::Debug for VideoData {
                 &self.samples.iter().enumerate().collect::<Vec<_>>(),
             )
             .finish()
+    }
+}
+
+/// Returns the index of:
+/// - The index of `needle` in `v`, if it exists
+/// - The index of the first element in `v` that is lesser than `needle`, if it exists
+/// - `None`, if `v` is empty OR `needle` is greater than all elements in `v`
+pub fn latest_at_idx<T, K: Ord>(v: &[T], key: impl Fn(&T) -> K, needle: &K) -> Option<usize> {
+    if v.is_empty() {
+        return None;
+    }
+
+    let idx = v.partition_point(|x| key(x) <= *needle);
+
+    if idx == 0 {
+        // If idx is 0, then all elements are greater than the needle
+        if &key(&v[0]) > needle {
+            return None;
+        }
+    }
+
+    Some(idx.saturating_sub(1))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_latest_at_idx() {
+        let v = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        assert_eq!(latest_at_idx(&v, |v| *v, &0), None);
+        assert_eq!(latest_at_idx(&v, |v| *v, &1), Some(0));
+        assert_eq!(latest_at_idx(&v, |v| *v, &2), Some(1));
+        assert_eq!(latest_at_idx(&v, |v| *v, &3), Some(2));
+        assert_eq!(latest_at_idx(&v, |v| *v, &4), Some(3));
+        assert_eq!(latest_at_idx(&v, |v| *v, &5), Some(4));
+        assert_eq!(latest_at_idx(&v, |v| *v, &6), Some(5));
+        assert_eq!(latest_at_idx(&v, |v| *v, &7), Some(6));
+        assert_eq!(latest_at_idx(&v, |v| *v, &8), Some(7));
+        assert_eq!(latest_at_idx(&v, |v| *v, &9), Some(8));
+        assert_eq!(latest_at_idx(&v, |v| *v, &10), Some(9));
+        assert_eq!(latest_at_idx(&v, |v| *v, &11), Some(9));
+        assert_eq!(latest_at_idx(&v, |v| *v, &1000), Some(9));
+    }
+
+    #[test]
+    fn test_latest_sample_index_at_presentation_timestamp() {
+        // This is a snippet of real world data!
+        let pts = [
+            0, 1024, 512, 256, 768, 2048, 1536, 1280, 1792, 3072, 2560, 2304, 2816, 4096, 3584,
+            3328, 3840, 4864, 4352, 4608, 5888, 5376, 5120, 5632, 6912, 6400, 6144, 6656, 7936,
+            7424, 7168, 7680, 8960, 8448, 8192, 8704, 9984, 9472, 9216, 9728, 11008, 10496, 10240,
+            10752, 12032, 11520, 11264, 11776, 13056, 12544,
+        ];
+        let dts = [
+            -512, -256, 0, 256, 512, 768, 1024, 1280, 1536, 1792, 2048, 2304, 2560, 2816, 3072,
+            3328, 3584, 3840, 4096, 4352, 4608, 4864, 5120, 5376, 5632, 5888, 6144, 6400, 6656,
+            6912, 7168, 7424, 7680, 7936, 8192, 8448, 8704, 8960, 9216, 9472, 9728, 9984, 10240,
+            10496, 10752, 11008, 11264, 11520, 11776, 12032,
+        ];
+
+        // Checking our basic assumptions about this data:
+        assert_eq!(pts.len(), dts.len());
+        assert!(pts.iter().zip(dts.iter()).all(|(pts, dts)| dts <= pts));
+
+        // Create fake samples from this.
+        let samples = pts
+            .into_iter()
+            .zip(dts)
+            .enumerate()
+            .map(|(sample_idx, (pts, dts))| Sample {
+                is_sync: false,
+                sample_idx,
+                frame_nr: 0, // unused
+                decode_timestamp: Time(dts),
+                presentation_timestamp: Time(pts),
+                duration: Time(1),
+                byte_offset: 0,
+                byte_length: 0,
+            })
+            .collect::<Vec<_>>();
+
+        let sample_statistics = SamplesStatistics::new(&samples);
+        assert!(!sample_statistics.dts_always_equal_pts);
+
+        // Test queries on the samples.
+        let query_pts = |pts| {
+            VideoData::latest_sample_index_at_presentation_timestamp_internal(
+                &samples,
+                &sample_statistics,
+                pts,
+            )
+        };
+
+        // Check that query for all exact positions works as expected using brute force search as the reference.
+        for (idx, sample) in samples.iter().enumerate() {
+            assert_eq!(Some(idx), query_pts(sample.presentation_timestamp));
+        }
+
+        // Check that for slightly offsetted positions the query is still correct.
+        // This works because for this dataset we know the minimum presentation timesetampe distance is always 256.
+        for (idx, sample) in samples.iter().enumerate() {
+            assert_eq!(
+                Some(idx),
+                query_pts(sample.presentation_timestamp + Time(1))
+            );
+            assert_eq!(
+                Some(idx),
+                query_pts(sample.presentation_timestamp + Time(255))
+            );
+        }
+
+        // A few hardcoded cases - both for illustrative purposes and to make sure the generic tests above are correct.
+
+        // Querying before the first sample.
+        assert_eq!(None, query_pts(Time(-1)));
+        assert_eq!(None, query_pts(Time(-123)));
+
+        // Querying for the first sample
+        assert_eq!(Some(0), query_pts(Time(0)));
+        assert_eq!(Some(0), query_pts(Time(1)));
+        assert_eq!(Some(0), query_pts(Time(88)));
+        assert_eq!(Some(0), query_pts(Time(255)));
+
+        // The next sample is a jump in index!
+        assert_eq!(Some(3), query_pts(Time(256)));
+        assert_eq!(Some(3), query_pts(Time(257)));
+        assert_eq!(Some(3), query_pts(Time(400)));
+        assert_eq!(Some(3), query_pts(Time(511)));
+
+        // And the one after that should jump back again.
+        assert_eq!(Some(2), query_pts(Time(512)));
+        assert_eq!(Some(2), query_pts(Time(513)));
+        assert_eq!(Some(2), query_pts(Time(600)));
+        assert_eq!(Some(2), query_pts(Time(767)));
+
+        // And another one!
+        assert_eq!(Some(4), query_pts(Time(768)));
+        assert_eq!(Some(4), query_pts(Time(1023)));
+
+        // Test way outside of the range.
+        // (this is not the last element in the list since that one doesn't have the highest PTS)
+        assert_eq!(Some(48), query_pts(Time(123123123123123123)));
     }
 }

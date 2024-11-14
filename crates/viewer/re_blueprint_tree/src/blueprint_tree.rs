@@ -187,7 +187,9 @@ impl BlueprintTree {
         let container_id = blueprint.root_container;
 
         let Some(container_blueprint) = blueprint.containers.get(&container_id) else {
-            re_log::warn_once!("Cannot find root container {container_id}");
+            // This happens after a blueprint reset (or there was no blueprint).
+            // TODO(#8056): refactor all of this
+            re_log::debug!("Cannot find root {container_id} in BlueprintTree (b/c recent reset?)");
             return;
         };
 

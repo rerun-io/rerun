@@ -3,7 +3,10 @@
 use std::{
     collections::BTreeMap,
     process::ChildStdin,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{
+        atomic::{AtomicBool, AtomicI32, Ordering},
+        Arc,
+    },
 };
 
 use crossbeam::channel::{Receiver, Sender};
@@ -19,29 +22,34 @@ use crate::{
         ffmpeg_h264::{
             nalu::{NalHeader, NalUnitType, NAL_START_CODE},
             sps::H264Sps,
+            FFmpegVersion, FFMPEG_MINIMUM_VERSION_MAJOR, FFMPEG_MINIMUM_VERSION_MINOR,
         },
         AsyncDecoder, Chunk, Frame, FrameContent, FrameInfo, OutputCallback,
     },
     PixelFormat, Time,
 };
 
-// FFmpeg 5.1 "Riemann" is from 2022-07-22.
-// It's simply the oldest I tested manually as of writing. We might be able to go lower.
-const FFMPEG_MINIMUM_VERSION_MAJOR: u32 = 5;
-const FFMPEG_MINIMUM_VERSION_MINOR: u32 = 1;
+use super::version::FFmpegVersionParseError;
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("Couldn't find an installation of the FFmpeg executable.")]
-    FfmpegNotInstalled {
-        /// Download URL for the latest version of `FFmpeg` on the current platform.
-        /// None if the platform is not supported.
-        // TODO(andreas): as of writing, ffmpeg-sidecar doesn't define a download URL for linux arm.
-        download_url: Option<&'static str>,
-    },
+    FFmpegNotInstalled,
 
     #[error("Failed to start FFmpeg: {0}")]
     FailedToStartFfmpeg(std::io::Error),
+
+    #[error("FFmpeg version is {actual_version}. Only versions >= {minimum_version_major}.{minimum_version_minor} are officially supported.")]
+    UnsupportedFFmpegVersion {
+        actual_version: FFmpegVersion,
+        minimum_version_major: u32,
+        minimum_version_minor: u32,
+    },
+
+    // TODO(andreas): This error can have a variety of reasons and is as such redundant to some of the others.
+    // It works with an inner error because some of the error sources are behind an anyhow::Error inside of ffmpeg-sidecar.
+    #[error(transparent)]
+    FailedToDetermineFFmpegVersion(FFmpegVersionParseError),
 
     #[error("Failed to get stdin handle")]
     NoStdin,
@@ -82,25 +90,43 @@ pub enum Error {
 
 impl From<Error> for crate::decode::Error {
     fn from(err: Error) -> Self {
-        if let Error::FfmpegNotInstalled { download_url } = err {
-            Self::FfmpegNotInstalled { download_url }
-        } else {
-            Self::Ffmpeg(std::sync::Arc::new(err))
-        }
+        Self::Ffmpeg(std::sync::Arc::new(err))
     }
 }
 
 /// ffmpeg does not tell us the timestamp/duration of a given frame, so we need to remember it.
-#[derive(Clone)]
-struct FfmpegFrameInfo {
+#[derive(Clone, Debug)]
+struct FFmpegFrameInfo {
+    /// The start of a new [`crate::demux::GroupOfPictures`]?
+    ///
+    /// This probably means this is a _keyframe_, and that and entire frame
+    /// can be decoded from only this one sample (though I'm not 100% sure).
+    is_sync: bool,
+
+    /// Which sample in the video is this from?
+    ///
+    /// In MP4, one sample is one frame, but we may be reordering samples when decoding.
+    ///
+    /// This is the order of which the samples appear in the container,
+    /// which is usually ordered by [`Self::decode_timestamp`].
+    sample_idx: usize,
+
+    /// Which frame is this?
+    ///
+    /// This is on the assumption that each sample produces a single frame,
+    /// which is true for MP4.
+    ///
+    /// This is the index of frames ordered by [`Self::presentation_timestamp`].
+    frame_nr: usize,
+
     presentation_timestamp: Time,
     duration: Time,
     decode_timestamp: Time,
 }
 
-enum FfmpegFrameData {
+enum FFmpegFrameData {
     Chunk(Chunk),
-    EndOfStream,
+    Quit,
 }
 
 /// Wraps an stdin with a shared shutdown boolean.
@@ -117,7 +143,7 @@ impl StdinWithShutdown {
 
 impl std::io::Write for StdinWithShutdown {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
-        if self.shutdown.load(std::sync::atomic::Ordering::Acquire) {
+        if self.shutdown.load(Ordering::Acquire) {
             Err(std::io::Error::new(Self::SHUTDOWN_ERROR_KIND, "shutdown"))
         } else {
             self.stdin.write(buf)
@@ -125,7 +151,7 @@ impl std::io::Write for StdinWithShutdown {
     }
 
     fn flush(&mut self) -> std::io::Result<()> {
-        if self.shutdown.load(std::sync::atomic::Ordering::Acquire) {
+        if self.shutdown.load(Ordering::Acquire) {
             Err(std::io::Error::new(Self::SHUTDOWN_ERROR_KIND, "shutdown"))
         } else {
             self.stdin.flush()
@@ -133,17 +159,23 @@ impl std::io::Write for StdinWithShutdown {
     }
 }
 
-struct FfmpegProcessAndListener {
+/// Encapsulates the running of an ffmpeg process.
+///
+/// Dropping this closes the process.
+struct FFmpegProcessAndListener {
     ffmpeg: FfmpegChild,
 
     /// For sending frame timestamps to the ffmpeg listener thread.
-    frame_info_tx: Sender<FfmpegFrameInfo>,
+    frame_info_tx: Sender<FFmpegFrameInfo>,
 
     /// For sending chunks to the ffmpeg write thread.
-    frame_data_tx: Sender<FfmpegFrameData>,
+    frame_data_tx: Sender<FFmpegFrameData>,
 
     listen_thread: Option<std::thread::JoinHandle<()>>,
     write_thread: Option<std::thread::JoinHandle<()>>,
+
+    /// Number of samples submitted to ffmpeg that has not yet been outputted by ffmpeg.
+    outstanding_frames: Arc<AtomicI32>,
 
     /// If true, the write thread will not report errors. Used upon exit, so the write thread won't log spam on the hung up stdin.
     stdin_shutdown: Arc<AtomicBool>,
@@ -152,19 +184,14 @@ struct FfmpegProcessAndListener {
     on_output: Arc<Mutex<Option<Arc<OutputCallback>>>>,
 }
 
-impl FfmpegProcessAndListener {
+impl FFmpegProcessAndListener {
     fn new(
         debug_name: &str,
         on_output: Arc<OutputCallback>,
         avcc: re_mp4::Avc1Box,
+        ffmpeg_path: Option<&std::path::Path>,
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
-
-        if !ffmpeg_sidecar::command::ffmpeg_is_installed() {
-            return Err(Error::FfmpegNotInstalled {
-                download_url: ffmpeg_sidecar::download::ffmpeg_download_url().ok(),
-            });
-        }
 
         let sps_result = H264Sps::parse_from_avcc(&avcc);
         if let Ok(sps) = &sps_result {
@@ -204,7 +231,13 @@ impl FfmpegProcessAndListener {
             }
         };
 
-        let mut ffmpeg = FfmpegCommand::new()
+        let mut ffmpeg_command = if let Some(ffmpeg_path) = ffmpeg_path {
+            FfmpegCommand::new_with_path(ffmpeg_path)
+        } else {
+            FfmpegCommand::new()
+        };
+
+        let mut ffmpeg = ffmpeg_command
             // Keep banner enabled so we can check on the version more easily.
             //.hide_banner()
             // "Reduce the latency introduced by buffering during initial input streams analysis."
@@ -245,6 +278,7 @@ impl FfmpegProcessAndListener {
         let (frame_info_tx, frame_info_rx) = crossbeam::channel::unbounded();
         let (frame_data_tx, frame_data_rx) = crossbeam::channel::unbounded();
 
+        let outstanding_frames = Arc::new(AtomicI32::new(0));
         let stdin_shutdown = Arc::new(AtomicBool::new(false));
 
         // Mutex protect `on_output` so that we can shut down the threads at a defined point in time at which we
@@ -256,12 +290,14 @@ impl FfmpegProcessAndListener {
             .spawn({
                 let on_output = on_output.clone();
                 let debug_name = debug_name.to_owned();
+                let outstanding_frames = outstanding_frames.clone();
                 move || {
                     read_ffmpeg_output(
                         &debug_name,
                         ffmpeg_iterator,
                         &frame_info_rx,
                         &pixel_format,
+                        &outstanding_frames,
                         on_output.as_ref(),
                     );
                 }
@@ -289,6 +325,7 @@ impl FfmpegProcessAndListener {
 
         Ok(Self {
             ffmpeg,
+            outstanding_frames,
             frame_info_tx,
             frame_data_tx,
             listen_thread: Some(listen_thread),
@@ -297,9 +334,43 @@ impl FfmpegProcessAndListener {
             on_output,
         })
     }
+
+    fn submit_chunk(&mut self, chunk: Chunk) -> Result<(), Error> {
+        // We send the information about this chunk first.
+        // Chunks are defined to always yield a single frame.
+        let frame_info = FFmpegFrameInfo {
+            is_sync: chunk.is_sync,
+            sample_idx: chunk.sample_idx,
+            frame_nr: chunk.frame_nr,
+            presentation_timestamp: chunk.presentation_timestamp,
+            decode_timestamp: chunk.decode_timestamp,
+            duration: chunk.duration,
+        };
+
+        let data = FFmpegFrameData::Chunk(chunk);
+
+        if self.frame_info_tx.send(frame_info).is_err() || self.frame_data_tx.send(data).is_err() {
+            Err(
+                if let Ok(exit_code) = self.ffmpeg.as_inner_mut().try_wait() {
+                    Error::FfmpegUnexpectedExit(exit_code)
+                } else {
+                    Error::BrokenFrameInfoChannel
+                },
+            )
+        } else {
+            self.outstanding_frames.fetch_add(1, Ordering::Relaxed);
+
+            Ok(())
+        }
+    }
+
+    fn end_of_video(&mut self) {
+        // Close stdin. That will let ffmpeg know that it should flush its buffers.
+        self.frame_data_tx.send(FFmpegFrameData::Quit).ok();
+    }
 }
 
-impl Drop for FfmpegProcessAndListener {
+impl Drop for FFmpegProcessAndListener {
     fn drop(&mut self) {
         re_tracing::profile_function!();
 
@@ -311,10 +382,9 @@ impl Drop for FfmpegProcessAndListener {
         }
 
         // Notify (potentially wake up) the stdin write thread to stop it (it might be sleeping).
-        self.frame_data_tx.send(FfmpegFrameData::EndOfStream).ok();
+        self.frame_data_tx.send(FFmpegFrameData::Quit).ok();
         // Kill stdin for the write thread. This helps cancelling ongoing stream write operations.
-        self.stdin_shutdown
-            .store(true, std::sync::atomic::Ordering::Release);
+        self.stdin_shutdown.store(true, Ordering::Release);
 
         // Kill the ffmpeg process itself.
         // It's important that we wait for it to finish, otherwise the process may enter a zombie state, see https://en.wikipedia.org/wiki/Zombie_process.
@@ -354,12 +424,17 @@ impl Drop for FfmpegProcessAndListener {
                 }
             }
         }
+
+        re_log::trace!(
+            "Outstanding frames after shutting down ffmpeg: {}",
+            self.outstanding_frames.load(Ordering::Relaxed)
+        );
     }
 }
 
 fn write_ffmpeg_input(
     ffmpeg_stdin: &mut dyn std::io::Write,
-    frame_data_rx: &Receiver<FfmpegFrameData>,
+    frame_data_rx: &Receiver<FFmpegFrameData>,
     on_output: &Mutex<Option<Arc<OutputCallback>>>,
     avcc: &re_mp4::Avc1Box,
 ) {
@@ -367,8 +442,25 @@ fn write_ffmpeg_input(
 
     while let Ok(data) = frame_data_rx.recv() {
         let chunk = match data {
-            FfmpegFrameData::Chunk(chunk) => chunk,
-            FfmpegFrameData::EndOfStream => break,
+            FFmpegFrameData::Chunk(chunk) => chunk,
+            FFmpegFrameData::Quit => {
+                // Try to flush out the last frames from ffmpeg with an EndSequence/EndStream NAL units.
+                // Unfortunatelt this doesn't help, at least not for https://github.com/rerun-io/rerun/issues/8073
+                let end_nals: Vec<u8> = [
+                    NAL_START_CODE,
+                    &[NalHeader::new(NalUnitType::EndSequence, 0).0],
+                    NAL_START_CODE,
+                    &[NalHeader::new(NalUnitType::EndStream, 0).0],
+                ]
+                .concat();
+                write_bytes(ffmpeg_stdin, &end_nals).ok();
+
+                // NOTE(emilk): I've also tried writing `NalUnitType::AccessUnitDelimiter` here, but to no avail.
+
+                ffmpeg_stdin.flush().ok();
+
+                break;
+            }
         };
 
         if let Err(err) = write_avc_chunk_to_nalu_stream(avcc, ffmpeg_stdin, &chunk, &mut state) {
@@ -387,20 +479,117 @@ fn write_ffmpeg_input(
             }
         } else {
             ffmpeg_stdin.flush().ok();
+            re_log::trace!("Wrote chunk {} to ffmpeg", chunk.sample_idx);
         }
+    }
+}
+
+struct FrameBuffer {
+    /// Received frame-infos, waiting to be matched to output frames.
+    ///
+    /// Sorted by their presentation timestamp.
+    pending: BTreeMap<Time, FFmpegFrameInfo>,
+
+    /// Hightess DTC (Decoder timestamp) encountered so far.
+    highest_dts: Time,
+}
+
+impl FrameBuffer {
+    fn new() -> Self {
+        Self {
+            pending: BTreeMap::new(),
+            highest_dts: Time::MIN,
+        }
+    }
+
+    fn on_frame(
+        &mut self,
+        debug_name: &str,
+        pixel_format: &PixelFormat,
+        frame_info_rx: &Receiver<FFmpegFrameInfo>,
+        frame: ffmpeg_sidecar::event::OutputVideoFrame,
+    ) -> Option<Frame> {
+        // We input frames into ffmpeg in decode (DTS) order, and so that's
+        // also the order we will receive the `FrameInfo`s from `frame_info_rx`.
+        // However, `ffmpeg` will re-order the frames to output them in presentation (PTS) order.
+        // We want to accurately match the `FrameInfo` with its corresponding output frame.
+        // To do that, we need to buffer frames that come out of ffmpeg.
+        //
+        // How do we know how large this buffer needs to be?
+        // Whenever the highest known DTS is behind the PTS, we need to wait until the DTS catches up.
+        // Otherwise, we'd assign the wrong PTS to the frame that just came in.
+        let frame_info = loop {
+            let oldest_pts_in_buffer = self.pending.first_key_value().map(|(pts, _)| *pts);
+            let is_caught_up = oldest_pts_in_buffer.is_some_and(|pts| pts <= self.highest_dts);
+            if is_caught_up {
+                // There must be an element here, otherwise we wouldn't be here.
+                #[allow(clippy::unwrap_used)]
+                break self.pending.pop_first().unwrap().1;
+            } else {
+                // We're behind:
+
+                let Ok(frame_info) = frame_info_rx.try_recv() else {
+                    re_log::trace!("frame-tx channel closed, stopping ffmpeg decoder");
+                    return None;
+                };
+
+                // If the decode timestamp did not increase, we're probably seeking backwards!
+                // We'd expect the video player to do a reset prior to that and close the channel as part of that, but we may not have noticed that in here yet!
+                // In any case, we'll have to just run with this as the new highest timestamp, not much else we can do.
+                if self.highest_dts > frame_info.decode_timestamp {
+                    re_log::warn!("Video decode timestamps are expected to monotonically increase unless there was a decoder reset.\n\
+                                It went from {:?} to {:?} for the decoder of {debug_name}. This is probably a bug in Rerun.", self.highest_dts, frame_info.decode_timestamp);
+                }
+                self.highest_dts = frame_info.decode_timestamp;
+
+                self.pending
+                    .insert(frame_info.presentation_timestamp, frame_info);
+            }
+        };
+
+        let ffmpeg_sidecar::event::OutputVideoFrame {
+            frame_num: _, // This is made up by ffmpeg sidecar.
+            pix_fmt: _,   // TODO(emilk); use this instead of the `pixel_format` argument.
+            width,
+            height,
+            data,
+            output_index: _, // This is the stream index. for all we do it's always 0.
+            timestamp: _, // This is a timestamp made up by ffmpeg_sidecar based on limited information it has.
+        } = frame;
+
+        debug_assert_eq!(
+            data.len() * 8,
+            (width * height * pixel_format.bits_per_pixel()) as usize
+        );
+
+        Some(Frame {
+            content: FrameContent {
+                data,
+                width,
+                height,
+                format: pixel_format.clone(),
+            },
+            info: FrameInfo {
+                is_sync: Some(frame_info.is_sync),
+                sample_idx: Some(frame_info.sample_idx),
+                frame_nr: Some(frame_info.frame_nr),
+                presentation_timestamp: frame_info.presentation_timestamp,
+                duration: frame_info.duration,
+                latest_decode_timestamp: Some(frame_info.decode_timestamp),
+            },
+        })
     }
 }
 
 fn read_ffmpeg_output(
     debug_name: &str,
     ffmpeg_iterator: ffmpeg_sidecar::iter::FfmpegIterator,
-    frame_info_rx: &Receiver<FfmpegFrameInfo>,
+    frame_info_rx: &Receiver<FFmpegFrameInfo>,
     pixel_format: &PixelFormat,
+    outstanding_frames: &AtomicI32,
     on_output: &Mutex<Option<Arc<OutputCallback>>>,
 ) -> Option<()> {
-    // Pending frames, sorted by their presentation timestamp.
-    let mut pending_frame_infos = BTreeMap::new();
-    let mut highest_dts = Time::MIN; // Highest dts encountered so far.
+    let mut buffer = FrameBuffer::new();
 
     for event in ffmpeg_iterator {
         #[allow(clippy::match_same_arms)]
@@ -506,86 +695,33 @@ fn read_ffmpeg_output(
                 // By default this triggers every 5s.
             }
 
-            FfmpegEvent::OutputFrame(frame) => {
-                // We input frames into ffmpeg in decode (DTS) order, and so that's
-                // also the order we will receive the `FrameInfo`s from `frame_info_rx`.
-                // However, `ffmpeg` will re-order the frames to output them in presentation (PTS) order.
-                // We want to accurately match the `FrameInfo` with its corresponding output frame.
-                // To do that, we need to buffer frames that come out of ffmpeg.
-                //
-                // How do we know how large this buffer needs to be?
-                // Whenever the highest known DTS is behind the PTS, we need to wait until the DTS catches up.
-                // Otherwise, we'd assign the wrong PTS to the frame that just came in.
-                //
-                // Example how presentation timestamps and decode timestamps
-                // can play out in the presence of B-frames to illustrate this:
-                //    PTS: 1 4 2 3
-                //    DTS: 1 2 3 4
-                // Stream: I P B B
-                let frame_info = loop {
-                    let oldest_pts_in_buffer =
-                        pending_frame_infos.first_key_value().map(|(pts, _)| *pts);
-                    let is_caught_up = oldest_pts_in_buffer.is_some_and(|pts| pts <= highest_dts);
-                    if is_caught_up {
-                        // There must be an element here, otherwise we wouldn't be here.
-                        #[allow(clippy::unwrap_used)]
-                        break pending_frame_infos.pop_first().unwrap().1;
-                    } else {
-                        // We're behind:
-                        let Ok(frame_info) = frame_info_rx.try_recv() else {
-                            re_log::debug!(
-                                "{debug_name} ffmpeg decoder frame info channel disconnected"
-                            );
-                            return None;
-                        };
+            FfmpegEvent::OutputFrame(ffmpeg_frame) => {
+                outstanding_frames.fetch_sub(1, Ordering::Relaxed);
 
-                        // If the decodetimestamp did not increase, we're probably seeking backwards!
-                        // We'd expect the video player to do a reset prior to that and close the channel as part of that, but we may not have noticed that in here yet!
-                        // In any case, we'll have to just run with this as the new highest timestamp, not much else we can do.
-                        if highest_dts > frame_info.decode_timestamp {
-                            re_log::warn!("Video decode timestamps are expected to monotonically increase unless there was a decoder reset.\n\
-                                                It went from {:?} to {:?} for the decoder of {debug_name}. This is probably a bug in Rerun.", highest_dts, frame_info.decode_timestamp);
-                        }
-                        highest_dts = frame_info.decode_timestamp;
+                let frame_num = ffmpeg_frame.frame_num; // sequence-number made up by ffmpeg sidecar.
 
-                        pending_frame_infos.insert(frame_info.presentation_timestamp, frame_info);
-                    }
-                };
+                let frame =
+                    buffer.on_frame(debug_name, pixel_format, frame_info_rx, ffmpeg_frame)?;
 
-                let ffmpeg_sidecar::event::OutputVideoFrame {
-                    frame_num: _, // This is made up by ffmpeg sidecar.
-                    pix_fmt,
-                    width,
-                    height,
-                    data,
-                    output_index: _, // This is the stream index. for all we do it's always 0.
-                    timestamp: _, // This is a timestamp made up by ffmpeg_sidecar based on limited information it has.
-                } = frame;
-
-                re_log::trace!(
-                    "{debug_name} received frame: dts {:?} cts {:?} fmt {pix_fmt:?} size {width}x{height}",
-                    frame_info.decode_timestamp,
-                    frame_info.presentation_timestamp
-                );
-
-                debug_assert_eq!(
-                    data.len() * 8,
-                    (width * height * pixel_format.bits_per_pixel()) as usize
-                );
-
-                (on_output.lock().as_ref()?)(Ok(Frame {
-                    content: FrameContent {
-                        data,
+                {
+                    // Log
+                    let FrameContent {
                         width,
                         height,
-                        format: pixel_format.clone(),
-                    },
-                    info: FrameInfo {
-                        presentation_timestamp: frame_info.presentation_timestamp,
-                        duration: frame_info.duration,
-                        latest_decode_timestamp: Some(frame_info.decode_timestamp),
-                    },
-                }));
+                        format,
+                        ..
+                    } = &frame.content;
+                    re_log::trace!(
+                        "{debug_name} received frame {frame_num}: sample {sample_idx:?} dts {dts:?} pts {pts:?} fmt {format:?} size {width}x{height}. buffered: {num_buffered}, outstanding: {num_outstanding}",
+                        sample_idx = frame.info.sample_idx,
+                        dts = frame.info.latest_decode_timestamp,
+                        pts = frame.info.presentation_timestamp,
+                        num_buffered = buffer.pending.len(),
+                        num_outstanding = outstanding_frames.load(Ordering::Relaxed),
+                    );
+                }
+
+                (on_output.lock().as_ref()?)(Ok(frame));
             }
 
             FfmpegEvent::Done => {
@@ -595,8 +731,6 @@ fn read_ffmpeg_output(
             }
 
             FfmpegEvent::ParsedVersion(ffmpeg_version) => {
-                re_log::debug_once!("FFmpeg version is {}", ffmpeg_version.version);
-
                 fn download_advice() -> String {
                     if let Ok(download_url) = ffmpeg_sidecar::download::ffmpeg_download_url() {
                         format!("\nYou can download an up to date version for your system at {download_url}.")
@@ -605,29 +739,16 @@ fn read_ffmpeg_output(
                     }
                 }
 
-                // Version strings can get pretty wild!
-                // E.g. choco installed ffmpeg on Windows gives me "7.1-essentials_build-www.gyan.dev".
-                let mut version_parts = ffmpeg_version.version.split('.');
-                let major = version_parts
-                    .next()
-                    .and_then(|part| part.parse::<u32>().ok());
-                let minor = version_parts.next().and_then(|part| {
-                    part.split('-')
-                        .next()
-                        .and_then(|part| part.parse::<u32>().ok())
-                });
+                if let Some(ffmpeg_version) = FFmpegVersion::parse(&ffmpeg_version.version) {
+                    re_log::debug_once!("Parsed FFmpeg version: {ffmpeg_version}");
 
-                if let (Some(major), Some(minor)) = (major, minor) {
-                    re_log::debug_once!("Parsed FFmpeg version as {}.{}", major, minor);
-
-                    if major < FFMPEG_MINIMUM_VERSION_MAJOR
-                        || (major == FFMPEG_MINIMUM_VERSION_MAJOR
-                            && minor < FFMPEG_MINIMUM_VERSION_MINOR)
-                    {
-                        re_log::warn_once!(
-                            "FFmpeg version is {}. Only versions >= {FFMPEG_MINIMUM_VERSION_MAJOR}.{FFMPEG_MINIMUM_VERSION_MINOR} are officially supported.{}",
-                            ffmpeg_version.version, download_advice()
-                        );
+                    if !ffmpeg_version.is_compatible() {
+                        (on_output.lock().as_ref()?)(Err(Error::UnsupportedFFmpegVersion {
+                            actual_version: ffmpeg_version,
+                            minimum_version_major: FFMPEG_MINIMUM_VERSION_MAJOR,
+                            minimum_version_minor: FFMPEG_MINIMUM_VERSION_MINOR,
+                        }
+                        .into()));
                     }
                 } else {
                     re_log::warn_once!(
@@ -662,71 +783,102 @@ fn read_ffmpeg_output(
 }
 
 /// Decode H.264 video via ffmpeg over CLI
-pub struct FfmpegCliH264Decoder {
+pub struct FFmpegCliH264Decoder {
     debug_name: String,
-    ffmpeg: FfmpegProcessAndListener,
+    // Restarted on reset
+    ffmpeg: FFmpegProcessAndListener,
     avcc: re_mp4::Avc1Box,
     on_output: Arc<OutputCallback>,
+    ffmpeg_path: Option<std::path::PathBuf>,
 }
 
-impl FfmpegCliH264Decoder {
+impl FFmpegCliH264Decoder {
     pub fn new(
         debug_name: String,
         avcc: re_mp4::Avc1Box,
         on_output: impl Fn(crate::decode::Result<Frame>) + Send + Sync + 'static,
+        ffmpeg_path: Option<std::path::PathBuf>,
     ) -> Result<Self, Error> {
         re_tracing::profile_function!();
 
+        if let Some(ffmpeg_path) = &ffmpeg_path {
+            if !ffmpeg_path.is_file() {
+                return Err(Error::FFmpegNotInstalled);
+            }
+        } else if !ffmpeg_sidecar::command::ffmpeg_is_installed() {
+            return Err(Error::FFmpegNotInstalled);
+        }
+
+        // Check the version once ahead of running FFmpeg.
+        // The error is still handled if it happens while running FFmpeg, but it's a bit unclear if we can get it to start in the first place then.
+        match FFmpegVersion::for_executable(ffmpeg_path.as_deref()) {
+            Ok(version) => {
+                if !version.is_compatible() {
+                    return Err(Error::UnsupportedFFmpegVersion {
+                        actual_version: version,
+                        minimum_version_major: FFMPEG_MINIMUM_VERSION_MAJOR,
+                        minimum_version_minor: FFMPEG_MINIMUM_VERSION_MINOR,
+                    });
+                }
+            }
+            Err(FFmpegVersionParseError::ParseVersion { raw_version }) => {
+                // This happens quite often, don't fail playing video over it!
+                re_log::warn_once!("Failed to parse FFmpeg version: {raw_version}");
+            }
+
+            Err(err) => {
+                return Err(Error::FailedToDetermineFFmpegVersion(err));
+            }
+        }
+
         let on_output = Arc::new(on_output);
-        let ffmpeg = FfmpegProcessAndListener::new(&debug_name, on_output.clone(), avcc.clone())?;
+        let ffmpeg = FFmpegProcessAndListener::new(
+            &debug_name,
+            on_output.clone(),
+            avcc.clone(),
+            ffmpeg_path.as_deref(),
+        )?;
 
         Ok(Self {
             debug_name,
             ffmpeg,
             avcc,
             on_output,
+            ffmpeg_path,
         })
     }
 }
 
-impl AsyncDecoder for FfmpegCliH264Decoder {
+impl AsyncDecoder for FFmpegCliH264Decoder {
     fn submit_chunk(&mut self, chunk: Chunk) -> crate::decode::Result<()> {
         re_tracing::profile_function!();
 
-        // We send the information about this chunk first.
-        // Chunks are defined to always yield a single frame.
-        let frame_info = FfmpegFrameInfo {
-            presentation_timestamp: chunk.presentation_timestamp,
-            decode_timestamp: chunk.decode_timestamp,
-            duration: chunk.duration,
-        };
-        let chunk = FfmpegFrameData::Chunk(chunk);
+        if let Err(err) = self.ffmpeg.submit_chunk(chunk) {
+            let err = crate::decode::Error::from(err);
 
-        if self.ffmpeg.frame_info_tx.send(frame_info).is_err()
-            || self.ffmpeg.frame_data_tx.send(chunk).is_err()
-        {
-            let err: crate::decode::Error =
-                if let Ok(exit_code) = self.ffmpeg.ffmpeg.as_inner_mut().try_wait() {
-                    Error::FfmpegUnexpectedExit(exit_code)
-                } else {
-                    Error::BrokenFrameInfoChannel
-                }
-                .into();
-
-            // Report the error on the decoding stream.
+            // Report the error on the decoding stream aswell.
             (self.on_output)(Err(err.clone()));
-            return Err(err);
-        }
 
+            Err(err)
+        } else {
+            Ok(())
+        }
+    }
+
+    fn end_of_video(&mut self) -> crate::decode::Result<()> {
+        re_log::debug!("End of video - flushing ffmpeg decoder {}", self.debug_name);
+        self.ffmpeg.end_of_video();
         Ok(())
     }
 
     fn reset(&mut self) -> crate::decode::Result<()> {
+        re_tracing::profile_function!();
         re_log::debug!("Resetting ffmpeg decoder {}", self.debug_name);
-        self.ffmpeg = FfmpegProcessAndListener::new(
+        self.ffmpeg = FFmpegProcessAndListener::new(
             &self.debug_name,
             self.on_output.clone(),
             self.avcc.clone(),
+            self.ffmpeg_path.as_deref(),
         )?;
         Ok(())
     }
@@ -748,6 +900,7 @@ fn write_avc_chunk_to_nalu_stream(
     state: &mut NaluStreamState,
 ) -> Result<(), Error> {
     re_tracing::profile_function!();
+
     let avcc = &avcc.avcc;
 
     // We expect the stream of chunks to not have any SPS (Sequence Parameter Set) & PPS (Picture Parameter Set)
@@ -878,6 +1031,7 @@ fn should_ignore_log_msg(msg: &str) -> bool {
         // Size etc. *is* specified in SPS & PPS, unclear why it's missing that.
         // Observed on Windows FFmpeg 7.1, but not with the same version on Mac with the same video.
         "Could not find codec parameters for stream 0 (Video: h264, none): unspecified size",
+        // NOTE: We sometimes get a `[NULL @ 0x14f107150]`, which is not very actionable, but may be useful for debugging.
     ];
 
     // Why would we get an empty message? Observed on Windows FFmpeg 7.1.

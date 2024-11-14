@@ -1,10 +1,13 @@
 [package]
 name = "re_protos"
 authors.workspace = true
+description = "Rerun remote gRPC/protobuf API types"
 edition.workspace = true
 homepage.workspace = true
 include.workspace = true
 license.workspace = true
+publish = true
+readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true

@@ -628,7 +628,7 @@ fn column_groups_for_entity(
 
 fn error_ui(ui: &mut egui::Ui, error: impl AsRef<str>) {
     let error = error.as_ref();
-    ui.error_label(error);
+    ui.error_with_details_on_hover(error);
     re_log::warn_once!("{error}");
 }
 

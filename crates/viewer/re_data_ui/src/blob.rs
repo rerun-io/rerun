@@ -4,7 +4,7 @@ use re_viewer_context::UiLayout;
 
 use crate::{
     image::image_preview_ui,
-    video::{show_decoded_frame_info, show_video_blob_info},
+    video::{show_decoded_frame_info, video_result_ui},
     EntityDataUi,
 };
 
@@ -128,10 +128,10 @@ pub fn blob_preview_and_save_ui(
                     blob_row_id,
                     blob,
                     media_type,
-                    ctx.app_options.video_decoder_hw_acceleration,
+                    ctx.app_options.video_decoder_settings(),
                 )
             });
-            show_video_blob_info(ui, ui_layout, &video_result);
+            video_result_ui(ui, ui_layout, &video_result);
             video_result_for_frame_preview = Some(video_result);
         }
     }

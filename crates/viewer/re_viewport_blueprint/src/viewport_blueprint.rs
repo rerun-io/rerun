@@ -92,6 +92,9 @@ impl ViewportBlueprint {
             past_viewer_recommendations: results.component_batch(),
         };
 
+        let root_container: Option<ContainerId> = root_container.map(|id| id.0.into());
+        re_log::trace_once!("Loaded root_container: {root_container:?}");
+
         let all_space_view_ids: Vec<SpaceViewId> = blueprint_db
             .tree()
             .children
@@ -143,8 +146,10 @@ impl ViewportBlueprint {
         let tree = build_tree_from_space_views_and_containers(
             space_views.values(),
             containers.values(),
-            root_container.clone(),
+            root_container,
         );
+
+        re_log::trace_once!("Loaded tree: {tree:#?}");
 
         let past_viewer_recommendations = past_viewer_recommendations
             .unwrap_or_default()
@@ -152,10 +157,8 @@ impl ViewportBlueprint {
             .cloned()
             .collect();
 
-        let root_container_or_placeholder = root_container.clone().map_or_else(
-            || ContainerId::hashed_from_str("placeholder_root_container"),
-            |id| id.0.into(),
-        );
+        let root_container_or_placeholder = root_container
+            .unwrap_or_else(|| ContainerId::hashed_from_str("placeholder_root_container"));
 
         Self {
             space_views,
@@ -909,7 +912,7 @@ impl ViewportBlueprint {
 fn build_tree_from_space_views_and_containers<'a>(
     space_views: impl Iterator<Item = &'a SpaceViewBlueprint>,
     containers: impl Iterator<Item = &'a ContainerBlueprint>,
-    root_container: Option<RootContainer>,
+    root_container: Option<ContainerId>,
 ) -> egui_tiles::Tree<SpaceViewId> {
     re_tracing::profile_function!();
     let mut tree = egui_tiles::Tree::empty("viewport_tree");
@@ -933,7 +936,6 @@ fn build_tree_from_space_views_and_containers<'a>(
     // And finally, set the root
 
     if let Some(root_container) = root_container {
-        let root_container = ContainerId::from(root_container.0);
         tree.root = Some(blueprint_id_to_tile_id(&root_container));
     }
 

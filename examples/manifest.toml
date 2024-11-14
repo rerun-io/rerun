@@ -141,6 +141,7 @@ examples = [
   "clock",
   "dna",
   "log_file",
+  "openstreetmap_data",
   "minimal",
   "multiprocess_logging",
   "multithreading",

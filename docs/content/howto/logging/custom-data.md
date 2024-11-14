@@ -35,7 +35,7 @@ import rerun as rr  # pip install rerun-sdk
 @dataclass
 class LabeledPoints:
     points: np.ndarray
-    labels: List[str])
+    labels: List[str]
 
     def as_component_batches(self) -> Iterable[rr.ComponentBatch]:
         return rr.Points3D(positions=self.points,

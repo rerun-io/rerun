@@ -18,7 +18,7 @@ use crate::{
     picking::{PickableUiRect, PickingResult},
     scene_bounding_boxes::SceneBoundingBoxes,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{SpatialViewVisualizerData, UiLabel, UiLabelTarget},
+    visualizers::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget},
 };
 
 use super::{eye::Eye, ui_3d::View3DState};
@@ -214,13 +214,20 @@ pub fn create_labels(
         };
 
         let font_id = egui::TextStyle::Body.resolve(parent_ui.style());
+        let is_error = matches!(label.style, UiLabelStyle::Error);
+        let text_color = match label.style {
+            UiLabelStyle::Color(color) => color,
+            UiLabelStyle::Error => parent_ui.style().visuals.strong_text_color(),
+        };
+        let format = egui::TextFormat::simple(font_id, text_color);
+
         let galley = parent_ui.fonts(|fonts| {
             fonts.layout_job({
                 egui::text::LayoutJob {
                     sections: vec![egui::text::LayoutSection {
                         leading_space: 0.0,
                         byte_range: 0..label.text.len(),
-                        format: egui::TextFormat::simple(font_id, label.color),
+                        format,
                     }],
                     text: label.text.clone(),
                     wrap: TextWrapping {
@@ -241,9 +248,15 @@ pub fn create_labels(
         let highlight = highlights
             .entity_highlight(label.labeled_instance.entity_path_hash)
             .index_highlight(label.labeled_instance.instance);
-        let fill_color = match highlight.hover {
+        let background_color = match highlight.hover {
             HoverHighlight::None => match highlight.selection {
-                SelectionHighlight::None => parent_ui.style().visuals.widgets.inactive.bg_fill,
+                SelectionHighlight::None => {
+                    if is_error {
+                        parent_ui.error_label_background_color()
+                    } else {
+                        parent_ui.style().visuals.panel_fill
+                    }
+                }
                 SelectionHighlight::SiblingSelection => {
                     parent_ui.style().visuals.widgets.active.bg_fill
                 }
@@ -252,11 +265,20 @@ pub fn create_labels(
             HoverHighlight::Hovered => parent_ui.style().visuals.widgets.hovered.bg_fill,
         };
 
-        label_shapes.push(egui::Shape::rect_filled(bg_rect, 3.0, fill_color));
+        let rect_stroke = if is_error {
+            egui::Stroke::new(1.0, parent_ui.style().visuals.error_fg_color)
+        } else {
+            egui::Stroke::NONE
+        };
+
+        label_shapes.push(
+            egui::epaint::RectShape::new(bg_rect.expand(4.0), 4.0, background_color, rect_stroke)
+                .into(),
+        );
         label_shapes.push(egui::Shape::galley(
             text_rect.center_top(),
             galley,
-            label.color,
+            text_color,
         ));
 
         ui_rects.push(PickableUiRect {

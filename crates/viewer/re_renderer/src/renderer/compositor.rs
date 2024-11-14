@@ -24,7 +24,9 @@ mod gpu_data {
     pub struct CompositeUniformBuffer {
         pub outline_color_layer_a: wgpu_buffer_types::Vec4,
         pub outline_color_layer_b: wgpu_buffer_types::Vec4,
-        pub outline_radius_pixel: wgpu_buffer_types::F32RowPadded,
+        pub outline_radius_pixel: f32,
+        pub blend_with_background: u32,
+        pub padding: [u32; 2],
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 3],
     }
 }
@@ -72,7 +74,9 @@ impl CompositorDrawData {
             gpu_data::CompositeUniformBuffer {
                 outline_color_layer_a: outline_config.color_layer_a.into(),
                 outline_color_layer_b: outline_config.color_layer_b.into(),
-                outline_radius_pixel: outline_config.outline_radius_pixel.into(),
+                outline_radius_pixel: outline_config.outline_radius_pixel,
+                blend_with_background: enable_blending as u32,
+                padding: Default::default(),
                 end_padding: Default::default(),
             },
         );

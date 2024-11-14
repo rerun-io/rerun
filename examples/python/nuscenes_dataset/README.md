@@ -104,7 +104,7 @@ rr.log(f"world/ego_vehicle/{sensor_name}", rr.Points3D(points, colors=point_colo
 ### GPS data
 
 GPS data is calculated from the scene's reference coordinates and the transformations (starting map point + odometry).
-The GPS coordinates are logged as [`GeoPoints`](https://www.rerun.io/docs/reference/types/archetypes/geopoints).
+The GPS coordinates are logged as [`GeoPoints`](https://www.rerun.io/docs/reference/types/archetypes/geopoints?speculative-link).
 
 ```python
 rr.log(

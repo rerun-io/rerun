@@ -89,7 +89,7 @@ pub fn display_text_ui(
     let text = match Text::from_arrow(data) {
         Ok(text) => text.first().cloned(),
         Err(err) => {
-            ui.error_label("failed to deserialize")
+            ui.error_label("Failed to deserialize")
                 .on_hover_text(err.to_string());
             return;
         }
@@ -118,7 +118,7 @@ pub fn display_name_ui(
     let name = match Name::from_arrow(data) {
         Ok(name) => name.first().cloned(),
         Err(err) => {
-            ui.error_label("failed to deserialize")
+            ui.error_label("Failed to deserialize")
                 .on_hover_text(err.to_string());
             return;
         }
