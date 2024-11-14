@@ -20,6 +20,9 @@ TODO(andreas): add link to release video
   * Relatedly, there's now an `Import File` option in the menu to import arbitrary files into the active recording.
 * ☰ Dataframe queries are now streamed, reducing memory usage.
 * 💊 Add capsule archetype.
+* 📚 Doc improvements
+  * Arrow schemas are now documented for all types.
+  * Better structure to the [how to](https://rerun.io/docs/howto) section and a few more pages
 
 ### ⚠️ Breaking changes & deprecations
 * 🐍 Python 3.8 is being deprecated
