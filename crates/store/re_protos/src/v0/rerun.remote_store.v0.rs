@@ -397,6 +397,8 @@ pub enum ErrorCode {
     ObjectStoreError = 1,
     /// metadata database access error
     MetadataDbError = 2,
+    /// Encoding / decoding error
+    CodecError = 3,
 }
 impl ErrorCode {
     /// String value of the enum field names used in the ProtoBuf definition.
@@ -408,6 +410,7 @@ impl ErrorCode {
             Self::Unused => "_UNUSED",
             Self::ObjectStoreError => "OBJECT_STORE_ERROR",
             Self::MetadataDbError => "METADATA_DB_ERROR",
+            Self::CodecError => "CODEC_ERROR",
         }
     }
     /// Creates an enum from field names used in the ProtoBuf definition.
@@ -416,6 +419,7 @@ impl ErrorCode {
             "_UNUSED" => Some(Self::Unused),
             "OBJECT_STORE_ERROR" => Some(Self::ObjectStoreError),
             "METADATA_DB_ERROR" => Some(Self::MetadataDbError),
+            "CODEC_ERROR" => Some(Self::CodecError),
             _ => None,
         }
     }

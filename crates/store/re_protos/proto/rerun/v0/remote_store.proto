@@ -152,4 +152,7 @@ enum ErrorCode {
 
     // metadata database access error
     METADATA_DB_ERROR = 2;
+
+    // Encoding / decoding error
+    CODEC_ERROR = 3;
 }
