@@ -4,9 +4,9 @@
 
 ## [0.20.0](https://github.com/rerun-io/rerun/compare/0.19.1...0.20.0) - Map view & native H.264 video support
 
-TODO: add link to release video
+TODO(andreas): add link to release video
 
-📖 Release blogpost: TODO: add link
+📖 Release blogpost: TODO(andreas): add link
 🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-20
 
 ### ✨ Overview & highlights
