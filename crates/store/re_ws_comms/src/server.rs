@@ -171,6 +171,15 @@ impl RerunServer {
         self.num_accepted_clients.load(Ordering::Relaxed)
     }
 
+    /// Blocks execution as long as the server is running.
+    ///
+    /// There's no way of shutting the server down from the outside right now.
+    pub fn block(mut self) {
+        if let Some(listener_join_handle) = self.listener_join_handle.take() {
+            listener_join_handle.join().ok();
+        }
+    }
+
     fn listen_thread_func(
         poller: &Poller,
         listener_socket: &TcpListener,
