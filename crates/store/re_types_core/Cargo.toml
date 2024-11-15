@@ -1,0 +1,70 @@
+[package]
+name = "re_types_core"
+authors.workspace = true
+description = "The core traits and types that power Rerun's data model."
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+
+[package.metadata.docs.rs]
+all-features = true
+
+[package.metadata.cargo-machete]
+ignored = [
+  "serde", # Needed to make `ComponentName` (an interned string) serializable.
+]
+
+
+[features]
+default = []
+
+## Enable (de)serialization using serde.
+serde = ["dep:serde", "re_string_interner/serde"]
+
+
+[dependencies]
+# Rerun
+re_case.workspace = true
+re_error.workspace = true
+re_string_interner.workspace = true
+re_tracing.workspace = true
+re_tuid.workspace = true
+
+# External
+anyhow.workspace = true
+arrow2 = { workspace = true, features = [
+  "io_ipc",
+  "io_print",
+  "compute_concatenate",
+] }
+backtrace.workspace = true
+bytemuck.workspace = true
+document-features.workspace = true
+itertools.workspace = true
+nohash-hasher.workspace = true
+once_cell.workspace = true
+smallvec.workspace = true
+thiserror.workspace = true
+
+# Optional dependencies
+serde = { workspace = true, optional = true }
+
+[dev-dependencies]
+criterion.workspace = true
+
+[lib]
+bench = false
+
+[[bench]]
+name = "bench_tuid"
+harness = false

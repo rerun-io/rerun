@@ -9,10 +9,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             [(2.0, 0.0, 0.0), (-2.0, 0.0, 0.0), (0.0, 0.0, 2.0)],
             [(2.0, 2.0, 1.0), (1.0, 1.0, 0.5), (2.0, 0.5, 1.0)],
         )
-        .with_rotations([
-            rerun::Rotation3D::IDENTITY,
-            rerun::Quaternion::from_xyzw([0.0, 0.0, 0.382683, 0.923880]).into(), // 45 degrees around Z
-            rerun::RotationAxisAngle::new((0.0, 1.0, 0.0), rerun::Angle::Degrees(30.0)).into(),
+        .with_quaternions([
+            rerun::Quaternion::IDENTITY,
+            rerun::Quaternion::from_xyzw([0.0, 0.0, 0.382683, 0.923880]), // 45 degrees around Z
         ])
         .with_radii([0.025])
         .with_colors([
@@ -20,6 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             rerun::Color::from_rgb(0, 255, 0),
             rerun::Color::from_rgb(0, 0, 255),
         ])
+        .with_fill_mode(rerun::FillMode::Solid)
         .with_labels(["red", "green", "blue"]),
     )?;
 

@@ -3,7 +3,7 @@
 # -----------------------------------------------------------------------------
 # Section identical to the main scripts/clippy_wasm/clippy.toml:
 
-msrv = "1.76"
+msrv = "1.79"
 
 allow-unwrap-in-tests = true
 
@@ -40,6 +40,8 @@ disallowed-macros = [
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_methods
 disallowed-methods = [
+  { path = "egui::Ui::checkbox", reason = "Use `re_checkbox` from `re_ui::UiEx" },
+  { path = "egui::Ui::radio_value", reason = "Use `re_radio_value` from `re_ui::UiEx" },
   { path = "egui_extras::TableBody::row", reason = "`row` doesn't scale. Use `rows` instead." },
   { path = "glam::Vec2::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
   { path = "glam::Vec3::normalize", reason = "normalize() can create NaNs. Use try_normalize or normalize_or_zero" },
@@ -47,6 +49,14 @@ disallowed-methods = [
   { path = "std::env::temp_dir", reason = "Use the tempdir crate instead" },
   { path = "std::panic::catch_unwind", reason = "We compile with `panic = 'abort'`" },
   { path = "std::thread::spawn", reason = "Use `std::thread::Builder` and name the thread" },
+
+  # Specify both `arrow2` and `re_arrow2` -- clippy gets lost in all the package renaming happening.
+  { path = "arrow2::compute::concatenate::concatenate", reason = "Use `re_chunk::util::concat_arrays` instead, which has proper early outs" },
+  { path = "arrow2::compute::filter::filter", reason = "Use `re_chunk::util::filter_array` instead, which has proper early outs" },
+  { path = "arrow2::compute::take::take", reason = "Use `re_chunk::util::take_array` instead, which has proper early outs" },
+  { path = "re_arrow2::compute::concatenate::concatenate", reason = "Use `re_chunk::util::concat_arrays` instead, which has proper early outs" },
+  { path = "re_arrow2::compute::filter::filter", reason = "Use `re_chunk::util::filter_array` instead, which has proper early outs" },
+  { path = "re_arrow2::compute::take::take", reason = "Use `re_chunk::util::take_array` instead, which has proper early outs" },
 
   # There are many things that aren't allowed on wasm,
   # but we cannot disable them all here (because of e.g. https://github.com/rust-lang/rust-clippy/issues/10406)
@@ -58,8 +68,8 @@ disallowed-names = []
 
 # https://rust-lang.github.io/rust-clippy/master/index.html#disallowed_types
 disallowed-types = [
+  { path = "egui::Checkbox", reason = "Use `re_checkbox` from `re_ui::UiEx" },
   { path = "ring::digest::SHA1_FOR_LEGACY_USE_ONLY", reason = "SHA1 is cryptographically broken" },
-
   { path = "std::sync::Condvar", reason = "Use parking_lot instead" },
   { path = "std::sync::Mutex", reason = "Use parking_lot instead" },
   { path = "std::sync::RwLock", reason = "Use parking_lot instead" },
@@ -67,7 +77,7 @@ disallowed-types = [
   # "std::sync::Once",  # enabled for now as the `log_once` macro uses it internally
 ]
 
-# Allow-list of words for markdown in dosctrings https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+# Allow-list of words for markdown in docstrings https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
 doc-valid-idents = [
   # You must also update the same list in `scripts/clippy_wasm/clippy.toml`!
   "GitHub",
@@ -75,6 +85,8 @@ doc-valid-idents = [
   "GLTF",
   "iOS",
   "macOS",
+  "MessagePack",
+  "MiMalloc",
   "NaN",
   "OBJ",
   "OpenGL",
@@ -82,6 +94,7 @@ doc-valid-idents = [
   "sRGB",
   "sRGBA",
   "WebGL",
+  "WebGPU",
   "WebSocket",
   "WebSockets",
 ]

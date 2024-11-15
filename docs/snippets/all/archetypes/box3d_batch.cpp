@@ -12,11 +12,10 @@ int main() {
             {{2.0f, 0.0f, 0.0f}, {-2.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 2.0f}},
             {{2.0f, 2.0f, 1.0f}, {1.0f, 1.0f, 0.5f}, {2.0f, 0.5f, 1.0f}}
         )
-            .with_rotations({
+            .with_quaternions({
                 rerun::Quaternion::IDENTITY,
                 // 45 degrees around Z
                 rerun::Quaternion::from_xyzw(0.0f, 0.0f, 0.382683f, 0.923880f),
-                rerun::RotationAxisAngle({0.0f, 1.0f, 0.0f}, rerun::Angle::degrees(30.0f)),
             })
             .with_radii({0.025f})
             .with_colors({
@@ -24,6 +23,7 @@ int main() {
                 rerun::Rgba32(0, 255, 0),
                 rerun::Rgba32(0, 0, 255),
             })
+            .with_fill_mode(rerun::FillMode::Solid)
             .with_labels({"red", "green", "blue"})
     );
 }

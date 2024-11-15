@@ -1,0 +1,13 @@
+namespace rerun.blueprint.components;
+
+// ---
+
+/// Visual bounds in 2D space used for `Spatial2DView`.
+struct VisualBounds2D (
+  "attr.rerun.scope": "blueprint",
+  "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
+) {
+  /// X and y ranges that should be visible.
+  range2d: rerun.datatypes.Range2D (order: 100);
+}

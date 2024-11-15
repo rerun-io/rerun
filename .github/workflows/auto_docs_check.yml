@@ -1,0 +1,81 @@
+name: Docs deploy pre-check
+
+on:
+  pull_request:
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - labeled
+      - unlabeled
+
+permissions:
+  contents: "read"
+  id-token: "write"
+  pull-requests: "write"
+
+defaults:
+  run:
+    shell: bash
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}-auto-docs-check
+  cancel-in-progress: true
+
+jobs:
+  check-cherry-pick:
+    name: Check if merge commit can be cherry-picked
+    runs-on: ubuntu-latest
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'deploy docs') }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          # ref - not set, because we want to end up on the merge commit
+          fetch-depth: 0 # don't perform a shallow clone
+
+      - name: Try cherry-pick
+        env:
+          GH_TOKEN: ${{ secrets.RERUN_BOT_TOKEN }}
+        run: |
+          # Setup git user
+          git config --global user.name "rerun-bot"
+          git config --global user.email "bot@rerun.io"
+
+          git fetch origin main
+          git checkout main
+          git merge --squash origin/${{ github.event.pull_request.head.ref }}
+          git commit -m "${{ github.event.pull_request.head.title }} (#${{ github.event.pull_request.number }})"
+          commit=$(git rev-parse HEAD)
+          git checkout docs-latest
+
+          if git cherry-pick $commit; then
+            echo "Cherry-pick successful"
+            exit 0
+          else
+            echo "Cherry-pick failed"
+            printf $(git diff)
+            exit 1
+          fi
+
+      - name: Add success comment
+        # https://github.com/mshick/add-pr-comment
+        uses: mshick/add-pr-comment@v2.8.2
+        if: success()
+        with:
+          message-id: "cherry-pick-check"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            Your changes can be cherry-picked to `docs-latest` and will be deployed
+            immediately after merging.
+
+      - name: Add failure comment
+        # https://github.com/mshick/add-pr-comment
+        uses: mshick/add-pr-comment@v2.8.2
+        if: failure()
+        with:
+          message-id: "cherry-pick-check"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            Your changes cannot be automatically cherry-picked to `docs-latest`.
+
+            You should remove the `deploy docs` label and perform the cherry-pick manually after merging.

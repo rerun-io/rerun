@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cassert>
+#include <cstdint>
 #include <cstring> // std::memset
 #include <utility>
 #include <vector>
@@ -25,13 +26,15 @@ namespace rerun {
     /// Generic collection of elements that are roughly contiguous in memory.
     ///
     /// The most notable feature of the `rerun::Collection` is that its data may be either **owned** or **borrowed**:
-    /// * Borrowed: If data is borrowed it *must* outlive its source (in particular, the pointer to
-    /// the source mustn't invalidate)
+    /// * Borrowed: ⚠️ If data is borrowed it *must* outlive its source ⚠️
+    /// (in particular, the pointer to the source mustn't invalidate)
     /// * Owned: Owned data is copied into an internal std::vector
     ///
     /// Collections are either filled explicitly using `Collection::borrow` &`Collection::take_ownership`
     /// or (most commonly in user code) implicitly using the `CollectionAdapter` trait
     /// (see documentation for `CollectionAdapter` for more information on how data can be adapted).
+    ///
+    /// ⚠️ To ensure that passed data is not destroyed, move it into the collection using `std::move`.
     ///
     /// Other than being assignable, collections are generally immutable:
     /// there is no mutable data access in order to not violate the contract with the data lender
@@ -39,7 +42,7 @@ namespace rerun {
     ///
     /// ## Implementation notes:
     ///
-    /// Does intentionally not implement copy construction since this for the owned case this may
+    /// Does intentionally not implement copy construction since for the owned case this may
     /// be expensive. Typically, there should be no need to copy rerun collections, so this more
     /// than likely indicates a bug inside the Rerun SDK.
     template <typename TElement>
@@ -92,6 +95,9 @@ namespace rerun {
                     new (&storage.vector_owned) std::vector<TElement>(other.storage.vector_owned);
                     break;
                 }
+
+                default:
+                    assert(false && "unreachable");
             }
         }
 
@@ -135,7 +141,7 @@ namespace rerun {
             new (&storage.vector_owned) std::vector<TElement>(data);
         }
 
-        /// Borrows binary compatible data into the collection.
+        /// Borrows binary compatible data into the collection from a typed pointer.
         ///
         /// Borrowed data must outlive the collection!
         /// (If the pointer passed is into an std::vector or similar, this std::vector mustn't be
@@ -145,7 +151,7 @@ namespace rerun {
         /// Since `rerun::Collection` does not provide write access, data is guaranteed to be unchanged by
         /// any function or operation taking on a `Collection`.
         template <typename T>
-        static Collection<TElement> borrow(const T* data, size_t num_instances) {
+        static Collection<TElement> borrow(const T* data, size_t num_instances = 1) {
             static_assert(
                 sizeof(T) == sizeof(TElement),
                 "T & TElement are not binary compatible: Size mismatch."
@@ -162,9 +168,9 @@ namespace rerun {
             return batch;
         }
 
-        /// Borrows binary compatible data into the collection.
+        /// Borrows binary compatible data into the collection from an untyped pointer.
         ///
-        /// Version of `borrow` that takes a void pointer, omitting any checks.
+        /// This version of `borrow` that takes a void pointer, omitting any checks.
         ///
         /// Borrowed data must outlive the collection!
         /// (If the pointer passed is into an std::vector or similar, this std::vector mustn't be
@@ -172,8 +178,20 @@ namespace rerun {
         ///
         /// Since `rerun::Collection` does not provide write access, data is guaranteed to be unchanged by
         /// any function or operation taking on a `rerun::Collection`.
-        static Collection borrow(const void* data, size_t num_instances) {
+        static Collection borrow(const void* data, size_t num_instances = 1) {
             return borrow(reinterpret_cast<const TElement*>(data), num_instances);
+        }
+
+        /// Borrows binary compatible data into the collection from a vector.
+        ///
+        /// Borrowed data must outlive the collection!
+        /// The referenced vector must not be resized and musn't be temporary.
+        ///
+        /// Since `rerun::Collection` does not provide write access, data is guaranteed to be unchanged by
+        /// any function or operation taking on a `rerun::Collection`.
+        template <typename T>
+        static Collection borrow(const std::vector<T>& data) {
+            return borrow(data.data(), data.size());
         }
 
         /// Takes ownership of a temporary `std::vector`, moving it into the collection.
@@ -191,9 +209,16 @@ namespace rerun {
 
         /// Takes ownership of a single element, moving it into the collection.
         static Collection<TElement> take_ownership(TElement&& data) {
-            // TODO(andreas): there should be a special path here to avoid allocating a vector.
+            // TODO(#4256): there should be a special path here to avoid allocating a vector.
             std::vector<TElement> elements;
             elements.emplace_back(std::move(data));
+            return take_ownership(std::move(elements));
+        }
+
+        /// Takes ownership of a single element, copying it into the collection.
+        static Collection<TElement> take_ownership(const TElement& data) {
+            // TODO(#4256): there should be a special path here to avoid allocating a vector.
+            std::vector<TElement> elements = {data};
             return take_ownership(std::move(elements));
         }
 
@@ -214,6 +239,9 @@ namespace rerun {
                             other.storage.borrowed = this_borrowed_data_old;
                             break;
                         }
+
+                        default:
+                            assert(false && "unreachable");
                     }
                     break;
                 }
@@ -231,9 +259,15 @@ namespace rerun {
                         case CollectionOwnership::VectorOwned:
                             std::swap(storage.vector_owned, other.storage.vector_owned);
                             break;
+
+                        default:
+                            assert(false && "unreachable");
                     }
                     break;
                 }
+
+                default:
+                    assert(false && "unreachable");
             }
 
             std::swap(ownership, other.ownership);
@@ -243,9 +277,13 @@ namespace rerun {
             switch (ownership) {
                 case CollectionOwnership::Borrowed:
                     break; // nothing to do.
+
                 case CollectionOwnership::VectorOwned:
                     storage.vector_owned.~vector(); // Deallocate the vector!
                     break;
+
+                default:
+                    assert(false && "unreachable");
             }
         }
 
@@ -254,8 +292,12 @@ namespace rerun {
             switch (ownership) {
                 case CollectionOwnership::Borrowed:
                     return storage.borrowed.num_instances;
+
                 case CollectionOwnership::VectorOwned:
                     return storage.vector_owned.size();
+
+                default:
+                    assert(false && "unreachable");
             }
             return 0;
         }
@@ -265,8 +307,12 @@ namespace rerun {
             switch (ownership) {
                 case CollectionOwnership::Borrowed:
                     return storage.borrowed.num_instances == 0;
+
                 case CollectionOwnership::VectorOwned:
                     return storage.vector_owned.empty();
+
+                default:
+                    assert(false && "unreachable");
             }
             return 0;
         }
@@ -282,8 +328,12 @@ namespace rerun {
             switch (ownership) {
                 case CollectionOwnership::Borrowed:
                     return storage.borrowed.data;
+
                 case CollectionOwnership::VectorOwned:
                     return storage.vector_owned.data();
+
+                default:
+                    assert(false && "unreachable");
             }
 
             // We need to return something to avoid compiler warnings.
@@ -319,12 +369,57 @@ namespace rerun {
         }
 
         /// Copies the data into a new `std::vector`.
-        std::vector<TElement> to_vector() const {
-            // TODO(andreas): Overload this for `const &` and `&&` to avoid the copy when possible.
+        std::vector<TElement> to_vector() const& {
             std::vector<TElement> result;
             result.reserve(size());
             result.insert(result.end(), begin(), end());
             return result;
+        }
+
+        /// Copies the data into a new `std::vector`.
+        ///
+        /// If possible, this will move the underlying data.
+        std::vector<TElement> to_vector() && {
+            switch (ownership) {
+                case CollectionOwnership::Borrowed: {
+                    std::vector<TElement> result;
+                    result.reserve(size());
+                    result.insert(result.end(), begin(), end());
+                    return result;
+                }
+
+                case CollectionOwnership::VectorOwned: {
+                    return std::move(storage.vector_owned);
+                }
+
+                default:
+                    assert(false && "unreachable");
+            }
+            return std::vector<TElement>();
+        }
+
+        /// Reinterpret this collection as a collection of bytes.
+        Collection<uint8_t> to_uint8() const {
+            switch (ownership) {
+                case CollectionOwnership::Borrowed: {
+                    return Collection<uint8_t>::borrow(
+                        reinterpret_cast<const uint8_t*>(data()),
+                        size() * sizeof(TElement)
+                    );
+                }
+
+                case CollectionOwnership::VectorOwned: {
+                    auto ptr = reinterpret_cast<const uint8_t*>(data());
+                    auto num_bytes = size() * sizeof(TElement);
+                    return Collection<uint8_t>::take_ownership(
+                        std::vector<uint8_t>(ptr, ptr + num_bytes)
+                    );
+                }
+
+                default:
+                    assert(false && "unreachable");
+            }
+            return Collection<uint8_t>();
         }
 
       private:
@@ -347,6 +442,51 @@ namespace rerun {
         CollectionOwnership ownership;
         CollectionStorage<TElement> storage;
     };
+
+    // Convenience functions for creating typed collections via explicit borrow & ownership taking.
+    // These are useful to avoid having to specify the type of the collection.
+    // E.g. instead of `rerun::Collection<uint8_t>::borrow(data, num_instances)`,
+    // you can just write `rerun::borrow(data, num_instances)`.
+
+    /// Borrows binary data into a `Collection` from a pointer.
+    ///
+    /// Borrowed data must outlive the collection!
+    /// (If the pointer passed is into an std::vector or similar, this std::vector mustn't be
+    /// resized.)
+    /// The passed type must be binary compatible with the collection type.
+    ///
+    /// Since `rerun::Collection` does not provide write access, data is guaranteed to be unchanged by
+    /// any function or operation taking on a `Collection`.
+    template <typename TElement>
+    inline Collection<TElement> borrow(const TElement* data, size_t num_instances = 1) {
+        return Collection<TElement>::borrow(data, num_instances);
+    }
+
+    /// Borrows binary data into the collection from a vector.
+    ///
+    /// Borrowed data must outlive the collection!
+    /// The referenced vector must not be resized and musn't be temporary.
+    ///
+    /// Since `rerun::Collection` does not provide write access, data is guaranteed to be unchanged by
+    /// any function or operation taking on a `rerun::Collection`.
+    template <typename TElement>
+    inline Collection<TElement> borrow(const std::vector<TElement>& data) {
+        return Collection<TElement>::borrow(data);
+    }
+
+    /// Takes ownership of a temporary `std::vector`, moving it into the collection.
+    ///
+    /// Takes ownership of the data and moves it into the collection.
+    template <typename TElement>
+    inline Collection<TElement> take_ownership(std::vector<TElement> data) {
+        return Collection<TElement>::take_ownership(std::move(data));
+    }
+
+    /// Takes ownership of a single element, moving it into the collection.
+    template <typename TElement>
+    inline Collection<TElement> take_ownership(TElement data) {
+        return Collection<TElement>::take_ownership(std::move(data));
+    }
 } // namespace rerun
 
 // Could keep this separately, but its very hard to use the collection without the basic suite of adapters.

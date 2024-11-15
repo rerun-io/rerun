@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import multiprocessing
 import os
 import subprocess
 
@@ -30,7 +29,9 @@ def run(
         cwd = get_repo_root()
 
     print(f"> {subprocess.list2cmdline(args)}")
-    result = subprocess.run(args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True)
+    result = subprocess.run(
+        args, env=env, cwd=cwd, timeout=timeout, check=False, capture_output=True, text=True, encoding="utf-8"
+    )
     assert (
         result.returncode == 0
     ), f"{subprocess.list2cmdline(args)} failed with exit-code {result.returncode}. Output:\n{result.stdout}\n{result.stderr}"
@@ -56,47 +57,8 @@ def roundtrip_env(*, save_path: str | None = None) -> dict[str, str]:
     return env
 
 
-def cmake_configure(release: bool, env: dict[str, str]) -> None:
-    os.makedirs(cpp_build_dir, exist_ok=True)
-    build_type = "Debug"
-    if release:
-        build_type = "Release"
-    # TODO(andreas): We should pixi for the prepare so we can ensure we have build tooling ready
-    configure_args = [
-        "cmake",
-        "-B",
-        cpp_build_dir,
-        f"-DCMAKE_BUILD_TYPE={build_type}",
-        "-DCMAKE_COMPILE_WARNING_AS_ERROR=ON",
-        ".",
-    ]
-    run(
-        configure_args,
-        env=env,
-    )
-
-
-def cmake_build(target: str, release: bool) -> None:
-    config = "Debug"
-    if release:
-        config = "Release"
-
-    build_process_args = [
-        "cmake",
-        "--build",
-        cpp_build_dir,
-        "--config",
-        config,
-        "--target",
-        target,
-        "--parallel",
-        str(multiprocessing.cpu_count()),
-    ]
-    run(build_process_args)
-
-
 def run_comparison(rrd0_path: str, rrd1_path: str, full_dump: bool) -> None:
-    cmd = ["rerun", "compare"]
+    cmd = ["rerun", "rrd", "compare"]
     if full_dump:
         cmd += ["--full-dump"]
     cmd += [rrd0_path, rrd1_path]

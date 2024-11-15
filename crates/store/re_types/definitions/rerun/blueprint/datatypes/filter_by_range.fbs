@@ -1,0 +1,14 @@
+namespace rerun.blueprint.datatypes;
+
+
+/// Configuration for the filter-by-range feature of the dataframe view.
+table FilterByRange (
+  "attr.rust.derive": "PartialEq, Eq",
+  "attr.rerun.scope": "blueprint"
+) {
+  /// Beginning of the time range.
+  start: rerun.datatypes.TimeInt (order: 100);
+
+  /// End of the time range (inclusive).
+  end: rerun.datatypes.TimeInt (order: 200);
+}

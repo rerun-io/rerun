@@ -5,9 +5,89 @@
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
 [opt_out.run]
-"archetypes/image_advanced" = ["cpp", "rust"] # Missing examples
+"concepts/static/log_static" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/static/log_temporal_10x" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/static/send_static" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/static/log_static_10x" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/viscomp-base" = [
+  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
+]
+"concepts/viscomp-component-default" = [
+  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
+]
+"concepts/viscomp-component-override" = [
+  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
+]
+"concepts/viscomp-visualizer-override-multiple" = [
+  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
+]
+"concepts/viscomp-visualizer-override" = [
+  "cpp",  # Blueprint API doesn't exist for C++/Rust
+  "rust", # Blueprint API doesn't exist for C++/Rust
+]
+"concepts/app-model" = [ # Uses a non-standard logging workflow
+  "py",
+  "cpp",
+  "rust",
+]
+views = [
+  "cpp",  # TODO(#5520): C++ views are not yet implemented
+  "rust", # TODO(#5521): Rust views are not yet implemented
+]
 
-"tutorials/annotation-context" = [ # Not a complete examples
+"archetypes/image_advanced" = [
+  "cpp",  # Missing examples
+  "rust", # Missing examples
+]
+"archetypes/points3d_send_columns" = [
+  "rust", # Doesn't support partitioned component batches yet.
+]
+"migration/log_line" = [ # Not a complete example -- just a single log line
+  "cpp",
+  "rust",
+  "py",
+]
+"reference/dataframe_query" = [ # No output
+  "cpp",
+  "rust",
+  "py",
+]
+"reference/dataframe_save_blueprint" = [ # No output
+  "cpp",
+  "rust",
+  "py",
+]
+"reference/dataframe_view_query" = [ # No output
+  "cpp",
+  "rust",
+  "py",
+]
+"reference/dataframe_view_query_external" = [ # No output
+  "cpp",
+  "rust",
+  "py",
+]
+"tutorials/annotation-context" = [ # Not a complete example
   "cpp",
   "rust",
   "py",
@@ -15,6 +95,11 @@
 "tutorials/any_values" = [ # Not yet implemented
   "cpp",
   "rust",
+]
+"tutorials/custom-application-id" = [ # Not a complete examples
+  "cpp",
+  "rust",
+  "py",
 ]
 "tutorials/custom-recording-id" = [ # Not a complete examples
   "cpp",
@@ -42,24 +127,36 @@
   "rust", # Not implemented
   "py",   # Doesn't terminate
 ]
-
-"migration/log_line" = [ # Not a complete example -- just a single log line
-  "cpp",
-  "rust",
-  "py",
+"tutorials/visualizer-overrides" = [
+  "cpp",  # Not implemented
+  "rust", # Not implemented
 ]
-
-views = [
-  "cpp",  # TODO(#5520): C++ views are not yet implemented
-  "rust", # TODO(#5521): Rust views are not yet implemented
+"tutorials/data_out" = [
+  "py",   # Requires context (an RRD file to be exported by the user)
+  "cpp",  # Not implemented
+  "rust", # Not implemented
 ]
-
+"tutorials/visualization" = [
+  "py",   # Requires passing RRD as argument
+  "cpp",  # Not implemented
+  "rust", # Not implemented
+]
 
 # These entries will run but their results won't be compared to the baseline.
 #
 # You should only ever use this if the test cannot yet be implemented in a way that yields the right
 # data, but you still want to check whether the test runs properly and outputs _something_.
 [opt_out.compare]
+concepts = [ # Only python
+  "cpp",
+  "py",
+  "rust",
+]
+quick_start = [ # These examples don't have exactly the same implementation.
+  "cpp",
+  "py",
+  "rust",
+]
 "archetypes/arrow3d_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",
   "py",
@@ -72,6 +169,16 @@ views = [
 ]
 "archetypes/bar_chart" = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
   "py",
+]
+"archetypes/capsule3d_batch" = [ # TODO(#3235): Degree to radian conversion is slightly different.
+  "cpp",
+  "py",
+  "rust",
+]
+"archetypes/ellipsoid3d_simple" = [ # TODO(#3206): examples use different RNGs
+  "cpp",
+  "py",
+  "rust",
 ]
 "archetypes/mesh3d_partial_updates" = [
   "cpp",
@@ -111,19 +218,48 @@ views = [
   "py",
   "rust",
 ]
-quick_start = [ # These examples don't have exactly the same implementation.
-  "cpp",
-  "py",
-  "rust",
-]
 "archetypes/text_log_integration" = [ # The entity path will differ because the Rust code is part of a library
   "cpp",
   "py",
   "rust",
 ]
-
+"archetypes/transform3d_axes" = [ # TODO(#3235): Degree to radian conversion is slightly different.
+  "cpp",
+  "py",
+  "rust",
+]
+"archetypes/transform3d_hierarchy" = [ # Uses a lot of trigonometry which is surprisingly easy to get the same on Rust & C++, but not on Python/Numpy
+  "py",
+]
+"archetypes/instance_poses3d_combined" = [ # TODO(#3235): Slight floating point differences in point grid.
+  "cpp",
+  "py",
+  "rust",
+]
+"archetypes/image_send_columns" = [ # This mixes `log` and `send_columns`. Since `log` is suspect to delays by the batcher, this test gets flaky.
+  "cpp",
+  "py",
+  "rust",
+]
+"archetypes/mesh3d_instancing" = [ # TODO(#3235): Slight floating point differences in deg to rad conversion.
+  "cpp",
+  "py",
+  "rust",
+]
+"archetypes/video_auto_frames" = [ # This mixes `log` and `send_columns`. Since `log` is suspect to delays by the batcher, this test gets flaky.
+  "cpp",
+  "py",
+  "rust",
+]
 
 # `$config_dir` will be replaced with the absolute path of `docs/snippets`.
+# Note that the snippet comparison tool will automatically run `/tests/assets/download_test_assets.py` before running the snippets.
 [extra_args]
-"archetypes/asset3d_simple" = ["$config_dir/../assets/cube.glb"]
-"archetypes/asset3d_out_of_tree" = ["$config_dir/../assets/cube.glb"]
+"archetypes/asset3d_simple" = ["$config_dir/../../tests/assets/cube.glb"]
+"archetypes/asset3d_out_of_tree" = ["$config_dir/../../tests/assets/cube.glb"]
+"archetypes/video_auto_frames" = [
+  "$config_dir/../../tests/assets/video/Big_Buck_Bunny_1080_10s_av1.mp4",
+]
+"archetypes/video_manual_frames" = [
+  "$config_dir/../../tests/assets/video/Sintel_1080_10s_av1.mp4",
+]

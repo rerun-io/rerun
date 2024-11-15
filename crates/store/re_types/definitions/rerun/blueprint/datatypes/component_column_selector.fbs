@@ -1,0 +1,21 @@
+namespace rerun.blueprint.datatypes;
+
+
+/// Describe a component column to be selected in the dataframe view.
+//TODO(ab, jleibs): this probably needs reunification with whatever structure the data out API uses.
+// Has to be a table because flatbuffer doesn't support strings in structs.
+table ComponentColumnSelector (
+  "attr.python.aliases": "str",
+  "attr.rust.derive": "Default, PartialEq, Eq, Hash",
+  "attr.rerun.scope": "blueprint"
+) {
+  /// The entity path for this component.
+  entity_path: rerun.datatypes.EntityPath (order: 100);
+
+  /// The name of the component.
+  // NOTE: this field cannot be named `component_name`, because it would then clash with
+  // `ComponentMixin.component_name()` in the Python API.
+  component: rerun.datatypes.Utf8 (order: 200);
+
+  //TODO(ab, jleibs): many more fields to come (archetype, etc.)
+}

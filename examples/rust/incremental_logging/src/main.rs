@@ -38,7 +38,7 @@ let radii = [rerun::Radius(0.1); 10];
 
 // Only log colors and radii once.
 rec.set_time_sequence("frame_nr", 0);
-rec.log_component_batches("points", false /* static */, [&colors as &dyn rerun::ComponentBatch, &radii])?;
+rec.log("points", &[&colors as &dyn rerun::ComponentBatch, &radii])?;
 
 let mut rng = rand::thread_rng();
 let dist = Uniform::new(-5., 5.);
@@ -59,21 +59,13 @@ fn run(rec: &rerun::RecordingStream) -> anyhow::Result<()> {
     rec.log_static("readme", &rerun::TextDocument::from_markdown(README))?;
 
     let colors = [rerun::Color::from_rgb(255, 0, 0)];
-    let radii = [rerun::Radius(0.1)];
+    let radii = [rerun::Radius::from(0.1)];
 
     // Only log colors and radii once.
     rec.set_time_sequence("frame_nr", 0);
-    rec.log_component_batches(
-        "points",
-        false, /* static */
-        [&colors as &dyn rerun::ComponentBatch, &radii],
-    )?;
+    rec.log("points", &[&colors as &dyn rerun::ComponentBatch, &radii])?;
     // Logging statically would also work.
-    // rec.log_component_batches(
-    //     "points",
-    //     true, /* static */
-    //     [&colors as &dyn rerun::ComponentBatch, &radii],
-    // )?;
+    // rec.log_static("points", &[&colors as &dyn rerun::ComponentBatch, &radii])?;
 
     let mut rng = rand::thread_rng();
     let dist = Uniform::new(-5., 5.);

@@ -57,7 +57,7 @@ rr.log(
 )
 ```
 
-Then, the depth image is logged as an [`DepthImage`](https://www.rerun.io/docs/reference/types/archetypes/depth_image) to the `world/camera/image/depth` entity.
+Then, the depth image is logged as a [`DepthImage`](https://www.rerun.io/docs/reference/types/archetypes/depth_image) to the `world/camera/image/depth` entity.
 
 ```python
 rr.log("world/camera/image/depth", rr.DepthImage(img_depth, meter=DEPTH_IMAGE_SCALING))

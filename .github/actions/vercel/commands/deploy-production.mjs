@@ -19,5 +19,14 @@ export async function deployToProduction(client, options) {
   if (options.commit) await project.setEnv("RELEASE_COMMIT", options.commit);
   if (options.version) await project.setEnv("RELEASE_VERSION", options.version);
 
-  await project.redeploy(deployment.uid, "landing");
+  const newDeployment = await project.redeploy(deployment.uid, "landing");
+
+  const result = await project.waitForDeployment(newDeployment.id);
+  if (result.type === "failure") {
+    throw new Error(
+      `deployment failed, see ${JSON.stringify(
+        result.deployment.inspectorUrl,
+      )} for more information`,
+    );
+  }
 }

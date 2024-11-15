@@ -1,0 +1,40 @@
+[package]
+name = "re_tracing"
+authors.workspace = true
+description = "Helpers for tracing/spans/flamegraphs and such."
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+
+[package.metadata.docs.rs]
+all-features = true
+
+
+[features]
+default = []
+
+## Enable to easily host a puffin server. For binaries.
+server = ["dep:puffin_http", "dep:re_log", "dep:rfd", "dep:wayland-sys"]
+
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+puffin.workspace = true
+
+# Optional dependencies:
+puffin_http = { workspace = true, optional = true }
+re_log = { workspace = true, optional = true }
+rfd = { workspace = true, optional = true }
+
+[target.'cfg(target_os = "linux")'.dependencies]
+# Work-around for https://github.com/Smithay/wayland-rs/issues/767
+wayland-sys = { workspace = true, optional = true, features = ["dlopen"] }

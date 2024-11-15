@@ -1,11 +1,12 @@
 from __future__ import annotations
 
 import rerun as rr
-from rerun.components import DisconnectedSpace, DisconnectedSpaceBatch, DisconnectedSpaceLike
+from rerun.components import DisconnectedSpace, DisconnectedSpaceBatch
+from rerun.datatypes.bool import BoolLike
 
 
 def test_disconnected_space() -> None:
-    disconnected_spaces: list[DisconnectedSpaceLike] = [
+    disconnected_spaces: list[BoolLike] = [
         # DisconnectedSpaceLike: bool
         True,
         # DisconnectedSpaceLike: DisconnectedSpace

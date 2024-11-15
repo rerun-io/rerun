@@ -1,5 +1,5 @@
 ---
 title: Migration Guides
-order: 900
-redirect: reference/migration/migration-0-16
+order: 1000
+redirect: reference/migration/migration-0-19
 ---

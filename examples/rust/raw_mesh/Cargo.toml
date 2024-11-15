@@ -1,13 +1,13 @@
 [package]
 name = "raw_mesh"
-version = "0.17.0-alpha.3"
+version = "0.21.0-alpha.1+dev"
 edition = "2021"
-rust-version = "1.76"
+rust-version = "1.79"
 license = "MIT OR Apache-2.0"
 publish = false
 
 [dependencies]
-rerun = { path = "../../../crates/rerun", features = [
+rerun = { path = "../../../crates/top/rerun", features = [
   "web_viewer",
   "clap",
   "ecolor",

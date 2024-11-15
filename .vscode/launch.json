@@ -32,6 +32,7 @@
             "cargo": {
                 "args": [
                     "test",
+                    "--profile=debugging",
                     "-p=re_log_encoding",
                     "--no-run",
                     "--lib",
@@ -50,6 +51,7 @@
             "cargo": {
                 "args": [
                     "build",
+                    "--profile=debugging",
                     "--package=rerun-cli",
                     "--no-default-features",
                     "--features=native_viewer"
@@ -60,7 +62,10 @@
                 }
             },
             "args": [],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUST_LOG": "debug"
+            }
         },
         {
             "name": "Debug 'rerun ../data.rrd'",
@@ -69,6 +74,7 @@
             "cargo": {
                 "args": [
                     "build",
+                    "--profile=debugging",
                     "--package=rerun-cli",
                     "--no-default-features",
                     "--features=native_viewer"
@@ -81,7 +87,10 @@
             "args": [
                 "../data.rrd"
             ],
-            "cwd": "${workspaceFolder}"
+            "cwd": "${workspaceFolder}",
+            "env": {
+                "RUST_LOG": "debug"
+            }
         },
         {
             "name": "Debug 'rerun' colmap.rrd from url",
@@ -90,6 +99,7 @@
             "cargo": {
                 "args": [
                     "build",
+                    "--profile=debugging",
                     "--package=rerun-cli",
                     "--no-default-features",
                     "--features=native_viewer"
@@ -111,6 +121,7 @@
             "cargo": {
                 "args": [
                     "build",
+                    "--profile=debugging",
                     "--package=minimal",
                 ],
                 "filter": {
@@ -131,6 +142,7 @@
             "cargo": {
                 "args": [
                     "build",
+                    "--profile=debugging",
                     "--example=multiview"
                 ],
                 "filter": {
@@ -148,6 +160,7 @@
             "cargo": {
                 "args": [
                     "build",
+                    "--profile=debugging",
                     "--package=re_types_builder",
                 ],
                 "filter": {

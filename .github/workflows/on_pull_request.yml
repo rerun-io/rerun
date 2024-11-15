@@ -12,6 +12,8 @@ on:
       - opened
       - synchronize
 
+permissions: write-all
+
 # These jobs use fairly short names as they are a prefix in the display hierarchy
 jobs:
   checks:
@@ -20,6 +22,7 @@ jobs:
     uses: ./.github/workflows/reusable_checks.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
+      CHANNEL: pr
     secrets: inherit
 
   cpp-paths-filter:
@@ -51,15 +54,13 @@ jobs:
     outputs:
       docs_changes: ${{ steps.filter.outputs.docs_changes }}
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
       - uses: dorny/paths-filter@v3
         id: filter
         with:
           filters: |
             docs_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
+              - .github/actions/vercel/**/*
               - pixi.lock # maybe out build commands have changed
               - pixi.toml # maybe out build commands have changed
               - scripts/ci/*
@@ -136,7 +137,7 @@ jobs:
               - "**/*.rs"
               - "**/*.toml"
               - "**/yarn.lock"
-              - "crates/re_ui/data/**"
+              - "crates/viewer/re_ui/data/**"
 
   rust-checks:
     name: "Rust Checks"

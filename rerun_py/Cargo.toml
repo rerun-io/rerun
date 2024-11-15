@@ -17,9 +17,12 @@ name = "rerun_bindings" # name of the .so library that the Python module will im
 [features]
 default = ["extension-module"]
 
+## Extra features that aren't ready to be included in release builds yet.
+extra = ["pypi", "remote"]
+
 ## The features we turn on when building the `rerun-sdk` PyPi package
 ## for <https://pypi.org/project/rerun-sdk/>.
-pypi = ["extension-module", "web_viewer"]
+pypi = ["extension-module", "nasm", "web_viewer"]
 
 ## We need to enable the `pyo3/extension-module` when building the SDK,
 ## but we cannot enable it when building tests and benchmarks, so we
@@ -27,6 +30,19 @@ pypi = ["extension-module", "web_viewer"]
 ## * <https://pyo3.rs/latest/faq.html#i-cant-run-cargo-test-or-i-cant-build-in-a-cargo-workspace-im-having-linker-issues-like-symbol-not-found-or-undefined-reference-to-_pyexc_systemerror>
 ## * <https://pyo3.rs/main/building-and-distribution#building-python-extension-modules>
 extension-module = ["pyo3/extension-module"]
+
+## Enable faster native video decoding with assembly.
+## You need to install [nasm](https://nasm.us/) to compile with this feature.
+nasm = ["re_video/nasm"]
+
+remote = [
+  "dep:object_store",
+  "dep:re_protos",
+  "dep:re_ws_comms",
+  "dep:tokio",
+  "dep:tonic",
+  "dep:url",
+]
 
 ## Support serving a web viewer over HTTP with `serve()`.
 ##
@@ -41,24 +57,42 @@ web_viewer = [
 
 [dependencies]
 re_build_info.workspace = true
-re_chunk.workspace = true
+re_chunk = { workspace = true, features = ["arrow"] }
+re_chunk_store.workspace = true
+re_dataframe.workspace = true
 re_log = { workspace = true, features = ["setup"] }
 re_log_types.workspace = true
 re_memory.workspace = true
 re_sdk = { workspace = true, features = ["data_loaders"] }
+re_video.workspace = true
 re_web_viewer_server = { workspace = true, optional = true }
 re_ws_comms = { workspace = true, optional = true }
 
-arrow2 = { workspace = true, features = ["io_ipc", "io_print"] }
+
+arrow = { workspace = true, features = ["pyarrow"] }
+arrow2 = { workspace = true, features = ["io_ipc", "io_print", "arrow"] }
 crossbeam.workspace = true
 document-features.workspace = true
-itertools = { workspace = true }
-mimalloc = { workspace = true, features = ["local_dynamic_tls"] }
+itertools.workspace = true
+infer.workspace = true
+mimalloc = { version = "0.1.43", features = ["local_dynamic_tls"] }
+numpy.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
 pyo3 = { workspace = true, features = ["abi3-py38"] }
 rand = { workspace = true, features = ["std", "std_rng"] }
 uuid.workspace = true
+
+# Deps for remote feature
+object_store = { workspace = true, optional = true, features = ["aws"] }
+re_protos = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+# Not used yet, but we will need it when we start streaming data
+#tokio-stream = { workspace = true, optional = true }
+tonic = { workspace = true, default-features = false, features = [
+  "transport",
+], optional = true }
+url = { workspace = true, optional = true }
 
 
 [build-dependencies]

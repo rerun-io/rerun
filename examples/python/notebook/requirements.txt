@@ -1,6 +1,6 @@
 ipython<=8.12 # ipython 8.13 or greater doesn't work with python 3.8
 jupyter
-rerun-sdk
+rerun-sdk[notebook]
 
 # Lots of reported incompatibilities across recent versions for these 3 deps.
 # The following seems to be the most recent recommendations for a stable experience.

@@ -21,11 +21,11 @@ int main() {
 
     rec.set_time("stable_time", 0s);
 
-    rec.log(
+    rec.log_static(
         "dna/structure/left",
         rerun::Points3D(points1).with_colors(colors1).with_radii({0.08f})
     );
-    rec.log(
+    rec.log_static(
         "dna/structure/right",
         rerun::Points3D(points2).with_colors(colors2).with_radii({0.08f})
     );
@@ -35,7 +35,7 @@ int main() {
         lines.emplace_back(rerun::LineStrip3D({points1[i].xyz, points2[i].xyz}));
     }
 
-    rec.log(
+    rec.log_static(
         "dna/structure/scaffolding",
         rerun::LineStrips3D(lines).with_colors(rerun::Color(128, 128, 128))
     );

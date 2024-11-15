@@ -137,13 +137,11 @@ class TensorDataExt:
         elif array is not None:
             self.buffer = TensorBuffer(array.flatten())
 
-        if self.buffer.kind != "jpeg" and self.buffer.kind != "nv12" and self.buffer.kind != "yuy2":
-            expected_buffer_size = prod(d.size for d in self.shape)
-
-            if len(self.buffer.inner) != expected_buffer_size:
-                raise ValueError(
-                    f"Shape and buffer size do not match. {len(self.buffer.inner)} {self.shape}->{expected_buffer_size}"
-                )
+        expected_buffer_size = prod(d.size for d in self.shape)
+        if len(self.buffer.inner) != expected_buffer_size:
+            raise ValueError(
+                f"Shape and buffer size do not match. {len(self.buffer.inner)} {self.shape}->{expected_buffer_size}"
+            )
 
     ################################################################################
     # Arrow converters
@@ -179,6 +177,11 @@ class TensorDataExt:
             fields=[data_type.field("shape"), data_type.field("buffer")],
         ).cast(data_type)
 
+    def numpy(self: Any, force: bool) -> npt.NDArray[Any]:
+        """Convert the TensorData back to a numpy array."""
+        dims = [d.size for d in self.shape]
+        return self.buffer.inner.reshape(dims)  # type: ignore[no-any-return]
+
 
 ################################################################################
 # Internal construction helpers
@@ -186,9 +189,9 @@ class TensorDataExt:
 
 
 def _build_shape_array(dims: list[TensorDimension]) -> pa.Array:
-    from . import TensorDimensionType
+    from . import TensorDimensionBatch
 
-    data_type = TensorDimensionType().storage_type
+    data_type = TensorDimensionBatch._ARROW_DATATYPE
 
     array = np.asarray([d.size for d in dims], dtype=np.uint64).flatten()
     names = pa.array([d.name for d in dims], mask=[d is None for d in dims], type=data_type.field("name").type)
@@ -221,27 +224,19 @@ DTYPE_MAP: Final[dict[npt.DTypeLike, str]] = {
 
 
 def _build_buffer_array(buffer: TensorBufferLike) -> pa.Array:
-    from . import TensorBuffer, TensorBufferType
+    from . import TensorBuffer, TensorBufferBatch
 
-    data_type = TensorBufferType().storage_type
+    data_type = TensorBufferBatch._ARROW_DATATYPE
 
-    kind = None
     if isinstance(buffer, TensorBuffer):
-        kind = buffer.kind
         buffer = buffer.inner
 
     buffer = buffer.flatten()
 
     data_inner = pa.ListArray.from_arrays(pa.array([0, len(buffer)]), buffer)
-    if kind == "jpeg":
-        discriminant = "JPEG"
-    elif kind == "nv12":
-        discriminant = "NV12"
-    elif kind == "yuy2":
-        discriminant = "YUY2"
-    else:
-        assert buffer.dtype.type in DTYPE_MAP, f"Failed to find {buffer.dtype.type} in f{DTYPE_MAP}"
-        discriminant = DTYPE_MAP[buffer.dtype.type]
+
+    assert buffer.dtype.type in DTYPE_MAP, f"Failed to find {buffer.dtype.type} in f{DTYPE_MAP}"
+    discriminant = DTYPE_MAP[buffer.dtype.type]
 
     return build_dense_union(
         data_type,

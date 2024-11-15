@@ -1,7 +1,9 @@
-Cargo.lock
 CHANGELOG.md
-crates/re_types_builder/src/reflection.rs
-crates/re_types/src/datatypes/tensor_buffer.rs
-crates/re_ui/data/Inter-Medium.otf
+Cargo.lock
+crates/build/re_types_builder/src/reflection.rs
+crates/store/re_dataframe/src/query.rs
+crates/store/re_types/src/datatypes/tensor_buffer.rs
+crates/viewer/re_ui/data/Inter-Medium.otf
+crates/viewer/re_viewer/src/reflection/mod.rs
 pixi.lock
 rerun_cpp/docs/Doxyfile

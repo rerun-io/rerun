@@ -334,7 +334,10 @@ def track_objects(video_path: str, *, max_frame_count: int | None) -> None:
     ]
     rr.log("/", rr.AnnotationContext(class_descriptions), static=True)
 
+    logging.info("Initializing detector…")
+    # This call has a tendency to hard exit on failure (no exceptions):
     detector = Detector(coco_categories=coco_categories)
+    logging.info("Detector initialized.")
 
     logging.info("Loading input video: %s", str(video_path))
     cap = cv2.VideoCapture(video_path)
@@ -342,6 +345,7 @@ def track_objects(video_path: str, *, max_frame_count: int | None) -> None:
 
     label_strs = [cat["name"] or str(cat["id"]) for cat in coco_categories]
     trackers: list[Tracker] = []
+
     while cap.isOpened():
         if max_frame_count is not None and frame_idx >= max_frame_count:
             break

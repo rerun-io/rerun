@@ -12,10 +12,12 @@ int main() {
         "world/cam",
         rerun::Pinhole::from_fov_and_aspect_ratio(fov_y, aspect_ratio)
             .with_camera_xyz(rerun::components::ViewCoordinates::RUB)
+            .with_image_plane_distance(0.1f)
     );
 
     rec.log(
         "world/points",
-        rerun::Points3D({{0.0f, 0.0f, -0.5f}, {0.1f, 0.1f, -0.5f}, {-0.1f, -0.1f, -0.5f}})
+        rerun::Points3D({{0.0f, 0.0f, -0.5f}, {0.1f, 0.1f, -0.5f}, {-0.1f, -0.1f, -0.5f}}
+        ).with_radii({0.025f})
     );
 }

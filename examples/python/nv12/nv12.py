@@ -45,9 +45,11 @@ def main() -> None:
             continue
         rr.log(
             "NV12",
-            rr.ImageEncoded(
-                contents=bytes(bgr2nv12(frame)),
-                format=rr.ImageFormat.NV12((frame.shape[0], frame.shape[1])),
+            rr.Image(
+                bytes=bytes(bgr2nv12(frame)),
+                width=frame.shape[1],
+                height=frame.shape[0],
+                pixel_format=rr.PixelFormat.NV12,
             ),
         )
         time.sleep(0.01)

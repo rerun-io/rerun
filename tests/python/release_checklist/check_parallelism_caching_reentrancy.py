@@ -10,7 +10,7 @@ import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
 
-README = """
+README = """\
 # Parallelism, caching, reentrancy, etc
 
 This check simply puts a lot of pressure on all things parallel.

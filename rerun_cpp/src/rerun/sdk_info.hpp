@@ -1,10 +1,14 @@
 // General information about the SDK.
 #pragma once
 
+#include "c/sdk_info.h"
 #include "error.hpp"
 
 namespace rerun {
-    /// The Rerun C++ SDK version as a human-readable string.
+    /// Returns a human-readable version string of the Rerun C SDK.
+    ///
+    /// This should match the string in `RERUN_SDK_HEADER_VERSION`.
+    /// If not, the SDK's binary and the C++ headers are out of sync.
     const char* version_string();
 
     /// Internal check whether the version reported by the rerun_c binary matches `sdk_version_string`.

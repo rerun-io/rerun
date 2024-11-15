@@ -19,7 +19,7 @@ use rerun::{
     archetypes::{Clear, SegmentationImage, TextLog},
     datatypes::Quaternion,
     external::{re_log, re_types::components::TextLogLevel},
-    EntityPath, RecordingStream,
+    EntityPath, RecordingStream, TransformRelation,
 };
 
 // --- Rerun logging ---
@@ -32,7 +32,7 @@ fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
         "bbox_test/bbox",
         &Boxes3D::from_half_sizes([(1.0, 0.5, 0.25)])
             .with_colors([0x00FF00FF])
-            .with_rotations([Quaternion::from_xyzw([
+            .with_quaternions([Quaternion::from_xyzw([
                 0.0,
                 0.0,
                 (TAU / 8.0).sin(),
@@ -47,7 +47,7 @@ fn test_bbox(rec: &RecordingStream) -> anyhow::Result<()> {
         "bbox_test/bbox",
         &Boxes3D::from_centers_and_half_sizes([(1.0, 0.0, 0.0)], [(1.0, 0.5, 0.25)])
             .with_colors([Color::from_rgb(255, 255, 0)])
-            .with_rotations([Quaternion::from_xyzw([
+            .with_quaternions([Quaternion::from_xyzw([
                 0.0,
                 0.0,
                 (TAU / 8.0).sin(),
@@ -129,7 +129,7 @@ fn test_3d_points(rec: &RecordingStream) -> anyhow::Result<()> {
             (
                 Text(i.to_string().into()),
                 Position3D::new(x((i * 0.2).sin()), y((i * 0.2).cos()), z(i)),
-                Radius(t * 0.1 + (1.0 - t) * 2.0), // lerp(0.1, 2.0, t)
+                Radius::from(t * 0.1 + (1.0 - t) * 2.0), // lerp(0.1, 2.0, t)
                 Color::from_rgb(rng.gen(), rng.gen(), rng.gen()),
             )
         }))
@@ -160,7 +160,7 @@ fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
 
     use rerun::{
         archetypes::{Boxes2D, Tensor},
-        components::{Color, HalfSizes2D},
+        components::{Color, HalfSize2D},
     };
 
     // Add an image
@@ -194,7 +194,7 @@ fn test_rects(rec: &RecordingStream) -> anyhow::Result<()> {
     rec.log(
         "rects_test/rects",
         // TODO(#3381): Should be &Boxes2D::empty()
-        &Boxes2D::from_half_sizes(std::iter::empty::<HalfSizes2D>()),
+        &Boxes2D::from_half_sizes(std::iter::empty::<HalfSize2D>()),
     )?;
 
     Ok(())
@@ -429,7 +429,7 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
                     (time * rotation_speed_planet).cos() * sun_to_planet_distance,
                     0.0,
                 ],
-                RotationAxisAngle::new(glam::Vec3::X, Angle::Degrees(20.0)),
+                RotationAxisAngle::new(glam::Vec3::X, Angle::from_degrees(20.0)),
             ),
         )?;
 
@@ -440,7 +440,7 @@ fn test_transforms_3d(rec: &RecordingStream) -> anyhow::Result<()> {
                 (time * rotation_speed_moon).sin() * planet_to_moon_distance,
                 0.0,
             ])
-            .from_parent(),
+            .with_relation(TransformRelation::ChildFromParent),
         )?;
     }
 

@@ -16,16 +16,16 @@
 // See: https://github.com/rerun-io/rerun/issues/4027
 
 #define RR_WITH_MAYBE_UNINITIALIZED_DISABLED(expr) \
-    RERUN_DISABLE_MAYBE_UNINITIALIZED_PUSH         \
+    RR_DISABLE_MAYBE_UNINITIALIZED_PUSH            \
     expr RR_DISABLE_MAYBE_UNINITIALIZED_POP
 
 #if defined(__GNUC__) && !defined(__clang__)
 
-#define RERUN_DISABLE_MAYBE_UNINITIALIZED_PUSH \
-    RR_PUSH_WARNINGS                           \
+#define RR_DISABLE_MAYBE_UNINITIALIZED_PUSH \
+    RR_PUSH_WARNINGS                        \
     _Pragma("GCC diagnostic ignored \"-Wmaybe-uninitialized\"")
 #else
-#define RERUN_DISABLE_MAYBE_UNINITIALIZED_PUSH RR_PUSH_WARNINGS
+#define RR_DISABLE_MAYBE_UNINITIALIZED_PUSH RR_PUSH_WARNINGS
 #endif
 
 #define RR_DISABLE_MAYBE_UNINITIALIZED_POP RR_POP_WARNINGS
@@ -51,4 +51,11 @@
 #define RR_DISABLE_DEPRECATION_WARNING __pragma(warning(disable : 4996))
 #else
 #define RR_DISABLE_DEPRECATION_WARNING
+#endif
+
+// Disable possible null reference warning
+#if defined(__GNUC__) || defined(__clang__)
+#define RR_DISABLE_NULL_DEREF_WARNING _Pragma("GCC diagnostic ignored \"-Wnull-dereference\"")
+#else
+#define RR_DISABLE_NULL_DEREF_WARNING
 #endif

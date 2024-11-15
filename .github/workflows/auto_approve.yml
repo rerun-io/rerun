@@ -24,9 +24,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.34.0
 
       - name: Wait a few seconds
         run: |

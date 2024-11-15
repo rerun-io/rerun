@@ -1,5 +1,5 @@
 ---
-title: Blueprint
+title: Blueprints
 order: 600
 ---
 
@@ -15,7 +15,7 @@ combine to produce what you see: the "recording" and the "blueprint."
 -   The blueprint is the configuration that determines how the data from the
     recording is displayed.
 
-Both of these pieces are crucial -- without the recording there is nothing to
+Both of these pieces are crucial—without the recording there is nothing to
 show, and without the blueprint there is no way to show it. Even if you have
 used Rerun before without explicitly loading a blueprint, the Viewer was
 actually creating one for you. Without a blueprint, there is literally nothing
@@ -38,7 +38,8 @@ data in different ways.
 Every aspect of what the Viewer displays is controlled by the blueprint. This
 includes the type and content of the different views, the organization and
 layout of the different containers, and the configuration and styling properties
-of the individual data visualizers.
+of the individual data visualizers (see [Visualizers and Overrides](visualizers-and-overrides.md)
+for more details).
 
 In general, if you can modify an aspect of how something looks through the
 viewer, you are actually modifying the blueprint. (Note that while there may be
@@ -63,7 +64,7 @@ Under the hood, the blueprint is just data. It is represented by a
 difference is that it uses a specific set of blueprint archetypes and a special
 blueprint timeline. Note that even though the blueprint may be sent over the
 same connection, blueprint data is kept in an isolated store and is not mixed
-together with your recording data.
+with your recording data.
 
 Although the Rerun APIs for working with blueprint may look different from the
 regular logging APIs, they are really just syntactic sugar for logging a
@@ -98,8 +99,9 @@ blueprint data-store has several advantages:
 -   A blueprint can be produced programmatically using just the Rerun SDK without
     a dependency on the Viewer libraries.
 -   The blueprint is capable of representing any data that a recording can
-    represent. This means in the future, blueprint-sourced data overrides will
-    be just as expressive as any logged data.
+    represent. This means that blueprint-sourced data
+    [overrides](visualizers-and-overrides.md#Per-entity-component-override) are
+    just as expressive as any logged data.
 -   The blueprint is actually stored as a full time-series, simplifying future
     implementations of things like snapshots and undo/redo mechanisms.
 -   Debugging tools for inspecting generic Rerun data can be used to inspect

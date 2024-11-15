@@ -8,7 +8,7 @@ import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
 
-README = """
+README = """\
 # Mono-entity views
 
 This test checks that mono-entity views work as expected.

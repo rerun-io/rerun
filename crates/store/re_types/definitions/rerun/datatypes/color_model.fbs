@@ -1,0 +1,24 @@
+namespace rerun.datatypes;
+
+/// Specified what color components are present in an [archetypes.Image].
+///
+/// This combined with [datatypes.ChannelDatatype] determines the pixel format of an image.
+enum ColorModel: ubyte{
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    /// Grayscale luminance intencity/brightness/value, sometimes called `Y`
+    L = 1 (default),
+
+    /// Red, Green, Blue
+    RGB = 2,
+
+    /// Red, Green, Blue, Alpha
+    RGBA = 3,
+
+    /// Blue, Green, Red
+    BGR,
+
+    /// Blue, Green, Red, Alpha
+    BGRA,
+}

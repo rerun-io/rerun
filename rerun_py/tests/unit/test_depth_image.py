@@ -1,48 +1,60 @@
 from __future__ import annotations
 
+import itertools
 from typing import Any
 
 import numpy as np
 import pytest
 import rerun as rr
 import torch
-from rerun.components import DepthMeter
-from rerun.datatypes import TensorBuffer, TensorData, TensorDataLike, TensorDimension
+from rerun.components import DepthMeter, ImageFormat
+from rerun.datatypes import ChannelDatatype, Float32Like
 
 rng = np.random.default_rng(12345)
 RANDOM_IMAGE_SOURCE = rng.uniform(0.0, 1.0, (10, 20))
 
 
-IMAGE_INPUTS: list[TensorDataLike] = [
-    # Full explicit construction
-    TensorData(
-        shape=[
-            TensorDimension(10, "height"),
-            TensorDimension(20, "width"),
-        ],
-        buffer=TensorBuffer(RANDOM_IMAGE_SOURCE),
-    ),
-    # Implicit construction from ndarray
+IMAGE_INPUTS: list[Any] = [
+    RANDOM_IMAGE_SOURCE,
     RANDOM_IMAGE_SOURCE,
 ]
 
-METER_INPUTS: list[rr.components.DepthMeterLike] = [1000, DepthMeter(1000)]
+METER_INPUTS: list[Float32Like] = [1000, DepthMeter(1000)]
 
 
 def depth_image_expected() -> Any:
-    return rr.DepthImage(data=RANDOM_IMAGE_SOURCE, meter=1000)
+    return rr.DepthImage(RANDOM_IMAGE_SOURCE, meter=1000)
 
 
-def test_image() -> None:
-    expected = depth_image_expected()
+def test_depth_image() -> None:
+    ranges = [None, [0.0, 1.0], (1000, 1000)]
 
-    for img, meter in zip(IMAGE_INPUTS, METER_INPUTS):
-        arch = rr.DepthImage(data=img, meter=meter)
+    for img, meter, depth_range in itertools.zip_longest(IMAGE_INPUTS, METER_INPUTS, ranges):
+        if img is None:
+            img = IMAGE_INPUTS[0]
 
-        assert arch == expected
+        print(
+            f"rr.DepthImage(\n"  #
+            f"    {img}\n"
+            f"    meter={meter!r}\n"
+            f"    depth_range={depth_range!r}\n"
+            f")"
+        )
+        arch = rr.DepthImage(img, meter=meter, depth_range=depth_range)
+
+        assert arch.buffer == rr.components.ImageBufferBatch._optional(img.tobytes())
+        assert arch.format == rr.components.ImageFormatBatch._optional(
+            ImageFormat(
+                width=img.shape[1],
+                height=img.shape[0],
+                channel_datatype=ChannelDatatype.from_np_dtype(img.dtype),
+            )
+        )
+        assert arch.meter == rr.components.DepthMeterBatch._optional(meter)
+        assert arch.depth_range == rr.components.ValueRangeBatch._optional(depth_range)
 
 
-GOOD_IMAGE_INPUTS: list[TensorDataLike] = [
+GOOD_IMAGE_INPUTS: list[Any] = [
     # Mono
     rng.uniform(0.0, 1.0, (10, 20)),
     # Assorted Extra Dimensions
@@ -51,7 +63,7 @@ GOOD_IMAGE_INPUTS: list[TensorDataLike] = [
     torch.rand(10, 20, 1),
 ]
 
-BAD_IMAGE_INPUTS: list[TensorDataLike] = [
+BAD_IMAGE_INPUTS: list[Any] = [
     rng.uniform(0.0, 1.0, (10, 20, 3)),
     rng.uniform(0.0, 1.0, (10, 20, 4)),
     rng.uniform(0.0, 1.0, (10,)),

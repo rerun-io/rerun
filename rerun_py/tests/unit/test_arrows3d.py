@@ -4,8 +4,8 @@ import itertools
 from typing import Optional, cast
 
 import rerun as rr
-from rerun.components import Position3DBatch, RadiusArrayLike, Vector3DBatch
-from rerun.datatypes import ClassIdArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec3DArrayLike
+from rerun.components import Position3DBatch, Vector3DBatch
+from rerun.datatypes import ClassIdArrayLike, Float32ArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec3DArrayLike
 
 from .common_arrays import (
     class_ids_arrays,
@@ -41,7 +41,7 @@ def test_arrows3d() -> None:
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
         vectors = cast(Vec3DArrayLike, vectors)
         origins = cast(Optional[Vec3DArrayLike], origins)
-        radii = cast(Optional[RadiusArrayLike], radii)
+        radii = cast(Optional[Float32ArrayLike], radii)
         colors = cast(Optional[Rgba32ArrayLike], colors)
         labels = cast(Optional[Utf8ArrayLike], labels)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)

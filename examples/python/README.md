@@ -45,7 +45,7 @@ NOTE: `.rrd` files do not yet guarantee any backwards or forwards compatibility.
 
 ## Running examples with Pixi
 
-The Rerun project makes extensive use of [pixi](https://pixi.sh/latest/) for various developer tasks, and Pixi can be used to run examples as well. For this, you need to install Pixi as per the installation instructions on their website.
+The Rerun project makes extensive use of [Pixi](https://pixi.sh/latest/) for various developer tasks, and Pixi can be used to run examples as well. For this, you need to install Pixi as per the installation instructions on their website.
 
 The Pixi environment `examples-pypi` will use the published Rerun SDK package from PyPI.
 
@@ -56,12 +56,12 @@ pixi run -e examples-pypi minimal
 
 ### Running examples with Pixi from source
 
-Alternatively, you can build Rerun from source, and install it in the Pixi environment. Note that this requires a rust
+Alternatively, you can build Rerun from source, and install it in the Pixi environment. Note that this requires a Rust
 toolchain to be installed on your system.
 
 Before running the example, make sure the source build is up-to-date:
 ```shell
-pixi run -e examples py-build
+pixi run py-build-examples
 ```
 
 Now you can run the example with the source build:

@@ -1,12 +1,6 @@
 //! Logs a `Box3D` archetype for roundtrip checks.
 
-use rerun::{
-    archetypes::Boxes3D,
-    components::Rotation3D,
-    datatypes::{Quaternion, RotationAxisAngle},
-    transform::Angle,
-    RecordingStream,
-};
+use rerun::{archetypes::Boxes3D, RecordingStream};
 
 #[derive(Debug, clap::Parser)]
 #[clap(author, version, about)]
@@ -20,10 +14,6 @@ fn run(rec: &RecordingStream, _args: &Args) -> anyhow::Result<()> {
         "boxes3d",
         &Boxes3D::from_half_sizes([[10., 9., 8.], [5., -5., 5.]])
             .with_centers([[0., 0., 0.], [-1., 1., -2.]])
-            .with_rotations([
-                Rotation3D::from(Quaternion::from_xyzw([0., 1., 2., 3.])),
-                Rotation3D::from(RotationAxisAngle::new([0., 1., 2.], Angle::Degrees(45.))),
-            ])
             .with_colors([0xAA0000CC, 0x00BB00DD])
             .with_labels(["hello", "friend"])
             .with_radii([0.1, 0.01])

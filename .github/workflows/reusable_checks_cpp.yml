@@ -66,9 +66,9 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.34.0
           environments: cpp
 
       - name: Set up Rust
@@ -88,18 +88,18 @@ jobs:
         # using leading to random crashes: https://reviews.llvm.org/D148280
         run: sudo sysctl vm.mmap_rnd_bits=28
 
-      - name: pixi run cpp-clean
-        run: pixi run cpp-clean
+      - name: pixi run -e cpp cpp-clean
+        run: pixi run -e cpp cpp-clean
 
-      - name: pixi run cpp-build-all
-        run: ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run cpp-build-all
+      - name: pixi run -e cpp cpp-build-all
+        run: ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run -e cpp cpp-build-all
 
-      - name: pixi run cpp-test
-        run: ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run cpp-test
+      - name: pixi run -e cpp cpp-test
+        run: ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run -e cpp cpp-test
 
-      - name: pixi run cpp-build-all-shared-libs
+      - name: pixi run -e cpp cpp-build-all-shared-libs
         if: ${{ inputs.CHANNEL == 'nightly' }}
-        run: ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run cpp-build-all-shared-libs
+        run: ${{ matrix.extra_env_vars }} RERUN_WERROR=ON pixi run -e cpp cpp-build-all-shared-libs
 
       - name: additional_commands
         run: ${{ matrix.additional_commands }}

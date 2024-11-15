@@ -1,0 +1,17 @@
+namespace rerun.datatypes;
+
+/// Presentation timestamp within a [archetypes.AssetVideo].
+///
+/// Specified in nanoseconds.
+/// Presentation timestamps are typically measured as time since video start.
+struct VideoTimestamp (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "int",
+  "attr.rust.derive": "Default, Copy, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.tuple_struct"
+) {
+    /// Presentation timestamp value in nanoseconds.
+    timestamp_ns: long (order: 100);
+    // Implementation note:
+    // Keeping this to nanoseconds makes the timestamp more consistent to our other timestamp values!
+}

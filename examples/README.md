@@ -45,5 +45,7 @@ The `manifest.toml` file describes the structure of the examples contained in th
 
 If you want to run the example on CI and include it in the in-viewer example page,
 add a `channel` entry to its README frontmatter. The available channels right now are:
-- `main` for simple/fast examples built on each PR and the `main` branch
+- `main` for simple/fast examples built on each merge to `main`
 - `nightly` for heavier examples built once per day
+
+If `channel` is missing, the example is never built on CI.

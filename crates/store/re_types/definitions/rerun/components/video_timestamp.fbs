@@ -1,0 +1,11 @@
+
+namespace rerun.components;
+
+/// Timestamp inside a [archetypes.AssetVideo].
+struct VideoTimestamp (
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Copy, PartialEq, Eq, Default",
+  "attr.rust.repr": "transparent"
+) {
+  timestamp: rerun.datatypes.VideoTimestamp (order: 100);
+}

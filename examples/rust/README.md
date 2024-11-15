@@ -1,12 +1,13 @@
 # Rerun Rust examples
 
-These are examples of how to use the [`rerun`](https://github.com/rerun-io/rerun/tree/latest/crates/rerun) crate.
+These are examples of how to use the [`rerun`](https://github.com/rerun-io/rerun/tree/latest/crates/top/rerun) crate.
 
 ## Running the examples
 
 To try out any example in the list that follows, simply run `cargo run -p <example_name>`; e.g. `cargo run -p minimal`.
 
 By default, the examples spawn a Rerun Viewer and stream log data to it.
+In debug builds, they will spawn `target/debug/rerun` if it exists, otherwise look for `rerun` on `PATH`.
 
 You can instead save the log data to an `.rrd` file using `cargo run -p objectron -- --save data.rrd`. You can then open that `.rrd` file with `rerun data.rrd` or `cargo run -- data.rrd`.
 

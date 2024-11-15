@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     rec.log(
         "base/rotated_scaled",
         &rerun::Transform3D::from_rotation_scale(
-            rerun::RotationAxisAngle::new([0.0, 0.0, 1.0], rerun::Angle::Radians(TAU / 8.0)),
+            rerun::RotationAxisAngle::new([0.0, 0.0, 1.0], rerun::Angle::from_radians(TAU / 8.0)),
             rerun::Scale3D::from(2.0),
         ),
     )?;

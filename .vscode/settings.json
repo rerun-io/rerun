@@ -8,26 +8,30 @@
     "files.autoGuessEncoding": true,
     "files.insertFinalNewline": true,
     "files.trimTrailingWhitespace": true,
-    // don't share a cargo lock with rust-analyzer.
-    // see https://github.com/rerun-io/rerun/pull/519 for rationale
+    // Whether `--workspace` should be passed to `cargo check`. If false, `-p <package>` will be passed instead.
+    "rust-analyzer.check.workspace": false,
+    "rust-analyzer.cargo.allTargets": true,
+    // --all-features will set the `__ci` feature flag, which stops re_web_viewer_server/build.rs from building the web viewer
+    "rust-analyzer.cargo.features": "all",
+    "rust-analyzer.cargo.targetDir": "target_ra",
+    "rust-analyzer.check.invocationLocation": "workspace",
+    "rust-analyzer.check.invocationStrategy": "per_workspace",
     "rust-analyzer.check.overrideCommand": [
         "cargo",
         "clippy",
-        "--target-dir=target_ra",
-        "--workspace",
         "--message-format=json",
-        "--all-targets",
-        "--all-features" // --all-features will set the `__ci` feature flag, which stops crates/re_web_viewer_server/build.rs from building the web viewer
+        // We shouldn't need this, except we do based on my empirical testing.
+        "--target-dir=target_ra",
     ],
+    "rust-analyzer.cargo.buildScripts.invocationLocation": "workspace",
+    "rust-analyzer.cargo.buildScripts.invocationStrategy": "per_workspace",
     "rust-analyzer.cargo.buildScripts.overrideCommand": [
         "cargo",
         "check",
         "--quiet",
-        "--target-dir=target_ra",
-        "--workspace",
         "--message-format=json",
-        "--all-targets",
-        "--all-features", // --all-features will set the `__ci` feature flag, which stops crates/re_web_viewer_server/build.rs from building the web viewer
+        // We shouldn't need this, except we do based on my empirical testing.
+        "--target-dir=target_ra",
     ],
     // Our build scripts are generating code.
     // Having Rust Analyzer do this while doing other builds can lead to catastrophic failures.
@@ -36,14 +40,25 @@
     "rust-analyzer.cargo.extraEnv": {
         "IS_IN_RERUN_WORKSPACE": "yes"
     },
-    "python.analysis.extraPaths": [
-        "rerun_py/rerun_sdk"
-    ],
+    "rust-analyzer.diagnostics.enable": false, // False positives
+    "rust-analyzer.showUnlinkedFileNotification": false,
+
+    // Uncomment the following options and restart rust-analyzer to get it to check code behind `cfg(target_arch=wasm32)`.
+    // Don't forget to put it in a comment again before committing.
+    // "rust-analyzer.cargo.target": "wasm32-unknown-unknown",
+    // "rust-analyzer.cargo.cfgs": {
+    //     "web": null,
+    //     "webgl": null,
+    //     "webgpu": null,
+    // },
+
     "C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools", // Use cmake-tools to grab configs.
     "C_Cpp.autoAddFileAssociations": false,
     "cmake.buildDirectory": "${workspaceRoot}/build/debug",
     "cmake.generator": "Ninja", // Use Ninja, just like we do in our just/pixi command.
-    "rust-analyzer.showUnlinkedFileNotification": false,
+    "python.analysis.extraPaths": [
+        "rerun_py/rerun_sdk"
+    ],
     "ruff.format.args": [
         "--config=rerun_py/pyproject.toml"
     ],

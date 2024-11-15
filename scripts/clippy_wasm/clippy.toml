@@ -6,7 +6,7 @@
 # -----------------------------------------------------------------------------
 # Section identical to the main clippy.toml:
 
-msrv = "1.76"
+msrv = "1.79"
 
 allow-unwrap-in-tests = true
 
@@ -34,6 +34,7 @@ disallowed-methods = [
   { path = "poll_promise::Promise::block_and_take", reason = "Cannot block on Web" },
   { path = "poll_promise::Promise::block_until_ready_mut", reason = "Cannot block on Web" },
   { path = "poll_promise::Promise::block_until_ready", reason = "Cannot block on Web" },
+  { path = "pollster::block_on", reason = "Cannot block on Web" },
   { path = "rayon::spawn", reason = "Cannot spawn threads on wasm" },
   { path = "std::sync::mpsc::Receiver::into_iter", reason = "Cannot block on Web" },
   { path = "std::sync::mpsc::Receiver::iter", reason = "Cannot block on Web" },
@@ -52,7 +53,7 @@ disallowed-types = [
   # { path = "std::path::PathBuf", reason = "Can't read/write files on web" }, // Used in build.rs files (which is fine).
 ]
 
-# Allow-list of words for markdown in dosctrings https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
+# Allow-list of words for markdown in docstrings https://rust-lang.github.io/rust-clippy/master/index.html#doc_markdown
 doc-valid-idents = [
   # You must also update the same list in the root `clippy.toml`!
   "..",
@@ -61,6 +62,8 @@ doc-valid-idents = [
   "GLTF",
   "iOS",
   "macOS",
+  "MessagePack",
+  "MiMalloc",
   "NaN",
   "OBJ",
   "OpenGL",
@@ -68,6 +71,7 @@ doc-valid-idents = [
   "sRGB",
   "sRGBA",
   "WebGL",
+  "WebGPU",
   "WebSocket",
   "WebSockets",
 ]

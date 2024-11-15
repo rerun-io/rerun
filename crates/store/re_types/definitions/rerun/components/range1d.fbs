@@ -1,0 +1,11 @@
+namespace rerun.components;
+
+// ---
+
+/// A 1D range, specifying a lower and upper bound.
+struct Range1D (
+  "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
+) {
+  range: rerun.datatypes.Range1D (order: 100);
+}

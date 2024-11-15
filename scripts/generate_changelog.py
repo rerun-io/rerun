@@ -28,11 +28,13 @@ INCLUDE_LABELS = False  # It adds quite a bit of visual noise
 OFFICIAL_RERUN_DEVS = [
     "abey79",
     "emilk",
+    "gavrelina",
     "jleibs",
     "jprochazk",
     "nikolausWest",
     "teh-cmc",
     "Wumpf",
+    "zehiko",
 ]
 
 
@@ -121,16 +123,44 @@ def print_section(title: str, items: list[str]) -> None:
         print()
 
 
+def commit_range(new_version: str) -> str:
+    parts = new_version.split(".")
+    assert len(parts) == 3, "Expected version to be on the format X.Y.Z"
+    major = int(parts[0])
+    minor = int(parts[1])
+    patch = int(parts[2])
+
+    if 0 < patch:
+        # A patch release.
+        # Include changes since last patch release.
+        # This assumes we've cherry-picked stuff for this release.
+        diff_since_version = f"0.{minor}.{patch - 1}"
+    elif 0 < minor:
+        # A minor release
+        # The diff should span everything since the last minor release.
+        # The script later excludes duplicated automatically, so we don't include stuff that
+        # was part of intervening patch releases.
+        diff_since_version = f"{major}.{minor - 1}.0"
+    else:
+        # A major release
+        # The diff should span everything since the last major release.
+        # The script later excludes duplicated automatically, so we don't include stuff that
+        # was part of intervening minor/patch releases.
+        diff_since_version = f"{major - 1}.{minor}.0"
+
+    return f"{diff_since_version}..HEAD"
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a changelog.")
-    parser.add_argument("--commit-range", required=True, help="e.g. 0.11.0..HEAD")
+    parser.add_argument("--version", required=True, help="The version of the new release, e.g. 0.42.0")
     args = parser.parse_args()
 
     # Because how we branch, we sometimes get duplicate commits in the changelog unless we check for it
     previous_changelog = open("CHANGELOG.md", encoding="utf8").read()
 
     repo = Repo(".")
-    commits = list(repo.iter_commits(args.commit_range))
+    commits = list(repo.iter_commits(commit_range(args.version)))
     commits.reverse()  # Most recent last
     commit_infos = list(map(get_commit_info, commits))
 
@@ -186,7 +216,7 @@ def main() -> None:
 
             labels = pr_info.labels if pr_info else []
 
-            if "exclude from changelog" in labels:
+            if "include in changelog" not in labels:
                 continue
 
             summary = f"{title} [#{pr_number}](https://github.com/{OWNER}/{REPO}/pull/{pr_number})"
@@ -211,7 +241,7 @@ def main() -> None:
             added = False
 
             # Some PRs can show up under multiple sections:
-            if "🪵 Log-API" in labels:
+            if "🪵 Log & send APIs" in labels:
                 log_api.append(summary)
                 added = True
             else:
@@ -261,20 +291,37 @@ def main() -> None:
 
     print()
 
+    # NOTE: we inentionally add TODO:s with names below, which the CI will not be happy about. Hence the # NOLINT suffixes
+    print("TODO: add link to release video")  # NOLINT
+    print()
+    print("📖 Release blogpost: TODO: add link")  # NOLINT
+    print()
+    print("🧳 Migration guide: TODO: add link")  # NOLINT
+    print()
+    print("### ✨ Overview & highlights")
+    print("TODO: fill in")  # NOLINT
+    print()
+    print("### ⚠️ Breaking changes")
+    print("TODO: fill in")  # NOLINT
+    print("🧳 Migration guide: TODO: add link (yes, again)")  # NOLINT
+    print()
+    print("### 🔎 Details")
+    print()
+
     # Most interesting first:
     print_section("🪵 Log API", log_api)
     print_section("🌊 C++ API", cpp)
     print_section("🐍 Python API", python)
     print_section("🦀 Rust API", rust)
-    print_section("🪳 Bug Fixes", bugs)
-    print_section("🌁 Viewer Improvements", viewer)
-    print_section("🚀 Performance Improvements", performance)
+    print_section("🪳 Bug fixes", bugs)
+    print_section("🌁 Viewer improvements", viewer)
+    print_section("🚀 Performance improvements", performance)
     print_section("🧑‍🏫 Examples", examples)
     print_section("📚 Docs", docs)
-    print_section("🖼 UI Improvements", ui)
+    print_section("🖼 UI improvements", ui)
     print_section("🕸️ Web", web)
-    print_section("🎨 Renderer Improvements", renderer)
-    print_section("✨ Other Enhancement", enhancement)
+    print_section("🎨 Renderer improvements", renderer)
+    print_section("✨ Other enhancement", enhancement)
     print_section("📈 Analytics", analytics)
     print_section("🗣 Merged RFCs", rfc)
     print_section("🧑‍💻 Dev-experience", dev_experience)

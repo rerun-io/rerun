@@ -24,7 +24,7 @@ Make sure to use `-DRERUN_DOWNLOAD_AND_BUILD_ARROW=OFF` when building, otherwise
 will download & build Arrow instead, ignoring your Pixi install.
 The advantage of using Pixi is that you can rely on pre-built artifacts rather than adding Arrows build to your own.
 Also, Pixi is of course also useful for managing other dependencies like Eigen or OpenCV,
-as well as fr pinning the version of your build tooling.
+as well as for pinning the version of your build tooling.
 
 ### Installing Pixi
 On Mac or Linux you can just run:
@@ -54,7 +54,7 @@ Now, any Pixi tasks added to your project will have access to the `arrow-cpp` li
 Even without tasks, you can run `pixi shell` to create a shell environment where all your project dependencies
 (including `arrow-cpp`) will be available. You can use this `pixi shell` to run you project's build commands.
 
-Check out the [pixi docs](https://prefix.dev/docs/pixi/basic_usage) for more information on what you can do with pixi.
+Check out the [Pixi docs](https://pixi.sh/latest/#getting-started) for more information on what you can do with Pixi.
 
 ### Pixi in action
 

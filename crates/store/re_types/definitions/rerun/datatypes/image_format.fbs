@@ -1,0 +1,31 @@
+include "./channel_datatype.fbs";
+include "./color_model.fbs";
+include "./pixel_format.fbs";
+
+namespace rerun.datatypes;
+
+/// The metadata describing the contents of a [components.ImageBuffer].
+struct ImageFormat (
+  "attr.rust.derive": "Default, Copy, PartialEq, Eq, Hash"
+) {
+    /// The width of the image in pixels.
+    width: uint32 (order: 100);
+
+    /// The height of the image in pixels.
+    height: uint32 (order: 200);
+
+    /// Used mainly for chroma downsampled formats and differing number of bits per channel.
+    ///
+    /// If specified, this takes precedence over both [datatypes.ColorModel] and [datatypes.ChannelDatatype] (which are ignored).
+    pixel_format: rerun.datatypes.PixelFormat (order: 300, nullable);
+
+    /// L, RGB, RGBA, …
+    ///
+    /// Also requires a [datatypes.ChannelDatatype] to fully specify the pixel format.
+    color_model: rerun.datatypes.ColorModel (order: 400, nullable);
+
+    /// The data type of each channel (e.g. the red channel) of the image data (U8, F16, …).
+    ///
+    /// Also requires a [datatypes.ColorModel] to fully specify the pixel format.
+    channel_datatype: rerun.datatypes.ChannelDatatype (order: 500, nullable);
+}

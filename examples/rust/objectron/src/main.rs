@@ -99,13 +99,13 @@ fn log_baseline_objects(
                 return None;
             }
 
-            let box_half_size: rerun::HalfSizes3D =
+            let box_half_size: rerun::HalfSize3D =
                 (glam::Vec3::from_slice(&object.scale) * 0.5).into();
             let transform = {
                 let translation = glam::Vec3::from_slice(&object.translation);
                 // NOTE: the dataset is all row-major, transpose those matrices!
                 let rotation = glam::Mat3::from_cols_slice(&object.rotation).transpose();
-                rerun::TranslationAndMat3x3::new(translation, rotation)
+                rerun::Transform3D::from_translation_mat3x3(translation, rotation)
             };
             let label = object.category.as_str();
 
@@ -121,7 +121,7 @@ fn log_baseline_objects(
                 .with_labels([label])
                 .with_colors([rerun::Color::from_rgb(160, 230, 130)]),
         )?;
-        rec.log_static(path, &rerun::Transform3D::new(transform))?;
+        rec.log_static(path, &transform)?;
     }
 
     Ok(())
@@ -129,10 +129,9 @@ fn log_baseline_objects(
 
 fn log_video_frame(rec: &rerun::RecordingStream, ar_frame: &ArFrame) -> anyhow::Result<()> {
     let image_path = ar_frame.dir.join(format!("video/{}.jpg", ar_frame.index));
-    let img = rerun::datatypes::TensorData::from_jpeg_file(&image_path)?;
 
     rec.set_timepoint(ar_frame.timepoint.clone());
-    rec.log("world/camera", &rerun::Image::new(img))
+    rec.log("world/camera", &rerun::EncodedImage::from_file(image_path)?)
         .map_err(Into::into)
 }
 

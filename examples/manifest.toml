@@ -34,6 +34,7 @@ examples = [
   # display order, most interesting first
   "droid_dataset",
   "ros_node",
+  "chess_robby_fischer",
   "nuscenes_dataset",
   "ros2_bridge",
   "ros_bridge",
@@ -56,7 +57,11 @@ examples = [
   # display order, most interesting first
   "controlnet",
   "depth_guided_stable_diffusion",
+  "vista",
   "mcc",
+  "lerobot",
+  "depth_compare",
+  "mini_nvs_solver",
   "shape_pointe",
   "llm_embedding_ner",
   "tfrecord_loader",
@@ -72,11 +77,14 @@ examples = [
   # display order, most interesting first
   "detect_and_track_objects",
   "face_tracking",
+  "sam2_depthanything",
   "human_pose_tracking",
   "gesture_detection",
+  "ocr",
   "live_camera_edge_detection",
   "segment_anything_model",
   "tapir",
+  "ml_depth_pro",
 ]
 
 [categories.3d-reconstruction] # NOLINT
@@ -91,6 +99,9 @@ examples = [
   "open_photogrammetry_format",
   "kiss-icp",
   "differentiable_blocks_world",
+  "stereo_vision_slam",
+  "glomap",
+  "instant_splat",
   "signed_distance_fields",
   "raw_mesh",
 ]
@@ -106,6 +117,8 @@ examples = [
   "ros_node",
   "ros2_bridge",
   "ros_bridge",
+  "notebook",
+  "notebook_neural_field_2d",
   "urdf_loader",
   "vrs",
   "revy",
@@ -124,9 +137,11 @@ Showcase basic usage and specific features of Rerun.
 """
 examples = [
   # display order, most interesting first
+  "notebook",
   "clock",
   "dna",
   "log_file",
+  "openstreetmap_data",
   "minimal",
   "multiprocess_logging",
   "multithreading",
@@ -139,19 +154,20 @@ examples = [
 # or explicitly excluded by running `python scripts/check_example_manifest_coverage.py`.
 [ignored]
 examples = [
+  "_empty_rerun_sdk",
+  "all_examples",
   "custom_collection_adapter",
   "custom_data_loader",
   "custom_space_view",
   "custom_store_subscriber",
+  "dataframe_query",
+  "drone_lidar",
   "extend_viewer_ui",
   "external_data_loader",
   "incremental_logging",
   "minimal_serve",
-  "notebook",
   "shared_recording",
   "spawn_viewer",
   "stdio",
   "template",
-  "all_examples",
-  "_empty_rerun_sdk",
 ]

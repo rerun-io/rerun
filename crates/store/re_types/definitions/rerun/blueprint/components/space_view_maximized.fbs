@@ -1,0 +1,14 @@
+namespace rerun.blueprint.components;
+
+// ---
+
+/// Whether a space view is maximized.
+table SpaceViewMaximized (
+  "attr.rerun.scope": "blueprint",
+  "attr.python.aliases": "npt.NDArray[np.uint8], npt.ArrayLike, Sequence[int], bytes",
+  "attr.rust.derive": "Default",
+  "attr.rust.override_crate": "re_types_blueprint",
+  "attr.rust.repr": "transparent"
+) {
+    space_view_id: rerun.datatypes.Uuid (order: 100);
+}

@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import rerun as rr
 
-README = """
+README = """\
 # Scalar clears
 
 This checks whether scalar time series correctly behave with `Clear`s.

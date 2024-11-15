@@ -6,7 +6,7 @@ from uuid import uuid4
 
 import rerun as rr
 
-README = """
+README = """\
 # Plot overrides
 
 This checks whether one can override all properties in a plot.
@@ -20,10 +20,10 @@ This checks whether one can override all properties in a plot.
 ### Visible time range overrides
 * Select the `plots` space view and confirm it shows:
   * "Default" selected
-  * Showing data between frames -∞ and +∞ (included).
+  * Showing "Entire timeline".
 * Select the `plots/cos` entity and confirm it shows:
   * "Default" selected
-  * Showing data between frames -∞ and +∞ (included).
+  * Showing "Entire timeline".
 * Override the `plots` space view Visible time range
   * Verify all 3 offset modes operate as expected
 * Override the `plots/cos` entity Visible time range

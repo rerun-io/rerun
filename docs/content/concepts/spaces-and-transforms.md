@@ -110,7 +110,8 @@ Note that none of the names in the paths are special.
 
 You can use [`rr.ViewCoordinates`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.ViewCoordinates) to set your preferred view coordinate systems, giving semantic meaning to the XYZ axes of the space.
 
-For 3D spaces it can be used to log what the up-axis is in your coordinate system. This will help Rerun set a good default view of your 3D scene, as well as make the virtual eye interactions more natural. This can be done with `rr.log("world", rr.ViewCoordinates(up="+Z"), static=True)`.
+For 3D spaces it can be used to log what the up-axis is in your coordinate system. This will help Rerun set a good default view of your 3D scene, as well as make the virtual eye interactions more natural. This can be done with `rr.log("/", rr.ViewCoordinates.RIGHT_HAND_Z_UP, static=True)`.
+Note that in this example the archetype is logged at the root path, this will make it apply to all 3D views. Generally, a 3D view picks up view coordinates at or above its origin entity path.
 
 You can also use this `log_view_coordinates` for pinhole entities, but it is encouraged that you instead use [`rr.log(…, rr.Pinhole(camera_xyz=…))`](https://ref.rerun.io/docs/python/stable/common/archetypes/#rerun.archetypes.Pinhole) for this. The default coordinate system for pinhole entities is `RDF` (X=Right, Y=Down, Z=Forward).
 

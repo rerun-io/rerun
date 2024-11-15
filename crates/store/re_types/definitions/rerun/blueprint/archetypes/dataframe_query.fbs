@@ -1,0 +1,29 @@
+namespace rerun.blueprint.archetypes;
+
+
+/// The query for the dataframe view.
+table DataframeQuery (
+    "attr.rerun.scope": "blueprint"
+) {
+    // --- Optional ---
+
+    /// The timeline for this query.
+    ///
+    /// If unset, the timeline currently active on the time panel is used.
+    timeline: rerun.blueprint.components.TimelineName ("attr.rerun.component_optional", nullable, order: 100);
+
+    /// If provided, only rows whose timestamp is within this range will be shown.
+    ///
+    /// Note: will be unset as soon as `timeline` is changed.
+    filter_by_range: rerun.blueprint.components.FilterByRange ("attr.rerun.component_optional", nullable, order: 200);
+
+    /// If provided, only show rows which contains a logged event for the specified component.
+    filter_is_not_null: rerun.blueprint.components.FilterIsNotNull ("attr.rerun.component_optional", nullable, order: 300);
+
+    /// Should empty cells be filled with latest-at queries?
+    apply_latest_at: rerun.blueprint.components.ApplyLatestAt ("attr.rerun.component_optional", nullable, order: 400);
+
+    /// Selected columns. If unset, all columns are selected.
+    select: rerun.blueprint.components.SelectedColumns ("attr.rerun.component_optional", nullable, order: 500);
+}
+

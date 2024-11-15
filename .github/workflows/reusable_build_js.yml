@@ -34,15 +34,14 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: "read"
+  id-token: "write"
+
 jobs:
   build:
     name: Build rerun_js
-    permissions:
-      contents: "read"
-      id-token: "write"
-
     runs-on: ubuntu-latest-16-cores
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -64,9 +63,9 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.34.0
 
       - name: Install yarn dependencies
         run: pixi run yarn --cwd rerun_js install

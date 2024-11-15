@@ -8,13 +8,11 @@ import argparse
 
 import numpy as np
 import rerun as rr
-from rerun.datatypes import Angle, Quaternion, RotationAxisAngle
 
 
 def main() -> None:
     half_sizes = np.array([[10, 9, 8], [5, -5, 5]])
     centers = np.array([[0, 0, 0], [-1, 1, -2]])
-    rotations = [Quaternion(xyzw=[0, 1, 2, 3]), RotationAxisAngle([0, 1, 2], Angle(deg=45))]
     colors = np.array(
         [
             0xAA0000CC,
@@ -29,7 +27,6 @@ def main() -> None:
     boxes3d = rr.Boxes3D(
         half_sizes=half_sizes,
         centers=centers,
-        rotations=rotations,
         colors=colors,
         labels=labels,
         radii=radii,

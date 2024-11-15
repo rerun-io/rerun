@@ -7,7 +7,7 @@ from uuid import uuid4
 import numpy as np
 import rerun as rr
 
-README = """
+README = """\
 # Annotations
 
 This checks whether annotations behave correctly
@@ -32,7 +32,11 @@ def log_readme() -> None:
 
 def log_annotations() -> None:
     # Log an annotation context to assign a label and color to each class
-    rr.log("/", rr.AnnotationContext([(1, "red", (255, 0, 0)), (2, "green", (0, 255, 0))]), static=True)
+    rr.log(
+        "/",
+        rr.AnnotationContext([(0, "black", (0, 0, 0)), (1, "red", (255, 0, 0)), (2, "green", (0, 255, 0))]),
+        static=True,
+    )
 
     # Log a batch of 2 rectangles with different `class_ids`
     rr.log("detections", rr.Boxes2D(mins=[[200, 50], [75, 150]], sizes=[[30, 30], [20, 20]], class_ids=[1, 2]))

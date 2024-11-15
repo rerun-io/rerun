@@ -1,0 +1,9 @@
+---
+source: crates/store/re_chunk_store/tests/memory_test.rs
+expression: "[format!(\"{NUM_SCALARS} scalars\"),\n        format!(\"{} in total\",\n            re_format::format_bytes(total_mem_use_global as _)),\n        format!(\"{} per row\",\n            re_format::format_bytes(total_mem_use_global as f64 / NUM_SCALARS\n            as f64))]"
+---
+[
+    "1048576 scalars",
+    "37.5 MiB in total",
+    "38 B per row",
+]

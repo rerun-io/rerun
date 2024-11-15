@@ -1,15 +1,12 @@
 .DS_Store
-
-# Codegen stuff:
-crates/re_types/source_hash.txt
-crates/re_types_builder/source_hash.txt
+__MACOSX
 
 # C++ and CMake stuff:
 *.a
 *.bin
 *.o
-**/arrow/
-**/build/
+/arrow/
+/build/
 **/build-msvc/
 **/CMakeFiles/
 **/CMakeCache.txt
@@ -19,6 +16,7 @@ _deps
 **/.cache/
 **/rerun_cpp/docs/html
 **/rerun_cpp/docs/xml
+*.tgz
 
 # Rust compile target directory:
 **/target
@@ -33,11 +31,15 @@ _deps
 # Python build artifacts:
 __pycache__
 *.pyc
+*.pyd
 *.so
 **/.pytest_cache
 
 # Pixi environment
 .pixi
+
+# Unpacked test assets:
+/tests/assets/rerun.obj
 
 .gdb_history
 perf.data*
@@ -57,7 +59,6 @@ wheels
 # Screenshot comparison build
 /compare_screenshot
 
-.nox/
 *.rrd
 
 /meilisearch

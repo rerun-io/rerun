@@ -22,7 +22,7 @@ dependencies = [
 description = "The Rerun Logging SDK"
 keywords = ["computer-vision", "logging", "rerun"]
 name = "rerun-sdk"
-requires-python = ">=3.8, <3.13"
+requires-python = ">=3.8"
 
 [[project.authors]]
 email = "opensource@rerun.io"
@@ -33,6 +33,7 @@ text = "MIT OR Apache-2.0"
 
 [project.optional-dependencies]
 tests = ["pytest==7.1.2"]
+notebook = ["rerun-notebook==0.21.0-alpha.1+dev"]
 
 [project.urls]
 documentation = "https://www.rerun.io/docs"
@@ -67,6 +68,11 @@ extend-exclude = [
 
   # TODO(#4047): incomplete example snippet
   "docs/snippets/all/tutorials/timelines_example.py",
+
+  # Intentionally incomplete snippets
+  "docs/snippets/all/tutorials/custom-application-id.py",
+  "docs/snippets/all/tutorials/custom-recording-id.py",
+  "docs/snippets/all/concepts/static",
 
   # generated
   "examples/python/objectron/objectron/proto/objectron/proto.py",
@@ -126,7 +132,7 @@ lint.unfixable = [
   # Missing required import: `from __future__ import annotations`
   "I002",
 ]
-"crates/re_viewer/data/quick_start_guides/*" = [
+"crates/viewer/re_viewer/data/quick_start_guides/*" = [
   # Missing required import: `from __future__ import annotations`
   "I002",
 ]
@@ -134,7 +140,7 @@ lint.unfixable = [
 
 [tool.ruff.lint.isort]
 required-imports = ["from __future__ import annotations"]
-combine-as-imports = true  # needed so keep rerun_sdk/__init__.py clean
+combine-as-imports = true                                 # needed so keep rerun_sdk/__init__.py clean
 
 [tool.maturin]
 # We use a python package from inside the rerun_sdk folder to avoid conflicting

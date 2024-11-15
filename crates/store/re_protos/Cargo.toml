@@ -1,0 +1,41 @@
+[package]
+name = "re_protos"
+authors.workspace = true
+description = "Rerun remote gRPC/protobuf API types"
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[dependencies]
+re_log_types.workspace = true
+re_dataframe.workspace = true
+
+# External
+arrow2 = { workspace = true, features = ["io_ipc"] }
+prost.workspace = true
+thiserror.workspace = true
+
+# Native dependencies:
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tonic = { workspace = true, default-features = false, features = [
+  "codegen",
+  "prost",
+  "transport",
+] }
+
+# Web dependencies:
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+tonic = { workspace = true, default-features = false, features = [
+  "codegen",
+  "prost",
+] }
+tonic-web-wasm-client.workspace = true
+
+[lints]
+workspace = true

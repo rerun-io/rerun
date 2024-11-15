@@ -9,9 +9,9 @@ Most of these examples are automatically used as docstrings for the `Archetype` 
 You can run each example individually using the following:
 
 - **C++**:
-  - `pixi run cpp-build-snippets` to compile all examples
-  - `./build/docs/snippets/all/<example_name>` to run, e.g. `./build/docs/snippets/all/point3d_random`
-- **Python**: `python <example_name>.py`, e.g. `python point3d_random.py`.
+  - `pixi run -e cpp cpp-build-snippets` to compile all examples
+  - `./build/debug/docs/snippets/all/<example_name>` to run, e.g. `./build/debug/docs/snippets/all/point3d_random`
+- **Python**: `pixi run -e py python <example_name>.py`, e.g. `pixi run -e py python point3d_random.py`.
 - **Rust**: `cargo run -p snippets -- <example_name> [args]`, e.g. `cargo run -p snippets -- point3d_random`.
 
 ## Comparison test

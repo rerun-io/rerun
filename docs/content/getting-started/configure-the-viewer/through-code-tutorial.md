@@ -29,7 +29,7 @@ we will completely change the way the data is presented.
 We start by creating a new virtual environment and installing the Rerun SDK along with the dependencies
 we will use in this example.
 
-On Linux or mac:
+On Linux or Mac:
 
 ```bash
 mkdir stocks_example
@@ -401,3 +401,9 @@ Running the script again this final chart is a significant improvement over the 
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/blueprint_tutorial_grid/b9c41481818f9028d75df6076c62653989a02c66/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/blueprint_tutorial_grid/b9c41481818f9028d75df6076c62653989a02c66/1200w.png">
 </picture>
+
+### Visualizers and overrides
+
+<!-- TODO(ab): the linked section's content is already pretty rich, but, ideally, this section should also include code examples -->
+
+Since release 0.17, even deeper configurations from code are possible. This includes overriding component values for a given view entity, specifying default values for components for a given view, and controlling which visualizer(s) are used per view entity. See [Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for more information and code examples.

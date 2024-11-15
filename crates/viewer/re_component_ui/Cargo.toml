@@ -1,0 +1,35 @@
+[package]
+description = "Provides ui editors for Rerun component data for registration with the Rerun Viewer component ui registry."
+authors.workspace = true
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+name = "re_component_ui"
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+include = ["../../LICENSE-APACHE", "../../LICENSE-MIT", "**/*.rs", "Cargo.toml"]
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+
+[dependencies]
+re_data_ui.workspace = true # Needed for `item_ui`.
+re_format.workspace = true
+re_tracing.workspace = true
+re_types = { workspace = true, features = [
+  "egui_plot", # Needed to draw marker shapes.
+] }
+re_types_blueprint.workspace = true # Needed to give some of the components a custom ui. Could happen in any other crate as well.
+re_types_core.workspace = true
+re_ui.workspace = true
+re_viewer_context.workspace = true
+
+egui_extras.workspace = true
+egui_plot.workspace = true
+egui.workspace = true

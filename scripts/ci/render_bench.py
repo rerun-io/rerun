@@ -4,7 +4,7 @@
 Render benchmark graphs and other tracked metrics from data in GCS.
 
 To use this script, you must be authenticated with GCS,
-see https://cloud.google.com/docs/authentication/client-libraries for more information.
+see <https://cloud.google.com/docs/authentication/client-libraries> for more information.
 
 Install dependencies:
     google-cloud-storage==2.9.0

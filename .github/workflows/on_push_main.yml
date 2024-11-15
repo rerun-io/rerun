@@ -13,12 +13,15 @@ on:
         required: true
         type: string
 
+permissions: write-all
+
 jobs:
   checks:
     name: Checks
     uses: ./.github/workflows/reusable_checks.yml
     with:
       CONCURRENCY: push-${{ github.ref_name }}-${{ inputs.CONCURRENCY }}
+      CHANNEL: main
     secrets: inherit
 
   cpp_checks:

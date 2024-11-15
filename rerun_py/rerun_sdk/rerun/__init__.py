@@ -2,10 +2,21 @@ from __future__ import annotations
 
 import functools
 import random
+import sys
+import warnings
 from typing import Any, Callable, TypeVar, cast
 from uuid import UUID
 
 import numpy as np
+
+__version__ = "0.21.0-alpha.1+dev"
+__version_info__ = (0, 21, 0, "alpha.1")
+
+if sys.version_info < (3, 9):
+    warnings.warn(
+        "Python 3.8 is past EOL (https://devguide.python.org/versions/). Rerun version 0.21 will drop support/testing of Python 3.8.",
+        DeprecationWarning,
+    )
 
 # =====================================
 # API RE-EXPORTS
@@ -16,9 +27,15 @@ import rerun_bindings as bindings  # type: ignore[attr-defined]
 
 from . import (
     blueprint as blueprint,
+    dataframe as dataframe,
     experimental as experimental,
+    notebook as notebook,
+    remote as remote,
 )
-from ._image import (
+from ._baseclasses import (
+    ComponentColumn as ComponentColumn,
+)
+from ._image_encoded import (
     ImageEncoded as ImageEncoded,
     ImageFormat as ImageFormat,
 )
@@ -33,6 +50,12 @@ from ._log import (
     log_file_from_path as log_file_from_path,
     new_entity_path as new_entity_path,
 )
+from ._send_columns import (
+    TimeNanosColumn as TimeNanosColumn,
+    TimeSecondsColumn as TimeSecondsColumn,
+    TimeSequenceColumn as TimeSequenceColumn,
+    send_columns as send_columns,
+)
 from .any_value import (
     AnyValues as AnyValues,
 )
@@ -41,13 +64,20 @@ from .archetypes import (
     Arrows2D as Arrows2D,
     Arrows3D as Arrows3D,
     Asset3D as Asset3D,
+    AssetVideo as AssetVideo,
     BarChart as BarChart,
     Boxes2D as Boxes2D,
     Boxes3D as Boxes3D,
+    Capsules3D as Capsules3D,
     Clear as Clear,
     DepthImage as DepthImage,
     DisconnectedSpace as DisconnectedSpace,
+    Ellipsoids3D as Ellipsoids3D,
+    EncodedImage as EncodedImage,
+    GeoLineStrings as GeoLineStrings,
+    GeoPoints as GeoPoints,
     Image as Image,
+    InstancePoses3D as InstancePoses3D,
     LineStrips2D as LineStrips2D,
     LineStrips3D as LineStrips3D,
     Mesh3D as Mesh3D,
@@ -62,6 +92,7 @@ from .archetypes import (
     TextDocument as TextDocument,
     TextLog as TextLog,
     Transform3D as Transform3D,
+    VideoFrameReference as VideoFrameReference,
     ViewCoordinates as ViewCoordinates,
 )
 from .archetypes.boxes2d_ext import (
@@ -71,28 +102,35 @@ from .blueprint.api import (
     BlueprintLike as BlueprintLike,
 )
 from .components import (
-    Material as Material,
+    AlbedoFactor as AlbedoFactor,
     MediaType as MediaType,
-    OutOfTreeTransform3D as OutOfTreeTransform3D,
-    OutOfTreeTransform3DBatch as OutOfTreeTransform3DBatch,
+    Radius as Radius,
+    Scale3D as Scale3D,
+    TensorDimensionIndexSelection as TensorDimensionIndexSelection,
     TextLogLevel as TextLogLevel,
+    TransformRelation as TransformRelation,
 )
 from .datatypes import (
+    Angle as Angle,
     AnnotationInfo as AnnotationInfo,
+    ChannelDatatype as ChannelDatatype,
     ClassDescription as ClassDescription,
+    ColorModel as ColorModel,
+    PixelFormat as PixelFormat,
     Quaternion as Quaternion,
     RotationAxisAngle as RotationAxisAngle,
-    Scale3D as Scale3D,
     TensorData as TensorData,
+    TensorDimensionSelection as TensorDimensionSelection,
     TimeInt as TimeInt,
     TimeRange as TimeRange,
     TimeRangeBoundary as TimeRangeBoundary,
-    TranslationAndMat3x3 as TranslationAndMat3x3,
-    TranslationRotationScale3D as TranslationRotationScale3D,
     VisibleTimeRange as VisibleTimeRange,
 )
 from .error_utils import (
     set_strict_mode as set_strict_mode,
+)
+from .legacy_notebook import (
+    legacy_notebook_show as legacy_notebook_show,
 )
 from .logging_handler import (
     LoggingHandler as LoggingHandler,
@@ -127,10 +165,12 @@ from .script_helpers import (
 )
 from .sinks import (
     connect as connect,
+    connect_tcp as connect_tcp,
     disconnect as disconnect,
     save as save,
     send_blueprint as send_blueprint,
     serve as serve,
+    serve_web as serve_web,
     spawn as spawn,
     stdout as stdout,
 )

@@ -9,7 +9,7 @@ on:
       WHEEL_ARTIFACT_NAME:
         required: true
         type: string
-      CHANNEL: # `nightly` or `main`
+      CHANNEL: # `nightly`/`main`/`pr`
         required: true
         type: string
 
@@ -40,15 +40,14 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: "read"
+  id-token: "write"
+
 jobs:
   rs-build-examples:
     name: Build Examples
-    permissions:
-      contents: "read"
-      id-token: "write"
-
     runs-on: ubuntu-latest-16-cores
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -62,9 +61,9 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.34.0
           environments: wheel-test
 
       - name: Download Wheel
@@ -73,18 +72,13 @@ jobs:
           name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
           path: wheel
 
-      - name: Install example dependencies
-        run: |
-          pixi run -e wheel-test build-examples install \
-            --channel ${{ inputs.CHANNEL }}
-
       - name: Install built wheel
         run: |
-          pixi run -e wheel-test pip uninstall rerun-sdk -y
-          pixi run -e wheel-test pip install rerun-sdk --no-index --find-links wheel
+          pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-sdk --dir wheel
 
       - name: Print wheel version
         run: |
+          pixi list -e wheel-test | grep rerun_sdk
           pixi run -e wheel-test python -m rerun --version
           pixi run -e wheel-test which rerun
 
@@ -100,7 +94,7 @@ jobs:
             --channel ${{ inputs.CHANNEL }} \
             example_data
 
-      - name: Build snippets
+      - name: Build & run snippets
         run: |
           pixi run -e wheel-test build-examples snippets \
             example_data/snippets

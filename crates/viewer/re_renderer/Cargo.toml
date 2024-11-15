@@ -1,0 +1,121 @@
+[package]
+name = "re_renderer"
+authors.workspace = true
+description = "A wgpu based renderer for all your visualization needs."
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+include = [
+  "../../LICENSE-APACHE",
+  "../../LICENSE-MIT",
+  "**/*.rs",
+  "Cargo.toml",
+  "shader/*",
+]
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
+
+[package.metadata.cargo-machete]
+ignored = ["profiling"] # Needed to hook up wgpu, see below at dependency setup.
+
+
+[features]
+default = ["import-obj", "import-gltf", "import-stl"]
+
+## Support for Arrow datatypes for end-to-end zero-copy.
+arrow = ["dep:arrow2"]
+
+## Support importing .obj files
+import-obj = ["dep:tobj"]
+
+## Support importing .gltf and .glb files
+import-gltf = ["dep:gltf"]
+
+## Support importing binary & ascii .stl files
+import-stl = ["dep:tinystl"]
+
+## Enable (de)serialization using serde.
+serde = ["dep:serde"]
+
+[dependencies]
+re_error.workspace = true
+re_log.workspace = true
+re_math.workspace = true
+re_tracing.workspace = true
+re_video = { workspace = true, default-features = true }
+
+ahash.workspace = true
+anyhow.workspace = true
+bitflags.workspace = true
+bytemuck.workspace = true
+cfg-if.workspace = true
+clean-path.workspace = true
+document-features.workspace = true
+ecolor = { workspace = true, features = ["bytemuck"] }
+enumset.workspace = true
+glam = { workspace = true, features = ["bytemuck"] }
+half = { workspace = true, features = ["bytemuck"] }
+itertools.workspace = true
+never.workspace = true
+ordered-float.workspace = true
+parking_lot.workspace = true
+# wgpu uses the `profiling` crate for its profiling scopes.
+# This will hook them up to the puffin profiler as backend:
+profiling = { workspace = true, features = ["profile-with-puffin"] }
+slotmap.workspace = true
+smallvec.workspace = true
+static_assertions.workspace = true
+thiserror.workspace = true
+type-map.workspace = true
+web-time.workspace = true
+wgpu.workspace = true
+wgpu-core.workspace = true                                           # Needed for error handling when wgpu-core implemented backend is used.
+wgpu-types.workspace = true
+
+# optional
+arrow2 = { workspace = true, optional = true }
+gltf = { workspace = true, optional = true }
+tinystl = { workspace = true, features = ["bytemuck"], optional = true }
+serde = { workspace = true, features = ["derive"], optional = true }
+tobj = { workspace = true, optional = true }
+
+# native
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+crossbeam.workspace = true
+notify.workspace = true
+
+# web
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { workspace = true, features = [
+  "js",
+] } # getrandom needs the `js` feature to be enabled. It is dragged in indirectly.
+js-sys.workspace = true
+wasm-bindgen-futures.workspace = true
+web-sys.workspace = true
+wasm-bindgen.workspace = true
+
+
+[dev-dependencies]
+unindent.workspace = true
+
+# For build.rs:
+[build-dependencies]
+# Rerun
+re_build_tools.workspace = true
+
+# External
+anyhow.workspace = true
+cfg_aliases.workspace = true
+clean-path.workspace = true
+pathdiff.workspace = true
+walkdir.workspace = true

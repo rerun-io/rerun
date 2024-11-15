@@ -1,5 +1,5 @@
 ---
 title: Data-loaders
-order: 550
+order: 800
 redirect: reference/data-loaders/overview
 ---

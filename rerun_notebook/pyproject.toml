@@ -1,0 +1,40 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "rerun-notebook"
+description = "Implementation helper for running rerun-sdk in notebooks"
+version = "0.21.0-alpha.1+dev"
+dependencies = ["anywidget", "jupyter-ui-poll"]
+readme = "README.md"
+keywords = ["rerun", "notebook"]
+
+[[project.authors]]
+email = "opensource@rerun.io"
+name = "Rerun.io"
+
+[project.license]
+text = "MIT OR Apache-2.0"
+
+[project.optional-dependencies]
+dev = ["watchfiles", "jupyterlab", "hatch"]
+
+# automatically add the dev feature to the default env (e.g., hatch shell)
+[tool.hatch.envs.default]
+features = ["dev"]
+
+
+[tool.hatch.build]
+only-packages = true
+artifacts = ["src/rerun_notebook/static/*"]
+
+[tool.hatch.build.hooks.jupyter-builder]
+build-function = "hatch_jupyter_builder.npm_builder"
+ensured-targets = ["src/rerun_notebook/static/widget.js"]
+skip-if-exists = ["src/rerun_notebook/static/widget.js"]
+dependencies = ["hatch-jupyter-builder>=0.5.0"]
+
+[tool.hatch.build.hooks.jupyter-builder.build-kwargs]
+npm = "npm"
+build_cmd = "build"

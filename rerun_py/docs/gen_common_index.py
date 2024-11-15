@@ -2,7 +2,7 @@
 """
 Generate an index table and rendered pages for the common APIs.
 
-NOTE: When changing anything in this file, also consider how it affects `crates/re_dev_tools/src/build_search_index/ingest/python.rs`.
+NOTE: When changing anything in this file, also consider how it affects `crates/build/re_dev_tools/src/build_search_index/ingest/python.rs`.
 
 The top-level index file should look like
 ```
@@ -10,7 +10,7 @@ The top-level index file should look like
 Function | Description
 -------- | -----------
 [rerun.init()](initialization/#rerun.init) | Initialize the Rerun SDK …
-[rerun.connect()](initialization/#rerun.connect) | Connect to a remote Rerun Viewer on the …
+[rerun.connect_tcp()](initialization/#rerun.connect_tcp) | Connect to a remote Rerun Viewer on the …
 [rerun.spawn()](initialization/#rerun.spawn) | Spawn a Rerun Viewer …
 …
 
@@ -85,13 +85,16 @@ SECTION_TABLE: Final[list[Section]] = [
         func_list=[
             "init",
             "connect",
+            "connect_tcp",
             "disconnect",
             "save",
             "send_blueprint",
             "serve",
+            "serve_web",
             "spawn",
             "memory_recording",
             "notebook_show",
+            "legacy_notebook_show",
         ],
     ),
     Section(
@@ -110,6 +113,17 @@ SECTION_TABLE: Final[list[Section]] = [
             "set_time_nanos",
             "disable_timeline",
             "reset_time",
+        ],
+    ),
+    Section(
+        title="Columnar API",
+        func_list=[
+            "send_columns",
+        ],
+        class_list=[
+            "TimeNanosColumn",
+            "TimeSecondsColumn",
+            "TimeSequenceColumn",
         ],
     ),
     ################################################################################
@@ -155,15 +169,18 @@ SECTION_TABLE: Final[list[Section]] = [
         class_list=[
             "archetypes.DepthImage",
             "archetypes.Image",
-            "ImageEncoded",
+            "archetypes.EncodedImage",
             "archetypes.SegmentationImage",
         ],
         gen_page=False,
     ),
     Section(
-        title="Image Helpers",
-        class_list=["ImageEncoded"],
-        show_tables=False,
+        title="Video",
+        class_list=[
+            "archetypes.AssetVideo",
+            "archetypes.VideoFrameReference",
+        ],
+        gen_page=False,
     ),
     Section(
         title="Plotting",
@@ -183,11 +200,21 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.Asset3D",
             "archetypes.Boxes2D",
             "archetypes.Boxes3D",
+            "archetypes.Capsules3D",
+            "archetypes.Ellipsoids3D",
             "archetypes.LineStrips2D",
             "archetypes.LineStrips3D",
             "archetypes.Mesh3D",
             "archetypes.Points2D",
             "archetypes.Points3D",
+        ],
+        gen_page=False,
+    ),
+    Section(
+        title="Geospatial Archetypes",
+        class_list=[
+            "archetypes.GeoLineStrings",
+            "archetypes.GeoPoints",
         ],
         gen_page=False,
     ),
@@ -207,12 +234,11 @@ SECTION_TABLE: Final[list[Section]] = [
             "archetypes.DisconnectedSpace",
             "archetypes.Pinhole",
             "archetypes.Transform3D",
+            "archetypes.InstancePoses3D",
             "archetypes.ViewCoordinates",
+            "components.Scale3D",
             "datatypes.Quaternion",
             "datatypes.RotationAxisAngle",
-            "datatypes.Scale3D",
-            "datatypes.TranslationAndMat3x3",
-            "datatypes.TranslationRotationScale3D",
         ],
         gen_page=False,
     ),
@@ -231,7 +257,11 @@ SECTION_TABLE: Final[list[Section]] = [
     Section(
         title="Interfaces",
         mod_path="rerun",
-        class_list=["AsComponents", "ComponentBatchLike"],
+        class_list=[
+            "AsComponents",
+            "ComponentBatchLike",
+            "ComponentColumn",
+        ],
         default_filters=False,
     ),
     ################################################################################
@@ -283,6 +313,29 @@ SECTION_TABLE: Final[list[Section]] = [
     ################################################################################
     # Remaining sections
     Section(
+        title="Dataframe",
+        mod_path="rerun.dataframe",
+        func_list=[
+            "load_archive",
+            "load_recording",
+        ],
+        class_list=[
+            "ComponentColumnDescriptor",
+            "ComponentColumnSelector",
+            "IndexColumnDescriptor",
+            "IndexColumnSelector",
+            "Recording",
+            "RecordingView",
+            "RRDArchive",
+            "Schema",
+            "AnyColumn",
+            "AnyComponentColumn",
+            "ComponentLike",
+            "ViewContentsLike",
+        ],
+        show_tables=True,
+    ),
+    Section(
         title="Script Helpers",
         func_list=[
             "script_add_args",
@@ -299,7 +352,6 @@ SECTION_TABLE: Final[list[Section]] = [
             "get_recording_id",
             "get_thread_local_data_recording",
             "is_enabled",
-            "log_components",
             "new_recording",
             "set_global_data_recording",
             "set_thread_local_data_recording",
@@ -340,7 +392,8 @@ def is_mentioned(thing: str) -> bool:
 
 
 # Virtual folder where we will generate the md files
-root = Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
+rerun_py_root = Path(__file__).parent.parent.resolve()
+sdk_root = Path(__file__).parent.parent.joinpath("rerun_sdk").resolve()
 common_dir = Path("common")
 
 # Make sure all archetypes are included in the index:
@@ -351,8 +404,16 @@ for archetype in all_archetypes():
 # Lots of other potentially interesting stuff we could pull out in the future
 # This is what mkdocstrings uses under the hood
 search_paths = [path for path in sys.path if path]  # eliminate empty path
-search_paths.insert(0, root.as_posix())
-rerun_pkg = griffe.load("rerun", search_paths=search_paths)
+
+# This is where maturin puts rerun_bindings
+search_paths.insert(0, rerun_py_root.as_posix())
+# This is where the rerun package is
+search_paths.insert(0, sdk_root.as_posix())
+
+loader = griffe.GriffeLoader(search_paths=search_paths)
+
+bindings_pkg = loader.load("rerun_bindings", find_stubs_package=True)
+rerun_pkg = loader.load("rerun")
 
 # Create the nav for this section
 nav = mkdocs_gen_files.Nav()
@@ -381,7 +442,7 @@ There are many different ways of sending data to the Rerun Viewer depending on w
 to achieve and whether the viewer is running in the same process as your code, in another process,
 or even as a separate web application.
 
-Checkout [SDK Operating Modes](https://www.rerun.io/docs/reference/sdk-operating-modes) for an
+Checkout [SDK Operating Modes](https://www.rerun.io/docs/reference/sdk/operating-modes) for an
 overview of what's possible and how.
 
 ## APIs
@@ -419,6 +480,12 @@ overview of what's possible and how.
                     fd.write("      filters: []\n")
                 if section.show_submodules:
                     fd.write("      show_submodules: True\n")
+            # Helpful for debugging
+            if 0:
+                with mkdocs_gen_files.open(write_path, "r") as fd:
+                    print("FOR SECTION", section.title)
+                    print(fd.read())
+                    print()
 
         # Write out a table for the section in the index_file
         if section.show_tables:
@@ -427,6 +494,9 @@ overview of what's possible and how.
                 index_file.write("Function | Description\n")
                 index_file.write("-------- | -----------\n")
                 for func_name in section.func_list:
+                    if section.mod_path != "rerun":
+                        mod_tail = section.mod_path.split(".")[1:]
+                        func_name = ".".join(mod_tail + [func_name])
                     func = rerun_pkg[func_name]
                     index_file.write(f"[`rerun.{func_name}()`][rerun.{func_name}] | {func.docstring.lines[0]}\n")
             if section.class_list:

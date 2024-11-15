@@ -1,0 +1,27 @@
+namespace rerun.datatypes;
+
+// ---
+
+/// An N-dimensional array of numbers.
+///
+/// The number of dimensions and their respective lengths is specified by the `shape` field.
+/// The dimensions are ordered from outermost to innermost. For example, in the common case of
+/// a 2D RGB Image, the shape would be `[height, width, channel]`.
+///
+/// These dimensions are combined with an index to look up values from the `buffer` field,
+/// which stores a contiguous array of typed values.
+///
+/// \py It's not currently possible to use `send_columns` with tensors since construction
+/// \py of `rerun.components.TensorDataBatch` does not support more than a single element.
+/// \py This will be addressed as part of <https://github.com/rerun-io/rerun/issues/6832>.
+table TensorData (
+  "attr.python.aliases": "npt.ArrayLike",
+  "attr.python.array_aliases": "npt.ArrayLike",
+  "attr.rust.derive": "PartialEq,"
+) {
+  /// The shape of the tensor, including optional names for each dimension.
+  shape: [rerun.datatypes.TensorDimension] (order: 200);
+
+  /// The content/data.
+  buffer: rerun.datatypes.TensorBuffer (order: 300);
+}

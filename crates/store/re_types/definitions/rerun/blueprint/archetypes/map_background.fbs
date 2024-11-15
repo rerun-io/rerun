@@ -1,0 +1,15 @@
+namespace rerun.blueprint.archetypes;
+
+
+/// Configuration for the background map of the map view.
+table MapBackground (
+    "attr.rerun.scope": "blueprint",
+    "attr.python.aliases": "blueprint_components.MapProviderLike"
+) {
+    // --- Optional ---
+
+    /// Map provider and style to use.
+    ///
+    /// **Note**: Requires a Mapbox API key in the `RERUN_MAPBOX_ACCESS_TOKEN` environment variable.
+    provider: rerun.blueprint.components.MapProvider ("attr.rerun.component_optional", order: 1000);
+}

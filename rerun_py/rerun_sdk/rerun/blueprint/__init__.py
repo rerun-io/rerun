@@ -11,6 +11,7 @@ from ..datatypes import (  # Re-export time range types for better discoverabili
 from . import (
     archetypes as archetypes,
     components as components,
+    visualizers as visualizers,
 )
 from .api import (
     Blueprint as Blueprint,
@@ -30,6 +31,8 @@ from .archetypes import (
     Background as Background,
     PlotLegend as PlotLegend,
     ScalarAxis as ScalarAxis,
+    TensorScalarMapping as TensorScalarMapping,
+    TensorSliceSelection as TensorSliceSelection,
     # VisibleTimeRanges, # Don't expose this mono-archetype directly - one can always use the component instead!
     VisualBounds2D as VisualBounds2D,
 )
@@ -37,7 +40,9 @@ from .components import (
     BackgroundKind as BackgroundKind,
     Corner2D as Corner2D,
     LockRangeDuringZoom as LockRangeDuringZoom,
+    MapProvider as MapProvider,
     VisibleTimeRange as VisibleTimeRange,
+    VisualizerOverrides as VisualizerOverrides,
 )
 from .containers import (
     Grid as Grid,
@@ -47,6 +52,8 @@ from .containers import (
 )
 from .views import (
     BarChartView as BarChartView,
+    DataframeView as DataframeView,
+    MapView as MapView,
     Spatial2DView as Spatial2DView,
     Spatial3DView as Spatial3DView,
     TensorView as TensorView,

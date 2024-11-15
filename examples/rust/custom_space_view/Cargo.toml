@@ -1,8 +1,8 @@
 [package]
 name = "custom_space_view"
-version = "0.17.0-alpha.3"
+version = "0.21.0-alpha.1+dev"
 edition = "2021"
-rust-version = "1.76"
+rust-version = "1.79"
 license = "MIT OR Apache-2.0"
 publish = false
 
@@ -13,12 +13,13 @@ default = []
 analytics = ["re_crash_handler/analytics", "re_viewer/analytics"]
 
 [dependencies]
-re_crash_handler = { path = "../../../crates/re_crash_handler" }
-re_query = { path = "../../../crates/re_query" }
-re_viewer = { path = "../../../crates/re_viewer", default-features = false }
+re_crash_handler = { path = "../../../crates/utils/re_crash_handler" }
+re_viewer = { path = "../../../crates/viewer/re_viewer", default-features = false }
 
 # We need re_sdk_comms to receive log events from and SDK:
-re_sdk_comms = { path = "../../../crates/re_sdk_comms", features = ["server"] }
+re_sdk_comms = { path = "../../../crates/store/re_sdk_comms", features = [
+  "server",
+] }
 
 # mimalloc is a much faster allocator:
-mimalloc = "0.1"
+mimalloc = "0.1.43"

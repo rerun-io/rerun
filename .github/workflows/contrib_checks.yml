@@ -45,9 +45,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.34.0
 
       - name: Python format check
         run: pixi run py-fmt-check
@@ -61,21 +61,15 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          python-version: "3.8"
-
-      - name: Install Python dependencies
-        shell: bash
-        run: |
-          pip install --upgrade pip
-          pip install -r rerun_py/requirements-doc.txt
+          pixi-version: v0.34.0
+          environments: py-docs
 
       - name: Build via mkdocs
         shell: bash
         run: |
-          mkdocs build --strict -f rerun_py/mkdocs.yml
+          pixi run -e py-docs mkdocs build --strict -f rerun_py/mkdocs.yml
 
   no-codegen-changes:
     name: Check if running codegen would produce any changes
@@ -86,9 +80,9 @@ jobs:
       # PR introduces a new type and another PR changes the codegen.
       - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.34.0
 
       - name: Codegen check
         run: pixi run codegen --force --check
@@ -99,12 +93,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.34.0
 
       - name: Rust checks & tests
-        run: pixi run rs-check --skip individual_crates
+        run: pixi run rs-check --skip individual_crates docs_slow
 
   misc-rerun-lints:
     name: Rerun lints
@@ -112,9 +106,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.34.0
 
       - name: Rerun lints
         run: pixi run lint-rerun
@@ -157,9 +151,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.34.0
           environments: cpp
 
       # TODO(emilk): make this work somehow. Right now this just results in
@@ -167,12 +161,12 @@ jobs:
       # 😭
       # - name: Build and run C++ tests with clang++
       #   run: |
-      #     pixi run cpp-clean
-      #     RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=clang++ pixi run cpp-build-all
-      #     RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=clang++ pixi run cpp-test
+      #     pixi run -e cpp cpp-clean
+      #     RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=clang++ pixi run -e cpp cpp-build-all
+      #     RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=clang++ pixi run -e cpp cpp-test
 
       - name: Build and run C++ tests with g++
         run: |
-          pixi run cpp-clean
-          RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=g++ pixi run cpp-build-all
-          RERUN_WERROR=ON RERUN_USE_ASAN=ON CXX=g++ pixi run cpp-test
+          pixi run -e cpp cpp-clean
+          RERUN_WERROR=ON RERUN_USE_ASAN=ON LSAN_OPTIONS=suppressions=.github/workflows/lsan_suppressions.supp CXX=g++ pixi run -e cpp cpp-build-all
+          RERUN_WERROR=ON RERUN_USE_ASAN=ON LSAN_OPTIONS=suppressions=.github/workflows/lsan_suppressions.supp CXX=g++ pixi run -e cpp cpp-test

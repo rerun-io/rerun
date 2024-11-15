@@ -336,7 +336,7 @@ message ARPlaneAnchor {
 
   // The classification status for the plane.
   enum PlaneClassificationStatus {
-    // The classfication process for the plane anchor has completed but the
+    // The classification process for the plane anchor has completed but the
     // result is inconclusive.
     UNKNOWN = 0;
     // No classication information can be provided (set on error or if the
@@ -344,7 +344,7 @@ message ARPlaneAnchor {
     UNAVAILABLE = 1;
     // The classification process has not completed.
     UNDETERMINED = 2;
-    // The classfication process for the plane anchor has completed.
+    // The classification process for the plane anchor has completed.
     KNOWN = 3;
   }
 

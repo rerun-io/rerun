@@ -1,6 +1,6 @@
 {
   "name": "@rerun-io/web-viewer",
-  "version": "0.16.0",
+  "version": "0.21.0-alpha.1+dev",
   "description": "Embed the Rerun web viewer in your app",
   "licenses": [
     {
@@ -11,11 +11,11 @@
     }
   ],
   "scripts": {
-    "build:wasm": "cargo run -p re_dev_tools -- build-web-viewer --release -g --module -o rerun_js/web-viewer",
-    "build:types": "tsc --noEmit && dts-buddy",
-    "build": "npm run build:wasm && npm run build:types",
-    "build:wasm:debug": "cargo run -p re_dev_tools -- build-web-viewer --debug --module -o rerun_js/web-viewer",
-    "build:debug": "npm run build:wasm:debug && npm run build:types"
+    "build:wasm": "node build-wasm.mjs --mode release",
+    "build:js": "tsc && node bundle.mjs",
+    "build": "npm run build:wasm && npm run build:js",
+    "build:wasm:debug": "node build-wasm.mjs --mode debug",
+    "build:debug": "npm run build:wasm:debug && npm run build:js"
   },
   "repository": {
     "type": "git",
@@ -28,6 +28,8 @@
   },
   "homepage": "https://rerun.io",
   "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
   "exports": {
     ".": {
       "types": "./index.d.ts",
@@ -36,14 +38,19 @@
     "./re_viewer.js": {
       "types": "./re_viewer.d.ts",
       "import": "./re_viewer.js"
+    },
+    "./inlined.js": {
+      "types": "./inlined.d.ts",
+      "import": "./inlined.js"
     }
   },
   "files": [
     "index.d.ts",
     "index.d.ts.map",
     "index.js",
+    "index.js.map",
+    "index.ts",
     "package.json",
-    "re_viewer_bg.js",
     "re_viewer_bg.wasm",
     "re_viewer_bg.wasm.d.ts",
     "re_viewer.d.ts",

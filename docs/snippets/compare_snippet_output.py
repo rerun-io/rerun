@@ -71,6 +71,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Run end-to-end cross-language roundtrip tests for all API examples")
     parser.add_argument("--no-py", action="store_true", help="Skip Python tests")
     parser.add_argument("--no-cpp", action="store_true", help="Skip C++ tests")
+    parser.add_argument("--no-asset-download", action="store_true", help="Skip downloading test assets")
     # We don't allow skipping Rust - it is what we compate to at the moment
     parser.add_argument("--no-py-build", action="store_true", help="Skip building rerun-sdk for Python")
     parser.add_argument(
@@ -79,11 +80,7 @@ def main() -> None:
         help="Skip cmake configure and ahead of time build for rerun_c & rerun_cpp",
     )
     parser.add_argument("--full-dump", action="store_true", help="Dump both rrd files as tables")
-    parser.add_argument(
-        "--release",
-        action="store_true",
-        help="Run cargo invocations with --release and CMake with `-DCMAKE_BUILD_TYPE=Release` & `--config Release`",
-    )
+    parser.add_argument("--release", action="store_true", help="Run cargo invocations with --release")
     parser.add_argument("--target", type=str, default=None, help="Target used for cargo invocations")
     parser.add_argument("--target-dir", type=str, default=None, help="Target directory used for cargo invocations")
     parser.add_argument("example", nargs="*", type=str, default=None, help="Run only the specified examples")
@@ -115,7 +112,7 @@ def main() -> None:
         print("----------------------------------------------------------")
         print("Build rerun_c & rerun_cpp…")
         start_time = time.time()
-        run(["pixi", "run", "cpp-build-snippets"])
+        run(["pixi", "run", "-e", "cpp", "cpp-build-snippets"])
         elapsed = time.time() - start_time
         print(f"rerun-sdk for C++ built in {elapsed:.1f} seconds")
         print("")
@@ -123,6 +120,7 @@ def main() -> None:
     examples = []
     if len(args.example) > 0:
         for example in args.example:
+            example = example.replace("\\", "/")
             parts = example.split("/")
             examples.append(Example("/".join(parts[0:-1]), parts[-1]))
     else:
@@ -135,9 +133,17 @@ def main() -> None:
                 examples += [Example(subdir.replace("\\", "/"), name)]
 
     examples = list(set(examples))
+
     examples.sort()
 
     print("----------------------------------------------------------")
+
+    if not args.no_asset_download:
+        print("Downloading test assets…")
+        run(["pixi", "run", "python3", "./tests/assets/download_test_assets.py"])
+        print("")
+
+        print("----------------------------------------------------------")
 
     active_languages = ["rust"]
     if not args.no_cpp:
@@ -146,10 +152,10 @@ def main() -> None:
         active_languages.append("py")
 
     # Running CMake in parallel causes failures during rerun_sdk & arrow build.
-    if not args.no_cpp_build:
+    if not args.no_cpp:
         print(f"Running {len(examples)} C++ examples…")
         for example in examples:
-            if "cpp" not in example.opt_out_entirely():
+            if "cpp" not in example.opt_out_entirely() and "cpp" in active_languages:
                 run_example(example, "cpp", args)
 
     print(f"Running {len(examples)} Rust and Python examples…")
@@ -197,19 +203,19 @@ def main() -> None:
 
 def run_example(example: Example, language: str, args: argparse.Namespace) -> None:
     if language == "cpp":
-        cpp_output_path = run_roundtrip_cpp(example)
+        cpp_output_path = run_cpp(example)
         check_non_empty_rrd(cpp_output_path)
     elif language == "py":
-        python_output_path = run_roundtrip_python(example)
+        python_output_path = run_python(example)
         check_non_empty_rrd(python_output_path)
     elif language == "rust":
-        rust_output_path = run_roundtrip_rust(example, args.release, args.target, args.target_dir)
+        rust_output_path = run_rust(example, args.release, args.target, args.target_dir)
         check_non_empty_rrd(rust_output_path)
     else:
         assert False, f"Unknown language: {language}"
 
 
-def run_roundtrip_python(example: Example) -> str:
+def run_python(example: Example) -> str:
     main_path = f"docs/snippets/all/{example.subdir}/{example.name}.py"
     output_path = example.output_path("python")
 
@@ -226,7 +232,7 @@ def run_roundtrip_python(example: Example) -> str:
     return output_path
 
 
-def run_roundtrip_rust(example: Example, release: bool, target: str | None, target_dir: str | None) -> str:
+def run_rust(example: Example, release: bool, target: str | None, target_dir: str | None) -> str:
     output_path = example.output_path("rust")
 
     cmd = ["cargo", "run", "--quiet", "-p", "snippets"]
@@ -249,7 +255,7 @@ def run_roundtrip_rust(example: Example, release: bool, target: str | None, targ
     return output_path
 
 
-def run_roundtrip_cpp(example: Example) -> str:
+def run_cpp(example: Example) -> str:
     output_path = example.output_path("cpp")
 
     extension = ".exe" if os.name == "nt" else ""
@@ -264,6 +270,7 @@ def check_non_empty_rrd(path: str) -> None:
     from pathlib import Path
 
     assert Path(path).stat().st_size > 0
+    print(f"Confirmed output written to {Path(path).absolute()}")
 
 
 if __name__ == "__main__":

@@ -162,9 +162,9 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
           targets: ${{ needs.set-config.outputs.TARGET }}
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.34.0
 
       - name: Build web-viewer (release)
         run: pixi run rerun-build-web-release
@@ -172,15 +172,12 @@ jobs:
       # This does not run in the pixi environment, doing so
       # causes it to select the wrong compiler on macos-arm64
       - name: Build rerun-cli
-        env:
-          # this stops `re_web_viewer_server/build.rs` from running
-          RERUN_IS_PUBLISHING: true
         run: |
-          cargo build \
+          pixi run cargo build \
             --locked \
             -p rerun-cli \
             --no-default-features \
-            --features native_viewer,web_viewer \
+            --features release \
             --release \
             --target ${{ needs.set-config.outputs.TARGET }}
 

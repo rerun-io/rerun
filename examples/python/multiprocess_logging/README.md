@@ -1,5 +1,5 @@
 <!--[metadata]
-title = "Multiprocess logginge"
+title = "Multiprocess logging"
 thumbnail = "https://static.rerun.io/multiprocessing/959e2c675f52a7ca83e11e5170903e8f0f53f5ed/480w.png"
 thumbnail_dimensions = [480, 480]
 tags = ["API example"]
@@ -29,7 +29,7 @@ The function `task` is decorated with `@rr.shutdown_at_exit`. This decorator ens
 def task(child_index: int) -> None:
     rr.init("rerun_example_multiprocessing")
 
-    rr.connect()
+    rr.connect_tcp()
 
     title = f"task_{child_index}"
     rr.log(

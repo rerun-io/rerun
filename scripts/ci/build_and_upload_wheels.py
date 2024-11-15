@@ -56,18 +56,23 @@ def detect_target() -> str:
 class BuildMode(Enum):
     PYPI = "pypi"
     PR = "pr"
+    EXTRA = "extra"
 
     def __str__(self) -> str:
         return self.value
 
 
-def build_and_upload(bucket: Bucket, mode: BuildMode, gcs_dir: str, target: str, compatibility: str) -> None:
-    if mode is BuildMode.PYPI:
-        # Only build web viewer when publishing to pypi
+def build_and_upload(bucket: Bucket | None, mode: BuildMode, gcs_dir: str, target: str, compatibility: str) -> None:
+    # pypi / extra builds require a web build
+    if mode in (BuildMode.PYPI, BuildMode.EXTRA):
         run("pixi run rerun-build-web-release")
+
+    if mode is BuildMode.PYPI:
         maturin_feature_flags = "--no-default-features --features pypi"
     elif mode is BuildMode.PR:
         maturin_feature_flags = "--no-default-features --features extension-module"
+    elif mode is BuildMode.EXTRA:
+        maturin_feature_flags = "--no-default-features --features extra"
 
     dist = f"dist/{target}"
 
@@ -83,14 +88,14 @@ def build_and_upload(bucket: Bucket, mode: BuildMode, gcs_dir: str, target: str,
         f"--target {target} "
         f"{maturin_feature_flags} "
         f"--out {dist}",
-        env={**os.environ.copy(), "RERUN_IS_PUBLISHING": "yes"},  # stop `re_web_viewer` from building here
     )
 
     pkg = os.listdir(dist)[0]
 
-    # Upload to GCS
-    print("Uploading to GCS…")
-    bucket.blob(f"{gcs_dir}/{pkg}").upload_from_filename(f"{dist}/{pkg}")
+    if bucket is not None:
+        # Upload to GCS
+        print("Uploading to GCS…")
+        bucket.blob(f"{gcs_dir}/{pkg}").upload_from_filename(f"{dist}/{pkg}")
 
 
 def main() -> None:
@@ -105,10 +110,16 @@ def main() -> None:
         type=str,
         help='The platform tag for linux, e.g. "manylinux_2_31"',
     )
+    parser.add_argument("--upload-gcs", action="store_true", default=False, help="Upload the wheel to GCS")
     args = parser.parse_args()
 
+    if args.upload_gcs:
+        bucket = Gcs("rerun-open").bucket("rerun-builds")
+    else:
+        bucket = None
+
     build_and_upload(
-        Gcs("rerun-open").bucket("rerun-builds"),
+        bucket,
         args.mode,
         args.dir,
         args.target or detect_target(),

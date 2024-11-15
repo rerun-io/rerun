@@ -638,6 +638,12 @@ SCENARIO("Conversion to vector using `to_vector`", TEST_TAG) {
 
             CHECK(collection.to_vector() == expected_vector);
         }
+
+        THEN("it can be moved to a vector, resulting in no copies") {
+            CheckElementMoveAndCopyCount check;
+
+            CHECK(std::move(collection).to_vector() == expected_vector);
+        }
     }
     GIVEN("a collection with borrowed data") {
         std::vector<Element> data EXPECTED_ELEMENT_LIST;
@@ -648,6 +654,73 @@ SCENARIO("Conversion to vector using `to_vector`", TEST_TAG) {
             check.expect_copy(2);
 
             CHECK(collection.to_vector() == expected_vector);
+        }
+
+        THEN("it can be moved to a vector, resulting in copies") {
+            CheckElementMoveAndCopyCount check;
+            check.expect_copy(2);
+
+            CHECK(std::move(collection).to_vector() == expected_vector);
+        }
+    }
+}
+
+SCENARIO("Borrow and take ownership if easy with the free utility functions") {
+    GIVEN("A vector") {
+        std::vector<Element> data EXPECTED_ELEMENT_LIST;
+
+        THEN("it can be borrowed without via `rerun::borrow` without specifying template arguments"
+        ) {
+            CheckElementMoveAndCopyCount check; // No element copies or moves expected.
+
+            const auto collection = rerun::borrow(data);
+            check_for_expected_list(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::Borrowed);
+        }
+        THEN(
+            "it can be taken ownership via `rerun::take_ownership` without specifying template arguments"
+        ) {
+            CheckElementMoveAndCopyCount check; // No element copies or moves expected.
+
+            const auto collection = rerun::take_ownership(std::move(data));
+            check_for_expected_list(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
+        }
+    }
+    GIVEN("A pointer to an array") {
+        std::array<Element, 2> data EXPECTED_ELEMENT_LIST;
+
+        THEN("it can be borrowed via `rerun::borrow` without specifying template arguments") {
+            CheckElementMoveAndCopyCount check; // No element copies or moves expected.
+
+            const auto collection = rerun::borrow(data.data(), data.size());
+            check_for_expected_list(collection);
+            CHECK(collection.get_ownership() == rerun::CollectionOwnership::Borrowed);
+        }
+    }
+    GIVEN("A single element") {
+        Element data = EXPECTED_SINGLE;
+
+        THEN(
+            "it can be taken ownership via `rerun::take_ownership` without specifying template arguments"
+        ) {
+            WHEN("passed by value") {
+                CheckElementMoveAndCopyCount check;
+                check.expect_copy(1); // copy on call
+                check.expect_move(1); // move to rerun::Collection
+
+                const auto collection = rerun::take_ownership(data);
+                check_for_expected_single(collection);
+                CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
+            }
+            WHEN("passed moved") {
+                CheckElementMoveAndCopyCount check;
+                check.expect_move(2); // move on call, move to rerun::Collection
+
+                const auto collection = rerun::take_ownership(std::move(data));
+                check_for_expected_single(collection);
+                CHECK(collection.get_ownership() == rerun::CollectionOwnership::VectorOwned);
+            }
         }
     }
 }

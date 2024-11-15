@@ -1,0 +1,39 @@
+
+namespace rerun.components;
+
+/// The visual appearance of a point in e.g. a 2D plot.
+enum MarkerShape: ubyte
+ {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    /// `⏺`
+    Circle (default),
+
+    /// `◆`
+    Diamond,
+
+    /// `◼️`
+    Square,
+
+    /// `x`
+    Cross,
+
+    /// `+`
+    Plus,
+
+    /// `▲`
+    Up,
+
+    /// `▼`
+    Down,
+
+    /// `◀`
+    Left,
+
+    /// `▶`
+    Right,
+
+    /// `*`
+    Asterisk,
+}

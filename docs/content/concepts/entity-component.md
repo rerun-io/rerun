@@ -37,7 +37,8 @@ Later, the Space View for spatial types queries the data store for all the entit
 In this case it would find the "my_point" entity. This query additionally returns the `Color` component because that
 component is associated with the same entity. These two components are recognized as corresponding to the `Points2D` archetype, which informs the Viewer on how to display the corresponding entity.
 
-See the [Types](../reference/types.md) reference for a list of archetypes, components, and datatypes.
+See the [Types](../reference/types.md) reference for a list of [archetypes](../reference/types/archetypes.md),
+[components](../reference/types/components.md), and [datatypes](../reference/types/datatypes.md).
 
 ### Adding custom data
 

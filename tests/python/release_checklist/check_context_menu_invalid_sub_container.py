@@ -7,7 +7,7 @@ from uuid import uuid4
 import rerun as rr
 import rerun.blueprint as rrb
 
-README = """
+README = """\
 # Context Menu - Invalid sub-container kind
 
 

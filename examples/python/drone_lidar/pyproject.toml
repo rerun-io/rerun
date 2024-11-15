@@ -1,0 +1,13 @@
+[project]
+name = "drone_lidar"
+version = "0.1.0"
+readme = "README.md"
+dependencies = ["laspy", "numpy", "requests", "rerun-sdk", "tqdm"]
+
+[project.scripts]
+drone_lidar = "drone_lidar:main"
+
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

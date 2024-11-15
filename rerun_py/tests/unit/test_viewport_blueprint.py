@@ -4,14 +4,15 @@ import itertools
 from typing import Optional, cast
 
 from rerun.blueprint.archetypes.viewport_blueprint import ViewportBlueprint
-from rerun.blueprint.components.auto_layout import AutoLayoutBatch, AutoLayoutLike
-from rerun.blueprint.components.auto_space_views import AutoSpaceViewsBatch, AutoSpaceViewsLike
+from rerun.blueprint.components.auto_layout import AutoLayoutBatch
+from rerun.blueprint.components.auto_space_views import AutoSpaceViewsBatch
 from rerun.blueprint.components.root_container import RootContainerBatch
 from rerun.blueprint.components.space_view_maximized import SpaceViewMaximizedBatch
 from rerun.blueprint.components.viewer_recommendation_hash import (
     ViewerRecommendationHash,
     ViewerRecommendationHashBatch,
 )
+from rerun.datatypes.bool import BoolLike
 from rerun.datatypes.uint64 import UInt64ArrayLike
 from rerun.datatypes.uuid import UuidLike
 
@@ -53,8 +54,8 @@ def test_viewport_blueprint() -> None:
         # mypy can't track types properly through itertools zip so re-cast
         root_container = cast(Optional[UuidLike], root_container)
         maximized = cast(Optional[UuidLike], maximized)
-        auto_layout = cast(Optional[AutoLayoutLike], auto_layout)
-        auto_space_views = cast(Optional[AutoSpaceViewsLike], auto_space_views)
+        auto_layout = cast(Optional[BoolLike], auto_layout)
+        auto_space_views = cast(Optional[BoolLike], auto_space_views)
         past_viewer_recommendations = cast(Optional[UInt64ArrayLike], past_viewer_recommendations)
 
         print(

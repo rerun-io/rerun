@@ -44,13 +44,11 @@ class DatasetSpec:
 
 
 DATASETS = {
-    "olympic": DatasetSpec(
-        "olympic_flame", "https://s3.amazonaws.com/mics.pix4d.com/example_datasets/olympic_flame.zip"
-    ),
+    "olympic": DatasetSpec("olympic_flame", "https://data.pix4d.com/misc/example_datasets/olympic_flame.zip"),
     "rainwater": DatasetSpec(
-        "catch_rainwater_demo", "https://s3.amazonaws.com/mics.pix4d.com/example_datasets/catch_rainwater_demo.zip"
+        "catch_rainwater_demo", "https://data.pix4d.com/misc/example_datasets/catch_rainwater_demo.zip"
     ),
-    "rivaz": DatasetSpec("rivaz_demo", "https://s3.amazonaws.com/mics.pix4d.com/example_datasets/rivaz_demo.zip"),
+    "rivaz": DatasetSpec("rivaz_demo", "https://data.pix4d.com/misc/example_datasets/rivaz_demo.zip"),
 }
 DATASET_DIR: Final = Path(__file__).parent / "dataset"
 
@@ -191,9 +189,9 @@ class OPFProject:
 
             if jpeg_quality is not None:
                 with Image.open(self.path.parent / camera.uri) as img:
-                    rr.log(entity + "/image/rgb", rr.Image(np.array(img)).compress(jpeg_quality=jpeg_quality))
+                    rr.log(entity + "/image/rgb", rr.Image(img).compress(jpeg_quality=jpeg_quality))
             else:
-                rr.log(entity + "/image/rgb", rr.ImageEncoded(path=self.path.parent / camera.uri))
+                rr.log(entity + "/image/rgb", rr.EncodedImage(path=self.path.parent / camera.uri))
 
 
 def main() -> None:

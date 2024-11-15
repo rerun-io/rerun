@@ -19,13 +19,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     rec.set_time_seconds("stable_time", 0f64);
 
-    rec.log(
+    rec.log_static(
         "dna/structure/left",
         &rerun::Points3D::new(points1.iter().copied())
             .with_colors(colors1)
             .with_radii([0.08]),
     )?;
-    rec.log(
+    rec.log_static(
         "dna/structure/right",
         &rerun::Points3D::new(points2.iter().copied())
             .with_colors(colors2)
@@ -40,7 +40,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .map(|chunk| chunk.into_iter().collect_vec().try_into().unwrap())
         .collect_vec();
 
-    rec.log(
+    rec.log_static(
         "dna/structure/scaffolding",
         &rerun::LineStrips3D::new(points_interleaved.iter().cloned())
             .with_colors([rerun::Color::from([128, 128, 128, 255])]),
@@ -77,9 +77,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         rec.log(
             "dna/structure",
-            &rerun::archetypes::Transform3D::new(rerun::RotationAxisAngle::new(
+            &rerun::archetypes::Transform3D::from_rotation(rerun::RotationAxisAngle::new(
                 glam::Vec3::Z,
-                rerun::Angle::Radians(time / 4.0 * TAU),
+                rerun::Angle::from_radians(time / 4.0 * TAU),
             )),
         )?;
     }

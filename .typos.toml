@@ -5,8 +5,8 @@
 [files]
 extend-exclude = [
   ".typos.toml",
-  "crates/re_ui/data/design_tokens.json",
-  "crates/re_ui/src/design_tokens.rs",
+  "crates/viewer/re_ui/data/design_tokens.json",
+  "crates/viewer/re_ui/src/design_tokens.rs",
   "examples/assets",
   "rerun_cpp/src/rerun/third_party/cxxopts.hpp",
 ]
@@ -17,6 +17,7 @@ lod = "lod"     # level-of-detail
 ND = "ND"       # np.NDArray
 somes = "somes" # many `Some`
 teh = "teh"     # part of @teh-cmc
+trak = "trak"   # mp4 crate spelling
 
 # Use the more common spelling
 adaptor = "adapter"
@@ -33,6 +34,7 @@ armour = "armor"
 artefact = "artifact"
 authorise = "authorize"
 behaviour = "behavior"
+behavioural = "behavioral"
 British = "American"
 calibre = "caliber"
 # allow 'cancelled' since Arrow uses it.
@@ -48,6 +50,7 @@ civilise = "civilize"
 clamour = "clamor"
 colonise = "colonize"
 colour = "color"
+coloured = "colored"
 cosy = "cozy"
 criticise = "criticize"
 defence = "defense"

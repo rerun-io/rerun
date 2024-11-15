@@ -9,11 +9,16 @@ import rerun as rr
 from rerun.components import (
     Color,
     ColorBatch,
-    DrawOrderLike,
     Position2DBatch,
-    RadiusArrayLike,
 )
-from rerun.datatypes import ClassIdArrayLike, KeypointIdArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec2DArrayLike
+from rerun.datatypes import (
+    ClassIdArrayLike,
+    Float32ArrayLike,
+    KeypointIdArrayLike,
+    Rgba32ArrayLike,
+    Utf8ArrayLike,
+    Vec2DArrayLike,
+)
 
 from .common_arrays import (
     class_ids_arrays,
@@ -47,12 +52,12 @@ def test_points2d() -> None:
     for positions, radii, colors, labels, draw_order, class_ids, keypoint_ids in all_arrays:
         positions = positions if positions is not None else positions_arrays[-1]
 
-        # make Pyright happy as it's apparently not able to track typing info trough zip_longest
+        # make Pyright happy as it's apparently not able to track typing info through zip_longest
         positions = cast(Vec2DArrayLike, positions)
-        radii = cast(Optional[RadiusArrayLike], radii)
+        radii = cast(Optional[Float32ArrayLike], radii)
         colors = cast(Optional[Rgba32ArrayLike], colors)
         labels = cast(Optional[Utf8ArrayLike], labels)
-        draw_order = cast(Optional[DrawOrderLike], draw_order)
+        draw_order = cast(Optional[Float32ArrayLike], draw_order)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
         keypoint_ids = cast(Optional[KeypointIdArrayLike], keypoint_ids)
 

@@ -16,7 +16,7 @@ class Point3DInput:
     label: str = "some label"
 
     @classmethod
-    def prepare(cls, seed: int, num_points: int):
+    def prepare(cls, seed: int, num_points: int) -> None:
         rng = np.random.default_rng(seed=seed)
 
         return cls(

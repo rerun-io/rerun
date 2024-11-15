@@ -7,7 +7,7 @@ from uuid import uuid4
 import numpy as np
 import rerun as rr
 
-README = """
+README = """\
 # 1D Image/Tensor/BarChart
 
 This checks the different ways 1D arrays can be visualized.
@@ -20,6 +20,9 @@ You should see:
     display the tensor vertically or horizontally. The "Selectors" list should be empty.
 * an image view with a 1D image
 * a bar chart
+
+Known bugs:
+* TODO(#6695): When hovering over a the tensor view, a thin, black, rounded cutout appears.
 
 Bonus actions:
 * use the ui to create a tensor/bar-chart with each of the entities no matter how it was logged

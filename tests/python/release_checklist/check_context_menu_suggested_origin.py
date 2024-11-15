@@ -9,7 +9,7 @@ import numpy as np
 import rerun as rr
 import rerun.blueprint as rrb
 
-README = """
+README = """\
 # Context Menu - Test the origin selection heuristics
 
 Repeat these steps for each of the following entities and space view class:
@@ -70,9 +70,7 @@ def log_some_space_views() -> None:
     rr.log(
         "/world/camera",
         rr.Transform3D(
-            rr.TranslationRotationScale3D(
-                rotation=rr.RotationAxisAngle(axis=[0, 0, 1], angle=math.pi / 2),
-            )
+            rotation=rr.RotationAxisAngle(axis=[0, 0, 1], angle=math.pi / 2),
         ),
     )
 

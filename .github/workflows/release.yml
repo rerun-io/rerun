@@ -20,9 +20,8 @@ defaults:
   run:
     shell: bash
 
-permissions: # wants to push commits and create a PR
-  contents: write
-  id-token: write
+# wants to push commits and create a PR
+permissions: write-all
 
 jobs:
   # Re-entrancy:
@@ -51,18 +50,22 @@ jobs:
         with:
           python-version: 3.11
 
-      # TODO(emilk): We want to forbid `?speculative-link` just _after_ a release…
-      # - name: Check links for `?speculative-link`
-      #   # NOTE: We allow `?speculative-link` only in alpha releases
-      #   run: |
-      #     if [ ${{ inputs.release-type }} != "alpha" ]; then
-      #       python3 scripts/ci/check_links.py
-      #     fi
+      - name: Check links for `?speculative-link`
+        # This checks that we have no links with `?speculative-link` in its query params.
+        # We use those markers to get our link checker to ignore links to unreleased docs.
+        #
+        # NOTE: For alpha releases, we won't fully publish all our docs,
+        #       so we skip the check here, because we won't be able to
+        #       remove the markers yet.
+        run: |
+          if [ ${{ inputs.release-type }} != "alpha" ]; then
+            python3 scripts/ci/check_speculative_links.py
+          fi
 
+  # NOTE: When updating this job, also remember to update `post-release-version-bump`.
   version:
     name: "Versioning"
     runs-on: ubuntu-latest
-    needs: [checks]
     outputs:
       previous: ${{ steps.versioning.outputs.previous }}
       current: ${{ steps.versioning.outputs.current }}
@@ -82,9 +85,9 @@ jobs:
         with:
           node-version: 18
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.34.0
 
       - name: Update crate versions
         id: versioning
@@ -126,19 +129,25 @@ jobs:
           final=$(pixi run python scripts/ci/crates.py get-version --finalize)
 
           echo Output everything for use in other steps…
+          echo "previous=$previous"
+          echo "current=$current"
+          echo "final=$final"
+
           echo "previous=$previous" >> "$GITHUB_OUTPUT"
           echo "current=$current"   >> "$GITHUB_OUTPUT"
           echo "final=$final"       >> "$GITHUB_OUTPUT"
 
+      - name: Update rerun_py & rerun_c version
+        run: |
+          pixi run python scripts/ci/update_rerun_py_and_c_version.py "${{ steps.versioning.outputs.current }}"
+
+      - name: Update rerun_notebook package version
+        run: |
+          pixi run python scripts/ci/update_rerun_notebook_version.py "${{ steps.versioning.outputs.current }}"
+
       - name: Update JS package versions
         run: |
           pixi run node rerun_js/scripts/version.mjs "${{ steps.versioning.outputs.current }}"
-
-      - name: Update rerun_c version
-
-        # Configuring CMake is enough to change the version on rerun.h!
-        run: |
-          cmake -B build -S .
 
       - run: pixi run toml-fmt
 
@@ -180,10 +189,11 @@ jobs:
                 - [ ] cargo install of cli tool: does it install and run?
                 - [ ] C++ SDK zip: does it contain rerun_c for all platforms?
               - [ ] Populate the release with the changelog and a nice header video/picture, check `Set as latest release`, then click `Publish release`.
-              - [ ] Make sure the [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls) gets
-              merged. This will be created by the `regro-cf-autotick-bot` once the GitHub release is created.
               - [ ] Update the [google colab notebooks](https://drive.google.com/drive/folders/0AC0q24MFKh3fUk9PVA) to install this version and re-execute the notebook.
-              - [ ] Merge this PR
+
+          A few hours after the GitHub release is created, `regro-cf-autotick-bot` will create a
+          [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls).
+          Make sure Jeremy is on top of it!
 
           - [ ] Tests
             - [ ] Windows
@@ -224,7 +234,7 @@ jobs:
     secrets: inherit
 
   publish-rerun_c:
-    name: "Build and Publish rerun_c"
+    name: "Build and Publish C/C++ SDKs"
     needs: [version]
     uses: ./.github/workflows/reusable_publish_rerun_c.yml
     with:
@@ -349,12 +359,19 @@ jobs:
 
           cat <<EOF > comment-body.txt
           GitHub release draft: [$version](https://github.com/rerun-io/rerun/releases/tag/$version)
+
+          Do NOT create a GitHub release yet!
+
+          The release will be automatically un-drafted by the "Sync Release Assets" job, which will run automatically.
           EOF
 
           gh pr comment $pr_number --body-file comment-body.txt
 
+  # Bump versions to next minor+alpha after the release has finished,
+  # so that the release PR can be merged.
   post-release-version-bump:
     name: "Post-Release Version Bump"
+    # We don't need to bump versions for `rc` releases, because we don't merge those.
     if: inputs.release-type == 'alpha' || inputs.release-type == 'final'
     needs:
       [
@@ -366,7 +383,6 @@ jobs:
         publish-rerun_c,
         publish-rerun-cli,
         publish-js,
-        github-release,
       ]
     runs-on: ubuntu-latest
     steps:
@@ -380,24 +396,41 @@ jobs:
         with:
           node-version: 18
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.34.0
 
-      - name: Commit new version
+      - name: git config
         run: |
-          # checkout + pull changes
           git config --global user.name "rerun-bot"
           git config --global user.email "bot@rerun.io"
           git checkout ${{ github.ref_name }}
           git pull --rebase
 
-          # bump version and commit it
+      - name: Update crate versions
+        id: crates
+        run: |
           pixi run python scripts/ci/crates.py version --bump auto
-          pixi run toml-fmt
           version="$(pixi run python scripts/ci/crates.py get-version)"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
-          git commit -am "Bump versions to $version"
+      - name: Update rerun_notebook package version
+        run: |
+          pixi run python scripts/ci/update_rerun_notebook_version.py "${{ steps.crates.outputs.version }}"
+
+      - name: Update JS package versions
+        run: |
+          pixi run node rerun_js/scripts/version.mjs "${{ steps.crates.outputs.version }}"
+
+      - name: Update rerun_py & rerun_c version
+        run: |
+          pixi run python scripts/ci/update_rerun_py_and_c_version.py "${{ steps.crates.outputs.version }}"
+
+      - run: pixi run toml-fmt
+
+      - name: Commit new version
+        run: |
+          git commit -am "Bump versions to ${{ steps.crates.outputs.version }}"
           git push
 
   comment-artifact-links:

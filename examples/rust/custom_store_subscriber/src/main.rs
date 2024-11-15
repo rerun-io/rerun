@@ -1,4 +1,4 @@
-//! This example demonstrates how to use [`StoreSubscriber`]s and [`StoreEvent`]s to implement both
+//! This example demonstrates how to use [`ChunkStoreSubscriber`]s and [`ChunkStoreEvent`]s to implement both
 //! custom secondary indices and trigger systems.
 //!
 //! Usage:
@@ -13,15 +13,15 @@
 use std::collections::BTreeMap;
 
 use rerun::{
-    external::{anyhow, re_build_info, re_data_store, re_log, re_log_types::ResolvedTimeRange},
+    external::{anyhow, re_build_info, re_chunk_store, re_log, re_log_types::ResolvedTimeRange},
     time::TimeInt,
-    ComponentName, EntityPath, StoreEvent, StoreId, StoreSubscriber, Timeline,
+    ChunkStoreEvent, ChunkStoreSubscriber, ComponentName, EntityPath, StoreId, Timeline,
 };
 
 fn main() -> anyhow::Result<std::process::ExitCode> {
     re_log::setup_logging();
 
-    let _handle = re_data_store::DataStore::register_subscriber(Box::<Orchestrator>::default());
+    let _handle = re_chunk_store::ChunkStore::register_subscriber(Box::<Orchestrator>::default());
     // Could use the returned handle to get a reference to the view if needed.
 
     let build_info = re_build_info::build_info!();
@@ -31,19 +31,19 @@ fn main() -> anyhow::Result<std::process::ExitCode> {
 
 // ---
 
-/// A meta [`StoreSubscriber`] that distributes work to our other views.
+/// A meta [`ChunkStoreSubscriber`] that distributes work to our other views.
 ///
 /// The order is which registered views are executed is undefined: if you rely on a specific order
 /// of execution between your views, orchestrate it yourself!
 ///
-/// Clears the terminal and resets the cursor for every new batch of [`StoreEvent`]s.
+/// Clears the terminal and resets the cursor for every new batch of [`ChunkStoreEvent`]s.
 #[derive(Default)]
 struct Orchestrator {
     components_per_recording: ComponentsPerRecording,
     time_ranges_per_entity: TimeRangesPerEntity,
 }
 
-impl StoreSubscriber for Orchestrator {
+impl ChunkStoreSubscriber for Orchestrator {
     fn name(&self) -> String {
         "rerun.store_subscriber.ScreenClearer".into()
     }
@@ -56,7 +56,7 @@ impl StoreSubscriber for Orchestrator {
         self
     }
 
-    fn on_events(&mut self, events: &[StoreEvent]) {
+    fn on_events(&mut self, events: &[ChunkStoreEvent]) {
         print!("\x1B[2J\x1B[1;1H"); // terminal clear + cursor reset
 
         self.components_per_recording.on_events(events);
@@ -66,19 +66,19 @@ impl StoreSubscriber for Orchestrator {
 
 // ---
 
-/// A [`StoreSubscriber`] that maintains a secondary index that keeps count of the number of occurrences
-/// of each component in each [`rerun::DataStore`].
+/// A [`ChunkStoreSubscriber`] that maintains a secondary index that keeps count of the number of occurrences
+/// of each component in each [`rerun::ChunkStore`].
 ///
 /// It also implements a trigger that prints to the console each time a component is first introduced
 /// and retired.
 ///
-/// For every [`StoreEvent`], it displays the state of the secondary index to the terminal.
+/// For every [`ChunkStoreEvent`], it displays the state of the secondary index to the terminal.
 #[derive(Default, Debug, PartialEq, Eq)]
 struct ComponentsPerRecording {
     counters: BTreeMap<StoreId, BTreeMap<ComponentName, u64>>,
 }
 
-impl StoreSubscriber for ComponentsPerRecording {
+impl ChunkStoreSubscriber for ComponentsPerRecording {
     fn name(&self) -> String {
         "rerun.store_subscriber.ComponentsPerRecording".into()
     }
@@ -91,11 +91,11 @@ impl StoreSubscriber for ComponentsPerRecording {
         self
     }
 
-    fn on_events(&mut self, events: &[StoreEvent]) {
+    fn on_events(&mut self, events: &[ChunkStoreEvent]) {
         for event in events {
             // update counters
             let per_component = self.counters.entry(event.store_id.clone()).or_default();
-            for &component_name in event.cells.keys() {
+            for component_name in event.chunk.component_names() {
                 let count = per_component.entry(component_name).or_default();
 
                 // if first occurrence, speak!
@@ -135,16 +135,16 @@ impl StoreSubscriber for ComponentsPerRecording {
 
 // ---
 
-/// A [`StoreSubscriber`] that maintains a secondary index of the time ranges covered by each entity,
-/// on every timeline, across all recordings (i.e. [`rerun::DataStore`]s).
+/// A [`ChunkStoreSubscriber`] that maintains a secondary index of the time ranges covered by each entity,
+/// on every timeline, across all recordings (i.e. [`rerun::ChunkStore`]s).
 ///
-/// For every [`StoreEvent`], it displays the state of the secondary index to the terminal.
+/// For every [`ChunkStoreEvent`], it displays the state of the secondary index to the terminal.
 #[derive(Default, Debug, PartialEq, Eq)]
 struct TimeRangesPerEntity {
     times: BTreeMap<EntityPath, BTreeMap<Timeline, BTreeMap<TimeInt, u64>>>,
 }
 
-impl StoreSubscriber for TimeRangesPerEntity {
+impl ChunkStoreSubscriber for TimeRangesPerEntity {
     fn name(&self) -> String {
         "rerun.store_subscriber.TimeRangesPerEntity".into()
     }
@@ -157,18 +157,23 @@ impl StoreSubscriber for TimeRangesPerEntity {
         self
     }
 
-    fn on_events(&mut self, events: &[StoreEvent]) {
+    fn on_events(&mut self, events: &[ChunkStoreEvent]) {
         for event in events {
-            for &(timeline, time) in &event.times {
-                // update counters
-                let per_timeline = self.times.entry(event.entity_path.clone()).or_default();
-                let per_time = per_timeline.entry(timeline).or_default();
-                let count = per_time.entry(time).or_default();
+            for (timeline, time_column) in event.chunk.timelines() {
+                for time in time_column.times() {
+                    // update counters
+                    let per_timeline = self
+                        .times
+                        .entry(event.chunk.entity_path().clone())
+                        .or_default();
+                    let per_time = per_timeline.entry(*timeline).or_default();
+                    let count = per_time.entry(time).or_default();
 
-                *count = count.saturating_add_signed(event.delta());
+                    *count = count.saturating_add_signed(event.delta());
 
-                if *count == 0 {
-                    per_time.remove(&time);
+                    if *count == 0 {
+                        per_time.remove(&time);
+                    }
                 }
             }
         }

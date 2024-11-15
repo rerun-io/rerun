@@ -13,7 +13,7 @@ To run only a specific test you can use the `--only` argument:
     pixi run rs-check --only wasm
 
 To run all tests except a few specific ones you can use the `--skip` argument:
-    pixi run rs-check --skip wasm docs
+    pixi run rs-check --skip wasm docs docs_slow
 
 To see a list of all available tests you can use the `--help` argument:
     pixi run rs-check --help
@@ -48,8 +48,10 @@ def run_cargo(cargo_cmd: str, cargo_args: str, clippy_conf: str | None = None) -
     start_time = time.time()
 
     additional_env_vars = {}
-    additional_env_vars["RUSTFLAGS"] = "--deny warnings"
-    additional_env_vars["RUSTDOCFLAGS"] = "--deny warnings"
+    # Compilation will fail we don't manually set `--cfg=web_sys_unstable_apis`,
+    # because env vars are not propagated from CI.
+    additional_env_vars["RUSTFLAGS"] = "--cfg=web_sys_unstable_apis --deny warnings"
+    additional_env_vars["RUSTDOCFLAGS"] = "--cfg=web_sys_unstable_apis --deny warnings"
     if clippy_conf is not None:
         additional_env_vars["CLIPPY_CONF_DIR"] = (
             # Clippy has issues finding this directory on CI when we're not using an absolute path here.
@@ -89,6 +91,7 @@ def main() -> None:
         ("individual_examples", individual_examples),
         ("individual_crates", individual_crates),
         ("docs", docs),
+        ("docs_slow", docs_slow),
         ("tests", tests),
     ]
     check_names = [check[0] for check in checks]
@@ -153,7 +156,9 @@ def cargo_deny(timings: list[Timing]) -> None:
     # Note: running just `cargo deny check` without a `--target` can result in
     # false positives due to https://github.com/EmbarkStudios/cargo-deny/issues/324
     # Installing is quite quick if it's already installed.
-    timings.append(run_cargo("install", "--locked cargo-deny"))
+    #
+    # `cargo-deny` 0.16.2 raises MSRV 1.81.0, we're not there yet.
+    timings.append(run_cargo("install", "--locked cargo-deny@0.16.1"))
     timings.append(run_cargo("deny", "--all-features --log-level error --target aarch64-apple-darwin check"))
     timings.append(run_cargo("deny", "--all-features --log-level error --target i686-pc-windows-gnu check"))
     timings.append(run_cargo("deny", "--all-features --log-level error --target i686-pc-windows-msvc check"))
@@ -197,16 +202,30 @@ def individual_crates(timings: list[Timing]) -> None:
 
 
 def docs(timings: list[Timing]) -> None:
-    # Full doc build takes prohibitively long (over 17min as of writing), so we skip it:
-    # timings.append(run_cargo("doc", "--all-features"))
+    # ⚠️ This version skips the `rerun` crate itself
+    # Presumably due to https://github.com/rust-lang/rust/issues/114891, checking the `rerun` crate
+    # takes about 20minutes on CI (per command).
+    # Since this crate mostly combines & exposes other crates, it's not as important for iterating on the code.
+    #
+    # For details see https://github.com/rerun-io/rerun/issues/7387
 
-    # These take around 3m40s each on CI, but very useful for catching broken doclinks:
-    timings.append(run_cargo("doc", "--no-deps --all-features --workspace"))
-    timings.append(run_cargo("doc", "--document-private-items --no-deps --all-features --workspace"))
+    # These take a few minutes each on CI, but very useful for catching broken doclinks.
+    timings.append(run_cargo("doc", "--no-deps --all-features --workspace --exclude rerun"))
+    timings.append(run_cargo("doc", "--document-private-items --no-deps --all-features --workspace --exclude rerun"))
+
+
+def docs_slow(timings: list[Timing]) -> None:
+    # See `docs` above, this may take 20min each due to issues in cargo doc.
+    timings.append(run_cargo("doc", "--no-deps --all-features -p rerun"))
+    timings.append(run_cargo("doc", "--document-private-items --no-deps --all-features -p rerun"))
 
 
 def tests(timings: list[Timing]) -> None:
     # We first use `--no-run` to measure the time of compiling vs actually running
+
+    # Make sure we have the test assets first.
+    print("Downloading test assets…")
+    subprocess.run([sys.executable, "tests/assets/download_test_assets.py"])
 
     # Just a normal `cargo test` should always work:
     timings.append(run_cargo("test", "--all-targets --no-run"))

@@ -7,7 +7,7 @@ from uuid import uuid4
 import rerun as rr
 import rerun.blueprint as rrb
 
-README = """
+README = """\
 # Out-of-tree data results
 
 [Background issue](https://github.com/rerun-io/rerun/issues/5742)

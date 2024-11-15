@@ -6,10 +6,13 @@ from uuid import uuid4
 
 import rerun as rr
 
-README = """
+README = """\
 # Hover, Select, Deselect, and Reset
 
 This checks whether different UIs behave correctly with hover and selection.
+
+Known bugs:
+* TODO(#5138): Hovering over text document views does not highlight the corresponding entity in the blueprint tree.
 
 ### Hover
 For each of the views:

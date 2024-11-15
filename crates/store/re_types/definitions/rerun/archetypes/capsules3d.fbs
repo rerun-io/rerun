@@ -1,0 +1,71 @@
+namespace rerun.archetypes;
+
+// ---
+
+/// 3D capsules; cylinders with hemispherical caps.
+///
+/// Capsules are defined by two endpoints (the centers of their end cap spheres), which are located
+/// at (0, 0, 0) and (0, 0, length), that is, extending along the positive direction of the Z axis.
+/// Capsules in other orientations may be produced by applying a rotation to the entity or
+/// instances.
+///
+/// \example archetypes/capsule3d_batch title="Batch of capsules" image="https://static.rerun.io/capsule3d_batch/6e6a4acafcf528359372147d7247f85d84434101/1200w.png"
+//
+// TODO(#1361): This archetype should eventually generalize to cylinders without caps, truncated
+// cones, and tapered capsules -- all common shapes based on expanding a line segment circularly.
+table Capsules3D (
+  "attr.rust.derive": "PartialEq",
+  "attr.rust.new_pub_crate",
+  "attr.cpp.no_field_ctors",
+  "attr.docs.category": "Spatial 3D",
+  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection"
+) {
+  // --- Required ---
+
+  /// Lengths of the capsules, defined as the distance between the centers of the endcaps.
+  lengths: [rerun.components.Length] ("attr.rerun.component_required", order: 1000);
+
+  /// Radii of the capsules.
+  //
+  // TODO(#1361): This should eventually become two radii, to generate truncated cones and tapered capsules.
+  radii: [rerun.components.Radius] ("attr.rerun.component_required", order: 1100);
+
+  // --- Recommended ---
+
+  /// Optional translations of the capsules.
+  ///
+  /// If not specified, one end of each capsule will be at (0, 0, 0).
+  /// Note that this uses a [components.PoseTranslation3D] which is also used by [archetypes.InstancePoses3D].
+  translations: [rerun.components.PoseTranslation3D] ("attr.rerun.component_recommended", nullable, order: 2000);
+
+  /// Rotations via axis + angle.
+  ///
+  /// If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
+  /// Note that this uses a [components.PoseRotationAxisAngle] which is also used by [archetypes.InstancePoses3D].
+  rotation_axis_angles: [rerun.components.PoseRotationAxisAngle] ("attr.rerun.component_optional", nullable, order: 2100);
+
+  /// Rotations via quaternion.
+  ///
+  /// If no rotation is specified, the capsules align with the +Z axis of the local coordinate system.
+  /// Note that this uses a [components.PoseRotationQuat] which is also used by [archetypes.InstancePoses3D].
+  quaternions: [rerun.components.PoseRotationQuat] ("attr.rerun.component_optional", nullable, order: 2200);
+
+  /// Optional colors for the capsules.
+  colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2300);
+
+  // --- Optional ---
+
+  // TODO(#1361): Add fill_mode component, or whatever succeeds it in case a wireframe
+  // or other alternate rendering is wanted.
+
+  /// Optional text labels for the capsules, which will be located at their centers.
+  labels: [rerun.components.Text] ("attr.rerun.component_optional", nullable, order: 3100);
+
+  /// Optional choice of whether the text labels should be shown by default.
+  show_labels: rerun.components.ShowLabels ("attr.rerun.component_optional", nullable, order: 3200);
+
+  /// Optional class ID for the ellipsoids.
+  ///
+  /// The class ID provides colors and labels if not specified explicitly.
+  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3300);
+}

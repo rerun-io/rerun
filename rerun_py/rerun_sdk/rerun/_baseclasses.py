@@ -1,7 +1,9 @@
 from __future__ import annotations
 
-from typing import Any, Generic, Iterable, Protocol, TypeVar
+from typing import Generic, Iterable, Protocol, TypeVar
 
+import numpy as np
+import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, fields
 
@@ -28,7 +30,7 @@ class AsComponents(Protocol):
 
     Note: the `num_instances()` function is an optional part of this interface. The method does not need to be
     implemented as it is only used after checking for its existence. (There is unfortunately no way to express this
-    correctly with the Python typing system, see https://github.com/python/typing/issues/601).
+    correctly with the Python typing system, see <https://github.com/python/typing/issues/601>).
     """
 
     def as_component_batches(self) -> Iterable[ComponentBatchLike]:
@@ -54,7 +56,7 @@ class Archetype:
                 comp = getattr(self, fld.name)
                 datatype = getattr(comp, "type", None)
                 if datatype:
-                    s += f"  {datatype.extension_name}<{datatype.storage_type}>(\n    {comp.to_pylist()}\n  )\n"
+                    s += f"  {datatype.extension_name}<{datatype}>(\n    {comp.to_pylist()}\n  )\n"
         s += ")"
 
         return s
@@ -110,36 +112,8 @@ class Archetype:
     __repr__ = __str__
 
 
-class BaseExtensionType(pa.ExtensionType):  # type: ignore[misc]
-    """Extension type for datatypes and non-delegating components."""
-
-    _TYPE_NAME: str
-    """The name used when constructing the extension type.
-
-    Should following rerun typing conventions:
-     - `rerun.datatypes.<TYPE>` for datatypes
-     - `rerun.components.<TYPE>` for components
-
-    Many component types simply subclass a datatype type and override
-    the `_TYPE_NAME` field.
-    """
-
-    _ARRAY_TYPE: type[pa.ExtensionArray] = pa.ExtensionArray
-    """The extension array class associated with this class."""
-
-    # Note: (de)serialization is not used in the Python SDK
-
-    def __arrow_ext_serialize__(self) -> bytes:
-        return b""
-
-    # noinspection PyMethodOverriding
-    @classmethod
-    def __arrow_ext_deserialize__(cls, storage_type: Any, serialized: Any) -> pa.ExtensionType:
-        return cls()
-
-
 class BaseBatch(Generic[T]):
-    _ARROW_TYPE: BaseExtensionType = None  # type: ignore[assignment]
+    _ARROW_DATATYPE: pa.DataType | None = None
     """The pyarrow type of this batch."""
 
     def __init__(self, data: T | None, strict: bool | None = None) -> None:
@@ -171,17 +145,14 @@ class BaseBatch(Generic[T]):
         if data is not None:
             with catch_and_log_exceptions(self.__class__.__name__, strict=strict):
                 # If data is already an arrow array, use it
-                if isinstance(data, pa.Array) and data.type == self._ARROW_TYPE:
+                if isinstance(data, pa.Array) and data.type == self._ARROW_DATATYPE:
                     self.pa_array = data
-                elif isinstance(data, pa.Array) and data.type == self._ARROW_TYPE.storage_type:
-                    self.pa_array = self._ARROW_TYPE.wrap_array(data)
                 else:
-                    array = self._native_to_pa_array(data, self._ARROW_TYPE.storage_type)
-                    self.pa_array = self._ARROW_TYPE.wrap_array(array)
+                    self.pa_array = self._native_to_pa_array(data, self._ARROW_DATATYPE)
                 return
 
         # If we didn't return above, default to the empty array
-        self.pa_array = _empty_pa_array(self._ARROW_TYPE)
+        self.pa_array = _empty_pa_array(self._ARROW_DATATYPE)
 
     @classmethod
     def _required(cls, data: T | None) -> BaseBatch[T]:
@@ -265,6 +236,49 @@ class BaseBatch(Generic[T]):
         return self.pa_array
 
 
+class ComponentColumn:
+    """
+    A column of components that can be sent using `send_columns`.
+
+    This is represented by a ComponentBatch array that has been repartitioned into multiple segments.
+    This is useful for reinterpreting a single contiguous batch as multiple sub-batches
+    to use with the [`send_columns`][rerun.send_columns] API.
+    """
+
+    def __init__(self, component_batch: ComponentBatchLike, lengths: npt.ArrayLike):
+        """
+        Construct a new component column.
+
+        Parameters
+        ----------
+        component_batch : ComponentBatchLike
+            The component batch to partition into a column.
+        lengths : npt.ArrayLike
+            The lengths of the partitions.
+
+        """
+        self.component_batch = component_batch
+        self.lengths = lengths
+
+    def component_name(self) -> str:
+        """
+        The name of the component.
+
+        Part of the `ComponentBatchLike` logging interface.
+        """
+        return self.component_batch.component_name()
+
+    def as_arrow_array(self) -> pa.Array:
+        """
+        The component as an arrow batch.
+
+        Part of the `ComponentBatchLike` logging interface.
+        """
+        array = self.component_batch.as_arrow_array()
+        offsets = np.concatenate((np.array([0], dtype="int32"), np.cumsum(self.lengths, dtype="int32")))
+        return pa.ListArray.from_arrays(offsets, array)
+
+
 class ComponentBatchMixin(ComponentBatchLike):
     def component_name(self) -> str:
         """
@@ -272,7 +286,61 @@ class ComponentBatchMixin(ComponentBatchLike):
 
         Part of the `ComponentBatchLike` logging interface.
         """
-        return self._ARROW_TYPE._TYPE_NAME  # type: ignore[attr-defined, no-any-return]
+        return self._COMPONENT_NAME  # type: ignore[attr-defined, no-any-return]
+
+    def partition(self, lengths: npt.ArrayLike) -> ComponentColumn:
+        """
+        Partitions the component into multiple sub-batches. This wraps the inner arrow
+        array in a `pyarrow.ListArray` where the different lists have the lengths specified.
+
+        Lengths must sum to the total length of the component batch.
+
+        Parameters
+        ----------
+        lengths : npt.ArrayLike
+            The offsets to partition the component at.
+
+        Returns
+        -------
+        The partitioned component.
+
+        """  # noqa: D205
+        return ComponentColumn(self, lengths)
+
+
+class ComponentMixin(ComponentBatchLike):
+    """
+    Makes components adhere to the ComponentBatchLike interface.
+
+    A single component will always map to a batch of size 1.
+
+    The class using the mixin must define the `_BATCH_TYPE` field, which should be a subclass of `BaseBatch`.
+    """
+
+    @classmethod
+    def arrow_type(cls) -> pa.DataType:
+        """
+        The pyarrow type of this batch.
+
+        Part of the `ComponentBatchLike` logging interface.
+        """
+        return cls._BATCH_TYPE._ARROW_DATATYPE  # type: ignore[attr-defined, no-any-return]
+
+    def component_name(self) -> str:
+        """
+        The name of the component.
+
+        Part of the `ComponentBatchLike` logging interface.
+        """
+        return self._BATCH_TYPE._COMPONENT_NAME  # type: ignore[attr-defined, no-any-return]
+
+    def as_arrow_array(self) -> pa.Array:
+        """
+        The component as an arrow batch.
+
+        Part of the `ComponentBatchLike` logging interface.
+        """
+        return self._BATCH_TYPE([self]).as_arrow_array()  # type: ignore[attr-defined, no-any-return]
 
 
 @catch_and_log_exceptions(context="creating empty array")

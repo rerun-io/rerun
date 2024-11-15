@@ -32,6 +32,9 @@ insecure = true
 # Maximum number of allowed retries before a link is declared dead.
 max_retries = 4
 
+# Wait time between attempts in seconds.
+retry_wait_time = 2
+
 # Comma-separated list of accepted status codes for valid links.
 accept = [
   "100..=103", # Informational codes.
@@ -60,9 +63,10 @@ exclude_path = [
   "venv",
 
   # Actually ignored files beyond .gitignore
-  "crates/re_analytics/src/event.rs",             # Contains test with malformed urls
-  "scripts/lint.py",                              # Contains url-matching regexes that aren't actual urls
+  "crates/utils/re_analytics/src/event.rs",        # Contains test with malformed urls
+  "scripts/lint.py",                               # Contains url-matching regexes that aren't actual urls
   "scripts/screenshot_compare/assets/templates/",
+  "crates/viewer/re_viewer/src/reflection/mod.rs", # Checker struggles how links from examples are escaped here. They are all checked elsewhere, so not an issue.
 ]
 
 # Exclude URLs and mail addresses from checking (supports regex).
@@ -79,6 +83,9 @@ exclude = [
   '%7B.+%7D',             # Ignore strings that look like ready to use links but contain a replacement strings. The URL escaping is for '{.+}' (this seems to be needed for html embedded urls since lychee assumes they use this encoding).
   '%7B%7D',               # Ignore links with string interpolation, escaped variant.
 
+  # Ignore storage-node example links
+  'rerun:/.*',
+
   # Local links that require further setup.
   'http://127.0.0.1',
   'http://localhost',
@@ -91,6 +98,7 @@ exclude = [
   'https://fonts.gstatic.com/',                                                  # Font API entrypoint, not a link.
   'https://tel.rerun.io/',                                                       # Analytics endpoint.
   'https://docs-assets.developer.apple.com/ml-research/datasets/arkitscenes/v1', # Used by arkit_scenes.
+  'https://overpass-api.de/api/interpreter',                                     # Used by openstreetmap_data example
 
   # Avoid rate limiting.
   'https://crates.io/crates/.*',                  # Avoid crates.io rate-limiting
@@ -103,6 +111,8 @@ exclude = [
   'http://foo.com/',
   'https://link.to',
   'https://static.rerun.io/my_screenshot/',
+  'https://your-hosted-asset-url.com/widget.js',
+  'file:///path/to/file',
 
   # Link fragments and data links in examples.
   'https://raw.githubusercontent.com/googlefonts/noto-emoji/', # URL fragment.
@@ -111,11 +121,13 @@ exclude = [
 
   # Not accessible from CI.
   '.github/workflows/.*.yml',                                          # GitHub action workflows cause issues on CI.
-  'https://stackoverflow.com/.',                                       # Stackoverflow links are no longer accessible from CI.
-  'https://www.tensorflow.org/',                                       # tensorflow.org apparently blocks CI.
-  'https://9p.io/sys/doc/lexnames.html',                               # Works locally but on ci we get: `Failed: Network error: error:0A000152:SSL routines:final_renegotiate:unsafe legacy renegotiation disabled:ssl/statem/extensions.c:946:`
-  'https://www.reddit.com/',                                           # Gives 403 forbidden on CI.
+  'https://9p.io/sys/doc/lexnames.html',                               # Works locally but on CI we get: `Failed: Network error: error:0A000152:SSL routines:final_renegotiate:unsafe legacy renegotiation disabled:ssl/statem/extensions.c:946:`
   'https://pixabay.com/photos/brother-sister-girl-family-boy-977170/', # Gives 403 forbidden on CI.
+  'https://stackoverflow.com/',                                        # Stackoverflow links are no longer accessible from CI.
+  'https://math.stackexchange.com/',                                   # Gives 403 forbidden on CI.
+  'https://vimeo.com/',                                                # Gives 403 forbidden on CI.
+  'https://www.reddit.com/',                                           # Gives 403 forbidden on CI.
+  'https://www.tensorflow.org/',                                       # tensorflow.org apparently blocks CI.
 
   # Need GitHub login.
   'https://github.com/rerun-io/landing',
@@ -123,7 +135,9 @@ exclude = [
 
   # Needs authentication
   'https://edge.meilisearch.com',
-  'https://eu.posthog.com/project/', # Requires to be logged in on PostHog.
+  'https://eu.posthog.com/project/',                      # Requires to be logged in on PostHog.
+  'https://github.com/rerun-io/internal-test-assets/\.*',
+  'https://github.com/google/mediapipe/issues/5188',      # For some reason that link has always failed.
 
   # Temporarily down or not accessible.
   'https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html',       # Nyud links are down every now and then.

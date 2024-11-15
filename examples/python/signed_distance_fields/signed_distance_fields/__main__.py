@@ -89,9 +89,8 @@ def log_mesh(path: Path, mesh: Trimesh) -> None:
     scale = bs2.scale / bs1.scale
     center = bs2.center - bs1.center * scale
 
-    mesh3d = rr.Asset3D(path=path)
-    mesh3d.transform = rr.OutOfTreeTransform3DBatch(rr.TranslationRotationScale3D(translation=center, scale=scale))
-    rr.log("world/mesh", mesh3d)
+    rr.log("world/mesh", rr.Asset3D(path=path))
+    rr.log("world/mesh", rr.Transform3D(translation=center, scale=scale))
 
 
 def log_sampled_sdf(points: npt.NDArray[np.float32], sdf: npt.NDArray[np.float32]) -> None:
@@ -118,7 +117,12 @@ def log_sampled_sdf(points: npt.NDArray[np.float32], sdf: npt.NDArray[np.float32
 
 def log_volumetric_sdf(voxvol: npt.NDArray[np.float32]) -> None:
     names = ["width", "height", "depth"]
-    rr.log("tensor", rr.Tensor(voxvol, dim_names=names))
+    # Use a symmetric value range, so that the `cyantoyellow` colormap centers around zero.
+    # Either positive or negative range might be quite small, so don't exceed 1.5x the minimum range.
+    negative_range = abs(cast(float, np.min(voxvol)))
+    positive_range = abs(cast(float, np.max(voxvol)))
+    range = min(max(negative_range, positive_range), 1.5 * min(negative_range, positive_range))
+    rr.log("tensor", rr.Tensor(voxvol, dim_names=names, value_range=[-range, range]))
 
 
 @log_timing_decorator("global/log_mesh", "DEBUG")  # type: ignore[misc]
@@ -198,7 +202,14 @@ def main() -> None:
             rrb.Vertical(
                 rrb.Horizontal(
                     rrb.Spatial3DView(name="Input Mesh", origin="/world/mesh"),
-                    rrb.TensorView(name="SDF", origin="/tensor"),
+                    rrb.TensorView(
+                        # The cyan to yellow colormap changes its color at the mid point of its range.
+                        # By combining this with a the `value_range` parameter on the tensor,
+                        # we can visualize negative & positive values effectively.
+                        name="SDF",
+                        origin="/tensor",
+                        scalar_mapping=rrb.TensorScalarMapping(colormap="cyantoyellow"),
+                    ),
                 ),
                 rrb.TextLogView(name="Execution Log"),
             ),

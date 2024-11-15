@@ -24,7 +24,7 @@ Freely mutable:
 ## Root entity path
 * root of the transform hierarchy (if any is used)
 * may govern heuristics
-* available at various stages of ui drawing & system execution build-up (see below)
+* available at various stages of UI drawing & system execution build-up (see below)
 
 
 ## Space view state
@@ -40,7 +40,7 @@ Each Space View refers to an immutable Space View Class, implemented by `SpaceVi
 It defines:
 * which data it can display and how it is displayed
 * how it is interacted with
-* what properties are read from the blueprint store and how they are exposed in the ui
+* what properties are read from the blueprint store and how they are exposed in the UI
 
 ### What space view classes are there?
 Space View differ only in class when they are **fundamentally different** in the way they display data.
@@ -120,8 +120,8 @@ in a generic fashion.
 
 Example:
 The `Points2DPart` queries the `Points2D` archetype upon execution and produces as a result `re_renderer::PointCloudDrawData`.
-Since points can have ui labels, it also stores `UiLabel` in its own state which the space view class of `ui`
-can read out via `Points2DPart::data()` to draw ui labels.
+Since points can have UI labels, it also stores `UiLabel` in its own state which the space view class of `ui`
+can read out via `Points2DPart::data()` to draw UI labels.
 
 Note on naming:
 `ViewPartSystem` was called `ScenePart` in earlier versions since it formed a _part_ of a per-frame built-up _Scene_.

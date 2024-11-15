@@ -1,0 +1,22 @@
+namespace rerun.blueprint.components;
+
+/// One of four 2D corners, typically used to align objects.
+enum Corner2D: ubyte (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Copy, PartialEq, Eq"
+) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    /// Left top corner.
+    LeftTop,
+
+    /// Right top corner.
+    RightTop,
+
+    /// Left bottom corner.
+    LeftBottom,
+
+    /// Right bottom corner.
+    RightBottom (default),
+}

@@ -74,19 +74,21 @@ If we are doing a patch release, we do a branch off of the latest release tag (e
    :warning: Any commits between the last release's tag and the `docs-latest` branch should also be cherry-picked.
    Otherwise, these changes will be lost when `docs-latest` is updated.
 
-4. ### Update [`CHANGELOG.md`](/CHANGELOG.md).
+4. ### Update [`CHANGELOG.md`](/CHANGELOG.md) and clean ups.
 
-    It should include:
+    Update the change log. It should include:
       - A one-line summary of the release
       - A multi-line summary of the release
       - A gif showing a major new feature
-      - Run `pip install GitPython && scripts/generate_changelog.py`
+      - Run `pip install GitPython && scripts/generate_changelog.py > new_changelog.md`
       - Edit PR descriptions/labels to improve the generated changelog
       - Copy-paste the results into `CHANGELOG.md`.
       - Editorialize the changelog if necessary
       - Make sure the changelog includes instructions for handling any breaking changes
 
-    Once you're done, commit and push the changelog onto the release branch.
+    Remove the speculative link markers and the `attr.docs.unreleased` attributes in the .fbs files.
+
+    Once you're done, commit and push onto the release branch.
 
 5. ### Run the [release workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml).
 

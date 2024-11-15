@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -19,12 +20,13 @@ class AngleExt:
             Angle in radians, specify either `rad` or `deg`.
         deg:
             Angle in degrees, specify either `rad` or `deg`.
+            Converts the angle to radians internally.
 
         """
 
         if rad is not None:
-            self.__attrs_init__(inner=rad, kind="radians")  # pyright: ignore[reportGeneralTypeIssues]
+            self.radians = rad
         elif deg is not None:
-            self.__attrs_init__(inner=deg, kind="degrees")  # pyright: ignore[reportGeneralTypeIssues]
+            self.radians = math.radians(deg)
         else:
             raise ValueError("Either `rad` or `deg` must be provided.")

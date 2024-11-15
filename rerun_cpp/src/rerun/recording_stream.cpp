@@ -1,7 +1,7 @@
 #include "recording_stream.hpp"
 #include "c/rerun.h"
+#include "component_batch.hpp"
 #include "config.hpp"
-#include "data_cell.hpp"
 #include "sdk_info.hpp"
 #include "string_utils.hpp"
 
@@ -101,6 +101,10 @@ namespace rerun {
     }
 
     Error RecordingStream::connect(std::string_view tcp_addr, float flush_timeout_sec) const {
+        return RecordingStream::connect_tcp(tcp_addr, flush_timeout_sec);
+    }
+
+    Error RecordingStream::connect_tcp(std::string_view tcp_addr, float flush_timeout_sec) const {
         rr_error status = {};
         rr_recording_stream_connect(
             _id,
@@ -186,13 +190,13 @@ namespace rerun {
     }
 
     Error RecordingStream::try_log_serialized_batches(
-        std::string_view entity_path, bool static_, std::vector<DataCell> batches
+        std::string_view entity_path, bool static_, std::vector<ComponentBatch> batches
     ) const {
         if (!is_enabled()) {
             return Error::ok();
         }
 
-        std::vector<DataCell> instanced;
+        std::vector<ComponentBatch> instanced;
 
         for (const auto& batch : batches) {
             instanced.push_back(std::move(batch));
@@ -204,22 +208,22 @@ namespace rerun {
     }
 
     Error RecordingStream::try_log_data_row(
-        std::string_view entity_path, size_t num_data_cells, const DataCell* data_cells,
-        bool inject_time
+        std::string_view entity_path, size_t num_component_batches,
+        const ComponentBatch* component_batches, bool inject_time
     ) const {
         if (!is_enabled()) {
             return Error::ok();
         }
         // Map to C API:
-        std::vector<rr_data_cell> c_data_cells(num_data_cells);
-        for (size_t i = 0; i < num_data_cells; i++) {
-            RR_RETURN_NOT_OK(data_cells[i].to_c_ffi_struct(c_data_cells[i]));
+        std::vector<rr_component_batch> c_component_batches(num_component_batches);
+        for (size_t i = 0; i < num_component_batches; i++) {
+            RR_RETURN_NOT_OK(component_batches[i].to_c_ffi_struct(c_component_batches[i]));
         }
 
         rr_data_row c_data_row;
         c_data_row.entity_path = detail::to_rr_string(entity_path);
-        c_data_row.num_data_cells = static_cast<uint32_t>(num_data_cells);
-        c_data_row.data_cells = c_data_cells.data();
+        c_data_row.num_component_batches = static_cast<uint32_t>(num_component_batches);
+        c_data_row.component_batches = c_component_batches.data();
 
         rr_error status = {};
         rr_recording_stream_log(_id, c_data_row, inject_time, &status);
@@ -270,4 +274,43 @@ namespace rerun {
 
         return status;
     }
+
+    Error RecordingStream::try_send_columns(
+        std::string_view entity_path, rerun::Collection<TimeColumn> time_columns,
+        rerun::Collection<ComponentColumn> component_columns
+    ) const {
+        if (!is_enabled()) {
+            return Error::ok();
+        }
+
+        std::vector<rr_time_column> c_time_columns;
+        c_time_columns.reserve(time_columns.size());
+        for (const auto& time_column : time_columns) {
+            rr_time_column c_time_column;
+            RR_RETURN_NOT_OK(time_column.to_c_ffi_struct(c_time_column));
+            c_time_columns.push_back(c_time_column);
+        }
+
+        std::vector<rr_component_column> c_component_columns;
+        c_component_columns.reserve(component_columns.size());
+        for (const auto& component_batch : component_columns) {
+            rr_component_column c_component_batch;
+            RR_RETURN_NOT_OK(component_batch.to_c_ffi_struct(c_component_batch));
+            c_component_columns.push_back(c_component_batch);
+        }
+
+        rr_error status = {};
+        rr_recording_stream_send_columns(
+            _id,
+            detail::to_rr_string(entity_path),
+            c_time_columns.data(),
+            static_cast<uint32_t>(c_time_columns.size()),
+            c_component_columns.data(),
+            static_cast<uint32_t>(c_component_columns.size()),
+            &status
+        );
+
+        return status;
+    }
+
 } // namespace rerun

@@ -1,9 +1,0 @@
----
-source: crates/re_data_store/tests/memory_test.rs
-expression: "[format!(\"{NUM_SCALARS} scalars\"),\n        format!(\"{} in total\", re_format::format_bytes(total_mem_use as _)),\n        format!(\"{} per row\",\n            re_format::format_bytes(total_mem_use as f64 / NUM_SCALARS as\n            f64))]"
----
-[
-    "1048576 scalars",
-    "912 MiB in total",
-    "912 B per row",
-]

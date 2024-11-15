@@ -34,15 +34,14 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: "read"
+  id-token: "write"
+
 jobs:
   upload-web:
     name: Upload Examples to Google Cloud
-    permissions:
-      contents: "read"
-      id-token: "write"
-
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
         with:

@@ -18,26 +18,24 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: "read"
+  id-token: "write"
+  pull-requests: "write"
+
 jobs:
   pr-summary:
     name: Create HTML summary for PR
-
-    permissions:
-      contents: "read"
-      id-token: "write"
-      pull-requests: "write"
-
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.34.0
 
       - id: "auth"
         uses: google-github-actions/auth@v2

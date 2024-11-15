@@ -49,6 +49,10 @@ struct Args {
     #[clap(long, default_value = "1000.0")]
     freq: f64,
 
+    /// Frequency of logging (applies to all series).
+    #[clap(long, default_value = None)]
+    temporal_batch_size: Option<u64>,
+
     /// What order to log the data in (applies to all series).
     #[clap(long, value_enum, default_value = "forwards")]
     order: Order,
@@ -75,7 +79,13 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
         .collect();
 
     let num_series = args.num_plots * args.num_series_per_plot;
-    let time_per_tick = 1.0 / args.freq;
+    let mut time_per_tick = 1.0 / args.freq;
+    let mut scalars_per_tick = num_series;
+    if let Some(temporal_batch_size) = args.temporal_batch_size {
+        time_per_tick *= temporal_batch_size as f64;
+        scalars_per_tick *= temporal_batch_size;
+    }
+
     let expected_total_freq = args.freq * num_series as f64;
 
     use rand::Rng as _;
@@ -113,6 +123,10 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     .take(num_series as _)
     .collect();
 
+    let offsets = (0..sim_times.len())
+        .step_by(args.temporal_batch_size.unwrap_or(1) as usize)
+        .collect::<Vec<_>>();
+
     let mut total_num_scalars = 0;
     let mut total_start_time = std::time::Instant::now();
     let mut max_load = 0.0;
@@ -120,44 +134,44 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
     let mut tick_start_time = std::time::Instant::now();
 
     #[allow(clippy::unchecked_duration_subtraction)]
-    for (time_step, sim_time) in sim_times.into_iter().enumerate() {
-        rec.set_time_seconds("sim_time", sim_time);
+    for offset in offsets {
+        if args.temporal_batch_size.is_none() {
+            rec.set_time_seconds("sim_time", sim_times[offset]);
+        }
 
         // Log
 
         for (plot_idx, plot_path) in plot_paths.iter().enumerate() {
             let plot_idx = plot_idx * args.num_series_per_plot as usize;
             for (series_idx, series_path) in series_paths.iter().enumerate() {
-                let value = values_per_series[plot_idx + series_idx][time_step];
-                rec.log(
-                    format!("{plot_path}/{series_path}"),
-                    &rerun::Scalar::new(value),
-                )?;
+                let path = format!("{plot_path}/{series_path}");
+                let series_values = &values_per_series[plot_idx + series_idx];
+                if let Some(temporal_batch_size) = args.temporal_batch_size {
+                    let temporal_batch_size = temporal_batch_size as usize;
+                    let seconds = sim_times.iter().skip(offset).take(temporal_batch_size);
+                    let values = series_values.iter().skip(offset).take(temporal_batch_size);
+                    rec.send_columns(
+                        path,
+                        [rerun::TimeColumn::new_seconds("sim_time", seconds.copied())],
+                        [&values
+                            .copied()
+                            .map(Into::into)
+                            .collect::<Vec<rerun::components::Scalar>>()
+                            as _],
+                    )?;
+                } else {
+                    rec.log(path, &rerun::Scalar::new(series_values[offset]))?;
+                }
             }
         }
 
-        // Progress report
+        // Measure how long this took and how high the load was.
 
-        total_num_scalars += num_series;
-        let total_elapsed = total_start_time.elapsed();
-        if total_elapsed.as_secs_f64() >= 1.0 {
-            println!(
-                "logged {total_num_scalars} scalars over {:?} (freq={:.3}Hz, expected={expected_total_freq:.3}Hz, load={:.3}%)",
-                total_elapsed,
-                total_num_scalars as f64 / total_elapsed.as_secs_f64(),
-                max_load * 100.0,
-            );
-
-            let elapsed_debt =
-                std::time::Duration::from_secs_f64(total_elapsed.as_secs_f64().fract());
-            total_start_time = std::time::Instant::now() - elapsed_debt;
-            total_num_scalars = 0;
-            max_load = 0.0;
-        }
+        let elapsed = tick_start_time.elapsed();
+        max_load = f64::max(max_load, elapsed.as_secs_f64() / time_per_tick);
 
         // Throttle
 
-        let elapsed = tick_start_time.elapsed();
         let sleep_duration = time_per_tick - elapsed.as_secs_f64();
         if sleep_duration > 0.0 {
             let sleep_duration = std::time::Duration::from_secs_f64(sleep_duration);
@@ -172,16 +186,39 @@ fn run(rec: &rerun::RecordingStream, args: &Args) -> anyhow::Result<()> {
             tick_start_time = std::time::Instant::now();
         }
 
-        max_load = f64::max(max_load, elapsed.as_secs_f64() / time_per_tick);
+        // Progress report
+        //
+        // Must come after throttle since we report every wall-clock second:
+        // If ticks are large & fast, then after each send we run into throttle.
+        // So if this was before throttle, we'd not report the first tick no matter how large it was.
+
+        total_num_scalars += scalars_per_tick;
+        let total_elapsed = total_start_time.elapsed();
+        if total_elapsed.as_secs_f64() >= 1.0 {
+            println!(
+                        "logged {total_num_scalars} scalars over {:?} (freq={:.3}Hz, expected={expected_total_freq:.3}Hz, load={:.3}%)",
+                        total_elapsed,
+                        total_num_scalars as f64 / total_elapsed.as_secs_f64(),
+                        max_load * 100.0,
+                    );
+
+            let elapsed_debt =
+                std::time::Duration::from_secs_f64(total_elapsed.as_secs_f64().fract());
+            total_start_time = std::time::Instant::now() - elapsed_debt;
+            total_num_scalars = 0;
+            max_load = 0.0;
+        }
     }
 
-    let total_elapsed = total_start_time.elapsed();
-    println!(
+    if total_num_scalars > 0 {
+        let total_elapsed = total_start_time.elapsed();
+        println!(
         "logged {total_num_scalars} scalars over {:?} (freq={:.3}Hz, expected={expected_total_freq:.3}Hz, load={:.3}%)",
         total_elapsed,
         total_num_scalars as f64 / total_elapsed.as_secs_f64(),
         max_load * 100.0,
     );
+    }
 
     Ok(())
 }

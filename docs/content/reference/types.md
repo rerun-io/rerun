@@ -1,6 +1,6 @@
 ---
 title: Types
-order: 400
+order: 600
 ---
 
 Rerun has 3 levels of types that can be used in all SDK languages:

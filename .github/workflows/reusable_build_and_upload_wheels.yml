@@ -40,6 +40,7 @@ on:
         options:
           - pypi
           - pr
+          - extra
         description: "The build mode (`pypi` includes the web viewer, `pr` does not)"
       CONCURRENCY:
         required: false
@@ -187,9 +188,9 @@ jobs:
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
           targets: ${{ needs.set-config.outputs.TARGET }}
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.34.0
 
       - name: Get sha
         id: get-sha
@@ -211,7 +212,8 @@ jobs:
             --mode ${{ inputs.MODE }} \
             --target ${{ needs.set-config.outputs.TARGET }} \
             --dir commit/${{ steps.get-sha.outputs.sha }}/wheels \
-            --compat ${{ needs.set-config.outputs.COMPAT }}
+            --compat ${{ needs.set-config.outputs.COMPAT }} \
+            --upload-gcs
 
       - name: Save wheel artifact
         if: ${{ inputs.WHEEL_ARTIFACT_NAME != '' }}
@@ -219,3 +221,22 @@ jobs:
         with:
           name: ${{inputs.WHEEL_ARTIFACT_NAME}}
           path: dist/${{ needs.set-config.outputs.TARGET }}
+
+      # ---------------------------------------------------------------------------
+      # rerun_notebook support
+
+      - name: "Build rerun_notebook"
+        # only build the notebook if we are building for pypi and running linux-x64
+        if: ${{ (inputs.MODE == 'pypi' || inputs.MODE == 'extra') && inputs.PLATFORM == 'linux-x64' }}
+        run: |
+          rm -rf dist
+          pixi run js-build-base
+          pixi run python scripts/ci/build_and_upload_rerun_notebook.py \
+            --dir commit/${{ steps.get-sha.outputs.sha }}/wheels
+
+      - name: Save rerun_notebook wheel artifact
+        if: ${{ (inputs.MODE == 'pypi' || inputs.MODE == 'extra') && inputs.PLATFORM == 'linux-x64' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: rerun_notebook_wheel
+          path: dist

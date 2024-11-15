@@ -5,3 +5,7 @@ re_viewer_bg.wasm
 re_viewer_bg.wasm.d.ts
 index.d.ts
 index.d.ts.map
+index.js
+index.js.map
+inlined.js
+inlined.d.ts

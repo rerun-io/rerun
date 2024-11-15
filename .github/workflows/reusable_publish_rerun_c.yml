@@ -1,4 +1,4 @@
-name: Build and publish C++ SDK
+name: Build and Publish C/C++ SDKs
 
 on:
   workflow_call:
@@ -14,6 +14,10 @@ on:
         description: "Which commit to build+publish"
         type: string
         required: true
+
+permissions:
+  contents: "read"
+  id-token: "write"
 
 jobs:
   linux-arm64:

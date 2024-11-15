@@ -1,0 +1,9 @@
+namespace rerun.components;
+
+/// The metadata describing the contents of a [components.ImageBuffer].
+struct ImageFormat (
+  "attr.rust.derive": "Default, Copy, PartialEq, Eq, Hash",
+  "attr.rust.repr": "transparent"
+) {
+    image_format : rerun.datatypes.ImageFormat (order: 100);
+}

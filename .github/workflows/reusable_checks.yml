@@ -6,6 +6,9 @@ on:
       CONCURRENCY:
         required: true
         type: string
+      CHANNEL: # `nightly`/`main`/`pr`
+        required: true
+        type: string
 
 concurrency:
   group: ${{ inputs.CONCURRENCY }}-checks
@@ -38,35 +41,8 @@ defaults:
 permissions:
   contents: "read"
   id-token: "write"
+
 jobs:
-  py-test-docs:
-    name: Test Python Docs
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.8"
-          cache: "pip"
-          cache-dependency-path: "rerun_py/requirements-doc.txt"
-
-      - name: Install Python dependencies
-        shell: bash
-        run: |
-          pip install --upgrade pip
-          pip install -r rerun_py/requirements-doc.txt
-
-      - name: Build via mkdocs
-        shell: bash
-        run: |
-          mkdocs build --strict -f rerun_py/mkdocs.yml
-
-  # ---------------------------------------------------------------------------
-
   no-codegen-changes:
     name: Check if running codegen would produce any changes
     runs-on: ubuntu-latest-16-cores
@@ -84,9 +60,9 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.34.0
 
       - name: Codegen check
         run: pixi run codegen --force --check
@@ -101,9 +77,9 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.34.0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -140,17 +116,17 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.34.0
 
       - name: Run linter
         run: |
-          # double quoting because pixi does its own glob expansion
-          pixi run mdlint --glob "'docs/content/**/*.md'"
-          pixi run mdlint --glob "'examples/python/*/README.md'"
-          pixi run mdlint --glob "'examples/cpp/*/README.md'"
-          pixi run mdlint --glob "'examples/rust/*/README.md'"
+          # Single quoted because pixi does its own glob expansion
+          pixi run mdlint --glob 'docs/content/**/*.md'
+          pixi run mdlint --glob 'examples/python/*/README.md'
+          pixi run mdlint --glob 'examples/cpp/*/README.md'
+          pixi run mdlint --glob 'examples/rust/*/README.md'
 
   # ---------------------------------------------------------------------------
 
@@ -176,17 +152,34 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.34.0
 
       - name: prettier --check
         run: pixi run misc-fmt-check
 
   # ---------------------------------------------------------------------------
 
+  markdown-paths-filter:
+    runs-on: ubuntu-latest
+    outputs:
+      md_changes: ${{ steps.filter.outputs.md_changes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            md_changes:
+              - '**/*.md'
+
   link-checker:
     name: Check links
+    needs: markdown-paths-filter
+    if: inputs.CHANNEL == 'nightly' || needs.markdown-paths-filter.outputs.md_changes == 'true'
     runs-on: ubuntu-latest
     # do not fail entire workflow (e.g. nightly) if this is the only failing check
     continue-on-error: true
@@ -196,11 +189,15 @@ jobs:
       # Check https://github.com/lycheeverse/lychee on how to run locally.
       - name: Link Checker
         id: lychee
-        uses: lycheeverse/lychee-action@v1.9.0
+        uses: lycheeverse/lychee-action@v1.10.0
         with:
           fail: true
-          lycheeVersion: "0.14.3"
+          lycheeVersion: "0.15.1"
           # When given a directory, lychee checks only markdown, html and text files, everything else we have to glob in manually.
           # Pass --verbose, so that all considered links are printed, making it easier to debug.
           args: |
             --verbose --base . "**/*.md" "**/*.rs" "**/*.toml" "**/*.hpp" "**/*.cpp" "**/CMakeLists.txt" "**/*.py" "**/*.yml"
+
+      - name: Warn because of broken links
+        if: ${{ steps.lychee.outputs.exit_code != '0' }}
+        run: echo "::warning title="Link checker"::Link checker detected broken links!"

@@ -20,4 +20,4 @@ rr.log(
 )
 
 # Log the tensor.
-rr.log("world/camera/depth", rr.DepthImage(depth_image, meter=10_000.0))
+rr.log("world/camera/depth", rr.DepthImage(depth_image, meter=10_000.0, colormap="viridis"))

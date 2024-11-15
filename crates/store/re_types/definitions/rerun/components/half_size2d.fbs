@@ -1,0 +1,16 @@
+namespace rerun.components;
+
+// ---
+
+/// Half-size (radius) of a 2D box.
+///
+/// Measured in its local coordinate system.
+///
+/// The box extends both in negative and positive direction along each axis.
+/// Negative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.
+struct HalfSize2D (
+  "attr.rust.derive": "Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable",
+  "attr.rust.repr": "transparent"
+) {
+  xy: rerun.datatypes.Vec2D (order: 100);
+}

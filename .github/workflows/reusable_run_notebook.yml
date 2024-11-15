@@ -19,27 +19,24 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  contents: "read"
+  id-token: "write"
+
 jobs:
   run-notebook:
     name: Run notebook
-
-    permissions:
-      contents: "read"
-      id-token: "write"
-
-    runs-on: ubuntu-latest
-
+    runs-on: ubuntu-latest-16-cores # Note that as of writing we need the additional storage page (14 gb of the ubunut-latest runner is not enough).
     container:
       image: rerunio/ci_docker:0.14.0 # Required to run the wheel or we get "No matching distribution found for attrs>=23.1.0" during `pip install rerun-sdk`
-
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
 
-      - uses: prefix-dev/setup-pixi@v0.6.0
+      - uses: prefix-dev/setup-pixi@v0.8.1
         with:
-          pixi-version: v0.23.0
+          pixi-version: v0.34.0
           environments: wheel-test
 
       - name: Download Wheel
@@ -48,18 +45,21 @@ jobs:
           name: ${{ inputs.WHEEL_ARTIFACT_NAME }}
           path: wheel
 
+      - name: Download Notebook Wheel
+        uses: actions/download-artifact@v4
+        with:
+          name: rerun_notebook_wheel
+          path: wheel
+
       - name: Get version
         id: get-version
         run: |
           pixi run -e wheel-test 'echo "wheel_version=$(python scripts/ci/crates.py get-version)"' >> "$GITHUB_OUTPUT"
 
       - name: Install built wheel
-        # Now install the wheel using a specific version and --no-index to guarantee we get the version from
-        # the pre-dist folder. Note we don't use --force-reinstall here because --no-index means it wouldn't
-        # find the dependencies to reinstall them.
         run: |
-          pixi run -e wheel-test pip uninstall rerun-sdk
-          pixi run -e wheel-test pip install rerun-sdk==${{ steps.get-version.outputs.wheel_version }} --no-index --find-links wheel
+          pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-sdk --dir wheel
+          pixi run python scripts/ci/pixi_install_wheel.py --feature python-pypi --package rerun-notebook --dir wheel --platform-independent
 
       - name: Install Deps
         run: pixi run -e wheel-test pip install -r examples/python/notebook/requirements.txt

@@ -1,6 +1,6 @@
 ---
 title: Troubleshooting
-order: 600
+order: 800
 ---
 
 You can set `RUST_LOG=debug` before running to get some verbose logging output.
@@ -41,7 +41,9 @@ sudo dnf install \
     pkg-config
 ```
 
-On WSL2, in addition to the above packages for Linux, you also need to run:
+### WSL2
+
+In addition to the above packages for Linux, you also need to run:
 
 ```sh
 sudo apt-get -y install \
@@ -54,6 +56,28 @@ sudo apt-get -y install \
 [TODO(#1250)](https://github.com/rerun-io/rerun/issues/1250): Running with the wayland window manager
 sometimes causes Rerun to crash. Try unsetting the wayland display (`unset WAYLAND_DISPLAY` or `WAYLAND_DISPLAY= `) as a workaround.
 
+If you have a multi-gpu setup, Mesa may only report the integrated GPU such that Rerun can't pick the dedicated graphics card.
+To mitigate that set `export MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA` (or `export MESA_D3D12_DEFAULT_ADAPTER_NAME=AMD` respectively for an AMD graphics card).
+
+Since the Mesa driver on WSL dispatches to the Windows host graphics driver, it is important to keep the Windows drivers up-to-date as well.
+For example, [line rendering issues](https://github.com/rerun-io/rerun/issues/6749) have been observed when running from WSL with an
+outdated AMD driver on the Windows host.
+
+## `pip install` issues
+
+If you see the following when running `pip install rerun-sdk` or `pip install rerun-notebook` on a supported platform:
+
+```sh
+ERROR: Could not find a version that satisfies the requirement rerun-sdk (from versions: none)
+ERROR: No matching distribution found for rerun-sdk
+```
+
+Then this is likely because you're running a version of pip that is too old.
+You can check the version of pip with `pip --version`.
+If you're running a version of pip 20 or older, you should upgrade it with `pip install --upgrade pip`.
+⚠️ depending on your system configuration this may upgrade the pip installation aliased by `pip3` instead of `pip`.
+
+
 ## Startup issues
 
 If Rerun is having trouble starting, you can try resetting its memory with:
@@ -64,7 +88,9 @@ rerun reset
 
 ## Graphics issues
 
-<!-- This section is linked to from `crates/re_viewer/src/native.rs` -->
+<!-- This section is linked to from `crates/viewer/re_viewer/src/native.rs` -->
+
+Make sure to keep your graphics drivers updated.
 
 [Wgpu](https://github.com/gfx-rs/wgpu) (the graphics API we use) maintains a list of
 [known driver issues](https://github.com/gfx-rs/wgpu/wiki/Known-Driver-Issues) and workarounds for them.
@@ -94,3 +120,17 @@ In both cases, forcing Vulkan to pick either the integrated or discrete GPU (try
 -   Force the discrete Nvidia GPU:
     -   Linux: `export VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/nvidia.json`.
     -   Windows: `set VK_ICD_FILENAMES=\windows\system32\nv-vk64.json`.
+
+## Video stuttering
+
+On some browsers the default video decoder may cause stuttering.
+This has been for instance observed with Chrome 129 on Windows.
+
+To mitigate these issues, you can try to specify software decoding.
+This can be configured from the viewer's option menu. Alternatively, you can also override this setting on startup:
+* for the web viewer pass `&video_decoder=prefer_software` as a url parameter
+* for the native viewer & for starting the web viewer via command line (`--web-viewer` argument), pass `--video-decoder=prefer_software`
+
+TODO(#7532): Some stuttering that can't be mitigated this way has been observed with H.264 video on Linux Firefox v130.0.
+
+For more information about video decoding, see also the reference page on [video](../reference/video.md).

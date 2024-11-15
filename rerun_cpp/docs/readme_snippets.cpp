@@ -31,7 +31,7 @@ static std::vector<uint8_t> create_image() {
     rec.log("path/to/points", rerun::Points3D(points).with_colors(colors));
 
     // Log an image.
-    rec.log("path/to/image", rerun::Image({786, 1024, 3}, image_data));
+    rec.log("path/to/image", rerun::Image::from_rgba32(image_data, {786, 1024}));
     /// [Logging]
 }
 
@@ -45,7 +45,7 @@ static std::vector<uint8_t> create_image() {
 [[maybe_unused]] static void connecting() {
     /// [Connecting]
     rerun::RecordingStream rec("rerun_example_app");
-    auto result = rec.connect(); // Connect to local host with default port.
+    auto result = rec.connect_tcp(); // Connect to local host with default port.
     if (result.is_err()) {
         // Handle error.
     }

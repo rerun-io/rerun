@@ -29,5 +29,5 @@ int main() {
         })
     );
 
-    rec.log("image", rerun::SegmentationImage({HEIGHT, WIDTH}, data));
+    rec.log("image", rerun::SegmentationImage(data.data(), {WIDTH, HEIGHT}));
 }

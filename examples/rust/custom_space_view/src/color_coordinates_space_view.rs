@@ -1,7 +1,7 @@
 use re_viewer::external::{
     egui,
     re_data_ui::{item_ui, DataUi},
-    re_entity_db::{EntityProperties, InstancePath},
+    re_entity_db::InstancePath,
     re_log_types::EntityPath,
     re_types::SpaceViewClassIdentifier,
     re_ui,
@@ -81,8 +81,8 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         &re_ui::icons::SPACE_VIEW_GENERIC
     }
 
-    fn help_text(&self, _re_ui: &re_ui::ReUi) -> egui::WidgetText {
-        "A demo space view that shows colors as coordinates on a 2D plane.".into()
+    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
+        "A demo space view that shows colors as coordinates on a 2D plane.".to_owned()
     }
 
     /// Register all systems (contexts & parts) that the space view needs.
@@ -129,13 +129,12 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         state: &mut dyn SpaceViewState,
         _space_origin: &EntityPath,
         _space_view_id: SpaceViewId,
-        _root_entity_properties: &mut EntityProperties,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<ColorCoordinatesSpaceViewState>()?;
 
         ui.horizontal(|ui| {
             ui.label("Coordinates mode");
-            egui::ComboBox::from_id_source("color_coordinates_mode")
+            egui::ComboBox::from_id_salt("color_coordinates_mode")
                 .selected_text(state.mode.to_string())
                 .show_ui(ui, |ui| {
                     for mode in &ColorCoordinatesMode::ALL {
@@ -155,7 +154,7 @@ impl SpaceViewClass for ColorCoordinatesSpaceView {
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
-        _root_entity_properties: &EntityProperties,
+
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {

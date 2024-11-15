@@ -4,6 +4,8 @@ cmake_minimum_required(VERSION 3.16...3.27)
 file(GLOB_RECURSE sources_list true ${CMAKE_CURRENT_SOURCE_DIR}/all/*.cpp)
 
 # Not complete examples:
+list(FILTER sources_list EXCLUDE REGEX .*/concepts/static/*)
+list(FILTER sources_list EXCLUDE REGEX .*/tutorials/custom-application-id.*)
 list(FILTER sources_list EXCLUDE REGEX .*/tutorials/custom-recording-id.*)
 list(FILTER sources_list EXCLUDE REGEX .*/tutorials/log_line.*)
 list(FILTER sources_list EXCLUDE REGEX .*/tutorials/log-file.*)

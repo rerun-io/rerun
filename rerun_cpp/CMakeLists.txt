@@ -126,6 +126,7 @@ if(MSVC AND BUILD_SHARED_LIBS)
     # in CMake the behavior of Linux/macOS. However, it does not cover
     # static variables.
     set_property(TARGET rerun_sdk PROPERTY WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
     # For exporting static variables in shared libraries in Windows, it
     # is not possible to just use WINDOWS_EXPORT_ALL_SYMBOLS, we need instead
     # to manually annotate with the appropriate storage-class attributes
@@ -152,8 +153,12 @@ install(TARGETS rerun_sdk
     INCLUDES DESTINATION include
 )
 
+# Some public headers are shared by both the C++ and C sdk, so we install
+# them with the C++ headers also if RERUN_INSTALL_RERUN_C is OFF
+set(RERUN_PATTERN_HEADER_SHARED_BETWEEN_CXX_AND_C "sdk_info.h")
+
 # Add all C++ headers to the install.
-install(DIRECTORY "${RERUN_CPP_SOURCE_DIR}/" TYPE INCLUDE FILES_MATCHING PATTERN "*.hpp")
+install(DIRECTORY "${RERUN_CPP_SOURCE_DIR}/" TYPE INCLUDE FILES_MATCHING PATTERN "*.hpp" PATTERN ${RERUN_PATTERN_HEADER_SHARED_BETWEEN_CXX_AND_C})
 
 option(RERUN_INSTALL_RERUN_C "Install rerun_c file." ON)
 
@@ -167,7 +172,7 @@ endif()
 if(RERUN_INSTALL_RERUN_C)
     # CMake doesn't allow installing imported targets which is why we need to add this as a file.
     get_target_property(RERUN_C_LIB_LOCATION rerun_c IMPORTED_LOCATION)
-    install(DIRECTORY "${RERUN_CPP_SOURCE_DIR}/" TYPE INCLUDE FILES_MATCHING PATTERN "*.h")
+    install(DIRECTORY "${RERUN_CPP_SOURCE_DIR}/" TYPE INCLUDE FILES_MATCHING PATTERN "*.h" PATTERN ${RERUN_PATTERN_HEADER_SHARED_BETWEEN_CXX_AND_C} EXCLUDE)
     install(FILES ${RERUN_C_LIB_LOCATION} DESTINATION lib)
 endif()
 
@@ -196,7 +201,7 @@ include(CMakePackageConfigHelpers)
 
 # Extract the version from rerun.h.
 # Intentionally only grab major.minor.patch, not the full version, since version file can't handle it otherwise.
-file(READ "${CMAKE_CURRENT_SOURCE_DIR}/src/rerun/c/rerun.h" RERUN_H_CONTENTS)
+file(READ "${CMAKE_CURRENT_SOURCE_DIR}/src/rerun/c/sdk_info.h" RERUN_H_CONTENTS)
 string(REGEX MATCH "\n#define RERUN_SDK_HEADER_VERSION \"([0-9]+.[0-9]+.[0-9]+)" _ ${RERUN_H_CONTENTS})
 set(RERUN_INSTALL_VERSION ${CMAKE_MATCH_1})
 message(STATUS "Rerun SDK install version: ${RERUN_INSTALL_VERSION}")

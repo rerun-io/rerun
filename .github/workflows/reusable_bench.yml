@@ -47,21 +47,19 @@ defaults:
   run:
     shell: bash
 
+permissions:
+  # contents permission to update benchmark contents in gh-pages branch
+  contents: write
+  id-token: "write"
+  # deployments permission to deploy GitHub pages website
+  deployments: write
+
 jobs:
   # ---------------------------------------------------------------------------
 
   rs-benchmarks:
     name: Rust Criterion benchmarks
-
-    permissions:
-      # contents permission to update benchmark contents in gh-pages branch
-      contents: write
-      id-token: "write"
-      # deployments permission to deploy GitHub pages website
-      deployments: write
-
     runs-on: ubuntu-latest-16-cores
-
     steps:
       - uses: actions/checkout@v4
         with:
@@ -77,19 +75,33 @@ jobs:
           workload_identity_provider: ${{ secrets.GOOGLE_WORKLOAD_IDENTITY_PROVIDER }}
           service_account: ${{ secrets.GOOGLE_SERVICE_ACCOUNT }}
 
+      - uses: prefix-dev/setup-pixi@v0.8.1
+        with:
+          pixi-version: v0.34.0
+          # default: for the rendering step
+          # wheel-test-min: minimal env for roundtrips (less heavy than wheel-test/examples)
+          environments: >-
+            default
+            wheel-test-min
+
+      - name: Download test assets
+        run: pixi run -e wheel-test-min python ./tests/assets/download_test_assets.py
+
       - name: Add SHORT_SHA env property with commit short sha
         run: echo "SHORT_SHA=`echo ${{github.sha}} | cut -c1-7`" >> $GITHUB_ENV
 
       - name: Run benchmark
         # Use bash shell so we get pipefail behavior with tee
+        # Running under `pixi` so we get `nasm`
         run: |
-          cargo bench \
+          pixi run -e wheel-test-min \
+            cargo bench \
             --all-features \
-            -p re_data_store \
             -p re_entity_db \
             -p re_log_encoding \
             -p re_query \
             -p re_tuid \
+            -p re_video \
             -- --output-format=bencher | tee /tmp/${{ env.SHORT_SHA }}
 
       - name: "Set up Cloud SDK"
@@ -161,7 +173,6 @@ jobs:
       - name: Render benchmark result
         if: github.ref == 'refs/heads/main'
         run: |
-          python3 -m pip install google-cloud-storage==2.9.0
-          scripts/ci/render_bench.py crates \
+          pixi run python scripts/ci/render_bench.py crates \
             --after $(date -d"30 days ago" +%Y-%m-%d) \
             --output "gs://rerun-builds/graphs"

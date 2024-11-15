@@ -1,7 +1,7 @@
 #pragma once
 
 #include "collection.hpp"
-#include "data_cell.hpp"
+#include "component_batch.hpp"
 #include "indicator_component.hpp"
 #include "loggable.hpp"
 
@@ -40,18 +40,22 @@ namespace rerun {
             is_loggable<TComponent>, "The given type does not implement the rerun::Loggable trait."
         );
 
-        static Result<std::vector<DataCell>> serialize(const Collection<TComponent>& components) {
-            auto cell_result = DataCell::from_loggable<TComponent>(components);
-            RR_RETURN_NOT_OK(cell_result.error);
+        static Result<std::vector<ComponentBatch>> serialize(
+            const Collection<TComponent>& components
+        ) {
+            auto batch_result = ComponentBatch::from_loggable<TComponent>(components);
+            RR_RETURN_NOT_OK(batch_result.error);
 
-            return Result<std::vector<DataCell>>({std::move(cell_result.value)});
+            return Result<std::vector<ComponentBatch>>({std::move(batch_result.value)});
         }
     };
 
     /// `AsComponents` for a `std::vector` of types implementing the `rerun::Loggable` trait.
     template <typename TComponent>
     struct AsComponents<std::vector<TComponent>> {
-        static Result<std::vector<DataCell>> serialize(const std::vector<TComponent>& components) {
+        static Result<std::vector<ComponentBatch>> serialize(
+            const std::vector<TComponent>& components
+        ) {
             return AsComponents<Collection<TComponent>>::serialize(components);
         }
     };
@@ -59,7 +63,8 @@ namespace rerun {
     /// AsComponents for `std::initializer_list`
     template <typename TComponent>
     struct AsComponents<std::initializer_list<TComponent>> {
-        static Result<std::vector<DataCell>> serialize(std::initializer_list<TComponent> components
+        static Result<std::vector<ComponentBatch>> serialize(
+            std::initializer_list<TComponent> components
         ) {
             return AsComponents<Collection<TComponent>>::serialize(components);
         }
@@ -68,7 +73,7 @@ namespace rerun {
     /// `AsComponents` for an `std::array` of types implementing the `rerun::Loggable` trait.
     template <typename TComponent, size_t NumInstances>
     struct AsComponents<std::array<TComponent, NumInstances>> {
-        static Result<std::vector<DataCell>> serialize(
+        static Result<std::vector<ComponentBatch>> serialize(
             const std::array<TComponent, NumInstances>& components
         ) {
             return AsComponents<Collection<TComponent>>::serialize(components);
@@ -78,8 +83,8 @@ namespace rerun {
     /// `AsComponents` for an c-array of types implementing the `rerun::Loggable` trait.
     template <typename TComponent, size_t NumInstances>
     struct AsComponents<TComponent[NumInstances]> {
-        static Result<std::vector<DataCell>> serialize(const TComponent (&components)[NumInstances]
-        ) {
+        static Result<std::vector<ComponentBatch>> serialize(const TComponent (&components
+        )[NumInstances]) {
             return AsComponents<Collection<TComponent>>::serialize(components);
         }
     };
@@ -87,7 +92,7 @@ namespace rerun {
     /// `AsComponents` for single indicator components.
     template <const char Name[]>
     struct AsComponents<components::IndicatorComponent<Name>> {
-        static Result<std::vector<DataCell>> serialize(
+        static Result<std::vector<ComponentBatch>> serialize(
             const components::IndicatorComponent<Name>& indicator
         ) {
             return AsComponents<Collection<components::IndicatorComponent<Name>>>::serialize(

@@ -1,5 +1,5 @@
 ---
-title: Stream from Python
+title: Send from Python
 order: 2
 ---
 
@@ -229,7 +229,7 @@ A call to [`set_time_seconds`](https://ref.rerun.io/docs/python/stable/common/lo
 
 Enter…
 
-### Latest at semantics
+### Latest-at semantics
 
 That's because the Rerun Viewer has switched to displaying your custom timeline by default, but the original data was only logged to the _default_ timeline (called `log_time`).
 To fix this, go back to the top of the file and add:
@@ -244,10 +244,10 @@ rr.set_time_seconds("stable_time", 0)
   <source media="(max-width: 768px)" srcset="https://static.rerun.io/logging_data8_latest_at/295492c6cbc68bff129fbe80bf861793b73b0d29/768w.png">
   <source media="(max-width: 1024px)" srcset="https://static.rerun.io/logging_data8_latest_at/295492c6cbc68bff129fbe80bf861793b73b0d29/1024w.png">
   <source media="(max-width: 1200px)" srcset="https://static.rerun.io/logging_data8_latest_at/295492c6cbc68bff129fbe80bf861793b73b0d29/1200w.png">
-  <img src="https://static.rerun.io/logging_data8_latest_at/295492c6cbc68bff129fbe80bf861793b73b0d29/full.png" alt="screenshot after using latest at">
+  <img src="https://static.rerun.io/logging_data8_latest_at/295492c6cbc68bff129fbe80bf861793b73b0d29/full.png" alt="screenshot after using latest-at">
 </picture>
 
-This fix actually introduces yet another very important concept in Rerun: "latest at" semantics.
+This fix actually introduces yet another very important concept in Rerun: "latest-at" semantics.
 Notice how entities `"dna/structure/left"` & `"dna/structure/right"` have only ever been logged at time zero, and yet they are still visible when querying times far beyond that point.
 
 _Rerun always reasons in terms of "latest" data: for a given entity, it retrieves all of its most recent components at a given time._
@@ -303,7 +303,7 @@ Rerun has you covered:
 
 You can also save a recording (or a portion of it) as you're visualizing it, directly from the viewer.
 
-⚠️ [RRD files don't yet handle versioning!](https://github.com/rerun-io/rerun/issues/873) ⚠️
+⚠️ [RRD files are not yet stable across different versions!](https://github.com/rerun-io/rerun/issues/6410) ⚠️
 
 ## Closing
 

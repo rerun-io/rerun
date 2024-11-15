@@ -9,12 +9,10 @@ import pytest
 import rerun as rr
 import torch
 from rerun.components import (
-    DrawOrderLike,
-    HalfSizes2DBatch,
+    HalfSize2DBatch,
     Position2DBatch,
-    RadiusArrayLike,
 )
-from rerun.datatypes import ClassIdArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec2DArrayLike
+from rerun.datatypes import ClassIdArrayLike, Float32ArrayLike, Rgba32ArrayLike, Utf8ArrayLike, Vec2DArrayLike
 
 from .common_arrays import (
     class_ids_arrays,
@@ -51,10 +49,10 @@ def test_boxes2d() -> None:
         # make Pyright happy as it's apparently not able to track typing info trough zip_longest
         half_sizes = cast(Vec2DArrayLike, half_sizes)
         centers = cast(Vec2DArrayLike, centers)
-        radii = cast(Optional[RadiusArrayLike], radii)
+        radii = cast(Optional[Float32ArrayLike], radii)
         colors = cast(Optional[Rgba32ArrayLike], colors)
         labels = cast(Optional[Utf8ArrayLike], labels)
-        draw_order = cast(Optional[DrawOrderLike], draw_order)
+        draw_order = cast(Optional[Float32ArrayLike], draw_order)
         class_ids = cast(Optional[ClassIdArrayLike], class_ids)
 
         print(
@@ -79,7 +77,7 @@ def test_boxes2d() -> None:
         )
         print(f"{arch}\n")
 
-        assert arch.half_sizes == half_sizes_expected(half_sizes, HalfSizes2DBatch)
+        assert arch.half_sizes == half_sizes_expected(half_sizes, HalfSize2DBatch)
         assert arch.centers == centers_expected(centers, Position2DBatch)
         assert arch.colors == colors_expected(colors)
         assert arch.radii == radii_expected(radii)

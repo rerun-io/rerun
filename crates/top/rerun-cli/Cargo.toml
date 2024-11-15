@@ -1,0 +1,98 @@
+[package]
+name = "rerun-cli"
+authors.workspace = true
+categories = ["visualization", "computer-vision"]
+description = "Log images, point clouds, etc, and visualize them effortlessly"
+edition.workspace = true
+homepage.workspace = true
+include = [
+  "../../Cargo.lock",     # So that users can pass `--locked` to `cargo install`
+  "../../LICENSE-APACHE",
+  "../../LICENSE-MIT",
+  "**/*.rs",
+  "Cargo.toml",
+]
+keywords = ["mesh", "plotting", "point-cloud", "robotics", "visualization"]
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+default-run = "rerun" # If someone types `cargo run` in this workspace, this is what we staert
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
+
+[[bin]]
+name = "rerun"
+path = "src/bin/rerun.rs"
+# This binary's name collides with `crates/top/rerun` (the library).
+# https://github.com/rust-lang/cargo/issues/6313
+doc = false
+
+[features]
+## The default is what the user gets when they call `cargo install rerun-cli --locked`,
+## so we have all the bells and wistles here, except those that may require extra tools
+## (like "nasm").
+## That is: `cargo install rerun-cli --locked` should work for _everyone_.
+default = ["native_viewer", "web_viewer"]
+
+## The features we enable when we build the pre-built binaries during our releases.
+## This may enable features that require extra build tools that not everyone heas.
+release = ["default", "nasm", "map_view"]
+
+## Enable faster native video decoding with assembly.
+## You need to install [nasm](https://nasm.us/) to compile with this feature.
+nasm = ["rerun/nasm"]
+
+## Support spawning a native viewer.
+## This adds a lot of extra dependencies, so only enable this feature if you need it!
+native_viewer = ["rerun/native_viewer"]
+
+## Support the map view.
+## This adds a lot of extra dependencies.
+#TODO(#7876): remove this feature when we have fewer dependencies
+map_view = ["rerun/map_view"]
+
+## Enable the gRPC Rerun Data Platform data source.
+grpc = ["rerun/grpc", "dep:tokio"]
+
+## Support serving a web viewer over HTTP.
+##
+## Enabling this inflates the binary size quite a bit, since it embeds the viewer wasm.
+# When building from source (in the repository), this feature adds quite a bit
+# to the compile time since it requires compiling and bundling the viewer as wasm.
+#
+# TODO(#4295): web_viewer shouldn't require rerun/sdk
+web_viewer = ["rerun/web_viewer", "rerun/sdk"]
+
+[dependencies]
+re_build_info.workspace = true
+re_error.workspace = true
+re_log = { workspace = true, features = ["setup"] }
+re_memory.workspace = true
+rerun = { workspace = true, features = [
+  "analytics",
+  "glam",
+  "image",
+  "run",
+  "server",
+] }
+
+document-features.workspace = true
+mimalloc = "0.1.43"
+
+tokio = { workspace = true, optional = true, features = [
+  "macros",
+  "rt-multi-thread",
+] }
+
+
+[build-dependencies]
+re_build_tools.workspace = true

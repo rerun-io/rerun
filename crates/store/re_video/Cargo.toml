@@ -1,0 +1,111 @@
+[package]
+name = "re_video"
+authors.workspace = true
+description = "Rerun video processing utilities."
+edition.workspace = true
+homepage.workspace = true
+include.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+
+[lints]
+workspace = true
+
+
+[package.metadata.docs.rs]
+all-features = false
+no-default-features = true
+features = ["all"]
+
+
+[features]
+default = ["av1", "ffmpeg"]
+
+## Enable serialization for data structures that support it.
+serde = ["dep:serde"]
+
+## Native AV1 decoding.
+av1 = ["dep:dav1d"]
+
+## Decode H.264 using ffmpeg over CLI.
+ffmpeg = ["dep:ffmpeg-sidecar"]
+
+## Enable faster native video decoding with assembly.
+## You need to install [nasm](https://nasm.us/) to compile with this feature.
+nasm = [
+  # The default feature set of our dav1d fork has asm enabled
+  "dav1d?/default",
+]
+
+
+[dependencies]
+re_build_info.workspace = true
+re_log.workspace = true
+re_tracing.workspace = true
+
+bit-vec.workspace = true
+crossbeam.workspace = true
+econtext.workspace = true
+itertools.workspace = true
+once_cell.workspace = true
+parking_lot.workspace = true
+re_mp4.workspace = true
+thiserror.workspace = true
+
+ffmpeg-sidecar = { workspace = true, optional = true }
+serde = { workspace = true, optional = true }
+
+# We enable re_rav1d on native, UNLESS we're on Linux Arm64
+# See https://github.com/rerun-io/rerun/issues/7755
+[target.'cfg(all(not(target_arch = "wasm32"), not(all(target_os = "linux", target_arch = "aarch64"))))'.dependencies]
+
+
+# If this package fails to build, install `nasm` locally, or build through `pixi`.
+# NOTE: we use `dav1d` as an alias for our own re_rav1d crate
+# See https://github.com/rerun-io/re_rav1d/pull/2
+dav1d = { workspace = true, optional = true, default-features = false, features = [
+  # We opt-out of wasm features so we don't need `nasm` installed. It's still pretty fast.
+  "bitdepth_8",
+] }
+
+
+# web
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+js-sys.workspace = true
+wasm-bindgen.workspace = true
+web-sys = { workspace = true, features = [
+  "DomException",
+  "EncodedVideoChunk",
+  "EncodedVideoChunkInit",
+  "EncodedVideoChunkType",
+  "HardwareAcceleration",
+  "VideoDecoder",
+  "VideoDecoderConfig",
+  "VideoDecoderInit",
+  "VideoFrame",
+] }
+
+[dev-dependencies]
+# For the `frames` example:
+indicatif.workspace = true
+criterion.workspace = true
+
+# For build.rs:
+[build-dependencies]
+re_build_tools.workspace = true
+cfg_aliases.workspace = true
+
+
+[[example]]
+name = "frames"
+
+[lib]
+bench = false
+
+[[bench]]
+name = "video_load_bench"
+harness = false

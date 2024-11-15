@@ -5,14 +5,17 @@
 #include <filesystem>
 #include <optional>
 #include <string_view>
+#include <type_traits>
 #include <vector>
 
 #include "as_components.hpp"
+#include "component_column.hpp"
 #include "error.hpp"
 #include "spawn_options.hpp"
+#include "time_column.hpp"
 
 namespace rerun {
-    struct DataCell;
+    struct ComponentBatch;
 
     enum class StoreKind {
         Recording,
@@ -49,7 +52,7 @@ namespace rerun {
     ///
     /// Internally, the stream will automatically micro-batch multiple log calls to optimize
     /// transport.
-    /// See [SDK Micro Batching](https://www.rerun.io/docs/reference/sdk-micro-batching) for
+    /// See [SDK Micro Batching](https://www.rerun.io/docs/reference/sdk/micro-batching) for
     /// more information.
     ///
     /// The data will be timestamped automatically based on the `RecordingStream`'s
@@ -140,8 +143,23 @@ namespace rerun {
         /// timeout, and can cause a call to `flush` to block indefinitely.
         ///
         /// This function returns immediately.
-        Error connect(std::string_view tcp_addr = "127.0.0.1:9876", float flush_timeout_sec = 2.0)
-            const;
+        [[deprecated("Use `connect_tcp` instead")]] Error connect(
+            std::string_view tcp_addr = "127.0.0.1:9876", float flush_timeout_sec = 2.0
+        ) const;
+
+        /// Connect to a remote Rerun Viewer on the given ip:port.
+        ///
+        /// Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
+        ///
+        /// flush_timeout_sec:
+        /// The minimum time the SDK will wait during a flush before potentially
+        /// dropping data if progress is not being made. Passing a negative value indicates no
+        /// timeout, and can cause a call to `flush` to block indefinitely.
+        ///
+        /// This function returns immediately.
+        Error connect_tcp(
+            std::string_view tcp_addr = "127.0.0.1:9876", float flush_timeout_sec = 2.0
+        ) const;
 
         /// Spawns a new Rerun Viewer process from an executable available in PATH, then connects to it
         /// over TCP.
@@ -170,6 +188,10 @@ namespace rerun {
         }
 
         /// Stream all log-data to a given `.rrd` file.
+        ///
+        /// The Rerun Viewer is able to read continuously from the resulting rrd file while it is being written.
+        /// However, depending on your OS and configuration, changes may not be immediately visible due to file caching.
+        /// This is a common issue on Windows and (to a lesser extent) on MacOS.
         ///
         /// This function returns immediately.
         Error save(std::string_view path) const;
@@ -295,7 +317,7 @@ namespace rerun {
         /// @}
 
         // -----------------------------------------------------------------------------------------
-        /// \name Logging
+        /// \name Sending & logging data.
         /// @{
 
         /// Logs one or more archetype and/or component batches.
@@ -475,7 +497,7 @@ namespace rerun {
             if (!is_enabled()) {
                 return Error::ok();
             }
-            std::vector<DataCell> serialized_batches;
+            std::vector<ComponentBatch> serialized_columns;
             Error err;
             (
                 [&] {
@@ -483,19 +505,19 @@ namespace rerun {
                         return;
                     }
 
-                    const Result<std::vector<DataCell>> serialization_result =
+                    const Result<std::vector<ComponentBatch>> serialization_result =
                         AsComponents<Ts>().serialize(archetypes_or_collections);
                     if (serialization_result.is_err()) {
                         err = serialization_result.error;
                         return;
                     }
 
-                    if (serialized_batches.empty()) {
+                    if (serialized_columns.empty()) {
                         // Fast path for the first batch (which is usually the only one!)
-                        serialized_batches = std::move(serialization_result.value);
+                        serialized_columns = std::move(serialization_result.value);
                     } else {
-                        serialized_batches.insert(
-                            serialized_batches.end(),
+                        serialized_columns.insert(
+                            serialized_columns.end(),
                             std::make_move_iterator(serialization_result.value.begin()),
                             std::make_move_iterator(serialization_result.value.end())
                         );
@@ -505,7 +527,7 @@ namespace rerun {
             );
             RR_RETURN_NOT_OK(err);
 
-            return try_log_serialized_batches(entity_path, static_, std::move(serialized_batches));
+            return try_log_serialized_batches(entity_path, static_, std::move(serialized_columns));
         }
 
         /// Logs several serialized batches batches, returning an error on failure.
@@ -523,7 +545,7 @@ namespace rerun {
         ///
         /// \see `log`, `try_log`, `log_static`, `try_log_static`, `try_log_with_static`
         Error try_log_serialized_batches(
-            std::string_view entity_path, bool static_, std::vector<DataCell> batches
+            std::string_view entity_path, bool static_, std::vector<ComponentBatch> batches
         ) const;
 
         /// Bottom level API that logs raw data cells to the recording stream.
@@ -539,7 +561,7 @@ namespace rerun {
         ///
         /// \see `try_log_serialized_batches`
         Error try_log_data_row(
-            std::string_view entity_path, size_t num_data_cells, const DataCell* data_cells,
+            std::string_view entity_path, size_t num_data_cells, const ComponentBatch* data_cells,
             bool inject_time
         ) const;
 
@@ -648,6 +670,123 @@ namespace rerun {
         Error try_log_file_from_contents(
             const std::filesystem::path& filepath, const std::byte* contents, size_t contents_size,
             std::string_view entity_path_prefix = std::string_view(), bool static_ = false
+        ) const;
+
+        /// Directly log a columns of data to Rerun.
+        ///
+        /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
+        /// in a columnar form. Each `TimeColumn` and `Collection<T>` represents a column of data that will be sent to Rerun.
+        /// The lengths of all of these columns must match, equivalent to a single call to `RecordingStream::log` with a list
+        /// of individual components.
+        ///
+        /// Note that this API ignores any stateful time set on the log stream via the `RecordingStream::set_time_*` APIs.
+        /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
+        ///
+        /// Any failures that may occur during serialization are handled with `Error::handle`.
+        ///
+        /// \param entity_path Path to the entity in the space hierarchy.
+        /// \param time_columns The time columns to send.
+        /// \param component_columns The columns of components to send.
+        /// Each individual component in each collection will be associated with a single time value.
+        /// I.e. this creates `ComponentColumn` objects consisting of single component runs.
+        /// \see `try_send_columns`
+        template <typename... Ts>
+        void send_columns(
+            std::string_view entity_path, Collection<TimeColumn> time_columns,
+            Collection<Ts>... component_columns // NOLINT
+        ) const {
+            try_send_columns(entity_path, time_columns, component_columns...).handle();
+        }
+
+        /// Directly log a columns of data to Rerun.
+        ///
+        /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
+        /// in a columnar form. Each `TimeColumn` and `Collection<T>` represents a column of data that will be sent to Rerun.
+        /// The lengths of all of these columns must match, equivalent to a single call to `RecordingStream::log` with a list
+        /// of individual components.
+        ///
+        /// Note that this API ignores any stateful time set on the log stream via the `RecordingStream::set_time_*` APIs.
+        /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
+        ///
+        /// \param entity_path Path to the entity in the space hierarchy.
+        /// \param time_columns The time columns to send.
+        /// \param component_columns The columns of components to send.
+        /// Each individual component in each collection will be associated with a single time value.
+        /// I.e. this creates `ComponentColumn` objects consisting of single component runs.
+        /// \see `send_columns`
+        template <typename... Ts>
+        Error try_send_columns(
+            std::string_view entity_path, Collection<TimeColumn> time_columns,
+            Collection<Ts>... component_columns // NOLINT
+        ) const {
+            if (!is_enabled()) {
+                return Error::ok();
+            }
+            std::vector<ComponentColumn> serialized_columns;
+            Error err;
+            (
+                [&] {
+                    if (err.is_err()) {
+                        return;
+                    }
+
+                    const Result<ComponentColumn> serialization_result =
+                        ComponentColumn::from_loggable(component_columns);
+                    if (serialization_result.is_err()) {
+                        err = serialization_result.error;
+                        return;
+                    }
+                    serialized_columns.emplace_back(std::move(serialization_result.value));
+                }(),
+                ...
+            );
+            RR_RETURN_NOT_OK(err);
+
+            return try_send_columns(entity_path, time_columns, std::move(serialized_columns));
+        }
+
+        /// Directly log a columns of data to Rerun.
+        ///
+        /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
+        /// in a columnar form. Each `TimeColumn` and `ComponentColumn` represents a column of data that will be sent to Rerun.
+        /// The lengths of all of these columns must match, and all
+        /// data that shares the same index across the different columns will act as a single logical row,
+        /// equivalent to a single call to `RecordingStream::log`.
+        ///
+        /// Note that this API ignores any stateful time set on the log stream via the `RecordingStream::set_time_*` APIs.
+        /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
+        ///
+        /// Any failures that may occur during serialization are handled with `Error::handle`.
+        ///
+        /// \param entity_path Path to the entity in the space hierarchy.
+        /// \param time_columns The time columns to send.
+        /// \param component_columns The columns of components to send.
+        /// \see `try_send_columns`
+        void send_columns(
+            std::string_view entity_path, Collection<TimeColumn> time_columns,
+            Collection<ComponentColumn> component_columns
+        ) const {
+            try_send_columns(entity_path, time_columns, component_columns).handle();
+        }
+
+        /// Directly log a columns of data to Rerun.
+        ///
+        /// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
+        /// in a columnar form. Each `TimeColumn` and `ComponentColumn` represents a column of data that will be sent to Rerun.
+        /// The lengths of all of these columns must match, and all
+        /// data that shares the same index across the different columns will act as a single logical row,
+        /// equivalent to a single call to `RecordingStream::log`.
+        ///
+        /// Note that this API ignores any stateful time set on the log stream via the `RecordingStream::set_time_*` APIs.
+        /// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
+        ///
+        /// \param entity_path Path to the entity in the space hierarchy.
+        /// \param time_columns The time columns to send.
+        /// \param component_columns The columns of components to send.
+        /// \see `send_columns`
+        Error try_send_columns(
+            std::string_view entity_path, Collection<TimeColumn> time_columns,
+            Collection<ComponentColumn> component_columns
         ) const;
 
         /// @}

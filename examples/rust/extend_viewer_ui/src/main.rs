@@ -1,7 +1,7 @@
 //! This example shows how to wrap the Rerun Viewer in your own GUI.
 
 use re_viewer::external::{
-    arrow2, eframe, egui, re_data_store, re_entity_db, re_log, re_log_types, re_memory, re_types,
+    arrow2, eframe, egui, re_chunk_store, re_entity_db, re_log, re_log_types, re_memory, re_types,
 };
 
 // By using `re_memory::AccountingAllocator` Rerun can keep track of exactly how much memory it is using,
@@ -42,13 +42,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         window_title,
         native_options,
         Box::new(move |cc| {
-            let re_ui = re_viewer::customize_eframe_and_setup_renderer(cc)?;
+            re_viewer::customize_eframe_and_setup_renderer(cc)?;
 
             let mut rerun_app = re_viewer::App::new(
                 re_viewer::build_info(),
                 &app_env,
                 startup_options,
-                re_ui,
+                cc.egui_ctx.clone(),
                 cc.storage,
             );
             rerun_app.add_receiver(rx);
@@ -130,7 +130,11 @@ fn entity_ui(
     entity_path: &re_log_types::EntityPath,
 ) {
     // Each entity can have many components (e.g. position, color, radius, …):
-    if let Some(components) = entity_db.store().all_components(&timeline, entity_path) {
+    if let Some(components) = entity_db
+        .storage_engine()
+        .store()
+        .all_components_on_timeline(&timeline, entity_path)
+    {
         for component in components {
             ui.collapsing(component.to_string(), |ui| {
                 component_ui(ui, entity_db, timeline, entity_path, component);
@@ -148,20 +152,15 @@ fn component_ui(
 ) {
     // You can query the data for any time point, but for now
     // just show the last value logged for each component:
-    let query = re_data_store::LatestAtQuery::latest(timeline);
+    let query = re_chunk_store::LatestAtQuery::latest(timeline);
 
-    let results = entity_db.query_caches().latest_at(
-        entity_db.store(),
-        &query,
-        entity_path,
-        [component_name],
-    );
-    let component = results
-        .components
-        .get(&component_name)
-        .and_then(|result| result.raw(entity_db.resolver(), component_name));
+    let results =
+        entity_db
+            .storage_engine()
+            .cache()
+            .latest_at(&query, entity_path, [component_name]);
 
-    if let Some(data) = component {
+    if let Some(data) = results.component_batch_raw(&component_name) {
         egui::ScrollArea::vertical()
             .auto_shrink([false, true])
             .show(ui, |ui| {

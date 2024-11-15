@@ -1,0 +1,45 @@
+[package]
+name = "rerun_c"
+authors.workspace = true
+description = "Rerun C SDK"
+edition.workspace = true
+homepage.workspace = true
+license.workspace = true
+publish = true
+readme = "README.md"
+repository.workspace = true
+rust-version.workspace = true
+version.workspace = true
+include = [
+  "../../LICENSE-APACHE",
+  "../../LICENSE-MIT",
+  "**/*.c",
+  "**/*.h",
+  "**/*.rs",
+  "Cargo.toml",
+]
+
+[lints]
+workspace = true
+
+[package.metadata.docs.rs]
+all-features = true
+targets = ["x86_64-unknown-linux-gnu", "wasm32-unknown-unknown"]
+
+[lib]
+crate-type = ["staticlib"]
+name = "rerun_c"
+doctest = false
+test = false
+
+
+[dependencies]
+re_log = { workspace = true, features = ["setup"] }
+re_sdk = { workspace = true, features = ["data_loaders"] }
+re_video.workspace = true
+
+ahash.workspace = true
+arrow2.workspace = true
+infer.workspace = true
+once_cell.workspace = true
+parking_lot.workspace = true

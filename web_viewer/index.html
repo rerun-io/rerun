@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+<!doctype html>
 <!-- Rerun SDK-bundled web viewer. -->
 <html>
   <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -44,15 +44,11 @@
 
       /* Position canvas in center-top: */
       canvas {
-        margin-right: auto;
-        margin-left: auto;
-        display: block;
         position: absolute;
-        top: 0%;
-        left: 50%;
-        transform: translate(-50%, 0%);
-        /* canvas must be on top when visible */
-        z-index: 1000;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
       }
 
       /* Match the Rerun header bar. */
@@ -330,7 +326,34 @@
 
         console.debug("Wasm loaded. Starting app…");
 
-        let handle = new wasm_bindgen.WebHandle();
+        const query = new URLSearchParams(window.location.search);
+
+        /*
+          url: Option<StringOrStringArray>,
+          manifest_url: Option<String>,
+          render_backend: Option<String>,
+          video_decoder: Option<String>,
+          hide_welcome_screen: Option<bool>,
+          panel_state_overrides: Option<PanelStateOverrides>,
+          fullscreen: Option<FullscreenOptions>,
+          enable_history: Option<bool>,
+          notebook: Option<bool>,
+          persist: Option<bool>,
+        */
+        const options = {
+          url: query.getAll("url"),
+          manifest_url: query.get("manifest_url"),
+          render_backend: query.get("renderer"),
+          video_decoder: query.get("video_decoder"),
+          hide_welcome_screen: query.has("hide_welcome_screen"),
+          // panel_state_overrides: undefined,
+          // fullscreen: undefined,
+          enable_history: true,
+          notebook: get_query_bool(query, "notebook", false),
+          persist: get_query_bool(query, "persist", true),
+        };
+
+        let handle = new wasm_bindgen.WebHandle(options);
 
         function check_for_panic() {
           if (handle.has_panicked()) {
@@ -360,13 +383,38 @@
 
         check_for_panic();
 
-        const urlParams = new URLSearchParams(window.location.search);
-        const forceWgpuBackend = urlParams.get("renderer");
-
         handle
-          .start("the_canvas_id", null, null, forceWgpuBackend)
+          .start(document.getElementById("the_canvas_id"))
           .then(on_app_started)
           .catch(on_wasm_error);
+      }
+
+      function get_query_bool(
+        /** @type {URLSearchParams} */ query,
+        /** @type {string} */ key,
+        /** @type {boolean} */ fallback,
+      ) {
+        const values = query.getAll(key);
+        if (values.length !== 1) {
+          console.warn(
+            `found ${values.length} values for "${key}" query. Expected one or none. Defaulting to "${fallback}".`,
+          );
+          return fallback;
+        }
+
+        // prettier-ignore
+        switch (values[0]) {
+          case "0": /* fallthrough */
+          case "false": return false;
+
+          case "": /* fallthrough */
+          case "1": /* fallthrough */
+          case "true": return true;
+
+          default:
+            console.warn(`unexpected value for "${key}" query. Expected one of: 0, 1, false, true, or no value. Defaulting to "${fallback}".`);
+            return fallback;
+        }
       }
 
       function on_app_started(handle) {

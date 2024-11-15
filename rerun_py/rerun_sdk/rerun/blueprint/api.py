@@ -1,18 +1,17 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any, Iterable, Optional, Union
+from typing import Iterable, Optional, Union
 
 import rerun_bindings as bindings
 
-from .._baseclasses import AsComponents
+from .._baseclasses import AsComponents, ComponentBatchLike
 from .._spawn import _spawn_viewer
-from ..datatypes import EntityPathLike, Utf8ArrayLike, Utf8Like
+from ..datatypes import BoolLike, EntityPathLike, Float32ArrayLike, Utf8ArrayLike, Utf8Like
 from ..memory import MemoryRecording
-from ..notebook import as_html
 from ..recording_stream import RecordingStream
 from .archetypes import ContainerBlueprint, PanelBlueprint, SpaceViewBlueprint, SpaceViewContents, ViewportBlueprint
-from .components import ColumnShareArrayLike, PanelState, PanelStateLike, RowShareArrayLike, VisibleLike
+from .components import PanelState, PanelStateLike
 from .components.container_kind import ContainerKindLike
 
 SpaceViewContentsLike = Union[Utf8ArrayLike, SpaceViewContents]
@@ -42,8 +41,10 @@ class SpaceView:
         origin: EntityPathLike,
         contents: SpaceViewContentsLike,
         name: Utf8Like | None,
-        visible: VisibleLike | None = None,
+        visible: BoolLike | None = None,
         properties: dict[str, AsComponents] = {},
+        defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
+        overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
     ):
         """
         Construct a blueprint for a new space view.
@@ -67,6 +68,17 @@ class SpaceView:
             Defaults to true if not specified.
         properties
             Dictionary of property archetypes to add to space view's internal hierarchy.
+        defaults:
+            List of default components or component batches to add to the space view. When an archetype
+            in the view is missing a component included in this set, the value of default will be used
+            instead of the normal fallback for the visualizer.
+        overrides:
+            Dictionary of overrides to apply to the space view. The key is the path to the entity where the override
+            should be applied. The value is a list of component or component batches to apply to the entity.
+
+            Important note: the path must be a fully qualified entity path starting at the root. The override paths
+            do not yet support `$origin` relative paths or glob expressions.
+            This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
 
         """
         self.id = uuid.uuid4()
@@ -76,6 +88,8 @@ class SpaceView:
         self.contents = contents
         self.visible = visible
         self.properties = properties
+        self.defaults = defaults
+        self.overrides = overrides
 
     def blueprint_path(self) -> str:
         """
@@ -119,9 +133,23 @@ class SpaceView:
         for prop_name, prop in self.properties.items():
             stream.log(f"{self.blueprint_path()}/{prop_name}", prop, recording=stream)  # type: ignore[attr-defined]
 
-    def _repr_html_(self) -> Any:
-        """IPython interface to conversion to html."""
-        return as_html(blueprint=self)
+        for default in self.defaults:
+            if hasattr(default, "as_component_batches"):
+                stream.log(f"{self.blueprint_path()}/defaults", default, recording=stream)  # type: ignore[attr-defined]
+            elif hasattr(default, "component_name"):
+                stream.log(f"{self.blueprint_path()}/defaults", [default], recording=stream)  # type: ignore[attr-defined]
+            else:
+                raise ValueError(f"Provided default: {default} is neither a component nor a component batch.")
+
+        for path, components in self.overrides.items():
+            stream.log(  # type: ignore[attr-defined]
+                f"{self.blueprint_path()}/SpaceViewContents/individual_overrides/{path}", components, recording=stream
+            )
+
+    def _ipython_display_(self) -> None:
+        from rerun.notebook import Viewer
+
+        Viewer(blueprint=self).display()
 
 
 class Container:
@@ -143,8 +171,8 @@ class Container:
         *args: Container | SpaceView,
         contents: Optional[Iterable[Container | SpaceView]] = None,
         kind: ContainerKindLike,
-        column_shares: Optional[ColumnShareArrayLike] = None,
-        row_shares: Optional[RowShareArrayLike] = None,
+        column_shares: Optional[Float32ArrayLike] = None,
+        row_shares: Optional[Float32ArrayLike] = None,
         grid_columns: Optional[int] = None,
         active_tab: Optional[int | str] = None,
         name: Utf8Like | None,
@@ -237,9 +265,10 @@ class Container:
 
         stream.log(self.blueprint_path(), arch)  # type: ignore[attr-defined]
 
-    def _repr_html_(self) -> Any:
-        """IPython interface to conversion to html."""
-        return as_html(blueprint=self)
+    def _ipython_display_(self) -> None:
+        from rerun.notebook import Viewer
+
+        Viewer(blueprint=self).display()
 
 
 def _to_state(expanded: bool | None, state: PanelStateLike | None) -> PanelStateLike | None:
@@ -525,9 +554,10 @@ class Blueprint:
         elif self.collapse_panels:
             TimePanel(state="collapsed")._log_to_stream(stream)
 
-    def _repr_html_(self) -> Any:
-        """IPython interface to conversion to html."""
-        return as_html(blueprint=self)
+    def _ipython_display_(self) -> None:
+        from rerun.notebook import Viewer
+
+        Viewer(blueprint=self).display()
 
     def connect(
         self,

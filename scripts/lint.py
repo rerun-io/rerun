@@ -3,7 +3,8 @@
 """
 Runs custom linting on our code.
 
-Adding "NOLINT" to any line makes the linter ignore that line.
+Adding "NOLINT" to any line makes the linter ignore that line. Adding a pair of "NOLINT_START" and "NOLINT_END" makes
+the linter ignore these lines, as well as all lines in between.
 """
 
 from __future__ import annotations
@@ -13,7 +14,7 @@ import os
 import re
 import sys
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterator
+from typing import Any, Callable, Dict
 
 from ci.frontmatter import load_frontmatter
 from gitignore_parser import parse_gitignore
@@ -138,7 +139,8 @@ def lint_line(
             return "It's 'GitHub', not 'github'"
 
     if re.search(r"[.a-zA-Z]  [a-zA-Z]", line):
-        return "Found double space"
+        if r"\n  " not in line:  # Allow `\n  `, which happens e.g. when markdown is embeedded in a string
+            return "Found double space"
 
     if double_the.search(line.lower()):
         return "Found 'the the'"
@@ -162,10 +164,11 @@ def lint_line(
         ):
             return "Use … instead of ..."
 
-    if re.search(r"\b2d\b", line):
-        return "we prefer '2D' over '2d'"
-    if re.search(r"\b3d\b", line):
-        return "we prefer '3D' over '3d'"
+    if "http" not in line:
+        if re.search(r"\b2d\b", line):
+            return "we prefer '2D' over '2d'"
+        if re.search(r"\b3d\b", line):
+            return "we prefer '3D' over '3d'"
 
     if "FIXME" in line:
         return "we prefer TODO over FIXME"
@@ -597,16 +600,16 @@ def test_lint_workspace_deps() -> None:
         name = "clock"
         version = "0.6.0-alpha.0"
         edition = "2021"
-        rust-version = "1.76"
+        rust-version = "1.79"
         license = "MIT OR Apache-2.0"
         publish = false
 
         [dependencies]
-        rerun = { path = "../../../crates/rerun", features = ["web_viewer"] }
+        rerun = { path = "../../../crates/top/rerun", features = ["web_viewer"] }
 
         anyhow = "1.0"
         clap = { version = "4.0", features = ["derive"] }
-        glam = "0.22"
+        glam = "0.28"
         """,
     ]
 
@@ -672,15 +675,24 @@ force_capitalized = [
     "C",
     "C++",
     "C++17,",  # easier than coding up a special case
-    "C++17",
+    "CI",
     "Colab",
     "Google",
+    "gRPC",
+    "GUI",
+    "GUIs",
+    "July",
     "Jupyter",
     "Linux",
     "Mac",
+    "macOS",
+    "ML",
     "Numpy",
     "nuScenes",
+    "Pandas",
+    "PDF",
     "Pixi",
+    "Polars",
     "Python",
     "Q1",
     "Q2",
@@ -689,27 +701,90 @@ force_capitalized = [
     "Rerun",
     "Rust",
     "SAM",
+    "SDK",
+    "SDKs",
+    "UI",
+    "UIs",
+    "UX",
     "Wasm",
     # "Arrow",   # Would be nice to capitalize in the right context, but it's a too common word.
     # "Windows", # Consider "multiple plot windows"
 ]
 
 allow_capitalized = [
-    "Viewer",  # Referring to the Rerun Viewer as just "the Viewer" is fine, but not all mentions of "viewer" are capitalized.
-    "Arrow",  # Referring to the Apache Arrow project as just "Arrow" is fine, but not all mentions of "arrow" are capitalized.
+    "Viewer",
+    # Referring to the Rerun Viewer as just "the Viewer" is fine, but not all mentions of "viewer" are capitalized.
+    "Arrow",
+    # Referring to the Apache Arrow project as just "Arrow" is fine, but not all mentions of "arrow" are capitalized.
 ]
 
 force_capitalized_as_lower = [word.lower() for word in force_capitalized]
 allow_capitalized_as_lower = [word.lower() for word in allow_capitalized]
 
 
+def split_words(input_string: str) -> list[str]:
+    result = []
+    word = ""
+    for char in input_string:
+        if char.isalpha() or char.isdigit() or char in "/_@`.!?+-()":
+            word += char
+        else:
+            if word:
+                result.append(word)
+                word = ""
+            result.append(char)
+    if word:
+        result.append(word)
+    return result
+
+
+def is_emoji(s: str) -> bool:
+    """Returns true if the string contains an emoji."""
+    # Written by Copilot
+    return any(
+        0x1F600 <= ord(c) <= 0x1F64F  # Emoticons
+        or 0x1F300 <= ord(c) <= 0x1F5FF  # Miscellaneous Symbols and Pictographs
+        or 0x1F680 <= ord(c) <= 0x1F6FF  # Transport and Map Symbols
+        or 0x2600 <= ord(c) <= 0x26FF  # Miscellaneous Symbols
+        or 0x2700 <= ord(c) <= 0x27BF  # Dingbats
+        or 0xFE00 <= ord(c) <= 0xFE0F  # Variation Selectors
+        or 0x1F900 <= ord(c) <= 0x1F9FF  # Supplemental Symbols and Pictographs
+        or 0x1FA70 <= ord(c) <= 0x1FAFF  # Symbols and Pictographs Extended-A
+        for c in s
+    )
+
+
+def test_is_emoji():
+    assert not is_emoji("A")
+    assert not is_emoji("Ö")
+    assert is_emoji("😀")
+    assert is_emoji("⚠️")
+
+
+def test_split_words():
+    test_cases = [
+        ("hello world", ["hello", " ", "world"]),
+        ("hello foo@rerun.io", ["hello", " ", "foo@rerun.io"]),
+        ("www.rerun.io", ["www.rerun.io"]),
+        ("`rerun`", ["`rerun`"]),
+    ]
+
+    for input, expected in test_cases:
+        actual = split_words(input)
+        assert actual == expected, f"Expected '{input}' to split into {expected}, got {actual}"
+
+
 def fix_header_casing(s: str) -> str:
     def is_acronym_or_pascal_case(s: str) -> bool:
         return sum(1 for c in s if c.isupper()) > 1
 
+    if s.startswith("["):
+        return s  # We don't handle links in headers, yet
+
     new_words: list[str] = []
     last_punctuation = None
     inline_code_block = False
+    is_first_word = True
 
     words = s.strip().split(" ")
 
@@ -717,10 +792,16 @@ def fix_header_casing(s: str) -> str:
         if word == "":
             continue
 
+        if word == "I":
+            new_words.append(word)
+            continue
+
+        if is_emoji(word):
+            new_words.append(word)
+            continue
+
         if word.startswith("`"):
             inline_code_block = True
-        if word.endswith("`"):
-            inline_code_block = False
 
         if last_punctuation:
             word = word.capitalize()
@@ -740,13 +821,16 @@ def fix_header_casing(s: str) -> str:
                 pass  # acroym, PascalCase, code, …
             elif word.lower() in allow_capitalized_as_lower:
                 pass
-            elif i == 0:
-                # First word:
+            elif is_first_word:
                 word = word.capitalize()
             else:
                 word = word.lower()
 
+        if word.endswith("`"):
+            inline_code_block = False
+
         new_words.append((word + last_punctuation) if last_punctuation else word)
+        is_first_word = False
 
     return " ".join(new_words)
 
@@ -755,7 +839,7 @@ def fix_enforced_upper_case(s: str) -> str:
     new_words: list[str] = []
     inline_code_block = False
 
-    for i, word in enumerate(s.split(" ")):
+    for i, word in enumerate(split_words(s)):
         if word.startswith("`"):
             inline_code_block = True
         if word.endswith("`"):
@@ -764,18 +848,16 @@ def fix_enforced_upper_case(s: str) -> str:
         if word.strip() != "" and not inline_code_block and not word.startswith("`"):
             try:
                 idx = force_capitalized_as_lower.index(word.lower())
-            except ValueError:
-                idx = None
-
-            if idx is not None:
                 word = force_capitalized[idx]
+            except ValueError:
+                pass
 
         new_words.append(word)
 
-    return " ".join(new_words)
+    return "".join(new_words)
 
 
-def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[str]]:
+def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[str]]:
     """Only for .md files."""
 
     errors = []
@@ -786,34 +868,37 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
         and filepath.endswith("README.md")
         and not filepath.endswith("/examples/python/README.md")
     )
-    in_changelog = filepath.endswith("CHANGELOG.md")
     in_code_of_conduct = filepath.endswith("CODE_OF_CONDUCT.md")
 
     if in_code_of_conduct:
-        return errors, lines_in
+        return errors, source.lines
 
     in_code_block = False
     in_frontmatter = False
-    for line_nr, line in enumerate(lines_in):
+    in_metadata = False
+    for line_nr, line in enumerate(source.lines):
         line_nr = line_nr + 1
 
         if line.strip().startswith("```"):
             in_code_block = not in_code_block
 
+        if line.startswith("---"):
+            in_frontmatter = not in_frontmatter
         if line.startswith("<!--[metadata]"):
-            in_frontmatter = True
-        if in_frontmatter and line.startswith("-->"):
-            in_frontmatter = False
+            in_metadata = True
+        if in_metadata and line.startswith("-->"):
+            in_metadata = False
 
-        if not in_code_block:
-            # Check the casing on markdown headers
-            if not in_changelog and (m := re.match(r"(\#+ )(.*)", line)):
-                new_header = fix_header_casing(m.group(2))
-                if new_header != m.group(2):
-                    errors.append(
-                        f"{line_nr}: Markdown headers should NOT be title cased, except certain words which are always capitalized. This should be '{new_header}'."
-                    )
-                    line = m.group(1) + new_header + "\n"
+        if not in_code_block and not source.should_ignore(line_nr):
+            if not in_metadata:
+                # Check the casing on markdown headers
+                if m := re.match(r"(\#+ )(.*)", line):
+                    new_header = fix_header_casing(m.group(2))
+                    if new_header != m.group(2):
+                        errors.append(
+                            f"{line_nr}: Markdown headers should NOT be title cased, except certain words which are always capitalized. This should be '{new_header}'."
+                        )
+                        line = m.group(1) + new_header + "\n"
 
             # Check the casing on `title = "…"` frontmatter
             elif m := re.match(r'title\s*\=\s*"(.*)"', line):
@@ -825,13 +910,13 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
                     line = f'title = "{new_title}"\n'
 
             # Enforce capitalization on certain words in the main text.
-            else:
+            elif not in_frontmatter:
                 new_line = fix_enforced_upper_case(line)
                 if new_line != line:
                     errors.append(f"{line_nr}: Certain words should be capitalized. This should be '{new_line}'.")
                     line = new_line
 
-            if in_example_readme and not in_frontmatter:
+            if in_example_readme and not in_metadata:
                 # Check that <h1> is not used in example READMEs
                 if line.startswith("#") and not line.startswith("##"):
                     errors.append(
@@ -841,56 +926,6 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
         lines_out.append(line)
 
     return errors, lines_out
-
-
-# -----------------------------------------------------------------------------
-# We may not use egui's widgets for which we have a custom version in re_ui.
-
-# Note: this really is best-effort detection, it will only catch the most common code layout cases. If this gets any
-# more complicated, a syn-based linter in Rust would certainly be better approach.
-
-re_forbidden_widgets = [
-    (
-        re.compile(r"(?<!\w)ui[\t ]*(//.*)?\s*.\s*checkbox(?!\w)", re.MULTILINE),
-        "ui.checkbox() is forbidden (use re_ui.checkbox() instead)",
-    ),
-    (
-        re.compile(r"(?<!\w)ui[\t ]*(//.*)?\s*.\s*radio_value(?!\w)", re.MULTILINE),
-        "ui.radio_value() is forbidden (use re_ui.radio_value() instead)",
-    ),
-]
-
-
-def lint_forbidden_widgets(content: str) -> Iterator[tuple[str, int, int]]:
-    for re_widget, error in re_forbidden_widgets:
-        for match in re_widget.finditer(content):
-            yield error, match.start(0), match.end(0)
-
-
-def test_lint_forbidden_widgets() -> None:
-    re_checkbox = re_forbidden_widgets[0][0]
-    assert re_checkbox.search("ui.checkbox")
-    assert re_checkbox.search("  ui.\n\t\t   checkbox  ")
-    assert re_checkbox.search("  ui.\n\t\t   checkbox()")
-    assert re_checkbox.search("  ui\n\t\t   .checkbox()")
-    assert re_checkbox.search("  ui //bla\n\t\t   .checkbox()")
-    assert not re_checkbox.search("re_ui.checkbox")
-    assert not re_checkbox.search("ui.checkbox_re")
-
-    should_fail_two_times = """
-        ui.checkbox()
-        re_ui.checkbox()
-        ui.checkbox_re()
-
-        ui  // hello!
-            .checkbox()
-            .bla()
-    """
-
-    res = list(lint_forbidden_widgets(should_fail_two_times))
-    assert len(res) == 2
-    assert _index_to_line_nr(should_fail_two_times, res[0][1]) == 1
-    assert _index_to_line_nr(should_fail_two_times, res[1][1]) == 5
 
 
 def lint_example_description(filepath: str, fm: Frontmatter) -> list[str]:
@@ -946,7 +981,19 @@ class SourceFile:
         self.content = "".join(self.lines)
 
         # gather lines with a `NOLINT` marker
-        self.no_lints = {i for i, line in enumerate(self.lines) if "NOLINT" in line}
+        self.nolints = set()
+        is_in_nolint_block = False
+        for i, line in enumerate(self.lines):
+            if "NOLINT" in line:
+                self.nolints.add(i)
+
+            if "NOLINT_START" in line:
+                is_in_nolint_block = True
+
+            if is_in_nolint_block:
+                self.nolints.add(i)
+                if "NOLINT_END" in line:
+                    is_in_nolint_block = False
 
     def rewrite(self, new_lines: list[str]) -> None:
         """Rewrite the contents of the file."""
@@ -966,7 +1013,7 @@ class SourceFile:
 
         if to_line is None:
             to_line = from_line
-        return any(i in self.no_lints for i in range(from_line - 1, to_line + 1))
+        return any(i in self.nolints for i in range(from_line - 1, to_line + 1))
 
     def should_ignore_index(self, start_idx: int, end_idx: int | None = None) -> bool:
         """Same as `should_ignore` but takes 0-based indices instead of line numbers."""
@@ -995,6 +1042,9 @@ def lint_file(filepath: str, args: Any) -> int:
 
     prev_line = None
     for line_nr, line in enumerate(source.lines):
+        if source.should_ignore(line_nr):
+            continue
+
         if line == "" or line[-1] != "\n":
             error = "Missing newline at end of file"
         else:
@@ -1013,12 +1063,6 @@ def lint_file(filepath: str, args: Any) -> int:
             num_errors += 1
 
     if filepath.endswith(".rs") or filepath.endswith(".fbs"):
-        if filepath.endswith(".rs"):
-            for error, start_idx, end_idx in lint_forbidden_widgets(source.content):
-                if not source.should_ignore_index(start_idx, end_idx):
-                    print(source.error(error, index=start_idx))
-                    num_errors += 1
-
         errors, lines_out = lint_vertical_spacing(source.lines)
         for error in errors:
             print(source.error(error))
@@ -1028,7 +1072,7 @@ def lint_file(filepath: str, args: Any) -> int:
             source.rewrite(lines_out)
 
     if filepath.endswith(".md"):
-        errors, lines_out = lint_markdown(filepath, source.lines)
+        errors, lines_out = lint_markdown(filepath, source)
 
         for error in errors:
             print(source.error(error))
@@ -1103,9 +1147,11 @@ def lint_crate_docs(should_ignore: Callable[[Any], bool]) -> int:
 
 def main() -> None:
     # Make sure we are bug free before we run:
+    test_split_words()
     test_lint_line()
     test_lint_vertical_spacing()
     test_lint_workspace_deps()
+    test_is_emoji()
 
     parser = argparse.ArgumentParser(description="Lint code with custom linter.")
     parser.add_argument(
@@ -1154,9 +1200,16 @@ def main() -> None:
 
     exclude_paths = (
         "./.github/workflows/reusable_checks.yml",  # zombie TODO hunting job
+        "./.nox",
         "./.pytest_cache",
         "./CODE_STYLE.md",
-        "./crates/re_types_builder/src/reflection.rs",  # auto-generated
+        "./crates/build/re_types_builder/src/reflection.rs",  # auto-generated
+        "./crates/store/re_protos/src/v0/rerun.remote_store.v0.rs",  # auto-generated
+        "./docs/content/concepts/app-model.md",  # this really needs custom letter casing
+        "./docs/content/reference/cli.md",  # auto-generated
+        "./docs/snippets/all/tutorials/custom-application-id.cpp",  # nuh-uh, I don't want rerun_example_ here
+        "./docs/snippets/all/tutorials/custom-application-id.py",  # nuh-uh, I don't want rerun_example_ here
+        "./docs/snippets/all/tutorials/custom-application-id.rs",  # nuh-uh, I don't want rerun_example_ here
         "./examples/assets",
         "./examples/python/detect_and_track_objects/cache/version.txt",
         "./examples/python/objectron/objectron/proto/",  # auto-generated
@@ -1172,9 +1225,20 @@ def main() -> None:
         "./scripts/zombie_todos.py",
         "./tests/python/release_checklist/main.py",
         "./web_viewer/re_viewer.js",  # auto-generated by wasm_bindgen
+        # JS dependencies:
+        "./rerun_notebook/node_modules",
+        "./rerun_js/node_modules",
+        # JS files generated during build:
+        "./rerun_notebook/src/rerun_notebook/static",
+        "./rerun_js/web-viewer-react/node_modules",
+        "./rerun_js/web-viewer/index.js",
+        "./rerun_js/web-viewer/inlined.js",
+        "./rerun_js/web-viewer/node_modules",
+        "./rerun_js/web-viewer/re_viewer_bg.js",  # auto-generated by wasm_bindgen
+        "./rerun_js/web-viewer/re_viewer.js",
     )
 
-    should_ignore = parse_gitignore(".gitignore")  # TODO(emilk): parse all .gitignore files, not just top-level
+    should_ignore = parse_gitignore(".gitignore")  # TODO(#6730): parse all .gitignore files, not just top-level
 
     script_dirpath = os.path.dirname(os.path.realpath(__file__))
     root_dirpath = os.path.abspath(f"{script_dirpath}/..")

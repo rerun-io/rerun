@@ -17,6 +17,7 @@ extern "C" {
 #include <stdbool.h>
 #include <stdint.h>
 #include "arrow_c_data_interface.h"
+#include "sdk_info.h"
 
 // ----------------------------------------------------------------------------
 // Types:
@@ -191,26 +192,86 @@ typedef struct rr_component_type {
 } rr_component_type;
 
 /// Arrow-encoded data of a single batch components for a single entity.
-typedef struct rr_data_cell {
-    /// The component type to use for this data cell.
+typedef struct rr_component_batch {
+    /// The component type to use for this batch.
     rr_component_type_handle component_type;
 
     /// A batch of instances of this component serialized into an arrow array.
     struct ArrowArray array;
-} rr_data_cell;
+} rr_component_batch;
 
 /// Arrow-encoded log data for a single entity.
 /// May contain many components.
-typedef struct {
+typedef struct rr_data_row {
     /// Where to log to, e.g. `world/camera`.
     rr_string entity_path;
 
-    /// Number of components.
-    uint32_t num_data_cells;
+    /// Number of different component batches.
+    uint32_t num_component_batches;
 
     /// One for each component.
-    rr_data_cell* data_cells;
+    rr_component_batch* component_batches;
 } rr_data_row;
+
+/// Arrow-encoded data of a column of components.
+///
+/// This is essentially an array of `rr_component_batch` with all batches
+/// continuously in a single array.
+typedef struct rr_component_column {
+    /// The component type used for the components inside the list array.
+    ///
+    /// This is *not* the type of the arrow list array itself, but of the underlying batch.
+    rr_component_type_handle component_type;
+
+    /// A ListArray with the datatype `List(component_type)`.
+    struct ArrowArray array;
+} rr_component_column;
+
+/// Describes whether an array is known to be sorted or not.
+typedef uint32_t rr_sorting_status;
+
+enum {
+    /// It's not known whether the array is sorted or not.
+    RR_SORTING_STATUS_UNKNOWN = 0,
+
+    /// The array is known to be sorted.
+    RR_SORTING_STATUS_SORTED = 1,
+
+    /// The array is known to be unsorted.
+    RR_SORTING_STATUS_UNSORTED = 2,
+};
+
+/// Describes the type of a timeline or time point.
+typedef uint32_t rr_time_type;
+
+enum {
+    /// Normal wall time.
+    RR_TIME_TYPE_TIME = 0,
+
+    /// Used e.g. for frames in a film.
+    RR_TIME_TYPE_SEQUENCE = 1,
+};
+
+/// Definition of a timeline.
+typedef struct rr_timeline {
+    /// The name of the timeline.
+    rr_string name;
+
+    /// The type of the timeline.
+    rr_time_type type;
+} rr_timeline;
+
+/// A column of timestamps for a given timeline.
+typedef struct rr_time_column {
+    /// The timeline this column belongs to.
+    rr_timeline timeline;
+
+    /// Time points as a primitive array of i64.
+    struct ArrowArray array;
+
+    /// The sorting order of the `times` array.
+    rr_sorting_status sorting_status;
+} rr_time_column;
 
 /// Error codes returned by the Rerun C SDK as part of `rr_error`.
 ///
@@ -224,21 +285,28 @@ enum {
     _RR_ERROR_CODE_CATEGORY_ARGUMENT = 0x00000010,
     RR_ERROR_CODE_UNEXPECTED_NULL_ARGUMENT,
     RR_ERROR_CODE_INVALID_STRING_ARGUMENT,
+    RR_ERROR_CODE_INVALID_ENUM_VALUE,
     RR_ERROR_CODE_INVALID_RECORDING_STREAM_HANDLE,
     RR_ERROR_CODE_INVALID_SOCKET_ADDRESS,
     RR_ERROR_CODE_INVALID_COMPONENT_TYPE_HANDLE,
 
     // Recording stream errors
-    _RR_ERROR_CODE_CATEGORY_RECORDING_STREAM = 0x000000100,
+    _RR_ERROR_CODE_CATEGORY_RECORDING_STREAM = 0x00000100,
+    RR_ERROR_CODE_RECORDING_STREAM_RUNTIME_FAILURE,
     RR_ERROR_CODE_RECORDING_STREAM_CREATION_FAILURE,
     RR_ERROR_CODE_RECORDING_STREAM_SAVE_FAILURE,
     RR_ERROR_CODE_RECORDING_STREAM_STDOUT_FAILURE,
     RR_ERROR_CODE_RECORDING_STREAM_SPAWN_FAILURE,
+    RR_ERROR_CODE_RECORDING_STREAM_CHUNK_VALIDATION_FAILURE,
 
     // Arrow data processing errors.
-    _RR_ERROR_CODE_CATEGORY_ARROW = 0x000001000,
+    _RR_ERROR_CODE_CATEGORY_ARROW = 0x00001000,
     RR_ERROR_CODE_ARROW_FFI_SCHEMA_IMPORT_ERROR,
     RR_ERROR_CODE_ARROW_FFI_ARRAY_IMPORT_ERROR,
+
+    // Utility errors.
+    _RR_ERROR_CODE_CATEGORY_UTILITIES = 0x00010000,
+    RR_ERROR_CODE_VIDEO_LOAD_ERROR,
 
     // Generic errors.
     RR_ERROR_CODE_UNKNOWN,
@@ -262,12 +330,6 @@ typedef struct rr_error {
 // ----------------------------------------------------------------------------
 // Functions:
 
-/// Returns the version of the Rerun C SDK.
-///
-/// This should match the string returned by `rr_version_string`.
-/// If not, the SDK's binary and the C header are out of sync.
-#define RERUN_SDK_HEADER_VERSION "0.17.0-alpha.2"
-
 /// Returns a human-readable version string of the Rerun C SDK.
 ///
 /// This should match the string in `RERUN_SDK_HEADER_VERSION`.
@@ -282,7 +344,7 @@ extern const char* rr_version_string(void);
 /// If a Rerun Viewer is already listening on this TCP port, this does nothing.
 extern void rr_spawn(const rr_spawn_options* spawn_opts, rr_error* error);
 
-/// Registers a new component type to be used in `rr_data_cell`.
+/// Registers a new component type to be used in `rr_component_batch`.
 ///
 /// A component with a given name can only be registered once.
 /// Takes ownership of the passed arrow schema and will release it once it is no longer needed.
@@ -438,7 +500,7 @@ extern void rr_recording_stream_reset_time(rr_recording_stream stream);
 /// If `inject_time` is set to `true`, the row's timestamp data will be
 /// overridden using the recording streams internal clock.
 ///
-/// Takes ownership of the passed data cells and will release underlying
+/// Takes ownership of the passed data component batches and will release underlying
 /// arrow data once it is no longer needed.
 /// Any pointers passed via `rr_string` can be safely freed after this call.
 extern void rr_recording_stream_log(
@@ -469,6 +531,43 @@ extern void rr_recording_stream_log_file_from_path(
 extern void rr_recording_stream_log_file_from_contents(
     rr_recording_stream stream, rr_string path, rr_bytes contents, rr_string entity_path_prefix,
     bool static_, rr_error* error
+);
+
+/// Sends the columns of components to the stream.
+///
+/// Unlike the regular `log` API, which is row-oriented, this API lets you submit the data
+/// in a columnar form. The lengths of all `time_columns` and `component_columns`
+/// must match. All data that occurs at the same index across the different time and components
+/// arrays will act as a single logical row.
+///
+/// Note that this API ignores any stateful time set on the log stream via the
+/// `rr_recording_stream_set_time_sequence`/`rr_recording_stream_set_time_nanos`/etc. APIs.
+/// Furthermore, this will _not_ inject the default timelines `log_tick` and `log_time` timeline columns.
+extern void rr_recording_stream_send_columns(
+    rr_recording_stream stream, rr_string entity_path,                            //
+    const rr_time_column* time_columns, uint32_t num_time_columns,                //
+    const rr_component_column* component_columns, uint32_t num_component_columns, //
+    rr_error* error
+);
+
+// ----------------------------------------------------------------------------
+// Other utilities
+
+/// Allocation method for `rr_video_asset_read_frame_timestamps_ns`.
+typedef int64_t* (*rr_alloc_timestamps)(void* alloc_context, uint32_t num_timestamps);
+
+/// Determines the presentation timestamps of all frames inside the video.
+///
+/// Returned timestamps are in nanoseconds since start and are guaranteed to be monotonically increasing.
+///
+/// \param media_type
+/// If not specified (null or empty string), the media type will be guessed from the data.
+/// \param alloc_func
+/// Function used to allocate memory for the returned timestamps.
+/// Guaranteed to be called exactly once with the `alloc_context` pointer as argument.
+extern int64_t* rr_video_asset_read_frame_timestamps_ns(
+    const uint8_t* video_bytes, uint64_t video_bytes_len, rr_string media_type, void* alloc_context,
+    rr_alloc_timestamps alloc_timestamps, rr_error* error
 );
 
 // ----------------------------------------------------------------------------

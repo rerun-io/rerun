@@ -1,0 +1,18 @@
+namespace rerun.components;
+
+/// Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.
+enum MagnificationFilter: ubyte {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    /// Show the nearest pixel value.
+    ///
+    /// This will give a blocky appearance when zooming in.
+    /// Used as default when rendering 2D images.
+    Nearest (default),
+
+    /// Linearly interpolate the nearest neighbors, creating a smoother look when zooming in.
+    ///
+    /// Used as default for mesh rendering.
+    Linear,
+}

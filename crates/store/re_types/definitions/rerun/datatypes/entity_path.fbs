@@ -1,0 +1,17 @@
+namespace rerun.datatypes;
+
+// ---
+
+/// A path to an entity in the `ChunkStore`.
+table EntityPath  (
+  "attr.arrow.transparent",
+  "attr.python.aliases": "str",
+  "attr.python.array_aliases": "Sequence[str]",
+  "attr.rust.derive": "PartialEq, Eq, PartialOrd, Ord, Default, Hash",
+  "attr.rust.repr": "transparent",
+  "attr.rust.tuple_struct",
+  "attr.rust.override_crate": "re_types_core"
+) {
+  // TODO(jleibs): This should be a special primitive
+  path: string (order: 100);
+}

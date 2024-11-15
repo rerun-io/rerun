@@ -1,0 +1,30 @@
+namespace rerun.blueprint.archetypes;
+
+/// Specifies a 2D slice of a tensor.
+table TensorSliceSelection (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default, Hash, PartialEq, Eq"
+) {
+    /// Which dimension to map to width.
+    ///
+    /// If not specified, the height will be determined automatically based on the name and index of the dimension.
+    width: rerun.components.TensorWidthDimension ("attr.rerun.component_optional", nullable, order: 1000);
+
+    /// Which dimension to map to height.
+    ///
+    /// If not specified, the height will be determined automatically based on the name and index of the dimension.
+    height: rerun.components.TensorHeightDimension ("attr.rerun.component_optional", nullable, order: 1100);
+
+    /// Selected indices for all other dimensions.
+    ///
+    /// If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
+    indices: [rerun.components.TensorDimensionIndexSelection] ("attr.rerun.component_optional", nullable, order: 1200);
+
+    /// Any dimension listed here will have a slider for the index.
+    ///
+    /// Edits to the sliders will directly manipulate dimensions on the `indices` list.
+    /// If any of the here listed dimensions is equal to `width` or `height`, it will be ignored.
+    /// If not specified, adds slides for any dimension in `indices`.
+    slider: [rerun.blueprint.components.TensorDimensionIndexSlider] ("attr.rerun.component_optional", nullable, order: 1300);
+}
+

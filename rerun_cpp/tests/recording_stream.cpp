@@ -44,7 +44,7 @@ struct BadArchetype {
 namespace rerun {
     template <>
     struct AsComponents<BadArchetype> {
-        static rerun::Result<std::vector<rerun::DataCell>> serialize(const BadArchetype&) {
+        static rerun::Result<std::vector<rerun::ComponentBatch>> serialize(const BadArchetype&) {
             return Loggable<BadComponent>::error;
         }
     };
@@ -380,14 +380,14 @@ void test_logging_to_connection(const char* address, const rerun::RecordingStrea
     AND_GIVEN("an invalid address for the socket address") {
         THEN("then the save call fails") {
             CHECK(
-                stream.connect("definitely not valid!", 0.0f).code ==
+                stream.connect_tcp("definitely not valid!", 0.0f).code ==
                 rerun::ErrorCode::InvalidSocketAddress
             );
         }
     }
     AND_GIVEN("a valid socket address " << address) {
         THEN("save call with zero timeout returns no error") {
-            REQUIRE(stream.connect(address, 0.0f).is_ok());
+            REQUIRE(stream.connect_tcp(address, 0.0f).is_ok());
 
             WHEN("logging a component and then flushing") {
                 check_logged_error([&] {
@@ -451,8 +451,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
             const char* path = "valid";
 
             AND_GIVEN("a cell with a null buffer") {
-                rerun::DataCell cell = {};
-                cell.num_instances = 1;
+                rerun::ComponentBatch cell = {};
                 cell.component_type = 0;
 
                 THEN("try_log_data_row fails with UnexpectedNullArgument") {
@@ -463,8 +462,7 @@ SCENARIO("Recording stream handles invalid logging gracefully", TEST_TAG) {
                 }
             }
             AND_GIVEN("a cell with an invalid component type") {
-                rerun::DataCell cell = {};
-                cell.num_instances = 1;
+                rerun::ComponentBatch cell = {};
                 cell.component_type = RR_COMPONENT_TYPE_HANDLE_INVALID;
                 cell.array = rerun::components::indicator_arrow_array();
 
@@ -560,6 +558,10 @@ SCENARIO("RecordingStream can set time without errors", TEST_TAG) {
     SECTION("Resetting time does not log errors") {
         check_logged_error([&] { stream.reset_time(); });
     }
+    SECTION("Can set time again after resetting the time") {
+        check_logged_error([&] { stream.reset_time(); });
+        check_logged_error([&] { stream.set_time_seconds("duration", 1.0f); });
+    }
 
     SECTION("Disabling timeline does not log errors") {
         check_logged_error([&] { stream.disable_timeline("doesn't exist"); });
@@ -648,4 +650,13 @@ SCENARIO("Deprecated log_timeless still works", TEST_TAG) {
     }
 
     RR_POP_WARNINGS // For `RR_DISABLE_DEPRECATION_WARNING`.
+}
+
+SCENARIO("Global RecordingStream doesn't cause crashes", TEST_TAG) {
+    // This caused a crash on Mac & Linux due to issues with cleanup order of global variables
+    // in Rust vs C++.
+    // See:
+    // * https://github.com/rerun-io/rerun/issues/5697
+    // * https://github.com/rerun-io/rerun/issues/5260
+    static rerun::RecordingStream global_stream("global");
 }

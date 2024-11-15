@@ -66,8 +66,10 @@ export function inferTag(version) {
     switch (kind) {
       case "alpha":
         tag = "alpha";
+        break;
       case "rc":
         tag = "rc";
+        break;
     }
   }
 

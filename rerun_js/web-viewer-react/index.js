@@ -1,14 +1,21 @@
 import React, { createRef } from "react";
 import * as rerun from "@rerun-io/web-viewer";
 
+// NOTE: We're intentionally not exposing `allow_fullscreen` and `enable_history`.
+//       Those features are already pretty sensitive to the environment, especially
+//       so in React where all normal behavior of web APIs goes out of the window.
 /**
- * @typedef Props
+ * @typedef BaseProps
  * @property {string | string[]} rrd URL(s) of the `.rrd` file(s) to load.
  *                                   Changing this prop will open any new unique URLs as recordings,
  *                                   and close any URLs which are not present.
  * @property {string} [width] CSS width of the viewer's parent div
  * @property {string} [height] CSS height of the viewer's parent div
- * @property {boolean} [hide_welcome_screen] Whether to hide the welcome screen. Default is `false`.
+ *
+ * @typedef {(
+ *   Omit<import("@rerun-io/web-viewer").WebViewerOptions, "allow_fullscreen" | "enable_history">
+ *   & BaseProps
+ * )} Props
  */
 
 /**
@@ -25,35 +32,50 @@ export default class WebViewer extends React.Component {
   /** @type {rerun.WebViewer} */
   #handle;
 
-  /** @type {string[]} */
-  #recordings = [];
-
-  /** @type {boolean} */
-  #hide_welcome_screen = false;
-
   /** @param {Props} props */
   constructor(props) {
     super(props);
 
     this.#handle = new rerun.WebViewer();
-    this.#recordings = toArray(props.rrd);
-    this.#hide_welcome_screen = props.hide_welcome_screen ?? false;
   }
 
   componentDidMount() {
-    const current = /** @type {HTMLDivElement} */ (this.#parent.current);
-    this.#handle.start(this.#recordings, current, {
-      hide_welcome_screen: this.#hide_welcome_screen,
-    });
+    startViewer(
+      this.#handle,
+      /** @type {HTMLDivElement} */ (this.#parent.current),
+      this.props,
+    );
   }
 
   componentDidUpdate(/** @type {Props} */ prevProps) {
-    const prev = toArray(prevProps.rrd);
-    const current = toArray(this.props.rrd);
-    // Diff recordings when `rrd` prop changes.
-    const { added, removed } = diff(prev, current);
-    this.#handle.open(added);
-    this.#handle.close(removed);
+    if (
+      keysChanged(prevProps, this.props, [
+        "hide_welcome_screen",
+        "manifest_url",
+        "render_backend",
+      ])
+    ) {
+      // We have to restart the viewer, because the above
+      // props are _startup_ options only, and we don't
+      // want to break that promise by setting them
+      // after the viewer has been started.
+      this.#handle.stop();
+
+      this.#handle = new rerun.WebViewer();
+      startViewer(
+        this.#handle,
+        /** @type {HTMLDivElement} */ (this.#parent.current),
+        this.props,
+      );
+    } else {
+      // We only need to diff the recordings.
+
+      const prev = toArray(prevProps.rrd);
+      const current = toArray(this.props.rrd);
+      const { added, removed } = diff(prev, current);
+      this.#handle.open(added);
+      this.#handle.close(removed);
+    }
   }
 
   componentWillUnmount() {
@@ -61,13 +83,31 @@ export default class WebViewer extends React.Component {
   }
 
   render() {
-    const { width = "100%", height = "640px" } = this.props;
+    const { width = "640px", height = "360px" } = this.props;
     return React.createElement("div", {
       className: "rerun-web-viewer",
       style: { width, height, position: "relative" },
       ref: this.#parent,
     });
   }
+}
+
+/**
+ * @param {rerun.WebViewer} handle
+ * @param {HTMLElement} parent
+ * @param {Props} props
+ */
+function startViewer(handle, parent, props) {
+  handle.start(toArray(props.rrd), parent, {
+    manifest_url: props.manifest_url,
+    render_backend: props.render_backend,
+    hide_welcome_screen: props.hide_welcome_screen,
+
+    // NOTE: `width`, `height` intentionally ignored, they will
+    //       instead be used on the parent `div` element
+    width: "100%",
+    height: "100%",
+  });
 }
 
 /**
@@ -84,6 +124,25 @@ function diff(prev, current) {
     added: current.filter((v) => !prevSet.has(v)),
     removed: prev.filter((v) => !currentSet.has(v)),
   };
+}
+
+/**
+ * Returns `true` if any of the `keys` changed between `prev` and `curr`.
+ *
+ * The definition of "changed" is any of removed, added, value changed.
+ *
+ * @template {Record<string, any>} T
+ * @param {T} prev
+ * @param {T} curr
+ * @param {(keyof T)[]} keys
+ */
+function keysChanged(prev, curr, keys) {
+  for (const key of keys) {
+    if (prev[key] !== curr[key]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 /**
