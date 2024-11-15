@@ -218,7 +218,7 @@ fn ffmpeg_path_status_ui(ui: &mut Ui, app_options: &AppOptions) {
         match res {
             Ok(version) => {
                 if version.is_compatible() {
-                    ui.success_label(&format!("FFmpeg found (version {version})"));
+                    ui.success_label(format!("FFmpeg found (version {version})"));
                 } else {
                     ui.error_label(format!("Incompatible FFmpeg version: {version}"));
                 }
