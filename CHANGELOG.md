@@ -4,9 +4,9 @@
 
 ## [0.20.0](https://github.com/rerun-io/rerun/compare/0.19.1...0.20.0) - Map view & native H.264 video support
 
-TODO(andreas): add link to release video
+https://github.com/user-attachments/assets/553b6d88-143d-4cf9-a4bc-6b620534ab95
 
-📖 Release blogpost: TODO(andreas): add link
+📖 Release blogpost: https://rerun.io/blog/maps
 🧳 Migration guide: http://rerun.io/docs/reference/migration/migration-0-20
 
 ### ✨ Overview & highlights
@@ -16,8 +16,6 @@ TODO(andreas): add link to release video
 * 📂 Improvements to the existing `Open` (Viewer) & `log_file` (SDK) workflows, and addition of a new `Import` workflow.
   * Blueprints can now easily be [re-used across different applications, recordings and SDKs](https://rerun.io/docs/howto/visualization/reuse-blueprints)
   * The new `Import` feature allows you to drag-and-drop any data into an existing recording, directly in the viewer.
-* 📂 Logging files now uses the active app/recording id, allowing to combine several rrd files in the viewer.
-  * Relatedly, there's now an `Import File` option in the menu to import arbitrary files into the active recording.
 * ☰ Dataframe queries are now streamed, reducing memory usage.
 * 💊 Add capsule archetype.
 * 📚 Doc improvements
