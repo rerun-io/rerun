@@ -266,13 +266,22 @@ fn test_find_non_empty_dim_indices() {
 
 // ----------------------------------------------------------------------------
 
-// TODO(andreas): Expose this in the API.
-/// Type of color primaries a given image is in.
+// TODO(andreas): Expose this in the API?
+/// Yuv matrix coefficients that determine how a YUV image is meant to be converted to RGB.
 ///
-/// This applies both to YUV and RGB formats, but if not specified otherwise
-/// we assume BT.709 primaries for all RGB(A) 8bits per channel content.
+/// A rigorious definition of the yuv conversion matrix would still require to define
+/// the transfer characteristics & color primaries of the resulting RGB space.
+/// See [`re_video::decode`]'s documentation.
+///
+/// However, at this point we generally assume that no further processing is needed after the transform.
+/// This is acceptable for most non-HDR content because of the following properties of `Bt709`/`Bt601`/ sRGB:
+/// * Bt709 & sRGB primaries are practically identical
+/// * Bt601 PAL & Bt709 color primaries are the same (with some slight differences for Bt709 NTSC)
+/// * Bt709 & sRGB transfer function are almost identical (and the difference is widely ignored)
+/// (sources: <https://en.wikipedia.org/wiki/Rec._709>, <https://en.wikipedia.org/wiki/Rec._601>)
+/// …which means for the moment we pretty much only care about the (actually quite) different YUV conversion matrices!
 #[derive(Clone, Copy, Debug)]
-pub enum ColorPrimaries {
+pub enum YuvMatrixCoefficients {
     /// BT.601 (aka. SDTV, aka. Rec.601)
     ///
     /// Wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion/>
@@ -285,7 +294,7 @@ pub enum ColorPrimaries {
     /// These are the same primaries we usually assume and use for all of Rerun's rendering
     /// since they are the same primaries used by sRGB.
     /// <https://en.wikipedia.org/wiki/Rec._709#Relationship_to_sRGB/>
-    /// The OETF/EOTF function (<https://en.wikipedia.org/wiki/Transfer_functions_in_imaging/>) is different,
+    /// The OETF/EOTF function (<https://en.wikipedia.org/wiki/Transfer_functions_in_imaging>) is different,
     /// but for all other purposes they are the same.
     /// (The only reason for us to convert to optical units ("linear" instead of "gamma") is for
     /// lighting computation & tonemapping where we typically start out with sRGB anyways!)
@@ -310,7 +319,7 @@ pub fn rgb_from_yuv(
     u: u8,
     v: u8,
     limited_range: bool,
-    primaries: ColorPrimaries,
+    coefficients: YuvMatrixCoefficients,
 ) -> [u8; 3] {
     let (mut y, mut u, mut v) = (y as f32, u as f32, v as f32);
 
@@ -332,15 +341,15 @@ pub fn rgb_from_yuv(
     let g;
     let b;
 
-    match primaries {
-        ColorPrimaries::Bt601 => {
+    match coefficients {
+        YuvMatrixCoefficients::Bt601 => {
             // BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
             r = y + 1.402 * v;
             g = y - 0.344 * u - 0.714 * v;
             b = y + 1.772 * u;
         }
 
-        ColorPrimaries::Bt709 => {
+        YuvMatrixCoefficients::Bt709 => {
             // BT.709 (aka. HDTV, aka. Rec.709). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion
             r = y + 1.575 * v;
             g = y - 0.187 * u - 0.468 * v;

@@ -1,4 +1,4 @@
-name: Build and publish C++ SDK
+name: Build and Publish C/C++ SDKs
 
 on:
   workflow_call:

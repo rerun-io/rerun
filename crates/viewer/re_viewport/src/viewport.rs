@@ -244,9 +244,9 @@ impl<'a> Viewport<'a> {
                         );
 
                         reset = true;
-                    } else if let Some(parent_id) =
-                        parent_container.or(self.blueprint.root_container)
-                    {
+                    } else {
+                        let parent_id = parent_container.unwrap_or(self.blueprint.root_container);
+                        re_log::trace!("Adding space-view {space_view_id} to parent {parent_id}");
                         let tile_id = self.tree.tiles.insert_pane(space_view_id);
                         let container_tile_id = blueprint_id_to_tile_id(&parent_id);
                         if let Some(egui_tiles::Tile::Container(container)) =
@@ -263,34 +263,30 @@ impl<'a> Viewport<'a> {
                                 );
                             }
                         } else {
-                            re_log::trace!("Root was not a container - will re-run auto-layout");
+                            re_log::trace!("Parent was not a container - will re-run auto-layout");
                             reset = true;
                         }
-                    } else {
-                        re_log::trace!("No root found - will re-run auto-layout");
                     }
 
                     self.tree_edited = true;
                 }
                 TreeAction::AddContainer(container_kind, parent_container) => {
-                    if let Some(parent_id) = parent_container.or(self.blueprint.root_container) {
-                        let tile_id = self
-                            .tree
-                            .tiles
-                            .insert_container(egui_tiles::Container::new(container_kind, vec![]));
-                        if let Some(egui_tiles::Tile::Container(container)) =
-                            self.tree.tiles.get_mut(blueprint_id_to_tile_id(&parent_id))
-                        {
-                            re_log::trace!("Inserting new space view into container {parent_id:?}");
-                            container.add_child(tile_id);
-                        } else {
-                            re_log::trace!(
-                                "Parent or root was not a container - will re-run auto-layout"
-                            );
-                            reset = true;
-                        }
+                    let parent_id = parent_container.unwrap_or(self.blueprint.root_container);
+                    let tile_id = self
+                        .tree
+                        .tiles
+                        .insert_container(egui_tiles::Container::new(container_kind, vec![]));
+                    re_log::trace!("Adding container {container_kind:?} to parent {parent_id}");
+                    if let Some(egui_tiles::Tile::Container(container)) =
+                        self.tree.tiles.get_mut(blueprint_id_to_tile_id(&parent_id))
+                    {
+                        re_log::trace!("Inserting new space view into container {parent_id:?}");
+                        container.add_child(tile_id);
                     } else {
-                        re_log::trace!("No root found - will re-run auto-layout");
+                        re_log::trace!(
+                            "Parent or root was not a container - will re-run auto-layout"
+                        );
+                        reset = true;
                     }
 
                     self.tree_edited = true;
@@ -461,7 +457,7 @@ struct TabViewer<'a, 'b> {
     ctx: &'a ViewerContext<'b>,
     viewport_blueprint: &'a ViewportBlueprint,
     maximized: &'a mut Option<SpaceViewId>,
-    root_container_id: Option<ContainerId>,
+    root_container_id: ContainerId,
     tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
 
     /// List of query & system execution results for each space view.
@@ -773,26 +769,22 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
                 // drag and drop operation often lead to many spurious empty containers. To work
                 // around this, we run a simplification pass when a drop occurs.
 
-                if let Some(root_container_id) = self.root_container_id {
-                    if self
-                        .tree_action_sender
-                        .send(TreeAction::SimplifyContainer(
-                            root_container_id,
-                            egui_tiles::SimplificationOptions {
-                                prune_empty_tabs: true,
-                                prune_empty_containers: false,
-                                prune_single_child_tabs: true,
-                                prune_single_child_containers: false,
-                                all_panes_must_have_tabs: true,
-                                join_nested_linear_containers: false,
-                            },
-                        ))
-                        .is_err()
-                    {
-                        re_log::warn_once!(
-                            "Channel between ViewportBlueprint and Viewport is broken"
-                        );
-                    }
+                if self
+                    .tree_action_sender
+                    .send(TreeAction::SimplifyContainer(
+                        self.root_container_id,
+                        egui_tiles::SimplificationOptions {
+                            prune_empty_tabs: true,
+                            prune_empty_containers: false,
+                            prune_single_child_tabs: true,
+                            prune_single_child_containers: false,
+                            all_panes_must_have_tabs: true,
+                            join_nested_linear_containers: false,
+                        },
+                    ))
+                    .is_err()
+                {
+                    re_log::warn_once!("Channel between ViewportBlueprint and Viewport is broken");
                 }
 
                 self.edited = true;

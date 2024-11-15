@@ -14,11 +14,10 @@ from attrs import define, field
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .angle_ext import AngleExt
 
-__all__ = ["Angle", "AngleArrayLike", "AngleBatch", "AngleLike", "AngleType"]
+__all__ = ["Angle", "AngleArrayLike", "AngleBatch", "AngleLike"]
 
 
 @define(init=False)
@@ -51,15 +50,8 @@ else:
 AngleArrayLike = Union[Angle, Sequence[AngleLike], npt.ArrayLike, Sequence[float], Sequence[int]]
 
 
-class AngleType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.Angle"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.float32(), self._TYPE_NAME)
-
-
 class AngleBatch(BaseBatch[AngleArrayLike]):
-    _ARROW_TYPE = AngleType()
+    _ARROW_DATATYPE = pa.float32()
 
     @staticmethod
     def _native_to_pa_array(data: AngleArrayLike, data_type: pa.DataType) -> pa.Array:

@@ -5,9 +5,14 @@ title: "TriangleIndices"
 
 The three indices of a triangle in a triangle mesh.
 
-## Fields
+## Rerun datatype
+[`UVec3D`](../datatypes/uvec3d.md)
 
-* indices: [`UVec3D`](../datatypes/uvec3d.md)
+
+## Arrow datatype
+```
+FixedSizeList<3, uint32>
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `TriangleIndices`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1TriangleIndices.html)

@@ -11,8 +11,6 @@ use crate::{
     RenderContext,
 };
 
-use super::ColorPrimaries;
-
 /// Supported chroma subsampling input formats.
 ///
 /// We use `YUV`/`YCbCr`/`YPbPr` interchangeably and usually just call it `YUV`.
@@ -174,6 +172,74 @@ pub enum YuvPixelLayout {
     Y400 = 300,
 }
 
+impl std::fmt::Display for YuvPixelLayout {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Y_U_V444 => write!(f, "4:4:4 (planar)"),
+            Self::Y_U_V422 => write!(f, "4:2:2 (planar)"),
+            Self::Y_U_V420 => write!(f, "4:2:0 (planar)"),
+            Self::Y_UV420 => write!(f, "4:2:0 (semi-planar)"),
+            Self::YUYV422 => write!(f, "4:2:2 (interleaved"),
+            Self::Y400 => write!(f, "4:0:0"),
+        }
+    }
+}
+
+/// Yuv matrix coefficients that determine how a YUV image is meant to be converted to RGB.
+///
+/// A rigorious definition of the yuv conversion matrix would still require to define
+/// the transfer characteristics & color primaries of the resulting RGB space.
+/// See [`re_video::decode`]'s documentation.
+///
+/// However, at this point we generally assume that no further processing is needed after the transform.
+/// This is acceptable for most non-HDR content because of the following properties of `Bt709`/`Bt601`/ sRGB:
+/// * Bt709 & sRGB primaries are practically identical
+/// * Bt601 PAL & Bt709 color primaries are the same (with some slight differences for Bt709 NTSC)
+/// * Bt709 & sRGB transfer function are almost identical (and the difference is widely ignored)
+/// (sources: <https://en.wikipedia.org/wiki/Rec._709>, <https://en.wikipedia.org/wiki/Rec._601>)
+/// …which means for the moment we pretty much only care about the (actually quite) different YUV conversion matrices!
+#[derive(Clone, Copy, Debug)]
+pub enum YuvMatrixCoefficients {
+    /// Identity matrix, interpret YUV as GBR.
+    Identity = 0,
+
+    /// BT.601 (aka. SDTV, aka. Rec.601)
+    ///
+    /// Wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion/>
+    Bt601 = 1,
+
+    /// BT.709 (aka. HDTV, aka. Rec.709)
+    ///
+    /// Wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion/>
+    ///
+    /// These are the same primaries we usually assume and use for all our rendering
+    /// since they are the same primaries used by sRGB.
+    /// <https://en.wikipedia.org/wiki/Rec._709#Relationship_to_sRGB/>
+    /// The OETF/EOTF function (<https://en.wikipedia.org/wiki/Transfer_functions_in_imaging>) is different,
+    /// but for all other purposes they are the same.
+    /// (The only reason for us to convert to optical units ("linear" instead of "gamma") is for
+    /// lighting & tonemapping where we typically start out with an sRGB image!)
+    Bt709 = 2,
+    //
+    // Not yet supported. These vary a lot more from the other two!
+    //
+    // /// BT.2020 (aka. PQ, aka. Rec.2020)
+    // ///
+    // /// Wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.2020_conversion/>
+    // BT2020_ConstantLuminance,
+    // BT2020_NonConstantLuminance,
+}
+
+impl std::fmt::Display for YuvMatrixCoefficients {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Identity => write!(f, "identity"),
+            Self::Bt601 => write!(f, "BT.601"),
+            Self::Bt709 => write!(f, "BT.709"),
+        }
+    }
+}
+
 /// Expected range of YUV values.
 ///
 /// Keep indices in sync with `yuv_converter.wgsl`
@@ -190,6 +256,15 @@ pub enum YuvRange {
 
     /// Use full range YUV with all components ranging from 0 to 255 for 8bit or higher otherwise.
     Full = 1,
+}
+
+impl std::fmt::Display for YuvRange {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Limited => write!(f, "limited"),
+            Self::Full => write!(f, "full"),
+        }
+    }
 }
 
 impl YuvPixelLayout {
@@ -253,8 +328,8 @@ mod gpu_data {
         /// Uses [`super::YuvPixelLayout`].
         pub yuv_layout: u32,
 
-        /// Uses [`super::ColorPrimaries`].
-        pub primaries: u32,
+        /// Uses [`super::YuvMatrixCoefficients`].
+        pub yuv_matrix_coefficients: u32,
 
         pub target_texture_size: [u32; 2],
 
@@ -296,7 +371,7 @@ impl YuvFormatConversionTask {
         ctx: &RenderContext,
         yuv_layout: YuvPixelLayout,
         yuv_range: YuvRange,
-        primaries: ColorPrimaries,
+        yuv_matrix_coefficients: YuvMatrixCoefficients,
         input_data: &GpuTexture,
         target_texture: &GpuTexture,
     ) -> Self {
@@ -308,7 +383,7 @@ impl YuvFormatConversionTask {
             format!("{target_label}_conversion").into(),
             gpu_data::UniformBuffer {
                 yuv_layout: yuv_layout as _,
-                primaries: primaries as _,
+                yuv_matrix_coefficients: yuv_matrix_coefficients as _,
                 target_texture_size: [
                     target_texture.creation_desc.size.width,
                     target_texture.creation_desc.size.height,

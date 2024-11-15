@@ -1,11 +1,12 @@
 use std::collections::BTreeMap;
 
 use ahash::HashSet;
-use nohash_hasher::IntMap;
+use nohash_hasher::{IntMap, IntSet};
 
 use re_chunk::RowId;
-use re_chunk_store::{ChunkStore, ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
+use re_chunk_store::{ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreSubscriber};
 use re_log_types::{EntityPath, EntityPathHash, EntityPathPart, TimeInt, Timeline};
+use re_query::StorageEngineReadGuard;
 use re_types_core::ComponentName;
 
 // ----------------------------------------------------------------------------
@@ -13,6 +14,7 @@ use re_types_core::ComponentName;
 /// A recursive, manually updated [`ChunkStoreSubscriber`] that maintains the entity hierarchy.
 ///
 /// The tree contains a list of subtrees, and so on recursively.
+#[derive(Debug)]
 pub struct EntityTree {
     /// Full path prefix to the root of this (sub)tree.
     pub path: EntityPath,
@@ -122,8 +124,13 @@ impl EntityTree {
     }
 
     /// Returns `true` if this entity has no children and no data.
-    pub fn is_empty(&self, chunk_store: &ChunkStore) -> bool {
-        self.children.is_empty() && !chunk_store.entity_has_data(&self.path)
+    ///
+    /// Checking for the absence of data is neither costly nor totally free: do it a few hundreds or
+    /// thousands times a frame and it will absolutely kill framerate.
+    /// Don't blindly call this on every existing entity every frame: use [`ChunkStoreEvent`]s to make
+    /// sure anything changed at all first.
+    pub fn check_is_empty(&self, engine: &StorageEngineReadGuard<'_>) -> bool {
+        self.children.is_empty() && !engine.store().entity_has_data(&self.path)
     }
 
     /// Updates the [`EntityTree`] by applying a batch of [`ChunkStoreEvent`]s,
@@ -156,7 +163,12 @@ impl EntityTree {
     }
 
     /// Updates the [`EntityTree`] by removing any entities which have no data and no children.
-    pub fn on_store_deletions(&mut self, data_store: &ChunkStore, events: &[ChunkStoreEvent]) {
+    pub fn on_store_deletions(
+        &mut self,
+        engine: &StorageEngineReadGuard<'_>,
+        entity_paths_with_deletions: &IntSet<EntityPath>,
+        events: &[ChunkStoreEvent],
+    ) {
         re_tracing::profile_function!();
 
         // We don't actually use the events for anything, we just want to
@@ -166,9 +178,22 @@ impl EntityTree {
 
         self.children.retain(|_, entity| {
             // this is placed first, because we'll only know if the child entity is empty after telling it to clear itself.
-            entity.on_store_deletions(data_store, events);
+            entity.on_store_deletions(engine, entity_paths_with_deletions, events);
 
-            !entity.is_empty(data_store)
+            let has_children = || !entity.children.is_empty();
+            // Checking for lack of data is not free, so make sure there is any reason to believe
+            // that any relevant data has changed first.
+            let has_recursive_deletion_events = || {
+                entity_paths_with_deletions
+                    .iter()
+                    .any(|removed_entity_path| removed_entity_path.starts_with(&entity.path))
+            };
+            let has_data = || engine.store().entity_has_data(&entity.path);
+
+            let should_be_removed =
+                !has_children() && (has_recursive_deletion_events() && !has_data());
+
+            !should_be_removed
         });
     }
 
@@ -230,5 +255,86 @@ impl EntityTree {
         }
 
         visit(self, &mut predicate)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::Arc;
+
+    use re_chunk::{Chunk, RowId};
+    use re_log_types::{example_components::MyPoint, EntityPath, StoreId, TimePoint, Timeline};
+
+    use crate::EntityDb;
+
+    #[test]
+    fn deleting_descendants() -> anyhow::Result<()> {
+        re_log::setup_logging();
+
+        let mut db = EntityDb::new(StoreId::random(re_log_types::StoreKind::Recording));
+
+        let timeline_frame = Timeline::new_sequence("frame");
+
+        let entity_path_parent: EntityPath = "parent".into();
+        let entity_path_child: EntityPath = "parent/child1".into();
+        let entity_path_grandchild: EntityPath = "parent/child1/grandchild".into();
+
+        assert!(db.tree().check_is_empty(&db.storage_engine()));
+
+        {
+            let row_id = RowId::new();
+            let timepoint = TimePoint::from_iter([(timeline_frame, 10)]);
+            let point = MyPoint::new(1.0, 2.0);
+            let chunk = Chunk::builder(entity_path_grandchild.clone())
+                .with_component_batches(row_id, timepoint, [&[point] as _])
+                .build()?;
+
+            db.add_chunk(&Arc::new(chunk))?;
+        }
+
+        {
+            let parent = db
+                .tree()
+                .find_first_child_recursive(|entity_path| *entity_path == entity_path_parent)
+                .unwrap();
+            let child = db
+                .tree()
+                .find_first_child_recursive(|entity_path| *entity_path == entity_path_child)
+                .unwrap();
+            let grandchild = db
+                .tree()
+                .find_first_child_recursive(|entity_path| *entity_path == entity_path_grandchild)
+                .unwrap();
+
+            assert_eq!(1, parent.children.len());
+            assert_eq!(1, child.children.len());
+            assert_eq!(0, grandchild.children.len());
+
+            assert!(!db.tree().check_is_empty(&db.storage_engine()));
+            assert!(!parent.check_is_empty(&db.storage_engine()));
+            assert!(!child.check_is_empty(&db.storage_engine()));
+            assert!(!grandchild.check_is_empty(&db.storage_engine()));
+        }
+
+        let _store_events = db.gc(&re_chunk_store::GarbageCollectionOptions::gc_everything());
+
+        {
+            let parent = db
+                .tree()
+                .find_first_child_recursive(|entity_path| *entity_path == entity_path_parent);
+            let child = db
+                .tree()
+                .find_first_child_recursive(|entity_path| *entity_path == entity_path_child);
+            let grandchild = db
+                .tree()
+                .find_first_child_recursive(|entity_path| *entity_path == entity_path_grandchild);
+
+            assert!(db.tree().check_is_empty(&db.storage_engine()));
+            assert!(parent.is_none());
+            assert!(child.is_none());
+            assert!(grandchild.is_none());
+        }
+
+        Ok(())
     }
 }

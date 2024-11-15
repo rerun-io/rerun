@@ -45,7 +45,7 @@ backtrace.workspace = true
 indent.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
-parking_lot.workspace = true
+parking_lot = { workspace = true, features = ["arc_lock"] }
 paste.workspace = true
 seq-macro.workspace = true
 thiserror.workspace = true

@@ -108,7 +108,7 @@ impl crate::DataUi for EntityDb {
                     chunk_max_bytes,
                     chunk_max_rows,
                     chunk_max_rows_if_unsorted,
-                } = self.store().config();
+                } = self.storage_engine().store().config();
 
                 ui.grid_left_hand_label("Compaction");
                 ui.label(format!(
@@ -163,10 +163,11 @@ impl crate::DataUi for EntityDb {
         });
 
         let hub = ctx.store_context.hub;
+        let store_id = Some(self.store_id());
 
         match self.store_kind() {
             StoreKind::Recording => {
-                if Some(self.store_id()) == hub.active_recording_id() {
+                if store_id.as_ref() == hub.active_recording_id() {
                     ui.add_space(8.0);
                     ui.label("This is the active recording");
                 }
@@ -177,9 +178,9 @@ impl crate::DataUi for EntityDb {
 
                 if is_active_app_id {
                     let is_default =
-                        hub.default_blueprint_id_for_app(active_app_id) == Some(self.store_id());
+                        hub.default_blueprint_id_for_app(active_app_id) == store_id.as_ref();
                     let is_active =
-                        hub.active_blueprint_id_for_app(active_app_id) == Some(self.store_id());
+                        hub.active_blueprint_id_for_app(active_app_id) == store_id.as_ref();
 
                     match (is_default, is_active) {
                         (false, false) => {}
@@ -190,7 +191,8 @@ impl crate::DataUi for EntityDb {
                             if let Some(active_blueprint) =
                                 hub.active_blueprint_for_app(active_app_id)
                             {
-                                if active_blueprint.cloned_from() == Some(self.store_id()) {
+                                if active_blueprint.cloned_from() == Some(self.store_id()).as_ref()
+                                {
                                     // The active blueprint is a clone of the selected blueprint.
                                     if self.latest_row_id() == active_blueprint.latest_row_id() {
                                         ui.label(

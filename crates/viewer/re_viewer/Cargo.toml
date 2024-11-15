@@ -36,6 +36,12 @@ default = ["analytics"]
 ## Enable telemetry using our analytics SDK.
 analytics = ["dep:re_analytics"]
 
+## Enable the map view
+map_view = ["dep:re_space_view_map"]
+
+## Enable the gRPC Rerun Data Platform data source.
+grpc = ["re_data_source/grpc", "dep:re_grpc_client"]
+
 
 [dependencies]
 # Internal:
@@ -73,17 +79,20 @@ re_space_view_text_log.workspace = true
 re_space_view_time_series.workspace = true
 re_time_panel.workspace = true
 re_tracing = { workspace = true, features = ["server"] }
-re_types.workspace = true
 re_types_blueprint.workspace = true
 re_types_core.workspace = true
+re_types.workspace = true
 re_ui.workspace = true
+re_video.workspace = true
 re_viewer_context.workspace = true
-re_viewport.workspace = true
 re_viewport_blueprint.workspace = true
+re_viewport.workspace = true
 re_ws_comms = { workspace = true, features = ["client"] }
 
 # Internal (optional):
 re_analytics = { workspace = true, optional = true }
+re_grpc_client = { workspace = true, optional = true }
+re_space_view_map = { workspace = true, optional = true }
 
 
 # External
@@ -111,6 +120,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 serde-wasm-bindgen.workspace = true
 thiserror.workspace = true
+uuid.workspace = true
 web-time.workspace = true
 wgpu.workspace = true
 

@@ -8,9 +8,14 @@ A standardized media type (RFC2046, formerly known as MIME types), encoded as a 
 The complete reference of officially registered media types is maintained by the IANA and can be
 consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
 
-## Fields
+## Rerun datatype
+[`Utf8`](../datatypes/utf8.md)
 
-* value: [`Utf8`](../datatypes/utf8.md)
+
+## Arrow datatype
+```
+utf8
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `MediaType`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1MediaType.html)
@@ -21,6 +26,6 @@ consulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.
 ## Used by
 
 * [`Asset3D`](../archetypes/asset3d.md)
-* [`AssetVideo`](../archetypes/asset_video.md?speculative-link)
+* [`AssetVideo`](../archetypes/asset_video.md)
 * [`EncodedImage`](../archetypes/encoded_image.md)
 * [`TextDocument`](../archetypes/text_document.md)

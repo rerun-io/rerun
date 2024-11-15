@@ -1,12 +1,11 @@
 use re_data_ui::item_ui;
 use re_renderer::{external::wgpu, renderer::ColormappedTexture, resource_managers::GpuTexture2D};
+use re_space_view::AnnotationSceneContext;
 use re_types::{datatypes::ColorModel, image::ImageKind, tensor_data::TensorElement};
 use re_ui::UiExt as _;
 use re_viewer_context::{gpu_bridge, Annotations, ImageInfo, ViewQuery, ViewerContext};
 
-use crate::{
-    contexts::AnnotationSceneContext, view_kind::SpatialSpaceViewKind, PickableRectSourceData,
-};
+use crate::{view_kind::SpatialSpaceViewKind, PickableRectSourceData};
 
 pub struct PickedPixelInfo {
     pub source_data: PickableRectSourceData,
@@ -179,7 +178,7 @@ pub fn show_zoomed_image_region(
         interaction_id,
         center_texel,
     ) {
-        ui.error_label(&err.to_string());
+        ui.error_with_details_on_hover(&err.to_string());
     }
 }
 
@@ -582,6 +581,7 @@ fn pixel_value_string_from_gpu_texture(
             buffer_info,
         }),
     );
+    drop(readback_belt);
 
     {
         let mut encoder = render_ctx.active_frame.before_view_builder_encoder.lock();

@@ -4,7 +4,6 @@
 
 from __future__ import annotations
 
-import multiprocessing
 import os
 import subprocess
 
@@ -56,53 +55,6 @@ def roundtrip_env(*, save_path: str | None = None) -> dict[str, str]:
         env["_RERUN_TEST_FORCE_SAVE"] = save_path
 
     return env
-
-
-def cmake_configure(release: bool, env: dict[str, str]) -> None:
-    os.makedirs(cpp_build_dir, exist_ok=True)
-    build_type = "Debug"
-    if release:
-        build_type = "Release"
-    # TODO(andreas): We should pixi for the prepare so we can ensure we have build tooling ready
-    configure_args = [
-        "pixi",
-        "run",
-        "-e",
-        "cpp",
-        "cmake",
-        "-B",
-        cpp_build_dir,
-        f"-DCMAKE_BUILD_TYPE={build_type}",
-        "-DCMAKE_COMPILE_WARNING_AS_ERROR=ON",
-        ".",
-    ]
-    run(
-        configure_args,
-        env=env,
-    )
-
-
-def cmake_build(target: str, release: bool) -> None:
-    config = "Debug"
-    if release:
-        config = "Release"
-
-    build_process_args = [
-        "pixi",
-        "run",
-        "-e",
-        "cpp",
-        "cmake",
-        "--build",
-        cpp_build_dir,
-        "--config",
-        config,
-        "--target",
-        target,
-        "--parallel",
-        str(multiprocessing.cpu_count()),
-    ]
-    run(build_process_args)
 
 
 def run_comparison(rrd0_path: str, rrd1_path: str, full_dump: bool) -> None:

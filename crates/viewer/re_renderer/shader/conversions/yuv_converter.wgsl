@@ -3,7 +3,7 @@
 
 struct UniformBuffer {
     yuv_layout: u32,
-    primaries: u32,
+    yuv_matrix_coefficients: u32,
     target_texture_size: vec2u,
     yuv_range: u32,
 
@@ -24,9 +24,10 @@ const YUV_LAYOUT_Y_UV420 = 100u;
 const YUV_LAYOUT_YUYV422 = 200u;
 const YUV_LAYOUT_Y400 = 300u;
 
-// see `enum ColorPrimaries`.
-const PRIMARIES_BT601 = 0u;
-const PRIMARIES_BT709 = 1u;
+// see `enum YuvMatrixCoefficients`.
+const COEFFS_IDENTITY = 0u;
+const COEFFS_BT601 = 1u;
+const COEFFS_BT709 = 2u;
 
 // see `enum YuvRange`.
 const YUV_RANGE_LIMITED = 0u;
@@ -38,7 +39,7 @@ const YUV_RANGE_FULL = 1u;
 /// This conversion mirrors the function in `crates/store/re_types/src/datatypes/tensor_data_ext.rs`
 ///
 /// Specifying the color standard should be exposed in the future [#3541](https://github.com/rerun-io/rerun/pull/3541)
-fn srgb_from_yuv(yuv: vec3f, primaries: u32, range: u32) -> vec3f {
+fn srgb_from_yuv(yuv: vec3f, yuv_matrix_coefficients: u32, range: u32) -> vec3f {
     // rescale YUV values
     //
     // This is what is called "limited range" and is the most common case.
@@ -72,19 +73,24 @@ fn srgb_from_yuv(yuv: vec3f, primaries: u32, range: u32) -> vec3f {
 
     var rgb: vec3f;
 
-    switch (primaries) {
+    switch (yuv_matrix_coefficients) {
+        case COEFFS_IDENTITY: {
+            // u & v have a range from -0.5 to 0.5. Bring them back to 0-1.
+            rgb = vec3f(v + 0.5, y, u + 0.5);
+        }
+
         // BT.601 (aka. SDTV, aka. Rec.601). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion
         // Also note according to https://en.wikipedia.org/wiki/SRGB#sYCC_extended-gamut_transformation
         // > Although the RGB color primaries are based on BT.709,
         // > the equations for transformation from sRGB to sYCC and vice versa are based on BT.601.
-        case PRIMARIES_BT601: {
+        case COEFFS_BT601: {
             rgb.r = y + 1.402 * v;
             rgb.g = y - 0.344 * u - 0.714 * v;
             rgb.b = y + 1.772 * u;
         }
 
         // BT.709 (aka. HDTV, aka. Rec.709). wiki: https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion
-        case PRIMARIES_BT709: {
+        case COEFFS_BT709: {
             rgb.r = y + 1.575 * v;
             rgb.g = y - 0.187 * u - 0.468 * v;
             rgb.b = y + 1.856 * u;
@@ -187,7 +193,7 @@ fn fs_main(in: FragmentInput) -> @location(0) vec4f {
     let coords = vec2u(vec2f(uniform_buffer.target_texture_size) * in.texcoord);
 
     let yuv = sample_yuv(uniform_buffer.yuv_layout, input_texture, coords, uniform_buffer.target_texture_size);
-    let rgb = srgb_from_yuv(yuv, uniform_buffer.primaries, uniform_buffer.yuv_range);
+    let rgb = srgb_from_yuv(yuv, uniform_buffer.yuv_matrix_coefficients, uniform_buffer.yuv_range);
 
     return vec4f(rgb, 1.0);
 }

@@ -26,7 +26,7 @@ pub fn visualizer_ui(
         .lookup_result_by_path(entity_path)
         .cloned()
     else {
-        ui.error_label("Entity not found in view.");
+        ui.error_label("Entity not found in view");
         return;
     };
     let active_visualizers: Vec<_> = data_result.visualizers.iter().sorted().copied().collect();
@@ -205,16 +205,9 @@ fn visualizer_components(
         let result_default = query_result.defaults.get(&component_name);
         let raw_default = non_empty_component_batch_raw(result_default, &component_name);
 
-        let raw_fallback = match visualizer
+        let raw_fallback = visualizer
             .fallback_provider()
-            .fallback_for(&query_ctx, component_name)
-        {
-            Ok(fallback) => fallback,
-            Err(err) => {
-                re_log::warn_once!("Failed to get fallback for component {component_name}: {err}");
-                continue; // TODO(andreas): Don't give up on the entire component because of this. Show an error instead.
-            }
-        };
+            .fallback_for(&query_ctx, component_name);
 
         // Determine where the final value comes from.
         // Putting this into an enum makes it easier to reason about the next steps.
@@ -561,7 +554,7 @@ fn available_inactive_visualizers(
     let applicable_entities_per_visualizer = ctx
         .viewer_ctx
         .space_view_class_registry
-        .applicable_entities_for_visualizer_systems(entity_db.store_id());
+        .applicable_entities_for_visualizer_systems(&entity_db.store_id());
 
     let visualizable_entities = space_view
         .class(ctx.viewer_ctx.space_view_class_registry)

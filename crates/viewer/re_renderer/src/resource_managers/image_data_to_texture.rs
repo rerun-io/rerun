@@ -1,49 +1,13 @@
-use super::yuv_converter::{YuvFormatConversionTask, YuvPixelLayout, YuvRange};
+//! For an overview of image data interpretation check `re_video`'s decoder docs!
+
+use super::yuv_converter::{
+    YuvFormatConversionTask, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
+};
 use crate::{
     renderer::DrawError,
     wgpu_resources::{GpuTexture, TextureDesc},
     DebugLabel, RenderContext, Texture2DBufferInfo,
 };
-
-/// Type of color primaries a given image is in.
-///
-/// This applies both to YUV and RGB formats, but if not specified otherwise
-/// we assume BT.709 primaries for all RGB(A) 8bits per channel content (details below on [`ColorPrimaries::Bt709`]).
-/// Since with YUV content the color space is often less clear, we always explicitly
-/// specify it.
-///
-/// Ffmpeg's documentation has a short & good overview of the relationship of YUV & color primaries:
-/// <https://trac.ffmpeg.org/wiki/colorspace#WhatiscolorspaceWhyshouldwecare/>
-///
-/// Values need to be kept in sync with `yuv_converter.wgsl`
-#[derive(Clone, Copy, Debug)]
-pub enum ColorPrimaries {
-    /// BT.601 (aka. SDTV, aka. Rec.601)
-    ///
-    /// Wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.601_conversion/>
-    Bt601 = 0,
-
-    /// BT.709 (aka. HDTV, aka. Rec.709)
-    ///
-    /// Wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.709_conversion/>
-    ///
-    /// These are the same primaries we usually assume and use for all our rendering
-    /// since they are the same primaries used by sRGB.
-    /// <https://en.wikipedia.org/wiki/Rec._709#Relationship_to_sRGB/>
-    /// The OETF/EOTF function (<https://en.wikipedia.org/wiki/Transfer_functions_in_imaging/>) is different,
-    /// but for all other purposes they are the same.
-    /// (The only reason for us to convert to optical units ("linear" instead of "gamma") is for
-    /// lighting & tonemapping where we typically start out with an sRGB image!)
-    Bt709 = 1,
-    //
-    // Not yet supported. These vary a lot more from the other two!
-    //
-    // /// BT.2020 (aka. PQ, aka. Rec.2020)
-    // ///
-    // /// Wiki: <https://en.wikipedia.org/wiki/YCbCr#ITU-R_BT.2020_conversion/>
-    // BT2020_ConstantLuminance,
-    // BT2020_NonConstantLuminance,
-}
 
 /// Image data format that can be converted to a wgpu texture.
 // TODO(andreas): Right now this combines both color space and pixel format. Consider separating them similar to how we do on user facing APIs.
@@ -59,9 +23,11 @@ pub enum SourceImageDataFormat {
     WgpuCompatible(wgpu::TextureFormat),
 
     /// YUV (== `YCbCr`) formats, typically using chroma downsampling.
+    ///
+    /// Does not handle chroma sample locations.
     Yuv {
         layout: YuvPixelLayout,
-        primaries: ColorPrimaries,
+        coefficients: YuvMatrixCoefficients,
         range: YuvRange,
     },
     //
@@ -351,13 +317,13 @@ pub fn transfer_image_data_to_texture(
         }
         SourceImageDataFormat::Yuv {
             layout,
-            primaries,
+            coefficients,
             range,
         } => YuvFormatConversionTask::new(
             ctx,
             layout,
             range,
-            primaries,
+            coefficients,
             &data_texture,
             target_texture,
         ),

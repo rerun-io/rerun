@@ -131,8 +131,7 @@ impl SpaceViewBlueprint {
     ) -> Option<Self> {
         re_tracing::profile_function!();
 
-        let results = blueprint_db.query_caches().latest_at(
-            blueprint_db.store(),
+        let results = blueprint_db.storage_engine().cache().latest_at(
             query,
             &id.as_entity_path(),
             blueprint_archetypes::SpaceViewBlueprint::all_components()
@@ -241,6 +240,7 @@ impl SpaceViewBlueprint {
     pub fn duplicate(&self, store_context: &StoreContext<'_>, query: &LatestAtQuery) -> Self {
         let mut pending_writes = Vec::new();
         let blueprint = store_context.blueprint;
+        let blueprint_engine = blueprint.storage_engine();
 
         let current_path = self.entity_path();
         let new_id = SpaceViewId::random();
@@ -260,7 +260,7 @@ impl SpaceViewBlueprint {
                     .with_row(
                         RowId::new(),
                         store_context.blueprint_timepoint_for_writes(),
-                        blueprint
+                        blueprint_engine
                             .store()
                             .all_components_on_timeline(&query.timeline(), path)
                             .into_iter()
@@ -273,9 +273,9 @@ impl SpaceViewBlueprint {
                                         .contains(component)
                             })
                             .filter_map(|component_name| {
-                                let array = blueprint
-                                    .query_caches()
-                                    .latest_at(blueprint.store(), query, path, [component_name])
+                                let array = blueprint_engine
+                                    .cache()
+                                    .latest_at(query, path, [component_name])
                                     .component_batch_raw(&component_name);
                                 array.map(|array| (component_name, array))
                             }),
@@ -459,7 +459,7 @@ mod tests {
         example_components::{MyColor, MyLabel, MyPoint},
         StoreId, StoreKind, TimePoint,
     };
-    use re_types::{ComponentBatch, ComponentName, Loggable as _};
+    use re_types::{Component as _, ComponentName};
     use re_viewer_context::{
         test_context::TestContext, ApplicableEntities, DataResult, IndicatedEntities, OverridePath,
         PerVisualizer, StoreContext, VisualizableEntities,
@@ -534,8 +534,8 @@ mod tests {
         );
 
         struct Scenario {
-            recursive_overrides: Vec<(EntityPath, Box<dyn ComponentBatch>)>,
-            individual_overrides: Vec<(EntityPath, Box<dyn ComponentBatch>)>,
+            recursive_overrides: Vec<(EntityPath, Box<dyn re_types_core::ComponentBatch>)>,
+            individual_overrides: Vec<(EntityPath, Box<dyn re_types_core::ComponentBatch>)>,
             expected_overrides: HashMap<EntityPath, HashMap<ComponentName, EntityPath>>,
         }
 
@@ -704,17 +704,18 @@ mod tests {
             // Reset blueprint store for each scenario.
             test_ctx.blueprint_store = EntityDb::new(StoreId::random(StoreKind::Blueprint));
 
-            let mut add_to_blueprint = |path: &EntityPath, batch: &dyn ComponentBatch| {
-                let chunk = Chunk::builder(path.clone())
-                    .with_component_batch(RowId::new(), TimePoint::default(), batch as _)
-                    .build()
-                    .unwrap();
+            let mut add_to_blueprint =
+                |path: &EntityPath, batch: &dyn re_types_core::ComponentBatch| {
+                    let chunk = Chunk::builder(path.clone())
+                        .with_component_batch(RowId::new(), TimePoint::default(), batch as _)
+                        .build()
+                        .unwrap();
 
-                test_ctx
-                    .blueprint_store
-                    .add_chunk(&Arc::new(chunk))
-                    .unwrap();
-            };
+                    test_ctx
+                        .blueprint_store
+                        .add_chunk(&Arc::new(chunk))
+                        .unwrap();
+                };
 
             // log individual and override components as instructed.
             for (entity_path, batch) in recursive_overrides {

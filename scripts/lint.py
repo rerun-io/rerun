@@ -3,7 +3,8 @@
 """
 Runs custom linting on our code.
 
-Adding "NOLINT" to any line makes the linter ignore that line.
+Adding "NOLINT" to any line makes the linter ignore that line. Adding a pair of "NOLINT_START" and "NOLINT_END" makes
+the linter ignore these lines, as well as all lines in between.
 """
 
 from __future__ import annotations
@@ -677,6 +678,7 @@ force_capitalized = [
     "CI",
     "Colab",
     "Google",
+    "gRPC",
     "GUI",
     "GUIs",
     "July",
@@ -687,8 +689,10 @@ force_capitalized = [
     "ML",
     "Numpy",
     "nuScenes",
-    "Pixi",
+    "Pandas",
     "PDF",
+    "Pixi",
+    "Polars",
     "Python",
     "Q1",
     "Q2",
@@ -788,6 +792,10 @@ def fix_header_casing(s: str) -> str:
         if word == "":
             continue
 
+        if word == "I":
+            new_words.append(word)
+            continue
+
         if is_emoji(word):
             new_words.append(word)
             continue
@@ -849,7 +857,7 @@ def fix_enforced_upper_case(s: str) -> str:
     return "".join(new_words)
 
 
-def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[str]]:
+def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[str]]:
     """Only for .md files."""
 
     errors = []
@@ -863,12 +871,12 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
     in_code_of_conduct = filepath.endswith("CODE_OF_CONDUCT.md")
 
     if in_code_of_conduct:
-        return errors, lines_in
+        return errors, source.lines
 
     in_code_block = False
     in_frontmatter = False
     in_metadata = False
-    for line_nr, line in enumerate(lines_in):
+    for line_nr, line in enumerate(source.lines):
         line_nr = line_nr + 1
 
         if line.strip().startswith("```"):
@@ -881,7 +889,7 @@ def lint_markdown(filepath: str, lines_in: list[str]) -> tuple[list[str], list[s
         if in_metadata and line.startswith("-->"):
             in_metadata = False
 
-        if not in_code_block:
+        if not in_code_block and not source.should_ignore(line_nr):
             if not in_metadata:
                 # Check the casing on markdown headers
                 if m := re.match(r"(\#+ )(.*)", line):
@@ -973,7 +981,19 @@ class SourceFile:
         self.content = "".join(self.lines)
 
         # gather lines with a `NOLINT` marker
-        self.no_lints = {i for i, line in enumerate(self.lines) if "NOLINT" in line}
+        self.nolints = set()
+        is_in_nolint_block = False
+        for i, line in enumerate(self.lines):
+            if "NOLINT" in line:
+                self.nolints.add(i)
+
+            if "NOLINT_START" in line:
+                is_in_nolint_block = True
+
+            if is_in_nolint_block:
+                self.nolints.add(i)
+                if "NOLINT_END" in line:
+                    is_in_nolint_block = False
 
     def rewrite(self, new_lines: list[str]) -> None:
         """Rewrite the contents of the file."""
@@ -993,7 +1013,7 @@ class SourceFile:
 
         if to_line is None:
             to_line = from_line
-        return any(i in self.no_lints for i in range(from_line - 1, to_line + 1))
+        return any(i in self.nolints for i in range(from_line - 1, to_line + 1))
 
     def should_ignore_index(self, start_idx: int, end_idx: int | None = None) -> bool:
         """Same as `should_ignore` but takes 0-based indices instead of line numbers."""
@@ -1022,6 +1042,9 @@ def lint_file(filepath: str, args: Any) -> int:
 
     prev_line = None
     for line_nr, line in enumerate(source.lines):
+        if source.should_ignore(line_nr):
+            continue
+
         if line == "" or line[-1] != "\n":
             error = "Missing newline at end of file"
         else:
@@ -1049,7 +1072,7 @@ def lint_file(filepath: str, args: Any) -> int:
             source.rewrite(lines_out)
 
     if filepath.endswith(".md"):
-        errors, lines_out = lint_markdown(filepath, source.lines)
+        errors, lines_out = lint_markdown(filepath, source)
 
         for error in errors:
             print(source.error(error))
@@ -1181,7 +1204,12 @@ def main() -> None:
         "./.pytest_cache",
         "./CODE_STYLE.md",
         "./crates/build/re_types_builder/src/reflection.rs",  # auto-generated
+        "./crates/store/re_protos/src/v0/rerun.remote_store.v0.rs",  # auto-generated
+        "./docs/content/concepts/app-model.md",  # this really needs custom letter casing
         "./docs/content/reference/cli.md",  # auto-generated
+        "./docs/snippets/all/tutorials/custom-application-id.cpp",  # nuh-uh, I don't want rerun_example_ here
+        "./docs/snippets/all/tutorials/custom-application-id.py",  # nuh-uh, I don't want rerun_example_ here
+        "./docs/snippets/all/tutorials/custom-application-id.rs",  # nuh-uh, I don't want rerun_example_ here
         "./examples/assets",
         "./examples/python/detect_and_track_objects/cache/version.txt",
         "./examples/python/objectron/objectron/proto/",  # auto-generated

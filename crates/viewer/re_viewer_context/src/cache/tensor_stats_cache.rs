@@ -3,7 +3,7 @@ use itertools::Either;
 
 use re_chunk::RowId;
 use re_chunk_store::ChunkStoreEvent;
-use re_types::{datatypes::TensorData, Loggable as _};
+use re_types::{datatypes::TensorData, Component as _};
 
 use crate::{Cache, TensorStats};
 

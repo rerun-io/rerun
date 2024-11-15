@@ -77,7 +77,7 @@ pub struct StartupOptions {
     ///
     /// By default uses the last provided setting, which is `auto` if never configured.
     /// This also can be changed in the viewer's option menu.
-    pub video_decoder_hw_acceleration: Option<re_renderer::video::DecodeHardwareAcceleration>,
+    pub video_decoder_hw_acceleration: Option<re_video::decode::DecodeHardwareAcceleration>,
 
     /// Fullscreen is handled by JS on web.
     ///
@@ -146,6 +146,14 @@ const MIN_ZOOM_FACTOR: f32 = 0.2;
 #[cfg(not(target_arch = "wasm32"))]
 const MAX_ZOOM_FACTOR: f32 = 5.0;
 
+#[cfg(target_arch = "wasm32")]
+struct PendingFilePromise {
+    recommended_application_id: Option<ApplicationId>,
+    recommended_recording_id: Option<re_log_types::StoreId>,
+    force_store_info: bool,
+    promise: poll_promise::Promise<Vec<re_data_source::FileContents>>,
+}
+
 /// The Rerun Viewer as an [`eframe`] application.
 pub struct App {
     build_info: re_build_info::BuildInfo,
@@ -169,7 +177,7 @@ pub struct App {
     rx: ReceiveSet<LogMsg>,
 
     #[cfg(target_arch = "wasm32")]
-    open_files_promise: Option<poll_promise::Promise<Vec<re_data_source::FileContents>>>,
+    open_files_promise: Option<PendingFilePromise>,
 
     /// What is serialized
     pub(crate) state: AppState,
@@ -446,7 +454,9 @@ impl App {
                 // That's the case of `SmartChannelSource::RrdHttpStream`.
                 // TODO(emilk): exactly what things get kept and what gets cleared?
                 self.rx.retain(|r| match r.source() {
-                    SmartChannelSource::File(_) | SmartChannelSource::RrdHttpStream { .. } => false,
+                    SmartChannelSource::File(_)
+                    | SmartChannelSource::RrdHttpStream { .. }
+                    | SmartChannelSource::RerunGrpcStream { .. } => false,
 
                     SmartChannelSource::WsClient { .. }
                     | SmartChannelSource::JsChannel { .. }
@@ -504,25 +514,34 @@ impl App {
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
-                // We only want to update the blueprint if the "inspect blueprint timeline" mode is
-                // disabled. This is because the blueprint inspector allows you to change the
-                // blueprint query time, which in turn updates the displayed state of the UI itself.
-                // This means any updates we receive while in this mode may be relative to a historical
-                // blueprint state and would conflict with the current true blueprint state.
+                let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
 
-                // TODO(jleibs): When the blueprint is in "follow-mode" we should actually be able
-                // to apply updates here, but this needs more validation and testing to be safe.
-                if !self.state.app_options.inspect_blueprint_timeline {
-                    let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
-                    for chunk in updates {
-                        match blueprint_db.add_chunk(&Arc::new(chunk)) {
-                            Ok(_store_events) => {}
-                            Err(err) => {
-                                re_log::warn_once!("Failed to store blueprint delta: {err}");
-                            }
+                if self.state.app_options.inspect_blueprint_timeline {
+                    // We may we viewing a historical blueprint, and doing an edit based on that.
+                    // We therefor throw away everything after the currently viewed time (like an undo)
+                    let last_kept_event_time = self.state.blueprint_query_for_viewer().at();
+                    let first_dropped_event_time = last_kept_event_time.inc();
+                    blueprint_db.drop_time_range(
+                        &re_viewer_context::blueprint_timeline(),
+                        re_log_types::ResolvedTimeRange::new(
+                            first_dropped_event_time,
+                            re_chunk::TimeInt::MAX,
+                        ),
+                    );
+                }
+
+                for chunk in updates {
+                    match blueprint_db.add_chunk(&Arc::new(chunk)) {
+                        Ok(_store_events) => {}
+                        Err(err) => {
+                            re_log::warn_once!("Failed to store blueprint delta: {err}");
                         }
                     }
                 }
+
+                // If we inspect the timeline, make sure we show the latest state:
+                let mut time_ctrl = self.state.blueprint_cfg.time_ctrl.write();
+                time_ctrl.set_play_state(blueprint_db.times_per_timeline(), PlayState::Following);
             }
             SystemCommand::DropEntity(blueprint_id, entity_path) => {
                 let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
@@ -536,6 +555,12 @@ impl App {
 
             SystemCommand::SetSelection(item) => {
                 self.state.selection_state.set_selection(item);
+            }
+
+            SystemCommand::SetActiveTimeline { rec_id, timeline } => {
+                if let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) {
+                    rec_cfg.time_ctrl.write().set_timeline(timeline);
+                }
             }
 
             SystemCommand::SetFocus(item) => {
@@ -558,6 +583,34 @@ impl App {
         store_context: Option<&StoreContext<'_>>,
         cmd: UICommand,
     ) {
+        let mut force_store_info = false;
+        let active_application_id = store_context
+            .and_then(|ctx| {
+                ctx.hub
+                    .active_app()
+                    // Don't redirect data to the welcome screen.
+                    .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
+                    .cloned()
+            })
+            // If we don't have any application ID to recommend (which means we are on the welcome screen),
+            // then just generate a new one using a UUID.
+            .or_else(|| Some(uuid::Uuid::new_v4().to_string().into()));
+        let active_recording_id = store_context
+            .and_then(|ctx| ctx.hub.active_recording_id().cloned())
+            .or_else(|| {
+                // When we're on the welcome screen, there is no recording ID to recommend.
+                // But we want one, otherwise multiple things being dropped simultaneously on the
+                // welcome screen would end up in different recordings!
+
+                // We're creating a recording just-in-time, directly from the viewer.
+                // We need those store infos or the data will just be silently ignored.
+                force_store_info = true;
+
+                // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
+                // this can only be a recording.
+                Some(re_log_types::StoreId::random(StoreKind::Recording))
+            });
+
         match cmd {
             UICommand::SaveRecording => {
                 if let Err(err) = save_recording(self, store_context, None) {
@@ -585,7 +638,11 @@ impl App {
                 for file_path in open_file_dialog_native() {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
-                            FileSource::FileDialog,
+                            FileSource::FileDialog {
+                                recommended_application_id: None,
+                                recommended_recording_id: None,
+                                force_store_info,
+                            },
                             file_path,
                         )));
                 }
@@ -593,12 +650,53 @@ impl App {
             #[cfg(target_arch = "wasm32")]
             UICommand::Open => {
                 let egui_ctx = egui_ctx.clone();
-                self.open_files_promise = Some(poll_promise::Promise::spawn_local(async move {
+
+                let promise = poll_promise::Promise::spawn_local(async move {
                     let file = async_open_rrd_dialog().await;
                     egui_ctx.request_repaint(); // Wake ui thread
                     file
-                }));
+                });
+
+                self.open_files_promise = Some(PendingFilePromise {
+                    recommended_application_id: None,
+                    recommended_recording_id: None,
+                    force_store_info,
+                    promise,
+                });
             }
+
+            #[cfg(not(target_arch = "wasm32"))]
+            UICommand::Import => {
+                for file_path in open_file_dialog_native() {
+                    self.command_sender
+                        .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
+                            FileSource::FileDialog {
+                                recommended_application_id: active_application_id.clone(),
+                                recommended_recording_id: active_recording_id.clone(),
+                                force_store_info,
+                            },
+                            file_path,
+                        )));
+                }
+            }
+            #[cfg(target_arch = "wasm32")]
+            UICommand::Import => {
+                let egui_ctx = egui_ctx.clone();
+
+                let promise = poll_promise::Promise::spawn_local(async move {
+                    let file = async_open_rrd_dialog().await;
+                    egui_ctx.request_repaint(); // Wake ui thread
+                    file
+                });
+
+                self.open_files_promise = Some(PendingFilePromise {
+                    recommended_application_id: active_application_id.clone(),
+                    recommended_recording_id: active_recording_id.clone(),
+                    force_store_info,
+                    promise,
+                });
+            }
+
             UICommand::CloseCurrentRecording => {
                 let cur_rec = store_context.map(|ctx| ctx.recording.store_id());
                 if let Some(cur_rec) = cur_rec {
@@ -675,6 +773,10 @@ impl App {
                 self.toggle_fullscreen();
             }
 
+            UICommand::Settings => {
+                self.state.show_settings_ui = true;
+            }
+
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::ZoomIn => {
                 let mut zoom_factor = egui_ctx.zoom_factor();
@@ -729,7 +831,7 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintChunkStore => {
                 if let Some(ctx) = store_context {
-                    let text = format!("{}", ctx.recording.store());
+                    let text = format!("{}", ctx.recording.storage_engine().store());
                     egui_ctx.output_mut(|o| o.copied_text = text.clone());
                     println!("{text}");
                 }
@@ -737,21 +839,15 @@ impl App {
             #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintBlueprintStore => {
                 if let Some(ctx) = store_context {
-                    let text = format!("{}", ctx.blueprint.store());
+                    let text = format!("{}", ctx.blueprint.storage_engine().store());
                     egui_ctx.output_mut(|o| o.copied_text = text.clone());
                     println!("{text}");
                 }
             }
             #[cfg(not(target_arch = "wasm32"))]
-            UICommand::ClearPrimaryCache => {
-                if let Some(ctx) = store_context {
-                    ctx.recording.query_caches().clear();
-                }
-            }
-            #[cfg(not(target_arch = "wasm32"))]
             UICommand::PrintPrimaryCache => {
                 if let Some(ctx) = store_context {
-                    let text = format!("{:?}", ctx.recording.query_caches());
+                    let text = format!("{:?}", ctx.recording.storage_engine().cache());
                     egui_ctx.output_mut(|o| o.copied_text = text.clone());
                     println!("{text}");
                 }
@@ -795,7 +891,7 @@ impl App {
             return;
         };
         let rec_id = entity_db.store_id();
-        let Some(rec_cfg) = self.state.recording_config_mut(rec_id) else {
+        let Some(rec_cfg) = self.state.recording_config_mut(&rec_id) else {
             return;
         };
         let time_ctrl = rec_cfg.time_ctrl.get_mut();
@@ -1093,6 +1189,8 @@ impl App {
                     if let Some(caches) = store_hub.active_caches() {
                         caches.on_store_events(&store_events);
                     }
+
+                    self.validate_loaded_events(&store_events);
                 }
 
                 Err(err) => {
@@ -1109,7 +1207,7 @@ impl App {
                     // updates the app-id when changing the recording.
                     match store_id.kind {
                         StoreKind::Recording => {
-                            re_log::debug!("Opening a new recording: {store_id}");
+                            re_log::trace!("Opening a new recording: '{store_id}'");
                             store_hub.set_active_recording_id(store_id.clone());
 
                             // Also select the new recording:
@@ -1145,7 +1243,7 @@ impl App {
                     }
                     StoreKind::Blueprint => {
                         if let Some(info) = entity_db.store_info() {
-                            re_log::debug!(
+                            re_log::trace!(
                                 "Activating blueprint that was loaded from {channel_source}"
                             );
                             let app_id = info.application_id.clone();
@@ -1192,6 +1290,32 @@ impl App {
             if start.elapsed() > web_time::Duration::from_millis(10) {
                 egui_ctx.request_repaint(); // make sure we keep receiving messages asap
                 break; // don't block the main thread for too long
+            }
+        }
+    }
+
+    /// After loading some data; check if the loaded data makes sense.
+    fn validate_loaded_events(&self, store_events: &[re_chunk_store::ChunkStoreEvent]) {
+        re_tracing::profile_function!();
+
+        for event in store_events {
+            let chunk = &event.diff.chunk;
+            for component in chunk.component_names() {
+                if let Some(archetype_name) = component.indicator_component_archetype() {
+                    if let Some(archetype) = self
+                        .reflection
+                        .archetype_reflection_from_short_name(&archetype_name)
+                    {
+                        for &view_type in archetype.view_types {
+                            // TODO(#7876): remove once `map_view` feature is gone
+                            if !cfg!(feature = "map_view") && view_type == "MapView" {
+                                re_log::warn_once!("Found map-related archetype, but viewer was not compiled with the `map_view` feature.");
+                            }
+                        }
+                    } else {
+                        re_log::debug_once!("Unknown archetype: {archetype_name}");
+                    }
+                }
             }
         }
     }
@@ -1280,32 +1404,78 @@ impl App {
             .and_then(|store_hub| store_hub.active_recording())
     }
 
-    fn handle_dropping_files(&mut self, egui_ctx: &egui::Context) {
+    // NOTE: Relying on `self` is dangerous, as this is called during a time where some internal
+    // fields may have been temporarily `take()`n out. Keep this a static method.
+    fn handle_dropping_files(
+        egui_ctx: &egui::Context,
+        store_ctx: Option<&StoreContext<'_>>,
+        command_sender: &CommandSender,
+    ) {
         preview_files_being_dropped(egui_ctx);
 
         let dropped_files = egui_ctx.input_mut(|i| std::mem::take(&mut i.raw.dropped_files));
 
+        if dropped_files.is_empty() {
+            return;
+        }
+
+        let mut force_store_info = false;
+        let active_application_id = store_ctx
+            .and_then(|ctx| {
+                ctx.hub
+                    .active_app()
+                    // Don't redirect data to the welcome screen.
+                    .filter(|&app_id| app_id != &StoreHub::welcome_screen_app_id())
+                    .cloned()
+            })
+            // If we don't have any application ID to recommend (which means we are on the welcome screen),
+            // then just generate a new one using a UUID.
+            .or_else(|| Some(uuid::Uuid::new_v4().to_string().into()));
+        let active_recording_id = store_ctx
+            .and_then(|ctx| ctx.hub.active_recording_id().cloned())
+            .or_else(|| {
+                // When we're on the welcome screen, there is no recording ID to recommend.
+                // But we want one, otherwise multiple things being dropped simultaneously on the
+                // welcome screen would end up in different recordings!
+
+                // We're creating a recording just-in-time, directly from the viewer.
+                // We need those store infos or the data will just be silently ignored.
+                force_store_info = true;
+
+                // NOTE: We don't override blueprints' store IDs anyhow, so it is sound to assume that
+                // this can only be a recording.
+                Some(re_log_types::StoreId::random(StoreKind::Recording))
+            });
+
         for file in dropped_files {
             if let Some(bytes) = file.bytes {
                 // This is what we get on Web.
-                self.command_sender
-                    .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
-                        FileSource::DragAndDrop,
+                command_sender.send_system(SystemCommand::LoadDataSource(
+                    DataSource::FileContents(
+                        FileSource::DragAndDrop {
+                            recommended_application_id: active_application_id.clone(),
+                            recommended_recording_id: active_recording_id.clone(),
+                            force_store_info,
+                        },
                         FileContents {
                             name: file.name.clone(),
                             bytes: bytes.clone(),
                         },
-                    )));
+                    ),
+                ));
                 continue;
             }
 
             #[cfg(not(target_arch = "wasm32"))]
             if let Some(path) = file.path {
-                self.command_sender
-                    .send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
-                        FileSource::DragAndDrop,
-                        path,
-                    )));
+                command_sender.send_system(SystemCommand::LoadDataSource(DataSource::FilePath(
+                    FileSource::DragAndDrop {
+                        recommended_application_id: active_application_id.clone(),
+                        recommended_recording_id: active_recording_id.clone(),
+                        force_store_info,
+                    },
+                    path,
+                )));
             }
         }
     }
@@ -1324,6 +1494,7 @@ impl App {
             match &*source {
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
+                | SmartChannelSource::RerunGrpcStream { .. }
                 | SmartChannelSource::Stdin
                 | SmartChannelSource::RrdWebEventListener
                 | SmartChannelSource::Sdk
@@ -1549,12 +1720,22 @@ impl eframe::App for App {
         }
 
         #[cfg(target_arch = "wasm32")]
-        if let Some(promise) = &self.open_files_promise {
+        if let Some(PendingFilePromise {
+            recommended_application_id,
+            recommended_recording_id,
+            force_store_info,
+            promise,
+        }) = &self.open_files_promise
+        {
             if let Some(files) = promise.ready() {
                 for file in files {
                     self.command_sender
                         .send_system(SystemCommand::LoadDataSource(DataSource::FileContents(
-                            FileSource::FileDialog,
+                            FileSource::FileDialog {
+                                recommended_application_id: recommended_application_id.clone(),
+                                recommended_recording_id: recommended_recording_id.clone(),
+                                force_store_info: *force_store_info,
+                            },
                             file.clone(),
                         )));
                 }
@@ -1636,42 +1817,44 @@ impl eframe::App for App {
             }
         }
 
-        let store_context = store_hub.read_context();
+        {
+            let store_context = store_hub.read_context();
 
-        let app_blueprint = AppBlueprint::new(
-            store_context.as_ref(),
-            &self.state.blueprint_query_for_viewer(),
-            egui_ctx,
-            self.panel_state_overrides_active
-                .then_some(self.panel_state_overrides),
-        );
+            let app_blueprint = AppBlueprint::new(
+                store_context.as_ref(),
+                &self.state.blueprint_query_for_viewer(),
+                egui_ctx,
+                self.panel_state_overrides_active
+                    .then_some(self.panel_state_overrides),
+            );
 
-        self.ui(
-            egui_ctx,
-            frame,
-            &app_blueprint,
-            &gpu_resource_stats,
-            store_context.as_ref(),
-            store_stats.as_ref(),
-        );
+            self.ui(
+                egui_ctx,
+                frame,
+                &app_blueprint,
+                &gpu_resource_stats,
+                store_context.as_ref(),
+                store_stats.as_ref(),
+            );
 
-        if re_ui::CUSTOM_WINDOW_DECORATIONS {
-            // Paint the main window frame on top of everything else
-            paint_native_window_frame(egui_ctx);
+            if re_ui::CUSTOM_WINDOW_DECORATIONS {
+                // Paint the main window frame on top of everything else
+                paint_native_window_frame(egui_ctx);
+            }
+
+            if !self.screenshotter.is_screenshotting() {
+                self.toasts.show(egui_ctx);
+            }
+
+            if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
+                self.command_sender.send_ui(cmd);
+            }
+
+            Self::handle_dropping_files(egui_ctx, store_context.as_ref(), &self.command_sender);
+
+            // Run pending commands last (so we don't have to wait for a repaint before they are run):
+            self.run_pending_ui_commands(egui_ctx, &app_blueprint, store_context.as_ref());
         }
-
-        if !self.screenshotter.is_screenshotting() {
-            self.toasts.show(egui_ctx);
-        }
-
-        if let Some(cmd) = self.cmd_palette.show(egui_ctx) {
-            self.command_sender.send_ui(cmd);
-        }
-
-        self.handle_dropping_files(egui_ctx);
-
-        // Run pending commands last (so we don't have to wait for a repaint before they are run):
-        self.run_pending_ui_commands(egui_ctx, &app_blueprint, store_context.as_ref());
         self.run_pending_system_commands(&mut store_hub, egui_ctx);
 
         // Return the `StoreHub` to the Viewer so we have it on the next frame
@@ -1707,6 +1890,8 @@ fn populate_space_view_class_registry_with_builtin(
 ) -> Result<(), SpaceViewClassRegistryError> {
     re_tracing::profile_function!();
     space_view_class_registry.add_class::<re_space_view_bar_chart::BarChartSpaceView>()?;
+    #[cfg(feature = "map_view")]
+    space_view_class_registry.add_class::<re_space_view_map::MapSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_spatial::SpatialSpaceView2D>()?;
     space_view_class_registry.add_class::<re_space_view_spatial::SpatialSpaceView3D>()?;
     space_view_class_registry.add_class::<re_space_view_tensor::TensorSpaceView>()?;

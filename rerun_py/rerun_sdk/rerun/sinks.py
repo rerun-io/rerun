@@ -2,8 +2,10 @@ from __future__ import annotations
 
 import logging
 import pathlib
+import warnings
 
 import rerun_bindings as bindings  # type: ignore[attr-defined]
+from typing_extensions import deprecated  # type: ignore[misc, unused-ignore]
 
 from rerun.blueprint.api import BlueprintLike, create_in_memory_blueprint
 from rerun.recording_stream import RecordingStream, get_application_id
@@ -13,7 +15,65 @@ from ._spawn import _spawn_viewer
 # --- Sinks ---
 
 
+def is_recording_enabled(recording: RecordingStream | None) -> bool:
+    if recording is not None:
+        return bindings.is_enabled(recording.inner)  # type: ignore[no-any-return]
+    return bindings.is_enabled()  # type: ignore[no-any-return]
+
+
+@deprecated(
+    """Please migrate to `rr.connect_tcp(…)`.
+  See: https://www.rerun.io/docs/reference/migration-0-20 for more details."""
+)
 def connect(
+    addr: str | None = None,
+    *,
+    flush_timeout_sec: float | None = 2.0,
+    default_blueprint: BlueprintLike | None = None,
+    recording: RecordingStream | None = None,
+) -> None:
+    """
+    Connect to a remote Rerun Viewer on the given ip:port.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.connect_tcp][].
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-20) for more details.
+
+    Requires that you first start a Rerun Viewer by typing 'rerun' in a terminal.
+
+    This function returns immediately.
+
+    Parameters
+    ----------
+    addr:
+        The ip:port to connect to
+    flush_timeout_sec:
+        The minimum time the SDK will wait during a flush before potentially
+        dropping data if progress is not being made. Passing `None` indicates no timeout,
+        and can cause a call to `flush` to block indefinitely.
+    default_blueprint
+        Optionally set a default blueprint to use for this application. If the application
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        immediately, instead use the [`rerun.send_blueprint`][] API.
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+
+    """
+
+    warnings.warn(
+        message=("`connect` is deprecated. Use `connect_tcp` instead."),
+        category=DeprecationWarning,
+    )
+
+    return connect_tcp(
+        addr, flush_timeout_sec=flush_timeout_sec, default_blueprint=default_blueprint, recording=recording
+    )
+
+
+def connect_tcp(
     addr: str | None = None,
     *,
     flush_timeout_sec: float | None = 2.0,
@@ -47,7 +107,7 @@ def connect(
 
     """
 
-    if not bindings.is_enabled():
+    if not is_recording_enabled(recording):
         logging.warning("Rerun is disabled - connect() call ignored")
         return
 
@@ -66,12 +126,9 @@ def connect(
 
     recording = RecordingStream.to_native(recording)
 
-    bindings.connect(
+    bindings.connect_tcp(
         addr=addr, flush_timeout_sec=flush_timeout_sec, default_blueprint=blueprint_storage, recording=recording
     )
-
-
-_connect = connect  # we need this because Python scoping is horrible
 
 
 def save(
@@ -102,7 +159,7 @@ def save(
 
     """
 
-    if not bindings.is_enabled():
+    if not is_recording_enabled(recording):
         logging.warning("Rerun is disabled - save() call ignored. You must call rerun.init before saving a recording.")
         return
 
@@ -149,7 +206,7 @@ def stdout(default_blueprint: BlueprintLike | None = None, recording: RecordingS
 
     """
 
-    if not bindings.is_enabled():
+    if not is_recording_enabled(recording):
         logging.warning("Rerun is disabled - save() call ignored. You must call rerun.init before saving a recording.")
         return
 
@@ -190,7 +247,74 @@ def disconnect(recording: RecordingStream | None = None) -> None:
     bindings.disconnect(recording=recording)
 
 
+@deprecated(
+    """Please migrate to `rr.serve_web(…)`.
+  See: https://www.rerun.io/docs/reference/migration-0-20 for more details."""
+)
 def serve(
+    *,
+    open_browser: bool = True,
+    web_port: int | None = None,
+    ws_port: int | None = None,
+    default_blueprint: BlueprintLike | None = None,
+    recording: RecordingStream | None = None,
+    server_memory_limit: str = "25%",
+) -> None:
+    """
+    Serve log-data over WebSockets and serve a Rerun web viewer over HTTP.
+
+    !!! Warning "Deprecated"
+        Please migrate to [rerun.serve_web][].
+        See [the migration guide](https://www.rerun.io/docs/reference/migration-0-20) for more details.
+
+    You can also connect to this server with the native viewer using `rerun localhost:9090`.
+
+    The WebSocket server will buffer all log data in memory so that late connecting viewers will get all the data.
+    You can limit the amount of data buffered by the WebSocket server with the `server_memory_limit` argument.
+    Once reached, the earliest logged data will be dropped.
+    Note that this means that static data may be dropped if logged early (see <https://github.com/rerun-io/rerun/issues/5531>).
+
+    This function returns immediately.
+
+    Parameters
+    ----------
+    open_browser:
+        Open the default browser to the viewer.
+    web_port:
+        The port to serve the web viewer on (defaults to 9090).
+    ws_port:
+        The port to serve the WebSocket server on (defaults to 9877)
+    default_blueprint:
+        Optionally set a default blueprint to use for this application. If the application
+        already has an active blueprint, the new blueprint won't become active until the user
+        clicks the "reset blueprint" button. If you want to activate the new blueprint
+        immediately, instead use the [`rerun.send_blueprint`][] API.
+    recording:
+        Specifies the [`rerun.RecordingStream`][] to use.
+        If left unspecified, defaults to the current active data recording, if there is one.
+        See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
+    server_memory_limit:
+        Maximum amount of memory to use for buffering log data for clients that connect late.
+        This can be a percentage of the total ram (e.g. "50%") or an absolute value (e.g. "4GB").
+
+    """
+
+    warnings.warn(
+        message=("`serve` is deprecated. Use `serve_web` instead."),
+        category=DeprecationWarning,
+    )
+
+    return serve_web(
+        open_browser=open_browser,
+        web_port=web_port,
+        ws_port=ws_port,
+        default_blueprint=default_blueprint,
+        recording=recording,
+        server_memory_limit=server_memory_limit,
+    )
+
+
+def serve_web(
     *,
     open_browser: bool = True,
     web_port: int | None = None,
@@ -234,7 +358,7 @@ def serve(
 
     """
 
-    if not bindings.is_enabled():
+    if not is_recording_enabled(recording):
         logging.warning("Rerun is disabled - serve() call ignored")
         return
 
@@ -253,7 +377,7 @@ def serve(
 
     recording = RecordingStream.to_native(recording)
     # TODO(#5531): keep static data around.
-    bindings.serve(
+    bindings.serve_web(
         open_browser,
         web_port,
         ws_port,
@@ -346,11 +470,11 @@ def spawn(
 
     """
 
-    if not bindings.is_enabled():
+    if not is_recording_enabled(recording):
         logging.warning("Rerun is disabled - spawn() call ignored.")
         return
 
     _spawn_viewer(port=port, memory_limit=memory_limit, hide_welcome_screen=hide_welcome_screen)
 
     if connect:
-        _connect(f"127.0.0.1:{port}", recording=recording, default_blueprint=default_blueprint)
+        connect_tcp(f"127.0.0.1:{port}", recording=recording, default_blueprint=default_blueprint)

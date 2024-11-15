@@ -5,10 +5,10 @@ title: "VideoFrameReference"
 
 References a single video frame.
 
-Used to display individual video frames from a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video?speculative-link).
+Used to display individual video frames from a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).
 To show an entire video, a video frame reference for each frame of the video should be logged.
 
-See <https://rerun.io/docs/reference/video?speculative-link> for details of what is and isn't supported.
+See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
 
 ## Components
 
@@ -17,12 +17,14 @@ See <https://rerun.io/docs/reference/video?speculative-link> for details of what
 **Optional**: [`EntityPath`](../components/entity_path.md)
 
 ## Shown in
+* [Spatial2DView](../views/spatial2d_view.md)
+* [Spatial3DView](../views/spatial3d_view.md) (if logged under a projection)
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `VideoFrameReference`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1VideoFrameReference.html?speculative-link)
- * 🐍 [Python API docs for `VideoFrameReference`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.VideoFrameReference)
- * 🦀 [Rust API docs for `VideoFrameReference`](https://docs.rs/rerun/latest/rerun/archetypes/struct.VideoFrameReference.html?speculative-link)
+ * 🌊 [C++ API docs for `VideoFrameReference`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1VideoFrameReference.html)
+ * 🐍 [Python API docs for `VideoFrameReference`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.VideoFrameReference)
+ * 🦀 [Rust API docs for `VideoFrameReference`](https://docs.rs/rerun/latest/rerun/archetypes/struct.VideoFrameReference.html)
 
 ## Examples
 

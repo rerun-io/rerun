@@ -69,13 +69,6 @@ impl From<KeypointId> for u16 {
 ::re_types_core::macros::impl_into_cow!(KeypointId);
 
 impl ::re_types_core::Loggable for KeypointId {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.KeypointId".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

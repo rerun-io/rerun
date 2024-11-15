@@ -78,7 +78,7 @@ impl StoreBundle {
     /// One is created if it doesn't already exist.
     pub fn entry(&mut self, id: &StoreId) -> &mut EntityDb {
         self.entity_dbs.entry(id.clone()).or_insert_with(|| {
-            re_log::debug!("Creating new store: {id}");
+            re_log::trace!("Creating new store: '{id}'");
             EntityDb::new(id.clone())
         })
     }
@@ -96,7 +96,7 @@ impl StoreBundle {
 
             let mut blueprint_db = EntityDb::new(id.clone());
 
-            re_log::debug!("Creating a new blueprint {id}");
+            re_log::trace!("Creating a new blueprint '{id}'");
 
             blueprint_db.set_store_info(re_log_types::SetStoreInfo {
                 row_id: *re_chunk::RowId::new(),
@@ -152,11 +152,11 @@ impl StoreBundle {
     /// The closest neighbor is the next recording when sorted by (app ID, time), if any, or the
     /// previous one otherwise. This is used to update the selected recording when the current one
     /// is deleted.
-    pub fn find_closest_recording(&self, id: &StoreId) -> Option<&StoreId> {
+    pub fn find_closest_recording(&self, id: &StoreId) -> Option<StoreId> {
         let mut recs = self.recordings().collect_vec();
         recs.sort_by_key(|entity_db| entity_db.sort_key());
 
-        let cur_pos = recs.iter().position(|rec| rec.store_id() == id);
+        let cur_pos = recs.iter().position(|rec| rec.store_id() == *id);
 
         if let Some(cur_pos) = cur_pos {
             if recs.len() > cur_pos + 1 {
@@ -172,7 +172,7 @@ impl StoreBundle {
     }
 
     /// Returns the [`StoreId`] of the oldest modified recording, according to [`EntityDb::last_modified_at`].
-    pub fn find_oldest_modified_recording(&self) -> Option<&StoreId> {
+    pub fn find_oldest_modified_recording(&self) -> Option<StoreId> {
         let mut entity_dbs = self
             .entity_dbs
             .values()

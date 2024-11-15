@@ -7,8 +7,11 @@ mod color;
 mod datatype_uis;
 mod entity_path;
 mod fallback_ui;
+mod geo_line_string;
 mod image_format;
+mod lat_lon;
 mod line_strip;
+mod map_provider;
 mod marker_shape;
 mod pinhole;
 mod radius;
@@ -19,25 +22,34 @@ mod transforms;
 mod video_timestamp;
 mod view_coordinates;
 mod visual_bounds2d;
+mod zoom_level;
 
 use datatype_uis::{
     display_name_ui, display_text_ui, edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max,
     edit_f32_zero_to_one, edit_multiline_string, edit_or_view_vec3d, edit_singleline_string,
-    edit_view_enum, edit_view_range1d, view_view_id,
+    edit_view_enum, edit_view_enum_with_variant_available, edit_view_range1d, view_uuid,
+    view_view_id,
 };
 
 use re_types::{
-    blueprint::components::{BackgroundKind, Corner2D, LockRangeDuringZoom, ViewFit, Visible},
+    blueprint::components::{
+        BackgroundKind, Corner2D, LockRangeDuringZoom, MapProvider, ViewFit, Visible, ZoomLevel,
+    },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
         FillRatio, GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize, Name,
         Opacity, Range1D, Scale3D, ShowLabels, StrokeWidth, Text, TransformRelation, Translation3D,
         ValueRange,
     },
-    Loggable as _,
+    Component as _,
 };
-use re_types_blueprint::blueprint::components::{IncludedSpaceView, SpaceViewMaximized};
+use re_types_blueprint::blueprint::components::{
+    IncludedSpaceView, RootContainer, SpaceViewMaximized,
+};
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
+
+/// Default number of ui points to show a number.
+const DEFAULT_NUMBER_WIDTH: f32 = 52.0;
 
 // ----
 
@@ -63,6 +75,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<ImagePlaneDistance>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<MarkerSize>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<StrokeWidth>(edit_f32_zero_to_max);
+    registry.add_singleline_edit_or_view::<ZoomLevel>(zoom_level::edit_zoom_level);
 
     // float min-max components:
     registry.add_singleline_edit_or_view::<DrawOrder>(edit_f32_min_to_max_float);
@@ -91,6 +104,12 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
     registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MagnificationFilter>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<MapProvider>(
+        edit_view_enum_with_variant_available::<
+            MapProvider,
+            crate::map_provider::MapProviderVariantAvailable,
+        >,
+    );
     registry.add_singleline_edit_or_view::<TransformRelation>(edit_view_enum);
     registry.add_singleline_edit_or_view::<ViewFit>(edit_view_enum);
 
@@ -101,6 +120,8 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     // Components that refer to views:
     registry.add_singleline_edit_or_view::<IncludedSpaceView>(view_view_id);
     registry.add_singleline_edit_or_view::<SpaceViewMaximized>(view_view_id);
+
+    registry.add_singleline_edit_or_view::<RootContainer>(view_uuid);
 
     // Range1D components:
     registry.add_singleline_edit_or_view::<Range1D>(edit_view_range1d);
@@ -137,10 +158,13 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_multiline_edit_or_view(pinhole::multiline_view_pinhole);
 
     line_strip::register_linestrip_component_ui(&mut registry);
+    geo_line_string::register_geo_line_string_component_ui(&mut registry);
 
     registry.add_singleline_edit_or_view(entity_path::edit_or_view_entity_path);
 
     registry.add_singleline_edit_or_view(video_timestamp::edit_or_view_timestamp);
+
+    registry.add_singleline_edit_or_view(lat_lon::singleline_view_lat_lon);
 
     registry
 }

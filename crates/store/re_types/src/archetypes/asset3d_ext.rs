@@ -36,6 +36,7 @@ impl Asset3D {
         Self {
             blob: contents.into(),
             media_type,
+            albedo_factor: None,
         }
     }
 }

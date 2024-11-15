@@ -6,6 +6,7 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
+#include "../components/albedo_factor.hpp"
 #include "../components/blob.hpp"
 #include "../components/media_type.hpp"
 #include "../indicator_component.hpp"
@@ -66,6 +67,12 @@ namespace rerun::archetypes {
         /// If it cannot guess, it won't be able to render the asset.
         std::optional<rerun::components::MediaType> media_type;
 
+        /// A color multiplier applied to the whole asset.
+        ///
+        /// For mesh who already have `albedo_factor` in materials,
+        /// it will be overwritten by actual `albedo_factor` of `archetypes::Asset3D` (if specified).
+        std::optional<rerun::components::AlbedoFactor> albedo_factor;
+
       public:
         static constexpr const char IndicatorComponentName[] = "rerun.components.Asset3DIndicator";
 
@@ -115,6 +122,16 @@ namespace rerun::archetypes {
         /// If it cannot guess, it won't be able to render the asset.
         Asset3D with_media_type(rerun::components::MediaType _media_type) && {
             media_type = std::move(_media_type);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// A color multiplier applied to the whole asset.
+        ///
+        /// For mesh who already have `albedo_factor` in materials,
+        /// it will be overwritten by actual `albedo_factor` of `archetypes::Asset3D` (if specified).
+        Asset3D with_albedo_factor(rerun::components::AlbedoFactor _albedo_factor) && {
+            albedo_factor = std::move(_albedo_factor);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

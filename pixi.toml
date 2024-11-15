@@ -9,6 +9,11 @@
 #
 # https://prefix.dev/docs/pixi/overview
 
+# We currently assume pixi version 0.34.0
+# You can check that your environment is correct by running:
+# - python scripts/check_env.py
+# - pixi run check-env
+
 [project]
 name = "rerun"
 authors = ["rerun.io <opensource@rerun.io>"]
@@ -53,6 +58,9 @@ default = ["base", "wheel-build"]
 
 # The py environment is for running any code with a dependency on the python `rerun-sdk`.
 py = ["base", "wheel-build", "python-dev", "python-tasks", "py-test-deps"]
+
+# The py-docs environment is for building docs for the python package.
+py-docs = ["base", "python-docs"]
 
 # The cpp environment is for building any code that depends on the C++ `rerun-sdk`.
 cpp = ["base", "cpp"]
@@ -111,8 +119,14 @@ examples-pypi = ["examples-common", "python-pypi"]
 [tasks]
 # Note: extra CLI argument after `pixi run TASK` are passed to the task cmd.
 
+# Check that your environment is set up correctly
+check-env = "python scripts/check_env.py"
+
 # Run the codegen. Optionally pass `--profile` argument if you want.
 codegen = "cargo --quiet run --package re_types_builder -- "
+
+# Run the codegen for remote store types.
+codegen-rstore = "cargo --quiet run --package re_protos_builder && pixi run -e cpp format"
 
 # Generate the Rerun CLI manual.
 
@@ -122,18 +136,28 @@ man = "cargo --quiet run --package rerun-cli --all-features -- man > docs/conten
 # Compile and run the rerun viewer.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun = "cargo run --package rerun-cli --no-default-features --features native_viewer,nasm --"
+rerun = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer --"
 
 # Compile `rerun-cli` without the web-viewer.
-rerun-build = "cargo build --package rerun-cli --no-default-features --features native_viewer,nasm"
+rerun-build = "cargo build --package rerun-cli --no-default-features --features map_view,nasm,native_viewer"
 
 # Compile `rerun-cli` without the web-viewer.
-rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features native_viewer,nasm"
+rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features map_view,nasm,native_viewer"
 
 # Compile and run the rerun viewer with --release.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-release = "cargo run --package rerun-cli --no-default-features --features native_viewer,nasm --release --"
+rerun-release = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer --release --"
+
+# Compile `rerun-cli` with the same feature set as we build for releases.
+rerun-build-native-and-web = { cmd = "cargo build --package rerun-cli --no-default-features --features release --", depends_on = [
+  "rerun-build-web",
+] }
+
+# Compile `rerun-cli` with the same feature set as we build for releases.
+rerun-build-native-and-web-release = { cmd = "cargo build --package rerun-cli --no-default-features --features release --release --", depends_on = [
+  "rerun-build-web-release",
+] }
 
 # Compile and run the web-viewer via rerun-cli.
 #
@@ -149,13 +173,13 @@ rerun-web = { cmd = "cargo run --package rerun-cli --no-default-features --featu
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-build-web = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --debug"
+rerun-build-web = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --features analytics,map_view,grpc --debug"
 
 # Compile the web-viewer wasm and the cli.
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-build-web-cli = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --debug && cargo build --package rerun-cli --no-default-features --features web_viewer"
+rerun-build-web-cli = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --features analytics,map_view,grpc --debug && cargo build --package rerun-cli --no-default-features --features web_viewer"
 
 # Compile and run the web-viewer in release mode via rerun-cli.
 #
@@ -171,7 +195,7 @@ rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --release -g"
+rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --features analytics,map_view,grpc --release -g"
 
 rs-check = { cmd = "rustup target add wasm32-unknown-unknown && python scripts/ci/rust_checks.py", depends_on = [
   "rerun-build-web", # The checks require the web viewer wasm to be around.
@@ -245,15 +269,6 @@ check-large-files = "python scripts/ci/check_large_files.py"
 # Requires that gcloud authentication has already been set up in your shell.
 fetch-artifact = "python scripts/ci/fetch_artifact.py"
 
-# Build the documentation search index.
-# See `pixi run search-index --help` for more information.
-# Before running this, install `rerun_py/requirements-doc.txt`.
-# TODO(#6060): Put this in an environment and remove the requirements file.
-search-index = "cargo run --locked -p re_dev_tools -- search-index"
-
-# Serve python docs locally
-# TODO(#6060): Put this in an environment and remove the requirements file.
-py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
 
 # Lint markdown
 mdlint = "python scripts/ci/mdlint.py"
@@ -286,8 +301,19 @@ js-build-all = { cmd = "yarn --cwd rerun_js workspaces run build", depends_on = 
 py-build-common = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --extras=tests", depends_on = [
   "rerun-build", # We need to build rerun-cli since it is bundled in the python package.
 ] }
+
 py-build-common-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --extras=tests", depends_on = [
   "rerun-build-release", # We need to build rerun-cli since it is bundled in the python package.
+] }
+
+# Build and install the `rerun-sdk` package with the `web_viewer` feature.
+py-build-common-web-viewer = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm --extras=tests", depends_on = [
+  "rerun-build-native-and-web", # We need to build rerun-cli since it is bundled in the python package.
+] }
+
+# Build and install the `rerun-sdk` package with the `web_viewer` feature.
+py-build-common-web-viewer-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALLOW_MISSING_BIN=1 maturin develop --release --manifest-path rerun_py/Cargo.toml --features web_viewer,nasm --extras=tests", depends_on = [
+  "rerun-build-native-and-web-release", # We need to build rerun-cli since it is bundled in the python package.
 ] }
 
 
@@ -323,6 +349,14 @@ py-plot-dashboard = { cmd = "python tests/python/plot_dashboard_stress/main.py",
 py-test = { cmd = "python -m pytest -vv rerun_py/tests/unit", depends_on = [
   "py-build",
 ] }
+
+[feature.python-docs.tasks]
+# Build the documentation search index.
+# See `pixi run search-index --help` for more information.
+search-index = "cargo run --locked -p re_dev_tools -- search-index"
+
+# Serve python docs locally
+py-docs-serve = "mkdocs serve -f rerun_py/mkdocs.yml -w rerun_py"
 
 [feature.wheel-test.tasks]
 # In the wheel-test environment we want to confirm the`rerun` binary on the path executes as expected.
@@ -426,7 +460,7 @@ nasm = ">=2.16"                   # Required by https://github.com/memorysafety/
 ninja = "1.11.1"
 numpy = ">=1.23,<2"
 prettier = "3.2.5.*"
-pyarrow = "14.0.2"
+pyarrow = "18.0.0"
 pytest = ">=7"
 pytest-benchmark = ">=4.0.0,<4.1"
 python = "=3.11"                  # We use the latest Python version here, so we get the latest mypy etc, EXCEPT 3.12 is too new for some of our examples. We run our CI tests on ALL supported versions though.
@@ -455,7 +489,7 @@ binaryen = "117.*"       # for `wasm-opt`
 maturin = "1.5.1"
 packaging = ">=24.0,<25" # For `publish_wheels.py`
 pip = ">=23"
-pyarrow = "14.0.2"
+pyarrow = "18.0.0"
 nodejs = ">=20.12"       # rerun_notebook needs nodejs to build the wheel
 wheel = ">=0.38,<0.39"
 
@@ -465,6 +499,12 @@ meilisearch = "1.5.1.*" # not available for linux-aarch64
 
 [target.osx-arm64.dependencies]
 meilisearch = "1.5.1.*"
+
+[feature.cpp.target.linux-64.dependencies]
+sysroot_linux-64 = ">=2.17,<3" # rustc 1.64+ requires glibc 2.17+, see https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html
+
+[feature.cpp.target.linux-aarch64.dependencies]
+sysroot_linux-aarch64 = ">=2.17,<3" # rustc 1.64+ requires glibc 2.17+, see https://blog.rust-lang.org/2022/08/01/Increasing-glibc-kernel-requirements.html
 
 [feature.cpp.target.unix.dependencies]
 clang = "16.0.6"
@@ -509,6 +549,20 @@ scripts = ["pixi/maturin_config.bat"]
 # you still need to `pixi run py-build` in the correct environment if you change the rust code.
 rerun-sdk = { path = "rerun_py", editable = true }
 rerun-notebook = { path = "rerun_notebook", editable = true }
+
+[feature.python-docs.pypi-dependencies]
+griffe = "==1.4.1"
+mkdocs = "==1.6.1"
+mkdocs-gen-files = "==0.5.0"
+mkdocs-literate-nav = "==0.6.1"
+mkdocs-material = "==9.4.7"
+mkdocs-material-extensions = "==1.3"
+mkdocs-redirects = { git = "https://github.com/rerun-io/mkdocs-redirects.git", rev = "fb6b074554975ba7729d68d04957ce7c7dfd5003" } # forked mkdocs-redirects with https://github.com/rerun-io/mkdocs-redirects/commit/d367a0847928438b66f73508e49852be1190409b
+mkdocstrings = "==0.26.2"
+mkdocstrings-python = "==1.12.1"
+mike = "==1.1.2"
+setuptools = ">75"
+sphobjinv = "==2.3.1"
 
 [feature.py-test-deps.pypi-dependencies]
 # Torch is needed to run the rerun unit tests.
@@ -560,6 +614,7 @@ blueprint = { path = "examples/python/blueprint", editable = true }
 blueprint_stocks = { path = "examples/python/blueprint_stocks", editable = true }
 clock = { path = "examples/python/clock", editable = true }
 controlnet = { path = "examples/python/controlnet", editable = true }
+dataframe_query = { path = "examples/python/dataframe_query", editable = true }
 detect_and_track_objects = { path = "examples/python/detect_and_track_objects", editable = true }
 dicom_mri = { path = "examples/python/dicom_mri", editable = true }
 dna = { path = "examples/python/dna", editable = true }
@@ -578,6 +633,7 @@ nuscenes_dataset = { path = "examples/python/nuscenes_dataset", editable = true 
 nv12 = { path = "examples/python/nv12", editable = true }
 objectron = { path = "examples/python/objectron", editable = true }
 open_photogrammetry_format = { path = "examples/python/open_photogrammetry_format", editable = true }
+openstreetmap_data = { path = "examples/python/openstreetmap_data", editable = true }
 plots = { path = "examples/python/plots", editable = true }
 raw_mesh = { path = "examples/python/raw_mesh", editable = true }
 rgbd = { path = "examples/python/rgbd", editable = true }

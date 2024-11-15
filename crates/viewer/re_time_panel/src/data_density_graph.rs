@@ -384,6 +384,7 @@ pub fn data_density_graph_ui(
     time_ranges_ui: &TimeRangesUi,
     row_rect: Rect,
     item: &TimePanelItem,
+    tooltips_enabled: bool,
 ) {
     re_tracing::profile_function!();
 
@@ -410,20 +411,22 @@ pub fn data_density_graph_ui(
         0f32..=0f32,
     );
 
-    if let Some(hovered_time) = data.hovered_time {
-        ctx.selection_state().set_hovered(item.to_item());
+    if tooltips_enabled {
+        if let Some(hovered_time) = data.hovered_time {
+            ctx.selection_state().set_hovered(item.to_item());
 
-        if ui.ctx().dragged_id().is_none() {
-            // TODO(jprochazk): check chunk.num_rows() and chunk.timeline.is_sorted()
-            //                  if too many rows and unsorted, show some generic error tooltip (=too much data)
-            egui::show_tooltip_at_pointer(
-                ui.ctx(),
-                ui.layer_id(),
-                egui::Id::new("data_tooltip"),
-                |ui| {
-                    show_row_ids_tooltip(ctx, ui, time_ctrl, db, item, hovered_time);
-                },
-            );
+            if ui.ctx().dragged_id().is_none() {
+                // TODO(jprochazk): check chunk.num_rows() and chunk.timeline.is_sorted()
+                //                  if too many rows and unsorted, show some generic error tooltip (=too much data)
+                egui::show_tooltip_at_pointer(
+                    ui.ctx(),
+                    ui.layer_id(),
+                    egui::Id::new("data_tooltip"),
+                    |ui| {
+                        show_row_ids_tooltip(ctx, ui, time_ctrl, db, item, hovered_time);
+                    },
+                );
+            }
         }
     }
 }
@@ -707,12 +710,12 @@ fn visit_relevant_chunks(
 ) {
     re_tracing::profile_function!();
 
+    let engine = db.storage_engine();
+    let store = engine.store();
     let query = RangeQuery::new(timeline, time_range);
 
     if let Some(component_name) = component_name {
-        let chunks = db
-            .store()
-            .range_relevant_chunks(&query, entity_path, component_name);
+        let chunks = store.range_relevant_chunks(&query, entity_path, component_name);
 
         for chunk in chunks {
             let Some(num_events) = chunk.num_events_for_component(component_name) else {
@@ -727,10 +730,7 @@ fn visit_relevant_chunks(
         }
     } else if let Some(subtree) = db.tree().subtree(entity_path) {
         subtree.visit_children_recursively(|entity_path| {
-            for chunk in db
-                .store()
-                .range_relevant_chunks_for_all_components(&query, entity_path)
-            {
+            for chunk in store.range_relevant_chunks_for_all_components(&query, entity_path) {
                 let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
                     continue;
                 };

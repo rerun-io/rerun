@@ -28,6 +28,9 @@ use crate::{server_url, RerunServerError, RerunServerPort};
 struct MessageQueue {
     server_memory_limit: MemoryLimit,
     messages: VecDeque<Vec<u8>>,
+
+    /// Never garbage collected.
+    messages_static: VecDeque<Vec<u8>>,
 }
 
 impl MessageQueue {
@@ -35,12 +38,22 @@ impl MessageQueue {
         Self {
             server_memory_limit,
             messages: Default::default(),
+            messages_static: Default::default(),
         }
     }
 
     pub fn push(&mut self, msg: Vec<u8>) {
         self.gc_if_using_too_much_ram();
         self.messages.push_back(msg);
+    }
+
+    /// Messages pushed using this method will stay around indefinitely.
+    ///
+    /// Useful e.g. for `SetStoreInfo` messages, so that clients late to the party actually get a
+    /// chance of receiving them.
+    pub fn push_static(&mut self, msg: Vec<u8>) {
+        self.gc_if_using_too_much_ram();
+        self.messages_static.push_back(msg);
     }
 
     fn gc_if_using_too_much_ram(&mut self) {
@@ -171,6 +184,15 @@ impl RerunServer {
         self.num_accepted_clients.load(Ordering::Relaxed)
     }
 
+    /// Blocks execution as long as the server is running.
+    ///
+    /// There's no way of shutting the server down from the outside right now.
+    pub fn block(mut self) {
+        if let Some(listener_join_handle) = self.listener_join_handle.take() {
+            listener_join_handle.join().ok();
+        }
+    }
+
     fn listen_thread_func(
         poller: &Poller,
         listener_socket: &TcpListener,
@@ -183,12 +205,15 @@ impl RerunServer {
         // on the same poller.
         let listener_poll_key = 1;
 
-        if let Err(err) = poller.add(listener_socket, Event::readable(listener_poll_key)) {
+        #[allow(unsafe_code)]
+        // SAFETY: `poller.add` requires a matching call to `poller.delete`, which we have below
+        if let Err(err) = unsafe { poller.add(listener_socket, Event::readable(listener_poll_key)) }
+        {
             re_log::error!("Error when polling listener socket for incoming connections: {err}");
             return;
         }
 
-        let mut events = Vec::new();
+        let mut events = polling::Events::new();
         loop {
             if let Err(err) = poller.wait(&mut events, None) {
                 re_log::warn!("Error polling WebSocket server listener: {err}");
@@ -199,7 +224,7 @@ impl RerunServer {
                 break;
             }
 
-            for event in events.drain(..) {
+            for event in events.iter() {
                 if event.key == listener_poll_key {
                     Self::accept_connection(
                         listener_socket,
@@ -210,7 +235,11 @@ impl RerunServer {
                     );
                 }
             }
+            events.clear();
         }
+
+        // This MUST be called before dropping `poller`!
+        poller.delete(listener_socket).ok();
     }
 
     fn accept_connection(
@@ -349,7 +378,13 @@ impl ReceiveSetBroadcaster {
                         }
                     });
 
-                    inner.history.push(msg);
+                    let msg_is_data = matches!(data, LogMsg::ArrowMsg(_, _));
+                    if msg_is_data {
+                        inner.history.push(msg);
+                    } else {
+                        // Keep non-data commands around for clients late to the party.
+                        inner.history.push_static(msg);
+                    }
                 }
 
                 re_smart_channel::SmartMessagePayload::Flush { on_flush_done } => {
@@ -378,6 +413,13 @@ impl ReceiveSetBroadcaster {
         // the problem with this is that now we won't be able to keep the other clients fed, until this one is done!
         // Meaning that if a new one connects, we stall the old connections until we have sent all messages to this one.
         let mut inner = self.inner.lock();
+
+        for msg in &inner.history.messages_static {
+            if let Err(err) = client.send(tungstenite::Message::Binary(msg.clone())) {
+                re_log::warn!("Error sending static message to web socket client: {err}");
+                return;
+            }
+        }
 
         for msg in &inner.history.messages {
             if let Err(err) = client.send(tungstenite::Message::Binary(msg.clone())) {

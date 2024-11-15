@@ -1,10 +1,11 @@
 use itertools::Itertools;
 
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
+use re_space_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_types::{
     archetypes::Points3D,
     components::{ClassId, Color, KeypointId, Position3D, Radius, ShowLabels, Text},
-    ArrowString, Loggable,
+    ArrowString, Component,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
@@ -16,15 +17,12 @@ use re_viewer_context::{
 use crate::{
     contexts::SpatialSceneEntityContext,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{
-        load_keypoint_connections, process_annotation_and_keypoint_slices, process_color_slice,
-        process_radius_slice,
-    },
+    visualizers::{load_keypoint_connections, process_radius_slice},
 };
 
 use super::{
     filter_visualizable_3d_entities, process_labels_3d, utilities::LabeledBatch,
-    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+    SpatialViewVisualizerData,
 };
 
 // ---
@@ -187,14 +185,16 @@ impl VisualizerSystem for Points3DVisualizer {
         };
 
         let mut point_builder = PointCloudBuilder::new(render_ctx);
-        point_builder
-            .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
+        point_builder.radius_boost_in_ui_points_for_outlines(
+            re_space_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+        );
 
         // We need lines from keypoints. The number of lines we'll have is harder to predict, so we'll go
         // with the dynamic allocation approach.
         let mut line_builder = LineDrawableBuilder::new(render_ctx);
-        line_builder
-            .radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES);
+        line_builder.radius_boost_in_ui_points_for_outlines(
+            re_space_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+        );
 
         use super::entity_iterator::{iter_primitive_array, process_archetype};
         process_archetype::<Self, Points3D, _>(

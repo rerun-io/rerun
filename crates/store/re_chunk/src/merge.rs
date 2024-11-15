@@ -47,7 +47,7 @@ impl Chunk {
         let row_ids = {
             re_tracing::profile_scope!("row_ids");
 
-            let row_ids = arrow2::compute::concatenate::concatenate(&[&cl.row_ids, &cr.row_ids])?;
+            let row_ids = crate::util::concat_arrays(&[&cl.row_ids, &cr.row_ids])?;
             #[allow(clippy::unwrap_used)]
             // concatenating 2 RowId arrays must yield another RowId array
             row_ids
@@ -86,11 +86,8 @@ impl Chunk {
                             re_format::format_uint(rhs_list_array.values().len()),
                         ));
 
-                        let list_array = arrow2::compute::concatenate::concatenate(&[
-                            lhs_list_array,
-                            rhs_list_array,
-                        ])
-                        .ok()?;
+                        let list_array =
+                            crate::util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
                         let list_array = list_array
                             .as_any()
                             .downcast_ref::<ArrowListArray<i32>>()?
@@ -131,11 +128,8 @@ impl Chunk {
                             re_format::format_uint(rhs_list_array.values().len()),
                         ));
 
-                        let list_array = arrow2::compute::concatenate::concatenate(&[
-                            lhs_list_array,
-                            rhs_list_array,
-                        ])
-                        .ok()?;
+                        let list_array =
+                            crate::util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
                         let list_array = list_array
                             .as_any()
                             .downcast_ref::<ArrowListArray<i32>>()?
@@ -260,7 +254,7 @@ impl TimeColumn {
 
         let time_range = self.time_range.union(rhs.time_range);
 
-        let times = arrow2::compute::concatenate::concatenate(&[&self.times, &rhs.times]).ok()?;
+        let times = crate::util::concat_arrays(&[&self.times, &rhs.times]).ok()?;
         let times = times
             .as_any()
             .downcast_ref::<ArrowPrimitiveArray<i64>>()?
@@ -280,7 +274,7 @@ mod tests {
     use super::*;
 
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoint64};
-    use re_types_core::Loggable;
+    use re_types_core::Component;
 
     use crate::{Chunk, RowId, Timeline};
 

@@ -22,6 +22,8 @@ static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<
         SpatialSpaceView3D::identifier(),
         SpatialSpaceView2D::identifier(),
         TimeSeriesSpaceView::identifier(),
+        // TODO(#7876): replace with `MapSpaceView::identifier()` when we get rid of the cargo feature
+        "Map".into(),
     ]
     .map(Into::into)
     .into()
@@ -81,7 +83,7 @@ fn visible_time_range_ui(
     time_range_override_path: &EntityPath,
     is_space_view: bool,
 ) {
-    use re_types::Loggable as _;
+    use re_types::Component as _;
 
     let ranges = ctx
         .blueprint_db()

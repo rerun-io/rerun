@@ -11,12 +11,11 @@ import pyarrow as pa
 from attrs import define, field
 from rerun._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 
 from .. import datatypes
 
-__all__ = ["AffixFuzzer20", "AffixFuzzer20ArrayLike", "AffixFuzzer20Batch", "AffixFuzzer20Like", "AffixFuzzer20Type"]
+__all__ = ["AffixFuzzer20", "AffixFuzzer20ArrayLike", "AffixFuzzer20Batch", "AffixFuzzer20Like"]
 
 
 def _affix_fuzzer20__p__special_field_converter_override(
@@ -54,22 +53,11 @@ AffixFuzzer20ArrayLike = Union[
 ]
 
 
-class AffixFuzzer20Type(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.testing.datatypes.AffixFuzzer20"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.struct([
-                pa.field("p", pa.uint32(), nullable=False, metadata={}),
-                pa.field("s", pa.utf8(), nullable=False, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
-
-
 class AffixFuzzer20Batch(BaseBatch[AffixFuzzer20ArrayLike]):
-    _ARROW_TYPE = AffixFuzzer20Type()
+    _ARROW_DATATYPE = pa.struct([
+        pa.field("p", pa.uint32(), nullable=False, metadata={}),
+        pa.field("s", pa.utf8(), nullable=False, metadata={}),
+    ])
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer20ArrayLike, data_type: pa.DataType) -> pa.Array:
@@ -80,8 +68,8 @@ class AffixFuzzer20Batch(BaseBatch[AffixFuzzer20ArrayLike]):
 
         return pa.StructArray.from_arrays(
             [
-                PrimitiveComponentBatch([x.p for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-                StringComponentBatch([x.s for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                PrimitiveComponentBatch([x.p for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                StringComponentBatch([x.s for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

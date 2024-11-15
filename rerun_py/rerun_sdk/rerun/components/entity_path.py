@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["EntityPath", "EntityPathBatch", "EntityPathType"]
+__all__ = ["EntityPath", "EntityPathBatch"]
 
 
 class EntityPath(datatypes.EntityPath, ComponentMixin):
@@ -24,12 +24,8 @@ class EntityPath(datatypes.EntityPath, ComponentMixin):
     pass
 
 
-class EntityPathType(datatypes.EntityPathType):
-    _TYPE_NAME: str = "rerun.components.EntityPath"
-
-
 class EntityPathBatch(datatypes.EntityPathBatch, ComponentBatchMixin):
-    _ARROW_TYPE = EntityPathType()
+    _COMPONENT_NAME: str = "rerun.components.EntityPath"
 
 
 # This is patched in late to avoid circular dependencies.

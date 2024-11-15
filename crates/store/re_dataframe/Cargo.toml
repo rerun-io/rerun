@@ -12,8 +12,10 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+
 [lints]
 workspace = true
+
 
 [package.metadata.docs.rs]
 all-features = true
@@ -32,15 +34,18 @@ re_log_types.workspace = true
 re_query.workspace = true
 re_tracing.workspace = true
 re_types_core.workspace = true
-
 # External dependencies:
 anyhow.workspace = true
 arrow2.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
+rayon.workspace = true
 
 [dev-dependencies]
+# Rerun dependencies:
 re_types.workspace = true
-
+# External dependencies:
 similar-asserts.workspace = true
+tokio = { workspace = true, features = ["macros", "rt-multi-thread", "signal"] }
+tokio-stream.workspace = true
 unindent.workspace = true

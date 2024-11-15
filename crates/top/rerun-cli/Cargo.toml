@@ -37,18 +37,31 @@ path = "src/bin/rerun.rs"
 doc = false
 
 [features]
-# The default is what the user gets when they call `cargo install rerun-cli --locked`,
-# so wer have all the bells and wistles here
+## The default is what the user gets when they call `cargo install rerun-cli --locked`,
+## so we have all the bells and wistles here, except those that may require extra tools
+## (like "nasm").
+## That is: `cargo install rerun-cli --locked` should work for _everyone_.
 default = ["native_viewer", "web_viewer"]
+
+## The features we enable when we build the pre-built binaries during our releases.
+## This may enable features that require extra build tools that not everyone heas.
+release = ["default", "nasm", "map_view"]
 
 ## Enable faster native video decoding with assembly.
 ## You need to install [nasm](https://nasm.us/) to compile with this feature.
-# TODO(#7671): this feature flag currently does nothing on linux.
 nasm = ["rerun/nasm"]
 
 ## Support spawning a native viewer.
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
 native_viewer = ["rerun/native_viewer"]
+
+## Support the map view.
+## This adds a lot of extra dependencies.
+#TODO(#7876): remove this feature when we have fewer dependencies
+map_view = ["rerun/map_view"]
+
+## Enable the gRPC Rerun Data Platform data source.
+grpc = ["rerun/grpc", "dep:tokio"]
 
 ## Support serving a web viewer over HTTP.
 ##
@@ -73,9 +86,12 @@ rerun = { workspace = true, features = [
 ] }
 
 document-features.workspace = true
-# TODO(#5875): `mimalloc` starts leaking OS pages starting with `0.1.38`.
-# When the bug is fixed, change this back to `mimalloc.workspace = true`.
-mimalloc = "=0.1.37"
+mimalloc = "0.1.43"
+
+tokio = { workspace = true, optional = true, features = [
+  "macros",
+  "rt-multi-thread",
+] }
 
 
 [build-dependencies]

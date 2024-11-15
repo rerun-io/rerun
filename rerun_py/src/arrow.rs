@@ -8,7 +8,7 @@ use arrow::{
 };
 use arrow2::{
     array::{Array, ListArray, PrimitiveArray},
-    datatypes::{DataType, Field},
+    datatypes::Field,
     offset::Offsets,
 };
 use pyo3::{
@@ -32,41 +32,9 @@ pub fn array_to_rust(
     let arr1_array = make_array(py_array.0);
 
     let data = arr1_array.to_data();
-
     let arr2_array = arrow2::array::from_data(&data);
 
-    // NOTE: Do not carry the extension metadata beyond the FFI barrier in order the match the
-    // data sent by other SDKs.
-    //
-    // We've stopped using datatype extensions overall, as they generally have been creating more
-    // problems than they have solved.
-    //
-    // With the addition of `Chunk` and `ChunkMetadata`, it is likely that we will get rid of extension types
-    // entirely at some point, since it looks like we won't have any use for them anymore.
-    //
-    // Doing so will require a more extensive refactoring of the Python SDK though, so until we're absolutely
-    // certain where we're going, this is a nice, painless and easily reversible solution.
-    //
-    // See <https://github.com/rerun-io/rerun/issues/6606>.
-    let datatype = if let DataType::List(inner) = arr2_array.data_type() {
-        let Field {
-            name: child_name,
-            data_type,
-            is_nullable,
-            metadata,
-        } = &**inner;
-        DataType::List(std::sync::Arc::new(
-            Field::new(
-                child_name.clone(),
-                data_type.to_logical_type().clone(),
-                *is_nullable,
-            )
-            .with_metadata(metadata.clone()),
-        ))
-    } else {
-        arr2_array.data_type().to_logical_type().clone()
-    };
-
+    let datatype = arr2_array.data_type().to_logical_type().clone();
     let field = Field::new(name, datatype.clone(), true);
 
     Ok((arr2_array, field))

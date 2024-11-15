@@ -1,5 +1,5 @@
 use re_log_types::ComponentPath;
-use re_ui::ContextExt as _;
+use re_ui::UiExt;
 use re_viewer_context::{UiLayout, ViewerContext};
 
 use super::DataUi;
@@ -18,14 +18,16 @@ impl DataUi for ComponentPath {
             component_name,
         } = self;
 
+        let engine = db.storage_engine();
+
         if let Some(archetype_name) = component_name.indicator_component_archetype() {
             ui.label(format!(
                 "Indicator component for the {archetype_name} archetype"
             ));
         } else {
-            let results =
-                db.query_caches()
-                    .latest_at(db.store(), query, entity_path, [*component_name]);
+            let results = engine
+                .cache()
+                .latest_at(query, entity_path, [*component_name]);
             if let Some(unit) = results.components.get(component_name) {
                 crate::ComponentPathLatestAtResults {
                     component_path: self.clone(),
@@ -33,7 +35,7 @@ impl DataUi for ComponentPath {
                 }
                 .data_ui(ctx, ui, ui_layout, query, db);
             } else if ctx.recording().tree().subtree(entity_path).is_some() {
-                if db.store().entity_has_component_on_timeline(
+                if engine.store().entity_has_component_on_timeline(
                     &query.timeline(),
                     entity_path,
                     component_name,
@@ -45,10 +47,7 @@ impl DataUi for ComponentPath {
                     ));
                 }
             } else {
-                ui.label(
-                    ui.ctx()
-                        .error_text(format!("Unknown component path: {self}")),
-                );
+                ui.error_label(&format!("Unknown component path: {self}"));
             }
         }
     }

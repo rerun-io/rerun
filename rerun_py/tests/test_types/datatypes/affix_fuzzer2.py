@@ -13,13 +13,12 @@ import pyarrow as pa
 from attrs import define, field
 from rerun._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from rerun._converters import (
     float_or_none,
 )
 
-__all__ = ["AffixFuzzer2", "AffixFuzzer2ArrayLike", "AffixFuzzer2Batch", "AffixFuzzer2Like", "AffixFuzzer2Type"]
+__all__ = ["AffixFuzzer2", "AffixFuzzer2ArrayLike", "AffixFuzzer2Batch", "AffixFuzzer2Like"]
 
 
 @define(init=False)
@@ -44,15 +43,8 @@ AffixFuzzer2ArrayLike = Union[
 ]
 
 
-class AffixFuzzer2Type(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.testing.datatypes.AffixFuzzer2"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.float32(), self._TYPE_NAME)
-
-
 class AffixFuzzer2Batch(BaseBatch[AffixFuzzer2ArrayLike]):
-    _ARROW_TYPE = AffixFuzzer2Type()
+    _ARROW_DATATYPE = pa.float32()
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer2ArrayLike, data_type: pa.DataType) -> pa.Array:

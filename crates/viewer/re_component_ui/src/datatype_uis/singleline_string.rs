@@ -24,17 +24,21 @@ pub fn edit_singleline_string(
         MaybeMutRef::Ref(value) => MaybeMutRef::Ref(value),
         MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(value),
     };
-    edit_singleline_string_impl(ui, &mut value)
+    edit_singleline_string_impl(ui, &mut value, false)
 }
 
 /// Non monomorphized implementation of [`edit_singleline_string`].
 fn edit_singleline_string_impl(
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, Utf8>,
+    is_password: bool,
 ) -> egui::Response {
     if let Some(value) = value.as_mut() {
         let mut edit_name = value.to_string();
-        let response = egui::TextEdit::singleline(&mut edit_name).show(ui).response;
+        let response = egui::TextEdit::singleline(&mut edit_name)
+            .password(is_password)
+            .show(ui)
+            .response;
         *value = edit_name.into();
         response
     } else {
@@ -85,7 +89,7 @@ pub fn display_text_ui(
     let text = match Text::from_arrow(data) {
         Ok(text) => text.first().cloned(),
         Err(err) => {
-            ui.error_label("failed to deserialize")
+            ui.error_label("Failed to deserialize")
                 .on_hover_text(err.to_string());
             return;
         }
@@ -114,7 +118,7 @@ pub fn display_name_ui(
     let name = match Name::from_arrow(data) {
         Ok(name) => name.first().cloned(),
         Err(err) => {
-            ui.error_label("failed to deserialize")
+            ui.error_label("Failed to deserialize")
                 .on_hover_text(err.to_string());
             return;
         }

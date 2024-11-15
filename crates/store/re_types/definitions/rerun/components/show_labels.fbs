@@ -10,7 +10,6 @@ namespace rerun.components;
 /// blueprints.
 struct ShowLabels (
   "attr.arrow.transparent",
-  "attr.docs.unreleased",
   "attr.python.aliases": "bool",
   "attr.python.array_aliases": "bool, npt.NDArray[np.bool_]",
   "attr.rust.derive": "Copy, PartialEq, Eq",

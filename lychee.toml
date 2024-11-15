@@ -83,6 +83,9 @@ exclude = [
   '%7B.+%7D',             # Ignore strings that look like ready to use links but contain a replacement strings. The URL escaping is for '{.+}' (this seems to be needed for html embedded urls since lychee assumes they use this encoding).
   '%7B%7D',               # Ignore links with string interpolation, escaped variant.
 
+  # Ignore storage-node example links
+  'rerun:/.*',
+
   # Local links that require further setup.
   'http://127.0.0.1',
   'http://localhost',
@@ -95,6 +98,7 @@ exclude = [
   'https://fonts.gstatic.com/',                                                  # Font API entrypoint, not a link.
   'https://tel.rerun.io/',                                                       # Analytics endpoint.
   'https://docs-assets.developer.apple.com/ml-research/datasets/arkitscenes/v1', # Used by arkit_scenes.
+  'https://overpass-api.de/api/interpreter',                                     # Used by openstreetmap_data example
 
   # Avoid rate limiting.
   'https://crates.io/crates/.*',                  # Avoid crates.io rate-limiting
@@ -108,6 +112,7 @@ exclude = [
   'https://link.to',
   'https://static.rerun.io/my_screenshot/',
   'https://your-hosted-asset-url.com/widget.js',
+  'file:///path/to/file',
 
   # Link fragments and data links in examples.
   'https://raw.githubusercontent.com/googlefonts/noto-emoji/', # URL fragment.
@@ -130,7 +135,9 @@ exclude = [
 
   # Needs authentication
   'https://edge.meilisearch.com',
-  'https://eu.posthog.com/project/', # Requires to be logged in on PostHog.
+  'https://eu.posthog.com/project/',                      # Requires to be logged in on PostHog.
+  'https://github.com/rerun-io/internal-test-assets/\.*',
+  'https://github.com/google/mediapipe/issues/5188',      # For some reason that link has always failed.
 
   # Temporarily down or not accessible.
   'https://cs.nyu.edu/~silberman/datasets/nyu_depth_v2.html',       # Nyud links are down every now and then.

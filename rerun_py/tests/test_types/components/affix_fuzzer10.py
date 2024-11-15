@@ -7,11 +7,12 @@ from __future__ import annotations
 
 from typing import Any, Sequence, Union
 
+import numpy as np
+import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 from rerun._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
     ComponentMixin,
 )
@@ -19,7 +20,7 @@ from rerun._converters import (
     str_or_none,
 )
 
-__all__ = ["AffixFuzzer10", "AffixFuzzer10ArrayLike", "AffixFuzzer10Batch", "AffixFuzzer10Like", "AffixFuzzer10Type"]
+__all__ = ["AffixFuzzer10", "AffixFuzzer10ArrayLike", "AffixFuzzer10Batch", "AffixFuzzer10Like"]
 
 
 @define(init=False)
@@ -42,22 +43,18 @@ AffixFuzzer10ArrayLike = Union[
 ]
 
 
-class AffixFuzzer10Type(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.testing.components.AffixFuzzer10"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.utf8(), self._TYPE_NAME)
-
-
 class AffixFuzzer10Batch(BaseBatch[AffixFuzzer10ArrayLike], ComponentBatchMixin):
-    _ARROW_TYPE = AffixFuzzer10Type()
+    _ARROW_DATATYPE = pa.utf8()
+    _COMPONENT_NAME: str = "rerun.testing.components.AffixFuzzer10"
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer10ArrayLike, data_type: pa.DataType) -> pa.Array:
         if isinstance(data, str):
-            array = [data]
+            array: Union[list[str], npt.ArrayLike] = [data]
         elif isinstance(data, Sequence):
             array = [str(datum) for datum in data]
+        elif isinstance(data, np.ndarray):
+            array = data
         else:
             array = [str(data)]
 

@@ -15,19 +15,19 @@ use re_log_types::{
     example_components::{MyColor, MyPoint, MyPoints},
     EntityPath, TimePoint,
 };
-use re_query::Caches;
+use re_query::QueryCache;
 use re_types::Archetype;
-use re_types_core::Loggable as _;
+use re_types_core::Component as _;
 
 // ---
 
 #[test]
 fn simple_range() -> anyhow::Result<()> {
-    let mut store = ChunkStore::new(
+    let store = ChunkStore::new_handle(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(store.clone());
 
     let entity_path: EntityPath = "point".into();
 
@@ -40,7 +40,7 @@ fn simple_range() -> anyhow::Result<()> {
         .with_component_batch(row_id1_1, timepoint1, &points1_1)
         .with_component_batch(row_id1_2, timepoint1, &colors1_2)
         .build()?;
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
     let timepoint2 = [build_frame_nr(223)];
     let row_id2 = RowId::new();
@@ -48,7 +48,7 @@ fn simple_range() -> anyhow::Result<()> {
     let chunk = Chunk::builder(entity_path.clone())
         .with_component_batch(row_id2, timepoint2, &colors2)
         .build()?;
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
     let timepoint3 = [build_frame_nr(323)];
     let row_id3 = RowId::new();
@@ -56,7 +56,7 @@ fn simple_range() -> anyhow::Result<()> {
     let chunk = Chunk::builder(entity_path.clone())
         .with_component_batch(row_id3, timepoint3, &points3)
         .build()?;
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
     // --- First test: `(timepoint1, timepoint3]` ---
 
@@ -73,7 +73,7 @@ fn simple_range() -> anyhow::Result<()> {
     ];
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path,
         expected_points,
@@ -103,7 +103,7 @@ fn simple_range() -> anyhow::Result<()> {
     ];
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path,
         expected_points,
@@ -115,11 +115,11 @@ fn simple_range() -> anyhow::Result<()> {
 
 #[test]
 fn static_range() -> anyhow::Result<()> {
-    let mut store = ChunkStore::new(
+    let store = ChunkStore::new_handle(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(store.clone());
 
     let entity_path: EntityPath = "point".into();
 
@@ -132,13 +132,13 @@ fn static_range() -> anyhow::Result<()> {
         .with_component_batch(row_id1_1, timepoint1, &points1_1)
         .with_component_batch(row_id1_2, timepoint1, &colors1_2)
         .build()?;
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
     // Insert statically too!
     let row_id1_3 = RowId::new();
     let chunk = Chunk::builder(entity_path.clone())
         .with_component_batch(row_id1_3, TimePoint::default(), &colors1_2)
         .build()?;
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
     let timepoint2 = [build_frame_nr(223)];
     let row_id2_1 = RowId::new();
@@ -146,13 +146,13 @@ fn static_range() -> anyhow::Result<()> {
     let chunk = Chunk::builder(entity_path.clone())
         .with_component_batch(row_id2_1, timepoint2, &colors2_1)
         .build()?;
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
     // Insert statically too!
     let row_id2_2 = RowId::new();
     let chunk = Chunk::builder(entity_path.clone())
         .with_component_batch(row_id2_2, TimePoint::default(), &colors2_1)
         .build()?;
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
     let timepoint3 = [build_frame_nr(323)];
     // Create some Positions with implicit instances
@@ -161,7 +161,7 @@ fn static_range() -> anyhow::Result<()> {
     let chunk = Chunk::builder(entity_path.clone())
         .with_component_batch(row_id3, timepoint3, &points3)
         .build()?;
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
     // --- First test: `(timepoint1, timepoint3]` ---
 
@@ -178,7 +178,7 @@ fn static_range() -> anyhow::Result<()> {
     ];
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path,
         expected_points,
@@ -206,7 +206,7 @@ fn static_range() -> anyhow::Result<()> {
     ];
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path,
         expected_points,
@@ -223,7 +223,7 @@ fn static_range() -> anyhow::Result<()> {
     // same expectations
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path,
         expected_points,
@@ -246,11 +246,11 @@ fn static_range() -> anyhow::Result<()> {
 // properly keep track of the fact that there are holes in the data -- on purpose.
 #[test]
 fn time_back_and_forth() {
-    let mut store = ChunkStore::new(
+    let store = ChunkStore::new_handle(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(store.clone());
 
     let entity_path: EntityPath = "point".into();
 
@@ -265,7 +265,7 @@ fn time_back_and_forth() {
                     .unwrap(),
             );
 
-            insert_and_react(&mut store, &mut caches, &chunk);
+            insert_and_react(&mut store.write(), &mut caches, &chunk);
 
             (chunk, points)
         })
@@ -294,7 +294,14 @@ fn time_back_and_forth() {
             points[9].as_slice(),
         ), //
     ];
-    query_and_compare(&caches, &store, &query, &entity_path, expected_points, &[]);
+    query_and_compare(
+        &caches,
+        &store.read(),
+        &query,
+        &entity_path,
+        expected_points,
+        &[],
+    );
 
     // --- Query #2: `[1, 3]` ---
 
@@ -326,7 +333,14 @@ fn time_back_and_forth() {
             points[3].as_slice(),
         ), //
     ];
-    query_and_compare(&caches, &store, &query, &entity_path, expected_points, &[]);
+    query_and_compare(
+        &caches,
+        &store.read(),
+        &query,
+        &entity_path,
+        expected_points,
+        &[],
+    );
 
     // --- Query #3: `[5, 7]` ---
 
@@ -358,7 +372,14 @@ fn time_back_and_forth() {
             points[7].as_slice(),
         ), //
     ];
-    query_and_compare(&caches, &store, &query, &entity_path, expected_points, &[]);
+    query_and_compare(
+        &caches,
+        &store.read(),
+        &query,
+        &entity_path,
+        expected_points,
+        &[],
+    );
 }
 
 #[test]
@@ -382,11 +403,11 @@ fn invalidation() {
             .copied()
             .unwrap_or(TimeInt::STATIC);
 
-        let mut store = ChunkStore::new(
+        let store = ChunkStore::new_handle(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             Default::default(),
         );
-        let mut caches = Caches::new(&store);
+        let mut caches = QueryCache::new(store.clone());
 
         let row_id1 = RowId::new();
         let points1 = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -394,7 +415,7 @@ fn invalidation() {
             .with_component_batch(row_id1, present_data_timepoint.clone(), &points1)
             .build()
             .unwrap();
-        insert_and_react(&mut store, &mut caches, &Arc::new(chunk1));
+        insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk1));
 
         let row_id2 = RowId::new();
         let colors2 = vec![MyColor::from_rgb(1, 2, 3)];
@@ -402,7 +423,7 @@ fn invalidation() {
             .with_component_batch(row_id2, present_data_timepoint.clone(), &colors2)
             .build()
             .unwrap();
-        insert_and_react(&mut store, &mut caches, &Arc::new(chunk2));
+        insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk2));
 
         let expected_points = &[
             ((present_timestamp, row_id1), points1.as_slice()), //
@@ -412,7 +433,7 @@ fn invalidation() {
         ];
         query_and_compare(
             &caches,
-            &store,
+            &store.read(),
             &query,
             &entity_path.into(),
             expected_points,
@@ -428,7 +449,7 @@ fn invalidation() {
             .with_component_batch(row_id3, present_data_timepoint.clone(), &points3)
             .build()
             .unwrap();
-        insert_and_react(&mut store, &mut caches, &Arc::new(chunk3));
+        insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk3));
 
         let expected_points = &[
             ((present_timestamp, row_id1), points1.as_slice()), //
@@ -439,7 +460,7 @@ fn invalidation() {
         ];
         query_and_compare(
             &caches,
-            &store,
+            &store.read(),
             &query,
             &entity_path.into(),
             expected_points,
@@ -453,7 +474,7 @@ fn invalidation() {
             .with_component_batch(row_id4, present_data_timepoint.clone(), &colors4)
             .build()
             .unwrap();
-        insert_and_react(&mut store, &mut caches, &Arc::new(chunk4));
+        insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk4));
 
         let expected_points = &[
             ((present_timestamp, row_id1), points1.as_slice()), //
@@ -465,7 +486,7 @@ fn invalidation() {
         ];
         query_and_compare(
             &caches,
-            &store,
+            &store.read(),
             &query,
             &entity_path.into(),
             expected_points,
@@ -481,7 +502,7 @@ fn invalidation() {
             .with_component_batch(row_id5, past_data_timepoint.clone(), &points5)
             .build()
             .unwrap();
-        insert_and_react(&mut store, &mut caches, &Arc::new(chunk5));
+        insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk5));
 
         let expected_points1 = &[
             ((past_timestamp, row_id5), points5.as_slice()), //
@@ -502,7 +523,7 @@ fn invalidation() {
         ];
         query_and_compare(
             &caches,
-            &store,
+            &store.read(),
             &query,
             &entity_path.into(),
             expected_points,
@@ -516,7 +537,7 @@ fn invalidation() {
             .with_component_batch(row_id6, past_data_timepoint.clone(), &colors6)
             .build()
             .unwrap();
-        insert_and_react(&mut store, &mut caches, &Arc::new(chunk6));
+        insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk6));
 
         let expected_colors1 = &[
             ((past_timestamp, row_id6), colors6.as_slice()), //
@@ -533,7 +554,7 @@ fn invalidation() {
         };
         query_and_compare(
             &caches,
-            &store,
+            &store.read(),
             &query,
             &entity_path.into(),
             expected_points,
@@ -549,7 +570,7 @@ fn invalidation() {
             .with_component_batch(row_id7, future_data_timepoint.clone(), &points7)
             .build()
             .unwrap();
-        insert_and_react(&mut store, &mut caches, &Arc::new(chunk7));
+        insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk7));
 
         let expected_points1 = &[
             ((past_timestamp, row_id5), points5.as_slice()), //
@@ -567,7 +588,7 @@ fn invalidation() {
         };
         query_and_compare(
             &caches,
-            &store,
+            &store.read(),
             &query,
             &entity_path.into(),
             expected_points,
@@ -581,7 +602,7 @@ fn invalidation() {
             .with_component_batch(row_id8, future_data_timepoint.clone(), &colors8)
             .build()
             .unwrap();
-        insert_and_react(&mut store, &mut caches, &Arc::new(chunk8));
+        insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk8));
 
         let expected_colors1 = &[
             ((past_timestamp, row_id6), colors6.as_slice()), //
@@ -599,7 +620,7 @@ fn invalidation() {
         };
         query_and_compare(
             &caches,
-            &store,
+            &store.read(),
             &query,
             &entity_path.into(),
             expected_points,
@@ -635,30 +656,30 @@ fn invalidation() {
 // # Expected: points=[[1,2,3]] colors=[]
 //
 // rr.set_time(2)
-// rr.log_components("points", rr.components.MyColor(0xFF0000))
+// rr.log("points", rr.components.MyColor(0xFF0000))
 //
 // # Do second query here: LatestAt(+inf)
 // # Expected: points=[[1,2,3]] colors=[0xFF0000]
 //
 // rr.set_time(3)
-// rr.log_components("points", rr.components.MyColor(0x0000FF))
+// rr.log("points", rr.components.MyColor(0x0000FF))
 //
 // # Do third query here: LatestAt(+inf)
 // # Expected: points=[[1,2,3]] colors=[0x0000FF]
 //
 // rr.set_time(3)
-// rr.log_components("points", rr.components.MyColor(0x00FF00))
+// rr.log("points", rr.components.MyColor(0x00FF00))
 //
 // # Do fourth query here: LatestAt(+inf)
 // # Expected: points=[[1,2,3]] colors=[0x00FF00]
 // ```
 #[test]
 fn invalidation_of_future_optionals() {
-    let mut store = ChunkStore::new(
+    let store = ChunkStore::new_handle(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(store.clone());
 
     let entity_path = "points";
 
@@ -674,7 +695,7 @@ fn invalidation_of_future_optionals() {
         .with_component_batch(row_id1, timeless, &points1)
         .build()
         .unwrap();
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk1));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk1));
 
     let expected_points = &[
         ((TimeInt::STATIC, row_id1), points1.as_slice()), //
@@ -682,7 +703,7 @@ fn invalidation_of_future_optionals() {
     let expected_colors = &[];
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path.into(),
         expected_points,
@@ -695,14 +716,14 @@ fn invalidation_of_future_optionals() {
         .with_component_batch(row_id2, frame2, &colors2)
         .build()
         .unwrap();
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk2));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk2));
 
     let expected_colors = &[
         ((TimeInt::new_temporal(2), row_id2), colors2.as_slice()), //
     ];
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path.into(),
         expected_points,
@@ -715,7 +736,7 @@ fn invalidation_of_future_optionals() {
         .with_component_batch(row_id3, frame3, &colors3)
         .build()
         .unwrap();
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk3));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk3));
 
     let expected_colors = &[
         ((TimeInt::new_temporal(2), row_id2), colors2.as_slice()), //
@@ -723,7 +744,7 @@ fn invalidation_of_future_optionals() {
     ];
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path.into(),
         expected_points,
@@ -736,7 +757,7 @@ fn invalidation_of_future_optionals() {
         .with_component_batch(row_id4, frame3, &colors4)
         .build()
         .unwrap();
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk4));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk4));
 
     let expected_colors = &[
         ((TimeInt::new_temporal(2), row_id2), colors2.as_slice()), //
@@ -745,7 +766,7 @@ fn invalidation_of_future_optionals() {
     ];
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path.into(),
         expected_points,
@@ -755,11 +776,11 @@ fn invalidation_of_future_optionals() {
 
 #[test]
 fn invalidation_static() {
-    let mut store = ChunkStore::new(
+    let store = ChunkStore::new_handle(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(store.clone());
 
     let entity_path = "points";
 
@@ -774,7 +795,7 @@ fn invalidation_static() {
         .with_component_batch(row_id1, timeless.clone(), &points1)
         .build()
         .unwrap();
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk1));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk1));
 
     let expected_points = &[
         ((TimeInt::STATIC, row_id1), points1.as_slice()), //
@@ -782,7 +803,7 @@ fn invalidation_static() {
     let expected_colors = &[];
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path.into(),
         expected_points,
@@ -795,14 +816,14 @@ fn invalidation_static() {
         .with_component_batch(row_id2, timeless.clone(), &colors2)
         .build()
         .unwrap();
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk2));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk2));
 
     let expected_colors = &[
         ((TimeInt::STATIC, row_id2), colors2.as_slice()), //
     ];
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path.into(),
         expected_points,
@@ -815,14 +836,14 @@ fn invalidation_static() {
         .with_component_batch(row_id3, timeless, &colors3)
         .build()
         .unwrap();
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk3));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk3));
 
     let expected_colors = &[
         ((TimeInt::STATIC, row_id3), colors3.as_slice()), //
     ];
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path.into(),
         expected_points,
@@ -833,11 +854,11 @@ fn invalidation_static() {
 // See <https://github.com/rerun-io/rerun/pull/6214>.
 #[test]
 fn concurrent_multitenant_edge_case() {
-    let mut store = ChunkStore::new(
+    let store = ChunkStore::new_handle(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(store.clone());
 
     let entity_path: EntityPath = "point".into();
 
@@ -857,11 +878,11 @@ fn concurrent_multitenant_edge_case() {
     };
 
     let (timepoint1, points1, chunk1) = add_points(123, 1.0);
-    insert_and_react(&mut store, &mut caches, &chunk1);
+    insert_and_react(&mut store.write(), &mut caches, &chunk1);
     let (_timepoint2, points2, chunk2) = add_points(223, 2.0);
-    insert_and_react(&mut store, &mut caches, &chunk2);
+    insert_and_react(&mut store.write(), &mut caches, &chunk2);
     let (_timepoint3, points3, chunk3) = add_points(323, 3.0);
-    insert_and_react(&mut store, &mut caches, &chunk3);
+    insert_and_react(&mut store.write(), &mut caches, &chunk3);
 
     // --- Tenant #1 queries the data, but doesn't cache the result in the deserialization cache ---
 
@@ -871,7 +892,6 @@ fn concurrent_multitenant_edge_case() {
 
     {
         let cached = caches.range(
-            &store,
             &query,
             &entity_path,
             MyPoints::all_components().iter().copied(),
@@ -898,17 +918,24 @@ fn concurrent_multitenant_edge_case() {
             points3.as_slice(),
         ), //
     ];
-    query_and_compare(&caches, &store, &query, &entity_path, expected_points, &[]);
+    query_and_compare(
+        &caches,
+        &store.read(),
+        &query,
+        &entity_path,
+        expected_points,
+        &[],
+    );
 }
 
 // See <https://github.com/rerun-io/rerun/issues/6279>.
 #[test]
 fn concurrent_multitenant_edge_case2() {
-    let mut store = ChunkStore::new(
+    let store = ChunkStore::new_handle(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(store.clone());
 
     let entity_path: EntityPath = "point".into();
 
@@ -928,22 +955,21 @@ fn concurrent_multitenant_edge_case2() {
     };
 
     let (timepoint1, points1, chunk1) = add_points(123, 1.0);
-    insert_and_react(&mut store, &mut caches, &chunk1);
+    insert_and_react(&mut store.write(), &mut caches, &chunk1);
     let (_timepoint2, points2, chunk2) = add_points(223, 2.0);
-    insert_and_react(&mut store, &mut caches, &chunk2);
+    insert_and_react(&mut store.write(), &mut caches, &chunk2);
     let (_timepoint3, points3, chunk3) = add_points(323, 3.0);
-    insert_and_react(&mut store, &mut caches, &chunk3);
+    insert_and_react(&mut store.write(), &mut caches, &chunk3);
     let (_timepoint4, points4, chunk4) = add_points(423, 4.0);
-    insert_and_react(&mut store, &mut caches, &chunk4);
+    insert_and_react(&mut store.write(), &mut caches, &chunk4);
     let (_timepoint5, points5, chunk5) = add_points(523, 5.0);
-    insert_and_react(&mut store, &mut caches, &chunk5);
+    insert_and_react(&mut store.write(), &mut caches, &chunk5);
 
     // --- Tenant #1 queries the data at (123, 223), but doesn't cache the result in the deserialization cache ---
 
     let query1 = RangeQuery::new(timepoint1[0].0, ResolvedTimeRange::new(123, 223));
     {
         let cached = caches.range(
-            &store,
             &query1,
             &entity_path,
             MyPoints::all_components().iter().copied(),
@@ -957,7 +983,6 @@ fn concurrent_multitenant_edge_case2() {
     let query2 = RangeQuery::new(timepoint1[0].0, ResolvedTimeRange::new(423, 523));
     {
         let cached = caches.range(
-            &store,
             &query2,
             &entity_path,
             MyPoints::all_components().iter().copied(),
@@ -983,7 +1008,14 @@ fn concurrent_multitenant_edge_case2() {
             points4.as_slice(),
         ), //
     ];
-    query_and_compare(&caches, &store, &query3, &entity_path, expected_points, &[]);
+    query_and_compare(
+        &caches,
+        &store.read(),
+        &query3,
+        &entity_path,
+        expected_points,
+        &[],
+    );
 
     // --- Tenant #1 finally deserializes its data ---
 
@@ -997,7 +1029,14 @@ fn concurrent_multitenant_edge_case2() {
             points2.as_slice(),
         ), //
     ];
-    query_and_compare(&caches, &store, &query1, &entity_path, expected_points, &[]);
+    query_and_compare(
+        &caches,
+        &store.read(),
+        &query1,
+        &entity_path,
+        expected_points,
+        &[],
+    );
 
     // --- Tenant #2 finally deserializes its data ---
 
@@ -1011,17 +1050,24 @@ fn concurrent_multitenant_edge_case2() {
             points5.as_slice(),
         ), //
     ];
-    query_and_compare(&caches, &store, &query2, &entity_path, expected_points, &[]);
+    query_and_compare(
+        &caches,
+        &store.read(),
+        &query2,
+        &entity_path,
+        expected_points,
+        &[],
+    );
 }
 
 // // ---
 
-fn insert_and_react(store: &mut ChunkStore, caches: &mut Caches, chunk: &Arc<Chunk>) {
+fn insert_and_react(store: &mut ChunkStore, caches: &mut QueryCache, chunk: &Arc<Chunk>) {
     caches.on_events(&store.insert_chunk(chunk).unwrap());
 }
 
 fn query_and_compare(
-    caches: &Caches,
+    caches: &QueryCache,
     store: &ChunkStore,
     query: &RangeQuery,
     entity_path: &EntityPath,
@@ -1032,7 +1078,6 @@ fn query_and_compare(
 
     for _ in 0..3 {
         let cached = caches.range(
-            store,
             query,
             entity_path,
             MyPoints::all_components().iter().copied(),

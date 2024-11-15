@@ -208,6 +208,7 @@ impl ChunkBuilder {
     /// This returns an error if the chunk fails to `sanity_check`.
     #[inline]
     pub fn build(self) -> ChunkResult<Chunk> {
+        re_tracing::profile_function!();
         let Self {
             id,
             entity_path,
@@ -216,15 +217,16 @@ impl ChunkBuilder {
             components,
         } = self;
 
-        Chunk::from_native_row_ids(
-            id,
-            entity_path,
-            None,
-            &row_ids,
+        let timelines = {
+            re_tracing::profile_scope!("timelines");
             timelines
                 .into_iter()
                 .map(|(timeline, time_column)| (timeline, time_column.build()))
-                .collect(),
+                .collect()
+        };
+
+        let components = {
+            re_tracing::profile_scope!("components");
             components
                 .into_iter()
                 .filter_map(|(component_name, arrays)| {
@@ -232,8 +234,10 @@ impl ChunkBuilder {
                     crate::util::arrays_to_list_array_opt(&arrays)
                         .map(|list_array| (component_name, list_array))
                 })
-                .collect(),
-        )
+                .collect()
+        };
+
+        Chunk::from_native_row_ids(id, entity_path, None, &row_ids, timelines, components)
     }
 
     /// Builds and returns the final [`Chunk`].

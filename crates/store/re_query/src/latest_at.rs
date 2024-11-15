@@ -10,11 +10,9 @@ use parking_lot::RwLock;
 use re_chunk::{Chunk, RowId, UnitChunkShared};
 use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
 use re_log_types::EntityPath;
-use re_types_core::{
-    components::ClearIsRecursive, Component, ComponentName, Loggable as _, SizeBytes,
-};
+use re_types_core::{components::ClearIsRecursive, Component, ComponentName, SizeBytes};
 
-use crate::{CacheKey, Caches, QueryError};
+use crate::{QueryCache, QueryCacheKey, QueryError};
 
 // --- Public API ---
 
@@ -35,7 +33,7 @@ fn compare_indices(lhs: (TimeInt, RowId), rhs: (TimeInt, RowId)) -> std::cmp::Or
     }
 }
 
-impl Caches {
+impl QueryCache {
     /// Queries for the given `component_names` using latest-at semantics.
     ///
     /// See [`LatestAtResults`] for more information about how to handle the results.
@@ -43,12 +41,13 @@ impl Caches {
     /// This is a cached API -- data will be lazily cached upon access.
     pub fn latest_at(
         &self,
-        store: &ChunkStore,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
         component_names: impl IntoIterator<Item = ComponentName>,
     ) -> LatestAtResults {
         re_tracing::profile_function!(entity_path.to_string());
+
+        let store = self.store.read();
 
         let mut results = LatestAtResults::empty(entity_path.clone(), query.clone());
 
@@ -96,7 +95,7 @@ impl Caches {
                     continue;
                 }
 
-                let key = CacheKey::new(
+                let key = QueryCacheKey::new(
                     clear_entity_path.clone(),
                     query.timeline(),
                     ClearIsRecursive::name(),
@@ -112,7 +111,7 @@ impl Caches {
                 let mut cache = cache.write();
                 cache.handle_pending_invalidation();
                 if let Some(cached) =
-                    cache.latest_at(store, query, &clear_entity_path, ClearIsRecursive::name())
+                    cache.latest_at(&store, query, &clear_entity_path, ClearIsRecursive::name())
                 {
                     let found_recursive_clear = cached
                         .component_mono::<ClearIsRecursive>()
@@ -144,7 +143,7 @@ impl Caches {
         }
 
         for component_name in component_names {
-            let key = CacheKey::new(entity_path.clone(), query.timeline(), component_name);
+            let key = QueryCacheKey::new(entity_path.clone(), query.timeline(), component_name);
 
             let cache = Arc::clone(
                 self.latest_at_per_cache_key
@@ -155,7 +154,7 @@ impl Caches {
 
             let mut cache = cache.write();
             cache.handle_pending_invalidation();
-            if let Some(cached) = cache.latest_at(store, query, entity_path, component_name) {
+            if let Some(cached) = cache.latest_at(&store, query, entity_path, component_name) {
                 // 1. A `Clear` component doesn't shadow its own self.
                 // 2. If a `Clear` component was found with an index greater than or equal to the
                 //    component data, then we know for sure that it should shadow it.
@@ -538,10 +537,10 @@ impl LatestAtResults {
 
 // --- Cached implementation ---
 
-/// Caches the results of `LatestAt` queries for a given [`CacheKey`].
+/// Caches the results of `LatestAt` queries for a given [`QueryCacheKey`].
 pub struct LatestAtCache {
     /// For debugging purposes.
-    pub cache_key: CacheKey,
+    pub cache_key: QueryCacheKey,
 
     /// Organized by _query_ time.
     ///
@@ -562,7 +561,7 @@ pub struct LatestAtCache {
 
 impl LatestAtCache {
     #[inline]
-    pub fn new(cache_key: CacheKey) -> Self {
+    pub fn new(cache_key: QueryCacheKey) -> Self {
         Self {
             cache_key,
             per_query_time: Default::default(),

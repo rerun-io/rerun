@@ -9,7 +9,7 @@ table Blob (
   "attr.arrow.transparent",
   "attr.python.aliases": "bytes, npt.NDArray[np.uint8]",
   "attr.python.array_aliases": "bytes, npt.NDArray[np.uint8]",
-  "attr.rust.derive": "Default, PartialEq, Eq",
+  "attr.rust.derive": "PartialEq, Eq",
   "attr.rust.repr": "transparent"
 ) {
   data: rerun.datatypes.Blob (order: 100);

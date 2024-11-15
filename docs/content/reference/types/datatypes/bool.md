@@ -5,9 +5,11 @@ title: "Bool"
 
 A single boolean.
 
-## Fields
 
-* value: `bool`
+## Arrow datatype
+```
+boolean
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `Bool`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Bool.html)
@@ -19,4 +21,4 @@ A single boolean.
 
 * [`ClearIsRecursive`](../components/clear_is_recursive.md)
 * [`DisconnectedSpace`](../components/disconnected_space.md)
-* [`ShowLabels`](../components/show_labels.md?speculative-link)
+* [`ShowLabels`](../components/show_labels.md)

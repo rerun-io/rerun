@@ -7,7 +7,7 @@ use re_chunk_store::{
     ChunkStoreSubscriberHandle,
 };
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
-use re_types::{ComponentName, Loggable as _};
+use re_types::{Component as _, ComponentName};
 
 // ---
 

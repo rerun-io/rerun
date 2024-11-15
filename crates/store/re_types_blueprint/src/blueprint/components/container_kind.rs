@@ -80,13 +80,6 @@ impl std::fmt::Display for ContainerKind {
 ::re_types_core::macros::impl_into_cow!(ContainerKind);
 
 impl ::re_types_core::Loggable for ContainerKind {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.components.ContainerKind".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
@@ -160,5 +153,12 @@ impl ::re_types_core::Loggable for ContainerKind {
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.blueprint.components.ContainerKind")?)
+    }
+}
+
+impl ::re_types_core::Component for ContainerKind {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.ContainerKind".into()
     }
 }

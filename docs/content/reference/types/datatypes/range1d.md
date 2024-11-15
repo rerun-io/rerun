@@ -5,9 +5,11 @@ title: "Range1D"
 
 A 1D range, specifying a lower and upper bound.
 
-## Fields
 
-* range: 2x `f64`
+## Arrow datatype
+```
+FixedSizeList<2, float64>
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `Range1D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Range1D.html)

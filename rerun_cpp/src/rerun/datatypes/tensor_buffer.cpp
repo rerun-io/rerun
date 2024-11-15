@@ -197,6 +197,8 @@ namespace rerun {
                         static_cast<int64_t>(union_instance.get_union_data().f64.size())
                     ));
                 } break;
+                default:
+                    assert(false && "unreachable");
             }
         }
 

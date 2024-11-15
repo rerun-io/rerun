@@ -19,17 +19,11 @@ rr.log("video_asset", rr.AssetVideo(path=sys.argv[1]), static=True)
 # Create two entities, showing the same video frozen at different times.
 rr.log(
     "frame_1s",
-    rr.VideoFrameReference(
-        timestamp=rr.components.VideoTimestamp(seconds=1.0),
-        video_reference="video_asset",
-    ),
+    rr.VideoFrameReference(seconds=1.0, video_reference="video_asset"),
 )
 rr.log(
     "frame_2s",
-    rr.VideoFrameReference(
-        timestamp=rr.components.VideoTimestamp(seconds=2.0),
-        video_reference="video_asset",
-    ),
+    rr.VideoFrameReference(seconds=2.0, video_reference="video_asset"),
 )
 
 # Send blueprint that shows two 2D views next to each other.

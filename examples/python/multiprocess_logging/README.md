@@ -29,7 +29,7 @@ The function `task` is decorated with `@rr.shutdown_at_exit`. This decorator ens
 def task(child_index: int) -> None:
     rr.init("rerun_example_multiprocessing")
 
-    rr.connect()
+    rr.connect_tcp()
 
     title = f"task_{child_index}"
     rr.log(

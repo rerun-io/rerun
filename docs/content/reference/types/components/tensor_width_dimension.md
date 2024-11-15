@@ -5,9 +5,17 @@ title: "TensorWidthDimension"
 
 Specifies which dimension to use for width.
 
-## Fields
+## Rerun datatype
+[`TensorDimensionSelection`](../datatypes/tensor_dimension_selection.md)
 
-* dimension: [`TensorDimensionSelection`](../datatypes/tensor_dimension_selection.md)
+
+## Arrow datatype
+```
+Struct {
+    dimension: uint32
+    invert: boolean
+}
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `TensorWidthDimension`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1TensorWidthDimension.html)

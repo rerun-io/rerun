@@ -192,13 +192,15 @@ fn active_defaults(
     // Cleared components should act as unset, so we filter out everything that's empty,
     // even if they are listed in `all_components`.
     ctx.blueprint_db()
+        .storage_engine()
         .store()
         .all_components_on_timeline(&blueprint_timeline(), &view.defaults_path)
         .unwrap_or_default()
         .into_iter()
         .filter(|c| {
-            db.query_caches()
-                .latest_at(db.store(), query, &view.defaults_path, [*c])
+            db.storage_engine()
+                .cache()
+                .latest_at(query, &view.defaults_path, [*c])
                 .component_batch_raw(c)
                 .map_or(false, |data| !data.is_empty())
         })
@@ -290,22 +292,13 @@ fn add_popup_ui(
             // - Finally, fall back on the default value from the component registry.
 
             // TODO(jleibs): Is this the right place for fallbacks to come from?
-            let Some(initial_data) = ctx
-                .visualizer_collection
-                .get_by_identifier(viz)
-                .ok()
-                .and_then(|sys| {
-                    sys.fallback_provider()
-                        .fallback_for(&query_context, component_name)
-                        .ok()
-                })
-            else {
-                re_log::warn!(
-                    "Could not identify an initial value for: {}",
-                    component_name
-                );
+            let Ok(visualizer) = ctx.visualizer_collection.get_by_identifier(viz) else {
+                re_log::warn!("Could not find visualizer for: {}", viz);
                 return;
             };
+            let initial_data = visualizer
+                .fallback_provider()
+                .fallback_for(&query_context, component_name);
 
             match Chunk::builder(defaults_path.clone())
                 .with_row(

@@ -5,6 +5,26 @@
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
 [opt_out.run]
+"concepts/static/log_static" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/static/log_temporal_10x" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/static/send_static" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
+"concepts/static/log_static_10x" = [ # pseudo-code
+  "py",
+  "cpp",
+  "rust",
+]
 "concepts/viscomp-base" = [
   "cpp",  # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
@@ -25,6 +45,11 @@
   "cpp",  # Blueprint API doesn't exist for C++/Rust
   "rust", # Blueprint API doesn't exist for C++/Rust
 ]
+"concepts/app-model" = [ # Uses a non-standard logging workflow
+  "py",
+  "cpp",
+  "rust",
+]
 views = [
   "cpp",  # TODO(#5520): C++ views are not yet implemented
   "rust", # TODO(#5521): Rust views are not yet implemented
@@ -42,6 +67,26 @@ views = [
   "rust",
   "py",
 ]
+"reference/dataframe_query" = [ # No output
+  "cpp",
+  "rust",
+  "py",
+]
+"reference/dataframe_save_blueprint" = [ # No output
+  "cpp",
+  "rust",
+  "py",
+]
+"reference/dataframe_view_query" = [ # No output
+  "cpp",
+  "rust",
+  "py",
+]
+"reference/dataframe_view_query_external" = [ # No output
+  "cpp",
+  "rust",
+  "py",
+]
 "tutorials/annotation-context" = [ # Not a complete example
   "cpp",
   "rust",
@@ -50,6 +95,11 @@ views = [
 "tutorials/any_values" = [ # Not yet implemented
   "cpp",
   "rust",
+]
+"tutorials/custom-application-id" = [ # Not a complete examples
+  "cpp",
+  "rust",
+  "py",
 ]
 "tutorials/custom-recording-id" = [ # Not a complete examples
   "cpp",
@@ -81,6 +131,16 @@ views = [
   "cpp",  # Not implemented
   "rust", # Not implemented
 ]
+"tutorials/data_out" = [
+  "py",   # Requires context (an RRD file to be exported by the user)
+  "cpp",  # Not implemented
+  "rust", # Not implemented
+]
+"tutorials/visualization" = [
+  "py",   # Requires passing RRD as argument
+  "cpp",  # Not implemented
+  "rust", # Not implemented
+]
 
 # These entries will run but their results won't be compared to the baseline.
 #
@@ -109,6 +169,11 @@ quick_start = [ # These examples don't have exactly the same implementation.
 ]
 "archetypes/bar_chart" = [ # On Windows this logs f64 instead of u64 unless a numpy array with explicit type is used.
   "py",
+]
+"archetypes/capsule3d_batch" = [ # TODO(#3235): Degree to radian conversion is slightly different.
+  "cpp",
+  "py",
+  "rust",
 ]
 "archetypes/ellipsoid3d_simple" = [ # TODO(#3206): examples use different RNGs
   "cpp",

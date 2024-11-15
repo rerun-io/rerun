@@ -5,6 +5,7 @@ use crate::{
     visualizer_system::EmptySystem,
 };
 use re_chunk_store::{ColumnDescriptor, SparseFillStrategy};
+use re_dataframe::QueryEngine;
 use re_log_types::EntityPath;
 use re_types_core::SpaceViewClassIdentifier;
 use re_viewer_context::{
@@ -127,9 +128,8 @@ mode sets the default time range to _everything_. You can override this in the s
         let state = state.downcast_mut::<DataframeSpaceViewState>()?;
         let view_query = view_query::Query::from_blueprint(ctx, query.space_view_id);
 
-        let query_engine = re_dataframe::QueryEngine {
-            store: ctx.recording().store(),
-            cache: ctx.recording().query_caches(),
+        let query_engine = QueryEngine {
+            engine: ctx.recording().storage_engine_arc(),
         };
 
         let view_contents = query
@@ -145,9 +145,9 @@ mode sets the default time range to _everything_. You can override this in the s
 
         let mut dataframe_query = re_chunk_store::QueryExpression {
             view_contents: Some(view_contents),
-            filtered_index: view_query.timeline(ctx)?,
+            filtered_index: Some(view_query.timeline(ctx)?),
             filtered_index_range: Some(view_query.filter_by_range()?),
-            filtered_point_of_view: view_query.filter_by_event()?,
+            filtered_is_not_null: view_query.filter_is_not_null()?,
             sparse_fill_strategy,
             selection: None,
 
@@ -165,8 +165,13 @@ mode sets the default time range to _everything_. You can override this in the s
 
         let query_handle = query_engine.query(dataframe_query);
 
-        let hide_column_actions =
-            dataframe_ui(ctx, ui, &query_handle, &mut state.expended_rows_cache);
+        let hide_column_actions = dataframe_ui(
+            ctx,
+            ui,
+            &query_handle,
+            &mut state.expended_rows_cache,
+            &query.space_view_id,
+        );
 
         view_query.handle_hide_column_actions(ctx, &view_columns, hide_column_actions)?;
 

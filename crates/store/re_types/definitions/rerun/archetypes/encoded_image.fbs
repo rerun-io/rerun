@@ -4,6 +4,7 @@ namespace rerun.archetypes;
 /// An image encoded as e.g. a JPEG or PNG.
 ///
 /// Rerun also supports uncompressed images with the [archetypes.Image].
+/// For images that refer to video frames see [archetypes.VideoFrameReference].
 ///
 /// \py To compress an image, use [`rerun.Image.compress`][].
 ///

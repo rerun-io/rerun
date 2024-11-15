@@ -7,10 +7,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Specify both a Mesh3D and a Points3D indicator component so that the data is shown as both a
     // 3D mesh _and_ a point cloud by default.
-    rec.log_component_batches(
+    rec.log(
         "points_and_mesh",
-        false,
-        [
+        &[
             rerun::Points3D::indicator().as_ref() as &dyn rerun::ComponentBatch,
             rerun::Mesh3D::indicator().as_ref(),
             &[[0.0, 0.0, 0.0], [10.0, 0.0, 0.0], [0.0, 10.0, 0.0]].map(rerun::Position3D::from),

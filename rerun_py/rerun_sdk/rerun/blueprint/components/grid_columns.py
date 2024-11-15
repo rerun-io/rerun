@@ -11,7 +11,7 @@ from ..._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["GridColumns", "GridColumnsBatch", "GridColumnsType"]
+__all__ = ["GridColumns", "GridColumnsBatch"]
 
 
 class GridColumns(datatypes.UInt32, ComponentMixin):
@@ -24,12 +24,8 @@ class GridColumns(datatypes.UInt32, ComponentMixin):
     pass
 
 
-class GridColumnsType(datatypes.UInt32Type):
-    _TYPE_NAME: str = "rerun.blueprint.components.GridColumns"
-
-
 class GridColumnsBatch(datatypes.UInt32Batch, ComponentBatchMixin):
-    _ARROW_TYPE = GridColumnsType()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.GridColumns"
 
 
 # This is patched in late to avoid circular dependencies.

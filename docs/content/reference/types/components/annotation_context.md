@@ -11,9 +11,29 @@ annotation context. We use the *first* annotation context we find in the
 path-hierarchy when searching up through the ancestors of a given entity
 path.
 
-## Fields
 
-* class_map: list of [`ClassDescriptionMapElem`](../datatypes/class_description_map_elem.md)
+## Arrow datatype
+```
+List<Struct {
+        class_id: uint16
+        class_description: Struct {
+            info: Struct {
+                id: uint16
+                label: nullable utf8
+                color: nullable uint32
+            }
+            keypoint_annotations: List<Struct {
+                    id: uint16
+                    label: nullable utf8
+                    color: nullable uint32
+                }>
+            keypoint_connections: List<Struct {
+                    keypoint0: uint16
+                    keypoint1: uint16
+                }>
+        }
+    }>
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `AnnotationContext`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1AnnotationContext.html)

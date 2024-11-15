@@ -2,9 +2,9 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pyfunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
-use std::collections::HashMap;
 use std::io::IsTerminal as _;
 use std::path::PathBuf;
+use std::{borrow::Borrow, collections::HashMap};
 
 use itertools::Itertools;
 use pyo3::{
@@ -137,14 +137,14 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
     // sinks
     m.add_function(wrap_pyfunction!(is_enabled, m)?)?;
     m.add_function(wrap_pyfunction!(binary_stream, m)?)?;
-    m.add_function(wrap_pyfunction!(connect, m)?)?;
-    m.add_function(wrap_pyfunction!(connect_blueprint, m)?)?;
+    m.add_function(wrap_pyfunction!(connect_tcp, m)?)?;
+    m.add_function(wrap_pyfunction!(connect_tcp_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(save, m)?)?;
     m.add_function(wrap_pyfunction!(save_blueprint, m)?)?;
     m.add_function(wrap_pyfunction!(stdout, m)?)?;
     m.add_function(wrap_pyfunction!(memory_recording, m)?)?;
     m.add_function(wrap_pyfunction!(set_callback_sink, m)?)?;
-    m.add_function(wrap_pyfunction!(serve, m)?)?;
+    m.add_function(wrap_pyfunction!(serve_web, m)?)?;
     m.add_function(wrap_pyfunction!(disconnect, m)?)?;
     m.add_function(wrap_pyfunction!(flush, m)?)?;
 
@@ -174,6 +174,9 @@ fn rerun_bindings(_py: Python<'_>, m: &Bound<'_, PyModule>) -> PyResult<()> {
 
     // dataframes
     crate::dataframe::register(m)?;
+
+    #[cfg(feature = "remote")]
+    crate::remote::register(m)?;
 
     Ok(())
 }
@@ -311,9 +314,21 @@ fn shutdown(py: Python<'_>) {
     re_log::debug!("Shutting down the Rerun SDK");
     // Release the GIL in case any flushing behavior needs to cleanup a python object.
     py.allow_threads(|| {
-        for (_, recording) in all_recordings().drain() {
+        // NOTE: Do **NOT** try and drain() `all_recordings` here.
+        //
+        // Doing so would drop the last remaining reference to these recordings, and therefore
+        // trigger their deallocation as well as the deallocation of all the Python and C++ data
+        // that they might transitively reference, but this is _NOT_ the right place to do so.
+        // This method is called automatically during shutdown via python's `atexit`, which is not
+        // a safepoint for deallocating these things, quite far from it.
+        //
+        // Calling `disconnect()` will already take care of flushing everything that can be flushed,
+        // and cleaning up everything that can be safely cleaned up, anyhow.
+        // Whatever's left can wait for the OS to clean it up.
+        for (_, recording) in all_recordings().iter() {
             recording.disconnect();
         }
+
         flush_garbage_queue();
     });
 }
@@ -348,6 +363,7 @@ impl std::ops::Deref for PyRecordingStream {
 }
 
 #[pyfunction]
+#[pyo3(signature = (recording=None))]
 fn get_application_id(recording: Option<&PyRecordingStream>) -> Option<String> {
     get_data_recording(recording)?
         .store_info()
@@ -355,6 +371,7 @@ fn get_application_id(recording: Option<&PyRecordingStream>) -> Option<String> {
 }
 
 #[pyfunction]
+#[pyo3(signature = (recording=None))]
 fn get_recording_id(recording: Option<&PyRecordingStream>) -> Option<String> {
     get_data_recording(recording)?
         .store_info()
@@ -364,6 +381,7 @@ fn get_recording_id(recording: Option<&PyRecordingStream>) -> Option<String> {
 /// Returns the currently active data recording in the global scope, if any; fallbacks to the
 /// specified recording otherwise, if any.
 #[pyfunction]
+#[pyo3(signature = (recording=None))]
 fn get_data_recording(recording: Option<&PyRecordingStream>) -> Option<PyRecordingStream> {
     RecordingStream::get_quiet(
         re_sdk::StoreKind::Recording,
@@ -388,6 +406,7 @@ fn cleanup_if_forked_child() {
 ///
 /// Returns the previous one, if any.
 #[pyfunction]
+#[pyo3(signature = (recording=None))]
 fn set_global_data_recording(
     py: Python<'_>,
     recording: Option<&PyRecordingStream>,
@@ -420,6 +439,7 @@ fn get_thread_local_data_recording() -> Option<PyRecordingStream> {
 ///
 /// Returns the previous one, if any.
 #[pyfunction]
+#[pyo3(signature = (recording=None))]
 fn set_thread_local_data_recording(
     py: Python<'_>,
     recording: Option<&PyRecordingStream>,
@@ -445,6 +465,7 @@ fn set_thread_local_data_recording(
 /// Returns the currently active blueprint recording in the global scope, if any; fallbacks to the
 /// specified recording otherwise, if any.
 #[pyfunction]
+#[pyo3(signature = (overrides=None))]
 fn get_blueprint_recording(overrides: Option<&PyRecordingStream>) -> Option<PyRecordingStream> {
     RecordingStream::get_quiet(
         re_sdk::StoreKind::Blueprint,
@@ -463,6 +484,7 @@ fn get_global_blueprint_recording() -> Option<PyRecordingStream> {
 ///
 /// Returns the previous one, if any.
 #[pyfunction]
+#[pyo3(signature = (recording=None))]
 fn set_global_blueprint_recording(
     py: Python<'_>,
     recording: Option<&PyRecordingStream>,
@@ -495,6 +517,7 @@ fn get_thread_local_blueprint_recording() -> Option<PyRecordingStream> {
 ///
 /// Returns the previous one, if any.
 #[pyfunction]
+#[pyo3(signature = (recording=None))]
 fn set_thread_local_blueprint_recording(
     py: Python<'_>,
     recording: Option<&PyRecordingStream>,
@@ -520,6 +543,7 @@ fn set_thread_local_blueprint_recording(
 // --- Sinks ---
 
 #[pyfunction]
+#[pyo3(signature = (recording=None))]
 fn is_enabled(recording: Option<&PyRecordingStream>) -> bool {
     get_data_recording(recording).map_or(false, |rec| rec.is_enabled())
 }
@@ -564,7 +588,7 @@ fn spawn(
 
 #[pyfunction]
 #[pyo3(signature = (addr = None, flush_timeout_sec=re_sdk::default_flush_timeout().expect("always Some()").as_secs_f32(), default_blueprint = None, recording = None))]
-fn connect(
+fn connect_tcp(
     addr: Option<String>,
     flush_timeout_sec: Option<f32>,
     default_blueprint: Option<&PyMemorySinkStorage>,
@@ -610,7 +634,7 @@ fn connect(
 #[pyfunction]
 #[pyo3(signature = (addr, make_active, make_default, blueprint_stream))]
 /// Special binding for directly sending a blueprint stream to a connection.
-fn connect_blueprint(
+fn connect_tcp_blueprint(
     addr: Option<String>,
     make_active: bool,
     make_default: bool,
@@ -836,6 +860,7 @@ impl PyMemorySinkStorage {
     /// Concatenate the contents of the [`MemorySinkStorage`] as bytes.
     ///
     /// Note: This will do a blocking flush before returning!
+    #[pyo3(signature = (concat=None))]
     fn concat_as_bytes<'p>(
         &self,
         concat: Option<&Self>,
@@ -935,7 +960,7 @@ impl PyBinarySinkStorage {
 #[allow(clippy::unnecessary_wraps)] // False positive
 #[pyfunction]
 #[pyo3(signature = (open_browser, web_port, ws_port, server_memory_limit, default_blueprint = None, recording = None))]
-fn serve(
+fn serve_web(
     open_browser: bool,
     web_port: Option<u16>,
     ws_port: Option<u16>,
@@ -994,6 +1019,7 @@ fn serve(
 /// Subsequent log messages will be buffered and either sent on the next call to `connect`,
 /// or shown with `show`.
 #[pyfunction]
+#[pyo3(signature = (recording=None))]
 fn disconnect(py: Python<'_>, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
@@ -1007,6 +1033,7 @@ fn disconnect(py: Python<'_>, recording: Option<&PyRecordingStream>) {
 
 /// Block until outstanding data has been flushed to the sink
 #[pyfunction]
+#[pyo3(signature = (blocking, recording=None))]
 fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
@@ -1025,6 +1052,7 @@ fn flush(py: Python<'_>, blocking: bool, recording: Option<&PyRecordingStream>) 
 // --- Time ---
 
 #[pyfunction]
+#[pyo3(signature = (timeline, sequence, recording=None))]
 fn set_time_sequence(timeline: &str, sequence: i64, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
@@ -1033,6 +1061,7 @@ fn set_time_sequence(timeline: &str, sequence: i64, recording: Option<&PyRecordi
 }
 
 #[pyfunction]
+#[pyo3(signature = (timeline, seconds, recording=None))]
 fn set_time_seconds(timeline: &str, seconds: f64, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
@@ -1041,6 +1070,7 @@ fn set_time_seconds(timeline: &str, seconds: f64, recording: Option<&PyRecording
 }
 
 #[pyfunction]
+#[pyo3(signature = (timeline, nanos, recording=None))]
 fn set_time_nanos(timeline: &str, nanos: i64, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
@@ -1049,6 +1079,7 @@ fn set_time_nanos(timeline: &str, nanos: i64, recording: Option<&PyRecordingStre
 }
 
 #[pyfunction]
+#[pyo3(signature = (timeline, recording=None))]
 fn disable_timeline(timeline: &str, recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
@@ -1057,6 +1088,7 @@ fn disable_timeline(timeline: &str, recording: Option<&PyRecordingStream>) {
 }
 
 #[pyfunction]
+#[pyo3(signature = (recording=None))]
 fn reset_time(recording: Option<&PyRecordingStream>) {
     let Some(recording) = get_data_recording(recording) else {
         return;
@@ -1314,9 +1346,14 @@ fn escape_entity_path_part(part: &str) -> String {
 }
 
 #[pyfunction]
-fn new_entity_path(parts: Vec<&pyo3::types::PyString>) -> PyResult<String> {
-    let parts: PyResult<Vec<&str>> = parts.iter().map(|part| part.to_str()).collect();
-    let path = EntityPath::from(parts?.into_iter().map(EntityPathPart::from).collect_vec());
+fn new_entity_path(parts: Vec<Bound<'_, pyo3::types::PyString>>) -> PyResult<String> {
+    let parts: PyResult<Vec<_>> = parts.iter().map(|part| part.to_cow()).collect();
+    let path = EntityPath::from(
+        parts?
+            .into_iter()
+            .map(|part| EntityPathPart::from(part.borrow()))
+            .collect_vec(),
+    );
     Ok(path.to_string())
 }
 

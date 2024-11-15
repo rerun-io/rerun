@@ -1,5 +1,4 @@
 use nohash_hasher::IntMap;
-use re_types_blueprint::blueprint::components::VisualizerOverrides;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
@@ -14,6 +13,7 @@ use re_types::{
     },
     Archetype as _, SpaceViewClassIdentifier,
 };
+use re_types_blueprint::blueprint::components::VisualizerOverrides;
 use re_types_core::ComponentName;
 use re_viewer_context::{
     ApplicableEntities, DataQueryResult, DataResult, DataResultHandle, DataResultNode,
@@ -381,6 +381,8 @@ impl DataQueryPropertyResolver<'_> {
         recursive_property_overrides: &IntMap<ComponentName, OverridePath>,
         handle: DataResultHandle,
     ) {
+        let blueprint_engine = blueprint.storage_engine();
+
         if let Some((child_handles, recursive_property_overrides)) =
             query_result.tree.lookup_node_mut(handle).map(|node| {
                 let individual_override_path = self
@@ -425,19 +427,15 @@ impl DataQueryPropertyResolver<'_> {
                 if let Some(recursive_override_subtree) =
                     blueprint.tree().subtree(&recursive_override_path)
                 {
-                    for component_name in blueprint
+                    for component_name in blueprint_engine
                         .store()
                         .all_components_for_entity(&recursive_override_subtree.path)
                         .unwrap_or_default()
                     {
                         if let Some(component_data) = blueprint
-                            .query_caches()
-                            .latest_at(
-                                blueprint.store(),
-                                blueprint_query,
-                                &recursive_override_path,
-                                [component_name],
-                            )
+                            .storage_engine()
+                            .cache()
+                            .latest_at(blueprint_query, &recursive_override_path, [component_name])
                             .component_batch_raw(&component_name)
                         {
                             if !component_data.is_empty() {
@@ -460,19 +458,15 @@ impl DataQueryPropertyResolver<'_> {
                 if let Some(individual_override_subtree) =
                     blueprint.tree().subtree(&individual_override_path)
                 {
-                    for component_name in blueprint
+                    for component_name in blueprint_engine
                         .store()
                         .all_components_for_entity(&individual_override_subtree.path)
                         .unwrap_or_default()
                     {
                         if let Some(component_data) = blueprint
-                            .query_caches()
-                            .latest_at(
-                                blueprint.store(),
-                                blueprint_query,
-                                &individual_override_path,
-                                [component_name],
-                            )
+                            .storage_engine()
+                            .cache()
+                            .latest_at(blueprint_query, &individual_override_path, [component_name])
                             .component_batch_raw(&component_name)
                         {
                             if !component_data.is_empty() {
@@ -486,7 +480,7 @@ impl DataQueryPropertyResolver<'_> {
                 }
 
                 // Figure out relevant visual time range.
-                use re_types::Loggable as _;
+                use re_types::Component as _;
                 let latest_at_results = blueprint.latest_at(
                     blueprint_query,
                     &recursive_override_path,

@@ -27,7 +27,7 @@ def test_image_encoded_png() -> None:
 
         assert type(img) is rr.EncodedImage
         assert img.media_type is not None
-        media_type_arrow = img.media_type.as_arrow_array().storage[0].as_py()
+        media_type_arrow = img.media_type.as_arrow_array()[0].as_py()
 
         assert media_type_arrow == "image/png"
 
@@ -47,7 +47,7 @@ def test_image_encoded_jpg() -> None:
 
         assert type(img) is rr.EncodedImage
         assert img.media_type is not None
-        media_type_arrow = img.media_type.as_arrow_array().storage[0].as_py()
+        media_type_arrow = img.media_type.as_arrow_array()[0].as_py()
 
         assert media_type_arrow == "image/jpeg"
 
@@ -67,7 +67,7 @@ def test_image_encoded_mono_jpg() -> None:
 
         assert type(img) is rr.EncodedImage
         assert img.media_type is not None
-        media_type_arrow = img.media_type.as_arrow_array().storage[0].as_py()
+        media_type_arrow = img.media_type.as_arrow_array()[0].as_py()
 
         assert media_type_arrow == "image/jpeg"
 
@@ -85,7 +85,7 @@ def test_image_encoded_jpg_from_bytes() -> None:
 
     assert type(img) is rr.EncodedImage
     assert img.media_type is not None
-    media_type_arrow = img.media_type.as_arrow_array().storage[0].as_py()
+    media_type_arrow = img.media_type.as_arrow_array()[0].as_py()
 
     assert media_type_arrow == "image/jpeg"
 
@@ -97,7 +97,7 @@ def test_image_encoded_jpg_from_bytes() -> None:
 
     assert type(img) is rr.EncodedImage
     assert img.media_type is not None
-    media_type_arrow = img.media_type.as_arrow_array().storage[0].as_py()
+    media_type_arrow = img.media_type.as_arrow_array()[0].as_py()
 
     assert media_type_arrow == "image/jpeg"
 
@@ -115,7 +115,7 @@ def test_image_encoded_mono_jpg_from_bytes() -> None:
 
     assert type(img) is rr.EncodedImage
     assert img.media_type is not None
-    media_type_arrow = img.media_type.as_arrow_array().storage[0].as_py()
+    media_type_arrow = img.media_type.as_arrow_array()[0].as_py()
 
     assert media_type_arrow == "image/jpeg"
 
@@ -128,7 +128,7 @@ def test_image_encoded_mono_jpg_from_bytes() -> None:
 
     assert type(img) is rr.EncodedImage
     assert img.media_type is not None
-    media_type_arrow = img.media_type.as_arrow_array().storage[0].as_py()
+    media_type_arrow = img.media_type.as_arrow_array()[0].as_py()
 
     assert media_type_arrow == "image/jpeg"
 
@@ -154,7 +154,7 @@ def test_image_encoded_nv12() -> None:
 
     assert type(img) is rr.Image
 
-    image_format_arrow = img.format.as_arrow_array().storage[0].as_py()
+    image_format_arrow = img.format.as_arrow_array()[0].as_py()
 
     image_format = rr.components.ImageFormat(
         width=image_format_arrow["width"],
@@ -169,5 +169,5 @@ def test_image_encoded_nv12() -> None:
     assert image_format.pixel_format == rr.PixelFormat.NV12
 
     assert img.draw_order is not None
-    draw_order_arrow = img.draw_order.as_arrow_array().storage[0].as_py()
+    draw_order_arrow = img.draw_order.as_arrow_array()[0].as_py()
     assert draw_order_arrow == 42

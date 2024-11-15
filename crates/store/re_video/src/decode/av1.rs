@@ -6,8 +6,8 @@ use crate::Time;
 use dav1d::{PixelLayout, PlanarImageComponent};
 
 use super::{
-    Chunk, ColorPrimaries, Error, Frame, OutputCallback, PixelFormat, Result, SyncDecoder,
-    YuvPixelLayout, YuvRange,
+    async_decoder_wrapper::SyncDecoder, Chunk, Error, Frame, FrameContent, FrameInfo,
+    OutputCallback, PixelFormat, Result, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
 };
 
 pub struct SyncDav1dDecoder {
@@ -37,14 +37,22 @@ impl SyncDav1dDecoder {
     pub fn new(debug_name: String) -> Result<Self> {
         re_tracing::profile_function!();
 
-        // TODO(#7671): enable this warning again on Linux when the `nasm` feature actually does something
-        #[allow(clippy::overly_complex_bool_expr)]
-        if !cfg!(target_os = "linux") && !cfg!(feature = "nasm") {
-            re_log::warn_once!(
-                "NOTE: native AV1 video decoder is running extra slowly. \
-                Speed it up by compiling Rerun with the `nasm` feature enabled. \
-                You'll need to also install nasm: https://nasm.us/"
-            );
+        if !cfg!(feature = "nasm") {
+            // The `nasm` feature makes AV1 decoding much faster.
+            // On Linux the difference is huge (~25x).
+            // On Windows, the difference was also pretty big (unsure how big).
+            // On an M3 Mac the difference is smalelr (2-3x),
+            // and ever without `nasm` emilk can play an 8k video at 2x speed.
+
+            if cfg!(target_os = "macos") && cfg!(target_arch = "aarch64") {
+                re_log::warn_once!(
+                    "The native AV1 video decoder is unnecessarily slow. \
+                    Speed it up by compiling Rerun with the `nasm` feature enabled."
+                );
+            } else {
+                // Better to return an error than to be perceived as being slow
+                return Err(Error::Dav1dWithoutNasm);
+            }
         }
 
         // See https://videolan.videolan.me/dav1d/structDav1dSettings.html for settings docs
@@ -66,13 +74,16 @@ impl SyncDav1dDecoder {
 
     fn submit_chunk(&mut self, chunk: Chunk, on_output: &OutputCallback) {
         re_tracing::profile_function!();
-        econtext::econtext_function_data!(format!("chunk timestamp: {:?}", chunk.timestamp));
+        econtext::econtext_function_data!(format!(
+            "chunk timestamp: {:?}",
+            chunk.presentation_timestamp
+        ));
 
         re_tracing::profile_scope!("send_data");
         match self.decoder.send_data(
             chunk.data,
             None,
-            Some(chunk.timestamp.0),
+            Some(chunk.presentation_timestamp.0),
             Some(chunk.duration.0),
         ) {
             Ok(()) => {}
@@ -94,7 +105,8 @@ impl SyncDav1dDecoder {
             };
             match picture {
                 Ok(picture) => {
-                    output_picture(&self.debug_name, &picture, on_output);
+                    let frame = create_frame(&self.debug_name, &picture);
+                    on_output(frame);
                     count += 1;
                 }
                 Err(dav1d::Error::Again) => {
@@ -110,102 +122,114 @@ impl SyncDav1dDecoder {
     }
 }
 
-fn output_picture(
-    debug_name: &str,
-    picture: &dav1d::Picture,
-    on_output: &(dyn Fn(Result<Frame>) + Send + Sync),
-) {
-    // TODO(jan): support other parameters?
-    // What do these even do:
-    // - matrix_coefficients
-    // - transfer_characteristics
+fn create_frame(debug_name: &str, picture: &dav1d::Picture) -> Result<Frame> {
+    re_tracing::profile_function!();
 
-    let data = {
-        re_tracing::profile_scope!("copy_picture_data");
+    let bits_per_component = picture
+        .bits_per_component()
+        .map_or(picture.bit_depth(), |bpc| bpc.0);
 
-        match picture.pixel_layout() {
-            PixelLayout::I400 => picture.plane(PlanarImageComponent::Y).to_vec(),
-            PixelLayout::I420 | PixelLayout::I422 | PixelLayout::I444 => {
-                // TODO(#7594): If `picture.bit_depth()` isn't 8 we have a problem:
-                // We can't handle high bit depths yet and the YUV converter at the other side
-                // bases its opinion on what an acceptable number of incoming bytes is on this.
-                // So we just clamp to that expectation, ignoring `picture.stride(PlanarImageComponent::Y)` & friends.
-                // Note that `bit_depth` is either 8 or 16, which is semi-independent `bits_per_component` (which is None/8/10/12).
-                if picture.bit_depth() != 8 {
-                    re_log::warn_once!(
-                        "Video {debug_name:?} uses {} bis per component. Only a bit depth of 8 bit is currently unsupported.",
-                        picture.bits_per_component().map_or(picture.bit_depth(), |bpc| bpc.0)
-                    );
-                }
+    let bytes_per_component = if bits_per_component == 8 {
+        1
+    } else if 8 < bits_per_component && bits_per_component <= 16 {
+        // TODO(#7594): Support HDR video.
+        // We currently handle HDR videos by throwing away the lowest bits,
+        // and doing so rather slowly on CPU. It works, but the colors won't be perfectly correct.
+        re_log::warn_once!(
+            "{debug_name:?} is a High-Dynamic-Range (HDR) video with {bits_per_component} bits per component. Rerun does not support this fully. Color accuracy and performance may suffer.",
+        );
+        // Note that `bit_depth` is either 8 or 16, which is semi-independent `bits_per_component` (which is None/8/10/12).
+        2
+    } else {
+        return Err(Error::BadBitsPerComponent(bits_per_component));
+    };
 
-                let height_y = picture.height() as usize;
-                let height_uv = match picture.pixel_layout() {
-                    PixelLayout::I400 => 0,
-                    PixelLayout::I420 => height_y / 2,
-                    PixelLayout::I422 | PixelLayout::I444 => height_y,
-                };
+    let mut data = match picture.pixel_layout() {
+        // Monochrome
+        PixelLayout::I400 => picture.plane(PlanarImageComponent::Y).to_vec(),
 
-                let packed_stride_y = picture.width() as usize;
-                let actual_stride_y = picture.stride(PlanarImageComponent::Y) as usize;
+        PixelLayout::I420 | PixelLayout::I422 | PixelLayout::I444 => {
+            let height_y = picture.height() as usize;
+            let height_uv = match picture.pixel_layout() {
+                PixelLayout::I400 => 0,
+                PixelLayout::I420 => height_y / 2,
+                PixelLayout::I422 | PixelLayout::I444 => height_y,
+            };
 
-                let packed_stride_uv = match picture.pixel_layout() {
-                    PixelLayout::I400 => 0,
-                    PixelLayout::I420 | PixelLayout::I422 => packed_stride_y / 2,
-                    PixelLayout::I444 => packed_stride_y,
-                };
-                let actual_stride_uv = picture.stride(PlanarImageComponent::U) as usize; // U / V stride is always the same.
+            let packed_stride_y = bytes_per_component * picture.width() as usize;
+            let actual_stride_y = picture.stride(PlanarImageComponent::Y) as usize;
 
-                let num_packed_bytes_y = packed_stride_y * height_y;
-                let num_packed_bytes_uv = packed_stride_uv * height_uv;
+            let packed_stride_uv = match picture.pixel_layout() {
+                PixelLayout::I400 => 0,
+                PixelLayout::I420 | PixelLayout::I422 => packed_stride_y / 2,
+                PixelLayout::I444 => packed_stride_y,
+            };
+            let actual_stride_uv = picture.stride(PlanarImageComponent::U) as usize; // U / V stride is always the same.
 
-                if actual_stride_y == packed_stride_y && actual_stride_uv == packed_stride_uv {
-                    // Best case scenario: There's no additional strides at all, so we can just copy the data directly.
-                    // TODO(andreas): This still has *significant* overhead for 8k video. Can we take ownership of the data instead without a copy?
-                    re_tracing::profile_scope!("fast path");
-                    let plane_y = &picture.plane(PlanarImageComponent::Y)[0..num_packed_bytes_y];
-                    let plane_u = &picture.plane(PlanarImageComponent::U)[0..num_packed_bytes_uv];
-                    let plane_v = &picture.plane(PlanarImageComponent::V)[0..num_packed_bytes_uv];
-                    [plane_y, plane_u, plane_v].concat()
-                } else {
-                    // At least either y or u/v have strides.
-                    //
-                    // We could make our image ingestion pipeline even more sophisticated and pass that stride information through.
-                    // But given that this is a matter of replacing a single large memcpy with a few hundred _still_ quite large ones,
-                    // this should not make a lot of difference (citation needed!).
+            let num_packed_bytes_y = packed_stride_y * height_y;
+            let num_packed_bytes_uv = packed_stride_uv * height_uv;
 
-                    let mut data = Vec::with_capacity(num_packed_bytes_y + num_packed_bytes_uv * 2);
-                    {
-                        let plane = picture.plane(PlanarImageComponent::Y);
-                        if packed_stride_y == actual_stride_y {
-                            data.extend_from_slice(&plane[0..num_packed_bytes_y]);
-                        } else {
-                            re_tracing::profile_scope!("slow path, y-plane");
+            if actual_stride_y == packed_stride_y && actual_stride_uv == packed_stride_uv {
+                // Best case scenario: There's no additional strides at all, so we can just copy the data directly.
+                // TODO(andreas): This still has *significant* overhead for 8k video. Can we take ownership of the data instead without a copy?
+                re_tracing::profile_scope!("fast path");
+                let plane_y = &picture.plane(PlanarImageComponent::Y)[0..num_packed_bytes_y];
+                let plane_u = &picture.plane(PlanarImageComponent::U)[0..num_packed_bytes_uv];
+                let plane_v = &picture.plane(PlanarImageComponent::V)[0..num_packed_bytes_uv];
+                [plane_y, plane_u, plane_v].concat()
+            } else {
+                // At least either y or u/v have strides.
+                //
+                // We could make our image ingestion pipeline even more sophisticated and pass that stride information through.
+                // But given that this is a matter of replacing a single large memcpy with a few hundred _still_ quite large ones,
+                // this should not make a lot of difference (citation needed!).
 
-                            for y in 0..height_y {
-                                let offset = y * actual_stride_y;
-                                data.extend_from_slice(&plane[offset..(offset + packed_stride_y)]);
-                            }
+                let mut data = Vec::with_capacity(num_packed_bytes_y + num_packed_bytes_uv * 2);
+                {
+                    let plane = picture.plane(PlanarImageComponent::Y);
+                    if packed_stride_y == actual_stride_y {
+                        data.extend_from_slice(&plane[0..num_packed_bytes_y]);
+                    } else {
+                        re_tracing::profile_scope!("slow path, y-plane");
+
+                        for y in 0..height_y {
+                            let offset = y * actual_stride_y;
+                            data.extend_from_slice(&plane[offset..(offset + packed_stride_y)]);
                         }
                     }
-                    for comp in [PlanarImageComponent::U, PlanarImageComponent::V] {
-                        let plane = picture.plane(comp);
-                        if actual_stride_uv == packed_stride_uv {
-                            data.extend_from_slice(&plane[0..num_packed_bytes_uv]);
-                        } else {
-                            re_tracing::profile_scope!("slow path, u/v-plane");
+                }
+                for comp in [PlanarImageComponent::U, PlanarImageComponent::V] {
+                    let plane = picture.plane(comp);
+                    if actual_stride_uv == packed_stride_uv {
+                        data.extend_from_slice(&plane[0..num_packed_bytes_uv]);
+                    } else {
+                        re_tracing::profile_scope!("slow path, u/v-plane");
 
-                            for y in 0..height_uv {
-                                let offset = y * actual_stride_uv;
-                                data.extend_from_slice(&plane[offset..(offset + packed_stride_uv)]);
-                            }
+                        for y in 0..height_uv {
+                            let offset = y * actual_stride_uv;
+                            data.extend_from_slice(&plane[offset..(offset + packed_stride_uv)]);
                         }
                     }
-
-                    data
                 }
+
+                data
             }
         }
     };
+
+    if bytes_per_component == 2 {
+        re_tracing::profile_scope!("Truncate HDR"); // costs around 1.5ms per megapixel on MacBook Pro M3 Max
+        let rshift = bits_per_component - 8; // we throw away the low bits
+        data = data
+            .chunks(2)
+            .map(|c| {
+                let lo = c[0] as u16;
+                let hi = c[1] as u16;
+                let full = (hi << 8) | lo;
+                (full >> rshift) as u8
+            })
+            .collect();
+    }
 
     let format = PixelFormat::Yuv {
         layout: match picture.pixel_layout() {
@@ -218,82 +242,96 @@ fn output_picture(
             dav1d::pixel::YUVRange::Limited => YuvRange::Limited,
             dav1d::pixel::YUVRange::Full => YuvRange::Full,
         },
-        primaries: color_primaries(debug_name, picture),
+        coefficients: yuv_matrix_coefficients(debug_name, picture),
     };
 
-    let frame = Frame {
-        data,
-        width: picture.width(),
-        height: picture.height(),
-        format,
-        timestamp: Time(picture.timestamp().unwrap_or(0)),
-        duration: Time(picture.duration()),
-    };
-    on_output(Ok(frame));
+    Ok(Frame {
+        content: FrameContent {
+            data,
+            width: picture.width(),
+            height: picture.height(),
+            format,
+        },
+        info: FrameInfo {
+            is_sync: None,    // TODO(emilk)
+            sample_idx: None, // TODO(emilk),
+            frame_nr: None,   // TODO(emilk),
+            presentation_timestamp: Time(picture.timestamp().unwrap_or(0)),
+            duration: Time(picture.duration()),
+            latest_decode_timestamp: None,
+        },
+    })
 }
 
-fn color_primaries(debug_name: &str, picture: &dav1d::Picture) -> ColorPrimaries {
+fn yuv_matrix_coefficients(debug_name: &str, picture: &dav1d::Picture) -> YuvMatrixCoefficients {
+    // Quotes are from https://wiki.x266.mov/docs/colorimetry/matrix (if not noted otherwise)
     #[allow(clippy::match_same_arms)]
-    match picture.color_primaries() {
-        dav1d::pixel::ColorPrimaries::Reserved
-        | dav1d::pixel::ColorPrimaries::Reserved0
-        | dav1d::pixel::ColorPrimaries::Unspecified => {
+    match picture.matrix_coefficients() {
+        dav1d::pixel::MatrixCoefficients::Identity => YuvMatrixCoefficients::Identity,
+
+        dav1d::pixel::MatrixCoefficients::BT709 => YuvMatrixCoefficients::Bt709,
+
+        dav1d::pixel::MatrixCoefficients::Unspecified
+        | dav1d::pixel::MatrixCoefficients::Reserved => {
             // This happens quite often. Don't issue a warning, that would be noise!
 
             if picture.transfer_characteristic() == dav1d::pixel::TransferCharacteristic::SRGB {
                 // If the transfer characteristic is sRGB, assume BT.709 primaries, would be quite odd otherwise.
                 // TODO(andreas): Other transfer characteristics may also hint at primaries.
-                ColorPrimaries::Bt709
+                YuvMatrixCoefficients::Bt709
             } else {
                 // Best guess: If the picture is 720p+ assume Bt709 because Rec709
                 // is the "HDR" standard.
                 // TODO(#7594): 4k/UHD material should probably assume Bt2020?
                 // else if picture.height() >= 720 {
-                //     ColorPrimaries::Bt709
+                //     YuvMatrixCoefficients::Bt709
                 // } else {
-                //     ColorPrimaries::Bt601
+                //     YuvMatrixCoefficients::Bt601
                 // }
                 //
                 // This is also what the mpv player does (and probably others):
-                // https://wiki.x266.mov/docs/colorimetry/primaries#2-unspecified
+                // https://wiki.x266.mov/docs/colorimetry/matrix#2-unspecified
+                // (and similar for primaries! https://wiki.x266.mov/docs/colorimetry/primaries#2-unspecified)
                 //
                 // …then again, eyeballing VLC it looks like it just always assumes BT.709.
                 // The handwavy test case employed here was the same video in low & high resolution
                 // without specified primaries. Both looked the same.
-                ColorPrimaries::Bt709
+                YuvMatrixCoefficients::Bt709
             }
         }
 
-        dav1d::pixel::ColorPrimaries::BT709 => ColorPrimaries::Bt709,
-
-        // NTSC standard. Close enough to BT.601 for now. TODO(andreas): Is it worth warning?
-        dav1d::pixel::ColorPrimaries::BT470M => ColorPrimaries::Bt601,
-
-        // PAL standard. Close enough to BT.601 for now. TODO(andreas): Is it worth warning?
-        dav1d::pixel::ColorPrimaries::BT470BG => ColorPrimaries::Bt601,
-
-        // These are both using BT.2020 primaries.
-        dav1d::pixel::ColorPrimaries::ST170M | dav1d::pixel::ColorPrimaries::ST240M => {
-            ColorPrimaries::Bt601
+        dav1d::pixel::MatrixCoefficients::BT470M => {
+            // "BT.470M is a standard that was used in analog television systems in the United States."
+            // I guess Bt601 will do!
+            YuvMatrixCoefficients::Bt601
+        }
+        dav1d::pixel::MatrixCoefficients::BT470BG | dav1d::pixel::MatrixCoefficients::ST170M => {
+            // This is PAL & NTSC standards, both are part of Bt.601.
+            YuvMatrixCoefficients::Bt601
+        }
+        dav1d::pixel::MatrixCoefficients::ST240M => {
+            // "SMPTE 240M was an interim standard used during the early days of HDTV (1988-1998)."
+            // Not worth the effort: HD -> Bt709 🤷
+            YuvMatrixCoefficients::Bt709
         }
 
-        // Is st428 also HDR? Not sure.
-        // BT2020 and P3 variants definitely are ;)
-        dav1d::pixel::ColorPrimaries::BT2020
-        | dav1d::pixel::ColorPrimaries::ST428
-        | dav1d::pixel::ColorPrimaries::P3DCI
-        | dav1d::pixel::ColorPrimaries::P3Display => {
-            // TODO(#7594): HDR support.
+        dav1d::pixel::MatrixCoefficients::BT2020NonConstantLuminance
+        | dav1d::pixel::MatrixCoefficients::BT2020ConstantLuminance
+        | dav1d::pixel::MatrixCoefficients::ICtCp
+        | dav1d::pixel::MatrixCoefficients::ST2085 => {
+            // TODO(#7594): HDR support (we'll probably only care about `BT2020NonConstantLuminance`?)
             re_log::warn_once!("Video {debug_name:?} specified HDR color primaries. Rerun doesn't handle HDR colors correctly yet. Color artifacts may be visible.");
-            ColorPrimaries::Bt709
+            YuvMatrixCoefficients::Bt709
         }
 
-        dav1d::pixel::ColorPrimaries::Film | dav1d::pixel::ColorPrimaries::Tech3213 => {
+        dav1d::pixel::MatrixCoefficients::ChromaticityDerivedNonConstantLuminance
+        | dav1d::pixel::MatrixCoefficients::ChromaticityDerivedConstantLuminance
+        | dav1d::pixel::MatrixCoefficients::YCgCo => {
             re_log::warn_once!(
-                "Video {debug_name:?} specified unsupported color primaries {:?}. Color artifacts may be visible.",
-                picture.color_primaries()
-            );
-            ColorPrimaries::Bt709
+                 "Video {debug_name:?} specified unsupported matrix coefficients {:?}. Color artifacts may be visible.",
+                 picture.matrix_coefficients()
+             );
+            YuvMatrixCoefficients::Bt709
         }
     }
 }

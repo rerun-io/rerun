@@ -14,10 +14,8 @@ use re_viewer_context::{
 
 use super::{filter_visualizable_3d_entities, SpatialViewVisualizerData};
 use crate::{
-    contexts::TransformContext,
-    instance_hash_conversions::picking_layer_id_from_instance_path_hash, query_pinhole,
-    space_camera_3d::SpaceCamera3D, ui::SpatialSpaceViewState,
-    visualizers::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    contexts::TransformContext, query_pinhole, space_camera_3d::SpaceCamera3D,
+    ui::SpatialSpaceViewState,
 };
 
 const CAMERA_COLOR: re_renderer::Color32 = re_renderer::Color32::from_rgb(150, 150, 150);
@@ -126,31 +124,44 @@ impl CamerasVisualizer {
 
         let up_triangle = [
             pinhole.unproject(vec3(0.4 * w, 0.0, z)),
-            pinhole.unproject(vec3(0.6 * w, 0.0, z)),
             pinhole.unproject(vec3(0.5 * w, -0.1 * w, z)),
+            pinhole.unproject(vec3(0.6 * w, 0.0, z)),
         ];
 
-        let segments = [
-            // Frustum corners:
-            (glam::Vec3::ZERO, corners[0]),
-            (glam::Vec3::ZERO, corners[1]),
-            (glam::Vec3::ZERO, corners[2]),
-            (glam::Vec3::ZERO, corners[3]),
-            // Rectangle around "far plane":
-            (corners[0], corners[1]),
-            (corners[1], corners[2]),
-            (corners[2], corners[3]),
-            (corners[3], corners[0]),
-            // Triangle indicating up direction:
-            (up_triangle[0], up_triangle[1]),
-            (up_triangle[1], up_triangle[2]),
-            (up_triangle[2], up_triangle[0]),
+        let strips = vec![
+            // Frustum rectangle, connected with zero point.
+            (
+                vec![
+                    corners[0],
+                    corners[1],
+                    glam::Vec3::ZERO,
+                    corners[2],
+                    corners[3],
+                    glam::Vec3::ZERO,
+                    corners[0],
+                    corners[3],
+                    glam::Vec3::ZERO,
+                ],
+                LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS,
+            ),
+            // Missing piece of the rectangle at the far plane.
+            (
+                vec![corners[1], corners[2]],
+                LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS,
+            ),
+            // Triangle indicating up direction.
+            // Don't extend round caps here, this would reach into the frustum otherwise.
+            (
+                vec![up_triangle[0], up_triangle[1], up_triangle[2]],
+                LineStripFlags::empty(),
+            ),
         ];
 
         let radius = re_renderer::Size::new_ui_points(1.0);
         let instance_path_for_picking =
             re_entity_db::InstancePathHash::instance(ent_path, instance);
-        let instance_layer_id = picking_layer_id_from_instance_path_hash(instance_path_for_picking);
+        let instance_layer_id =
+            re_space_view::picking_layer_id_from_instance_path_hash(instance_path_for_picking);
 
         let mut batch = line_builder
             .batch(ent_path.to_string())
@@ -161,15 +172,18 @@ impl CamerasVisualizer {
             )
             .outline_mask_ids(entity_highlight.overall)
             .picking_object_id(instance_layer_id.object);
-        let lines = batch
-            .add_segments(segments.into_iter())
-            .radius(radius)
-            .color(CAMERA_COLOR)
-            .flags(LineStripFlags::FLAG_CAP_END_ROUND | LineStripFlags::FLAG_CAP_START_ROUND)
-            .picking_instance_id(instance_layer_id.instance);
 
-        if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance) {
-            lines.outline_mask_ids(*outline_mask_ids);
+        for (strip, flags) in strips {
+            let lines = batch
+                .add_strip(strip.into_iter())
+                .radius(radius)
+                .color(CAMERA_COLOR)
+                .flags(flags)
+                .picking_instance_id(instance_layer_id.instance);
+
+            if let Some(outline_mask_ids) = entity_highlight.instances.get(&instance) {
+                lines.outline_mask_ids(*outline_mask_ids);
+            }
         }
 
         // world_from_camera is the transform to the pinhole origin
@@ -210,7 +224,9 @@ impl VisualizerSystem for CamerasVisualizer {
         // Counting all cameras ahead of time is a bit wasteful, but we also don't expect a huge amount,
         // so let re_renderer's allocator internally decide what buffer sizes to pick & grow them as we go.
         let mut line_builder = re_renderer::LineDrawableBuilder::new(render_ctx);
-        line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+        line_builder.radius_boost_in_ui_points_for_outlines(
+            re_space_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+        );
 
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             let time_query = re_chunk_store::LatestAtQuery::new(query.timeline, query.latest_at);

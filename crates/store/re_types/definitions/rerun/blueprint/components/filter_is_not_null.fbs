@@ -1,0 +1,12 @@
+
+namespace rerun.blueprint.components;
+
+/// Configuration for the filter is not null feature of the dataframe view.
+table FilterIsNotNull (
+  "attr.arrow.transparent",
+  "attr.rust.derive": "Default, PartialEq, Eq",
+  "attr.rust.repr": "transparent",
+  "attr.rerun.scope": "blueprint"
+) {
+    filter_is_not_null: rerun.blueprint.datatypes.FilterIsNotNull (order: 100);
+}

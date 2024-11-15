@@ -35,6 +35,22 @@ pub struct ContainerBlueprint {
     pub grid_columns: Option<u32>,
 }
 
+impl Default for ContainerBlueprint {
+    fn default() -> Self {
+        Self {
+            id: ContainerId::random(),
+            container_kind: egui_tiles::ContainerKind::Grid,
+            display_name: None,
+            contents: vec![],
+            col_shares: vec![],
+            row_shares: vec![],
+            active_tab: None,
+            visible: true,
+            grid_columns: None,
+        }
+    }
+}
+
 impl ContainerBlueprint {
     /// Attempt to load a [`ContainerBlueprint`] from the blueprint store.
     pub fn try_from_db(
@@ -46,8 +62,7 @@ impl ContainerBlueprint {
 
         // ----
 
-        let results = blueprint_db.query_caches().latest_at(
-            blueprint_db.store(),
+        let results = blueprint_db.storage_engine().cache().latest_at(
             query,
             &id.as_entity_path(),
             blueprint_archetypes::ContainerBlueprint::all_components()
@@ -176,7 +191,7 @@ impl ContainerBlueprint {
         }
 
         if let Some(chunk) = Chunk::builder(id.as_entity_path())
-            .with_archetype(RowId::new(), timepoint.clone(), &arch)
+            .with_archetype(RowId::new(), timepoint, &arch)
             .build()
             .warn_on_err_once("Failed to create container blueprint.")
         {

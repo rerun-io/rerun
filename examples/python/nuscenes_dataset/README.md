@@ -1,20 +1,20 @@
 <!--[metadata]
 title = "nuScenes"
 tags = ["Lidar", "3D", "2D", "Object detection", "Pinhole camera", "Blueprint"]
-thumbnail = "https://static.rerun.io/nuscenes/9c50bf5cadb879ef818ac3d35fe75696a9586cb4/480w.png"
-thumbnail_dimensions = [480, 480]
+thumbnail = "https://static.rerun.io/nuscenes_dataset/3724a84d6e95f15a71db2ccc443fb67bfae58843/480w.png"
+thumbnail_dimensions = [480, 301]
 channel = "release"
 build_args = ["--seconds=5"]
 -->
 
 Visualize the [nuScenes dataset](https://www.nuscenes.org/) including lidar, radar, images, and bounding boxes data.
 
-<picture data-inline-viewer="examples/nuscenes_dataset">
-  <img src="https://static.rerun.io/nuscenes/64a50a9d67cbb69ae872551989ee807b195f6b5d/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/nuscenes/64a50a9d67cbb69ae872551989ee807b195f6b5d/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/nuscenes/64a50a9d67cbb69ae872551989ee807b195f6b5d/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/nuscenes/64a50a9d67cbb69ae872551989ee807b195f6b5d/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/nuscenes/64a50a9d67cbb69ae872551989ee807b195f6b5d/1200w.png">
+<picture>
+  <img src="https://static.rerun.io/nuscenes_dataset/3724a84d6e95f15a71db2ccc443fb67bfae58843/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/nuscenes_dataset/3724a84d6e95f15a71db2ccc443fb67bfae58843/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/nuscenes_dataset/3724a84d6e95f15a71db2ccc443fb67bfae58843/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/nuscenes_dataset/3724a84d6e95f15a71db2ccc443fb67bfae58843/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/nuscenes_dataset/3724a84d6e95f15a71db2ccc443fb67bfae58843/1200w.png">
 </picture>
 
 ## Used Rerun types
@@ -83,6 +83,18 @@ rr.log(
 )
 ```
 
+#### GPS data
+
+GPS data is calculated from the scene's reference coordinates and the transformations (starting map point + odometry).
+The GPS coordinates are logged as [`GeoPoints`](https://www.rerun.io/docs/reference/types/archetypes/geopoints).
+
+```python
+rr.log(
+    "world/ego_vehicle",
+    rr.GeoPoints([[lat, long]]),
+)
+```
+
 ### LiDAR data
 LiDAR data is logged as [`Points3D`](https://www.rerun.io/docs/reference/types/archetypes/points3d) archetype.
 ```python
@@ -117,6 +129,8 @@ rr.log(
 )
 ```
 
+GPS coordinates are added to the annotations similarly to the vehicle.
+
 ### Setting up the default blueprint
 
 The default blueprint for this example is created by the following code:
@@ -126,13 +140,30 @@ sensor_space_views = [
     rrb.Spatial2DView(
         name=sensor_name,
         origin=f"world/ego_vehicle/{sensor_name}",
+        # Set the image plane distance to 5m for all camera visualizations.
+        defaults=[rr.components.ImagePlaneDistance(5.0)],
+        # TODO(#6670): Can't specify rr.components.FillMode.MajorWireframe right now, need to use batch type instead.
+        overrides={"world/anns": [rr.components.FillModeBatch("solid")]},
     )
     for sensor_name in nuscene_sensor_names(nusc, args.scene_name)
 ]
 blueprint = rrb.Vertical(
-    rrb.Spatial3DView(name="3D", origin="world"),
+    rrb.Horizontal(
+        rrb.Spatial3DView(name="3D", origin="world"),
+        rrb.Vertical(
+            rrb.TextDocumentView(origin="description", name="Description"),
+            rrb.MapView(
+                origin="world",
+                name="MapView",
+                zoom=rrb.archetypes.MapZoom(18.0),
+                background=rrb.archetypes.MapBackground(rrb.components.MapProvider.OpenStreetMap),
+            ),
+            row_shares=[1, 1],
+        ),
+        column_shares=[3, 1],
+    ),
     rrb.Grid(*sensor_space_views),
-    row_shares=[3, 2],
+    row_shares=[4, 2],
 )
 ```
 
@@ -155,9 +186,9 @@ pip install -e examples/python/nuscenes_dataset
 ```
 To experiment with the provided example, simply execute the main Python script:
 ```bash
-python -m nuscenes # run the example
+python -m nuscenes_dataset # run the example
 ```
 If you wish to customize it, explore additional features, or save it use the CLI with the `--help` option for guidance:
 ```bash
-python -m nuscenes --help
+python -m nuscenes_dataset --help
 ```

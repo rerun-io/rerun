@@ -2,8 +2,8 @@ use std::fmt;
 use std::sync::Arc;
 
 use parking_lot::Mutex;
-use re_log_encoding::encoder::EncodeError;
-use re_log_encoding::encoder::{encode_as_bytes_local, local_encoder};
+use re_log_encoding::encoder::encode_as_bytes_local;
+use re_log_encoding::encoder::{local_raw_encoder, EncodeError};
 use re_log_types::{BlueprintActivationCommand, LogMsg, StoreId};
 
 use crate::RecordingStream;
@@ -250,7 +250,7 @@ impl MemorySinkStorage {
     /// This automatically takes care of flushing the underlying [`crate::RecordingStream`].
     #[inline]
     pub fn concat_memory_sinks_as_bytes(sinks: &[&Self]) -> Result<Vec<u8>, EncodeError> {
-        let mut encoder = local_encoder()?;
+        let mut encoder = local_raw_encoder()?;
 
         for sink in sinks {
             // NOTE: It's fine, this is an in-memory sink so by definition there's no I/O involved
@@ -263,6 +263,8 @@ impl MemorySinkStorage {
                 encoder.append(message)?;
             }
         }
+
+        encoder.finish()?;
 
         Ok(encoder.into_inner())
     }

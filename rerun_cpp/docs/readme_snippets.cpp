@@ -45,7 +45,7 @@ static std::vector<uint8_t> create_image() {
 [[maybe_unused]] static void connecting() {
     /// [Connecting]
     rerun::RecordingStream rec("rerun_example_app");
-    auto result = rec.connect(); // Connect to local host with default port.
+    auto result = rec.connect_tcp(); // Connect to local host with default port.
     if (result.is_err()) {
         // Handle error.
     }

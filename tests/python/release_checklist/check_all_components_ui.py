@@ -121,6 +121,12 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     ),
     "FillRatioBatch": TestCase(0.5),
     "GammaCorrectionBatch": TestCase(2.2),
+    "GeoLineStringBatch": TestCase(
+        batch=[
+            ((0, 0), (1, 1), (2, 2)),
+            ((3, 3), (4, 4), (5, 5)),
+        ]
+    ),
     "HalfSize2DBatch": TestCase(batch=[(5.0, 10.0), (50, 30), (23, 45)]),
     "HalfSize3DBatch": TestCase(batch=[(5.0, 10.0, 20.0), (50, 30, 40), (23, 45, 67)]),
     "ImageBufferBatch": TestCase(
@@ -140,6 +146,8 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     ),
     "ImagePlaneDistanceBatch": TestCase(batch=[100.0, 200.0, 300.0]),
     "KeypointIdBatch": TestCase(batch=[5, 6, 7]),
+    "LatLonBatch": TestCase(batch=[(0, 1), (2, 3), (4, 5)]),
+    "LengthBatch": TestCase(batch=[100.0, 200.0, 300.0]),
     "LineStrip2DBatch": TestCase(
         batch=[
             ((0, 0), (1, 1), (2, 2)),
@@ -237,7 +245,7 @@ def log_some_space_views() -> None:
     ), f"Some components are missing from the `ALL_COMPONENTS` dictionary: {missing_components}"
 
     # log all components as len=1 batches
-    rr.log_components(
+    rr.log(
         "all_components_single",
         [
             getattr(rr.components, component_name)(test_case.single())
@@ -247,7 +255,7 @@ def log_some_space_views() -> None:
     )
 
     # log all components as batches (except those for which it doesn't make sense)
-    rr.log_components(
+    rr.log(
         "all_components_batches",
         [
             getattr(rr.components, component_name)(test_case.batch())
@@ -263,7 +271,7 @@ def log_some_space_views() -> None:
             continue
 
         for i, alternative in enumerate(alternatives):
-            rr.log_components(
+            rr.log(
                 f"all_components_alternative_{i}",
                 [getattr(rr.components, component_name)(alternative)],
             )

@@ -17,6 +17,9 @@ name = "rerun_bindings" # name of the .so library that the Python module will im
 [features]
 default = ["extension-module"]
 
+## Extra features that aren't ready to be included in release builds yet.
+extra = ["pypi", "remote"]
+
 ## The features we turn on when building the `rerun-sdk` PyPi package
 ## for <https://pypi.org/project/rerun-sdk/>.
 pypi = ["extension-module", "nasm", "web_viewer"]
@@ -30,8 +33,16 @@ extension-module = ["pyo3/extension-module"]
 
 ## Enable faster native video decoding with assembly.
 ## You need to install [nasm](https://nasm.us/) to compile with this feature.
-# TODO(#7671): this feature flag currently does nothing on linux.
 nasm = ["re_video/nasm"]
+
+remote = [
+  "dep:object_store",
+  "dep:re_protos",
+  "dep:re_ws_comms",
+  "dep:tokio",
+  "dep:tonic",
+  "dep:url",
+]
 
 ## Support serving a web viewer over HTTP with `serve()`.
 ##
@@ -64,15 +75,24 @@ crossbeam.workspace = true
 document-features.workspace = true
 itertools.workspace = true
 infer.workspace = true
-# TODO(#5875): `mimalloc` starts leaking OS pages starting with `0.1.38`.
-# When the bug is fixed, change this back to `mimalloc = { workspace = true, …`.
-mimalloc = { version = "=0.1.37", features = ["local_dynamic_tls"] }
+mimalloc = { version = "0.1.43", features = ["local_dynamic_tls"] }
 numpy.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
 pyo3 = { workspace = true, features = ["abi3-py38"] }
 rand = { workspace = true, features = ["std", "std_rng"] }
 uuid.workspace = true
+
+# Deps for remote feature
+object_store = { workspace = true, optional = true, features = ["aws"] }
+re_protos = { workspace = true, optional = true }
+tokio = { workspace = true, optional = true }
+# Not used yet, but we will need it when we start streaming data
+#tokio-stream = { workspace = true, optional = true }
+tonic = { workspace = true, default-features = false, features = [
+  "transport",
+], optional = true }
+url = { workspace = true, optional = true }
 
 
 [build-dependencies]

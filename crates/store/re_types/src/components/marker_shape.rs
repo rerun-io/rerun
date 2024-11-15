@@ -121,13 +121,6 @@ impl std::fmt::Display for MarkerShape {
 ::re_types_core::macros::impl_into_cow!(MarkerShape);
 
 impl ::re_types_core::Loggable for MarkerShape {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.MarkerShape".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
@@ -207,5 +200,12 @@ impl ::re_types_core::Loggable for MarkerShape {
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.components.MarkerShape")?)
+    }
+}
+
+impl ::re_types_core::Component for MarkerShape {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.MarkerShape".into()
     }
 }

@@ -10,6 +10,8 @@ use arrow2::{
 };
 use itertools::Itertools;
 
+use crate::TransportChunk;
+
 // ---
 
 /// Returns true if the given `list_array` is semantically empty.
@@ -63,7 +65,8 @@ pub fn arrays_to_list_array(
     let data = if arrays_dense.is_empty() {
         arrow2::array::new_empty_array(array_datatype.clone())
     } else {
-        arrow2::compute::concatenate::concatenate(&arrays_dense)
+        re_tracing::profile_scope!("concatenate", arrays_dense.len().to_string());
+        concat_arrays(&arrays_dense)
             .map_err(|err| {
                 re_log::warn_once!("failed to concatenate arrays: {err}");
                 err
@@ -142,7 +145,7 @@ pub fn arrays_to_dictionary<Idx: Copy + Eq>(
     let data = if arrays_dense_deduped.is_empty() {
         arrow2::array::new_empty_array(array_datatype.clone())
     } else {
-        let values = arrow2::compute::concatenate::concatenate(&arrays_dense_deduped)
+        let values = concat_arrays(&arrays_dense_deduped)
             .map_err(|err| {
                 re_log::warn_once!("failed to concatenate arrays: {err}");
                 err
@@ -319,6 +322,22 @@ pub fn new_list_array_of_empties(child_datatype: ArrowDatatype, len: usize) -> A
     )
 }
 
+/// Applies a [concatenate] kernel to the given `arrays`.
+///
+/// Early outs where it makes sense (e.g. `arrays.len() == 1`).
+///
+/// Returns an error if the arrays don't share the exact same datatype.
+///
+/// [concatenate]: arrow2::compute::concatenate::concatenate
+pub fn concat_arrays(arrays: &[&dyn ArrowArray]) -> arrow2::error::Result<Box<dyn ArrowArray>> {
+    if arrays.len() == 1 {
+        return Ok(arrays[0].to_boxed());
+    }
+
+    #[allow(clippy::disallowed_methods)] // that's the whole point
+    arrow2::compute::concatenate::concatenate(arrays)
+}
+
 /// Applies a [filter] kernel to the given `array`.
 ///
 /// Panics iff the length of the filter doesn't match the length of the array.
@@ -341,6 +360,7 @@ pub fn filter_array<A: ArrowArray + Clone>(array: &A, filter: &ArrowBooleanArray
         "filter masks with validity bits are technically valid, but generally a sign that something went wrong",
     );
 
+    #[allow(clippy::disallowed_methods)] // that's the whole point
     #[allow(clippy::unwrap_used)]
     arrow2::compute::filter::filter(array, filter)
         // Unwrap: this literally cannot fail.
@@ -377,6 +397,29 @@ pub fn take_array<A: ArrowArray + Clone, O: arrow2::types::Index>(
         "index arrays with validity bits are technically valid, but generally a sign that something went wrong",
     );
 
+    if indices.len() == array.len() {
+        let indices = indices.values().as_slice();
+
+        let starts_at_zero = || indices[0] == O::zero();
+        let is_consecutive = || {
+            indices
+                .windows(2)
+                .all(|values| values[1] == values[0] + O::one())
+        };
+
+        if starts_at_zero() && is_consecutive() {
+            #[allow(clippy::unwrap_used)]
+            return array
+                .clone()
+                .as_any()
+                .downcast_ref::<A>()
+                // Unwrap: that's initial type that we got.
+                .unwrap()
+                .clone();
+        }
+    }
+
+    #[allow(clippy::disallowed_methods)] // that's the whole point
     #[allow(clippy::unwrap_used)]
     arrow2::compute::take::take(array, indices)
         // Unwrap: this literally cannot fail.
@@ -386,4 +429,39 @@ pub fn take_array<A: ArrowArray + Clone, O: arrow2::types::Index>(
         // Unwrap: that's initial type that we got.
         .unwrap()
         .clone()
+}
+
+// ---
+
+use arrow2::{chunk::Chunk as ArrowChunk, datatypes::Schema as ArrowSchema};
+
+/// Concatenate multiple [`TransportChunk`]s into one.
+///
+/// This is a temporary method that we use while waiting to migrate towards `arrow-rs`.
+/// * `arrow2` doesn't have a `RecordBatch` type, therefore we emulate that using our `TransportChunk`s.
+/// * `arrow-rs` does have one, and it natively supports concatenation.
+pub fn concatenate_record_batches(
+    schema: ArrowSchema,
+    batches: &[TransportChunk],
+) -> anyhow::Result<TransportChunk> {
+    assert!(batches.iter().map(|batch| &batch.schema).all_equal());
+
+    let mut arrays = Vec::new();
+
+    if !batches.is_empty() {
+        for (i, _field) in schema.fields.iter().enumerate() {
+            let array = concat_arrays(
+                &batches
+                    .iter()
+                    .map(|batch| &*batch.data[i] as &dyn ArrowArray)
+                    .collect_vec(),
+            )?;
+            arrays.push(array);
+        }
+    }
+
+    Ok(TransportChunk {
+        schema,
+        data: ArrowChunk::new(arrays),
+    })
 }

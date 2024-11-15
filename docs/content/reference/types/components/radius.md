@@ -12,9 +12,14 @@ UI points are independent of zooming in Views, but are sensitive to the applicat
 at 100% UI scaling, UI points are equal to pixels
 The Viewer's UI scaling defaults to the OS scaling which typically is 100% for full HD screens and 200% for 4k screens.
 
-## Fields
+## Rerun datatype
+[`Float32`](../datatypes/float32.md)
 
-* value: [`Float32`](../datatypes/float32.md)
+
+## Arrow datatype
+```
+float32
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `Radius`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Radius.html)
@@ -28,7 +33,10 @@ The Viewer's UI scaling defaults to the OS scaling which typically is 100% for f
 * [`Arrows3D`](../archetypes/arrows3d.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)
 * [`Boxes3D`](../archetypes/boxes3d.md)
+* [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
+* [`GeoLineStrings`](../archetypes/geo_line_strings.md)
+* [`GeoPoints`](../archetypes/geo_points.md)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
 * [`LineStrips3D`](../archetypes/line_strips3d.md)
 * [`Points2D`](../archetypes/points2d.md)

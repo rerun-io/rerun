@@ -12,7 +12,7 @@ from .._baseclasses import (
 )
 from .scale3d_ext import Scale3DExt
 
-__all__ = ["Scale3D", "Scale3DBatch", "Scale3DType"]
+__all__ = ["Scale3D", "Scale3DBatch"]
 
 
 class Scale3D(Scale3DExt, datatypes.Vec3D, ComponentMixin):
@@ -31,12 +31,8 @@ class Scale3D(Scale3DExt, datatypes.Vec3D, ComponentMixin):
     pass
 
 
-class Scale3DType(datatypes.Vec3DType):
-    _TYPE_NAME: str = "rerun.components.Scale3D"
-
-
 class Scale3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
-    _ARROW_TYPE = Scale3DType()
+    _COMPONENT_NAME: str = "rerun.components.Scale3D"
 
 
 # This is patched in late to avoid circular dependencies.

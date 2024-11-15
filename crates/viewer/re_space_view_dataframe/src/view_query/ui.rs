@@ -126,7 +126,7 @@ impl Query {
         Ok(())
     }
 
-    pub(super) fn filter_event_ui(
+    pub(super) fn filter_is_not_null_ui(
         &self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
@@ -137,9 +137,9 @@ impl Query {
         // Read stuff
         //
 
-        let original_filter_by_event = self.filter_by_event_raw()?;
+        let original_filter_is_not_null = self.filter_is_not_null_raw()?;
 
-        let (mut active, event_entity, event_component) = original_filter_by_event
+        let (mut active, filter_entity, filter_component) = original_filter_is_not_null
             .as_ref()
             .map(|filter| {
                 (
@@ -154,26 +154,27 @@ impl Query {
         // Filter active?
         //
 
-        ui.re_checkbox(&mut active, "Filter by event from:");
+        ui.re_checkbox(&mut active, "Filter rows where column is not null:");
 
         //
-        // Event entity
+        // Filter entity
         //
 
         let all_entities = all_pov_entities_for_space_view(ctx, space_view_id, timeline);
 
-        let mut event_entity = event_entity
+        let mut filter_entity = filter_entity
             .and_then(|entity| all_entities.contains(&entity).then_some(entity))
             .or_else(|| all_entities.iter().next().cloned())
             .unwrap_or_else(|| EntityPath::from("/"));
 
         //
-        // Event component
+        // Filter component
         //
 
         let all_components = ctx
-            .recording_store()
-            .all_components_on_timeline(timeline, &event_entity)
+            .recording_engine()
+            .store()
+            .all_components_on_timeline(timeline, &filter_entity)
             .unwrap_or_default();
 
         // The list of suggested components is build as follows:
@@ -200,13 +201,13 @@ impl Query {
         };
 
         // If the currently saved component, we auto-switch it to a reasonable one.
-        let mut event_component = event_component
+        let mut filter_component = filter_component
             .and_then(|component| all_components.contains(&component).then_some(component))
             .or_else(|| suggested_components().first().copied())
             .unwrap_or_else(|| ComponentName::from("-"));
 
         //
-        // UI for event entity and component
+        // UI for filter entity and component
         //
 
         ui.add_enabled_ui(active, |ui| {
@@ -215,11 +216,11 @@ impl Query {
             ui.list_item_flat_noninteractive(list_item::PropertyContent::new("Entity").value_fn(
                 |ui, _| {
                     egui::ComboBox::new("pov_entity", "")
-                        .selected_text(event_entity.to_string())
+                        .selected_text(filter_entity.to_string())
                         .show_ui(ui, |ui| {
                             for entity in all_entities {
                                 let label = entity.to_string();
-                                ui.selectable_value(&mut event_entity, entity, label);
+                                ui.selectable_value(&mut filter_entity, entity, label);
                             }
                         });
                 },
@@ -228,11 +229,11 @@ impl Query {
             ui.list_item_flat_noninteractive(
                 list_item::PropertyContent::new("Component").value_fn(|ui, _| {
                     egui::ComboBox::new("pov_component", "")
-                        .selected_text(event_component.short_name())
+                        .selected_text(filter_component.short_name())
                         .show_ui(ui, |ui| {
                             for component in all_components {
                                 let label = component.short_name();
-                                ui.selectable_value(&mut event_component, component, label);
+                                ui.selectable_value(&mut filter_component, component, label);
                             }
                         });
                 }),
@@ -240,14 +241,14 @@ impl Query {
         });
 
         //
-        // Save event if changed
+        // Save filter if changed
         //
 
-        let filter_by_event =
-            components::FilterByEvent::new(active, &event_entity, event_component);
+        let filter_is_not_null =
+            components::FilterIsNotNull::new(active, &filter_entity, filter_component);
 
-        if original_filter_by_event.as_ref() != Some(&filter_by_event) {
-            self.save_filter_by_event(ctx, &filter_by_event);
+        if original_filter_is_not_null.as_ref() != Some(&filter_is_not_null) {
+            self.save_filter_is_not_null(ctx, &filter_is_not_null);
         }
 
         Ok(())
@@ -429,7 +430,8 @@ fn all_pov_entities_for_space_view(
         .visit(&mut |node| {
             if !node.data_result.tree_prefix_only {
                 let comp_for_entity = ctx
-                    .recording_store()
+                    .recording_engine()
+                    .store()
                     .all_components_on_timeline(timeline, &node.data_result.entity_path);
                 if comp_for_entity.is_some_and(|components| !components.is_empty()) {
                     all_entities.insert(node.data_result.entity_path.clone());

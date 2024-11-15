@@ -41,7 +41,7 @@ impl Query {
         ui.separator();
         self.filter_range_ui(ctx, ui, &timeline)?;
         ui.separator();
-        self.filter_event_ui(ctx, ui, &timeline, space_view_id)?;
+        self.filter_is_not_null_ui(ctx, ui, &timeline, space_view_id)?;
         ui.separator();
         self.column_visibility_ui(ctx, ui, &timeline, view_columns)?;
         ui.separator();

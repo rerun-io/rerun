@@ -5,9 +5,14 @@ title: "PoseTranslation3D"
 
 A translation vector in 3D space that doesn't propagate in the transform hierarchy.
 
-## Fields
+## Rerun datatype
+[`Vec3D`](../datatypes/vec3d.md)
 
-* vector: [`Vec3D`](../datatypes/vec3d.md)
+
+## Arrow datatype
+```
+FixedSizeList<3, float32>
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `PoseTranslation3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1PoseTranslation3D.html)
@@ -18,5 +23,6 @@ A translation vector in 3D space that doesn't propagate in the transform hierarc
 ## Used by
 
 * [`Boxes3D`](../archetypes/boxes3d.md)
+* [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
 * [`InstancePoses3D`](../archetypes/instance_poses3d.md)

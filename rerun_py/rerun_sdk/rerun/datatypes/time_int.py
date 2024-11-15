@@ -14,11 +14,10 @@ from attrs import define, field
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .time_int_ext import TimeIntExt
 
-__all__ = ["TimeInt", "TimeIntArrayLike", "TimeIntBatch", "TimeIntLike", "TimeIntType"]
+__all__ = ["TimeInt", "TimeIntArrayLike", "TimeIntBatch", "TimeIntLike"]
 
 
 @define(init=False)
@@ -51,15 +50,8 @@ TimeIntArrayLike = Union[
 ]
 
 
-class TimeIntType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.TimeInt"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.int64(), self._TYPE_NAME)
-
-
 class TimeIntBatch(BaseBatch[TimeIntArrayLike]):
-    _ARROW_TYPE = TimeIntType()
+    _ARROW_DATATYPE = pa.int64()
 
     @staticmethod
     def _native_to_pa_array(data: TimeIntArrayLike, data_type: pa.DataType) -> pa.Array:

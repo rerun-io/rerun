@@ -4,8 +4,8 @@
 #pragma once
 
 #include "../../blueprint/components/apply_latest_at.hpp"
-#include "../../blueprint/components/filter_by_event.hpp"
 #include "../../blueprint/components/filter_by_range.hpp"
+#include "../../blueprint/components/filter_is_not_null.hpp"
 #include "../../blueprint/components/selected_columns.hpp"
 #include "../../blueprint/components/timeline_name.hpp"
 #include "../../collection.hpp"
@@ -33,7 +33,7 @@ namespace rerun::blueprint::archetypes {
         std::optional<rerun::blueprint::components::FilterByRange> filter_by_range;
 
         /// If provided, only show rows which contains a logged event for the specified component.
-        std::optional<rerun::blueprint::components::FilterByEvent> filter_by_event;
+        std::optional<rerun::blueprint::components::FilterIsNotNull> filter_is_not_null;
 
         /// Should empty cells be filled with latest-at queries?
         std::optional<rerun::blueprint::components::ApplyLatestAt> apply_latest_at;
@@ -73,10 +73,10 @@ namespace rerun::blueprint::archetypes {
         }
 
         /// If provided, only show rows which contains a logged event for the specified component.
-        DataframeQuery with_filter_by_event(
-            rerun::blueprint::components::FilterByEvent _filter_by_event
+        DataframeQuery with_filter_is_not_null(
+            rerun::blueprint::components::FilterIsNotNull _filter_is_not_null
         ) && {
-            filter_by_event = std::move(_filter_by_event);
+            filter_is_not_null = std::move(_filter_is_not_null);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

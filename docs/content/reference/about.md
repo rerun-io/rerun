@@ -1,6 +1,6 @@
 ---
 title: About
-order: 100
+order: 1100
 ---
 
 To learn more about Rerun, the company, visit our Website at [https://www.rerun.io/](https://www.rerun.io/).

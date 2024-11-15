@@ -14,7 +14,7 @@ const exec = (cmd) => {
   child_process.execSync(cmd, { cwd: __dirname, stdio: "inherit" });
 };
 
-function wasm(mode) {
+function buildWebViewer(mode) {
   switch (mode) {
     case "debug": {
       return exec(
@@ -31,12 +31,7 @@ function wasm(mode) {
   }
 }
 
-child_process.execSync(
-  "cargo run -p re_dev_tools -- build-web-viewer --debug --target no-modules-base -o rerun_js/web-viewer",
-  { cwd: __dirname, stdio: "inherit" },
-);
-
-function script() {
+function re_viewer_js() {
   let code = fs.readFileSync(path.join(__dirname, "re_viewer.js"), "utf-8");
 
   // this transforms the module, wrapping it in a default-exported function.
@@ -64,11 +59,10 @@ ${code}
 function deinit() {
   __wbg_init.__wbindgen_wasm_module = null;
   wasm = null;
-  cachedFloat32Memory0 = null;
-  cachedFloat64Memory0 = null;
-  cachedInt32Memory0 = null;
-  cachedUint32Memory0 = null;
-  cachedUint8Memory0 = null;
+  cachedFloat32ArrayMemory0 = null;
+  cachedInt32ArrayMemory0 = null;
+  cachedUint32ArrayMemory0 = null;
+  cachedUint8ArrayMemory0 = null;
 }
 
 return Object.assign(__wbg_init, { initSync, deinit }, __exports);
@@ -94,7 +88,7 @@ return Object.assign(__wbg_init, { initSync, deinit }, __exports);
   fs.writeFileSync(path.join(__dirname, "re_viewer.js"), code);
 }
 
-function types() {
+function re_viewer_d_ts() {
   let code = fs.readFileSync(path.join(__dirname, "re_viewer.d.ts"), "utf-8");
 
   // this transformation just re-exports WebHandle and adds a default export inside the `.d.ts` file
@@ -108,18 +102,27 @@ export default function(): wasm_bindgen;
   fs.writeFileSync(path.join(__dirname, "re_viewer.d.ts"), code);
 }
 
-const args = util.parseArgs({
-  options: {
-    mode: {
-      type: "string",
+function main() {
+  const args = util.parseArgs({
+    options: {
+      mode: {
+        type: "string",
+      },
     },
-  },
-});
+  });
+  const mode = args.values.mode;
 
-if (!args.values.mode) {
-  throw new Error("Missing required argument: mode");
+  if (!mode) {
+    throw new Error("Missing required argument: mode");
+  }
+
+  buildWebViewer(mode);
+  re_viewer_js();
+  re_viewer_d_ts();
 }
 
-wasm(args.values.mode);
-script();
-types();
+try {
+  main();
+} catch (e) {
+  console.error(e);
+}

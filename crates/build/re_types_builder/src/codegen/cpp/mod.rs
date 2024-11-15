@@ -992,6 +992,9 @@ impl QuotedObject {
                 ~#pascal_case_ident() {
                     switch (this->_tag) {
                         #(#destructor_match_arms)*
+
+                        default:
+                            assert(false && "unreachable");
                     }
                 }
             }
@@ -1054,6 +1057,9 @@ impl QuotedObject {
                             case detail::#tag_typename::None: {
                                 // there is nothing to copy
                             } break;
+
+                            default:
+                                assert(false && "unreachable");
                         }
                     }
                 }
@@ -1073,6 +1079,9 @@ impl QuotedObject {
                             case detail::#tag_typename::None: {
                                 // there is nothing to copy
                             } break;
+
+                            default:
+                                assert(false && "unreachable");
                         }
                     }
                 }
@@ -1841,7 +1850,11 @@ fn quote_fill_arrow_array_builder(
                             case TagType::None: {
                                 ARROW_RETURN_NOT_OK(variant_builder_untyped->AppendNull());
                             } break;
+
                             #(#tag_cases)*
+
+                            default:
+                                assert(false && "unreachable");
                         }
                     }
                 }

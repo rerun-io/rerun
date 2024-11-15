@@ -160,6 +160,7 @@ impl SelectionPanel {
 
                 let (query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
                 let is_static = db
+                    .storage_engine()
                     .store()
                     .entity_has_static_component(entity_path, component_name);
 
@@ -726,6 +727,7 @@ fn item_tile(
 
             let (_query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
             let is_static = db
+                .storage_engine()
                 .store()
                 .entity_has_static_component(entity_path, component_name);
 
@@ -1183,7 +1185,7 @@ fn visible_interactive_toggle_ui(
     data_result: &DataResult,
 ) {
     use re_types::blueprint::components::Visible;
-    use re_types::Loggable as _;
+    use re_types::Component as _;
 
     {
         let visible_before = data_result.is_visible(ctx.viewer_ctx);

@@ -230,7 +230,6 @@ pub fn customize_eframe_and_setup_renderer(
 // ---------------------------------------------------------------------------
 
 /// This wakes up the ui thread each time we receive a new message.
-#[cfg(not(feature = "web_viewer"))]
 #[cfg(not(target_arch = "wasm32"))]
 pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
     rx: re_smart_channel::Receiver<T>,
@@ -252,7 +251,7 @@ pub fn wake_up_ui_thread_on_each_msg<T: Send + 'static>(
                     break;
                 }
             }
-            re_log::debug!("Shutting down ui_waker thread");
+            re_log::trace!("Shutting down ui_waker thread");
         })
         .unwrap();
     new_rx
@@ -287,6 +286,18 @@ pub fn reset_viewer_persistence() -> anyhow::Result<()> {
             }
         } else {
             re_log::info!("Rerun state was already cleared.");
+        }
+
+        // Clear the default cache directory if it exists
+        //TODO(#8064): should clear the _actual_ cache directory, not the default one
+        if let Some(cache_dir) = re_viewer_context::AppOptions::default_cache_directory() {
+            if let Err(err) = std::fs::remove_dir_all(&cache_dir) {
+                if err.kind() != std::io::ErrorKind::NotFound {
+                    anyhow::bail!("Failed to remove {cache_dir:?}: {err}");
+                }
+            } else {
+                re_log::info!("Cleared {cache_dir:?}.");
+            }
         }
     }
     #[cfg(target_arch = "wasm32")]

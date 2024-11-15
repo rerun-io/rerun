@@ -276,7 +276,7 @@ impl Chunk {
                     ArrowOffsets::try_from_lengths(sorted_arrays.iter().map(|array| array.len()))
                         .unwrap();
                 #[allow(clippy::unwrap_used)] // these are slices of the same outer array
-                let values = arrow2::compute::concatenate::concatenate(&sorted_arrays).unwrap();
+                let values = crate::util::concat_arrays(&sorted_arrays).unwrap();
                 let validity = original
                     .validity()
                     .map(|validity| swaps.iter().map(|&from| validity.get_bit(from)).collect());
@@ -321,7 +321,7 @@ mod tests {
         example_components::{MyColor, MyPoint},
         EntityPath, Timeline,
     };
-    use re_types_core::Loggable as _;
+    use re_types_core::Component as _;
 
     use crate::{ChunkId, RowId};
 

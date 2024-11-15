@@ -1,11 +1,12 @@
 use re_log_types::Instance;
 use re_renderer::{renderer::LineStripFlags, LineDrawableBuilder, PickingLayerInstanceId};
+use re_space_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_types::{
     archetypes::Arrows2D,
     components::{
         ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, ShowLabels, Text, Vector2D,
     },
-    ArrowString, Loggable as _,
+    ArrowString, Component as _,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
@@ -21,9 +22,9 @@ use crate::{
 
 use super::{
     entity_iterator::clamped_or,
-    process_annotation_and_keypoint_slices, process_color_slice, process_radius_slice,
+    process_radius_slice,
     utilities::{process_labels_2d, LabeledBatch},
-    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    SpatialViewVisualizerData,
 };
 
 // ---
@@ -195,7 +196,9 @@ impl VisualizerSystem for Arrows2DVisualizer {
         };
 
         let mut line_builder = LineDrawableBuilder::new(render_ctx);
-        line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+        line_builder.radius_boost_in_ui_points_for_outlines(
+            re_space_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+        );
 
         use super::entity_iterator::{iter_primitive_array, process_archetype};
         process_archetype::<Self, Arrows2D, _>(

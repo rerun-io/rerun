@@ -11,10 +11,9 @@ import pyarrow as pa
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 
-__all__ = ["PixelFormat", "PixelFormatArrayLike", "PixelFormatBatch", "PixelFormatLike", "PixelFormatType"]
+__all__ = ["PixelFormat", "PixelFormatArrayLike", "PixelFormatBatch", "PixelFormatLike"]
 
 
 from enum import Enum
@@ -185,15 +184,8 @@ PixelFormatLike = Union[
 PixelFormatArrayLike = Union[PixelFormatLike, Sequence[PixelFormatLike]]
 
 
-class PixelFormatType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.PixelFormat"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
-
-
 class PixelFormatBatch(BaseBatch[PixelFormatArrayLike]):
-    _ARROW_TYPE = PixelFormatType()
+    _ARROW_DATATYPE = pa.uint8()
 
     @staticmethod
     def _native_to_pa_array(data: PixelFormatArrayLike, data_type: pa.DataType) -> pa.Array:

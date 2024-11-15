@@ -21,6 +21,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: An image encoded as e.g. a JPEG or PNG.
 ///
 /// Rerun also supports uncompressed images with the [`archetypes::Image`][crate::archetypes::Image].
+/// For images that refer to video frames see [`archetypes::VideoFrameReference`][crate::archetypes::VideoFrameReference].
 ///
 /// ## Example
 ///

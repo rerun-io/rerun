@@ -10,10 +10,9 @@ from typing import Literal, Sequence, Union
 import pyarrow as pa
 from rerun._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 
-__all__ = ["ValuedEnum", "ValuedEnumArrayLike", "ValuedEnumBatch", "ValuedEnumLike", "ValuedEnumType"]
+__all__ = ["ValuedEnum", "ValuedEnumArrayLike", "ValuedEnumBatch", "ValuedEnumLike"]
 
 
 from enum import Enum
@@ -59,15 +58,8 @@ ValuedEnumLike = Union[ValuedEnum, Literal["One", "TheAnswer", "Three", "Two", "
 ValuedEnumArrayLike = Union[ValuedEnumLike, Sequence[ValuedEnumLike]]
 
 
-class ValuedEnumType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.testing.datatypes.ValuedEnum"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
-
-
 class ValuedEnumBatch(BaseBatch[ValuedEnumArrayLike]):
-    _ARROW_TYPE = ValuedEnumType()
+    _ARROW_DATATYPE = pa.uint8()
 
     @staticmethod
     def _native_to_pa_array(data: ValuedEnumArrayLike, data_type: pa.DataType) -> pa.Array:

@@ -101,6 +101,10 @@ namespace rerun {
     }
 
     Error RecordingStream::connect(std::string_view tcp_addr, float flush_timeout_sec) const {
+        return RecordingStream::connect_tcp(tcp_addr, flush_timeout_sec);
+    }
+
+    Error RecordingStream::connect_tcp(std::string_view tcp_addr, float flush_timeout_sec) const {
         rr_error status = {};
         rr_recording_stream_connect(
             _id,

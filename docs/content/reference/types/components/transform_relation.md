@@ -6,9 +6,25 @@ title: "TransformRelation"
 Specifies relation a spatial transform describes.
 
 ## Variants
+#### `ParentFromChild` = 1
+The transform describes how to transform into the parent entity's space.
 
-* ParentFromChild
-* ChildFromParent
+E.g. a translation of (0, 1, 0) with this [`components.TransformRelation`](https://rerun.io/docs/reference/types/components/transform_relation) logged at `parent/child` means
+that from the point of view of `parent`, `parent/child` is translated 1 unit along `parent`'s Y axis.
+From perspective of `parent/child`, the `parent` entity is translated -1 unit along `parent/child`'s Y axis.
+
+#### `ChildFromParent` = 2
+The transform describes how to transform into the child entity's space.
+
+E.g. a translation of (0, 1, 0) with this [`components.TransformRelation`](https://rerun.io/docs/reference/types/components/transform_relation) logged at `parent/child` means
+that from the point of view of `parent`, `parent/child` is translated -1 unit along `parent`'s Y axis.
+From perspective of `parent/child`, the `parent` entity is translated 1 unit along `parent/child`'s Y axis.
+
+
+## Arrow datatype
+```
+uint8
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `TransformRelation`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)

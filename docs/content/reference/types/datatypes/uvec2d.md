@@ -5,9 +5,11 @@ title: "UVec2D"
 
 A uint32 vector in 2D space.
 
-## Fields
 
-* xy: 2x `u32`
+## Arrow datatype
+```
+FixedSizeList<2, uint32>
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `UVec2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1UVec2D.html)

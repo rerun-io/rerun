@@ -62,13 +62,19 @@ pub enum SmartChannelSource {
 
     /// The channel was created in the context of streaming in RRD data from standard input.
     Stdin,
+
+    /// The data is streaming in directly from a Rerun Data Platform server, over gRPC.
+    RerunGrpcStream {
+        /// Should include `rerun://` prefix.
+        url: String,
+    },
 }
 
 impl std::fmt::Display for SmartChannelSource {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::File(path) => path.display().fmt(f),
-            Self::RrdHttpStream { url, follow: _ } => url.fmt(f),
+            Self::RrdHttpStream { url, follow: _ } | Self::RerunGrpcStream { url } => url.fmt(f),
             Self::RrdWebEventListener => "Web event listener".fmt(f),
             Self::JsChannel { channel_name } => write!(f, "Javascript channel: {channel_name}"),
             Self::Sdk => "SDK".fmt(f),
@@ -86,7 +92,8 @@ impl SmartChannelSource {
             Self::RrdHttpStream { .. }
             | Self::WsClient { .. }
             | Self::JsChannel { .. }
-            | Self::TcpServer { .. } => true,
+            | Self::TcpServer { .. }
+            | Self::RerunGrpcStream { .. } => true,
         }
     }
 }
@@ -142,6 +149,12 @@ pub enum SmartMessageSource {
 
     /// The data is streaming in from standard input.
     Stdin,
+
+    /// A file on a Rerun Data Platform server, over `rerun://` gRPC interface.
+    RerunGrpcStream {
+        /// Should include `rerun://` prefix.
+        url: String,
+    },
 }
 
 impl std::fmt::Display for SmartMessageSource {
@@ -149,7 +162,7 @@ impl std::fmt::Display for SmartMessageSource {
         f.write_str(&match self {
             Self::Unknown => "unknown".into(),
             Self::File(path) => format!("file://{}", path.to_string_lossy()),
-            Self::RrdHttpStream { url } => url.clone(),
+            Self::RrdHttpStream { url } | Self::RerunGrpcStream { url } => url.clone(),
             Self::RrdWebEventCallback => "web_callback".into(),
             Self::JsChannelPush => "javascript".into(),
             Self::Sdk => "sdk".into(),

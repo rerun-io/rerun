@@ -39,8 +39,10 @@ impl DataLoader for ArchetypeLoader {
 
         re_tracing::profile_function!(filepath.display().to_string());
 
-        let contents = std::fs::read(&filepath)
-            .with_context(|| format!("Failed to read file {filepath:?}"))?;
+        let contents = {
+            re_tracing::profile_scope!("fs::read");
+            std::fs::read(&filepath).with_context(|| format!("Failed to read file {filepath:?}"))?
+        };
         let contents = std::borrow::Cow::Owned(contents);
 
         self.load_from_file_contents(settings, filepath, contents, tx)
@@ -48,7 +50,7 @@ impl DataLoader for ArchetypeLoader {
 
     fn load_from_file_contents(
         &self,
-        _settings: &crate::DataLoaderSettings,
+        settings: &crate::DataLoaderSettings,
         filepath: std::path::PathBuf,
         contents: std::borrow::Cow<'_, [u8]>,
         tx: std::sync::mpsc::Sender<LoadedData>,
@@ -131,8 +133,13 @@ impl DataLoader for ArchetypeLoader {
             )?);
         }
 
+        let store_id = settings
+            .opened_store_id
+            .clone()
+            .unwrap_or_else(|| settings.store_id.clone());
         for row in rows {
-            if tx.send(row.into()).is_err() {
+            let data = LoadedData::Chunk(Self::name(&Self), store_id.clone(), row);
+            if tx.send(data).is_err() {
                 break; // The other end has decided to hang up, not our problem.
             }
         }

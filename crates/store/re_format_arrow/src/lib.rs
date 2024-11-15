@@ -38,7 +38,7 @@ fn get_custom_display<'a, F: std::fmt::Write + 'a>(
 
     if let Some(DataType::Extension(name, _, _)) = datatype {
         // TODO(#1775): This should be registered dynamically.
-        if name.as_str() == Tuid::name() {
+        if name.as_str() == Tuid::NAME {
             return Box::new(|w, index| {
                 if let Some(tuid) = parse_tuid(array, index) {
                     w.write_fmt(format_args!("{tuid}"))

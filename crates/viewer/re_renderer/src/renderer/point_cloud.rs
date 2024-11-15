@@ -151,6 +151,22 @@ pub struct PointCloudBatchInfo {
     pub depth_offset: DepthOffset,
 }
 
+impl Default for PointCloudBatchInfo {
+    #[inline]
+    fn default() -> Self {
+        Self {
+            label: DebugLabel::default(),
+            world_from_obj: glam::Affine3A::IDENTITY,
+            flags: PointCloudBatchFlags::FLAG_ENABLE_SHADING,
+            point_count: 0,
+            overall_outline_mask_ids: OutlineMaskPreference::NONE,
+            additional_outline_mask_ids_vertex_ranges: Vec::new(),
+            picking_object_id: Default::default(),
+            depth_offset: 0,
+        }
+    }
+}
+
 #[derive(thiserror::Error, Debug, PartialEq, Eq)]
 pub enum PointCloudDrawDataError {
     #[error("Failed to transfer data to the GPU: {0}")]
@@ -523,15 +539,14 @@ impl Renderer for PointCloudRenderer {
             fragment_entrypoint: "fs_main".into(),
             fragment_handle: shader_module,
             vertex_buffers: smallvec![],
-            render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_COLOR_FORMAT.into())],
+            render_targets: smallvec![Some(ViewBuilder::MAIN_TARGET_ALPHA_TO_COVERAGE_COLOR_STATE)],
             primitive: wgpu::PrimitiveState {
                 topology: wgpu::PrimitiveTopology::TriangleList,
                 ..Default::default()
             },
             depth_stencil: ViewBuilder::MAIN_TARGET_DEFAULT_DEPTH_STATE,
             multisample: wgpu::MultisampleState {
-                // We discard pixels to do the round cutout, therefore we need to calculate
-                // our own sampling mask.
+                // We discard pixels to do the round cutout, therefore we need to calculate our own sampling mask.
                 alpha_to_coverage_enabled: true,
                 ..ViewBuilder::MAIN_TARGET_DEFAULT_MSAA_STATE
             },

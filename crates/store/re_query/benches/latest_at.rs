@@ -7,10 +7,10 @@ use criterion::{criterion_group, criterion_main, Criterion};
 use itertools::Itertools;
 
 use re_chunk::{Chunk, RowId};
-use re_chunk_store::{ChunkStore, ChunkStoreSubscriber, LatestAtQuery};
+use re_chunk_store::{ChunkStore, ChunkStoreHandle, ChunkStoreSubscriber, LatestAtQuery};
 use re_log_types::{entity_path, EntityPath, TimeInt, TimeType, Timeline};
 use re_query::clamped_zip_1x1;
-use re_query::{Caches, LatestAtResults};
+use re_query::{LatestAtResults, QueryCache};
 use re_types::{
     archetypes::Points2D,
     components::{Color, Position2D, Text},
@@ -77,9 +77,9 @@ fn mono_points(c: &mut Criterion) {
     {
         let mut group = c.benchmark_group("arrow_mono_points2");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        let (caches, store) = insert_chunks(msgs.iter());
+        let (caches, _store) = insert_chunks(msgs.iter());
         group.bench_function("query", |b| {
-            b.iter(|| query_and_visit_points(&caches, &store, &paths));
+            b.iter(|| query_and_visit_points(&caches, &paths));
         });
     }
 }
@@ -105,9 +105,9 @@ fn mono_strings(c: &mut Criterion) {
     {
         let mut group = c.benchmark_group("arrow_mono_strings2");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        let (caches, store) = insert_chunks(msgs.iter());
+        let (caches, _store) = insert_chunks(msgs.iter());
         group.bench_function("query", |b| {
-            b.iter(|| query_and_visit_strings(&caches, &store, &paths));
+            b.iter(|| query_and_visit_strings(&caches, &paths));
         });
     }
 }
@@ -130,9 +130,9 @@ fn batch_points(c: &mut Criterion) {
     {
         let mut group = c.benchmark_group("arrow_batch_points2");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        let (caches, store) = insert_chunks(msgs.iter());
+        let (caches, _store) = insert_chunks(msgs.iter());
         group.bench_function("query", |b| {
-            b.iter(|| query_and_visit_points(&caches, &store, &paths));
+            b.iter(|| query_and_visit_points(&caches, &paths));
         });
     }
 }
@@ -155,9 +155,9 @@ fn batch_strings(c: &mut Criterion) {
     {
         let mut group = c.benchmark_group("arrow_batch_strings2");
         group.throughput(criterion::Throughput::Elements(NUM_POINTS as _));
-        let (caches, store) = insert_chunks(msgs.iter());
+        let (caches, _store) = insert_chunks(msgs.iter());
         group.bench_function("query", |b| {
-            b.iter(|| query_and_visit_strings(&caches, &store, &paths));
+            b.iter(|| query_and_visit_strings(&caches, &paths));
         });
     }
 }
@@ -245,16 +245,19 @@ fn build_strings_chunks(paths: &[EntityPath], num_strings: usize) -> Vec<Arc<Chu
         .collect()
 }
 
-fn insert_chunks<'a>(msgs: impl Iterator<Item = &'a Arc<Chunk>>) -> (Caches, ChunkStore) {
-    let mut store = ChunkStore::new(
+fn insert_chunks<'a>(msgs: impl Iterator<Item = &'a Arc<Chunk>>) -> (QueryCache, ChunkStoreHandle) {
+    let store = ChunkStore::new_handle(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(store.clone());
 
-    msgs.for_each(|chunk| {
-        caches.on_events(&store.insert_chunk(chunk).unwrap());
-    });
+    {
+        let mut store = store.write();
+        msgs.for_each(|chunk| {
+            caches.on_events(&store.insert_chunk(chunk).unwrap());
+        });
+    }
 
     (caches, store)
 }
@@ -264,11 +267,7 @@ struct SavePoint {
     _color: Option<Color>,
 }
 
-fn query_and_visit_points(
-    caches: &Caches,
-    store: &ChunkStore,
-    paths: &[EntityPath],
-) -> Vec<SavePoint> {
+fn query_and_visit_points(caches: &QueryCache, paths: &[EntityPath]) -> Vec<SavePoint> {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = LatestAtQuery::new(timeline_frame_nr, NUM_FRAMES_POINTS as i64 / 2);
 
@@ -277,7 +276,6 @@ fn query_and_visit_points(
     // TODO(jleibs): Add Radius once we have support for it in field_types
     for entity_path in paths {
         let results: LatestAtResults = caches.latest_at(
-            store,
             &query,
             entity_path,
             Points2D::all_components().iter().copied(), // no generics!
@@ -302,11 +300,7 @@ struct SaveString {
     _label: Option<Text>,
 }
 
-fn query_and_visit_strings(
-    caches: &Caches,
-    store: &ChunkStore,
-    paths: &[EntityPath],
-) -> Vec<SaveString> {
+fn query_and_visit_strings(caches: &QueryCache, paths: &[EntityPath]) -> Vec<SaveString> {
     let timeline_frame_nr = Timeline::new("frame_nr", TimeType::Sequence);
     let query = LatestAtQuery::new(timeline_frame_nr, NUM_FRAMES_STRINGS as i64 / 2);
 
@@ -314,7 +308,6 @@ fn query_and_visit_strings(
 
     for entity_path in paths {
         let results: LatestAtResults = caches.latest_at(
-            store,
             &query,
             entity_path,
             Points2D::all_components().iter().copied(), // no generics!

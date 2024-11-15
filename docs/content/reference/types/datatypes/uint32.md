@@ -5,9 +5,11 @@ title: "UInt32"
 
 A 32bit unsigned integer.
 
-## Fields
 
-* value: `u32`
+## Arrow datatype
+```
+uint32
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `UInt32`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1UInt32.html)

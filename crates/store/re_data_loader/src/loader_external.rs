@@ -6,6 +6,8 @@ use std::{
 use ahash::HashMap;
 use once_cell::sync::Lazy;
 
+use crate::{DataLoader, LoadedData};
+
 // ---
 
 /// To register a new external data loader, simply add an executable in your $PATH whose name
@@ -27,7 +29,7 @@ pub const EXTERNAL_DATA_LOADER_INCOMPATIBLE_EXIT_CODE: i32 = 66;
 /// filter data on a much more fine-grained basis that just file extensions (e.g. checking the file
 /// itself for magic bytes).
 pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<std::path::PathBuf>> = Lazy::new(|| {
-    re_tracing::profile_function!();
+    re_tracing::profile_scope!("initialize-external-loaders");
 
     let dir_separator = if cfg!(target_os = "windows") {
         ';'
@@ -48,6 +50,7 @@ pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<std::path::PathBuf>> = Lazy::new(|| {
 
     let mut executables = HashMap::<String, Vec<std::path::PathBuf>>::default();
     for dirpath in dirpaths {
+        re_tracing::profile_scope!("dir", dirpath.to_string_lossy());
         let Ok(dir) = std::fs::read_dir(dirpath) else {
             continue;
         };
@@ -90,6 +93,7 @@ pub static EXTERNAL_LOADER_PATHS: Lazy<Vec<std::path::PathBuf>> = Lazy::new(|| {
 /// Iterator over all registered external [`crate::DataLoader`]s.
 #[inline]
 pub fn iter_external_loaders() -> impl ExactSizeIterator<Item = std::path::PathBuf> {
+    re_tracing::profile_wait!("EXTERNAL_LOADER_PATHS");
     EXTERNAL_LOADER_PATHS.iter().cloned()
 }
 
@@ -122,12 +126,17 @@ impl crate::DataLoader for ExternalLoader {
 
         re_tracing::profile_function!(filepath.display().to_string());
 
+        let external_loaders = {
+            re_tracing::profile_wait!("EXTERNAL_LOADER_PATHS");
+            EXTERNAL_LOADER_PATHS.iter()
+        };
+
         #[derive(PartialEq, Eq)]
         struct CompatibleLoaderFound;
         let (tx_feedback, rx_feedback) = std::sync::mpsc::channel::<CompatibleLoaderFound>();
 
         let args = settings.to_cli_args();
-        for exe in EXTERNAL_LOADER_PATHS.iter() {
+        for exe in external_loaders {
             let args = args.clone();
             let filepath = filepath.clone();
             let tx = tx.clone();
@@ -311,7 +320,9 @@ fn decode_and_stream<R: std::io::Read>(
                 continue;
             }
         };
-        if tx.send(msg.into()).is_err() {
+
+        let data = LoadedData::LogMsg(ExternalLoader::name(&ExternalLoader), msg);
+        if tx.send(data).is_err() {
             break; // The other end has decided to hang up, not our problem.
         }
     }

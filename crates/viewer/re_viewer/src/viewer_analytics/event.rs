@@ -75,8 +75,8 @@ pub fn open_recording(
             S::RustSdk { .. } => "rust_sdk".to_owned(),
             S::File { file_source } => match file_source {
                 re_log_types::FileSource::Cli => "file_cli".to_owned(),
-                re_log_types::FileSource::DragAndDrop => "file_drag_and_drop".to_owned(),
-                re_log_types::FileSource::FileDialog => "file_dialog".to_owned(),
+                re_log_types::FileSource::DragAndDrop { .. } => "file_drag_and_drop".to_owned(),
+                re_log_types::FileSource::FileDialog { .. } => "file_dialog".to_owned(),
                 re_log_types::FileSource::Sdk => "file_sdk".to_owned(),
             },
             S::Viewer => "viewer".to_owned(),
@@ -131,6 +131,7 @@ pub fn open_recording(
     let data_source = entity_db.data_source.as_ref().map(|v| match v {
         re_smart_channel::SmartChannelSource::File(_) => "file", // .rrd, .png, .glb, …
         re_smart_channel::SmartChannelSource::RrdHttpStream { .. } => "http",
+        re_smart_channel::SmartChannelSource::RerunGrpcStream { .. } => "grpc",
         re_smart_channel::SmartChannelSource::RrdWebEventListener { .. } => "web_event",
         re_smart_channel::SmartChannelSource::JsChannel { .. } => "javascript", // mediated via rerun-js
         re_smart_channel::SmartChannelSource::Sdk => "sdk",                     // show()

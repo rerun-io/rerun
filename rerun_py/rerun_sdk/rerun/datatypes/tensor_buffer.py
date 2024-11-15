@@ -14,11 +14,10 @@ from attrs import define, field
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .tensor_buffer_ext import TensorBufferExt
 
-__all__ = ["TensorBuffer", "TensorBufferArrayLike", "TensorBufferBatch", "TensorBufferLike", "TensorBufferType"]
+__all__ = ["TensorBuffer", "TensorBufferArrayLike", "TensorBufferBatch", "TensorBufferLike"]
 
 
 @define
@@ -119,87 +118,41 @@ else:
     TensorBufferArrayLike = Any
 
 
-class TensorBufferType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.TensorBuffer"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.dense_union([
-                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                pa.field(
-                    "U8",
-                    pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field(
-                    "U16",
-                    pa.list_(pa.field("item", pa.uint16(), nullable=False, metadata={})),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field(
-                    "U32",
-                    pa.list_(pa.field("item", pa.uint32(), nullable=False, metadata={})),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field(
-                    "U64",
-                    pa.list_(pa.field("item", pa.uint64(), nullable=False, metadata={})),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field(
-                    "I8",
-                    pa.list_(pa.field("item", pa.int8(), nullable=False, metadata={})),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field(
-                    "I16",
-                    pa.list_(pa.field("item", pa.int16(), nullable=False, metadata={})),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field(
-                    "I32",
-                    pa.list_(pa.field("item", pa.int32(), nullable=False, metadata={})),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field(
-                    "I64",
-                    pa.list_(pa.field("item", pa.int64(), nullable=False, metadata={})),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field(
-                    "F16",
-                    pa.list_(pa.field("item", pa.float16(), nullable=False, metadata={})),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field(
-                    "F32",
-                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={})),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field(
-                    "F64",
-                    pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={})),
-                    nullable=False,
-                    metadata={},
-                ),
-            ]),
-            self._TYPE_NAME,
-        )
-
-
 class TensorBufferBatch(BaseBatch[TensorBufferArrayLike]):
-    _ARROW_TYPE = TensorBufferType()
+    _ARROW_DATATYPE = pa.dense_union([
+        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+        pa.field(
+            "U8", pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})), nullable=False, metadata={}
+        ),
+        pa.field(
+            "U16", pa.list_(pa.field("item", pa.uint16(), nullable=False, metadata={})), nullable=False, metadata={}
+        ),
+        pa.field(
+            "U32", pa.list_(pa.field("item", pa.uint32(), nullable=False, metadata={})), nullable=False, metadata={}
+        ),
+        pa.field(
+            "U64", pa.list_(pa.field("item", pa.uint64(), nullable=False, metadata={})), nullable=False, metadata={}
+        ),
+        pa.field("I8", pa.list_(pa.field("item", pa.int8(), nullable=False, metadata={})), nullable=False, metadata={}),
+        pa.field(
+            "I16", pa.list_(pa.field("item", pa.int16(), nullable=False, metadata={})), nullable=False, metadata={}
+        ),
+        pa.field(
+            "I32", pa.list_(pa.field("item", pa.int32(), nullable=False, metadata={})), nullable=False, metadata={}
+        ),
+        pa.field(
+            "I64", pa.list_(pa.field("item", pa.int64(), nullable=False, metadata={})), nullable=False, metadata={}
+        ),
+        pa.field(
+            "F16", pa.list_(pa.field("item", pa.float16(), nullable=False, metadata={})), nullable=False, metadata={}
+        ),
+        pa.field(
+            "F32", pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={})), nullable=False, metadata={}
+        ),
+        pa.field(
+            "F64", pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={})), nullable=False, metadata={}
+        ),
+    ])
 
     @staticmethod
     def _native_to_pa_array(data: TensorBufferArrayLike, data_type: pa.DataType) -> pa.Array:

@@ -1,5 +1,5 @@
 ---
-title: Stream from Python
+title: Send from Python
 order: 2
 ---
 

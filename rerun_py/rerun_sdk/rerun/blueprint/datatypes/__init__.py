@@ -7,67 +7,41 @@ from .component_column_selector import (
     ComponentColumnSelectorArrayLike,
     ComponentColumnSelectorBatch,
     ComponentColumnSelectorLike,
-    ComponentColumnSelectorType,
 )
-from .filter_by_event import (
-    FilterByEvent,
-    FilterByEventArrayLike,
-    FilterByEventBatch,
-    FilterByEventLike,
-    FilterByEventType,
-)
-from .filter_by_range import (
-    FilterByRange,
-    FilterByRangeArrayLike,
-    FilterByRangeBatch,
-    FilterByRangeLike,
-    FilterByRangeType,
-)
-from .selected_columns import (
-    SelectedColumns,
-    SelectedColumnsArrayLike,
-    SelectedColumnsBatch,
-    SelectedColumnsLike,
-    SelectedColumnsType,
-)
+from .filter_by_range import FilterByRange, FilterByRangeArrayLike, FilterByRangeBatch, FilterByRangeLike
+from .filter_is_not_null import FilterIsNotNull, FilterIsNotNullArrayLike, FilterIsNotNullBatch, FilterIsNotNullLike
+from .selected_columns import SelectedColumns, SelectedColumnsArrayLike, SelectedColumnsBatch, SelectedColumnsLike
 from .tensor_dimension_index_slider import (
     TensorDimensionIndexSlider,
     TensorDimensionIndexSliderArrayLike,
     TensorDimensionIndexSliderBatch,
     TensorDimensionIndexSliderLike,
-    TensorDimensionIndexSliderType,
 )
-from .utf8list import Utf8List, Utf8ListArrayLike, Utf8ListBatch, Utf8ListLike, Utf8ListType
+from .utf8list import Utf8List, Utf8ListArrayLike, Utf8ListBatch, Utf8ListLike
 
 __all__ = [
     "ComponentColumnSelector",
     "ComponentColumnSelectorArrayLike",
     "ComponentColumnSelectorBatch",
     "ComponentColumnSelectorLike",
-    "ComponentColumnSelectorType",
-    "FilterByEvent",
-    "FilterByEventArrayLike",
-    "FilterByEventBatch",
-    "FilterByEventLike",
-    "FilterByEventType",
     "FilterByRange",
     "FilterByRangeArrayLike",
     "FilterByRangeBatch",
     "FilterByRangeLike",
-    "FilterByRangeType",
+    "FilterIsNotNull",
+    "FilterIsNotNullArrayLike",
+    "FilterIsNotNullBatch",
+    "FilterIsNotNullLike",
     "SelectedColumns",
     "SelectedColumnsArrayLike",
     "SelectedColumnsBatch",
     "SelectedColumnsLike",
-    "SelectedColumnsType",
     "TensorDimensionIndexSlider",
     "TensorDimensionIndexSliderArrayLike",
     "TensorDimensionIndexSliderBatch",
     "TensorDimensionIndexSliderLike",
-    "TensorDimensionIndexSliderType",
     "Utf8List",
     "Utf8ListArrayLike",
     "Utf8ListBatch",
     "Utf8ListLike",
-    "Utf8ListType",
 ]

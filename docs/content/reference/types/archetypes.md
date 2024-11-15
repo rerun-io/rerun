@@ -12,6 +12,11 @@ the intent of the logging code and triggers the activation of the corresponding 
 
 This page lists all built-in archetypes.
 
+## Geospatial
+
+* [`GeoLineStrings`](archetypes/geo_line_strings.md): Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/4326) altitude and longitude (North/East-positive degrees), and optional colors and radii.
+* [`GeoPoints`](archetypes/geo_points.md): Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.
+
 ## Image & tensor
 
 * [`DepthImage`](archetypes/depth_image.md): A depth image, i.e. as captured by a depth camera.
@@ -39,6 +44,7 @@ This page lists all built-in archetypes.
 * [`Arrows3D`](archetypes/arrows3d.md): 3D arrows with optional colors, radii, labels, etc.
 * [`Asset3D`](archetypes/asset3d.md): A prepacked 3D asset (`.gltf`, `.glb`, `.obj`, `.stl`, etc.).
 * [`Boxes3D`](archetypes/boxes3d.md): 3D boxes with half-extents and optional center, rotations, colors etc.
+* [`Capsules3D`](archetypes/capsules3d.md): 3D capsules; cylinders with hemispherical caps.
 * [`Ellipsoids3D`](archetypes/ellipsoids3d.md): 3D ellipsoids or spheres.
 * [`InstancePoses3D`](archetypes/instance_poses3d.md): One or more transforms between the current entity and its parent. Unlike [`archetypes.Transform3D`](https://rerun.io/docs/reference/types/archetypes/transform3d), it is *not* propagated in the transform hierarchy.
 * [`LineStrips3D`](archetypes/line_strips3d.md): 3D line strips with positions and optional colors, radii, labels, etc.
@@ -53,11 +59,14 @@ This page lists all built-in archetypes.
 * [`TextDocument`](archetypes/text_document.md): A text element intended to be displayed in its own text box.
 * [`TextLog`](archetypes/text_log.md): A log entry in a text log, comprised of a text body and its log level.
 
+## Video
+
+* [`AssetVideo`](archetypes/asset_video.md): A video binary.
+* [`VideoFrameReference`](archetypes/video_frame_reference.md): References a single video frame.
+
 ## Other
 
 * [`AnnotationContext`](archetypes/annotation_context.md): The annotation context provides additional information on how to display entities.
-* [`AssetVideo`](archetypes/asset_video.md): A video binary.
 * [`Clear`](archetypes/clear.md): Empties all the components of an entity.
 * [`DisconnectedSpace`](archetypes/disconnected_space.md): Spatially disconnect this entity from its parent.
-* [`VideoFrameReference`](archetypes/video_frame_reference.md): References a single video frame.
 

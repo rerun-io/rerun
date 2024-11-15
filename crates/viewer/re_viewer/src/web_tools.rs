@@ -85,6 +85,9 @@ enum EndpointCategory {
     /// Could be a link to either an `.rrd` recording or a `.rbl` blueprint.
     HttpRrd(String),
 
+    /// gRPC Rerun Data Platform URL, e.g. `rerun://ip:port/recording/1234`
+    RerunGrpc(String),
+
     /// A remote Rerun server.
     WebSocket(String),
 
@@ -96,6 +99,8 @@ impl EndpointCategory {
     fn categorize_uri(uri: String) -> Self {
         if uri.starts_with("http") || uri.ends_with(".rrd") || uri.ends_with(".rbl") {
             Self::HttpRrd(uri)
+        } else if uri.starts_with("rerun://") {
+            Self::RerunGrpc(uri)
         } else if uri.starts_with("ws:") || uri.starts_with("wss:") {
             Self::WebSocket(uri)
         } else if uri.starts_with("web_event:") {
@@ -132,6 +137,15 @@ pub fn url_to_receiver(
                 Some(ui_waker),
             ),
         ),
+
+        #[cfg(feature = "grpc")]
+        EndpointCategory::RerunGrpc(url) => {
+            re_grpc_client::stream_recording(url, Some(ui_waker)).map_err(|err| err.into())
+        }
+        #[cfg(not(feature = "grpc"))]
+        EndpointCategory::RerunGrpc(_url) => {
+            anyhow::bail!("Missing 'grpc' feature flag");
+        }
         EndpointCategory::WebEventListener(url) => {
             // Process an rrd when it's posted via `window.postMessage`
             let (tx, rx) = re_smart_channel::smart_channel(

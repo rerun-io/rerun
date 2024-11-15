@@ -1,5 +1,5 @@
 ---
 title: 🌊 C++ APIs
-order: 1000
+order: 2000
 redirect: https://ref.rerun.io/docs/cpp
 ---

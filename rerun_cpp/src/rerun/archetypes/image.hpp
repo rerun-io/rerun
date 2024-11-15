@@ -24,15 +24,16 @@ namespace rerun::archetypes {
     ///
     /// See also `archetypes::DepthImage` and `archetypes::SegmentationImage`.
     ///
+    /// Rerun also supports compressed images (JPEG, PNG, …), using `archetypes::EncodedImage`.
+    /// For images that refer to video frames see `archetypes::VideoFrameReference`.
+    /// Compressing images or using video data instead can save a lot of bandwidth and memory.
+    ///
     /// The raw image data is stored as a single buffer of bytes in a `components::Blob`.
     /// The meaning of these bytes is determined by the `components::ImageFormat` which specifies the resolution
     /// and the pixel format (e.g. RGB, RGBA, …).
     ///
     /// The order of dimensions in the underlying `components::Blob` follows the typical
     /// row-major, interleaved-pixel image format.
-    ///
-    /// Rerun also supports compressed images (JPEG, PNG, …), using `archetypes::EncodedImage`.
-    /// Compressing images can save a lot of bandwidth and memory.
     ///
     /// Since the underlying [rerun::components::Blob] uses `rerun::Collection` internally,
     /// data can be passed in without a copy from raw pointers or by reference from `std::vector`/`std::array`/c-arrays.
@@ -71,57 +72,73 @@ namespace rerun::archetypes {
     /// }
     /// ```
     ///
-    /// ### Advanced usage of `send_columns` to send multiple images at once
-    /// ![image](https://static.rerun.io/image_send_columns/321455161d79e2c45d6f5a6f175d6f765f418897/full.png)
+    /// ### Logging images with various formats
+    /// ![image](https://static.rerun.io/image_formats/7b8a162fcfd266f303980439beea997dc8544c24/full.png)
     ///
     /// ```cpp
-    /// #include <numeric>
+    /// #include <algorithm>
+    /// #include <cstdint>
+    /// #include <vector>
+    ///
     /// #include <rerun.hpp>
     ///
     /// int main() {
-    ///     auto rec = rerun::RecordingStream("rerun_example_image_send_columns");
+    ///     const auto rec = rerun::RecordingStream("rerun_example_image_formats");
     ///     rec.spawn().exit_on_failure();
     ///
-    ///     // Timeline on which the images are distributed.
-    ///     std::vector<int64_t> times(20);
-    ///     std::iota(times.begin(), times.end(), 0);
-    ///
-    ///     // Create a batch of images with a moving rectangle.
-    ///     const size_t width = 300, height = 200;
-    ///     std::vector<uint8_t> images(times.size() * height * width * 3, 0);
-    ///     for (size_t t = 0; t <times.size(); ++t) {
-    ///         for (size_t y = 0; y <height; ++y) {
-    ///             for (size_t x = 0; x <width; ++x) {
-    ///                 size_t idx = (t * height * width + y * width + x) * 3;
-    ///                 images[idx + 2] = 255; // Blue background
-    ///                 if (y>= 50 && y <150 && x>= t * 10 && x <t * 10 + 100) {
-    ///                     images[idx + 1] = 255; // Turquoise rectangle
-    ///                 }
-    ///             }
+    ///     // Simple gradient image
+    ///     std::vector<uint8_t> image(256 * 256 * 3);
+    ///     for (size_t y = 0; y <256; ++y) {
+    ///         for (size_t x = 0; x <256; ++x) {
+    ///             image[(y * 256 + x) * 3 + 0] = static_cast<uint8_t>(x);
+    ///             image[(y * 256 + x) * 3 + 1] = static_cast<uint8_t>(std::min<size_t>(255, x + y));
+    ///             image[(y * 256 + x) * 3 + 2] = static_cast<uint8_t>(y);
     ///         }
     ///     }
     ///
-    ///     // Log the ImageFormat and indicator once, as static.
-    ///     auto format = rerun::components::ImageFormat(
-    ///         {width, height},
-    ///         rerun::ColorModel::RGB,
-    ///         rerun::ChannelDatatype::U8
-    ///     );
-    ///     rec.log_static("images", rerun::borrow(&format), rerun::Image::IndicatorComponent());
+    ///     // RGB image
+    ///     rec.log("image_rgb", rerun::Image::from_rgb24(image, {256, 256}));
     ///
-    ///     // Split up the image data into several components referencing the underlying data.
-    ///     const size_t image_size_in_bytes = width * height * 3;
-    ///     std::vector<rerun::components::ImageBuffer> image_data(times.size());
-    ///     for (size_t i = 0; i <times.size(); ++i) {
-    ///         image_data[i] = rerun::borrow(images.data() + i * image_size_in_bytes, image_size_in_bytes);
+    ///     // Green channel only (Luminance)
+    ///     std::vector<uint8_t> green_channel(256 * 256);
+    ///     for (size_t i = 0; i <256 * 256; ++i) {
+    ///         green_channel[i] = image[i * 3 + 1];
     ///     }
-    ///
-    ///     // Send all images at once.
-    ///     rec.send_columns(
-    ///         "images",
-    ///         rerun::TimeColumn::from_sequence_points("step", std::move(times)),
-    ///         rerun::borrow(image_data)
+    ///     rec.log(
+    ///         "image_green_only",
+    ///         rerun::Image(rerun::borrow(green_channel), {256, 256}, rerun::ColorModel::L)
     ///     );
+    ///
+    ///     // BGR image
+    ///     std::vector<uint8_t> bgr_image(256 * 256 * 3);
+    ///     for (size_t i = 0; i <256 * 256; ++i) {
+    ///         bgr_image[i * 3 + 0] = image[i * 3 + 2];
+    ///         bgr_image[i * 3 + 1] = image[i * 3 + 1];
+    ///         bgr_image[i * 3 + 2] = image[i * 3 + 0];
+    ///     }
+    ///     rec.log(
+    ///         "image_bgr",
+    ///         rerun::Image(rerun::borrow(bgr_image), {256, 256}, rerun::ColorModel::BGR)
+    ///     );
+    ///
+    ///     // New image with Separate Y/U/V planes with 4:2:2 chroma downsampling
+    ///     std::vector<uint8_t> yuv_bytes(256 * 256 + 128 * 256 * 2);
+    ///     std::fill_n(yuv_bytes.begin(), 256 * 256, static_cast<uint8_t>(128)); // Fixed value for Y
+    ///     size_t u_plane_offset = 256 * 256;
+    ///     size_t v_plane_offset = u_plane_offset + 128 * 256;
+    ///     for (size_t y = 0; y <256; ++y) {
+    ///         for (size_t x = 0; x <128; ++x) {
+    ///             auto coord = y * 128 + x;
+    ///             yuv_bytes[u_plane_offset + coord] = static_cast<uint8_t>(x * 2); // Gradient for U
+    ///             yuv_bytes[v_plane_offset + coord] = static_cast<uint8_t>(y);     // Gradient for V
+    ///         }
+    ///     }
+    ///     rec.log(
+    ///         "image_yuv422",
+    ///         rerun::Image(rerun::borrow(yuv_bytes), {256, 256}, rerun::PixelFormat::Y_U_V16_FullRange)
+    ///     );
+    ///
+    ///     return 0;
     /// }
     /// ```
     struct Image {

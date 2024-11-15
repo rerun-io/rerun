@@ -67,13 +67,6 @@ impl std::ops::DerefMut for SpaceViewClass {
 ::re_types_core::macros::impl_into_cow!(SpaceViewClass);
 
 impl ::re_types_core::Loggable for SpaceViewClass {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.components.SpaceViewClass".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Utf8::arrow_datatype()
@@ -101,5 +94,12 @@ impl ::re_types_core::Loggable for SpaceViewClass {
     {
         crate::datatypes::Utf8::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+    }
+}
+
+impl ::re_types_core::Component for SpaceViewClass {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.SpaceViewClass".into()
     }
 }

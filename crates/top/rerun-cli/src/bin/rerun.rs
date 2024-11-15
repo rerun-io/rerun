@@ -16,7 +16,18 @@ use re_memory::AccountingAllocator;
 static GLOBAL: AccountingAllocator<mimalloc::MiMalloc> =
     AccountingAllocator::new(mimalloc::MiMalloc);
 
+#[cfg(feature = "grpc")]
+#[tokio::main]
+async fn main() -> std::process::ExitCode {
+    main_impl()
+}
+
+#[cfg(not(feature = "grpc"))]
 fn main() -> std::process::ExitCode {
+    main_impl()
+}
+
+fn main_impl() -> std::process::ExitCode {
     re_log::setup_logging();
 
     let build_info = re_build_info::build_info!();

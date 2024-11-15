@@ -2,7 +2,10 @@
 #![allow(clippy::borrow_deref_ref)] // False positive due to #[pyfunction] macro
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    str::FromStr as _,
+};
 
 use arrow::{
     array::{make_array, Array, ArrayData, Int64Array, RecordBatchIterator, RecordBatchReader},
@@ -16,11 +19,11 @@ use pyo3::{
 };
 
 use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, ColumnDescriptor, ColumnSelector, ComponentColumnDescriptor,
-    ComponentColumnSelector, QueryExpression, SparseFillStrategy, TimeColumnDescriptor,
-    TimeColumnSelector, VersionPolicy, ViewContentsSelector,
+    ChunkStore, ChunkStoreConfig, ChunkStoreHandle, ColumnDescriptor, ColumnSelector,
+    ComponentColumnDescriptor, ComponentColumnSelector, QueryExpression, SparseFillStrategy,
+    TimeColumnDescriptor, TimeColumnSelector, VersionPolicy, ViewContentsSelector,
 };
-use re_dataframe::QueryEngine;
+use re_dataframe::{QueryEngine, StorageEngine};
 use re_log_types::{EntityPathFilter, ResolvedTimeRange, TimeType};
 use re_sdk::{ComponentName, EntityPath, StoreId, StoreKind};
 
@@ -42,7 +45,24 @@ pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
     Ok(())
 }
 
-/// Python binding for `IndexColumnDescriptor`
+fn py_rerun_warn(msg: &str) -> PyResult<()> {
+    Python::with_gil(|py| {
+        let warning_type = PyModule::import_bound(py, "rerun")?
+            .getattr("error_utils")?
+            .getattr("RerunWarning")?;
+        PyErr::warn_bound(py, &warning_type, msg, 0)?;
+        Ok(())
+    })
+}
+
+/// The descriptor of an index column.
+///
+/// Index columns contain the index values for when the data was updated. They
+/// generally correspond to Rerun timelines.
+///
+/// Column descriptors are used to describe the columns in a
+/// [`Schema`][rerun.dataframe.Schema]. They are read-only. To select an index
+/// column, use [`IndexColumnSelector`][rerun.dataframe.IndexColumnSelector].
 #[pyclass(frozen, name = "IndexColumnDescriptor")]
 #[derive(Clone)]
 struct PyIndexColumnDescriptor(TimeColumnDescriptor);
@@ -52,6 +72,21 @@ impl PyIndexColumnDescriptor {
     fn __repr__(&self) -> String {
         format!("Index(timeline:{})", self.0.timeline.name())
     }
+
+    /// The name of the index.
+    ///
+    /// This property is read-only.
+    #[getter]
+    fn name(&self) -> &str {
+        self.0.timeline.name()
+    }
+
+    /// Part of generic ColumnDescriptor interface: always False for Index.
+    #[allow(clippy::unused_self)]
+    #[getter]
+    fn is_static(&self) -> bool {
+        false
+    }
 }
 
 impl From<TimeColumnDescriptor> for PyIndexColumnDescriptor {
@@ -60,13 +95,23 @@ impl From<TimeColumnDescriptor> for PyIndexColumnDescriptor {
     }
 }
 
-/// Python binding for `IndexColumnSelector`
+/// A selector for an index column.
+///
+/// Index columns contain the index values for when the data was updated. They
+/// generally correspond to Rerun timelines.
+///
+/// Parameters
+/// ----------
+/// index : str
+///     The name of the index to select. Usually the name of a timeline.
 #[pyclass(frozen, name = "IndexColumnSelector")]
 #[derive(Clone)]
 struct PyIndexColumnSelector(TimeColumnSelector);
 
 #[pymethods]
 impl PyIndexColumnSelector {
+    /// Create a new `IndexColumnSelector`.
+    // Note: the `Parameters` section goes into the class docstring.
     #[new]
     #[pyo3(text_signature = "(self, index)")]
     fn new(index: &str) -> Self {
@@ -78,10 +123,23 @@ impl PyIndexColumnSelector {
     fn __repr__(&self) -> String {
         format!("Index(timeline:{})", self.0.timeline)
     }
+
+    /// The name of the index.
+    ///
+    /// This property is read-only.
+    #[getter]
+    fn name(&self) -> &str {
+        &self.0.timeline
+    }
 }
 
-/// Python binding for [`ComponentColumnDescriptor`]
-
+/// The descriptor of a component column.
+///
+/// Component columns contain the data for a specific component of an entity.
+///
+/// Column descriptors are used to describe the columns in a
+/// [`Schema`][rerun.dataframe.Schema]. They are read-only. To select a component
+/// column, use [`ComponentColumnSelector`][rerun.dataframe.ComponentColumnSelector].
 #[pyclass(frozen, name = "ComponentColumnDescriptor")]
 #[derive(Clone)]
 struct PyComponentColumnDescriptor(ComponentColumnDescriptor);
@@ -94,14 +152,6 @@ impl From<ComponentColumnDescriptor> for PyComponentColumnDescriptor {
 
 #[pymethods]
 impl PyComponentColumnDescriptor {
-    fn with_dictionary_encoding(&self) -> Self {
-        Self(
-            self.0
-                .clone()
-                .with_join_encoding(re_chunk_store::JoinEncoding::DictionaryEncode),
-        )
-    }
-
     fn __repr__(&self) -> String {
         format!(
             "Component({}:{})",
@@ -113,6 +163,30 @@ impl PyComponentColumnDescriptor {
     fn __eq__(&self, other: &Self) -> bool {
         self.0 == other.0
     }
+
+    /// The entity path.
+    ///
+    /// This property is read-only.
+    #[getter]
+    fn entity_path(&self) -> String {
+        self.0.entity_path.to_string()
+    }
+
+    /// The component name.
+    ///
+    /// This property is read-only.
+    #[getter]
+    fn component_name(&self) -> &str {
+        &self.0.component_name
+    }
+
+    /// Whether the column is static.
+    ///
+    /// This property is read-only.
+    #[getter]
+    fn is_static(&self) -> bool {
+        self.0.is_static
+    }
 }
 
 impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
@@ -121,29 +195,31 @@ impl From<PyComponentColumnDescriptor> for ComponentColumnDescriptor {
     }
 }
 
-/// Python binding for [`ComponentColumnSelector`]
+/// A selector for a component column.
+///
+/// Component columns contain the data for a specific component of an entity.
+///
+/// Parameters
+/// ----------
+/// entity_path : str
+///     The entity path to select.
+/// component : ComponentLike
+///     The component to select
 #[pyclass(frozen, name = "ComponentColumnSelector")]
 #[derive(Clone)]
 struct PyComponentColumnSelector(ComponentColumnSelector);
 
 #[pymethods]
 impl PyComponentColumnSelector {
+    /// Create a new `ComponentColumnSelector`.
+    // Note: the `Parameters` section goes into the class docstring.
     #[new]
     #[pyo3(text_signature = "(self, entity_path: str, component: ComponentLike)")]
     fn new(entity_path: &str, component_name: ComponentLike) -> Self {
         Self(ComponentColumnSelector {
             entity_path: entity_path.into(),
             component_name: component_name.0,
-            join_encoding: Default::default(),
         })
-    }
-
-    fn with_dictionary_encoding(&self) -> Self {
-        Self(
-            self.0
-                .clone()
-                .with_join_encoding(re_chunk_store::JoinEncoding::DictionaryEncode),
-        )
     }
 
     fn __repr__(&self) -> String {
@@ -152,15 +228,33 @@ impl PyComponentColumnSelector {
             self.0.entity_path, self.0.component_name
         )
     }
+
+    /// The entity path.
+    ///
+    /// This property is read-only.
+    #[getter]
+    fn entity_path(&self) -> String {
+        self.0.entity_path.to_string()
+    }
+
+    /// The component name.
+    ///
+    /// This property is read-only.
+    #[getter]
+    fn component_name(&self) -> &str {
+        &self.0.component_name
+    }
 }
 
-/// Python binding for [`AnyColumn`] type-alias.
+/// A type alias for any component-column-like object.
 #[derive(FromPyObject)]
 enum AnyColumn {
-    #[pyo3(transparent, annotation = "time_descriptor")]
-    TimeDescriptor(PyIndexColumnDescriptor),
-    #[pyo3(transparent, annotation = "time_selector")]
-    TimeSelector(PyIndexColumnSelector),
+    #[pyo3(transparent, annotation = "name")]
+    Name(String),
+    #[pyo3(transparent, annotation = "index_descriptor")]
+    IndexDescriptor(PyIndexColumnDescriptor),
+    #[pyo3(transparent, annotation = "index_selector")]
+    IndexSelector(PyIndexColumnSelector),
     #[pyo3(transparent, annotation = "component_descriptor")]
     ComponentDescriptor(PyComponentColumnDescriptor),
     #[pyo3(transparent, annotation = "component_selector")]
@@ -168,18 +262,39 @@ enum AnyColumn {
 }
 
 impl AnyColumn {
-    fn into_selector(self) -> ColumnSelector {
+    fn into_selector(self) -> PyResult<ColumnSelector> {
         match self {
-            Self::TimeDescriptor(desc) => ColumnDescriptor::Time(desc.0).into(),
-            Self::TimeSelector(selector) => selector.0.into(),
-            Self::ComponentDescriptor(desc) => ColumnDescriptor::Component(desc.0).into(),
-            Self::ComponentSelector(selector) => selector.0.into(),
+            Self::Name(name) => {
+                if !name.contains(':') && !name.contains('/') {
+                    Ok(ColumnSelector::Time(TimeColumnSelector {
+                        timeline: name.into(),
+                    }))
+                } else {
+                    let component_path =
+                        re_log_types::ComponentPath::from_str(&name).map_err(|err| {
+                            PyValueError::new_err(format!("Invalid component path {name:?}: {err}"))
+                        })?;
+
+                    Ok(ColumnSelector::Component(ComponentColumnSelector {
+                        entity_path: component_path.entity_path,
+                        component_name: component_path.component_name.to_string(),
+                    }))
+                }
+            }
+            Self::IndexDescriptor(desc) => Ok(ColumnDescriptor::Time(desc.0).into()),
+            Self::IndexSelector(selector) => Ok(selector.0.into()),
+            Self::ComponentDescriptor(desc) => Ok(ColumnDescriptor::Component(desc.0).into()),
+            Self::ComponentSelector(selector) => Ok(selector.0.into()),
         }
     }
 }
 
+/// A type alias for any component-column-like object.
 #[derive(FromPyObject)]
 enum AnyComponentColumn {
+    #[pyo3(transparent, annotation = "name")]
+    Name(String),
+    #[pyo3(transparent, annotation = "component_descriptor")]
     ComponentDescriptor(PyComponentColumnDescriptor),
     #[pyo3(transparent, annotation = "component_selector")]
     ComponentSelector(PyComponentColumnSelector),
@@ -187,14 +302,28 @@ enum AnyComponentColumn {
 
 impl AnyComponentColumn {
     #[allow(dead_code)]
-    fn into_selector(self) -> ComponentColumnSelector {
+    fn into_selector(self) -> PyResult<ComponentColumnSelector> {
         match self {
-            Self::ComponentDescriptor(desc) => desc.0.into(),
-            Self::ComponentSelector(selector) => selector.0,
+            Self::Name(name) => {
+                let component_path =
+                    re_log_types::ComponentPath::from_str(&name).map_err(|err| {
+                        PyValueError::new_err(format!("Invalid component path '{name}': {err}"))
+                    })?;
+
+                Ok(ComponentColumnSelector {
+                    entity_path: component_path.entity_path,
+                    component_name: component_path.component_name.to_string(),
+                })
+            }
+            Self::ComponentDescriptor(desc) => Ok(desc.0.into()),
+            Self::ComponentSelector(selector) => Ok(selector.0),
         }
     }
 }
 
+/// A type alias for index values.
+///
+/// This can be any numpy-compatible array of integers, or a [`pa.Int64Array`][]
 #[derive(FromPyObject)]
 enum IndexValuesLike<'py> {
     PyArrow(PyArrowType<ArrayData>),
@@ -305,8 +434,7 @@ impl FromPyObject<'_> for ComponentLike {
             Ok(Self(component_str))
         } else if let Ok(component_str) = component
             .getattr("_BATCH_TYPE")
-            .and_then(|batch_type| batch_type.getattr("_ARROW_TYPE"))
-            .and_then(|arrow_type| arrow_type.getattr("_TYPE_NAME"))
+            .and_then(|batch_type| batch_type.getattr("_COMPONENT_NAME"))
             .and_then(|type_name| type_name.extract::<String>())
         {
             Ok(Self(component_str))
@@ -318,15 +446,55 @@ impl FromPyObject<'_> for ComponentLike {
     }
 }
 
-// TODO(jleibs): Maybe this whole thing moves to the View/Recording
+#[pyclass]
+pub struct SchemaIterator {
+    iter: std::vec::IntoIter<PyObject>,
+}
+
+#[pymethods]
+impl SchemaIterator {
+    fn __iter__(slf: PyRef<'_, Self>) -> PyRef<'_, Self> {
+        slf
+    }
+
+    fn __next__(mut slf: PyRefMut<'_, Self>) -> Option<PyObject> {
+        slf.iter.next()
+    }
+}
+
 #[pyclass(frozen, name = "Schema")]
 #[derive(Clone)]
 pub struct PySchema {
     pub schema: Vec<ColumnDescriptor>,
 }
 
+/// The schema representing a set of available columns.
+///
+/// Can be returned by [`Recording.schema()`][rerun.dataframe.Recording.schema] or
+/// [`RecordingView.schema()`][rerun.dataframe.RecordingView.schema].
 #[pymethods]
 impl PySchema {
+    /// Iterate over all the column descriptors in the schema.
+    fn __iter__(slf: PyRef<'_, Self>) -> PyResult<Py<SchemaIterator>> {
+        let py = slf.py();
+        let iter = SchemaIterator {
+            iter: slf
+                .schema
+                .clone()
+                .into_iter()
+                .map(|col| match col {
+                    ColumnDescriptor::Time(col) => PyIndexColumnDescriptor(col).into_py(py),
+                    ColumnDescriptor::Component(col) => {
+                        PyComponentColumnDescriptor(col).into_py(py)
+                    }
+                })
+                .collect::<Vec<PyObject>>()
+                .into_iter(),
+        };
+        Py::new(slf.py(), iter)
+    }
+
+    /// Return a list of all the index columns in the schema.
     fn index_columns(&self) -> Vec<PyIndexColumnDescriptor> {
         self.schema
             .iter()
@@ -340,6 +508,7 @@ impl PySchema {
             .collect()
     }
 
+    /// Return a list of all the component columns in the schema.
     fn component_columns(&self) -> Vec<PyComponentColumnDescriptor> {
         self.schema
             .iter()
@@ -353,6 +522,19 @@ impl PySchema {
             .collect()
     }
 
+    /// Look up the column descriptor for a specific entity path and component.
+    ///
+    /// Parameters
+    /// ----------
+    /// entity_path : str
+    ///     The entity path to look up.
+    /// component : ComponentLike
+    ///     The component to look up.
+    ///
+    /// Returns
+    /// -------
+    /// Optional[ComponentColumnDescriptor]
+    ///     The column descriptor, if it exists.
     fn column_for(
         &self,
         entity_path: &str,
@@ -371,18 +553,72 @@ impl PySchema {
     }
 }
 
+/// A single Rerun recording.
+///
+/// This can be loaded from an RRD file using [`load_recording()`][rerun.dataframe.load_recording].
+///
+/// A recording is a collection of data that was logged to Rerun. This data is organized
+/// as a column for each index (timeline) and each entity/component pair that was logged.
+///
+/// You can examine the [`.schema()`][rerun.dataframe.Recording.schema] of the recording to see
+/// what data is available, or create a [`RecordingView`][rerun.dataframe.RecordingView] to
+/// to retrieve the data.
 #[pyclass(name = "Recording")]
 pub struct PyRecording {
-    store: ChunkStore,
-    cache: re_dataframe::QueryCache,
+    store: ChunkStoreHandle,
+    cache: re_dataframe::QueryCacheHandle,
 }
 
+/// A view of a recording restricted to a given index, containing a specific set of entities and components.
+///
+/// See [`Recording.view(…)`][rerun.dataframe.Recording.view] for details on how to create a `RecordingView`.
+///
+/// Note: `RecordingView` APIs never mutate the underlying view. Instead, they
+/// always return new views with the requested modifications applied.
+///
+/// The view will only contain a single row for each unique value of the index
+/// that is associated with a component column that was included in the view.
+/// Component columns that are not included via the view contents will not
+/// impact the rows that make up the view. If the same entity / component pair
+/// was logged to a given index multiple times, only the most recent row will be
+/// included in the view, as determined by the `row_id` column. This will
+/// generally be the last value logged, as row_ids are guaranteed to be
+/// monotonically increasing when data is sent from a single process.
 #[pyclass(name = "RecordingView")]
 #[derive(Clone)]
 pub struct PyRecordingView {
-    recording: Py<PyRecording>,
+    recording: std::sync::Arc<Py<PyRecording>>,
 
     query_expression: QueryExpression,
+}
+
+impl PyRecordingView {
+    fn select_args(
+        args: &Bound<'_, PyTuple>,
+        columns: Option<Vec<AnyColumn>>,
+    ) -> PyResult<Option<Vec<ColumnSelector>>> {
+        // Coerce the arguments into a list of `ColumnSelector`s
+        let args: Vec<AnyColumn> = args
+            .iter()
+            .map(|arg| arg.extract::<AnyColumn>())
+            .collect::<PyResult<_>>()?;
+
+        if columns.is_some() && !args.is_empty() {
+            return Err(PyValueError::new_err(
+                "Cannot specify both `columns` and `args` in `select`.",
+            ));
+        }
+
+        let columns = columns.or_else(|| if !args.is_empty() { Some(args) } else { None });
+
+        columns
+            .map(|cols| {
+                cols.into_iter()
+                    .map(|col| col.into_selector())
+                    .collect::<PyResult<_>>()
+            })
+            .transpose()
+    }
 }
 
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
@@ -397,6 +633,53 @@ pub struct PyRecordingView {
 /// increasing when data is sent from a single process.
 #[pymethods]
 impl PyRecordingView {
+    /// The schema describing all the columns available in the view.
+    ///
+    /// This schema will only contain the columns that are included in the view via
+    /// the view contents.
+    fn schema(&self, py: Python<'_>) -> PySchema {
+        let borrowed = self.recording.borrow(py);
+        let engine = borrowed.engine();
+
+        let mut query_expression = self.query_expression.clone();
+        query_expression.selection = None;
+
+        let query_handle = engine.query(query_expression);
+
+        let contents = query_handle.view_contents();
+
+        PySchema {
+            schema: contents.to_vec(),
+        }
+    }
+
+    /// Select the columns from the view.
+    ///
+    /// If no columns are provided, all available columns will be included in
+    /// the output.
+    ///
+    /// The selected columns do not change the rows that are included in the
+    /// view. The rows are determined by the index values and the components
+    /// that were included in the view contents, or can be overridden with
+    /// [`.using_index_values()`][rerun.dataframe.RecordingView.using_index_values].
+    ///
+    /// If a column was not provided with data for a given row, it will be
+    /// `null` in the output.
+    ///
+    /// The output is a [`pyarrow.RecordBatchReader`][] that can be used to read
+    /// out the data.
+    ///
+    /// Parameters
+    /// ----------
+    /// *args : AnyColumn
+    ///     The columns to select.
+    /// columns : Optional[Sequence[AnyColumn]], optional
+    ///     Alternatively the columns to select can be provided as a sequence.
+    ///
+    /// Returns
+    /// -------
+    /// pa.RecordBatchReader
+    ///     A reader that can be used to read out the selected data.
     #[pyo3(signature = (
         *args,
         columns = None
@@ -412,24 +695,40 @@ impl PyRecordingView {
 
         let mut query_expression = self.query_expression.clone();
 
-        // Coerce the arguments into a list of `ColumnSelector`s
-        let args: Vec<AnyColumn> = args
-            .iter()
-            .map(|arg| arg.extract::<AnyColumn>())
-            .collect::<PyResult<_>>()?;
-
-        if columns.is_some() && !args.is_empty() {
-            return Err(PyValueError::new_err(
-                "Cannot specify both `columns` and `args` in `select`.",
-            ));
-        }
-
-        let columns = columns.or_else(|| if !args.is_empty() { Some(args) } else { None });
-
-        query_expression.selection =
-            columns.map(|cols| cols.into_iter().map(|col| col.into_selector()).collect());
+        query_expression.selection = Self::select_args(args, columns)?;
 
         let query_handle = engine.query(query_expression);
+
+        // If the only contents found are static, we might need to warn the user since
+        // this means we won't naturally have any rows in the result.
+        let available_data_columns = query_handle
+            .view_contents()
+            .iter()
+            .filter(|c| matches!(c, ColumnDescriptor::Component(_)))
+            .collect::<Vec<_>>();
+
+        // We only consider all contents static if there at least some columns
+        let all_contents_are_static = !available_data_columns.is_empty()
+            && available_data_columns.iter().all(|c| c.is_static());
+
+        // Additionally, we only want to warn if the user actually tried to select some
+        // of the static columns. Otherwise the fact that there are no results shouldn't
+        // be surprising.
+        let selected_data_columns = query_handle
+            .selected_contents()
+            .iter()
+            .map(|(_, col)| col)
+            .filter(|c| matches!(c, ColumnDescriptor::Component(_)))
+            .collect::<Vec<_>>();
+
+        let any_selected_data_is_static = selected_data_columns.iter().any(|c| c.is_static());
+
+        if self.query_expression.using_index_values.is_none()
+            && all_contents_are_static
+            && any_selected_data_is_static
+        {
+            py_rerun_warn("RecordingView::select: tried to select static data, but no non-static contents generated an index value on this timeline. No results will be returned. Either include non-static data or consider using `select_static()` instead.")?;
+        }
 
         let schema = query_handle.schema();
         let fields: Vec<arrow::datatypes::Field> =
@@ -437,31 +736,135 @@ impl PyRecordingView {
         let metadata = schema.metadata.clone().into_iter().collect();
         let schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
 
-        // TODO(jleibs): Need to keep the engine alive
-        /*
         let reader = RecordBatchIterator::new(
             query_handle
                 .into_batch_iter()
                 .map(|batch| batch.try_to_arrow_record_batch()),
             std::sync::Arc::new(schema),
         );
-        */
-        let batches = query_handle
-            .into_batch_iter()
-            .map(|batch| batch.try_to_arrow_record_batch())
-            .collect::<Vec<_>>();
-
-        let reader = RecordBatchIterator::new(batches.into_iter(), std::sync::Arc::new(schema));
 
         Ok(PyArrowType(Box::new(reader)))
     }
 
-    fn filter_range_sequence(&self, start: i64, end: i64) -> PyResult<Self> {
-        if self.query_expression.filtered_index.typ() != TimeType::Sequence {
+    /// Select only the static columns from the view.
+    ///
+    /// Because static data has no associated index values it does not cause a
+    /// row to be generated in the output. If your view only contains static data
+    /// this method allows you to select it without needing to provide index values.
+    ///
+    /// This method will always return a single row.
+    ///
+    /// Any non-static columns that are included in the selection will generate a warning
+    /// and produce empty columns.
+    ///
+    ///
+    /// Parameters
+    /// ----------
+    /// *args : AnyColumn
+    ///     The columns to select.
+    /// columns : Optional[Sequence[AnyColumn]], optional
+    ///     Alternatively the columns to select can be provided as a sequence.
+    ///
+    /// Returns
+    /// -------
+    /// pa.RecordBatchReader
+    ///     A reader that can be used to read out the selected data.
+    #[pyo3(signature = (
+        *args,
+        columns = None
+    ))]
+    fn select_static(
+        &self,
+        py: Python<'_>,
+        args: &Bound<'_, PyTuple>,
+        columns: Option<Vec<AnyColumn>>,
+    ) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+        let borrowed = self.recording.borrow(py);
+        let engine = borrowed.engine();
+
+        let mut query_expression = self.query_expression.clone();
+
+        // This is a static selection, so we clear the filtered index
+        query_expression.filtered_index = None;
+
+        // If no columns provided, select all static columns
+        let static_columns = Self::select_args(args, columns)?.unwrap_or_else(|| {
+            self.schema(py)
+                .schema
+                .iter()
+                .filter(|col| col.is_static())
+                .map(|col| col.clone().into())
+                .collect()
+        });
+
+        query_expression.selection = Some(static_columns);
+
+        let query_handle = engine.query(query_expression);
+
+        let non_static_cols = query_handle
+            .selected_contents()
+            .iter()
+            .filter(|(_, col)| !col.is_static())
+            .collect::<Vec<_>>();
+
+        if !non_static_cols.is_empty() {
             return Err(PyValueError::new_err(format!(
-                "Index for {} is not a sequence.",
-                self.query_expression.filtered_index.name()
+                "Static selection resulted in non-static columns: {non_static_cols:?}",
             )));
+        }
+
+        let schema = query_handle.schema();
+        let fields: Vec<arrow::datatypes::Field> =
+            schema.fields.iter().map(|f| f.clone().into()).collect();
+        let metadata = schema.metadata.clone().into_iter().collect();
+        let schema = arrow::datatypes::Schema::new(fields).with_metadata(metadata);
+
+        let reader = RecordBatchIterator::new(
+            query_handle
+                .into_batch_iter()
+                .map(|batch| batch.try_to_arrow_record_batch()),
+            std::sync::Arc::new(schema),
+        );
+
+        Ok(PyArrowType(Box::new(reader)))
+    }
+
+    #[allow(rustdoc::private_doc_tests)]
+    /// Filter the view to only include data between the given index sequence numbers.
+    ///
+    /// This range is inclusive and will contain both the value at the start and the value at the end.
+    ///
+    /// The view must be of a sequential index type to use this method.
+    ///
+    /// Parameters
+    /// ----------
+    /// start : int
+    ///     The inclusive start of the range.
+    /// end : int
+    ///     The inclusive end of the range.
+    ///
+    /// Returns
+    /// -------
+    /// RecordingView
+    ///     A new view containing only the data within the specified range.
+    ///
+    ///     The original view will not be modified.
+    fn filter_range_sequence(&self, start: i64, end: i64) -> PyResult<Self> {
+        match self.query_expression.filtered_index.as_ref() {
+            Some(filtered_index) if filtered_index.typ() != TimeType::Sequence => {
+                return Err(PyValueError::new_err(format!(
+                    "Index for {} is not a sequence.",
+                    filtered_index.name()
+                )));
+            }
+
+            Some(_) => {}
+
+            None => {
+                return Err(PyValueError::new_err(
+                    "Specify an index to filter on first.".to_owned(),
+                ));
+            }
         }
 
         let start = if let Ok(seq) = re_chunk::TimeInt::try_from(start) {
@@ -497,12 +900,42 @@ impl PyRecordingView {
         })
     }
 
+    #[allow(rustdoc::private_doc_tests)]
+    /// Filter the view to only include data between the given index values expressed as seconds.
+    ///
+    /// This range is inclusive and will contain both the value at the start and the value at the end.
+    ///
+    /// The view must be of a temporal index type to use this method.
+    ///
+    /// Parameters
+    /// ----------
+    /// start : int
+    ///     The inclusive start of the range.
+    /// end : int
+    ///     The inclusive end of the range.
+    ///
+    /// Returns
+    /// -------
+    /// RecordingView
+    ///     A new view containing only the data within the specified range.
+    ///
+    ///     The original view will not be modified.
     fn filter_range_seconds(&self, start: f64, end: f64) -> PyResult<Self> {
-        if self.query_expression.filtered_index.typ() != TimeType::Time {
-            return Err(PyValueError::new_err(format!(
-                "Index for {} is not temporal.",
-                self.query_expression.filtered_index.name()
-            )));
+        match self.query_expression.filtered_index.as_ref() {
+            Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
+                return Err(PyValueError::new_err(format!(
+                    "Index for {} is not temporal.",
+                    filtered_index.name()
+                )));
+            }
+
+            Some(_) => {}
+
+            None => {
+                return Err(PyValueError::new_err(
+                    "Specify an index to filter on first.".to_owned(),
+                ));
+            }
         }
 
         let start = re_sdk::Time::from_seconds_since_epoch(start);
@@ -519,12 +952,42 @@ impl PyRecordingView {
         })
     }
 
+    #[allow(rustdoc::private_doc_tests)]
+    /// Filter the view to only include data between the given index values expressed as seconds.
+    ///
+    /// This range is inclusive and will contain both the value at the start and the value at the end.
+    ///
+    /// The view must be of a temporal index type to use this method.
+    ///
+    /// Parameters
+    /// ----------
+    /// start : int
+    ///     The inclusive start of the range.
+    /// end : int
+    ///     The inclusive end of the range.
+    ///
+    /// Returns
+    /// -------
+    /// RecordingView
+    ///     A new view containing only the data within the specified range.
+    ///
+    ///     The original view will not be modified.
     fn filter_range_nanos(&self, start: i64, end: i64) -> PyResult<Self> {
-        if self.query_expression.filtered_index.typ() != TimeType::Time {
-            return Err(PyValueError::new_err(format!(
-                "Index for {} is not temporal.",
-                self.query_expression.filtered_index.name()
-            )));
+        match self.query_expression.filtered_index.as_ref() {
+            Some(filtered_index) if filtered_index.typ() != TimeType::Time => {
+                return Err(PyValueError::new_err(format!(
+                    "Index for {} is not temporal.",
+                    filtered_index.name()
+                )));
+            }
+
+            Some(_) => {}
+
+            None => {
+                return Err(PyValueError::new_err(
+                    "Specify an index to filter on first.".to_owned(),
+                ));
+            }
         }
 
         let start = re_sdk::Time::from_ns_since_epoch(start);
@@ -541,6 +1004,27 @@ impl PyRecordingView {
         })
     }
 
+    #[allow(rustdoc::private_doc_tests)]
+    /// Filter the view to only include data at the provided index values.
+    ///
+    /// The index values returned will be the intersection between the provided values and the
+    /// original index values.
+    ///
+    /// This requires index values to be a precise match. Index values in Rerun are
+    /// represented as i64 sequence counts or nanoseconds. This API does not expose an interface
+    /// in floating point seconds, as the numerical conversion would risk false mismatches.
+    ///
+    /// Parameters
+    /// ----------
+    /// values : IndexValuesLike
+    ///     The index values to filter by.
+    ///
+    /// Returns
+    /// -------
+    /// RecordingView
+    ///     A new view containing only the data at the specified index values.
+    ///
+    ///     The original view will not be modified.
     fn filter_index_values(&self, values: IndexValuesLike<'_>) -> PyResult<Self> {
         let values = values.to_index_values()?;
 
@@ -553,18 +1037,57 @@ impl PyRecordingView {
         })
     }
 
-    fn filter_is_not_null(&self, column: AnyComponentColumn) -> Self {
+    #[allow(rustdoc::private_doc_tests)]
+    /// Filter the view to only include rows where the given component column is not null.
+    ///
+    /// This corresponds to rows for index values where this component was provided to Rerun explicitly
+    /// via `.log()` or `.send_columns()`.
+    ///
+    /// Parameters
+    /// ----------
+    /// column : AnyComponentColumn
+    ///     The component column to filter by.
+    ///
+    /// Returns
+    /// -------
+    /// RecordingView
+    ///     A new view containing only the data where the specified component column is not null.
+    ///
+    ///     The original view will not be modified.
+    fn filter_is_not_null(&self, column: AnyComponentColumn) -> PyResult<Self> {
         let column = column.into_selector();
 
         let mut query_expression = self.query_expression.clone();
-        query_expression.filtered_point_of_view = Some(column);
+        query_expression.filtered_is_not_null = Some(column?);
 
-        Self {
+        Ok(Self {
             recording: self.recording.clone(),
             query_expression,
-        }
+        })
     }
 
+    #[allow(rustdoc::private_doc_tests)]
+    /// Replace the index in the view with the provided values.
+    ///
+    /// The output view will always have the same number of rows as the provided values, even if
+    /// those rows are empty. Use with [`.fill_latest_at()`][rerun.dataframe.RecordingView.fill_latest_at]
+    /// to populate these rows with the most recent data.
+    ///
+    /// This requires index values to be a precise match. Index values in Rerun are
+    /// represented as i64 sequence counts or nanoseconds. This API does not expose an interface
+    /// in floating point seconds, as the numerical conversion would risk false mismatches.
+    ///
+    /// Parameters
+    /// ----------
+    /// values : IndexValuesLike
+    ///     The index values to use.
+    ///
+    /// Returns
+    /// -------
+    /// RecordingView
+    ///     A new view containing the provided index values.
+    ///
+    ///     The original view will not be modified.
     fn using_index_values(&self, values: IndexValuesLike<'_>) -> PyResult<Self> {
         let values = values.to_index_values()?;
 
@@ -577,6 +1100,15 @@ impl PyRecordingView {
         })
     }
 
+    #[allow(rustdoc::private_doc_tests)]
+    /// Populate any null values in a row with the latest valid data according to the index.
+    ///
+    /// Returns
+    /// -------
+    /// RecordingView
+    ///     A new view with the null values filled in.
+    ///
+    ///     The original view will not be modified.
     fn fill_latest_at(&self) -> Self {
         let mut query_expression = self.query_expression.clone();
         query_expression.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
@@ -589,28 +1121,30 @@ impl PyRecordingView {
 }
 
 impl PyRecording {
-    fn engine(&self) -> QueryEngine<'_> {
-        QueryEngine {
-            store: &self.store,
-            cache: &self.cache,
-        }
+    fn engine(&self) -> QueryEngine<StorageEngine> {
+        // Safety: this is all happening in the context of a python client using the dataframe API,
+        // there is no reason to worry about handle leakage whatsoever.
+        #[allow(unsafe_code)]
+        let engine = unsafe { StorageEngine::new(self.store.clone(), self.cache.clone()) };
+
+        QueryEngine { engine }
     }
 
     fn find_best_component(&self, entity_path: &EntityPath, component_name: &str) -> ComponentName {
         let selector = ComponentColumnSelector {
             entity_path: entity_path.clone(),
             component_name: component_name.into(),
-            join_encoding: Default::default(),
         };
 
         self.store
+            .read()
             .resolve_component_selector(&selector)
             .component_name
     }
 
     /// Convert a `ViewContentsLike` into a `ViewContentsSelector`.
     ///
-    /// ```pytholn
+    /// ```python
     /// ViewContentsLike = Union[str, Dict[str, Union[ComponentLike, Sequence[ComponentLike]]]]
     /// ```
     ///
@@ -695,21 +1229,83 @@ impl PyRecording {
 
 #[pymethods]
 impl PyRecording {
+    /// The schema describing all the columns available in the recording.
     fn schema(&self) -> PySchema {
         PySchema {
-            schema: self.store.schema(),
+            schema: self.store.read().schema(),
         }
     }
 
+    #[allow(rustdoc::private_doc_tests, rustdoc::invalid_rust_codeblocks)]
+    /// Create a [`RecordingView`][rerun.dataframe.RecordingView] of the recording according to a particular index and content specification.
+    ///
+    /// The only type of index currently supported is the name of a timeline.
+    ///
+    /// The view will only contain a single row for each unique value of the index
+    /// that is associated with a component column that was included in the view.
+    /// Component columns that are not included via the view contents will not
+    /// impact the rows that make up the view. If the same entity / component pair
+    /// was logged to a given index multiple times, only the most recent row will be
+    /// included in the view, as determined by the `row_id` column. This will
+    /// generally be the last value logged, as row_ids are guaranteed to be
+    /// monotonically increasing when data is sent from a single process.
+    ///
+    /// Parameters
+    /// ----------
+    /// index : str
+    ///     The index to use for the view. This is typically a timeline name.
+    /// contents : ViewContentsLike
+    ///     The content specification for the view.
+    ///
+    ///     This can be a single string content-expression such as: `"world/cameras/**"`, or a dictionary
+    ///     specifying multiple content-expressions and a respective list of components to select within
+    ///     that expression such as `{"world/cameras/**": ["ImageBuffer", "PinholeProjection"]}`.
+    /// include_semantically_empty_columns : bool, optional
+    ///     Whether to include columns that are semantically empty, by default `False`.
+    ///
+    ///     Semantically empty columns are components that are `null` or empty `[]` for every row in the recording.
+    /// include_indicator_columns : bool, optional
+    ///     Whether to include indicator columns, by default `False`.
+    ///
+    ///     Indicator columns are components used to represent the presence of an archetype within an entity.
+    /// include_tombstone_columns : bool, optional
+    ///     Whether to include tombstone columns, by default `False`.
+    ///
+    ///     Tombstone columns are components used to represent clears. However, even without the clear
+    ///     tombstone columns, the view will still apply the clear semantics when resolving row contents.
+    ///
+    /// Returns
+    /// -------
+    /// RecordingView
+    ///     The view of the recording.
+    ///
+    /// Examples
+    /// --------
+    /// All the data in the recording on the timeline "my_index":
+    /// ```python
+    /// recording.view(index="my_index", contents="/**")
+    /// ```
+    ///
+    /// Just the Position3D components in the "points" entity:
+    /// ```python
+    /// recording.view(index="my_index", contents={"points": "Position3D"})
+    /// ```
+    #[allow(clippy::fn_params_excessive_bools)]
     #[pyo3(signature = (
         *,
         index,
-        contents
+        contents,
+        include_semantically_empty_columns = false,
+        include_indicator_columns = false,
+        include_tombstone_columns = false,
     ))]
     fn view(
         slf: Bound<'_, Self>,
         index: &str,
         contents: Bound<'_, PyAny>,
+        include_semantically_empty_columns: bool,
+        include_indicator_columns: bool,
+        include_tombstone_columns: bool,
     ) -> PyResult<PyRecordingView> {
         let borrowed_self = slf.borrow();
 
@@ -718,20 +1314,20 @@ impl PyRecording {
             timeline: index.into(),
         };
 
-        let timeline = borrowed_self.store.resolve_time_selector(&selector);
+        let timeline = borrowed_self.store.read().resolve_time_selector(&selector);
 
         let contents = borrowed_self.extract_contents_expr(contents)?;
 
         let query = QueryExpression {
             view_contents: Some(contents),
-            include_semantically_empty_columns: false,
-            include_indicator_columns: false,
-            include_tombstone_columns: false,
-            filtered_index: timeline.timeline,
+            include_semantically_empty_columns,
+            include_indicator_columns,
+            include_tombstone_columns,
+            filtered_index: Some(timeline.timeline),
             filtered_index_range: None,
             filtered_index_values: None,
             using_index_values: None,
-            filtered_point_of_view: None,
+            filtered_is_not_null: None,
             sparse_fill_strategy: SparseFillStrategy::None,
             selection: None,
         };
@@ -739,18 +1335,21 @@ impl PyRecording {
         let recording = slf.unbind();
 
         Ok(PyRecordingView {
-            recording,
+            recording: std::sync::Arc::new(recording),
             query_expression: query,
         })
     }
 
+    /// The recording ID of the recording.
     fn recording_id(&self) -> String {
-        self.store.id().as_str().to_owned()
+        self.store.read().id().as_str().to_owned()
     }
 
+    /// The application ID of the recording.
     fn application_id(&self) -> PyResult<String> {
         Ok(self
             .store
+            .read()
             .info()
             .ok_or(PyValueError::new_err(
                 "Recording is missing application id.",
@@ -761,14 +1360,18 @@ impl PyRecording {
     }
 }
 
+/// An archive loaded from an RRD.
+///
+/// RRD archives may include 1 or more recordings or blueprints.
 #[pyclass(frozen, name = "RRDArchive")]
 #[derive(Clone)]
 pub struct PyRRDArchive {
-    pub datasets: BTreeMap<StoreId, ChunkStore>,
+    pub datasets: BTreeMap<StoreId, ChunkStoreHandle>,
 }
 
 #[pymethods]
 impl PyRRDArchive {
+    /// The number of recordings in the archive.
     fn num_recordings(&self) -> usize {
         self.datasets
             .iter()
@@ -776,13 +1379,16 @@ impl PyRRDArchive {
             .count()
     }
 
-    // TODO(jleibs): This could probably return an iterator
+    /// All the recordings in the archive.
+    // TODO(jleibs): This should return an iterator
     fn all_recordings(&self) -> Vec<PyRecording> {
         self.datasets
             .iter()
             .filter(|(id, _)| matches!(id.kind, StoreKind::Recording))
             .map(|(_, store)| {
-                let cache = re_dataframe::external::re_query::Caches::new(store);
+                let cache = re_dataframe::QueryCacheHandle::new(re_dataframe::QueryCache::new(
+                    store.clone(),
+                ));
                 PyRecording {
                     store: store.clone(),
                     cache,
@@ -792,6 +1398,19 @@ impl PyRRDArchive {
     }
 }
 
+/// Load a single recording from an RRD file.
+///
+/// Will raise a `ValueError` if the file does not contain exactly one recording.
+///
+/// Parameters
+/// ----------
+/// path_to_rrd : str | os.PathLike
+///     The path to the file to load.
+///
+/// Returns
+/// -------
+/// Recording
+///     The loaded recording.
 #[pyfunction]
 pub fn load_recording(path_to_rrd: std::path::PathBuf) -> PyResult<PyRecording> {
     let archive = load_archive(path_to_rrd)?;
@@ -813,11 +1432,25 @@ pub fn load_recording(path_to_rrd: std::path::PathBuf) -> PyResult<PyRecording> 
     }
 }
 
+/// Load a rerun archive from an RRD file.
+///
+/// Parameters
+/// ----------
+/// path_to_rrd : str | os.PathLike
+///     The path to the file to load.
+///
+/// Returns
+/// -------
+/// RRDArchive
+///     The loaded archive.
 #[pyfunction]
 pub fn load_archive(path_to_rrd: std::path::PathBuf) -> PyResult<PyRRDArchive> {
     let stores =
         ChunkStore::from_rrd_filepath(&ChunkStoreConfig::DEFAULT, path_to_rrd, VersionPolicy::Warn)
-            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+            .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+            .into_iter()
+            .map(|(store_id, store)| (store_id, ChunkStoreHandle::new(store)))
+            .collect();
 
     let archive = PyRRDArchive { datasets: stores };
 

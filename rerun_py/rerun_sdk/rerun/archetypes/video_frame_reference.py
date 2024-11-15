@@ -5,28 +5,26 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from attrs import define, field
 
-from .. import components, datatypes
+from .. import components
 from .._baseclasses import (
     Archetype,
 )
-from ..error_utils import catch_and_log_exceptions
+from .video_frame_reference_ext import VideoFrameReferenceExt
 
 __all__ = ["VideoFrameReference"]
 
 
 @define(str=False, repr=False, init=False)
-class VideoFrameReference(Archetype):
+class VideoFrameReference(VideoFrameReferenceExt, Archetype):
     """
     **Archetype**: References a single video frame.
 
     Used to display individual video frames from a [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo].
     To show an entire video, a video frame reference for each frame of the video should be logged.
 
-    See <https://rerun.io/docs/reference/video?speculative-link> for details of what is and isn't supported.
+    See <https://rerun.io/docs/reference/video> for details of what is and isn't supported.
 
     Examples
     --------
@@ -90,17 +88,11 @@ class VideoFrameReference(Archetype):
     # Create two entities, showing the same video frozen at different times.
     rr.log(
         "frame_1s",
-        rr.VideoFrameReference(
-            timestamp=rr.components.VideoTimestamp(seconds=1.0),
-            video_reference="video_asset",
-        ),
+        rr.VideoFrameReference(seconds=1.0, video_reference="video_asset"),
     )
     rr.log(
         "frame_2s",
-        rr.VideoFrameReference(
-            timestamp=rr.components.VideoTimestamp(seconds=2.0),
-            video_reference="video_asset",
-        ),
+        rr.VideoFrameReference(seconds=2.0, video_reference="video_asset"),
     )
 
     # Send blueprint that shows two 2D views next to each other.
@@ -118,37 +110,7 @@ class VideoFrameReference(Archetype):
 
     """
 
-    def __init__(
-        self: Any, timestamp: datatypes.VideoTimestampLike, *, video_reference: datatypes.EntityPathLike | None = None
-    ):
-        """
-        Create a new instance of the VideoFrameReference archetype.
-
-        Parameters
-        ----------
-        timestamp:
-            References the closest video frame to this timestamp.
-
-            Note that this uses the closest video frame instead of the latest at this timestamp
-            in order to be more forgiving of rounding errors for inprecise timestamp types.
-        video_reference:
-            Optional reference to an entity with a [`archetypes.AssetVideo`][rerun.archetypes.AssetVideo].
-
-            If none is specified, the video is assumed to be at the same entity.
-            Note that blueprint overrides on the referenced video will be ignored regardless,
-            as this is always interpreted as a reference to the data store.
-
-            For a series of video frame references, it is recommended to specify this path only once
-            at the beginning of the series and then rely on latest-at query semantics to
-            keep the video reference active.
-
-        """
-
-        # You can define your own __init__ function as a member of VideoFrameReferenceExt in video_frame_reference_ext.py
-        with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(timestamp=timestamp, video_reference=video_reference)
-            return
-        self.__attrs_clear__()
+    # __init__ can be found in video_frame_reference_ext.py
 
     def __attrs_clear__(self) -> None:
         """Convenience method for calling `__attrs_init__` with all `None`s."""
@@ -172,6 +134,10 @@ class VideoFrameReference(Archetype):
     #
     # Note that this uses the closest video frame instead of the latest at this timestamp
     # in order to be more forgiving of rounding errors for inprecise timestamp types.
+    #
+    # Timestamps are relative to the start of the video, i.e. a timestamp of 0 always corresponds to the first frame.
+    # This is oftentimes equivalent to presentation timestamps (known as PTS), but in the presence of B-frames
+    # (bidirectionally predicted frames) there may be an offset on the first presentation timestamp in the video.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

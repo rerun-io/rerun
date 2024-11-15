@@ -3,7 +3,7 @@ use re_space_view::{latest_at_with_blueprint_resolved_data, RangeResultsExt};
 use re_types::{
     archetypes::Tensor,
     components::{TensorData, ValueRange},
-    Loggable as _,
+    Component as _,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewSystemExecutionError, TensorStats, TensorStatsCache,

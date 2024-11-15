@@ -5,7 +5,7 @@ use re_types::{
     archetypes::{self, SeriesPoint},
     components::{Color, MarkerShape, MarkerSize, Name, Scalar},
     external::arrow2::datatypes::DataType as ArrowDatatype,
-    Archetype as _, Loggable as _,
+    Archetype as _, Component as _, Loggable as _,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, SpaceViewStateExt as _,
@@ -472,7 +472,7 @@ impl SeriesPointSystem {
                 &data_result.entity_path,
                 time_per_pixel,
                 points,
-                ctx.recording_store(),
+                ctx.recording_engine().store(),
                 view_query,
                 series_name.into(),
                 // Aggregation for points is not supported.

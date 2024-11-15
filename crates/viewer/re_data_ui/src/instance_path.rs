@@ -8,9 +8,9 @@ use re_types::{
     archetypes, components,
     datatypes::{ChannelDatatype, ColorModel},
     image::ImageKind,
-    static_assert_struct_has_fields, Archetype, ComponentName, Loggable,
+    static_assert_struct_has_fields, Archetype, Component, ComponentName,
 };
-use re_ui::{ContextExt as _, UiExt as _};
+use re_ui::UiExt as _;
 use re_viewer_context::{
     gpu_bridge::image_data_range_heuristic, ColormapWithRange, HoverHighlight, ImageInfo,
     ImageStatsCache, Item, UiLayout, ViewerContext,
@@ -34,26 +34,30 @@ impl DataUi for InstancePath {
             instance,
         } = self;
 
-        let Some(components) = ctx
-            .recording_store()
-            .all_components_on_timeline(&query.timeline(), entity_path)
-        else {
-            if ctx.recording().is_known_entity(entity_path) {
-                // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
-                ui_layout.label(
-                    ui,
-                    format!(
-                        "No components logged on timeline {:?}",
-                        query.timeline().name()
-                    ),
-                );
-            } else {
-                ui_layout.label(
-                    ui,
-                    ui.ctx()
-                        .error_text(format!("Unknown entity: {entity_path:?}")),
-                );
-            }
+        let component = if ctx.recording().is_known_entity(entity_path) {
+            // We are looking at an entity in the recording
+            ctx.recording_engine()
+                .store()
+                .all_components_on_timeline(&query.timeline(), entity_path)
+        } else if ctx.blueprint_db().is_known_entity(entity_path) {
+            // We are looking at an entity in the blueprint
+            ctx.blueprint_db()
+                .storage_engine()
+                .store()
+                .all_components_on_timeline(&query.timeline(), entity_path)
+        } else {
+            ui.error_label(&format!("Unknown entity: {entity_path:?}"));
+            return;
+        };
+        let Some(components) = component else {
+            // This is fine - e.g. we're looking at `/world` and the user has only logged to `/world/car`.
+            ui_layout.label(
+                ui,
+                format!(
+                    "{self} has no components on timeline {:?}",
+                    query.timeline().name()
+                ),
+            );
             return;
         };
 
@@ -122,8 +126,9 @@ fn latest_at(
         .iter()
         .filter_map(|&component_name| {
             let mut results =
-                db.query_caches()
-                    .latest_at(db.store(), query, entity_path, [component_name]);
+                db.storage_engine()
+                    .cache()
+                    .latest_at(query, entity_path, [component_name]);
 
             // We ignore components that are unset at this point in time
             results
@@ -172,6 +177,7 @@ fn component_list_ui(
 
             let component_path = ComponentPath::new(entity_path.clone(), component_name);
             let is_static = db
+                .storage_engine()
                 .store()
                 .entity_has_static_component(entity_path, &component_name);
             let icon = if is_static {

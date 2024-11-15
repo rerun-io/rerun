@@ -72,10 +72,13 @@ const CRATES_AT_INFO_LEVEL: &[&str] = &[
     // These are quite spammy on debug, drowning out what we care about:
     "h2",
     "hyper",
+    "prost_build",
     "ureq",
     // only let rustls log in debug mode: https://github.com/rerun-io/rerun/issues/3104
     #[cfg(debug_assertions)]
     "rustls",
+    // walkers generates noise around tile download, see https://github.com/podusowski/walkers/issues/199
+    "walkers",
     // winit 0.30.5 spams about `set_cursor_visible` calls. It's gone on winit master, so hopefully gone in next winit release.
     "winit",
 ];
@@ -108,6 +111,9 @@ pub fn default_log_filter() -> String {
             rust_log += &format!(",{crate_name}=info");
         }
     }
+
+    //TODO(#8077): should be removed as soon as the upstream issue is resolved
+    rust_log += ",walkers::download=off";
 
     rust_log
 }

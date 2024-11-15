@@ -11,11 +11,10 @@ import pyarrow as pa
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
 )
 
-__all__ = ["MarkerShape", "MarkerShapeArrayLike", "MarkerShapeBatch", "MarkerShapeLike", "MarkerShapeType"]
+__all__ = ["MarkerShape", "MarkerShapeArrayLike", "MarkerShapeBatch", "MarkerShapeLike"]
 
 
 from enum import Enum
@@ -104,15 +103,9 @@ MarkerShapeLike = Union[
 MarkerShapeArrayLike = Union[MarkerShapeLike, Sequence[MarkerShapeLike]]
 
 
-class MarkerShapeType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.components.MarkerShape"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
-
-
 class MarkerShapeBatch(BaseBatch[MarkerShapeArrayLike], ComponentBatchMixin):
-    _ARROW_TYPE = MarkerShapeType()
+    _ARROW_DATATYPE = pa.uint8()
+    _COMPONENT_NAME: str = "rerun.components.MarkerShape"
 
     @staticmethod
     def _native_to_pa_array(data: MarkerShapeArrayLike, data_type: pa.DataType) -> pa.Array:

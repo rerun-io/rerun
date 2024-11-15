@@ -66,13 +66,6 @@ impl std::ops::DerefMut for AffixFuzzer9 {
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer9);
 
 impl ::re_types_core::Loggable for AffixFuzzer9 {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.testing.components.AffixFuzzer9".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
@@ -181,5 +174,12 @@ impl ::re_types_core::Loggable for AffixFuzzer9 {
         .collect::<DeserializationResult<Vec<Option<_>>>>()
         .with_context("rerun.testing.components.AffixFuzzer9#single_string_required")
         .with_context("rerun.testing.components.AffixFuzzer9")?)
+    }
+}
+
+impl ::re_types_core::Component for AffixFuzzer9 {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.testing.components.AffixFuzzer9".into()
     }
 }

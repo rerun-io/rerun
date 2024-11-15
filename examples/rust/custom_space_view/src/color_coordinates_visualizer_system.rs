@@ -2,7 +2,7 @@ use re_viewer::external::{
     egui,
     re_log_types::{EntityPath, Instance},
     re_renderer,
-    re_types::{self, components::Color, ComponentName, Loggable as _},
+    re_types::{self, components::Color, Component as _, ComponentName},
     re_viewer_context::{
         self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
         ViewContextCollection, ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo,
@@ -61,8 +61,7 @@ impl VisualizerSystem for InstanceColorSystem {
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             // …gather all colors and their instance ids.
 
-            let results = ctx.recording().query_caches().latest_at(
-                ctx.recording_store(),
+            let results = ctx.recording_engine().cache().latest_at(
                 &ctx.current_query(),
                 &data_result.entity_path,
                 [Color::name()],

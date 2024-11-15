@@ -316,6 +316,23 @@ pub fn format_f32(value: f32) -> String {
     FloatFormatOptions::DEFAULT_f32.format(value)
 }
 
+/// Format a latitude or longitude value.
+///
+/// For human eyes only.
+pub fn format_lat_lon(value: f64) -> String {
+    format!(
+        "{}°",
+        FloatFormatOptions {
+            always_sign: true,
+            precision: 10,
+            num_decimals: Some(6),
+            strip_trailing_zeros: false,
+            min_decimals_for_thousands_separators: 10,
+        }
+        .format_f64(value)
+    )
+}
+
 #[test]
 fn test_format_f32() {
     let cases = [

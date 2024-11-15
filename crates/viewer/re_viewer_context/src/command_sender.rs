@@ -65,6 +65,12 @@ pub enum SystemCommand {
     /// Set the item selection.
     SetSelection(crate::Item),
 
+    /// Set the active timeline for the given recording.
+    SetActiveTimeline {
+        rec_id: StoreId,
+        timeline: re_chunk::Timeline,
+    },
+
     /// Sets the focus to the given item.
     ///
     /// The focused item is cleared out every frame.

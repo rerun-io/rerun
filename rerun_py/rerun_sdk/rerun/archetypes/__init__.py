@@ -10,11 +10,14 @@ from .asset_video import AssetVideo
 from .bar_chart import BarChart
 from .boxes2d import Boxes2D
 from .boxes3d import Boxes3D
+from .capsules3d import Capsules3D
 from .clear import Clear
 from .depth_image import DepthImage
 from .disconnected_space import DisconnectedSpace
 from .ellipsoids3d import Ellipsoids3D
 from .encoded_image import EncodedImage
+from .geo_line_strings import GeoLineStrings
+from .geo_points import GeoPoints
 from .image import Image
 from .instance_poses3d import InstancePoses3D
 from .line_strips2d import LineStrips2D
@@ -43,11 +46,14 @@ __all__ = [
     "BarChart",
     "Boxes2D",
     "Boxes3D",
+    "Capsules3D",
     "Clear",
     "DepthImage",
     "DisconnectedSpace",
     "Ellipsoids3D",
     "EncodedImage",
+    "GeoLineStrings",
+    "GeoPoints",
     "Image",
     "InstancePoses3D",
     "LineStrips2D",

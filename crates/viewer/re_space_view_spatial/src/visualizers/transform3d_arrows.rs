@@ -5,7 +5,7 @@ use re_space_view::{latest_at_with_blueprint_resolved_data, DataResultQuery};
 use re_types::{
     archetypes::{Pinhole, Transform3D},
     components::{AxisLength, ImagePlaneDistance},
-    Archetype as _, ComponentName, Loggable,
+    Archetype as _, Component, ComponentName,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewStateExt,
@@ -16,7 +16,6 @@ use re_viewer_context::{
 
 use crate::{
     contexts::TransformContext, ui::SpatialSpaceViewState, view_kind::SpatialSpaceViewKind,
-    visualizers::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
 };
 
 use super::{filter_visualizable_3d_entities, CamerasVisualizer, SpatialViewVisualizerData};
@@ -96,7 +95,9 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
         // Counting all transforms ahead of time is a bit wasteful, but we also don't expect a huge amount,
         // so let re_renderer's allocator internally decide what buffer sizes to pick & grow them as we go.
         let mut line_builder = re_renderer::LineDrawableBuilder::new(render_ctx);
-        line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+        line_builder.radius_boost_in_ui_points_for_outlines(
+            re_space_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+        );
 
         for data_result in query.iter_visible_data_results(ctx, Self::identifier()) {
             // Use transform without potential pinhole, since we don't want to visualize image-space coordinates.

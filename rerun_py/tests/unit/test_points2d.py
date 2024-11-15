@@ -52,7 +52,7 @@ def test_points2d() -> None:
     for positions, radii, colors, labels, draw_order, class_ids, keypoint_ids in all_arrays:
         positions = positions if positions is not None else positions_arrays[-1]
 
-        # make Pyright happy as it's apparently not able to track typing info trough zip_longest
+        # make Pyright happy as it's apparently not able to track typing info through zip_longest
         positions = cast(Vec2DArrayLike, positions)
         radii = cast(Optional[Float32ArrayLike], radii)
         colors = cast(Optional[Rgba32ArrayLike], colors)

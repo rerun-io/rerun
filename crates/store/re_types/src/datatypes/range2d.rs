@@ -44,13 +44,6 @@ impl ::re_types_core::SizeBytes for Range2D {
 ::re_types_core::macros::impl_into_cow!(Range2D);
 
 impl ::re_types_core::Loggable for Range2D {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.Range2D".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

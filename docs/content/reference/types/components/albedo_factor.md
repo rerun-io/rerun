@@ -5,9 +5,14 @@ title: "AlbedoFactor"
 
 A color multiplier, usually applied to a whole entity, e.g. a mesh.
 
-## Fields
+## Rerun datatype
+[`Rgba32`](../datatypes/rgba32.md)
 
-* albedo_factor: [`Rgba32`](../datatypes/rgba32.md)
+
+## Arrow datatype
+```
+uint32
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `AlbedoFactor`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1AlbedoFactor.html)
@@ -17,4 +22,5 @@ A color multiplier, usually applied to a whole entity, e.g. a mesh.
 
 ## Used by
 
+* [`Asset3D`](../archetypes/asset3d.md)
 * [`Mesh3D`](../archetypes/mesh3d.md)

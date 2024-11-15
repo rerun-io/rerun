@@ -8,7 +8,7 @@ use re_types::{
     archetypes::Image,
     components::MediaType,
     image::{ImageKind, ImageLoadError},
-    Loggable as _,
+    Component as _,
 };
 
 use crate::{Cache, ImageInfo};
@@ -86,7 +86,7 @@ fn decode_image(
 ) -> Result<ImageInfo, ImageLoadError> {
     re_tracing::profile_function!();
 
-    let mut reader = image::io::Reader::new(std::io::Cursor::new(image_bytes));
+    let mut reader = image::ImageReader::new(std::io::Cursor::new(image_bytes));
 
     if let Some(format) = image::ImageFormat::from_mime_type(media_type) {
         reader.set_format(format);

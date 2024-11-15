@@ -405,13 +405,95 @@ impl std::fmt::Display for PythonVersion {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 #[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
 pub enum FileSource {
     Cli,
-    DragAndDrop,
-    FileDialog,
+
+    DragAndDrop {
+        /// The [`ApplicationId`] that the viewer heuristically recommends should be used when loading
+        /// this data source, based on the surrounding context.
+        #[cfg_attr(feature = "serde", serde(skip))]
+        recommended_application_id: Option<ApplicationId>,
+
+        /// The [`StoreId`] that the viewer heuristically recommends should be used when loading
+        /// this data source, based on the surrounding context.
+        #[cfg_attr(feature = "serde", serde(skip))]
+        recommended_recording_id: Option<StoreId>,
+
+        /// Whether `SetStoreInfo`s should be sent, regardless of the surrounding context.
+        ///
+        /// Only useful when creating a recording just-in-time directly in the viewer (which is what
+        /// happens when importing things into the welcome screen).
+        #[cfg_attr(feature = "serde", serde(skip))]
+        force_store_info: bool,
+    },
+
+    FileDialog {
+        /// The [`ApplicationId`] that the viewer heuristically recommends should be used when loading
+        /// this data source, based on the surrounding context.
+        #[cfg_attr(feature = "serde", serde(skip))]
+        recommended_application_id: Option<ApplicationId>,
+
+        /// The [`StoreId`] that the viewer heuristically recommends should be used when loading
+        /// this data source, based on the surrounding context.
+        #[cfg_attr(feature = "serde", serde(skip))]
+        recommended_recording_id: Option<StoreId>,
+
+        /// Whether `SetStoreInfo`s should be sent, regardless of the surrounding context.
+        ///
+        /// Only useful when creating a recording just-in-time directly in the viewer (which is what
+        /// happens when importing things into the welcome screen).
+        #[cfg_attr(feature = "serde", serde(skip))]
+        force_store_info: bool,
+    },
+
     Sdk,
+}
+
+impl FileSource {
+    #[inline]
+    pub fn recommended_application_id(&self) -> Option<&ApplicationId> {
+        match self {
+            Self::FileDialog {
+                recommended_application_id,
+                ..
+            }
+            | Self::DragAndDrop {
+                recommended_application_id,
+                ..
+            } => recommended_application_id.as_ref(),
+            Self::Cli | Self::Sdk => None,
+        }
+    }
+
+    #[inline]
+    pub fn recommended_recording_id(&self) -> Option<&StoreId> {
+        match self {
+            Self::FileDialog {
+                recommended_recording_id,
+                ..
+            }
+            | Self::DragAndDrop {
+                recommended_recording_id,
+                ..
+            } => recommended_recording_id.as_ref(),
+            Self::Cli | Self::Sdk => None,
+        }
+    }
+
+    #[inline]
+    pub fn force_store_info(&self) -> bool {
+        match self {
+            Self::FileDialog {
+                force_store_info, ..
+            }
+            | Self::DragAndDrop {
+                force_store_info, ..
+            } => *force_store_info,
+            Self::Cli | Self::Sdk => false,
+        }
+    }
 }
 
 /// The source of a recording or blueprint.
@@ -456,8 +538,8 @@ impl std::fmt::Display for StoreSource {
             Self::RustSdk { rustc_version, .. } => write!(f, "Rust SDK (rustc {rustc_version})"),
             Self::File { file_source, .. } => match file_source {
                 FileSource::Cli => write!(f, "File via CLI"),
-                FileSource::DragAndDrop => write!(f, "File via drag-and-drop"),
-                FileSource::FileDialog => write!(f, "File via file dialog"),
+                FileSource::DragAndDrop { .. } => write!(f, "File via drag-and-drop"),
+                FileSource::FileDialog { .. } => write!(f, "File via file dialog"),
                 FileSource::Sdk => write!(f, "File via SDK"),
             },
             Self::Viewer => write!(f, "Viewer-generated"),

@@ -13,16 +13,9 @@ import pyarrow as pa
 from attrs import define, field
 from rerun._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 
-__all__ = [
-    "FlattenedScalar",
-    "FlattenedScalarArrayLike",
-    "FlattenedScalarBatch",
-    "FlattenedScalarLike",
-    "FlattenedScalarType",
-]
+__all__ = ["FlattenedScalar", "FlattenedScalarArrayLike", "FlattenedScalarBatch", "FlattenedScalarLike"]
 
 
 @define(init=False)
@@ -53,17 +46,8 @@ FlattenedScalarArrayLike = Union[
 ]
 
 
-class FlattenedScalarType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.testing.datatypes.FlattenedScalar"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self, pa.struct([pa.field("value", pa.float32(), nullable=False, metadata={})]), self._TYPE_NAME
-        )
-
-
 class FlattenedScalarBatch(BaseBatch[FlattenedScalarArrayLike]):
-    _ARROW_TYPE = FlattenedScalarType()
+    _ARROW_DATATYPE = pa.struct([pa.field("value", pa.float32(), nullable=False, metadata={})])
 
     @staticmethod
     def _native_to_pa_array(data: FlattenedScalarArrayLike, data_type: pa.DataType) -> pa.Array:

@@ -5,9 +5,11 @@ title: "Float64"
 
 A double-precision 64-bit IEEE 754 floating point number.
 
-## Fields
 
-* value: `f64`
+## Arrow datatype
+```
+float64
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `Float64`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Float64.html)

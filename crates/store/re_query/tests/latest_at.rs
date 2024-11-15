@@ -12,18 +12,18 @@ use re_log_types::{
     example_components::{MyColor, MyPoint, MyPoints},
     EntityPath, TimeInt, TimePoint,
 };
-use re_query::Caches;
+use re_query::QueryCache;
 use re_types::{Archetype as _, ComponentBatch};
 
 // ---
 
 #[test]
 fn simple_query() {
-    let mut store = ChunkStore::new(
+    let store = ChunkStore::new_handle(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(store.clone());
 
     let entity_path = "point";
     let timepoint = [build_frame_nr(123)];
@@ -37,7 +37,7 @@ fn simple_query() {
         .with_component_batch(row_id2, timepoint, &colors2)
         .build()
         .unwrap();
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
     let query = re_chunk_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
     let expected_compound_index = (TimeInt::new_temporal(123), row_id2);
@@ -45,7 +45,7 @@ fn simple_query() {
     let expected_colors = &colors2;
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path.into(),
         expected_compound_index,
@@ -56,11 +56,11 @@ fn simple_query() {
 
 #[test]
 fn static_query() {
-    let mut store = ChunkStore::new(
+    let store = ChunkStore::new_handle(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(store.clone());
 
     let entity_path = "point";
     let timepoint = [build_frame_nr(123)];
@@ -71,7 +71,7 @@ fn static_query() {
         .with_component_batches(row_id1, timepoint, [&points as &dyn ComponentBatch])
         .build()
         .unwrap();
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
     let row_id2 = RowId::new();
     let colors = vec![MyColor::from_rgb(255, 0, 0)];
@@ -83,7 +83,7 @@ fn static_query() {
         )
         .build()
         .unwrap();
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
     let query = re_chunk_store::LatestAtQuery::new(timepoint[0].0, timepoint[0].1);
     let expected_compound_index = (TimeInt::new_temporal(123), row_id1);
@@ -91,7 +91,7 @@ fn static_query() {
     let expected_colors = &colors;
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path.into(),
         expected_compound_index,
@@ -117,11 +117,11 @@ fn invalidation() {
             .copied()
             .unwrap_or(TimeInt::STATIC);
 
-        let mut store = ChunkStore::new(
+        let store = ChunkStore::new_handle(
             re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
             Default::default(),
         );
-        let mut caches = Caches::new(&store);
+        let mut caches = QueryCache::new(store.clone());
 
         let row_id1 = RowId::new();
         let points = vec![MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)];
@@ -129,7 +129,7 @@ fn invalidation() {
             .with_component_batches(row_id1, present_data_timepoint.clone(), [&points as _])
             .build()
             .unwrap();
-        insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+        insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
         let row_id2 = RowId::new();
         let colors = vec![MyColor::from_rgb(1, 2, 3)];
@@ -137,14 +137,14 @@ fn invalidation() {
             .with_component_batches(row_id2, present_data_timepoint.clone(), [&colors as _])
             .build()
             .unwrap();
-        insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+        insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
         let expected_compound_index = (present_timestamp, row_id2);
         let expected_points = &points;
         let expected_colors = &colors;
         query_and_compare(
             &caches,
-            &store,
+            &store.read(),
             &query,
             &entity_path.into(),
             expected_compound_index,
@@ -161,14 +161,14 @@ fn invalidation() {
             .with_component_batches(row_id3, present_data_timepoint.clone(), [&points as _])
             .build()
             .unwrap();
-        insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+        insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
         let expected_compound_index = (present_timestamp, row_id3);
         let expected_points = &points;
         let expected_colors = &colors;
         query_and_compare(
             &caches,
-            &store,
+            &store.read(),
             &query,
             &entity_path.into(),
             expected_compound_index,
@@ -183,14 +183,14 @@ fn invalidation() {
             .with_component_batches(row_id4, present_data_timepoint.clone(), [&colors as _])
             .build()
             .unwrap();
-        insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+        insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
         let expected_compound_index = (present_timestamp, row_id4);
         let expected_points = &points;
         let expected_colors = &colors;
         query_and_compare(
             &caches,
-            &store,
+            &store.read(),
             &query,
             &entity_path.into(),
             expected_compound_index,
@@ -207,7 +207,7 @@ fn invalidation() {
             .with_component_batches(row_id5, past_data_timepoint.clone(), [&points_past as _])
             .build()
             .unwrap();
-        insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+        insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
         let expected_compound_index = (present_timestamp, row_id4);
         let expected_points = if past_timestamp.is_static() {
@@ -218,7 +218,7 @@ fn invalidation() {
         let expected_colors = &colors;
         query_and_compare(
             &caches,
-            &store,
+            &store.read(),
             &query,
             &entity_path.into(),
             expected_compound_index,
@@ -233,7 +233,7 @@ fn invalidation() {
             .with_component_batches(row_id6, past_data_timepoint.clone(), [&colors_past as _])
             .build()
             .unwrap();
-        insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+        insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
         let (expected_compound_index, expected_colors) = if past_timestamp.is_static() {
             ((past_timestamp, row_id6), &colors_past)
@@ -242,7 +242,7 @@ fn invalidation() {
         };
         query_and_compare(
             &caches,
-            &store,
+            &store.read(),
             &query,
             &entity_path.into(),
             expected_compound_index,
@@ -263,7 +263,7 @@ fn invalidation() {
             )
             .build()
             .unwrap();
-        insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+        insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
         let (expected_compound_index, expected_points) = if past_timestamp.is_static() {
             ((past_timestamp, row_id6), &points_past)
@@ -272,7 +272,7 @@ fn invalidation() {
         };
         query_and_compare(
             &caches,
-            &store,
+            &store.read(),
             &query,
             &entity_path.into(),
             expected_compound_index,
@@ -291,7 +291,7 @@ fn invalidation() {
             )
             .build()
             .unwrap();
-        insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+        insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
         let (expected_compound_index, expected_colors) = if past_timestamp.is_static() {
             ((past_timestamp, row_id6), &colors_past)
@@ -300,7 +300,7 @@ fn invalidation() {
         };
         query_and_compare(
             &caches,
-            &store,
+            &store.read(),
             &query,
             &entity_path.into(),
             expected_compound_index,
@@ -337,30 +337,30 @@ fn invalidation() {
 // # Expected: points=[[1,2,3]] colors=[]
 //
 // rr.set_time(2)
-// rr.log_components("points", rr.components.MyColor(0xFF0000))
+// rr.log("points", rr.components.MyColor(0xFF0000))
 //
 // # Do second query here: LatestAt(+inf)
 // # Expected: points=[[1,2,3]] colors=[0xFF0000]
 //
 // rr.set_time(3)
-// rr.log_components("points", rr.components.MyColor(0x0000FF))
+// rr.log("points", rr.components.MyColor(0x0000FF))
 //
 // # Do third query here: LatestAt(+inf)
 // # Expected: points=[[1,2,3]] colors=[0x0000FF]
 //
 // rr.set_time(3)
-// rr.log_components("points", rr.components.MyColor(0x00FF00))
+// rr.log("points", rr.components.MyColor(0x00FF00))
 //
 // # Do fourth query here: LatestAt(+inf)
 // # Expected: points=[[1,2,3]] colors=[0x00FF00]
 // ```
 #[test]
 fn invalidation_of_future_optionals() {
-    let mut store = ChunkStore::new(
+    let store = ChunkStore::new_handle(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(store.clone());
 
     let entity_path = "points";
 
@@ -376,7 +376,7 @@ fn invalidation_of_future_optionals() {
         .with_component_batches(row_id1, static_, [&points as _])
         .build()
         .unwrap();
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
     let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
     let expected_compound_index = (TimeInt::STATIC, row_id1);
@@ -384,7 +384,7 @@ fn invalidation_of_future_optionals() {
     let expected_colors = &[];
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path.into(),
         expected_compound_index,
@@ -398,7 +398,7 @@ fn invalidation_of_future_optionals() {
         .with_component_batches(row_id2, frame2, [&colors as _])
         .build()
         .unwrap();
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
     let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
     let expected_compound_index = (TimeInt::new_temporal(2), row_id2);
@@ -406,7 +406,7 @@ fn invalidation_of_future_optionals() {
     let expected_colors = &colors;
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path.into(),
         expected_compound_index,
@@ -420,7 +420,7 @@ fn invalidation_of_future_optionals() {
         .with_component_batches(row_id3, frame3, [&colors as _])
         .build()
         .unwrap();
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
     let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
     let expected_compound_index = (TimeInt::new_temporal(3), row_id3);
@@ -428,7 +428,7 @@ fn invalidation_of_future_optionals() {
     let expected_colors = &colors;
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path.into(),
         expected_compound_index,
@@ -442,7 +442,7 @@ fn invalidation_of_future_optionals() {
         .with_component_batches(row_id4, frame3, [&colors as _])
         .build()
         .unwrap();
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
     let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
     let expected_compound_index = (TimeInt::new_temporal(3), row_id4);
@@ -450,7 +450,7 @@ fn invalidation_of_future_optionals() {
     let expected_colors = &colors;
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path.into(),
         expected_compound_index,
@@ -461,11 +461,11 @@ fn invalidation_of_future_optionals() {
 
 #[test]
 fn static_invalidation() {
-    let mut store = ChunkStore::new(
+    let store = ChunkStore::new_handle(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
-    let mut caches = Caches::new(&store);
+    let mut caches = QueryCache::new(store.clone());
 
     let entity_path = "points";
 
@@ -479,7 +479,7 @@ fn static_invalidation() {
         .with_component_batches(row_id1, timeless.clone(), [&points as _])
         .build()
         .unwrap();
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
     let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
     let expected_compound_index = (TimeInt::STATIC, row_id1);
@@ -487,7 +487,7 @@ fn static_invalidation() {
     let expected_colors = &[];
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path.into(),
         expected_compound_index,
@@ -501,7 +501,7 @@ fn static_invalidation() {
         .with_component_batches(row_id2, timeless.clone(), [&colors as _])
         .build()
         .unwrap();
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
     let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
     let expected_compound_index = (TimeInt::STATIC, row_id2);
@@ -509,7 +509,7 @@ fn static_invalidation() {
     let expected_colors = &colors;
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path.into(),
         expected_compound_index,
@@ -523,7 +523,7 @@ fn static_invalidation() {
         .with_component_batches(row_id3, timeless.clone(), [&colors as _])
         .build()
         .unwrap();
-    insert_and_react(&mut store, &mut caches, &Arc::new(chunk));
+    insert_and_react(&mut store.write(), &mut caches, &Arc::new(chunk));
 
     let query = re_chunk_store::LatestAtQuery::new(query_time[0].0, query_time[0].1);
     let expected_compound_index = (TimeInt::STATIC, row_id3);
@@ -531,7 +531,7 @@ fn static_invalidation() {
     let expected_colors = &colors;
     query_and_compare(
         &caches,
-        &store,
+        &store.read(),
         &query,
         &entity_path.into(),
         expected_compound_index,
@@ -542,12 +542,12 @@ fn static_invalidation() {
 
 // ---
 
-fn insert_and_react(store: &mut ChunkStore, caches: &mut Caches, chunk: &Arc<Chunk>) {
+fn insert_and_react(store: &mut ChunkStore, caches: &mut QueryCache, chunk: &Arc<Chunk>) {
     caches.on_events(&store.insert_chunk(chunk).unwrap());
 }
 
 fn query_and_compare(
-    caches: &Caches,
+    caches: &QueryCache,
     store: &ChunkStore,
     query: &LatestAtQuery,
     entity_path: &EntityPath,
@@ -559,7 +559,6 @@ fn query_and_compare(
 
     for _ in 0..3 {
         let cached = caches.latest_at(
-            store,
             query,
             entity_path,
             MyPoints::all_components().iter().copied(),

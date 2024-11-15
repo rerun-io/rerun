@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["DepthMeter", "DepthMeterBatch", "DepthMeterType"]
+__all__ = ["DepthMeter", "DepthMeterBatch"]
 
 
 class DepthMeter(datatypes.Float32, ComponentMixin):
@@ -33,12 +33,8 @@ class DepthMeter(datatypes.Float32, ComponentMixin):
     pass
 
 
-class DepthMeterType(datatypes.Float32Type):
-    _TYPE_NAME: str = "rerun.components.DepthMeter"
-
-
 class DepthMeterBatch(datatypes.Float32Batch, ComponentBatchMixin):
-    _ARROW_TYPE = DepthMeterType()
+    _COMPONENT_NAME: str = "rerun.components.DepthMeter"
 
 
 # This is patched in late to avoid circular dependencies.

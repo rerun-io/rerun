@@ -116,12 +116,13 @@ fn compute_uber_table(
     );
 
     let store = stores.pop().unwrap(); // safe, ensured above
+    let engine = store.storage_engine();
 
     Ok((
         store
             .app_id()
             .cloned()
             .unwrap_or_else(re_log_types::ApplicationId::unknown),
-        store.store().iter_chunks().map(Arc::clone).collect_vec(),
+        engine.store().iter_chunks().map(Arc::clone).collect_vec(),
     ))
 }

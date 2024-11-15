@@ -10,12 +10,6 @@ Builds a Meilisearch index from our documentation.
   rustup install nightly
   rustup +nightly target add wasm32-unknown-unknown
   ```
-- A local installation of `rerun_sdk` and `rerun_py/requirements-doc.txt`
-  ```
-  pixi run py-build
-  pixi run pip install -r rerun_py/requirements-doc.txt
-  ```
-
 ### Usage
 
 Start a local `meilisearch` instance:

@@ -20,9 +20,14 @@ V |           .
 This is the same convention as in Vulkan/Metal/DX12/WebGPU, but (!) unlike OpenGL,
 which places the origin at the bottom-left.
 
-## Fields
+## Rerun datatype
+[`Vec2D`](../datatypes/vec2d.md)
 
-* uv: [`Vec2D`](../datatypes/vec2d.md)
+
+## Arrow datatype
+```
+FixedSizeList<2, float32>
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `Texcoord2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Texcoord2D.html)

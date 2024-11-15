@@ -41,8 +41,8 @@ class ClassDescriptionMapElemExt:
         ids = [item.class_id for item in map_items]
         class_descriptions = [item.class_description for item in map_items]
 
-        id_array = ClassIdBatch(ids).as_arrow_array().storage
-        desc_array = ClassDescriptionBatch(class_descriptions).as_arrow_array().storage
+        id_array = ClassIdBatch(ids).as_arrow_array()
+        desc_array = ClassDescriptionBatch(class_descriptions).as_arrow_array()
 
         return pa.StructArray.from_arrays(
             arrays=[id_array, desc_array],

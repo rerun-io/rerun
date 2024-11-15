@@ -1,5 +1,6 @@
 // @ts-check
 import { assert } from "./util.mjs";
+/** @import { Deployment, DeploymentBuild, LegacyDeployment, VercelResponse } from "./types" */
 
 /**
  * @typedef {Record<string, string>} Params
@@ -8,12 +9,44 @@ import { assert } from "./util.mjs";
  *
  * @typedef {{ id: string; name: string }} TeamInfo
  * @typedef {{ id: string; name: string }} ProjectInfo
- * @typedef {{ uid: string }} Deployment
  * @typedef {{ id: string, key: string, value: string }} Env
  *
  * @typedef {"production" | "preview" | "development"} EnvTarget
  * @typedef {"encrypted" | "secret"} EnvType
  */
+
+function isDeploymentReady(
+  /** @type {Deployment | DeploymentBuild} */ deployment,
+) {
+  return deployment.readyState === "READY" || deployment.state === "READY";
+}
+
+function isDeploymentFailed(
+  /** @type {Deployment | DeploymentBuild} */ deployment,
+) {
+  if (
+    deployment?.readyState?.endsWith("_ERROR") ||
+    deployment?.readyState === "ERROR"
+  ) {
+    return true;
+  }
+  if (
+    (deployment.state && deployment.state.endsWith("_ERROR")) ||
+    deployment.state === "ERROR"
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function getDeploymentId(
+  /** @type {LegacyDeployment | Deployment | DeploymentBuild} */ deployment,
+) {
+  if ("uid" in deployment) return deployment.uid;
+  if ("deploymentId" in deployment && deployment.deploymentId)
+    return deployment.deploymentId;
+  return deployment.id;
+}
 
 export class Project {
   constructor(
@@ -35,7 +68,7 @@ export class Project {
    * The results are sorted by their created date, so the latest deployment
    * for the given `target` is at index `0`.
    * @param {"production" | "preview" | "development"} target
-   * @returns {Promise<Deployment[]>}
+   * @returns {Promise<LegacyDeployment[]>}
    */
   async deployments(target = "production") {
     const response = await this.client.get("v6/deployments", {
@@ -116,7 +149,7 @@ export class Project {
    *
    * @param {string} deploymentId
    * @param {string} name
-   * @returns {Promise<any>}
+   * @returns {Promise<Deployment>}
    */
   async redeploy(deploymentId, name) {
     console.log(`redeploy ${name} (id: ${deploymentId})`);
@@ -138,7 +171,7 @@ export class Project {
    * @param {string} deploymentId
    * @param {string} name
    * @param {Record<string, string>} [env]
-   * @returns {Promise<any>}
+   * @returns {Promise<Deployment>}
    */
   async deployPreviewFrom(deploymentId, name, env) {
     console.log(
@@ -160,6 +193,66 @@ export class Project {
       forceNew: "1",
     });
   }
+
+  /**
+   * @returns {Promise<VercelResponse<Deployment>>}
+   */
+  async getDeployment(/** @type {string} */ id) {
+    return this.client.get(`v13/deployments/${id}`);
+  }
+
+  /**
+   *
+   * @returns {Promise<{ type: "success" | "failure", deployment: Deployment }>}
+   */
+  async waitForDeployment(/** @type {string} */ id) {
+    let deployment = await this.getDeployment(id);
+    while (true) {
+      if ("error" in deployment) {
+        throw new Error(
+          `deployment failed: ${JSON.stringify(deployment.error)}`,
+        );
+      }
+
+      if (isDeploymentFailed(deployment)) {
+        return { type: "failure", deployment };
+      }
+
+      if (isDeploymentReady(deployment)) {
+        return { type: "success", deployment };
+      }
+
+      await sleep(1000);
+      deployment = await this.getDeployment(getDeploymentId(deployment));
+    }
+  }
+}
+
+async function sleep(/** @type {number} */ ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * @typedef {{
+ *   limit: number,
+ *   remaining: number,
+ *   reset: number,
+ * }} RateLimit
+ */
+
+/** @returns {RateLimit} */
+function parseRateLimit(/** @type {Response} */ response) {
+  return {
+    limit: parseInt(response.headers.get("X-RateLimit-Limit") || "0"),
+    remaining: parseInt(response.headers.get("X-RateLimit-Remaining") || "0"),
+    reset: parseInt(response.headers.get("X-RateLimit-Reset") || "0"),
+  };
+}
+
+function waitFor(/** @type {RateLimit} */ rateLimit) {
+  const remainingTime = rateLimit.reset * 1000 + 999 - Date.now();
+  console.log(`rate limited by Vercel, retrying after ${remainingTime}ms`);
+  return sleep(remainingTime);
 }
 
 /**
@@ -194,13 +287,24 @@ export class Client {
    * @returns {Promise<T>}
    */
   async get(endpoint, params, headers) {
-    const url = this.url(endpoint, params);
-    return fetch(url, {
-      headers: {
-        Authorization: `Bearer ${this.token}`,
-        ...headers,
-      },
-    }).then((r) => r.json());
+    while (true) {
+      const url = this.url(endpoint, params);
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${this.token}`,
+          ...headers,
+        },
+      });
+
+      const rateLimit = parseRateLimit(response);
+      if (rateLimit.remaining < 10) {
+        await waitFor(rateLimit);
+        continue;
+      }
+
+      return response.json();
+    }
   }
 
   /**

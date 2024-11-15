@@ -11,7 +11,7 @@ use re_renderer::{
     pad_rgb_to_rgba,
     renderer::{ColorMapper, ColormappedTexture, ShaderDecoding},
     resource_managers::{
-        ColorPrimaries, ImageDataDesc, SourceImageDataFormat, YuvPixelLayout, YuvRange,
+        ImageDataDesc, SourceImageDataFormat, YuvMatrixCoefficients, YuvPixelLayout, YuvRange,
     },
     RenderContext,
 };
@@ -248,9 +248,9 @@ pub fn texture_creation_desc_from_color_image<'a>(
 
     let (data, format) = if let Some(pixel_format) = image.format.pixel_format {
         let data = cast_slice_to_cow(image.buffer.as_slice());
-        let primaries = match pixel_format.color_primaries() {
-            re_types::image::ColorPrimaries::Bt601 => ColorPrimaries::Bt601,
-            re_types::image::ColorPrimaries::Bt709 => ColorPrimaries::Bt709,
+        let coefficients = match pixel_format.yuv_matrix_coefficients() {
+            re_types::image::YuvMatrixCoefficients::Bt601 => YuvMatrixCoefficients::Bt601,
+            re_types::image::YuvMatrixCoefficients::Bt709 => YuvMatrixCoefficients::Bt709,
         };
 
         let range = match pixel_format.is_limited_yuv_range() {
@@ -262,14 +262,14 @@ pub fn texture_creation_desc_from_color_image<'a>(
             // For historical reasons, using Bt.709 for fully planar formats and Bt.601 for others.
             //
             // TODO(andreas): Investigate if there's underlying expectation for some of these (for instance I suspect that NV12 is "usually" BT601).
-            // TODO(andreas): Expose color primaries. It's probably still the better default (for instance that's what jpeg still uses),
+            // TODO(andreas): Expose coefficients. It's probably still the better default (for instance that's what jpeg still uses),
             // but should confirm & back that up!
             //
             PixelFormat::Y_U_V24_FullRange | PixelFormat::Y_U_V24_LimitedRange => {
                 SourceImageDataFormat::Yuv {
                     layout: YuvPixelLayout::Y_U_V444,
                     range,
-                    primaries,
+                    coefficients,
                 }
             }
 
@@ -277,7 +277,7 @@ pub fn texture_creation_desc_from_color_image<'a>(
                 SourceImageDataFormat::Yuv {
                     layout: YuvPixelLayout::Y_U_V422,
                     range,
-                    primaries,
+                    coefficients,
                 }
             }
 
@@ -285,7 +285,7 @@ pub fn texture_creation_desc_from_color_image<'a>(
                 SourceImageDataFormat::Yuv {
                     layout: YuvPixelLayout::Y_U_V420,
                     range,
-                    primaries,
+                    coefficients,
                 }
             }
 
@@ -293,20 +293,20 @@ pub fn texture_creation_desc_from_color_image<'a>(
                 SourceImageDataFormat::Yuv {
                     layout: YuvPixelLayout::Y400,
                     range,
-                    primaries,
+                    coefficients,
                 }
             }
 
             PixelFormat::NV12 => SourceImageDataFormat::Yuv {
                 layout: YuvPixelLayout::Y_UV420,
                 range,
-                primaries,
+                coefficients,
             },
 
             PixelFormat::YUY2 => SourceImageDataFormat::Yuv {
                 layout: YuvPixelLayout::YUYV422,
                 range,
-                primaries,
+                coefficients,
             },
         };
 

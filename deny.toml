@@ -29,7 +29,7 @@ all-features = true
 [advisories]
 version = 2
 ignore = [
-  "RUSTSEC-2023-0086", # TODO(#3741): Waiting for https://github.com/apache/arrow-rs/pull/6401
+  "RUSTSEC-2024-0384", # Waiting for https://github.com/console-rs/indicatif/pull/666
 ]
 
 
@@ -43,7 +43,7 @@ deny = [
   { name = "egui_glow" },   # We use wgpu
   { name = "openssl-sys" }, # We prefer rustls
   { name = "openssl" },     # We prefer rustls
-  { name = "reqwest" },     # We prefer ureq - less dependencies
+  # { name = "reqwest" },   # We prefer ureq - less dependencies TODO(#7876): reenable that when `walkers` is updated
 ]
 skip = [
   { name = "ahash" },             # Popular crate + fast release schedule = lots of crates still using old versions
@@ -53,25 +53,21 @@ skip = [
   { name = "cargo_metadata" },    # Older version used by ply-rs. It's small, and it's build-time only!
   { name = "cfg_aliases" },       # Tiny macro-only crate. wgpu/naga is using an old version
   { name = "hashbrown" },         # Old version used by polar-rs
-  { name = "libloading" },        # Old version used by ash (vulkan binding), newer version used by khronos-egl
   { name = "memoffset" },         # Small crate
-  { name = "ndarray" },           # Needed by `numpy<0.22` in `rerun_py`
   { name = "prettyplease" },      # Old version being used by prost
   { name = "pulldown-cmark" },    # Build-dependency via `ply-rs` (!). TODO(emilk): use a better crate for .ply parsing
   { name = "raw-window-handle" }, # Pretty small crate; some crates still on old version
   { name = "redox_syscall" },     # Plenty of versions in the wild
-  { name = "spin" },              # Old version used by rusttls
-  { name = "webpki-roots" },      # ureq and tungstenite are on different version 😭
 ]
 skip-tree = [
-  { name = "async-io" },       # Old version via rfd
   { name = "cargo-run-wasm" }, # Dev-tool
   { name = "criterion" },      # dev-dependency
-  { name = "objc2" },          # old version via accesskit
-  { name = "prost-build" },    # only used in objectron example
-  { name = "prost-derive" },   # only used in objectron example
+  { name = "quick-xml" },      # Old version via accesskit
   { name = "toml_edit" },      # Old version via egui-winit, newer used by rustdoc-json
+  { name = "tower" },          # tonic depends on 0.4.3, but also transitively (axum) on 0.5.1
+  { name = "walkers" },        # TODO(#7876): suppress that when `walkers` is updated
   { name = "windows" },        # Old version used by accesskit_windows, newer version used by wgpu
+  { name = "zbus" },           # Old version via rfd
 ]
 
 

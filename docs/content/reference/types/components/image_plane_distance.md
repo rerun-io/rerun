@@ -7,9 +7,14 @@ The distance from the camera origin to the image plane when the projection is sh
 
 This is only used for visualization purposes, and does not affect the projection itself.
 
-## Fields
+## Rerun datatype
+[`Float32`](../datatypes/float32.md)
 
-* image_from_camera: [`Float32`](../datatypes/float32.md)
+
+## Arrow datatype
+```
+float32
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `ImagePlaneDistance`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ImagePlaneDistance.html)

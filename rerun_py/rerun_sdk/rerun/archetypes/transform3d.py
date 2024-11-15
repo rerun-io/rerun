@@ -30,6 +30,8 @@ class Transform3D(Transform3DExt, Archetype):
     This means that if you first log a transform with only a translation, and then log one with only a rotation,
     it will be resolved to a transform with only a rotation.
 
+    For transforms that affect only a single entity and do not propagate along the entity tree refer to [`archetypes.InstancePoses3D`][rerun.archetypes.InstancePoses3D].
+
     Examples
     --------
     ### Variety of 3D transforms:

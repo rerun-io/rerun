@@ -2,13 +2,21 @@ from __future__ import annotations
 
 import functools
 import random
+import sys
+import warnings
 from typing import Any, Callable, TypeVar, cast
 from uuid import UUID
 
 import numpy as np
 
-__version__ = "0.19.0-alpha.1+dev"
-__version_info__ = (0, 19, 0, "alpha.1")
+__version__ = "0.21.0-alpha.1+dev"
+__version_info__ = (0, 21, 0, "alpha.1")
+
+if sys.version_info < (3, 9):
+    warnings.warn(
+        "Python 3.8 is past EOL (https://devguide.python.org/versions/). Rerun version 0.21 will drop support/testing of Python 3.8.",
+        DeprecationWarning,
+    )
 
 # =====================================
 # API RE-EXPORTS
@@ -22,6 +30,7 @@ from . import (
     dataframe as dataframe,
     experimental as experimental,
     notebook as notebook,
+    remote as remote,
 )
 from ._baseclasses import (
     ComponentColumn as ComponentColumn,
@@ -59,11 +68,14 @@ from .archetypes import (
     BarChart as BarChart,
     Boxes2D as Boxes2D,
     Boxes3D as Boxes3D,
+    Capsules3D as Capsules3D,
     Clear as Clear,
     DepthImage as DepthImage,
     DisconnectedSpace as DisconnectedSpace,
     Ellipsoids3D as Ellipsoids3D,
     EncodedImage as EncodedImage,
+    GeoLineStrings as GeoLineStrings,
+    GeoPoints as GeoPoints,
     Image as Image,
     InstancePoses3D as InstancePoses3D,
     LineStrips2D as LineStrips2D,
@@ -153,10 +165,12 @@ from .script_helpers import (
 )
 from .sinks import (
     connect as connect,
+    connect_tcp as connect_tcp,
     disconnect as disconnect,
     save as save,
     send_blueprint as send_blueprint,
     serve as serve,
+    serve_web as serve_web,
     spawn as spawn,
     stdout as stdout,
 )

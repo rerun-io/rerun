@@ -38,6 +38,9 @@ def set_default_size(*, width: int | None, height: int | None) -> None:
         _default_height = height
 
 
+_version_mismatch_checked = False
+
+
 class Viewer:
     """
     A viewer embeddable in a notebook.
@@ -80,6 +83,20 @@ class Viewer:
         """
 
         try:
+            global _version_mismatch_checked
+            if not _version_mismatch_checked:
+                import importlib.metadata
+                import warnings
+
+                rerun_notebook_version = importlib.metadata.version("rerun-notebook")
+                rerun_version = importlib.metadata.version("rerun-sdk")
+                if rerun_version != rerun_notebook_version:
+                    warnings.warn(
+                        f"rerun-notebook version mismatch: rerun-sdk {rerun_version}, rerun-notebook {rerun_notebook_version}",
+                        category=ImportWarning,
+                    )
+                _version_mismatch_checked = True
+
             from rerun_notebook import Viewer as _Viewer  # type: ignore[attr-defined]
         except ImportError:
             logging.error("Could not import rerun_notebook. Please install `rerun-notebook`.")
@@ -92,9 +109,6 @@ class Viewer:
 
         self._recording = recording
 
-        if blueprint is not None:
-            self._recording.send_blueprint(blueprint)  # type: ignore[attr-defined]
-
         self._viewer = _Viewer(
             width=width if width is not None else _default_width,
             height=height if height is not None else _default_height,
@@ -104,6 +118,9 @@ class Viewer:
             recording=RecordingStream.to_native(self._recording),
             callback=self._flush_hook,
         )
+
+        if blueprint is not None:
+            self._recording.send_blueprint(blueprint)  # type: ignore[attr-defined]
 
     def display(self, block_until_ready: bool = True) -> None:
         """

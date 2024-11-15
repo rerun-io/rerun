@@ -875,7 +875,7 @@ mod tests {
         example_components::{MyColor, MyLabel, MyPoint},
         TimePoint,
     };
-    use re_types_core::{ComponentBatch, Loggable};
+    use re_types_core::Component;
 
     use crate::{Chunk, RowId, Timeline};
 
@@ -974,7 +974,7 @@ mod tests {
 
         eprintln!("chunk:\n{chunk}");
 
-        let expectations: &[(_, _, Option<&dyn ComponentBatch>)] = &[
+        let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
             (row_id1, MyPoint::name(), Some(points1 as _)),
             (row_id2, MyLabel::name(), Some(labels4 as _)),
             (row_id3, MyColor::name(), None),
@@ -1101,7 +1101,7 @@ mod tests {
             eprintln!("got:\n{got}");
             assert_eq!(2, got.num_rows());
 
-            let expectations: &[(_, _, Option<&dyn ComponentBatch>)] = &[
+            let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
                 (row_id3, MyPoint::name(), Some(points3 as _)),
                 (row_id3, MyColor::name(), None),
                 (row_id3, MyLabel::name(), Some(labels3 as _)),
@@ -1124,7 +1124,7 @@ mod tests {
             eprintln!("got:\n{got}");
             assert_eq!(5, got.num_rows());
 
-            let expectations: &[(_, _, Option<&dyn ComponentBatch>)] = &[
+            let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
                 (row_id1, MyPoint::name(), Some(points1 as _)),
                 (row_id1, MyColor::name(), None),
                 (row_id1, MyLabel::name(), Some(labels1 as _)),
@@ -1232,7 +1232,7 @@ mod tests {
             eprintln!("got:\n{got}");
             assert_eq!(1, got.num_rows());
 
-            let expectations: &[(_, _, Option<&dyn ComponentBatch>)] = &[
+            let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
                 (row_id5, MyPoint::name(), None),
                 (row_id5, MyColor::name(), Some(colors5 as _)),
                 (row_id5, MyLabel::name(), Some(labels5 as _)),
@@ -1251,7 +1251,7 @@ mod tests {
             eprintln!("got:\n{got}");
             assert_eq!(1, got.num_rows());
 
-            let expectations: &[(_, _, Option<&dyn ComponentBatch>)] = &[
+            let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
                 (row_id5, MyPoint::name(), None),
                 (row_id5, MyColor::name(), Some(colors5 as _)),
                 (row_id5, MyLabel::name(), Some(labels5 as _)),
@@ -1370,7 +1370,7 @@ mod tests {
             eprintln!("got:\n{got}");
             assert_eq!(filter.values_iter().filter(|&b| b).count(), got.num_rows());
 
-            let expectations: &[(_, _, Option<&dyn ComponentBatch>)] = &[
+            let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
                 (row_id1, MyPoint::name(), Some(points1 as _)),
                 (row_id1, MyColor::name(), None),
                 (row_id1, MyLabel::name(), Some(labels1 as _)),
@@ -1517,7 +1517,7 @@ mod tests {
             eprintln!("got:\n{got}");
             assert_eq!(indices.len(), got.num_rows());
 
-            let expectations: &[(_, _, Option<&dyn ComponentBatch>)] = &[
+            let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
                 (row_id1, MyPoint::name(), Some(points1 as _)),
                 (row_id1, MyColor::name(), None),
                 (row_id1, MyLabel::name(), Some(labels1 as _)),

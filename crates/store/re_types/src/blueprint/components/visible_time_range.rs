@@ -69,13 +69,6 @@ impl std::ops::DerefMut for VisibleTimeRange {
 ::re_types_core::macros::impl_into_cow!(VisibleTimeRange);
 
 impl ::re_types_core::Loggable for VisibleTimeRange {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.components.VisibleTimeRange".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::VisibleTimeRange::arrow_datatype()
@@ -103,5 +96,12 @@ impl ::re_types_core::Loggable for VisibleTimeRange {
     {
         crate::datatypes::VisibleTimeRange::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+    }
+}
+
+impl ::re_types_core::Component for VisibleTimeRange {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.VisibleTimeRange".into()
     }
 }

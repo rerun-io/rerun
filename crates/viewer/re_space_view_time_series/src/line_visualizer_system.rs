@@ -9,7 +9,7 @@ use re_types::external::arrow2::datatypes::DataType as ArrowDatatype;
 use re_types::{
     archetypes::SeriesLine,
     components::{Color, Name, Scalar, StrokeWidth},
-    Archetype as _, Loggable,
+    Archetype as _, Component, Loggable,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, SpaceViewStateExt as _,
@@ -439,7 +439,7 @@ impl SeriesLineSystem {
                 &data_result.entity_path,
                 time_per_pixel,
                 points,
-                ctx.recording_store(),
+                ctx.recording_engine().store(),
                 view_query,
                 series_name.into(),
                 aggregator,
@@ -460,8 +460,7 @@ fn collect_recursive_clears(
 
     let mut clear_entity_path = entity_path.clone();
     loop {
-        let results = ctx.recording().query_caches().range(
-            ctx.recording_store(),
+        let results = ctx.recording_engine().cache().range(
             query,
             &clear_entity_path,
             [ClearIsRecursive::name()],

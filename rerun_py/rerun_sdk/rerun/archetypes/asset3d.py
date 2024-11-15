@@ -62,6 +62,7 @@ class Asset3D(Asset3DExt, Archetype):
         self.__attrs_init__(
             blob=None,  # type: ignore[arg-type]
             media_type=None,  # type: ignore[arg-type]
+            albedo_factor=None,  # type: ignore[arg-type]
         )
 
     @classmethod
@@ -94,6 +95,18 @@ class Asset3D(Asset3DExt, Archetype):
     #
     # If omitted, the viewer will try to guess from the data blob.
     # If it cannot guess, it won't be able to render the asset.
+    #
+    # (Docstring intentionally commented out to hide this field from the docs)
+
+    albedo_factor: components.AlbedoFactorBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=components.AlbedoFactorBatch._optional,  # type: ignore[misc]
+    )
+    # A color multiplier applied to the whole asset.
+    #
+    # For mesh who already have `albedo_factor` in materials,
+    # it will be overwritten by actual `albedo_factor` of [`archetypes.Asset3D`][rerun.archetypes.Asset3D] (if specified).
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

@@ -38,8 +38,8 @@ class KeypointPairExt:
         keypoint0 = [pair.keypoint0 for pair in keypoints]
         keypoint1 = [pair.keypoint1 for pair in keypoints]
 
-        keypoint0_array = KeypointIdBatch(keypoint0).as_arrow_array().storage
-        keypoint1_array = KeypointIdBatch(keypoint1).as_arrow_array().storage
+        keypoint0_array = KeypointIdBatch(keypoint0).as_arrow_array()
+        keypoint1_array = KeypointIdBatch(keypoint1).as_arrow_array()
 
         return pa.StructArray.from_arrays(
             arrays=[keypoint0_array, keypoint1_array],

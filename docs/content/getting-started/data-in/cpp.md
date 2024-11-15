@@ -1,5 +1,5 @@
 ---
-title: Stream from C++
+title: Send from C++
 order: 1
 ---
 

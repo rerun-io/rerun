@@ -1,11 +1,10 @@
 use re_log_types::Instance;
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId};
+use re_space_view::{process_annotation_slices, process_color_slice};
 use re_types::{
     archetypes::Boxes2D,
-    components::{
-        ClassId, Color, DrawOrder, HalfSize2D, KeypointId, Position2D, Radius, ShowLabels, Text,
-    },
-    ArrowString, Loggable as _,
+    components::{ClassId, Color, DrawOrder, HalfSize2D, Position2D, Radius, ShowLabels, Text},
+    ArrowString, Component as _,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
@@ -21,10 +20,9 @@ use crate::{
 };
 
 use super::{
-    filter_visualizable_2d_entities, process_annotation_and_keypoint_slices, process_color_slice,
-    process_radius_slice,
+    filter_visualizable_2d_entities, process_radius_slice,
     utilities::{process_labels, LabeledBatch},
-    SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+    SpatialViewVisualizerData,
 };
 
 // ---
@@ -60,11 +58,9 @@ impl Boxes2DVisualizer {
                 continue;
             }
 
-            let (annotation_infos, _) = process_annotation_and_keypoint_slices(
+            let annotation_infos = process_annotation_slices(
                 view_query.latest_at,
                 num_instances,
-                data.half_sizes.iter().map(|_| glam::Vec3::ZERO),
-                data.keypoint_ids,
                 data.class_ids,
                 &ent_context.annotations,
             );
@@ -162,7 +158,6 @@ struct Boxes2DComponentData<'a> {
     colors: &'a [Color],
     radii: &'a [Radius],
     labels: Vec<ArrowString>,
-    keypoint_ids: &'a [KeypointId],
     class_ids: &'a [ClassId],
 
     // Non-repeated
@@ -200,7 +195,9 @@ impl VisualizerSystem for Boxes2DVisualizer {
         };
 
         let mut line_builder = LineDrawableBuilder::new(render_ctx);
-        line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+        line_builder.radius_boost_in_ui_points_for_outlines(
+            re_space_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+        );
 
         use super::entity_iterator::{iter_primitive_array, process_archetype};
         process_archetype::<Self, Boxes2D, _>(
@@ -224,9 +221,9 @@ impl VisualizerSystem for Boxes2DVisualizer {
                     return Ok(());
                 }
 
-                // Each box consists of 4 independent lines of 2 vertices each.
-                line_builder.reserve_strips(num_boxes * 4)?;
-                line_builder.reserve_vertices(num_boxes * 4 * 2)?;
+                // Each box consists of one strip with a total of 5 vertices each.
+                line_builder.reserve_strips(num_boxes)?;
+                line_builder.reserve_vertices(num_boxes * 5)?;
 
                 let timeline = ctx.query.timeline();
                 let all_half_sizes_indexed = iter_primitive_array::<2, f32>(
@@ -239,17 +236,15 @@ impl VisualizerSystem for Boxes2DVisualizer {
                 let all_radii = results.iter_as(timeline, Radius::name());
                 let all_labels = results.iter_as(timeline, Text::name());
                 let all_class_ids = results.iter_as(timeline, ClassId::name());
-                let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
                 let all_show_labels = results.iter_as(timeline, ShowLabels::name());
 
-                let data = re_query::range_zip_1x7(
+                let data = re_query::range_zip_1x6(
                     all_half_sizes_indexed,
                     all_centers.primitive_array::<2, f32>(),
                     all_colors.primitive::<u32>(),
                     all_radii.primitive::<f32>(),
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
-                    all_keypoint_ids.primitive::<u16>(),
                     all_show_labels.component::<ShowLabels>(),
                 )
                 .map(
@@ -261,7 +256,6 @@ impl VisualizerSystem for Boxes2DVisualizer {
                         radii,
                         labels,
                         class_ids,
-                        keypoint_ids,
                         show_labels,
                     )| {
                         Boxes2DComponentData {
@@ -272,8 +266,6 @@ impl VisualizerSystem for Boxes2DVisualizer {
                             labels: labels.unwrap_or_default(),
                             class_ids: class_ids
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
-                            keypoint_ids: keypoint_ids
-                                .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
                             show_labels: show_labels.unwrap_or_default().first().copied(),
                         }
                     },

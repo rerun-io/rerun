@@ -22,9 +22,7 @@ impl ContextMenuAction for MoveContentsToNewContainerAction {
 
         ctx.selection.iter().all(|(item, _)| match item {
             Item::SpaceView(_) => true,
-            Item::Container(container_id) => {
-                ctx.viewport_blueprint.root_container != Some(*container_id)
-            }
+            Item::Container(container_id) => ctx.viewport_blueprint.root_container != *container_id,
             _ => false,
         })
     }
@@ -36,9 +34,7 @@ impl ContextMenuAction for MoveContentsToNewContainerAction {
     fn supports_item(&self, ctx: &ContextMenuContext<'_>, item: &Item) -> bool {
         match item {
             Item::SpaceView(_) => true,
-            Item::Container(container_id) => {
-                ctx.viewport_blueprint.root_container != Some(*container_id)
-            }
+            Item::Container(container_id) => ctx.viewport_blueprint.root_container != *container_id,
             _ => false,
         }
     }
@@ -57,26 +53,25 @@ impl ContextMenuAction for MoveContentsToNewContainerAction {
     }
 
     fn process_selection(&self, ctx: &ContextMenuContext<'_>) {
-        if let Some(root_container_id) = ctx.viewport_blueprint.root_container {
-            let (target_container_id, target_position) = ctx
-                .clicked_item_enclosing_container_id_and_position()
-                .unwrap_or((root_container_id, 0));
+        let root_container_id = ctx.viewport_blueprint.root_container;
+        let (target_container_id, target_position) = ctx
+            .clicked_item_enclosing_container_id_and_position()
+            .unwrap_or((root_container_id, 0));
 
-            let contents = ctx
-                .selection
-                .iter()
-                .filter_map(|(item, _)| item.try_into().ok())
-                .collect();
+        let contents = ctx
+            .selection
+            .iter()
+            .filter_map(|(item, _)| item.try_into().ok())
+            .collect();
 
-            ctx.viewport_blueprint.move_contents_to_new_container(
-                contents,
-                self.0,
-                target_container_id,
-                target_position,
-            );
+        ctx.viewport_blueprint.move_contents_to_new_container(
+            contents,
+            self.0,
+            target_container_id,
+            target_position,
+        );
 
-            ctx.viewport_blueprint
-                .mark_user_interaction(ctx.viewer_context);
-        }
+        ctx.viewport_blueprint
+            .mark_user_interaction(ctx.viewer_context);
     }
 }

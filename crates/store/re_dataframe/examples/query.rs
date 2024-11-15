@@ -2,12 +2,10 @@
 
 use itertools::Itertools;
 
-use re_chunk::TimeInt;
-use re_chunk_store::{
-    ChunkStore, ChunkStoreConfig, QueryExpression, SparseFillStrategy, Timeline, VersionPolicy,
+use re_dataframe::{
+    ChunkStoreConfig, EntityPathFilter, QueryEngine, QueryExpression, ResolvedTimeRange,
+    SparseFillStrategy, StoreKind, TimeInt, Timeline, VersionPolicy,
 };
-use re_dataframe::{QueryCache, QueryEngine};
-use re_log_types::{EntityPathFilter, ResolvedTimeRange, StoreKind};
 
 fn main() -> anyhow::Result<()> {
     let args = std::env::args().collect_vec();
@@ -42,35 +40,32 @@ fn main() -> anyhow::Result<()> {
         _ => Timeline::new_temporal(timeline_name),
     };
 
-    let stores = ChunkStore::from_rrd_filepath(
+    let engines = QueryEngine::from_rrd_filepath(
         &ChunkStoreConfig::DEFAULT,
         path_to_rrd,
         VersionPolicy::Warn,
     )?;
 
-    for (store_id, store) in &stores {
+    for (store_id, engine) in &engines {
         if store_id.kind != StoreKind::Recording {
             continue;
         }
 
-        let query_cache = QueryCache::new(store);
-        let query_engine = QueryEngine {
-            store,
-            cache: &query_cache,
+        let query = QueryExpression {
+            filtered_index: Some(timeline),
+            view_contents: Some(
+                engine
+                    .iter_entity_paths(&entity_path_filter)
+                    .map(|entity_path| (entity_path, None))
+                    .collect(),
+            ),
+            filtered_index_range: Some(ResolvedTimeRange::new(time_from, time_to)),
+            sparse_fill_strategy: SparseFillStrategy::LatestAtGlobal,
+            ..Default::default()
         };
-
-        let mut query = QueryExpression::new(timeline);
-        query.view_contents = Some(
-            query_engine
-                .iter_entity_paths(&entity_path_filter)
-                .map(|entity_path| (entity_path, None))
-                .collect(),
-        );
-        query.filtered_index_range = Some(ResolvedTimeRange::new(time_from, time_to));
-        query.sparse_fill_strategy = SparseFillStrategy::LatestAtGlobal;
         eprintln!("{query:#?}:");
 
-        let query_handle = query_engine.query(query.clone());
+        let query_handle = engine.query(query.clone());
         // eprintln!("{:#?}", query_handle.selected_contents());
         for batch in query_handle.into_batch_iter() {
             eprintln!("{batch}");

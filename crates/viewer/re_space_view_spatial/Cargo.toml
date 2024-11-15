@@ -33,13 +33,15 @@ re_renderer = { workspace = true, features = [
   "import-obj",
   "import-stl",
 ] }
-re_types = { workspace = true, features = ["ecolor", "glam", "image"] }
+re_space_view.workspace = true
 re_tracing.workspace = true
+re_types = { workspace = true, features = ["ecolor", "glam", "image"] }
 re_ui.workspace = true
+re_video.workspace = true
 re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
-re_space_view.workspace = true
 
+arrow2.workspace = true
 ahash.workspace = true
 anyhow.workspace = true
 bitflags.workspace = true
@@ -53,8 +55,10 @@ image = { workspace = true, features = [
 itertools.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true
+ordered-float.workspace = true
 serde.workspace = true
 smallvec = { workspace = true, features = ["serde"] }
+thiserror.workspace = true
 vec1 = { workspace = true, features = ["smallvec-v1"] }
 web-time.workspace = true
 

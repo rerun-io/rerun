@@ -112,7 +112,7 @@ impl RerunArgs {
 
             RerunBehavior::Connect(addr) => Ok((
                 RecordingStreamBuilder::new(application_id)
-                    .connect_opts(addr, crate::default_flush_timeout())?,
+                    .connect_tcp_opts(addr, crate::default_flush_timeout())?,
                 Default::default(),
             )),
 
@@ -132,7 +132,7 @@ impl RerunArgs {
                     .map_err(|err| anyhow::format_err!("Bad --server-memory-limit: {err}"))?;
 
                 let open_browser = true;
-                let rec = RecordingStreamBuilder::new(application_id).serve(
+                let rec = RecordingStreamBuilder::new(application_id).serve_web(
                     &self.bind,
                     Default::default(),
                     Default::default(),

@@ -38,7 +38,7 @@ pub enum ItemSpaceContext {
 }
 
 /// Selection highlight, sorted from weakest to strongest.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum SelectionHighlight {
     /// No selection highlight at all.
     #[default]
@@ -53,7 +53,7 @@ pub enum SelectionHighlight {
 }
 
 /// Hover highlight, sorted from weakest to strongest.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Default)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub enum HoverHighlight {
     /// No hover highlight.
     #[default]

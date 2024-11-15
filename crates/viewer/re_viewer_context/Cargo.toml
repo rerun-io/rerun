@@ -35,12 +35,14 @@ re_tracing.workspace = true
 re_types = { workspace = true, features = ["ecolor", "glam", "image"] }
 re_types_core.workspace = true
 re_ui.workspace = true
+re_video = { workspace = true, features = ["serde"] }
 
 ahash.workspace = true
 anyhow.workspace = true
 bit-vec.workspace = true
 bitflags.workspace = true
 bytemuck.workspace = true
+directories.workspace = true
 egui_extras.workspace = true
 egui_tiles.workspace = true
 egui-wgpu.workspace = true

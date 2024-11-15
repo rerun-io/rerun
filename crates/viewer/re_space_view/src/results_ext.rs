@@ -50,11 +50,7 @@ impl<'a> HybridLatestAtResults<'a> {
             .or_else(|| self.defaults.get(&component_name))
     }
 
-    pub fn try_fallback_raw(&self, component_name: ComponentName) -> Option<Box<dyn ArrowArray>> {
-        let fallback_provider = self
-            .data_result
-            .best_fallback_for(self.ctx, component_name)?;
-
+    pub fn fallback_raw(&self, component_name: ComponentName) -> Box<dyn ArrowArray> {
         let query_context = QueryContext {
             viewer_ctx: self.ctx.viewer_ctx,
             target_entity_path: &self.data_result.entity_path,
@@ -64,9 +60,11 @@ impl<'a> HybridLatestAtResults<'a> {
             view_ctx: Some(self.ctx),
         };
 
-        fallback_provider
-            .fallback_for(&query_context, component_name)
-            .ok()
+        self.data_result.best_fallback_for(
+            &query_context,
+            &self.ctx.visualizer_collection,
+            component_name,
+        )
     }
 
     /// Utility for retrieving the first instance of a component, ignoring defaults.
@@ -119,8 +117,9 @@ impl<'a> HybridLatestAtResults<'a> {
         self.get_instance(index)
             .or_else(|| {
                 // No override, no store, no default -> try fallback instead
-                self.try_fallback_raw(C::name())
-                    .and_then(|raw| C::from_arrow(raw.as_ref()).ok())
+                let raw_fallback = self.fallback_raw(C::name());
+                C::from_arrow(raw_fallback.as_ref())
+                    .ok()
                     .and_then(|r| r.first().cloned())
             })
             .unwrap_or_default()

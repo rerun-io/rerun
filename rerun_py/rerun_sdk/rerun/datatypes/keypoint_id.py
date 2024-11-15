@@ -14,10 +14,9 @@ from attrs import define, field
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 
-__all__ = ["KeypointId", "KeypointIdArrayLike", "KeypointIdBatch", "KeypointIdLike", "KeypointIdType"]
+__all__ = ["KeypointId", "KeypointIdArrayLike", "KeypointIdBatch", "KeypointIdLike"]
 
 
 @define(init=False)
@@ -58,15 +57,8 @@ else:
 KeypointIdArrayLike = Union[KeypointId, Sequence[KeypointIdLike], int, npt.ArrayLike]
 
 
-class KeypointIdType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.KeypointId"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint16(), self._TYPE_NAME)
-
-
 class KeypointIdBatch(BaseBatch[KeypointIdArrayLike]):
-    _ARROW_TYPE = KeypointIdType()
+    _ARROW_DATATYPE = pa.uint16()
 
     @staticmethod
     def _native_to_pa_array(data: KeypointIdArrayLike, data_type: pa.DataType) -> pa.Array:

@@ -411,7 +411,7 @@ impl ComponentUiRegistry {
         // Also, it allows us to slice the array without cloning any elements.
         let Some(array) = unit.component_batch_raw(&component_name) else {
             re_log::error_once!("Couldn't get {component_name}: missing");
-            ui.error_label(&format!("Couldn't get {component_name}: missing"));
+            ui.error_with_details_on_hover(&format!("Couldn't get {component_name}: missing"));
             return;
         };
 
@@ -591,15 +591,7 @@ impl ComponentUiRegistry {
         {
             component_raw
         } else {
-            match fallback_provider.fallback_for(ctx, component_name) {
-                Ok(value) => value,
-                Err(err) => {
-                    let error_text = format!("No fallback value available for {component_name}.");
-                    re_log::error_once!("{error_text} ({err})");
-                    ui.error_label(&error_text);
-                    return;
-                }
-            }
+            fallback_provider.fallback_for(ctx, component_name)
         };
 
         self.edit_ui_raw(

@@ -85,9 +85,10 @@ impl DatastoreUi {
                 self.chunk_store_ui(
                     ui,
                     match self.store_kind {
-                        StoreKind::Recording => ctx.recording_store(),
-                        StoreKind::Blueprint => ctx.blueprint_store(),
-                    },
+                        StoreKind::Recording => ctx.recording_engine(),
+                        StoreKind::Blueprint => ctx.blueprint_engine(),
+                    }
+                    .store(),
                     datastore_ui_active,
                     time_zone,
                 );

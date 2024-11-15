@@ -7,12 +7,14 @@ use std::sync::Arc;
 use glam::{uvec3, vec3, Vec3, Vec3A};
 use hexasphere::BaseShape;
 use itertools::Itertools as _;
-use re_renderer::mesh::GpuMesh;
-use re_renderer::mesh::MeshError;
+use ordered_float::NotNan;
 use smallvec::smallvec;
 
-use re_renderer::mesh;
-use re_renderer::RenderContext;
+use re_math::MeshGen;
+use re_renderer::{
+    mesh::{self, GpuMesh, MeshError},
+    RenderContext,
+};
 use re_viewer_context::Cache;
 
 // ----------------------------------------------------------------------------
@@ -31,11 +33,38 @@ pub enum ProcMeshKey {
     /// of other sizes.
     Sphere {
         /// Number of triangle subdivisions to perform to create a finer, rounder mesh.
+        ///
+        /// If this number is zero, then the “sphere” is an octahedron. Increasing it to N
+        /// breaks the edges of that octahedron into N segments. Around a great circle of the
+        /// sphere, there are (N + 1) × 4 segments.
         subdivisions: usize,
 
         /// If true, then when a wireframe mesh is generated, it includes only
         /// the 3 axis-aligned “equatorial” circles, and not the full triangle mesh.
         axes_only: bool,
+    },
+
+    /// A capsule; a cylinder with hemispherical end caps.
+    ///
+    /// The capsule always has radius 1. It should be scaled to obtain the desired radius.
+    /// It always extends along the positive direction of the Z axis.
+    Capsule {
+        /// The length of the capsule; the distance between the centers of its endpoints.
+        /// This length must be non-negative.
+        //
+        // TODO(#1361): This is a bad approach to rendering capsules of arbitrary
+        // length, because it fills the cache with many distinct meshes.
+        // Instead, the renderers should be extended to support “bones” such that a mesh
+        // can have parts which are independently offset, thus allowing us to stretch a
+        // single sphere/capsule mesh into an arbitrary length and radius capsule.
+        // (Tapered capsules will still need distinct meshes.)
+        length: NotNan<f32>,
+
+        /// Number of triangle subdivisions to use to create a finer, rounder mesh.
+        ///
+        /// The cylinder part of the capsule is approximated as a mesh with (N + 1) × 4
+        /// flat faces.
+        subdivisions: usize,
     },
 }
 
@@ -54,6 +83,13 @@ impl ProcMeshKey {
             Self::Cube => {
                 re_math::BoundingBox::from_center_size(Vec3::splat(0.0), Vec3::splat(1.0))
             }
+            Self::Capsule {
+                subdivisions: _,
+                length,
+            } => re_math::BoundingBox::from_min_max(
+                Vec3::new(-1.0, -1.0, -1.0),
+                Vec3::new(1.0, 1.0, 1.0 + length.into_inner()),
+            ),
         }
     }
 }
@@ -90,6 +126,23 @@ pub struct SolidMesh {
     pub gpu_mesh: Arc<GpuMesh>,
 }
 
+/// Errors that may arise from attempting to generate a mesh from a [`ProcMeshKey`].
+///
+/// Currently, this type is private because errors are only logged.
+#[derive(thiserror::Error, Debug)]
+#[non_exhaustive]
+enum GenError {
+    /// The requested drawing primitive type (solid or wireframe) is not supported
+    /// for the given [`ProcMeshKey`],
+    #[error("creating a wireframe mesh is not supported")]
+    UnimplementedWireframe,
+
+    /// Either the GPU mesh could not be allocated,
+    /// or the generated mesh was not well-formed.
+    #[error(transparent)]
+    MeshProcessing(#[from] MeshError),
+}
+
 // ----------------------------------------------------------------------------
 
 /// Cache for the computation of wireframe meshes from [`ProcMeshKey`]s.
@@ -109,14 +162,20 @@ impl WireframeCache {
         self.0
             .entry(key)
             .or_insert_with(|| {
-                re_log::debug!("Generating mesh {key:?}…");
+                re_tracing::profile_scope!("proc_mesh::WireframeCache(miss)", format!("{key:?}"));
 
-                let mesh = generate_wireframe(&key, render_ctx);
+                re_log::trace!("Generating wireframe mesh {key:?}…");
 
-                // Right now, this can never return None, but in the future
-                // it will perform GPU allocations which can fail.
-
-                Some(Arc::new(mesh))
+                match generate_wireframe(&key, render_ctx) {
+                    Ok(mesh) => Some(Arc::new(mesh)),
+                    Err(err) => {
+                        re_log::warn!(
+                            "Failed to generate mesh {key:?}: {}",
+                            re_error::format_ref(&err)
+                        );
+                        None
+                    }
+                }
             })
             .clone()
     }
@@ -133,13 +192,18 @@ impl Cache for WireframeCache {
 }
 
 /// Generate a wireframe mesh without caching.
-fn generate_wireframe(key: &ProcMeshKey, render_ctx: &RenderContext) -> WireframeMesh {
+///
+/// Note: The unstructured error type here is used only for logging.
+fn generate_wireframe(
+    key: &ProcMeshKey,
+    render_ctx: &RenderContext,
+) -> Result<WireframeMesh, GenError> {
     re_tracing::profile_function!();
 
     // In the future, render_ctx will be used to allocate GPU memory for the mesh.
     _ = render_ctx;
 
-    match *key {
+    let mesh = match *key {
         ProcMeshKey::Cube => {
             let corners = [
                 vec3(-0.5, -0.5, -0.5),
@@ -217,7 +281,18 @@ fn generate_wireframe(key: &ProcMeshKey, render_ctx: &RenderContext) -> Wirefram
                 line_strips,
             }
         }
-    }
+        ProcMeshKey::Capsule {
+            length: _,
+            subdivisions: _,
+        } => {
+            // No visualizer asks for these yet, because they are unimplemented.
+            // Implementing them will require writing a new capsule wireframe algorithm
+            // that agrees with the solid algorithm.
+            return Err(GenError::UnimplementedWireframe);
+        }
+    };
+
+    Ok(mesh)
 }
 
 // ----------------------------------------------------------------------------
@@ -234,7 +309,9 @@ impl SolidCache {
         self.0
             .entry(key)
             .or_insert_with(|| {
-                re_log::debug!("Generating mesh {key:?}…");
+                re_tracing::profile_scope!("proc_mesh::SolidCache(miss)", format!("{key:?}"));
+
+                re_log::trace!("Generating solid mesh {key:?}…");
 
                 match generate_solid(&key, render_ctx) {
                     Ok(mesh) => Some(mesh),
@@ -262,34 +339,14 @@ impl Cache for SolidCache {
 }
 
 /// Generate a solid triangle mesh without caching.
-fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<SolidMesh, MeshError> {
+fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<SolidMesh, GenError> {
     re_tracing::profile_function!();
 
-    let mesh: mesh::Mesh = match *key {
+    let mesh: mesh::CpuMesh = match *key {
         ProcMeshKey::Cube => {
             let mut mg = re_math::MeshGen::new();
             mg.push_cube(Vec3::splat(0.5), re_math::IsoTransform::IDENTITY);
-
-            let num_vertices = mg.positions.len();
-
-            let triangle_indices: Vec<glam::UVec3> = mg
-                .indices
-                .into_iter()
-                .tuples()
-                .map(|(i1, i2, i3)| uvec3(i1, i2, i3))
-                .collect();
-            let materials = materials_for_uncolored_mesh(render_ctx, triangle_indices.len());
-
-            mesh::Mesh {
-                label: format!("{key:?}").into(),
-                materials,
-                triangle_indices,
-                vertex_positions: mg.positions,
-                vertex_normals: mg.normals,
-                // Colors are black so that the instance `additive_tint` can set per-instance color.
-                vertex_colors: vec![re_renderer::Rgba32Unmul::BLACK; num_vertices],
-                vertex_texcoords: vec![glam::Vec2::ZERO; num_vertices],
-            }
+            mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx)
         }
         ProcMeshKey::Sphere {
             subdivisions,
@@ -313,7 +370,7 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
 
             let materials = materials_for_uncolored_mesh(render_ctx, triangle_indices.len());
 
-            mesh::Mesh {
+            mesh::CpuMesh {
                 label: format!("{key:?}").into(),
 
                 // bytemuck is re-grouping the indices into triples without realloc
@@ -328,6 +385,35 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
                 materials,
             }
         }
+        ProcMeshKey::Capsule {
+            length,
+            subdivisions,
+        } => {
+            // Design note: there are two reasons why this uses `re_math` instead of `hexasphere`.
+            //
+            // First, `re_math` already has a capsule routine, whereas we'd have to postprocess the
+            // output of `hexasphere`.
+            //
+            // Second, one design perspective is that we should in the long run extend `re_math`
+            // to do *all* our mesh generation, and this is an experiment in that. How exactly that
+            // will handle wireframes is yet undecided.
+
+            let mg_subdivisions = (subdivisions + 1) * 4;
+
+            let mut mg = re_math::MeshGen::new();
+            mg.push_capsule(
+                1.0,
+                length.into_inner(),
+                mg_subdivisions,
+                mg_subdivisions,
+                // rotate from the Y axis (baked into MeshGen) onto the Z axis (our choice of
+                // default orientation, aligned with Rerun’s default of Z-up).
+                re_math::IsoTransform::from_quat(glam::Quat::from_rotation_x(
+                    std::f32::consts::FRAC_PI_2,
+                )),
+            );
+            mesh_from_mesh_gen(format!("{key:?}").into(), mg, render_ctx)
+        }
     };
 
     mesh.sanity_check()?;
@@ -336,6 +422,33 @@ fn generate_solid(key: &ProcMeshKey, render_ctx: &RenderContext) -> Result<Solid
         bbox: key.simple_bounding_box(),
         gpu_mesh: Arc::new(GpuMesh::new(render_ctx, &mesh)?),
     })
+}
+
+fn mesh_from_mesh_gen(
+    label: re_renderer::DebugLabel,
+    mg: MeshGen,
+    render_ctx: &RenderContext,
+) -> mesh::CpuMesh {
+    let num_vertices = mg.positions.len();
+
+    let triangle_indices: Vec<glam::UVec3> = mg
+        .indices
+        .into_iter()
+        .tuples()
+        .map(|(i1, i2, i3)| uvec3(i1, i2, i3))
+        .collect();
+    let materials = materials_for_uncolored_mesh(render_ctx, triangle_indices.len());
+
+    mesh::CpuMesh {
+        label,
+        materials,
+        triangle_indices,
+        vertex_positions: mg.positions,
+        vertex_normals: mg.normals,
+        // Colors are black so that the instance `additive_tint` can set per-instance color.
+        vertex_colors: vec![re_renderer::Rgba32Unmul::BLACK; num_vertices],
+        vertex_texcoords: vec![glam::Vec2::ZERO; num_vertices],
+    }
 }
 
 fn materials_for_uncolored_mesh(

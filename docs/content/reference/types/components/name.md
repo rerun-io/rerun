@@ -5,9 +5,14 @@ title: "Name"
 
 A display name, typically for an entity or a item like a plot series.
 
-## Fields
+## Rerun datatype
+[`Utf8`](../datatypes/utf8.md)
 
-* value: [`Utf8`](../datatypes/utf8.md)
+
+## Arrow datatype
+```
+utf8
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `Name`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Name.html)

@@ -37,6 +37,7 @@ macro_rules! join {
 fn main() {
     re_log::setup_logging();
 
+    #[cfg(feature = "tracing")]
     let mut profiler = re_tracing::Profiler::default(); // must be started early and dropped late to catch everything
 
     // This isn't a build.rs script, so opt out of cargo build instructions
@@ -52,11 +53,14 @@ fn main() {
                 return;
             }
             "--force" => always_run = true,
-            "--profile" => profiler.start(),
             "--check" => {
                 always_run = true;
                 check = true;
             }
+
+            #[cfg(feature = "tracing")]
+            "--profile" => profiler.start(),
+
             _ => {
                 eprintln!("Unknown argument: {arg:?}");
                 return;

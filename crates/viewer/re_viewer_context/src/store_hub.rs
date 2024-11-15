@@ -487,7 +487,7 @@ impl StoreHub {
             }
         }
 
-        re_log::debug!("Switching default blueprint for {app_id} to {blueprint_id}");
+        re_log::trace!("Switching default blueprint for '{app_id}' to '{blueprint_id}'");
         self.default_blueprint_by_app_id
             .insert(app_id.clone(), blueprint_id.clone());
 
@@ -532,8 +532,8 @@ impl StoreHub {
     ) -> anyhow::Result<()> {
         let new_id = StoreId::random(StoreKind::Blueprint);
 
-        re_log::debug!(
-            "Cloning {blueprint_id} as {new_id} the active blueprint for {app_id} to {blueprint_id}"
+        re_log::trace!(
+            "Cloning '{blueprint_id}' as '{new_id}' the active blueprint for '{app_id}' to '{blueprint_id}'"
         );
 
         let blueprint = self
@@ -599,7 +599,7 @@ impl StoreHub {
     pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
         re_tracing::profile_function!();
 
-        let Some(store_id) = self.store_bundle.find_oldest_modified_recording().cloned() else {
+        let Some(store_id) = self.store_bundle.find_oldest_modified_recording() else {
             return;
         };
 
@@ -616,9 +616,19 @@ impl StoreHub {
             return; // unreachable
         };
 
-        let store_size_before = entity_db.store().stats().total().total_size_bytes;
+        let store_size_before = entity_db
+            .storage_engine()
+            .store()
+            .stats()
+            .total()
+            .total_size_bytes;
         let store_events = entity_db.purge_fraction_of_ram(fraction_to_purge);
-        let store_size_after = entity_db.store().stats().total().total_size_bytes;
+        let store_size_after = entity_db
+            .storage_engine()
+            .store()
+            .stats()
+            .total()
+            .total_size_bytes;
 
         if let Some(caches) = self.caches_per_recording.get_mut(&store_id) {
             caches.on_store_events(&store_events);
@@ -791,8 +801,7 @@ impl StoreHub {
 
     /// Populate a [`StoreHubStats`] based on the active app.
     //
-    // TODO(jleibs): We probably want stats for all recordings, not just
-    // the active recording.
+    // TODO(jleibs): We probably want stats for all recordings, not just the active recording.
     pub fn stats(&self) -> StoreHubStats {
         re_tracing::profile_function!();
 
@@ -801,35 +810,39 @@ impl StoreHub {
             .active_application_id
             .as_ref()
             .and_then(|app_id| self.active_blueprint_by_app_id.get(app_id))
-            .and_then(|blueprint_id| self.store_bundle.get(blueprint_id));
+            .and_then(|blueprint_id| self.store_bundle.get(blueprint_id))
+            .map(|entity_db| entity_db.storage_engine());
+        let blueprint = blueprint.as_ref();
 
         let blueprint_stats = blueprint
-            .map(|entity_db| entity_db.store().stats())
+            .map(|engine| engine.store().stats())
             .unwrap_or_default();
 
         let blueprint_cached_stats = blueprint
-            .map(|entity_db| entity_db.query_caches().stats())
+            .map(|engine| engine.cache().stats())
             .unwrap_or_default();
 
         let blueprint_config = blueprint
-            .map(|entity_db| entity_db.store().config().clone())
+            .map(|engine| engine.store().config().clone())
             .unwrap_or_default();
 
         let recording = self
             .active_rec_id
             .as_ref()
-            .and_then(|rec_id| self.store_bundle.get(rec_id));
+            .and_then(|rec_id| self.store_bundle.get(rec_id))
+            .map(|entity_db| entity_db.storage_engine());
+        let recording = recording.as_ref();
 
         let recording_stats2 = recording
-            .map(|entity_db| entity_db.store().stats())
+            .map(|engine| engine.store().stats())
             .unwrap_or_default();
 
         let recording_cached_stats = recording
-            .map(|entity_db| entity_db.query_caches().stats())
+            .map(|engine| engine.cache().stats())
             .unwrap_or_default();
 
         let recording_config2 = recording
-            .map(|entity_db| entity_db.store().config().clone())
+            .map(|engine| engine.store().config().clone())
             .unwrap_or_default();
 
         StoreHubStats {

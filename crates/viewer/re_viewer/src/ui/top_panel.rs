@@ -160,6 +160,7 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             match source.as_ref() {
                 SmartChannelSource::File(_)
                 | SmartChannelSource::RrdHttpStream { .. }
+                | SmartChannelSource::RerunGrpcStream { .. }
                 | SmartChannelSource::Stdin => {
                     false // These show up in the recordings panel as a "Loading…" in `recordings_panel.rs`
                 }
@@ -198,6 +199,7 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
             SmartChannelSource::File(_)
             | SmartChannelSource::Stdin
             | SmartChannelSource::RrdHttpStream { .. }
+            | SmartChannelSource::RerunGrpcStream { .. }
             | SmartChannelSource::RrdWebEventListener
             | SmartChannelSource::JsChannel { .. }
             | SmartChannelSource::Sdk
@@ -221,7 +223,8 @@ fn connection_status_ui(ui: &mut egui::Ui, rx: &ReceiveSet<re_log_types::LogMsg>
                 format!("Loading {}…", path.display())
             }
             re_smart_channel::SmartChannelSource::Stdin => "Loading stdin…".to_owned(),
-            re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. } => {
+            re_smart_channel::SmartChannelSource::RrdHttpStream { url, .. }
+            | re_smart_channel::SmartChannelSource::RerunGrpcStream { url } => {
                 format!("Loading {url}…")
             }
             re_smart_channel::SmartChannelSource::RrdWebEventListener

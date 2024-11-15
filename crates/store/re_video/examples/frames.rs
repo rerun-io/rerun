@@ -1,4 +1,4 @@
-//! Decodes an mp4 with AV1 in it to a folder of images.
+//! Decodes an mp4 to a folder of images.
 
 #![allow(clippy::unwrap_used)]
 
@@ -13,9 +13,9 @@ use std::{
 use indicatif::ProgressBar;
 use parking_lot::Mutex;
 
-use re_video::{decode::SyncDecoder, VideoData};
-
 fn main() {
+    re_log::setup_logging();
+
     // frames <video.mp4>
     let args: Vec<_> = std::env::args().collect();
     let Some(video_path) = args.get(1) else {
@@ -26,8 +26,8 @@ fn main() {
 
     println!("Decoding {video_path}");
 
-    let video = std::fs::read(video_path).expect("failed to read video");
-    let video = re_video::VideoData::load_mp4(&video).expect("failed to load video");
+    let video_blob = std::fs::read(video_path).expect("failed to read video");
+    let video = re_video::VideoData::load_mp4(&video_blob).expect("failed to load video");
 
     println!(
         "{} {}x{}",
@@ -36,27 +36,6 @@ fn main() {
         video.config.coded_height
     );
 
-    let mut decoder = create_decoder(video_path, &video);
-
-    write_video_frames(&video, decoder.as_mut(), &output_dir);
-}
-
-fn create_decoder(debug_name: &str, video: &VideoData) -> Box<dyn SyncDecoder> {
-    if video.config.is_av1() {
-        Box::new(
-            re_video::decode::av1::SyncDav1dDecoder::new(debug_name.to_owned())
-                .expect("Failed to start AV1 decoder"),
-        )
-    } else {
-        panic!("Unsupported codec: {}", video.human_readable_codec_string());
-    }
-}
-
-fn write_video_frames(
-    video: &re_video::VideoData,
-    decoder: &mut dyn re_video::decode::SyncDecoder,
-    output_dir: &PathBuf,
-) {
     let progress = ProgressBar::new(video.samples.len() as u64).with_message("Decoding video");
     progress.enable_steady_tick(Duration::from_millis(100));
 
@@ -70,11 +49,18 @@ fn write_video_frames(
         }
     };
 
+    let mut decoder = re_video::decode::new_decoder(
+        &video_path.to_string(),
+        &video,
+        &re_video::decode::DecodeSettings::default(),
+        on_output,
+    )
+    .expect("Failed to create decoder");
+
     let start = Instant::now();
     for sample in &video.samples {
-        let should_stop = std::sync::atomic::AtomicBool::new(false);
-        let chunk = video.get(sample).unwrap();
-        decoder.submit_chunk(&should_stop, chunk, &on_output);
+        let chunk = sample.get(&video_blob).unwrap();
+        decoder.submit_chunk(chunk).expect("Failed to submit chunk");
     }
 
     let end = Instant::now();
@@ -89,7 +75,7 @@ fn write_video_frames(
     );
 
     println!("Writing frames to {}", output_dir.display());
-    std::fs::create_dir_all(output_dir).expect("failed to create output directory");
+    std::fs::create_dir_all(&output_dir).expect("failed to create output directory");
 
     let width = num_digits(frames.len());
     for (i, frame) in frames.iter().enumerate() {
@@ -99,8 +85,20 @@ fn write_video_frames(
                 .create(true)
                 .truncate(true)
                 .open(output_dir.join(format!("{i:0width$}.ppm")))
-                .expect("failed to open file");
-            write_binary_ppm(&mut file, frame.width, frame.height, &frame.data);
+                .expect("failed to oformatpen file");
+
+            let frame = &frame.content;
+            match frame.format {
+                re_video::PixelFormat::Rgb8Unorm => {
+                    write_ppm_rgb24(&mut file, frame.width, frame.height, &frame.data);
+                }
+                re_video::PixelFormat::Rgba8Unorm => {
+                    write_ppm_rgba32(&mut file, frame.width, frame.height, &frame.data);
+                }
+                re_video::PixelFormat::Yuv { .. } => {
+                    re_log::error_once!("YUV frame writing is not supported");
+                }
+            }
         }
     }
 }
@@ -109,7 +107,24 @@ fn num_digits(n: usize) -> usize {
     (n as f64).log10().floor() as usize + 1
 }
 
-fn write_binary_ppm(file: &mut File, width: u32, height: u32, rgba: &[u8]) {
+fn write_ppm_rgb24(file: &mut File, width: u32, height: u32, rgb: &[u8]) {
+    assert_eq!(width as usize * height as usize * 3, rgb.len());
+
+    let header = format!("P6\n{width} {height}\n255\n");
+
+    let mut data = Vec::with_capacity(header.len() + width as usize * height as usize * 3);
+    data.extend_from_slice(header.as_bytes());
+
+    for rgb in rgb.chunks(3) {
+        data.extend_from_slice(&[rgb[0], rgb[1], rgb[2]]);
+    }
+
+    file.write_all(&data).expect("failed to write frame data");
+}
+
+fn write_ppm_rgba32(file: &mut File, width: u32, height: u32, rgba: &[u8]) {
+    assert_eq!(width as usize * height as usize * 4, rgba.len());
+
     let header = format!("P6\n{width} {height}\n255\n");
 
     let mut data = Vec::with_capacity(header.len() + width as usize * height as usize * 3);

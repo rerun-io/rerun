@@ -14,6 +14,7 @@ pub trait UICommandSender {
 pub enum UICommand {
     // Listed in the order they show up in the command palette by default!
     Open,
+    Import,
     SaveRecording,
     SaveRecordingSelection,
     SaveBlueprint,
@@ -39,6 +40,7 @@ pub enum UICommand {
     ToggleSelectionPanel,
     ToggleTimePanel,
     ToggleChunkStoreBrowser,
+    Settings,
 
     #[cfg(debug_assertions)]
     ToggleBlueprintInspectionPanel,
@@ -73,8 +75,6 @@ pub enum UICommand {
     PrintChunkStore,
     #[cfg(not(target_arch = "wasm32"))]
     PrintBlueprintStore,
-    #[cfg(not(target_arch = "wasm32"))]
-    ClearPrimaryCache,
     #[cfg(not(target_arch = "wasm32"))]
     PrintPrimaryCache,
 
@@ -111,7 +111,8 @@ impl UICommand {
 
             Self::SaveBlueprint => ("Save blueprint…", "Save the current viewer setup as a Rerun blueprint file (.rbl)"),
 
-            Self::Open => ("Open…", "Open any supported files (.rrd, images, meshes, …)"),
+            Self::Open => ("Open…", "Open any supported files (.rrd, images, meshes, …) in a new recording"),
+            Self::Import => ("Import…", "Import any supported files (.rrd, images, meshes, …) in the current recording"),
 
             Self::CloseCurrentRecording => (
                 "Close current recording",
@@ -155,6 +156,7 @@ impl UICommand {
             Self::ToggleSelectionPanel => ("Toggle selection panel", "Toggle the right panel"),
             Self::ToggleTimePanel => ("Toggle time panel", "Toggle the bottom panel"),
             Self::ToggleChunkStoreBrowser => ("Toggle chunk store browser", "Toggle the chunk store browser"),
+            Self::Settings => ("Settings…", "Show the settings screen"),
 
             #[cfg(debug_assertions)]
             Self::ToggleBlueprintInspectionPanel => (
@@ -225,11 +227,6 @@ impl UICommand {
                 "Prints the entire blueprint store to the console and clipboard. WARNING: this may be A LOT of text.",
             ),
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ClearPrimaryCache => (
-                "Clear primary cache",
-                "Clears the primary cache in its entirety.",
-            ),
-            #[cfg(not(target_arch = "wasm32"))]
             Self::PrintPrimaryCache => (
                 "Print primary cache",
                 "Prints the state of the entire primary cache to the console and clipboard. WARNING: this may be A LOT of text.",
@@ -271,6 +268,10 @@ impl UICommand {
             KeyboardShortcut::new(Modifiers::COMMAND, key)
         }
 
+        fn cmd_shift(key: Key) -> KeyboardShortcut {
+            KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::SHIFT), key)
+        }
+
         fn cmd_alt(key: Key) -> KeyboardShortcut {
             KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::ALT), key)
         }
@@ -284,6 +285,7 @@ impl UICommand {
             Self::SaveRecordingSelection => Some(cmd_alt(Key::S)),
             Self::SaveBlueprint => None,
             Self::Open => Some(cmd(Key::O)),
+            Self::Import => Some(cmd_shift(Key::O)),
             Self::CloseCurrentRecording => None,
             Self::CloseAllRecordings => None,
 
@@ -308,6 +310,14 @@ impl UICommand {
             Self::ToggleSelectionPanel => Some(ctrl_shift(Key::S)),
             Self::ToggleTimePanel => Some(ctrl_shift(Key::T)),
             Self::ToggleChunkStoreBrowser => Some(ctrl_shift(Key::D)),
+            Self::Settings => {
+                if cfg!(target_os = "macos") {
+                    Some(KeyboardShortcut::new(Modifiers::MAC_CMD, Key::Comma))
+                } else {
+                    // TODO(emilk): shortcut for web and non-mac too
+                    None
+                }
+            }
 
             #[cfg(debug_assertions)]
             Self::ToggleBlueprintInspectionPanel => Some(ctrl_shift(Key::I)),
@@ -344,8 +354,6 @@ impl UICommand {
             #[cfg(not(target_arch = "wasm32"))]
             Self::PrintBlueprintStore => None,
             #[cfg(not(target_arch = "wasm32"))]
-            Self::ClearPrimaryCache => None,
-            #[cfg(not(target_arch = "wasm32"))]
             Self::PrintPrimaryCache => None,
 
             #[cfg(debug_assertions)]
@@ -358,9 +366,6 @@ impl UICommand {
             Self::RestartWithWebGl => None,
             #[cfg(target_arch = "wasm32")]
             Self::RestartWithWebGpu => None,
-
-            #[cfg(target_arch = "wasm32 ")]
-            Self::ViewportMode(_) => None,
         }
     }
 

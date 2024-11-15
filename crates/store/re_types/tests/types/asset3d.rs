@@ -1,7 +1,7 @@
 use re_types::{
     archetypes::Asset3D,
     components::{Blob, MediaType},
-    datatypes::Utf8,
+    datatypes::{Rgba32, Utf8},
     Archetype as _, AsComponents as _,
 };
 
@@ -12,9 +12,11 @@ fn roundtrip() {
     let expected = Asset3D {
         blob: Blob(BYTES.to_vec().into()),
         media_type: Some(MediaType(Utf8(MediaType::GLTF.into()))),
+        albedo_factor: Some(Rgba32::from_unmultiplied_rgba(0xEE, 0x11, 0x22, 0x33).into()),
     };
 
-    let arch = Asset3D::from_file_contents(BYTES.to_vec(), Some(MediaType::gltf()));
+    let arch = Asset3D::from_file_contents(BYTES.to_vec(), Some(MediaType::gltf()))
+        .with_albedo_factor(0xEE112233);
     similar_asserts::assert_eq!(expected, arch);
 
     // let expected_extensions: HashMap<_, _> = [

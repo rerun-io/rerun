@@ -1,14 +1,13 @@
-use egui::{epaint::util::OrderedFloat, text::TextWrapping, NumExt, WidgetText};
+use egui::{epaint::util::OrderedFloat, text::TextWrapping, NumExt as _, WidgetText};
 
 use re_format::format_f32;
 use re_math::BoundingBox;
-use re_renderer::OutlineConfig;
 use re_space_view::ScreenshotMode;
 use re_types::{
     archetypes::Pinhole, blueprint::components::VisualBounds2D, components::ViewCoordinates,
     image::ImageKind,
 };
-use re_ui::{ContextExt as _, UiExt as _};
+use re_ui::UiExt as _;
 use re_viewer_context::{
     HoverHighlight, SelectionHighlight, SpaceViewHighlights, SpaceViewState, ViewerContext,
 };
@@ -19,7 +18,7 @@ use crate::{
     picking::{PickableUiRect, PickingResult},
     scene_bounding_boxes::SceneBoundingBoxes,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{SpatialViewVisualizerData, UiLabel, UiLabelTarget},
+    visualizers::{SpatialViewVisualizerData, UiLabel, UiLabelStyle, UiLabelTarget},
 };
 
 use super::{eye::Eye, ui_3d::View3DState};
@@ -215,13 +214,20 @@ pub fn create_labels(
         };
 
         let font_id = egui::TextStyle::Body.resolve(parent_ui.style());
+        let is_error = matches!(label.style, UiLabelStyle::Error);
+        let text_color = match label.style {
+            UiLabelStyle::Color(color) => color,
+            UiLabelStyle::Error => parent_ui.style().visuals.strong_text_color(),
+        };
+        let format = egui::TextFormat::simple(font_id, text_color);
+
         let galley = parent_ui.fonts(|fonts| {
             fonts.layout_job({
                 egui::text::LayoutJob {
                     sections: vec![egui::text::LayoutSection {
                         leading_space: 0.0,
                         byte_range: 0..label.text.len(),
-                        format: egui::TextFormat::simple(font_id, label.color),
+                        format,
                     }],
                     text: label.text.clone(),
                     wrap: TextWrapping {
@@ -242,9 +248,15 @@ pub fn create_labels(
         let highlight = highlights
             .entity_highlight(label.labeled_instance.entity_path_hash)
             .index_highlight(label.labeled_instance.instance);
-        let fill_color = match highlight.hover {
+        let background_color = match highlight.hover {
             HoverHighlight::None => match highlight.selection {
-                SelectionHighlight::None => parent_ui.style().visuals.widgets.inactive.bg_fill,
+                SelectionHighlight::None => {
+                    if is_error {
+                        parent_ui.error_label_background_color()
+                    } else {
+                        parent_ui.style().visuals.panel_fill
+                    }
+                }
                 SelectionHighlight::SiblingSelection => {
                     parent_ui.style().visuals.widgets.active.bg_fill
                 }
@@ -253,11 +265,20 @@ pub fn create_labels(
             HoverHighlight::Hovered => parent_ui.style().visuals.widgets.hovered.bg_fill,
         };
 
-        label_shapes.push(egui::Shape::rect_filled(bg_rect, 3.0, fill_color));
+        let rect_stroke = if is_error {
+            egui::Stroke::new(1.0, parent_ui.style().visuals.error_fg_color)
+        } else {
+            egui::Stroke::NONE
+        };
+
+        label_shapes.push(
+            egui::epaint::RectShape::new(bg_rect.expand(4.0), 4.0, background_color, rect_stroke)
+                .into(),
+        );
         label_shapes.push(egui::Shape::galley(
             text_rect.center_top(),
             galley,
-            label.color,
+            text_color,
         ));
 
         ui_rects.push(PickableUiRect {
@@ -317,23 +338,6 @@ pub fn paint_loading_spinners(
 
             egui::Spinner::new().paint_at(ui, rect);
         }
-    }
-}
-
-pub fn outline_config(gui_ctx: &egui::Context) -> OutlineConfig {
-    // Use the exact same colors we have in the ui!
-    let hover_outline = gui_ctx.hover_stroke();
-    let selection_outline = gui_ctx.selection_stroke();
-
-    // See also: SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES
-
-    let outline_radius_ui_pts = 0.5 * f32::max(hover_outline.width, selection_outline.width);
-    let outline_radius_pixel = (gui_ctx.pixels_per_point() * outline_radius_ui_pts).at_least(0.5);
-
-    OutlineConfig {
-        outline_radius_pixel,
-        color_layer_a: re_renderer::Rgba::from(hover_outline.color),
-        color_layer_b: re_renderer::Rgba::from(selection_outline.color),
     }
 }
 

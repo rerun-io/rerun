@@ -1,0 +1,141 @@
+name: Adhoc Wheels
+
+on:
+  workflow_dispatch:
+    inputs:
+      MODE:
+        type: choice
+        required: false
+        options:
+          - pypi
+          - pr
+          - extra
+        description: "The build mode (`pypi` includes the web viewer, `pr` does not)"
+
+defaults:
+  run:
+    shell: bash
+
+permissions:
+  contents: "write"
+  id-token: "write"
+  deployments: "write"
+
+jobs:
+  # -----------------------------------------------------------------------------------
+  # Build rerun-cli (rerun binaries):
+
+  build-rerun-cli-and-upload-linux-arm64:
+    name: "Linux-arm64: Build & Upload rerun-cli"
+    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
+    with:
+      CONCURRENCY: adhoc-wheels-linux-arm64
+      PLATFORM: linux-arm64
+    secrets: inherit
+
+  build-rerun-cli-and-upload-linux-x64:
+    name: "Linux-x64: Build & Upload rerun-cli"
+    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
+    with:
+      CONCURRENCY: adhoc-wheels-linux-x64
+      PLATFORM: linux-x64
+    secrets: inherit
+
+  build-rerun-cli-and-upload-macos-x64:
+    name: "Mac-x64: Build & Upload rerun-cli"
+    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
+    with:
+      CONCURRENCY: adhoc-wheels-macos-x64
+      PLATFORM: macos-x64
+    secrets: inherit
+
+  build-rerun-cli-and-upload-macos-arm64:
+    name: "Mac-arm64: Build & Upload rerun-cli"
+    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
+    with:
+      CONCURRENCY: adhoc-wheels-macos-arm64
+      PLATFORM: macos-arm64
+    secrets: inherit
+
+  build-rerun-cli-and-upload-windows-x64:
+    name: "Windows-x64: Build & Upload rerun-cli"
+    uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
+    with:
+      CONCURRENCY: adhoc-wheels-windows-x64
+      PLATFORM: windows-x64
+    secrets: inherit
+
+  # ---------------------------------------------------------------------------
+  # Build wheels:
+
+  build-wheel-linux-arm64:
+    needs: [build-rerun-cli-and-upload-linux-arm64]
+    name: "Linux-arm64: Build & Upload Wheels"
+    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
+    with:
+      CONCURRENCY: adhoc-wheels-linux-arm64
+      PLATFORM: linux-arm64
+      WHEEL_ARTIFACT_NAME: linux-arm64-wheel
+      MODE: ${{ inputs.MODE }}
+    secrets: inherit
+
+  build-wheel-linux-x64:
+    needs: [build-rerun-cli-and-upload-linux-x64]
+    name: "Linux-x64: Build & Upload Wheels"
+    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
+    with:
+      CONCURRENCY: adhoc-wheels-linux-x64
+      PLATFORM: linux-x64
+      WHEEL_ARTIFACT_NAME: linux-x64-wheel
+      MODE: ${{ inputs.MODE }}
+    secrets: inherit
+
+  build-wheel-macos-arm64:
+    needs: [build-rerun-cli-and-upload-macos-arm64]
+    name: "Macos-arm64: Build & Upload Wheels"
+    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
+    with:
+      CONCURRENCY: adhoc-wheels-macos-arm64
+      PLATFORM: macos-arm64
+      WHEEL_ARTIFACT_NAME: macos-arm64-wheel
+      MODE: ${{ inputs.MODE }}
+    secrets: inherit
+
+  build-wheel-macos-x64:
+    needs: [build-rerun-cli-and-upload-macos-x64]
+    name: "Macos-x64: Build & Upload Wheels"
+    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
+    with:
+      CONCURRENCY: adhoc-wheels-macos-x64
+      PLATFORM: macos-x64
+      WHEEL_ARTIFACT_NAME: "macos-x64-wheel"
+      MODE: ${{ inputs.MODE }}
+    secrets: inherit
+
+  build-wheel-windows-x64:
+    needs: [build-rerun-cli-and-upload-windows-x64]
+    name: "Windows-x64: Build & Upload Wheels"
+    uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
+    with:
+      CONCURRENCY: adhoc-wheels-windows-x64
+      PLATFORM: windows-x64
+      WHEEL_ARTIFACT_NAME: windows-x64-wheel
+      MODE: "pypi"
+    secrets: inherit
+
+  # --------------------------------------------------------------------------
+
+  generate-pip-index:
+    name: "Generate Pip Index"
+    needs:
+      [
+        build-wheel-linux-arm64,
+        build-wheel-linux-x64,
+        build-wheel-macos-arm64,
+        build-wheel-macos-x64,
+        build-wheel-windows-x64,
+      ]
+    uses: ./.github/workflows/reusable_pip_index.yml
+    with:
+      CONCURRENCY: adhoc-wheels
+    secrets: inherit

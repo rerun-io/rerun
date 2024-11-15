@@ -1,4 +1,4 @@
-use crate::image::{rgb_from_yuv, ColorPrimaries};
+use crate::image::{rgb_from_yuv, YuvMatrixCoefficients};
 
 use super::{ChannelDatatype, ColorModel, PixelFormat};
 
@@ -187,9 +187,10 @@ impl PixelFormat {
         }
     }
 
-    /// Color primaries used by this format.
+    /// Yuv matrix coefficients used by this format.
     // TODO(andreas): Expose this in the API separately and document it better.
-    pub fn color_primaries(&self) -> ColorPrimaries {
+    #[allow(clippy::unnecessary_wraps)]
+    pub fn yuv_matrix_coefficients(&self) -> YuvMatrixCoefficients {
         match self {
             Self::Y_U_V24_LimitedRange
             | Self::Y_U_V24_FullRange
@@ -199,9 +200,9 @@ impl PixelFormat {
             | Self::Y_U_V16_FullRange
             // TODO(andreas): Y8 isn't really color, does this even make sense?
             | Self::Y8_FullRange
-            | Self::Y8_LimitedRange => ColorPrimaries::Bt709,
+            | Self::Y8_LimitedRange => YuvMatrixCoefficients::Bt709,
 
-            Self::NV12 | Self::YUY2 => ColorPrimaries::Bt601,
+            Self::NV12 | Self::YUY2 => YuvMatrixCoefficients::Bt601,
         }
     }
 
@@ -216,7 +217,7 @@ impl PixelFormat {
             u,
             v,
             self.is_limited_yuv_range(),
-            self.color_primaries(),
+            self.yuv_matrix_coefficients(),
         ))
     }
 }

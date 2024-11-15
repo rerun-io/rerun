@@ -1,13 +1,13 @@
 use re_chunk_store::RowId;
 use re_log_types::{hash::Hash64, Instance, TimeInt};
-use re_renderer::{renderer::MeshInstance, RenderContext};
+use re_renderer::{renderer::GpuMeshInstance, RenderContext};
 use re_types::{
     archetypes::Mesh3D,
     components::{
         AlbedoFactor, ClassId, Color, ImageBuffer, ImageFormat, Position3D, Texcoord2D,
         TriangleIndices, Vector3D,
     },
-    Loggable as _,
+    Component as _,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
@@ -15,16 +15,15 @@ use re_viewer_context::{
     VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::{
-    contexts::SpatialSceneEntityContext,
-    instance_hash_conversions::picking_layer_id_from_instance_path_hash,
-    mesh_cache::{AnyMesh, MeshCache, MeshCacheKey},
-    view_kind::SpatialSpaceViewKind,
-};
-
 use super::{
     entity_iterator::clamped_vec_or_empty, filter_visualizable_3d_entities,
     SpatialViewVisualizerData,
+};
+
+use crate::{
+    contexts::SpatialSceneEntityContext,
+    mesh_cache::{AnyMesh, MeshCache, MeshCacheKey},
+    view_kind::SpatialSpaceViewKind,
 };
 
 // ---
@@ -63,7 +62,7 @@ impl Mesh3DVisualizer {
         &mut self,
         ctx: &QueryContext<'_>,
         render_ctx: &RenderContext,
-        instances: &mut Vec<MeshInstance>,
+        instances: &mut Vec<GpuMeshInstance>,
         ent_context: &SpatialSceneEntityContext<'_>,
         data: impl Iterator<Item = Mesh3DComponentData<'a>>,
     ) {
@@ -126,14 +125,14 @@ impl Mesh3DVisualizer {
                         let entity_from_mesh = mesh_instance.world_from_mesh;
                         let world_from_mesh = world_from_instance * entity_from_mesh;
 
-                        MeshInstance {
+                        GpuMeshInstance {
                             gpu_mesh: mesh_instance.gpu_mesh.clone(),
-                            mesh: None,
                             world_from_mesh,
                             outline_mask_ids,
-                            picking_layer_id: picking_layer_id_from_instance_path_hash(
-                                picking_instance_hash,
-                            ),
+                            picking_layer_id:
+                                re_space_view::picking_layer_id_from_instance_path_hash(
+                                    picking_instance_hash,
+                                ),
                             additive_tint: re_renderer::Color32::TRANSPARENT,
                         }
                     }));

@@ -152,6 +152,7 @@ def get_sorted_publishable_crates(ctx: Context, crates: dict[str, Crate]) -> dic
     ) -> None:
         crate = crates[name]
         for dependency in crate_deps(crate.manifest):
+            assert dependency.name != name, "Crate {name} had itself as a dependency"
             if dependency.name not in crates:
                 continue
             if dependency.name in visited:
@@ -467,8 +468,8 @@ def publish_unpublished_crates_in_parallel(all_crates: dict[str, Crate], version
         dependency_graph[name] = dependencies
 
     # walk the dependency graph in parallel and publish each crate
-    print("Publishing crates…")
-    env = {**os.environ.copy(), "RERUN_IS_PUBLISHING": "yes"}
+    print(f"Publishing {len(unpublished_crates)} crates…")
+    env = {**os.environ.copy(), "RERUN_IS_PUBLISHING_CRATES": "yes"}
     DAG(dependency_graph).walk_parallel(
         lambda name: publish_crate(unpublished_crates[name], token, version, env),  # noqa: E731
         # 30 tokens per minute (burst limit in crates.io)

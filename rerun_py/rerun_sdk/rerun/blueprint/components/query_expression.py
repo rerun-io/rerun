@@ -11,7 +11,7 @@ from ..._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["QueryExpression", "QueryExpressionBatch", "QueryExpressionType"]
+__all__ = ["QueryExpression", "QueryExpressionBatch"]
 
 
 class QueryExpression(datatypes.Utf8, ComponentMixin):
@@ -35,12 +35,8 @@ class QueryExpression(datatypes.Utf8, ComponentMixin):
     pass
 
 
-class QueryExpressionType(datatypes.Utf8Type):
-    _TYPE_NAME: str = "rerun.blueprint.components.QueryExpression"
-
-
 class QueryExpressionBatch(datatypes.Utf8Batch, ComponentBatchMixin):
-    _ARROW_TYPE = QueryExpressionType()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.QueryExpression"
 
 
 # This is patched in late to avoid circular dependencies.

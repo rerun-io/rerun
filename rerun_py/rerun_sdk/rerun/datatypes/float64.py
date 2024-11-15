@@ -14,10 +14,9 @@ from attrs import define, field
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 
-__all__ = ["Float64", "Float64ArrayLike", "Float64Batch", "Float64Like", "Float64Type"]
+__all__ = ["Float64", "Float64ArrayLike", "Float64Batch", "Float64Like"]
 
 
 @define(init=False)
@@ -53,15 +52,8 @@ Float64ArrayLike = Union[
 ]
 
 
-class Float64Type(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.Float64"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.float64(), self._TYPE_NAME)
-
-
 class Float64Batch(BaseBatch[Float64ArrayLike]):
-    _ARROW_TYPE = Float64Type()
+    _ARROW_DATATYPE = pa.float64()
 
     @staticmethod
     def _native_to_pa_array(data: Float64ArrayLike, data_type: pa.DataType) -> pa.Array:

@@ -1,38 +1,25 @@
-mod decoder;
+mod chunk_decoder;
+mod player;
 
-use std::{collections::hash_map::Entry, ops::Range, sync::Arc};
+use std::{collections::hash_map::Entry, sync::Arc};
 
 use ahash::HashMap;
 use parking_lot::Mutex;
 
-use re_video::VideoLoadError;
+use crate::{
+    resource_managers::{GpuTexture2D, SourceImageDataFormat},
+    RenderContext,
+};
+use re_video::{decode::DecodeSettings, VideoData};
 
-use crate::{resource_managers::GpuTexture2D, RenderContext};
-
-/// Error that can occur during frame decoding.
-// TODO(jan, andreas): These errors are for the most part specific to the web decoder right now.
-#[derive(thiserror::Error, Debug, Clone, PartialEq, Eq)]
-pub enum DecodingError {
-    #[error("Failed to start decoder")]
-    StartDecoder(String),
-
+/// Error that can occur during playing videos.
+#[derive(thiserror::Error, Debug, Clone)]
+pub enum VideoPlayerError {
     #[error("The decoder is lagging behind")]
     EmptyBuffer,
 
-    #[error("Failed to create VideoDecoder: {0}")]
-    DecoderSetupFailure(String),
-
     #[error("Video seems to be empty, no segments have beem found.")]
     EmptyVideo,
-
-    #[error("The current segment is empty.")]
-    EmptySegment,
-
-    #[error("Failed to reset the decoder: {0}")]
-    ResetFailure(String),
-
-    #[error("Failed to configure the video decoder: {0}")]
-    ConfigureFailure(String),
 
     /// e.g. unsupported codec
     #[error("Failed to create video chunk: {0}")]
@@ -44,7 +31,7 @@ pub enum DecodingError {
 
     /// e.g. unsupported codec
     #[error("Failed to decode video: {0}")]
-    Decoding(String),
+    Decoding(#[from] re_video::decode::Error),
 
     #[error("The timestamp passed was negative.")]
     NegativeTimestamp,
@@ -53,33 +40,30 @@ pub enum DecodingError {
     #[error("Bad data.")]
     BadData,
 
-    #[cfg(not(target_arch = "wasm32"))]
-    #[error("Unsupported codec: {codec:?}. Only AV1 is currently supported on native.")]
-    UnsupportedCodec { codec: String },
-
-    #[cfg(not(target_arch = "wasm32"))]
-    #[error("Native video decoding not supported in native debug builds.")]
-    NoNativeDebug,
-
     #[error("Failed to create gpu texture from decoded video data: {0}")]
     ImageDataToTextureError(#[from] crate::resource_managers::ImageDataToTextureError),
 }
 
-pub type FrameDecodingResult = Result<VideoFrameTexture, DecodingError>;
+pub type FrameDecodingResult = Result<VideoFrameTexture, VideoPlayerError>;
 
 /// Information about the status of a frame decoding.
 pub struct VideoFrameTexture {
     /// The texture to show.
     pub texture: GpuTexture2D,
 
-    /// What part of the video this video frame covers.
-    pub time_range: Range<re_video::Time>,
-
     /// If true, the texture is outdated. Keep polling for a fresh one.
     pub is_pending: bool,
 
     /// If true, this texture is so out-dated that it should have a loading spinner on top of it.
     pub show_spinner: bool,
+
+    /// Format information about the original data from the video decoder.
+    ///
+    /// The texture is already converted to something the renderer can use directly.
+    pub source_pixel_format: SourceImageDataFormat,
+
+    /// Meta information about the decoded frame.
+    pub frame_info: Option<re_video::decode::FrameInfo>,
 }
 
 /// Identifier for an independent video decoding stream.
@@ -88,10 +72,10 @@ pub struct VideoFrameTexture {
 /// The id does not need to be globally unique, just unique enough to distinguish streams of the same video.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 
-pub struct VideoDecodingStreamId(pub u64);
+pub struct VideoPlayerStreamId(pub u64);
 
-struct DecoderEntry {
-    decoder: decoder::VideoDecoder,
+struct PlayerEntry {
+    player: player::VideoPlayer,
     frame_index: u64,
 }
 
@@ -101,56 +85,8 @@ struct DecoderEntry {
 pub struct Video {
     debug_name: String,
     data: Arc<re_video::VideoData>,
-    decoders: Mutex<HashMap<VideoDecodingStreamId, DecoderEntry>>,
-    decode_hw_acceleration: DecodeHardwareAcceleration,
-}
-
-/// How the video should be decoded.
-///
-/// Depending on the decoder backend, these settings are merely hints and may be ignored.
-/// However, they can be useful in some situations to work around issues.
-///
-/// On the web this directly corresponds to
-/// <https://www.w3.org/TR/webcodecs/#hardware-acceleration>
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Hash)]
-#[cfg_attr(feature = "serde", derive(serde::Deserialize, serde::Serialize))]
-pub enum DecodeHardwareAcceleration {
-    /// May use hardware acceleration if available and compatible with the codec.
-    #[default]
-    Auto,
-
-    /// Should use a software decoder even if hardware acceleration is available.
-    ///
-    /// If no software decoder is present, this may cause decoding to fail.
-    PreferSoftware,
-
-    /// Should use a hardware decoder.
-    ///
-    /// If no hardware decoder is present, this may cause decoding to fail.
-    PreferHardware,
-}
-
-impl std::fmt::Display for DecodeHardwareAcceleration {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Auto => write!(f, "Auto"),
-            Self::PreferSoftware => write!(f, "Prefer software"),
-            Self::PreferHardware => write!(f, "Prefer hardware"),
-        }
-    }
-}
-
-impl std::str::FromStr for DecodeHardwareAcceleration {
-    type Err = ();
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.trim().to_lowercase().replace('-', "_").as_str() {
-            "auto" => Ok(Self::Auto),
-            "prefer_software" | "software" => Ok(Self::PreferSoftware),
-            "prefer_hardware" | "hardware" => Ok(Self::PreferHardware),
-            _ => Err(()),
-        }
-    }
+    players: Mutex<HashMap<VideoPlayerStreamId, PlayerEntry>>,
+    decode_settings: DecodeSettings,
 }
 
 impl Video {
@@ -158,21 +94,15 @@ impl Video {
     ///
     /// Currently supports the following media types:
     /// - `video/mp4`
-    pub fn load(
-        debug_name: String,
-        data: &[u8],
-        media_type: &str,
-        decode_hw_acceleration: DecodeHardwareAcceleration,
-    ) -> Result<Self, VideoLoadError> {
-        let data = Arc::new(re_video::VideoData::load_from_bytes(data, media_type)?);
-        let decoders = Mutex::new(HashMap::default());
+    pub fn load(debug_name: String, data: Arc<VideoData>, decode_settings: DecodeSettings) -> Self {
+        let players = Mutex::new(HashMap::default());
 
-        Ok(Self {
+        Self {
             debug_name,
             data,
-            decoders,
-            decode_hw_acceleration,
-        })
+            players,
+            decode_settings,
+        }
     }
 
     /// The video data
@@ -193,18 +123,21 @@ impl Video {
         self.data.height()
     }
 
-    /// Returns a texture with the latest frame at the given timestamp.
+    /// Returns a texture with the latest frame at the given time since video start.
     ///
-    /// If the timestamp is negative, a zeroed texture is returned.
+    /// If the time is negative, a zeroed texture is returned.
     ///
     /// This API is _asynchronous_, meaning that the decoder may not yet have decoded the frame
     /// at the given timestamp. If the frame is not yet available, the returned texture will be
     /// empty.
+    ///
+    /// The time is specified in seconds since the start of the video.
     pub fn frame_at(
         &self,
         render_context: &RenderContext,
-        decoder_stream_id: VideoDecodingStreamId,
-        presentation_timestamp_s: f64,
+        player_stream_id: VideoPlayerStreamId,
+        time_since_video_start_in_seconds: f64,
+        video_data: &[u8],
     ) -> FrameDecodingResult {
         re_tracing::profile_function!();
 
@@ -215,27 +148,29 @@ impl Video {
         // Upgradable-reads exclude other upgradable-reads which means that if an element is not found,
         // we have to drop the unlock and relock with a write lock, during which new elements may be inserted.
         // This can be overcome by looping until successful, or instead we can just use a single Mutex lock and leave it there.
-        let mut decoders = self.decoders.lock();
-        let decoder_entry = match decoders.entry(decoder_stream_id) {
+        let mut players = self.players.lock();
+        let decoder_entry = match players.entry(player_stream_id) {
             Entry::Occupied(occupied_entry) => occupied_entry.into_mut(),
             Entry::Vacant(vacant_entry) => {
-                let new_decoder = decoder::VideoDecoder::new(
+                let new_player = player::VideoPlayer::new(
                     &self.debug_name,
                     render_context,
                     self.data.clone(),
-                    self.decode_hw_acceleration,
+                    &self.decode_settings,
                 )?;
-                vacant_entry.insert(DecoderEntry {
-                    decoder: new_decoder,
+                vacant_entry.insert(PlayerEntry {
+                    player: new_player,
                     frame_index: global_frame_idx,
                 })
             }
         };
 
         decoder_entry.frame_index = render_context.active_frame_idx();
-        decoder_entry
-            .decoder
-            .frame_at(render_context, presentation_timestamp_s)
+        decoder_entry.player.frame_at(
+            render_context,
+            time_since_video_start_in_seconds,
+            video_data,
+        )
     }
 
     /// Removes all decoders that have been unused in the last frame.
@@ -246,7 +181,7 @@ impl Video {
             return;
         }
 
-        let mut decoders = self.decoders.lock();
-        decoders.retain(|_, decoder| decoder.frame_index >= active_frame_idx - 1);
+        let mut players = self.players.lock();
+        players.retain(|_, decoder| decoder.frame_index >= active_frame_idx - 1);
     }
 }

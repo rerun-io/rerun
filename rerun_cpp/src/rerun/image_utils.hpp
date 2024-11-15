@@ -5,6 +5,7 @@
 #include "datatypes/pixel_format.hpp"
 #include "half.hpp"
 
+#include <cassert>
 #include <cstdint>
 
 namespace rerun {
@@ -52,6 +53,8 @@ namespace rerun {
             case datatypes::ChannelDatatype::F64: {
                 return 64;
             }
+            default:
+                assert(false && "unreachable");
         }
         return 0;
     }
@@ -143,6 +146,8 @@ namespace rerun {
             case datatypes::ColorModel::BGRA:
             case datatypes::ColorModel::RGBA:
                 return 4;
+            default:
+                assert(false && "unreachable");
         }
         return 0;
     }
@@ -173,6 +178,9 @@ namespace rerun {
             case datatypes::PixelFormat::Y8_LimitedRange:
             case datatypes::PixelFormat::Y8_FullRange:
                 return num_pixels;
+
+            default:
+                assert(false && "unreachable");
         }
         return 0;
     }

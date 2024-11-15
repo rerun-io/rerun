@@ -16,17 +16,91 @@ All these formats support random access.
 For more compressed image formats, see [`archetypes.EncodedImage`](https://rerun.io/docs/reference/types/archetypes/encoded_image).
 
 ## Variants
+#### `Y_U_V12_LimitedRange` = 20
+`Y_U_V12` is a YUV 4:2:0 fully planar YUV format without chroma downsampling, also known as `I420`.
 
-* Y_U_V12_LimitedRange
-* NV12
-* YUY2
-* Y8_FullRange
-* Y_U_V24_LimitedRange
-* Y_U_V24_FullRange
-* Y8_LimitedRange
-* Y_U_V12_FullRange
-* Y_U_V16_LimitedRange
-* Y_U_V16_FullRange
+This uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].
+
+First comes entire image in Y in one plane, followed by the U and V planes, which each only have half
+the resolution of the Y plane.
+
+#### `NV12` = 26
+`NV12` (aka `Y_UV12`) is a YUV 4:2:0 chroma downsampled form at with 12 bits per pixel and 8 bits per channel.
+
+This uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].
+
+First comes entire image in Y in one plane,
+followed by a plane with interleaved lines ordered as U0, V0, U1, V1, etc.
+
+#### `YUY2` = 27
+`YUY2` (aka `YUYV`, `YUYV16` or `NV21`), is a YUV 4:2:2 chroma downsampled format with 16 bits per pixel and 8 bits per channel.
+
+This uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].
+
+The order of the channels is Y0, U0, Y1, V0, all in the same plane.
+
+#### `Y8_FullRange` = 30
+Monochrome Y plane only, essentially a YUV 4:0:0 planar format.
+
+Also known as just "gray". This is virtually identical to a 8bit luminance/grayscale (see [`datatypes.ColorModel`](https://rerun.io/docs/reference/types/datatypes/color_model)).
+
+This uses entire range YUV, i.e. Y is expected to be within [0, 255].
+(as opposed to "limited range" YUV as used e.g. in NV12).
+
+#### `Y_U_V24_LimitedRange` = 39
+`Y_U_V24` is a YUV 4:4:4 fully planar YUV format without chroma downsampling, also known as `I444`.
+
+This uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].
+
+First comes entire image in Y in one plane, followed by the U and V planes.
+
+#### `Y_U_V24_FullRange` = 40
+`Y_U_V24` is a YUV 4:4:4 fully planar YUV format without chroma downsampling, also known as `I444`.
+
+This uses full range YUV with all components ranging from 0 to 255
+(as opposed to "limited range" YUV as used e.g. in NV12).
+
+First comes entire image in Y in one plane, followed by the U and V planes.
+
+#### `Y8_LimitedRange` = 41
+Monochrome Y plane only, essentially a YUV 4:0:0 planar format.
+
+Also known as just "gray".
+
+This uses limited range YUV, i.e. Y is expected to be within [16, 235].
+If not for this range limitation/remapping, this is almost identical to 8bit luminace/grayscale (see [`datatypes.ColorModel`](https://rerun.io/docs/reference/types/datatypes/color_model)).
+
+#### `Y_U_V12_FullRange` = 44
+`Y_U_V12` is a YUV 4:2:0 fully planar YUV format without chroma downsampling, also known as `I420`.
+
+This uses full range YUV with all components ranging from 0 to 255
+(as opposed to "limited range" YUV as used e.g. in NV12).
+
+First comes entire image in Y in one plane, followed by the U and V planes, which each only have half
+the resolution of the Y plane.
+
+#### `Y_U_V16_LimitedRange` = 49
+`Y_U_V16` is a YUV 4:2:2 fully planar YUV format without chroma downsampling, also known as `I422`.
+
+This uses limited range YUV, i.e. Y is expected to be within [16, 235] and U/V within [16, 240].
+
+First comes entire image in Y in one plane, followed by the U and V planes, which each only have half
+the horizontal resolution of the Y plane.
+
+#### `Y_U_V16_FullRange` = 50
+`Y_U_V16` is a YUV 4:2:2 fully planar YUV format without chroma downsampling, also known as `I422`.
+
+This uses full range YUV with all components ranging from 0 to 255
+(as opposed to "limited range" YUV as used e.g. in NV12).
+
+First comes entire image in Y in one plane, followed by the U and V planes, which each only have half
+the horizontal resolution of the Y plane.
+
+
+## Arrow datatype
+```
+uint8
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `PixelFormat`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1datatypes.html)

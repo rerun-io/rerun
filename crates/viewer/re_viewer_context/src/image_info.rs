@@ -104,7 +104,7 @@ impl ImageInfo {
                             u,
                             v,
                             pixel_format.is_limited_yuv_range(),
-                            pixel_format.color_primaries(),
+                            pixel_format.yuv_matrix_coefficients(),
                         );
                         Some(TensorElement::U8(rgb[channel as usize]))
                     } else if channel == 4 {
@@ -164,7 +164,7 @@ impl ImageInfo {
             // But it can happen, e.g. when logging a `1x1xu8` image followed by a `1x1xf32` image
             // to the same entity path, and they are put in the same chunk.
 
-            if cfg!(debug_asserttions) {
+            if cfg!(debug_assertions) {
                 re_log::warn_once!(
                     "The image buffer was not aligned to the element type {}",
                     std::any::type_name::<T>()

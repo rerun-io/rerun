@@ -6,10 +6,32 @@ title: "FillMode"
 How a geometric shape is drawn and colored.
 
 ## Variants
+#### `MajorWireframe` = 1
+Lines are drawn around the parts of the shape which directly correspond to the logged data.
 
-* MajorWireframe
-* DenseWireframe
-* Solid
+Examples of what this means:
+
+* An [`archetypes.Ellipsoids3D`](https://rerun.io/docs/reference/types/archetypes/ellipsoids3d) will draw three axis-aligned ellipses that are cross-sections
+  of each ellipsoid, each of which displays two out of three of the sizes of the ellipsoid.
+* For [`archetypes.Boxes3D`](https://rerun.io/docs/reference/types/archetypes/boxes3d), it is the edges of the box, identical to `DenseWireframe`.
+
+#### `DenseWireframe` = 2
+Many lines are drawn to represent the surface of the shape in a see-through fashion.
+
+Examples of what this means:
+
+* An [`archetypes.Ellipsoids3D`](https://rerun.io/docs/reference/types/archetypes/ellipsoids3d) will draw a wireframe triangle mesh that approximates each
+  ellipsoid.
+* For [`archetypes.Boxes3D`](https://rerun.io/docs/reference/types/archetypes/boxes3d), it is the edges of the box, identical to `MajorWireframe`.
+
+#### `Solid` = 3
+The surface of the shape is filled in with a solid color. No lines are drawn.
+
+
+## Arrow datatype
+```
+uint8
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `FillMode`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)

@@ -3,16 +3,70 @@ use re_viewer_context::{MaybeMutRef, ViewerContext};
 
 use crate::response_utils::response_with_changes_of_inner;
 
+/// Is a particular variant of an enum available for selection? If not, why?
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum VariantAvailable {
+    /// The variant is available
+    Yes,
+
+    /// The variant is not available.
+    No {
+        /// The reason why the variant is not available, markdown formatted.
+        reason_markdown: String,
+    },
+}
+
+/// Trait for a type that can provide information about whether a particular variant of an enum is
+/// available for selection.
+pub trait VariantAvailableProvider<EnumT: re_types_core::reflection::Enum> {
+    fn is_variant_enabled(ctx: &ViewerContext<'_>, variant: EnumT) -> VariantAvailable;
+}
+
+/// A variant available provider that makes all variants available.
+struct AllEnumVariantAvailable<EnumT: re_types_core::reflection::Enum> {
+    _phantom: std::marker::PhantomData<EnumT>,
+}
+
+impl<EnumT: re_types_core::reflection::Enum> VariantAvailableProvider<EnumT>
+    for AllEnumVariantAvailable<EnumT>
+{
+    fn is_variant_enabled(_ctx: &ViewerContext<'_>, _variant: EnumT) -> VariantAvailable {
+        VariantAvailable::Yes
+    }
+}
+
+/// Edit or view an enum value using a combobox. All variants are available.
 pub fn edit_view_enum<EnumT: re_types_core::reflection::Enum + re_types_core::Component>(
-    _ctx: &ViewerContext<'_>,
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    current_value: &mut MaybeMutRef<'_, EnumT>,
+) -> egui::Response {
+    edit_view_enum_with_variant_available::<EnumT, AllEnumVariantAvailable<EnumT>>(
+        ctx,
+        ui,
+        current_value,
+    )
+}
+
+/// Edit or view an enum value using a combobox. The availability of each variant is determined by
+/// the provided `VariantAvailableProvider` type.
+pub fn edit_view_enum_with_variant_available<
+    EnumT: re_types_core::reflection::Enum + re_types_core::Component,
+    VariantAvailT: VariantAvailableProvider<EnumT>,
+>(
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     current_value: &mut MaybeMutRef<'_, EnumT>,
 ) -> egui::Response {
     let id_salt = EnumT::name().full_name();
-    edit_view_enum_impl(ui, id_salt, current_value)
+    edit_view_enum_impl::<_, VariantAvailT>(ctx, ui, id_salt, current_value)
 }
 
-fn edit_view_enum_impl<EnumT: re_types_core::reflection::Enum>(
+fn edit_view_enum_impl<
+    EnumT: re_types_core::reflection::Enum,
+    VariantAvailT: VariantAvailableProvider<EnumT>,
+>(
+    ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     id_salt: &str,
     current_value: &mut MaybeMutRef<'_, EnumT>,
@@ -32,9 +86,19 @@ fn edit_view_enum_impl<EnumT: re_types_core::reflection::Enum>(
                     return ui.label("<no variants>");
                 };
 
-                let mut response = variant_ui(ui, current_value, first);
+                let mut response = crate::datatype_uis::enum_combobox::variant_ui(
+                    ui,
+                    current_value,
+                    first,
+                    VariantAvailT::is_variant_enabled(ctx, first),
+                );
                 for variant in iter {
-                    response |= variant_ui(ui, current_value, variant);
+                    response |= variant_ui(
+                        ui,
+                        current_value,
+                        variant,
+                        VariantAvailT::is_variant_enabled(ctx, variant),
+                    );
                 }
                 response
             });
@@ -53,9 +117,24 @@ fn variant_ui<EnumT: re_types_core::reflection::Enum>(
     ui: &mut egui::Ui,
     current_value: &mut EnumT,
     variant: EnumT,
+    variant_available: VariantAvailable,
 ) -> egui::Response {
-    ui.selectable_value(current_value, variant, variant.to_string())
-        .on_hover_ui(|ui| {
-            ui.markdown_ui(variant.docstring_md());
-        })
+    match variant_available {
+        VariantAvailable::Yes => ui
+            .selectable_value(current_value, variant, variant.to_string())
+            .on_hover_ui(|ui| {
+                ui.markdown_ui(variant.docstring_md());
+            }),
+        VariantAvailable::No {
+            reason_markdown: reason,
+        } => {
+            ui.add_enabled_ui(false, |ui| {
+                ui.selectable_value(current_value, variant, variant.to_string())
+                    .on_disabled_hover_ui(|ui| {
+                        ui.markdown_ui(&format!("{}\n\n{}", variant.docstring_md(), reason));
+                    })
+            })
+            .inner
+        }
+    }
 }

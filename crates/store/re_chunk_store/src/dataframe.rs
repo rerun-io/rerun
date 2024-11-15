@@ -8,53 +8,12 @@ use arrow2::{
 };
 
 use re_chunk::TimelineName;
-use re_log_types::{EntityPath, ResolvedTimeRange, TimeInt, Timeline};
+use re_log_types::{ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_types_core::{ArchetypeName, ComponentName};
 
 use crate::{ChunkStore, ColumnMetadata};
 
 // --- Descriptors ---
-
-/// When selecting secondary component columns, specify how the joined data should be encoded.
-///
-/// Because range-queries often involve repeating the same joined-in data multiple times,
-/// the strategy we choose for joining can have a significant impact on the size and memory
-/// overhead of the `RecordBatch`.
-#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum JoinEncoding {
-    /// Slice the `RecordBatch` to minimal overlapping sub-ranges.
-    ///
-    /// This is the default, and should always be used for the POV component which defines
-    /// the optimal size for `RecordBatch`.
-    ///
-    /// This minimizes the need for allocation, but at the cost of `RecordBatch`es that are
-    /// almost always smaller than the optimal size. In the common worst-case, this will result
-    /// in single-row `RecordBatch`es.
-    #[default]
-    OverlappingSlice,
-
-    /// Dictionary-encode the joined column.
-    ///
-    /// Using dictionary-encoding allows any repeated data to be shared between rows,
-    /// but comes with the cost of an extra dictionary-lookup indirection.
-    ///
-    /// Note that this changes the physical type of the returned column.
-    ///
-    /// Using this encoding for complex types is incompatible with some arrow libraries.
-    DictionaryEncode,
-    //
-    // TODO(jleibs):
-    // RepeatCopy,
-    //
-    // Repeat the joined column by physically copying the data.
-    //
-    // This will always allocate a new column in the `RecordBatch`, matching the size of the
-    // POV component.
-    //
-    // This is the most expensive option, but can make working with the data more efficient,
-    // especially when the copied column is small.
-    //
-}
 
 // TODO(#6889): At some point all these descriptors needs to be interned and have handles or
 // something. And of course they need to be codegen. But we'll get there once we're back to
@@ -101,6 +60,14 @@ impl ColumnDescriptor {
         match self {
             Self::Time(descr) => descr.timeline.name().to_string(),
             Self::Component(descr) => descr.component_name.short_name().to_owned(),
+        }
+    }
+
+    #[inline]
+    pub fn is_static(&self) -> bool {
+        match self {
+            Self::Time(_) => false,
+            Self::Component(descr) => descr.is_static,
         }
     }
 }
@@ -184,11 +151,6 @@ pub struct ComponentColumnDescriptor {
     /// we introduce mono-type optimization, this might be a native type instead.
     pub store_datatype: ArrowDatatype,
 
-    /// How the data will be joined into the resulting `RecordBatch`.
-    //
-    // TODO(cmc): remove with the old re_dataframe.
-    pub join_encoding: JoinEncoding,
-
     /// Whether this column represents static data.
     pub is_static: bool,
 
@@ -219,7 +181,6 @@ impl Ord for ComponentColumnDescriptor {
             archetype_name,
             archetype_field_name,
             component_name,
-            join_encoding: _,
             store_datatype: _,
             is_static: _,
             is_indicator: _,
@@ -242,7 +203,6 @@ impl std::fmt::Display for ComponentColumnDescriptor {
             archetype_name,
             archetype_field_name,
             component_name,
-            join_encoding: _,
             store_datatype: _,
             is_static,
             is_indicator: _,
@@ -277,6 +237,13 @@ impl std::fmt::Display for ComponentColumnDescriptor {
 }
 
 impl ComponentColumnDescriptor {
+    pub fn component_path(&self) -> ComponentPath {
+        ComponentPath {
+            entity_path: self.entity_path.clone(),
+            component_name: self.component_name,
+        }
+    }
+
     #[inline]
     pub fn matches(&self, entity_path: &EntityPath, component_name: &str) -> bool {
         &self.entity_path == entity_path && self.component_name.matches(component_name)
@@ -288,7 +255,6 @@ impl ComponentColumnDescriptor {
             archetype_name,
             archetype_field_name,
             component_name,
-            join_encoding: _,
             store_datatype: _,
             is_static,
             is_indicator,
@@ -324,14 +290,7 @@ impl ComponentColumnDescriptor {
 
     #[inline]
     pub fn returned_datatype(&self) -> ArrowDatatype {
-        match self.join_encoding {
-            JoinEncoding::OverlappingSlice => self.store_datatype.clone(),
-            JoinEncoding::DictionaryEncode => ArrowDatatype::Dictionary(
-                arrow2::datatypes::IntegerType::Int32,
-                std::sync::Arc::new(self.store_datatype.clone()),
-                true,
-            ),
-        }
+        self.store_datatype.clone()
     }
 
     #[inline]
@@ -347,12 +306,6 @@ impl ComponentColumnDescriptor {
         )
         // TODO(#6889): This needs some proper sorbetization -- I just threw these names randomly.
         .with_metadata(self.metadata())
-    }
-
-    #[inline]
-    pub fn with_join_encoding(mut self, join_encoding: JoinEncoding) -> Self {
-        self.join_encoding = join_encoding;
-        self
     }
 }
 
@@ -426,11 +379,6 @@ pub struct ComponentColumnSelector {
     /// This string will be flexibly matched against the available component names.
     /// Valid matches are case invariant matches of either the full name or the short name.
     pub component_name: String,
-
-    /// How to join the data into the `RecordBatch`.
-    //
-    // TODO(cmc): remove once old `re_dataframe` is gone.
-    pub join_encoding: JoinEncoding,
 }
 
 impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
@@ -439,7 +387,6 @@ impl From<ComponentColumnDescriptor> for ComponentColumnSelector {
         Self {
             entity_path: desc.entity_path.clone(),
             component_name: desc.component_name.to_string(),
-            join_encoding: desc.join_encoding,
         }
     }
 }
@@ -451,7 +398,6 @@ impl ComponentColumnSelector {
         Self {
             entity_path,
             component_name: C::name().to_string(),
-            join_encoding: JoinEncoding::default(),
         }
     }
 
@@ -461,15 +407,7 @@ impl ComponentColumnSelector {
         Self {
             entity_path,
             component_name: component_name.to_string(),
-            join_encoding: JoinEncoding::default(),
         }
-    }
-
-    /// Specify how the data should be joined into the `RecordBatch`.
-    #[inline]
-    pub fn with_join_encoding(mut self, join_encoding: JoinEncoding) -> Self {
-        self.join_encoding = join_encoding;
-        self
     }
 }
 
@@ -478,7 +416,6 @@ impl std::fmt::Display for ComponentColumnSelector {
         let Self {
             entity_path,
             component_name,
-            join_encoding: _,
         } = self;
 
         f.write_fmt(format_args!("{entity_path}:{component_name}"))
@@ -497,9 +434,6 @@ pub struct ArchetypeFieldColumnSelector {
 
     /// The field within the `Archetype` associated with this data.
     field: String,
-
-    /// How to join the data into the `RecordBatch`.
-    join_encoding: JoinEncoding,
 }
 */
 
@@ -575,8 +509,7 @@ pub type IndexRange = ResolvedTimeRange;
 /// ```
 //
 // TODO(cmc): ideally we'd like this to be the same type as the one used in the blueprint, possibly?
-// TODO(cmc): Get rid of all re_dataframe (as opposed to re_dataframe) stuff and rename this.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
 pub struct QueryExpression {
     /// The subset of the database that the query will run on: a set of [`EntityPath`]s and their
     /// associated [`ComponentName`]s.
@@ -619,17 +552,20 @@ pub struct QueryExpression {
     /// Only rows where at least 1 column contains non-null data at that index will be kept in the
     /// final dataset.
     ///
-    /// Example: `Timeline("frame")`.
+    /// If left unspecified, the results will only contain static data.
+    ///
+    /// Examples: `Some(Timeline("frame"))`, `None` (only static data).
     //
     // TODO(cmc): this has to be a selector otherwise this is a horrible UX.
-    pub filtered_index: Timeline,
+    pub filtered_index: Option<Index>,
 
     /// The range of index values used to filter out _rows_ from the view contents.
     ///
     /// Only rows where at least 1 of the view-contents contains non-null data within that range will be kept in
     /// the final dataset.
     ///
-    /// This is ignored if [`QueryExpression::using_index_values`] is set.
+    /// * This has no effect if `filtered_index` isn't set.
+    /// * This has no effect if [`QueryExpression::using_index_values`] is set.
     ///
     /// Example: `ResolvedTimeRange(10, 20)`.
     pub filtered_index_range: Option<IndexRange>,
@@ -639,7 +575,9 @@ pub struct QueryExpression {
     /// Only rows where at least 1 column contains non-null data at these specific values will be kept
     /// in the final dataset.
     ///
-    /// This is ignored if [`QueryExpression::using_index_values`] is set.
+    /// * This has no effect if `filtered_index` isn't set.
+    /// * This has no effect if [`QueryExpression::using_index_values`] is set.
+    /// * Using [`TimeInt::STATIC`] as index value has no effect.
     ///
     /// Example: `[TimeInt(12), TimeInt(14)]`.
     pub filtered_index_values: Option<BTreeSet<IndexValue>>,
@@ -651,10 +589,10 @@ pub struct QueryExpression {
     /// The semantics of the query are consistent with all other settings: the results will be
     /// sorted on the `filtered_index`, and only contain unique index values.
     ///
-    /// The order of the samples will be respected in the final result.
-    ///
-    /// If [`QueryExpression::using_index_values`] is set, it overrides both [`QueryExpression::filtered_index_range`]
-    /// and [`QueryExpression::filtered_index_values`].
+    /// * This has no effect if `filtered_index` isn't set.
+    /// * If set, this overrides both [`QueryExpression::filtered_index_range`] and
+    ///   [`QueryExpression::filtered_index_values`].
+    /// * Using [`TimeInt::STATIC`] as index value has no effect.
     ///
     /// Example: `[TimeInt(12), TimeInt(14)]`.
     pub using_index_values: Option<BTreeSet<IndexValue>>,
@@ -666,7 +604,7 @@ pub struct QueryExpression {
     /// Example: `ComponentColumnSelector("rerun.components.Position3D")`.
     //
     // TODO(cmc): multi-pov support
-    pub filtered_point_of_view: Option<ComponentColumnSelector>,
+    pub filtered_is_not_null: Option<ComponentColumnSelector>,
 
     /// Specifies how null values should be filled in the returned dataframe.
     ///
@@ -683,27 +621,6 @@ pub struct QueryExpression {
     //
     // TODO(cmc): the selection has to be on the QueryHandle, otherwise it's hell to use.
     pub selection: Option<Vec<ColumnSelector>>,
-}
-
-impl QueryExpression {
-    #[inline]
-    pub fn new(index: impl Into<Timeline>) -> Self {
-        let index = index.into();
-
-        Self {
-            view_contents: None,
-            include_semantically_empty_columns: false,
-            include_indicator_columns: false,
-            include_tombstone_columns: false,
-            filtered_index: index,
-            filtered_index_range: None,
-            filtered_index_values: None,
-            using_index_values: None,
-            filtered_point_of_view: None,
-            sparse_fill_strategy: SparseFillStrategy::None,
-            selection: None,
-        }
-    }
 }
 
 // ---
@@ -760,7 +677,6 @@ impl ChunkStore {
                     // It might be wrapped further in e.g. a dict, but at the very least
                     // it's a list.
                     store_datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
-                    join_encoding: JoinEncoding::default(),
                     is_static,
                     is_indicator,
                     is_tombstone,
@@ -844,7 +760,6 @@ impl ChunkStore {
             archetype_field_name: None,
             component_name,
             store_datatype: ArrowListArray::<i32>::default_datatype(datatype.clone()),
-            join_encoding: selector.join_encoding,
             is_static,
             is_indicator,
             is_tombstone,
@@ -892,7 +807,7 @@ impl ChunkStore {
             filtered_index_range: _,
             filtered_index_values: _,
             using_index_values: _,
-            filtered_point_of_view: _,
+            filtered_is_not_null: _,
             sparse_fill_strategy: _,
             selection: _,
         } = query;

@@ -22,7 +22,7 @@
 //! trying to achieve and whether the viewer is running in the same process as your code, in
 //! another process, or even as a separate web application.
 //!
-//! Checkout [SDK Operating Modes](https://www.rerun.io/docs/reference/sdk-operating-modes) for an
+//! Checkout [SDK Operating Modes](https://www.rerun.io/docs/reference/sdk/operating-modes) for an
 //! overview of what's possible and how.
 //!
 //! If you get stuck on anything, open an issue at <https://github.com/rerun-io/rerun/issues>.
@@ -136,11 +136,18 @@ pub use commands::{run, CallSource};
 #[cfg(feature = "sdk")]
 pub use sdk::*;
 
+/// All the types required by the dataframe API.
+#[cfg(feature = "dataframe")]
+pub mod dataframe {
+    pub use re_dataframe::*;
+}
+
 /// Everything needed to build custom `ChunkStoreSubscriber`s.
 pub use re_entity_db::external::re_chunk_store::{
-    ChunkStore, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent, ChunkStoreGeneration,
-    ChunkStoreSubscriber,
+    ChunkStore, ChunkStoreConfig, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent,
+    ChunkStoreGeneration, ChunkStoreHandle, ChunkStoreSubscriber, VersionPolicy,
 };
+pub use re_log_types::StoreKind;
 
 /// To register a new external data loader, simply add an executable in your $PATH whose name
 /// starts with this prefix.

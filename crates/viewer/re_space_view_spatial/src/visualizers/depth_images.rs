@@ -10,7 +10,7 @@ use re_types::{
         ViewCoordinates,
     },
     image::ImageKind,
-    Loggable as _,
+    Component as _,
 };
 use re_viewer_context::{
     ApplicableEntities, ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache,
@@ -23,7 +23,7 @@ use crate::{
     contexts::{SpatialSceneEntityContext, TwoDInThreeDTransformInfo},
     query_pinhole_legacy,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{filter_visualizable_2d_entities, SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES},
+    visualizers::filter_visualizable_2d_entities,
     PickableRectSourceData, PickableTexturedRect, SpatialSpaceView3D,
 };
 
@@ -329,7 +329,8 @@ impl VisualizerSystem for DepthImageVisualizer {
             render_ctx,
             &DepthClouds {
                 clouds: depth_clouds,
-                radius_boost_in_ui_points_for_outlines: SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
+                radius_boost_in_ui_points_for_outlines:
+                    re_space_view::SIZE_BOOST_IN_POINTS_FOR_POINT_OUTLINES,
             },
         ) {
             Ok(draw_data) => {

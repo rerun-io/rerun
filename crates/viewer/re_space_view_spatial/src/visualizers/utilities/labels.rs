@@ -5,7 +5,7 @@ use itertools::{izip, Either};
 use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
 use re_types::components::{ShowLabels, Text};
-use re_types::{Component, Loggable as _};
+use re_types::Component;
 use re_viewer_context::ResolvedAnnotationInfos;
 
 #[cfg(doc)]
@@ -26,9 +26,24 @@ pub enum UiLabelTarget {
 }
 
 #[derive(Clone)]
+pub enum UiLabelStyle {
+    Color(egui::Color32),
+
+    /// Style it like an error message
+    Error,
+}
+
+impl From<egui::Color32> for UiLabelStyle {
+    fn from(color: egui::Color32) -> Self {
+        Self::Color(color)
+    }
+}
+
+#[derive(Clone)]
 pub struct UiLabel {
     pub text: String,
-    pub color: egui::Color32,
+
+    pub style: UiLabelStyle,
 
     /// The shape/position being labeled.
     pub target: UiLabelTarget,
@@ -181,7 +196,7 @@ pub fn process_labels<'a, P: 'a>(
             .filter_map(move |(i, (position, label, color))| {
                 label.map(|label| UiLabel {
                     text: label,
-                    color: *color,
+                    style: (*color).into(),
                     target: target_from_position(position),
                     labeled_instance: InstancePathHash::instance(
                         entity_path,

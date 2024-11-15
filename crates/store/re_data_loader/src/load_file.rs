@@ -1,9 +1,10 @@
 use std::borrow::Cow;
 
+use ahash::{HashMap, HashMapExt};
 use re_log_types::{FileSource, LogMsg};
 use re_smart_channel::Sender;
 
-use crate::{extension, DataLoaderError, LoadedData};
+use crate::{DataLoader, DataLoaderError, LoadedData, RrdLoader};
 
 // ---
 
@@ -36,16 +37,7 @@ pub fn load_from_path(
 
     let rx = load(settings, path, None)?;
 
-    // TODO(cmc): should we always unconditionally set store info though?
-    // If we reach this point, then at least one compatible `DataLoader` has been found.
-    let store_info = prepare_store_info(&settings.store_id, file_source, path);
-    if let Some(store_info) = store_info {
-        if tx.send(store_info).is_err() {
-            return Ok(()); // other end has hung up.
-        }
-    }
-
-    send(&settings.store_id, rx, tx);
+    send(settings.clone(), file_source, rx, tx);
 
     Ok(())
 }
@@ -72,16 +64,7 @@ pub fn load_from_file_contents(
 
     let data = load(settings, filepath, Some(contents))?;
 
-    // TODO(cmc): should we always unconditionally set store info though?
-    // If we reach this point, then at least one compatible `DataLoader` has been found.
-    let store_info = prepare_store_info(&settings.store_id, file_source, filepath);
-    if let Some(store_info) = store_info {
-        if tx.send(store_info).is_err() {
-            return Ok(()); // other end has hung up.
-        }
-    }
-
-    send(&settings.store_id, data, tx);
+    send(settings.clone(), file_source, data, tx);
 
     Ok(())
 }
@@ -90,38 +73,27 @@ pub fn load_from_file_contents(
 
 /// Prepares an adequate [`re_log_types::StoreInfo`] [`LogMsg`] given the input.
 pub(crate) fn prepare_store_info(
+    application_id: re_log_types::ApplicationId,
     store_id: &re_log_types::StoreId,
     file_source: FileSource,
-    path: &std::path::Path,
-) -> Option<LogMsg> {
-    re_tracing::profile_function!(path.display().to_string());
+) -> LogMsg {
+    re_tracing::profile_function!();
 
     use re_log_types::SetStoreInfo;
 
-    let app_id = re_log_types::ApplicationId(path.display().to_string());
     let store_source = re_log_types::StoreSource::File { file_source };
 
-    let ext = extension(path);
-    let is_rrd = crate::SUPPORTED_RERUN_EXTENSIONS.contains(&ext.as_str());
-
-    (!is_rrd).then(|| {
-        LogMsg::SetStoreInfo(SetStoreInfo {
-            row_id: *re_chunk::RowId::new(),
-            info: re_log_types::StoreInfo {
-                application_id: app_id.clone(),
-                store_id: store_id.clone(),
-                cloned_from: None,
-                is_official_example: false,
-                started: re_log_types::Time::now(),
-                store_source,
-                // NOTE: If this is a natively supported file, it will go through one of the
-                // builtin dataloaders, i.e. the local version.
-                // Otherwise, it will go through an arbitrary external loader, at which point we
-                // have no certainty what the version is.
-                store_version: crate::is_supported_file_extension(ext.as_str())
-                    .then_some(re_build_info::CrateVersion::LOCAL),
-            },
-        })
+    LogMsg::SetStoreInfo(SetStoreInfo {
+        row_id: *re_chunk::RowId::new(),
+        info: re_log_types::StoreInfo {
+            application_id,
+            store_id: store_id.clone(),
+            cloned_from: None,
+            is_official_example: false,
+            started: re_log_types::Time::now(),
+            store_source,
+            store_version: Some(re_build_info::CrateVersion::LOCAL),
+        },
     })
 }
 
@@ -288,15 +260,23 @@ pub(crate) fn load(
 ///
 /// Runs asynchronously from another thread on native, synchronously on wasm.
 pub(crate) fn send(
-    store_id: &re_log_types::StoreId,
+    settings: crate::DataLoaderSettings,
+    file_source: FileSource,
     rx_loader: std::sync::mpsc::Receiver<LoadedData>,
     tx: &Sender<LogMsg>,
 ) {
     spawn({
         re_tracing::profile_function!();
 
+        #[derive(Default, Debug)]
+        struct Tracked {
+            is_rrd_or_rbl: bool,
+            already_has_store_info: bool,
+        }
+
+        let mut store_info_tracker: HashMap<re_log_types::StoreId, Tracked> = HashMap::new();
+
         let tx = tx.clone();
-        let store_id = store_id.clone();
         move || {
             // ## Ignoring channel errors
             //
@@ -304,14 +284,55 @@ pub(crate) fn send(
             // poll the channel in any case so as to make sure that the data producer
             // doesn't get stuck.
             for data in rx_loader {
-                let msg = match data.into_log_msg(&store_id) {
-                    Ok(msg) => msg,
+                let data_loader_name = data.data_loader_name().clone();
+                let msg = match data.into_log_msg() {
+                    Ok(msg) => {
+                        let store_info = match &msg {
+                            LogMsg::SetStoreInfo(set_store_info) => {
+                                Some((set_store_info.info.store_id.clone(), true))
+                            }
+                            LogMsg::ArrowMsg(store_id, _arrow_msg) => {
+                                Some((store_id.clone(), false))
+                            }
+                            LogMsg::BlueprintActivationCommand(_) => None,
+                        };
+
+                        if let Some((store_id, store_info_created)) = store_info {
+                            let tracked = store_info_tracker.entry(store_id).or_default();
+                            tracked.is_rrd_or_rbl =
+                                *data_loader_name == RrdLoader::name(&RrdLoader);
+                            tracked.already_has_store_info |= store_info_created;
+                        }
+
+                        msg
+                    }
                     Err(err) => {
-                        re_log::error!(%err, %store_id, "Couldn't serialize component data");
+                        re_log::error!(%err, "Couldn't serialize component data");
                         continue;
                     }
                 };
                 tx.send(msg).ok();
+            }
+
+            for (store_id, tracked) in store_info_tracker {
+                let is_a_preexisting_recording =
+                    Some(&store_id) == settings.opened_store_id.as_ref();
+
+                // Never try to send custom store info for RRDs and RBLs, they always have their own, and
+                // it's always right.
+                let should_force_store_info = settings.force_store_info && !tracked.is_rrd_or_rbl;
+
+                let should_send_new_store_info = should_force_store_info
+                    || (!tracked.already_has_store_info && !is_a_preexisting_recording);
+
+                if should_send_new_store_info {
+                    let app_id = settings
+                        .opened_application_id
+                        .clone()
+                        .unwrap_or_else(|| uuid::Uuid::new_v4().to_string().into());
+                    let store_info = prepare_store_info(app_id, &store_id, file_source.clone());
+                    tx.send(store_info).ok();
+                }
             }
 
             tx.quit(None).ok();

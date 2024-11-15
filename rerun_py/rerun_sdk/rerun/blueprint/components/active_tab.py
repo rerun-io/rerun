@@ -11,7 +11,7 @@ from ..._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["ActiveTab", "ActiveTabBatch", "ActiveTabType"]
+__all__ = ["ActiveTab", "ActiveTabBatch"]
 
 
 class ActiveTab(datatypes.EntityPath, ComponentMixin):
@@ -24,12 +24,8 @@ class ActiveTab(datatypes.EntityPath, ComponentMixin):
     pass
 
 
-class ActiveTabType(datatypes.EntityPathType):
-    _TYPE_NAME: str = "rerun.blueprint.components.ActiveTab"
-
-
 class ActiveTabBatch(datatypes.EntityPathBatch, ComponentBatchMixin):
-    _ARROW_TYPE = ActiveTabType()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.ActiveTab"
 
 
 # This is patched in late to avoid circular dependencies.

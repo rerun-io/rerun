@@ -3,6 +3,7 @@ use itertools::Itertools;
 
 use re_data_source::DataSource;
 use re_log_types::LogMsg;
+use re_sdk::sink::LogSink;
 use re_smart_channel::{ReceiveSet, Receiver, SmartMessagePayload};
 
 use crate::{commands::RrdCommands, CallSource};
@@ -27,14 +28,22 @@ The Rerun command-line interface:
 "#;
 
 // Place the important help _last_, to make it most visible in the terminal.
-const EXAMPLES: &str = r#"
+const ENVIRONMENT_VARIABLES_AND_EXAMPLES: &str = r#"
 Environment variables:
+    RERUN_CHUNK_MAX_BYTES     Maximum chunk size threshold for the compactor.
+    RERUN_CHUNK_MAX_ROWS      Maximum chunk row count threshold for the compactor (sorted chunks).
+    RERUN_CHUNK_MAX_ROWS_IF_UNSORTED
+                              Maximum chunk row count threshold for the compactor (unsorted chunks).
     RERUN_SHADER_PATH         The search path for shader/shader-imports. Only available in developer builds.
-    RERUN_TRACK_ALLOCATIONS   Track memory allocations to diagnose memory leaks in the viewer. WARNING: slows down the viewer by a lot!
+    RERUN_TRACK_ALLOCATIONS   Track memory allocations to diagnose memory leaks in the viewer.
+                              WARNING: slows down the viewer by a lot!
+    RERUN_MAPBOX_ACCESS_TOKEN The Mapbox access token to use the Mapbox-provided backgrounds in the map view.
     RUST_LOG                  Change the log level of the viewer, e.g. `RUST_LOG=debug`.
     WGPU_BACKEND              Overwrites the graphics backend used, must be one of `vulkan`, `metal` or `gl`.
-                              Default is `vulkan` everywhere except on Mac where we use `metal`. What is supported depends on your OS.
-    WGPU_POWER_PREF           Overwrites the power setting used for choosing a graphics adapter, must be `high` or `low`. (Default is `high`)
+                              Default is `vulkan` everywhere except on Mac where we use `metal`. What is
+                              supported depends on your OS.
+    WGPU_POWER_PREF           Overwrites the power setting used for choosing a graphics adapter, must be `high`
+                              or `low`. (Default is `high`)
 
 
 Examples:
@@ -47,11 +56,11 @@ Examples:
     Open an .rrd file and stream it to a Web Viewer:
         rerun recording.rrd --web-viewer
 
-    Host a Rerun Server which listens for incoming TCP connections from the logging SDK, buffer the log messages, and host the results over WebSocket:
-        rerun --serve
+    Host a Rerun TCP server which listens for incoming TCP connections from the logging SDK, buffer the log messages, and serves the results over WebSockets:
+        rerun --serve-web
 
     Host a Rerun Server which serves a recording over WebSocket to any connecting Rerun Viewers:
-        rerun --serve recording.rrd
+        rerun --serve-web recording.rrd
 
     Connect to a Rerun Server:
         rerun ws://localhost:9877
@@ -64,7 +73,7 @@ Examples:
 #[clap(
     long_about = LONG_ABOUT,
     // Place most of the help last, as that is most visible in the terminal.
-    after_long_help = EXAMPLES
+    after_long_help = ENVIRONMENT_VARIABLES_AND_EXAMPLES
 )]
 struct Args {
     // Note: arguments are sorted lexicographically for nicer `--help` message.
@@ -100,7 +109,7 @@ Example: `16GB` or `50%` (of system total)."
     #[clap(
         long,
         default_value = "25%",
-        long_help = r"An upper limit on how much memory the WebSocket server should use.
+        long_help = r"An upper limit on how much memory the WebSocket server (`--serve-web`) should use.
 The server buffers log messages for the benefit of late-arriving viewers.
 When this limit is reached, Rerun will drop the oldest data.
 Example: `16GB` or `50%` (of system total)."
@@ -137,16 +146,19 @@ When persisted, the state will be stored at the following locations:
     #[clap(long)]
     screenshot_to: Option<std::path::PathBuf>,
 
+    /// Deprecated: use `--serve-web` instead.
+    #[clap(long)]
+    serve: bool,
+
     /// Serve the recordings over WebSocket to one or more Rerun Viewers.
     ///
     /// This will also host a web-viewer over HTTP that can connect to the WebSocket address,
     /// but you can also connect with the native binary.
     ///
-    /// `rerun --serve` will act like a proxy,
-    /// listening for incoming TCP connection from logging SDKs, and forwarding it to
-    /// Rerun viewers.
+    /// `rerun --serve-web` will act like a proxy, listening for incoming TCP connection from
+    /// logging SDKs, and forwarding it to Rerun viewers.
     #[clap(long)]
-    serve: bool,
+    serve_web: bool,
 
     /// This is a hint that we expect a recording to stream in very soon.
     ///
@@ -189,7 +201,7 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     ///
     /// Requires Rerun to have been compiled with the `web_viewer` feature.
     ///
-    /// This implies `--serve`.
+    /// This implies `--serve-web`.
     #[clap(long)]
     web_viewer: bool,
 
@@ -549,10 +561,12 @@ where
 
     if args.web_viewer {
         args.serve = true;
+        args.serve_web = true;
     }
 
     if args.version {
         println!("{build_info}");
+        println!("Video features: {}", re_video::build_info().features);
         return Ok(0);
     }
 
@@ -612,6 +626,7 @@ fn run_impl(
 ) -> anyhow::Result<()> {
     #[cfg(feature = "native_viewer")]
     let profiler = run_profiler(&args);
+    let mut is_another_viewer_running = false;
 
     #[cfg(feature = "native_viewer")]
     let startup_options = {
@@ -654,20 +669,7 @@ fn run_impl(
     };
 
     // Where do we get the data from?
-    let rx: Vec<Receiver<LogMsg>> = if args.url_or_paths.is_empty() {
-        #[cfg(feature = "server")]
-        {
-            let server_options = re_sdk_comms::ServerOptions {
-                max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
-                quiet: false,
-            };
-            let rx = re_sdk_comms::serve(&args.bind, args.port, server_options)?;
-            vec![rx]
-        }
-
-        #[cfg(not(feature = "server"))]
-        vec![]
-    } else {
+    let rxs: Vec<Receiver<LogMsg>> = {
         let data_sources = args
             .url_or_paths
             .iter()
@@ -696,24 +698,48 @@ fn run_impl(
             }
         }
 
-        data_sources
+        let mut rxs = data_sources
             .into_iter()
             .map(|data_source| data_source.stream(None))
-            .collect::<Result<Vec<_>, _>>()?
+            .collect::<Result<Vec<_>, _>>()?;
+
+        #[cfg(feature = "server")]
+        {
+            // Check if there is already a viewer running and if so, send the data to it.
+            use std::net::TcpStream;
+            let addr = std::net::SocketAddr::new(re_sdk::default_server_addr().ip(), args.port);
+            if TcpStream::connect_timeout(&addr, std::time::Duration::from_secs(1)).is_ok() {
+                re_log::info!(
+                    %addr,
+                    "A process is already listening at this address. Assuming it's a Rerun Viewer."
+                );
+                is_another_viewer_running = true;
+            } else {
+                let server_options = re_sdk_comms::ServerOptions {
+                    max_latency_sec: parse_max_latency(args.drop_at_latency.as_ref()),
+                    quiet: false,
+                };
+                let tcp_listener: Receiver<LogMsg> =
+                    re_sdk_comms::serve(&args.bind, args.port, server_options)?;
+                rxs.push(tcp_listener);
+            }
+        }
+
+        rxs
     };
 
     // Now what do we do with the data?
 
     if args.test_receive {
-        let rx = ReceiveSet::new(rx);
+        let rx = ReceiveSet::new(rxs);
         assert_receive_into_entity_db(&rx).map(|_db| ())
     } else if let Some(rrd_path) = args.save {
-        let rx = ReceiveSet::new(rx);
+        let rx = ReceiveSet::new(rxs);
         Ok(stream_to_rrd_on_disk(&rx, &rrd_path.into())?)
-    } else if args.serve {
+    } else if args.serve || args.serve_web {
         #[cfg(not(feature = "server"))]
         {
-            _ = (call_source, rx);
+            _ = (call_source, rxs);
             anyhow::bail!("Can't host server - rerun was not compiled with the 'server' feature");
         }
 
@@ -743,7 +769,7 @@ fn run_impl(
 
             // This is the server which the web viewer will talk to:
             let _ws_server = re_ws_comms::RerunServer::new(
-                ReceiveSet::new(rx),
+                ReceiveSet::new(rxs),
                 &args.bind,
                 args.ws_server_port,
                 server_memory_limit,
@@ -769,8 +795,44 @@ fn run_impl(
                 .block(); // dropping should stop the server
             }
 
+            #[cfg(not(feature = "web_viewer"))]
+            {
+                // Returning from this function so soon would drop and therefore stop the server.
+                _ws_server.block();
+            }
+
             return Ok(());
         }
+    } else if is_another_viewer_running {
+        let addr = std::net::SocketAddr::new(re_sdk::default_server_addr().ip(), args.port);
+        re_log::info!(%addr, "Another viewer is already running, streaming data to it.");
+
+        let sink = re_sdk::sink::TcpSink::new(addr, re_sdk::default_flush_timeout());
+
+        for rx in rxs {
+            while rx.is_connected() {
+                while let Ok(msg) = rx.recv() {
+                    if let Some(log_msg) = msg.into_data() {
+                        sink.send(log_msg);
+                    }
+                }
+            }
+        }
+
+        // TODO(cmc): This is what I would have normally done, but this never terminates for some
+        // reason.
+        // let rx = ReceiveSet::new(rxs);
+        // while rx.is_connected() {
+        //     while let Ok(msg) = rx.recv() {
+        //         if let Some(log_msg) = msg.into_data() {
+        //             sink.send(log_msg);
+        //         }
+        //     }
+        // }
+
+        sink.flush_blocking();
+
+        Ok(())
     } else {
         #[cfg(feature = "native_viewer")]
         return re_viewer::run_native_app(
@@ -782,7 +844,7 @@ fn run_impl(
                     cc.egui_ctx.clone(),
                     cc.storage,
                 );
-                for rx in rx {
+                for rx in rxs {
                     app.add_receiver(rx);
                 }
                 app.set_profiler(profiler);
@@ -797,7 +859,7 @@ fn run_impl(
 
         #[cfg(not(feature = "native_viewer"))]
         {
-            _ = (call_source, rx);
+            _ = (call_source, rxs);
             anyhow::bail!(
                 "Can't start viewer - rerun was compiled without the 'native_viewer' feature"
             );
@@ -949,7 +1011,7 @@ fn stream_to_rrd_on_disk(
     let encoding_options = re_log_encoding::EncodingOptions::COMPRESSED;
     let file =
         std::fs::File::create(path).map_err(|err| FileSinkError::CreateFile(path.clone(), err))?;
-    let mut encoder = re_log_encoding::encoder::Encoder::new(
+    let mut encoder = re_log_encoding::encoder::DroppableEncoder::new(
         re_build_info::CrateVersion::LOCAL,
         encoding_options,
         file,

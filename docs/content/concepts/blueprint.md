@@ -1,5 +1,5 @@
 ---
-title: Blueprint
+title: Blueprints
 order: 600
 ---
 
@@ -100,7 +100,7 @@ blueprint data-store has several advantages:
     a dependency on the Viewer libraries.
 -   The blueprint is capable of representing any data that a recording can
     represent. This means that blueprint-sourced data
-    [overrides](visualizers-and-overrides.md#per-entity-component-override) are
+    [overrides](visualizers-and-overrides.md#Per-entity-component-override) are
     just as expressive as any logged data.
 -   The blueprint is actually stored as a full time-series, simplifying future
     implementations of things like snapshots and undo/redo mechanisms.

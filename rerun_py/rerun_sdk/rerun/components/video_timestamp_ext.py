@@ -38,6 +38,8 @@ class VideoTimestampExt:
                 if nanoseconds is not None:
                     raise ValueError("Cannot specify both `seconds` and `nanoseconds`.")
                 nanoseconds = int(seconds * 1e9 + 0.5)
+            elif nanoseconds is None:
+                raise ValueError("Either `seconds` or `nanoseconds` must be specified.")
 
             self.__attrs_init__(timestamp_ns=nanoseconds)
             return

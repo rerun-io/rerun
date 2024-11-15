@@ -1,5 +1,7 @@
 //! Detect and handle signals, panics, and other crashes, making sure to log them and optionally send them off to analytics.
 
+pub mod sigint;
+
 use re_build_info::BuildInfo;
 
 #[cfg(not(target_os = "windows"))]

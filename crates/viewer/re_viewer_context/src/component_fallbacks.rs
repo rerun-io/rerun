@@ -30,14 +30,6 @@ impl<T: re_types::ComponentBatch> From<T> for ComponentFallbackProviderResult {
 /// Error type for a fallback request.
 #[derive(thiserror::Error, Debug)]
 pub enum ComponentFallbackError {
-    /// The fallback provider is not able to handle the given component _and_ there was no placeholder value.
-    ///
-    /// This should never happen, since all components should have a placeholder value
-    /// registered in [`crate::ViewerContext::reflection`].
-    /// Meaning, that this is an unknown component or something went wrong with the placeholder registration.
-    #[error("Missing placeholder for component. Was the component's default registered with the viewer?")]
-    MissingPlaceholderValue,
-
     /// Not directly returned by the fallback provider, but useful when serializing a fallback value.
     #[error("Fallback value turned up to be empty when we expected a value.")]
     UnexpectedEmptyFallback,
@@ -65,10 +57,10 @@ pub trait ComponentFallbackProvider {
         &self,
         ctx: &QueryContext<'_>,
         component: ComponentName,
-    ) -> Result<Box<dyn arrow2::array::Array>, ComponentFallbackError> {
+    ) -> Box<dyn arrow2::array::Array> {
         match self.try_provide_fallback(ctx, component) {
             ComponentFallbackProviderResult::Value(value) => {
-                return Ok(value);
+                return value;
             }
             ComponentFallbackProviderResult::SerializationError(err) => {
                 // We still want to provide the base fallback value so we can move on,
@@ -80,12 +72,7 @@ pub trait ComponentFallbackProvider {
             ComponentFallbackProviderResult::ComponentNotHandled => {}
         }
 
-        ctx.viewer_ctx
-            .reflection
-            .components
-            .get(&component)
-            .and_then(|info| info.placeholder.clone())
-            .ok_or(ComponentFallbackError::MissingPlaceholderValue)
+        ctx.viewer_ctx.placeholder_for(component)
     }
 }
 
@@ -114,7 +101,7 @@ macro_rules! impl_component_fallback_provider {
                 _component_name: re_types::ComponentName,
             ) -> $crate::ComponentFallbackProviderResult {
                 $(
-                    if _component_name == <$component as re_types::Loggable>::name() {
+                    if _component_name == <$component as re_types::Component>::name() {
                         return  $crate::TypedComponentFallbackProvider::<$component>::fallback_for(self, _ctx).into();
                     }
                 )*

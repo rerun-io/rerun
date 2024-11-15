@@ -1,9 +1,10 @@
 use re_log_types::Instance;
-use re_renderer::PickingLayerInstanceId;
+use re_renderer::{renderer::LineStripFlags, PickingLayerInstanceId};
+use re_space_view::{process_annotation_slices, process_color_slice};
 use re_types::{
     archetypes::LineStrips3D,
-    components::{ClassId, Color, KeypointId, LineStrip3D, Radius, ShowLabels, Text},
-    ArrowString, Loggable as _,
+    components::{ClassId, Color, LineStrip3D, Radius, ShowLabels, Text},
+    ArrowString, Component as _,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
@@ -18,10 +19,7 @@ use crate::{
     visualizers::utilities::{process_labels_3d, LabeledBatch},
 };
 
-use super::{
-    filter_visualizable_3d_entities, process_annotation_and_keypoint_slices, process_color_slice,
-    process_radius_slice, SpatialViewVisualizerData, SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
-};
+use super::{filter_visualizable_3d_entities, process_radius_slice, SpatialViewVisualizerData};
 
 // ---
 
@@ -56,11 +54,9 @@ impl Lines3DVisualizer {
                 continue;
             }
 
-            let (annotation_infos, _) = process_annotation_and_keypoint_slices(
+            let annotation_infos = process_annotation_slices(
                 query.latest_at,
                 num_instances,
-                data.strips.iter().map(|_| glam::Vec3::ZERO),
-                data.keypoint_ids,
                 data.class_ids,
                 &ent_context.annotations,
             );
@@ -91,6 +87,8 @@ impl Lines3DVisualizer {
             {
                 let lines = line_batch
                     .add_strip(strip.iter().copied().map(Into::into))
+                    // Looped lines should be connected with rounded corners, so we always add outward extending caps.
+                    .flags(LineStripFlags::FLAGS_OUTWARD_EXTENDING_ROUND_CAPS)
                     .color(color)
                     .radius(radius)
                     .picking_instance_id(PickingLayerInstanceId(i as _));
@@ -148,7 +146,6 @@ struct Lines3DComponentData<'a> {
     colors: &'a [Color],
     radii: &'a [Radius],
     labels: Vec<ArrowString>,
-    keypoint_ids: &'a [KeypointId],
     class_ids: &'a [ClassId],
 
     // Non-repeated
@@ -186,7 +183,9 @@ impl VisualizerSystem for Lines3DVisualizer {
         };
 
         let mut line_builder = re_renderer::LineDrawableBuilder::new(render_ctx);
-        line_builder.radius_boost_in_ui_points_for_outlines(SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES);
+        line_builder.radius_boost_in_ui_points_for_outlines(
+            re_space_view::SIZE_BOOST_IN_POINTS_FOR_LINE_OUTLINES,
+        );
 
         use super::entity_iterator::{iter_primitive_array_list, process_archetype};
         process_archetype::<Self, LineStrips3D, _>(
@@ -229,29 +228,18 @@ impl VisualizerSystem for Lines3DVisualizer {
                 let all_radii = results.iter_as(timeline, Radius::name());
                 let all_labels = results.iter_as(timeline, Text::name());
                 let all_class_ids = results.iter_as(timeline, ClassId::name());
-                let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
                 let all_show_labels = results.iter_as(timeline, ShowLabels::name());
 
-                let data = re_query::range_zip_1x6(
+                let data = re_query::range_zip_1x5(
                     all_strips_indexed,
                     all_colors.primitive::<u32>(),
                     all_radii.primitive::<f32>(),
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
-                    all_keypoint_ids.primitive::<u16>(),
                     all_show_labels.component::<ShowLabels>(),
                 )
                 .map(
-                    |(
-                        _index,
-                        strips,
-                        colors,
-                        radii,
-                        labels,
-                        class_ids,
-                        keypoint_ids,
-                        show_labels,
-                    )| {
+                    |(_index, strips, colors, radii, labels, class_ids, show_labels)| {
                         Lines3DComponentData {
                             strips,
                             colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
@@ -259,8 +247,6 @@ impl VisualizerSystem for Lines3DVisualizer {
                             labels: labels.unwrap_or_default(),
                             class_ids: class_ids
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
-                            keypoint_ids: keypoint_ids
-                                .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
                             show_labels: show_labels.unwrap_or_default().first().copied(),
                         }
                     },

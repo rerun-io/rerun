@@ -274,8 +274,7 @@ impl GpuReadbackBelt {
             } else {
                 // Allocation might be bigger than a chunk!
                 let buffer_size = self.chunk_size.max(size_in_bytes);
-                // Happens relatively rarely, this is a noteworthy event!
-                re_log::debug!(
+                re_log::trace!(
                     "Allocating new GpuReadbackBelt chunk of size {:.1} MiB",
                     buffer_size as f32 / (1024.0 * 1024.0)
                 );

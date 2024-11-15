@@ -79,13 +79,6 @@ impl std::fmt::Display for ValuedEnum {
 ::re_types_core::macros::impl_into_cow!(ValuedEnum);
 
 impl ::re_types_core::Loggable for ValuedEnum {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.testing.datatypes.ValuedEnum".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

@@ -16,6 +16,11 @@ command = [
 need_stdout = false
 watch = ["tests", "benches", "examples"]
 
+[jobs.libs]
+command = ["cargo", "clippy", "--lib", "--all-features", "--color=always"]
+need_stdout = false
+watch = ["tests", "benches", "examples"]
+
 [jobs.wasm]
 command = [
   "cargo",

@@ -5,10 +5,10 @@ use arrow2::array::PrimitiveArray as ArrowPrimitiveArray;
 use itertools::Itertools;
 
 use re_chunk::{Chunk, RowId};
-use re_chunk_store::{ChunkStore, LatestAtQuery};
+use re_chunk_store::{ChunkStore, ChunkStoreHandle, LatestAtQuery};
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
 use re_log_types::{build_frame_nr, Timeline};
-use re_types::{ComponentBatch, Loggable as _};
+use re_types::Component as _;
 use re_types_core::Archetype as _;
 
 use re_query::{clamped_zip_1x2, LatestAtResults};
@@ -24,11 +24,10 @@ fn main() -> anyhow::Result<()> {
     let query = LatestAtQuery::latest(timeline);
     eprintln!("query:{query:?}");
 
-    let caches = re_query::Caches::new(&store);
+    let caches = re_query::QueryCache::new(store.clone());
 
     // First, get the (potentially cached) results for this query.
     let results: LatestAtResults = caches.latest_at(
-        &store,
         &query,
         &entity_path.into(),
         MyPoints::all_components().iter().copied(), // no generics!
@@ -101,8 +100,8 @@ fn main() -> anyhow::Result<()> {
 
 // ---
 
-fn store() -> anyhow::Result<ChunkStore> {
-    let mut store = ChunkStore::new(
+fn store() -> anyhow::Result<ChunkStoreHandle> {
+    let store = ChunkStore::new_handle(
         re_log_types::StoreId::random(re_log_types::StoreKind::Recording),
         Default::default(),
     );
@@ -117,14 +116,15 @@ fn store() -> anyhow::Result<ChunkStore> {
                 RowId::new(),
                 timepoint,
                 [
-                    &[MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)] as &dyn ComponentBatch, //
+                    &[MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)]
+                        as &dyn re_types_core::ComponentBatch, //
                     &[MyColor::from_rgb(255, 0, 0)],
                     &[MyLabel("a".into()), MyLabel("b".into())],
                 ],
             )
             .build()?;
 
-        store.insert_chunk(&Arc::new(chunk))?;
+        store.write().insert_chunk(&Arc::new(chunk))?;
     }
 
     Ok(store)

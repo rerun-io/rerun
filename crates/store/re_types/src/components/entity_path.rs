@@ -67,13 +67,6 @@ impl std::ops::DerefMut for EntityPath {
 ::re_types_core::macros::impl_into_cow!(EntityPath);
 
 impl ::re_types_core::Loggable for EntityPath {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.EntityPath".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::EntityPath::arrow_datatype()
@@ -101,5 +94,12 @@ impl ::re_types_core::Loggable for EntityPath {
     {
         crate::datatypes::EntityPath::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+    }
+}
+
+impl ::re_types_core::Component for EntityPath {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.EntityPath".into()
     }
 }

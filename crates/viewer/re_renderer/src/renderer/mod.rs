@@ -23,7 +23,7 @@ pub use rectangles::{
 
 mod mesh_renderer;
 pub(crate) use mesh_renderer::MeshRenderer;
-pub use mesh_renderer::{MeshDrawData, MeshInstance};
+pub use mesh_renderer::{GpuMeshInstance, MeshDrawData};
 
 mod compositor;
 pub(crate) use compositor::CompositorDrawData;

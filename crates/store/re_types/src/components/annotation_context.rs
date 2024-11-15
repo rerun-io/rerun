@@ -54,13 +54,6 @@ impl<I: Into<crate::datatypes::ClassDescriptionMapElem>, T: IntoIterator<Item = 
 ::re_types_core::macros::impl_into_cow!(AnnotationContext);
 
 impl ::re_types_core::Loggable for AnnotationContext {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.AnnotationContext".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
@@ -186,5 +179,12 @@ impl ::re_types_core::Loggable for AnnotationContext {
         .collect::<DeserializationResult<Vec<Option<_>>>>()
         .with_context("rerun.components.AnnotationContext#class_map")
         .with_context("rerun.components.AnnotationContext")?)
+    }
+}
+
+impl ::re_types_core::Component for AnnotationContext {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.AnnotationContext".into()
     }
 }

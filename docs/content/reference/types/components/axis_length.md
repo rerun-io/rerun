@@ -5,9 +5,14 @@ title: "AxisLength"
 
 The length of an axis in local units of the space.
 
-## Fields
+## Rerun datatype
+[`Float32`](../datatypes/float32.md)
 
-* length: [`Float32`](../datatypes/float32.md)
+
+## Arrow datatype
+```
+float32
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `AxisLength`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1AxisLength.html)

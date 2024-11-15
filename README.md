@@ -12,9 +12,16 @@
   <a href="https://discord.gg/Gcm8BbTaAj">                              <img alt="Rerun Discord"  src="https://img.shields.io/discord/1062300748202921994?label=Rerun%20Discord"> </a>
 </h1>
 
-# Build time aware visualizations of multimodal data
+# Time-aware multimodal data stack and visualizations
+Rerun is building the multimodal data stack to model, ingest, store, query and view robotics-style data.
+It's used in areas like robotics, spatial and embodied AI, generative media, industrial processing, simulation, security, and health.
 
-Use the Rerun SDK (available for C++, Python and Rust) to log data like images, tensors, point clouds, and text. Logs are streamed to the Rerun Viewer for live visualization or to file for later use.
+Rerun is easy to use!
+Use the Rerun SDK (available for C++, Python and Rust) to log data like images, tensors, point clouds, and text.
+Logs are streamed to the Rerun Viewer for live visualization or to file for later use.
+You can also query the logged data through [our dataframe API](https://rerun.io/docs/howto/dataframe-api).
+
+[Get started](#getting-started) in minutes – no account needed.
 
 * [Run the Rerun Viewer in your browser](https://www.rerun.io/viewer)
 * [Read about what Rerun is and who it is for](https://www.rerun.io/docs/getting-started/what-is-rerun)
@@ -85,7 +92,7 @@ Some shortcomings:
 
 ## What is Rerun for?
 
-Rerun is built to help you understand complex processes that include rich multimodal data, like 2D, 3D, text, time series, tensors, etc.
+Rerun is built to help you understand and improve complex processes that include rich multimodal data, like 2D, 3D, text, time series, tensors, etc.
 It is used in many industries, including robotics, simulation, computer vision,
 or anything that involves a lot of sensors or other signals that evolve over time.
 
@@ -109,12 +116,19 @@ Maybe it turns out that a glare from the sun hit one of the sensors in the wrong
 
 But seeing the world from the point of the view of the robot is not just for debugging - it will also give you ideas on how to improve the algorithms, new test cases to set up, or datasets to collect. It will also let you explain the brains of the robot to your colleagues, boss, and customers. And so on. Seeing is believing, and an image is worth a thousand words, and multimodal temporal logging is worth a thousand images :)
 
-Of course, Rerun is useful for much more than just robots. Any time you have any form of sensors, or 2D or 3D state evolving over time, Rerun would be a great tool.
+While seeing and understanding your data is core to making progress in robotics, there is one more thing:
+You can also use the data you collected for visualization to create new datasets for training and evaluating the models and algorithms that run on your robot.
+Rerun provides query APIs to make it easy to extract clean datasets from your recording for exactly that purpose.
+
+Of course, Rerun is useful for much more than just robots. Any time you have any form of sensors, or 2D or 3D state evolving over time, Rerun is a great tool.
 
 
 ## Business model
 Rerun uses an open-core model. Everything in this repository will stay open source and free (both as in beer and as in freedom).
-In the future, Rerun will offer a commercial product that builds on top of the core free project.
+
+We are also building a commercial data platform.
+Right now that is only available for a few select design partners.
+[Click here if you're interested](https://rerun.io/pricing).
 
 The Rerun open source project targets the needs of individual developers.
 The commercial product targets the needs specific to teams that build and run computer vision and robotics products.

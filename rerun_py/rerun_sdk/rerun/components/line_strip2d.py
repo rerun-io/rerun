@@ -15,13 +15,12 @@ from attrs import define, field
 from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
     ComponentMixin,
 )
 from .line_strip2d_ext import LineStrip2DExt
 
-__all__ = ["LineStrip2D", "LineStrip2DArrayLike", "LineStrip2DBatch", "LineStrip2DLike", "LineStrip2DType"]
+__all__ = ["LineStrip2D", "LineStrip2DArrayLike", "LineStrip2DBatch", "LineStrip2DLike"]
 
 
 @define(init=False)
@@ -60,26 +59,16 @@ else:
 LineStrip2DArrayLike = Union[LineStrip2D, Sequence[LineStrip2DLike], npt.NDArray[np.float32]]
 
 
-class LineStrip2DType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.components.LineStrip2D"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.list_(
-                pa.field(
-                    "item",
-                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 2),
-                    nullable=False,
-                    metadata={},
-                )
-            ),
-            self._TYPE_NAME,
-        )
-
-
 class LineStrip2DBatch(BaseBatch[LineStrip2DArrayLike], ComponentBatchMixin):
-    _ARROW_TYPE = LineStrip2DType()
+    _ARROW_DATATYPE = pa.list_(
+        pa.field(
+            "item",
+            pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 2),
+            nullable=False,
+            metadata={},
+        )
+    )
+    _COMPONENT_NAME: str = "rerun.components.LineStrip2D"
 
     @staticmethod
     def _native_to_pa_array(data: LineStrip2DArrayLike, data_type: pa.DataType) -> pa.Array:

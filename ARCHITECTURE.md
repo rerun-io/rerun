@@ -88,13 +88,12 @@ Of course, this will only take us so far. In the future we plan on caching queri
 Here is an overview of the crates included in the project:
 
 <picture>
-  <img src="https://static.rerun.io/crates/4f5569b318a5b8d7b0e9ab6e34e672c58ac5c63e/full.png" alt="">
-  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/4f5569b318a5b8d7b0e9ab6e34e672c58ac5c63e/480w.png">
-  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/4f5569b318a5b8d7b0e9ab6e34e672c58ac5c63e/768w.png">
-  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/4f5569b318a5b8d7b0e9ab6e34e672c58ac5c63e/1024w.png">
-  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/4f5569b318a5b8d7b0e9ab6e34e672c58ac5c63e/1200w.png">
+  <img src="https://static.rerun.io/crates/35c2f18eb941ec321c6d19f5a763f0ac542ca2ed/full.png" alt="">
+  <source media="(max-width: 480px)" srcset="https://static.rerun.io/crates/35c2f18eb941ec321c6d19f5a763f0ac542ca2ed/480w.png">
+  <source media="(max-width: 768px)" srcset="https://static.rerun.io/crates/35c2f18eb941ec321c6d19f5a763f0ac542ca2ed/768w.png">
+  <source media="(max-width: 1024px)" srcset="https://static.rerun.io/crates/35c2f18eb941ec321c6d19f5a763f0ac542ca2ed/1024w.png">
+  <source media="(max-width: 1200px)" srcset="https://static.rerun.io/crates/35c2f18eb941ec321c6d19f5a763f0ac542ca2ed/1200w.png">
 </picture>
-
 
 
 <!-- !!! IMPORTANT!!!
@@ -135,6 +134,7 @@ Update instructions:
 | re_space_view               | Types & utilities for defining Space View classes and communicating with the Viewport.                     |
 | re_space_view_bar_chart     | A Space View that shows a single bar chart.                                                                |
 | re_space_view_dataframe     | A Space View that shows the data contained in entities in a table.                                         |
+| re_space_view_map           | A Space View that shows geospatial data on a map.                                                          |
 | re_space_view_spatial       | Space Views that show entities in a 2D or 3D spatial relationship.                                         |
 | re_space_view_tensor        | A Space View dedicated to visualizing tensors with arbitrary dimensionality.                               |
 | re_space_view_text_document | A simple Space View that shows a single text box.                                                          |
@@ -159,14 +159,15 @@ Update instructions:
 
 ### Application-level store
 
-| Crate                | Description                                                              |
-|----------------------|--------------------------------------------------------------------------|
-| re_entity_db         | In-memory storage of Rerun entities                                      |
-| re_query             | Querying data in the re_chunk_store                                      |
-| re_dataframe         | The Rerun public data APIs.                                              |
-| re_types             | The built-in Rerun data types, component types, and archetypes.          |
-| re_types_blueprint   | The core traits and types that power Rerun's Blueprint sub-system.       |
-| re_log_encoding      | Helpers for encoding and transporting Rerun log messages                 |
+| Crate                 | Description                                                              |
+|-----------------------|--------------------------------------------------------------------------|
+| re_dataframe          | The Rerun public data APIs.                                              |
+| re_entity_db          | In-memory storage of Rerun entities                                      |
+| re_log_encoding       | Helpers for encoding and transporting Rerun log messages                 |
+| re_protos             | Rerun remote store gRPC API types                                        |
+| re_query              | Querying data in the re_chunk_store                                      |
+| re_types              | The built-in Rerun data types, component types, and archetypes.          |
+| re_types_blueprint    | The core traits and types that power Rerun's Blueprint sub-system.       |
 
 
 ### Low-level store
@@ -184,21 +185,23 @@ Update instructions:
 
 | Crate                | Description                                                                                            |
 |----------------------|--------------------------------------------------------------------------------------------------------|
+| re_data_loader       | Handles loading of Rerun data from file using data loader plugins                                      |
+| re_data_source       | Handles loading of Rerun data from different sources                                                   |
+| re_grpc_client       | Communicate with the Rerun Data Platform over gRPC                                                     |
 | re_sdk_comms         | TCP communication between Rerun SDK and Rerun Server                                                   |
 | re_web_viewer_server | Serves the Rerun web viewer (Wasm and HTML) over HTTP                                                  |
 | re_ws_comms          | WebSocket communication library (encoding, decoding, client, server) between a Rerun server and Viewer |
-| re_data_loader       | Handles loading of Rerun data from file using data loader plugins                                      |
-| re_data_source       | Handles loading of Rerun data from different sources                                                   |
 
 
 ### Build support
 
-| Crate                      | Description                                                      |
-|----------------------------|------------------------------------------------------------------|
-| re_build_info              | Information about the build. Use together with re_build_tools    |
-| re_build_tools             | build.rs helpers for generating build info                       |
-| re_types_builder           | Generates code for Rerun's SDKs from flatbuffers definitions.    |
-| re_dev_tools               | Various tools for Rerun development. Each tool has a subcommand. |
+| Crate                         | Description                                                      |
+|-------------------------------|------------------------------------------------------------------|
+| re_build_info                 | Information about the build. Use together with re_build_tools    |
+| re_build_tools                | build.rs helpers for generating build info                       |
+| re_dev_tools                  | Various tools for Rerun development. Each tool has a subcommand. |
+| re_protos_builder             | Generates code for Rerun remote store gRPC API                   |
+| re_types_builder              | Generates code for Rerun's SDKs from flatbuffers definitions.    |
 
 
 ### Utilities

@@ -10,14 +10,55 @@ In the future, the Rerun Viewer will allow users to define their own colormaps,
 but currently the Viewer is limited to the types defined here.
 
 ## Variants
+#### `Grayscale` = 1
+A simple black to white gradient.
 
-* Grayscale
-* Inferno
-* Magma
-* Plasma
-* Turbo
-* Viridis
-* CyanToYellow
+This is a sRGB gray gradient which is perceptually uniform.
+
+#### `Inferno` = 2
+The Inferno colormap from Matplotlib.
+
+This is a perceptually uniform colormap.
+It interpolates from black to red to bright yellow.
+
+#### `Magma` = 3
+The Magma colormap from Matplotlib.
+
+This is a perceptually uniform colormap.
+It interpolates from black to purple to white.
+
+#### `Plasma` = 4
+The Plasma colormap from Matplotlib.
+
+This is a perceptually uniform colormap.
+It interpolates from dark blue to purple to yellow.
+
+#### `Turbo` = 5
+Google's Turbo colormap map.
+
+This is a perceptually non-uniform rainbow colormap addressing many issues of
+more traditional rainbow colormaps like Jet.
+It is more perceptually uniform without sharp transitions and is more colorblind-friendly.
+Details: <https://research.google/blog/turbo-an-improved-rainbow-colormap-for-visualization/>
+
+#### `Viridis` = 6
+The Viridis colormap from Matplotlib
+
+This is a perceptually uniform colormap which is robust to color blindness.
+It interpolates from dark purple to green to yellow.
+
+#### `CyanToYellow` = 7
+Rasmusgo's Cyan to Yellow colormap
+
+This is a perceptually uniform colormap which is robust to color blindness.
+It is especially suited for visualizing signed values.
+It interpolates from cyan to blue to dark gray to brass to yellow.
+
+
+## Arrow datatype
+```
+uint8
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `Colormap`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)

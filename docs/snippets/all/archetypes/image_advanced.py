@@ -25,13 +25,11 @@ rr.log("from_file", rr.EncodedImage(path=file_path))
 image = np.array(PILImage.open(file_path))
 rr.log("from_pillow_rgba", rr.Image(image))
 
-# Convert to RGB, fill transparent pixels with a color, and log the image.
+# Drop the alpha channel from the image.
 image_rgb = image[..., :3]
-image_rgb[image[:, :, 3] == 0] = (45, 15, 15)
 rr.log("from_pillow_rgb", rr.Image(image_rgb))
 
-# Read with OpenCV
+# Read with OpenCV.
 image = cv2.imread(file_path)
-
 # OpenCV uses BGR ordering, we need to make this known to Rerun.
 rr.log("from_opencv", rr.Image(image, color_model="BGR"))

@@ -7,7 +7,7 @@ use re_chunk_store::{ChunkStoreEvent, RowId};
 use re_entity_db::VersionedInstancePathHash;
 use re_log_types::hash::Hash64;
 use re_renderer::RenderContext;
-use re_types::{components::MediaType, Loggable as _};
+use re_types::{components::MediaType, Component as _};
 use re_viewer_context::Cache;
 
 use crate::mesh_loader::LoadedMesh;
@@ -36,7 +36,9 @@ pub struct MeshCache(HashMap<RowId, HashMap<MeshCacheKey, Option<Arc<LoadedMesh>
 /// Either a [`re_types::archetypes::Asset3D`] or [`re_types::archetypes::Mesh3D`] to be cached.
 #[derive(Debug, Clone, Copy)]
 pub enum AnyMesh<'a> {
-    Asset(&'a re_types::archetypes::Asset3D),
+    Asset {
+        asset: &'a re_types::archetypes::Asset3D,
+    },
     Mesh {
         mesh: &'a re_types::archetypes::Mesh3D,
 
@@ -61,7 +63,7 @@ impl MeshCache {
             .or_default()
             .entry(key)
             .or_insert_with(|| {
-                re_log::debug!("Loading CPU mesh {name:?}…");
+                re_log::trace!("Loading CPU mesh {name:?}…");
 
                 let result = LoadedMesh::load(name.to_owned(), mesh, render_ctx);
 

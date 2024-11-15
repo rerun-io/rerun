@@ -13,7 +13,7 @@ use re_math::IsoTransform;
 
 use re_renderer::{
     renderer::{
-        GenericSkyboxDrawData, LineDrawData, LineStripFlags, MeshDrawData, MeshInstance,
+        GenericSkyboxDrawData, GpuMeshInstance, LineDrawData, LineStripFlags, MeshDrawData,
         TestTriangleDrawData,
     },
     view_builder::{OrthographicCameraMode, Projection, TargetConfiguration, ViewBuilder},
@@ -26,7 +26,7 @@ mod framework;
 
 fn build_mesh_instances(
     re_ctx: &RenderContext,
-    model_mesh_instances: &[MeshInstance],
+    model_mesh_instances: &[GpuMeshInstance],
     mesh_instance_positions_and_colors: &[(glam::Vec3, Color32)],
     seconds_since_startup: f32,
 ) -> MeshDrawData {
@@ -35,9 +35,8 @@ fn build_mesh_instances(
         .enumerate()
         .flat_map(|(i, positions_and_colors)| {
             model_mesh_instances.iter().zip(positions_and_colors).map(
-                move |(model_mesh_instances, (p, c))| MeshInstance {
+                move |(model_mesh_instances, (p, c))| GpuMeshInstance {
                     gpu_mesh: model_mesh_instances.gpu_mesh.clone(),
-                    mesh: None,
                     world_from_mesh: glam::Affine3A::from_scale_rotation_translation(
                         glam::vec3(
                             2.5 + (i % 3) as f32,
@@ -157,7 +156,7 @@ struct Multiview {
     camera_control: CameraControl,
     camera_position: glam::Vec3,
 
-    model_mesh_instances: Vec<MeshInstance>,
+    model_mesh_instances: Vec<GpuMeshInstance>,
     mesh_instance_positions_and_colors: Vec<(glam::Vec3, Color32)>,
 
     // Want to have a large cloud of random points, but doing rng for all of them every frame is too slow
@@ -277,7 +276,8 @@ impl Example for Multiview {
             .map(|_| random_color(&mut rnd))
             .collect_vec();
 
-        let model_mesh_instances = crate::framework::load_rerun_mesh(re_ctx);
+        let model_mesh_instances =
+            crate::framework::load_rerun_mesh(re_ctx).expect("Failed to load rerun mesh");
 
         let mesh_instance_positions_and_colors = lorenz_points(10.0)
             .iter()
