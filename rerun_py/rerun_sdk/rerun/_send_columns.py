@@ -232,7 +232,7 @@ def send_columns(
             array = c.as_arrow_array()
             if array is None:
                 raise ValueError(f"Expected a non-null value for component: {component_name}")
-            component_column = c.partition([1] * len(c.as_arrow_array()))
+            component_column = c.partition([1] * len(c.as_arrow_array()))  # type: ignore[arg-type]
         else:
             raise TypeError(
                 f"Expected either a type that implements the `ComponentMixin` or a `ComponentColumn`, got: {type(c)}"

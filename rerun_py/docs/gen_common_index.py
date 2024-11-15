@@ -145,7 +145,10 @@ SECTION_TABLE: Final[list[Section]] = [
     ),
     Section(
         title="Custom Data",
-        class_list=["AnyValues"],
+        class_list=[
+            "AnyValues",
+            "AnyBatchValues",
+        ],
     ),
     ################################################################################
     # These are tables but don't need their own pages since they refer to types that

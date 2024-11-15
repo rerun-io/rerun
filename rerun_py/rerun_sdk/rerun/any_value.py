@@ -186,5 +186,5 @@ class AnyValues(AsComponents):
                 if batch.is_valid():
                     self.component_batches.append(batch)
 
-    def as_component_batches(self) -> Iterable[AnyBatchValue]:
+    def as_component_batches(self) -> Iterable[ComponentBatchLike]:
         return self.component_batches
