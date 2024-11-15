@@ -1327,6 +1327,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.GraphEdges"),
             ArchetypeReflection {
                 display_name: "Graph edges",
+                view_types: &["Graph View"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.GraphEdge".into(), display_name : "Edges",
@@ -1343,6 +1344,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.GraphNodes"),
             ArchetypeReflection {
                 display_name: "Graph nodes",
+                view_types: &["Graph View"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.GraphNode".into(), display_name : "Node ids",

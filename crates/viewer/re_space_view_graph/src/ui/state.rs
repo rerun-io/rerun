@@ -1,7 +1,6 @@
 use egui::Rect;
 use re_chunk::{TimeInt, Timeline};
 use re_format::format_f32;
-use re_log::external::log;
 use re_types::blueprint::components::VisualBounds2D;
 use re_ui::UiExt;
 use re_viewer_context::SpaceViewState;
@@ -90,8 +89,10 @@ pub enum LayoutState {
 impl LayoutState {
     pub fn bounding_rect(&self) -> Option<Rect> {
         match self {
-            Self::Finished { layout, .. } => Some(layout.bounding_rect()),
             Self::None => None,
+            Self::Finished { layout, .. } | Self::InProgress { layout, .. } => {
+                Some(layout.bounding_rect())
+            }
         }
     }
 
@@ -99,32 +100,59 @@ impl LayoutState {
         matches!(self, Self::None)
     }
 
+    pub fn is_in_progress(&self) -> bool {
+        matches!(self, Self::InProgress { .. })
+    }
+
+    /// A simple state machine that keeps track of the different stages and if the layout needs to be recomputed.
+    fn update<'a>(
+        mut self,
+        requested: Timestamp,
+        graphs: impl Iterator<Item = &'a Graph<'a>> + Clone,
+    ) -> Self {
+        match self {
+            // Layout is up to date, nothing to do here.
+            Self::Finished { timestamp, layout } if timestamp == requested => {
+                Self::Finished { timestamp, layout } // no op
+            }
+            // We need to recompute the layout.
+            Self::None | Self::Finished { .. } => {
+                let provider = ForceLayout::new(graphs);
+                let layout = provider.init_layout();
+
+                Self::InProgress {
+                    timestamp: requested,
+                    layout,
+                    provider,
+                }
+            }
+            // We keep iterating on the layout until it is stable.
+            Self::InProgress {
+                timestamp,
+                mut layout,
+                mut provider,
+            } => match provider.tick(&mut layout) {
+                true => Self::Finished { timestamp, layout },
+                false => Self::InProgress {
+                    timestamp,
+                    layout,
+                    provider,
+                },
+            },
+        }
+    }
+
     /// This method is lazy. A new layout is only computed if the current timestamp requires it.
-    pub fn update<'a>(
+    pub fn get<'a>(
         &'a mut self,
         timeline: Timeline,
         time: TimeInt,
         graphs: impl Iterator<Item = &'a Graph<'a>> + Clone,
     ) -> &'a mut Layout {
-        let requested = Timestamp::new(timeline, time);
+        *self = std::mem::take(self).update(Timestamp::new(timeline, time), graphs);
 
         match self {
-            Self::Finished { timestamp, .. } if timestamp == &requested => {
-                return match self {
-                    Self::Finished { layout, .. } => layout,
-                    _ => unreachable!(), // We just checked that the state is `Self::Current`.
-                };
-            },
-            Self::Finished { .. } => (), // TODO(grtlr): repurpose old layout
-        }
-
-        *self = Self::Finished {
-            timestamp: requested,
-            layout,
-        };
-
-        match self {
-            Self::Finished { layout, .. } => layout,
+            Self::Finished { layout, .. } | Self::InProgress { layout, .. } => layout,
             _ => unreachable!(), // We just set the state to `Self::Current` above.
         }
     }

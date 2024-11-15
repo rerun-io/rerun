@@ -81,6 +81,22 @@ impl ForceLayout {
         }
     }
 
+    pub fn init_layout(&self) -> Layout {
+        let positions = self.simulation.positions().collect::<Vec<_>>();
+        let mut extents = ahash::HashMap::default();
+
+        for (node, i) in &self.node_index {
+            let [x, y] = positions[*i];
+            let pos = Pos2::new(x as f32, y as f32);
+            let size = Vec2::ZERO;
+            let rect = Rect::from_min_size(pos, size);
+            extents.insert(*node, rect);
+        }
+
+        Layout { extents }
+    }
+
+    /// Returns `true` if finished.
     pub fn tick(&mut self, layout: &mut Layout) -> bool {
         self.simulation.tick(1);
 

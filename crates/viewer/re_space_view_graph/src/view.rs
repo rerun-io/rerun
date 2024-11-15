@@ -146,10 +146,10 @@ impl SpaceViewClass for GraphSpaceView {
             bounds_property.component_or_fallback(ctx, self, state)?;
 
         let layout_was_empty = state.layout.is_none();
-        let layout = state.layout.update(
+        let layout = state.layout.get(
             query.timeline,
             query.latest_at,
-            graphs.iter().map(|(ent, graph)| graph),
+            graphs.iter().map(|(_, graph)| graph),
         );
 
         state.world_bounds = Some(bounds);
@@ -217,6 +217,10 @@ impl SpaceViewClass for GraphSpaceView {
         }
         // Update stored bounds on the state, so visualizers see an up-to-date value.
         state.world_bounds = Some(bounds);
+
+        if state.layout.is_in_progress() {
+            ui.ctx().request_repaint();
+        }
 
         Ok(())
     }
