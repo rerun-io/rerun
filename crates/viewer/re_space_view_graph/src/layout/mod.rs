@@ -72,16 +72,9 @@ impl ForceLayout {
         let simulation = fj::SimulationBuilder::default()
             .with_alpha_decay(0.01) // TODO(grtlr): slows down the simulation for demo
             .build(all_nodes)
-            .add_force(
-                "link",
-                fj::Link::new(all_edges)
-                    .strength(1.0)
-                    .distance(60.0)
-                    .iterations(10),
-            )
-            .add_force("charge", fj::ManyBody::new().strength(-30.0))
-            .add_force("x", fj::PositionX::new())
-            .add_force("y", fj::PositionY::new());
+            .add_force("link", fj::Link::new(all_edges))
+            .add_force("charge", fj::ManyBody::new())
+            .add_force("center", fj::Center::new());
 
         Self {
             simulation,
