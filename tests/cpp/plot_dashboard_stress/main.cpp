@@ -147,12 +147,12 @@ int main(int argc, char** argv) {
 
     std::vector<size_t> offsets;
     if (temporal_batch_size.has_value()) {
-// GCC wrongfully thinks that `temporal_batch_size` is uninitialized despite being initialized upon creation.
-RR_DISABLE_MAYBE_UNINITIALIZED_PUSH
+        // GCC wrongfully thinks that `temporal_batch_size` is uninitialized despite being initialized upon creation.
+        RR_DISABLE_MAYBE_UNINITIALIZED_PUSH
         for (size_t i = 0; i < num_points_per_series; i += *temporal_batch_size) {
             offsets.push_back(i);
         }
-RR_DISABLE_MAYBE_UNINITIALIZED_POP
+        RR_DISABLE_MAYBE_UNINITIALIZED_POP
     } else {
         offsets.resize(sim_times.size());
         std::iota(offsets.begin(), offsets.end(), 0);
