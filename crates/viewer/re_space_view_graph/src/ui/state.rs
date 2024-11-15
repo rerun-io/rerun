@@ -43,6 +43,12 @@ impl GraphSpaceViewState {
             .on_hover_text("Shows debug information for the current graph");
         ui.end_row();
     }
+
+    pub fn simulation_ui(&mut self, ui: &mut egui::Ui) {
+        if ui.button("Reset simulation").clicked() {
+            self.layout.reset();
+        }
+    }
 }
 
 impl SpaceViewState for GraphSpaceViewState {
@@ -94,6 +100,10 @@ impl LayoutState {
                 Some(layout.bounding_rect())
             }
         }
+    }
+
+    pub fn reset(&mut self) {
+        *self = Self::None;
     }
 
     pub fn is_none(&self) -> bool {

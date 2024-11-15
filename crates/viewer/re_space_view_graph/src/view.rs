@@ -108,6 +108,7 @@ impl SpaceViewClass for GraphSpaceView {
 
         ui.selection_grid("graph_view_settings_ui").show(ui, |ui| {
             state.layout_ui(ui);
+            state.simulation_ui(ui);
             state.debug_ui(ui);
         });
 
@@ -168,7 +169,8 @@ impl SpaceViewClass for GraphSpaceView {
                 for node in graph.nodes_explicit() {
                     let pos = layout
                         .get(&node.index)
-                        .expect("explicit node should be in layout");
+                        .unwrap_or(egui::Rect::ZERO); // TODO(grtlr): sometimes there just isn't any data.
+                        // .expect("explicit node should be in layout");
                     let response = scene.explicit_node(pos.min, node);
                     layout.update(&node.index, response.rect);
                 }
@@ -177,7 +179,8 @@ impl SpaceViewClass for GraphSpaceView {
                 for node in graph.nodes_implicit() {
                     let current = layout
                         .get(&node.index)
-                        .expect("implicit node should be in layout");
+                        .unwrap_or(egui::Rect::ZERO); // TODO(grtlr): sometimes there just isn't any data.
+                        // .expect("implicit node should be in layout");
                     let response = scene.implicit_node(current.min, node);
                     layout.update(&node.index, response.rect);
                 }

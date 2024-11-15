@@ -68,10 +68,18 @@ impl ForceLayout {
                 .map(|e| (node_index[&e.source_index], node_index[&e.target_index]))
         });
 
+        // TODO(grtlr): Currently we guesstimate good forces. Eventually these should be exposed as blueprints.
         let simulation = fj::SimulationBuilder::default()
+            .with_alpha_decay(0.01) // TODO(grtlr): slows down the simulation for demo
             .build(all_nodes)
-            .add_force("link", fj::Link::new(all_edges))
-            .add_force("charge", fj::ManyBody::new())
+            .add_force(
+                "link",
+                fj::Link::new(all_edges)
+                    .strength(1.0)
+                    .distance(60.0)
+                    .iterations(10),
+            )
+            .add_force("charge", fj::ManyBody::new().strength(-30.0))
             .add_force("x", fj::PositionX::new())
             .add_force("y", fj::PositionY::new());
 
