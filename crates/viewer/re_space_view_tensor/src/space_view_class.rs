@@ -212,7 +212,7 @@ Note: select the space view to configure which dimensions are shown."
                 ..egui::Frame::default()
             }
             .show(ui, |ui| {
-                ui.label(format!(
+                ui.error_label(format!(
                     "Can only show one tensor at a time; was given {}. Update the query so that it \
                     returns a single tensor entity and create additional views for the others.",
                     tensors.len()
