@@ -147,7 +147,7 @@ SECTION_TABLE: Final[list[Section]] = [
         title="Custom Data",
         class_list=[
             "AnyValues",
-            "AnyBatchValues",
+            "AnyBatchValue",
         ],
     ),
     ################################################################################
