@@ -52,13 +52,6 @@ impl From<Bool> for bool {
 crate::macros::impl_into_cow!(Bool);
 
 impl crate::Loggable for Bool {
-    type Name = crate::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.Bool".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

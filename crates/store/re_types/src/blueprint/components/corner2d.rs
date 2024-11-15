@@ -85,13 +85,6 @@ impl std::fmt::Display for Corner2D {
 ::re_types_core::macros::impl_into_cow!(Corner2D);
 
 impl ::re_types_core::Loggable for Corner2D {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.components.Corner2D".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
@@ -165,5 +158,12 @@ impl ::re_types_core::Loggable for Corner2D {
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.blueprint.components.Corner2D")?)
+    }
+}
+
+impl ::re_types_core::Component for Corner2D {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.Corner2D".into()
     }
 }

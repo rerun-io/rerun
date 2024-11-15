@@ -67,13 +67,6 @@ impl std::ops::DerefMut for SpaceViewMaximized {
 ::re_types_core::macros::impl_into_cow!(SpaceViewMaximized);
 
 impl ::re_types_core::Loggable for SpaceViewMaximized {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.components.SpaceViewMaximized".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Uuid::arrow_datatype()
@@ -109,5 +102,12 @@ impl ::re_types_core::Loggable for SpaceViewMaximized {
         Self: Sized,
     {
         crate::datatypes::Uuid::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
+    }
+}
+
+impl ::re_types_core::Component for SpaceViewMaximized {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.SpaceViewMaximized".into()
     }
 }

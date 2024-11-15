@@ -44,13 +44,6 @@ impl<I: Into<crate::testing::datatypes::AffixFuzzer1>, T: IntoIterator<Item = I>
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer7);
 
 impl ::re_types_core::Loggable for AffixFuzzer7 {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.testing.components.AffixFuzzer7".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
@@ -176,5 +169,12 @@ impl ::re_types_core::Loggable for AffixFuzzer7 {
         .collect::<DeserializationResult<Vec<Option<_>>>>()
         .with_context("rerun.testing.components.AffixFuzzer7#many_optional")
         .with_context("rerun.testing.components.AffixFuzzer7")?)
+    }
+}
+
+impl ::re_types_core::Component for AffixFuzzer7 {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.testing.components.AffixFuzzer7".into()
     }
 }

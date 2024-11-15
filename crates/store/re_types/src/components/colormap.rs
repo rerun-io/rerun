@@ -144,13 +144,6 @@ impl std::fmt::Display for Colormap {
 ::re_types_core::macros::impl_into_cow!(Colormap);
 
 impl ::re_types_core::Loggable for Colormap {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.Colormap".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
@@ -227,5 +220,12 @@ impl ::re_types_core::Loggable for Colormap {
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.components.Colormap")?)
+    }
+}
+
+impl ::re_types_core::Component for Colormap {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.Colormap".into()
     }
 }

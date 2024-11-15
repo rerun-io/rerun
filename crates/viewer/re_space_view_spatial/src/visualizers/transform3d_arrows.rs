@@ -5,7 +5,7 @@ use re_space_view::{latest_at_with_blueprint_resolved_data, DataResultQuery};
 use re_types::{
     archetypes::{Pinhole, Transform3D},
     components::{AxisLength, ImagePlaneDistance},
-    Archetype as _, ComponentName, Loggable,
+    Archetype as _, Component, ComponentName,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewStateExt,

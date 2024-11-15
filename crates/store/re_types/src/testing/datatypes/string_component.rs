@@ -51,13 +51,6 @@ impl From<StringComponent> for ::re_types_core::ArrowString {
 ::re_types_core::macros::impl_into_cow!(StringComponent);
 
 impl ::re_types_core::Loggable for StringComponent {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.testing.datatypes.StringComponent".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

@@ -72,13 +72,6 @@ impl std::ops::DerefMut for ClassId {
 ::re_types_core::macros::impl_into_cow!(ClassId);
 
 impl ::re_types_core::Loggable for ClassId {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.ClassId".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::ClassId::arrow_datatype()
@@ -114,5 +107,12 @@ impl ::re_types_core::Loggable for ClassId {
         Self: Sized,
     {
         crate::datatypes::ClassId::from_arrow(arrow_data).map(bytemuck::cast_vec)
+    }
+}
+
+impl ::re_types_core::Component for ClassId {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.ClassId".into()
     }
 }

@@ -67,13 +67,6 @@ impl std::ops::DerefMut for MarkerSize {
 ::re_types_core::macros::impl_into_cow!(MarkerSize);
 
 impl ::re_types_core::Loggable for MarkerSize {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.MarkerSize".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Float32::arrow_datatype()
@@ -109,5 +102,12 @@ impl ::re_types_core::Loggable for MarkerSize {
         Self: Sized,
     {
         crate::datatypes::Float32::from_arrow(arrow_data).map(bytemuck::cast_vec)
+    }
+}
+
+impl ::re_types_core::Component for MarkerSize {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.MarkerSize".into()
     }
 }

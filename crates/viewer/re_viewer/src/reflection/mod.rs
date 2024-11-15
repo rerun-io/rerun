@@ -12,7 +12,7 @@ use re_types_core::{
         ArchetypeFieldReflection, ArchetypeReflection, ArchetypeReflectionMap, ComponentReflection,
         ComponentReflectionMap, Reflection,
     },
-    ArchetypeName, ComponentName, Loggable, LoggableBatch as _, SerializationError,
+    ArchetypeName, Component, ComponentName, Loggable as _, LoggableBatch as _, SerializationError,
 };
 
 /// Generates reflection about all known components.
@@ -35,7 +35,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
     re_tracing::profile_function!();
     let array = [
         (
-            <ActiveTab as Loggable>::name(),
+            <ActiveTab as Component>::name(),
             ComponentReflection {
                 docstring_md: "The active tab in a tabbed container.",
                 custom_placeholder: Some(ActiveTab::default().to_arrow()?),
@@ -43,7 +43,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ApplyLatestAt as Loggable>::name(),
+            <ApplyLatestAt as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether empty cells in a dataframe should be filled with a latest-at query.",
                 custom_placeholder: Some(ApplyLatestAt::default().to_arrow()?),
@@ -51,7 +51,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <AutoLayout as Loggable>::name(),
+            <AutoLayout as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether the viewport layout is determined automatically.",
                 custom_placeholder: Some(AutoLayout::default().to_arrow()?),
@@ -59,7 +59,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <AutoSpaceViews as Loggable>::name(),
+            <AutoSpaceViews as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether or not space views should be created automatically.",
                 custom_placeholder: Some(AutoSpaceViews::default().to_arrow()?),
@@ -67,7 +67,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <BackgroundKind as Loggable>::name(),
+            <BackgroundKind as Component>::name(),
             ComponentReflection {
                 docstring_md: "The type of the background in a view.",
                 custom_placeholder: Some(BackgroundKind::default().to_arrow()?),
@@ -75,7 +75,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ColumnShare as Loggable>::name(),
+            <ColumnShare as Component>::name(),
             ComponentReflection {
                 docstring_md: "The layout share of a column in the container.",
                 custom_placeholder: Some(ColumnShare::default().to_arrow()?),
@@ -83,7 +83,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ComponentColumnSelector as Loggable>::name(),
+            <ComponentColumnSelector as Component>::name(),
             ComponentReflection {
                 docstring_md: "Describe a component column to be selected in the dataframe view.",
                 custom_placeholder: Some(ComponentColumnSelector::default().to_arrow()?),
@@ -91,7 +91,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ContainerKind as Loggable>::name(),
+            <ContainerKind as Component>::name(),
             ComponentReflection {
                 docstring_md: "The kind of a blueprint container (tabs, grid, …).",
                 custom_placeholder: Some(ContainerKind::default().to_arrow()?),
@@ -99,7 +99,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Corner2D as Loggable>::name(),
+            <Corner2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "One of four 2D corners, typically used to align objects.",
                 custom_placeholder: Some(Corner2D::default().to_arrow()?),
@@ -107,7 +107,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <FilterByRange as Loggable>::name(),
+            <FilterByRange as Component>::name(),
             ComponentReflection {
                 docstring_md: "Configuration for a filter-by-range feature of the dataframe view.",
                 custom_placeholder: Some(FilterByRange::default().to_arrow()?),
@@ -115,7 +115,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <FilterIsNotNull as Loggable>::name(),
+            <FilterIsNotNull as Component>::name(),
             ComponentReflection {
                 docstring_md: "Configuration for the filter is not null feature of the dataframe view.",
                 custom_placeholder: Some(FilterIsNotNull::default().to_arrow()?),
@@ -123,7 +123,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <GridColumns as Loggable>::name(),
+            <GridColumns as Component>::name(),
             ComponentReflection {
                 docstring_md: "How many columns a grid container should have.",
                 custom_placeholder: Some(GridColumns::default().to_arrow()?),
@@ -131,7 +131,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <IncludedContent as Loggable>::name(),
+            <IncludedContent as Component>::name(),
             ComponentReflection {
                 docstring_md: "All the contents in the container.",
                 custom_placeholder: Some(IncludedContent::default().to_arrow()?),
@@ -139,7 +139,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <IncludedSpaceView as Loggable>::name(),
+            <IncludedSpaceView as Component>::name(),
             ComponentReflection {
                 docstring_md: "The unique id of a space view, used to refer to views in containers.",
                 custom_placeholder: Some(IncludedSpaceView::default().to_arrow()?),
@@ -147,7 +147,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Interactive as Loggable>::name(),
+            <Interactive as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether the entity can be interacted with.\n\nNon interactive components are still visible, but mouse interactions in the view are disabled.",
                 custom_placeholder: Some(Interactive::default().to_arrow()?),
@@ -155,7 +155,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <LockRangeDuringZoom as Loggable>::name(),
+            <LockRangeDuringZoom as Component>::name(),
             ComponentReflection {
                 docstring_md: "Indicate whether the range should be locked when zooming in on the data.\n\nDefault is `false`, i.e. zoom will change the visualized range.",
                 custom_placeholder: Some(LockRangeDuringZoom::default().to_arrow()?),
@@ -163,7 +163,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <MapProvider as Loggable>::name(),
+            <MapProvider as Component>::name(),
             ComponentReflection {
                 docstring_md: "Name of the map provider to be used in Map views.",
                 custom_placeholder: Some(MapProvider::default().to_arrow()?),
@@ -171,7 +171,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <PanelState as Loggable>::name(),
+            <PanelState as Component>::name(),
             ComponentReflection {
                 docstring_md: "Tri-state for panel controls.",
                 custom_placeholder: Some(PanelState::default().to_arrow()?),
@@ -179,7 +179,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <QueryExpression as Loggable>::name(),
+            <QueryExpression as Component>::name(),
             ComponentReflection {
                 docstring_md: "An individual query expression used to filter a set of [`datatypes.EntityPath`](https://rerun.io/docs/reference/types/datatypes/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of `SpaceViewContents`.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.",
                 custom_placeholder: Some(QueryExpression::default().to_arrow()?),
@@ -187,7 +187,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <RootContainer as Loggable>::name(),
+            <RootContainer as Component>::name(),
             ComponentReflection {
                 docstring_md: "The container that sits at the root of a viewport.",
                 custom_placeholder: Some(RootContainer::default().to_arrow()?),
@@ -195,7 +195,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <RowShare as Loggable>::name(),
+            <RowShare as Component>::name(),
             ComponentReflection {
                 docstring_md: "The layout share of a row in the container.",
                 custom_placeholder: Some(RowShare::default().to_arrow()?),
@@ -203,7 +203,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <SelectedColumns as Loggable>::name(),
+            <SelectedColumns as Component>::name(),
             ComponentReflection {
                 docstring_md: "Describe a component column to be selected in the dataframe view.",
                 custom_placeholder: Some(SelectedColumns::default().to_arrow()?),
@@ -211,7 +211,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <SpaceViewClass as Loggable>::name(),
+            <SpaceViewClass as Component>::name(),
             ComponentReflection {
                 docstring_md: "The class identifier of view, e.g. `\"2D\"`, `\"TextLog\"`, ….",
                 custom_placeholder: Some(SpaceViewClass::default().to_arrow()?),
@@ -219,7 +219,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <SpaceViewMaximized as Loggable>::name(),
+            <SpaceViewMaximized as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether a space view is maximized.",
                 custom_placeholder: Some(SpaceViewMaximized::default().to_arrow()?),
@@ -227,7 +227,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <SpaceViewOrigin as Loggable>::name(),
+            <SpaceViewOrigin as Component>::name(),
             ComponentReflection {
                 docstring_md: "The origin of a `SpaceView`.",
                 custom_placeholder: Some(SpaceViewOrigin::default().to_arrow()?),
@@ -235,7 +235,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <TensorDimensionIndexSlider as Loggable>::name(),
+            <TensorDimensionIndexSlider as Component>::name(),
             ComponentReflection {
                 docstring_md: "Show a slider for the index of some dimension of a slider.",
                 custom_placeholder: Some(
@@ -245,7 +245,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <TimelineName as Loggable>::name(),
+            <TimelineName as Component>::name(),
             ComponentReflection {
                 docstring_md: "A timeline identified by its name.",
                 custom_placeholder: Some(TimelineName::default().to_arrow()?),
@@ -253,7 +253,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ViewFit as Loggable>::name(),
+            <ViewFit as Component>::name(),
             ComponentReflection {
                 docstring_md: "Determines whether an image or texture should be scaled to fit the viewport.",
                 custom_placeholder: Some(ViewFit::default().to_arrow()?),
@@ -261,7 +261,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ViewerRecommendationHash as Loggable>::name(),
+            <ViewerRecommendationHash as Component>::name(),
             ComponentReflection {
                 docstring_md: "Hash of a viewer recommendation.\n\nThe formation of this hash is considered an internal implementation detail of the viewer.",
                 custom_placeholder: Some(
@@ -271,7 +271,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Visible as Loggable>::name(),
+            <Visible as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether the container, view, entity or instance is currently visible.",
                 custom_placeholder: Some(Visible::default().to_arrow()?),
@@ -279,7 +279,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <VisibleTimeRange as Loggable>::name(),
+            <VisibleTimeRange as Component>::name(),
             ComponentReflection {
                 docstring_md: "The range of values on a given timeline that will be included in a view's query.\n\nRefer to `VisibleTimeRanges` archetype for more information.",
                 custom_placeholder: Some(VisibleTimeRange::default().to_arrow()?),
@@ -287,7 +287,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <VisualBounds2D as Loggable>::name(),
+            <VisualBounds2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "Visual bounds in 2D space used for `Spatial2DView`.",
                 custom_placeholder: Some(VisualBounds2D::default().to_arrow()?),
@@ -295,7 +295,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <VisualizerOverrides as Loggable>::name(),
+            <VisualizerOverrides as Component>::name(),
             ComponentReflection {
                 docstring_md: "Override the visualizers for an entity.\n\nThis component is a stop-gap mechanism based on the current implementation details\nof the visualizer system. It is not intended to be a long-term solution, but provides\nenough utility to be useful in the short term.\n\nThe long-term solution is likely to be based off: <https://github.com/rerun-io/rerun/issues/6626>\n\nThis can only be used as part of blueprints. It will have no effect if used\nin a regular entity.",
                 custom_placeholder: Some(VisualizerOverrides::default().to_arrow()?),
@@ -303,7 +303,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ZoomLevel as Loggable>::name(),
+            <ZoomLevel as Component>::name(),
             ComponentReflection {
                 docstring_md: "A zoom level determines how much of the world is visible on a map.",
                 custom_placeholder: Some(ZoomLevel::default().to_arrow()?),
@@ -311,7 +311,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <AggregationPolicy as Loggable>::name(),
+            <AggregationPolicy as Component>::name(),
             ComponentReflection {
                 docstring_md: "Policy for aggregation of multiple scalar plot values.\n\nThis is used for lines in plots when the X axis distance of individual points goes below a single pixel,\ni.e. a single pixel covers more than one tick worth of data. It can greatly improve performance\n(and readability) in such situations as it prevents overdraw.",
                 custom_placeholder: Some(AggregationPolicy::default().to_arrow()?),
@@ -319,7 +319,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <AlbedoFactor as Loggable>::name(),
+            <AlbedoFactor as Component>::name(),
             ComponentReflection {
                 docstring_md: "A color multiplier, usually applied to a whole entity, e.g. a mesh.",
                 custom_placeholder: Some(AlbedoFactor::default().to_arrow()?),
@@ -327,7 +327,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <AnnotationContext as Loggable>::name(),
+            <AnnotationContext as Component>::name(),
             ComponentReflection {
                 docstring_md: "The annotation context provides additional information on how to display entities.\n\nEntities can use [`datatypes.ClassId`](https://rerun.io/docs/reference/types/datatypes/class_id)s and [`datatypes.KeypointId`](https://rerun.io/docs/reference/types/datatypes/keypoint_id)s to provide annotations, and\nthe labels and colors will be looked up in the appropriate\nannotation context. We use the *first* annotation context we find in the\npath-hierarchy when searching up through the ancestors of a given entity\npath.",
                 custom_placeholder: Some(AnnotationContext::default().to_arrow()?),
@@ -335,7 +335,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <AxisLength as Loggable>::name(),
+            <AxisLength as Component>::name(),
             ComponentReflection {
                 docstring_md: "The length of an axis in local units of the space.",
                 custom_placeholder: Some(AxisLength::default().to_arrow()?),
@@ -343,7 +343,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Blob as Loggable>::name(),
+            <Blob as Component>::name(),
             ComponentReflection {
                 docstring_md: "A binary blob of data.",
                 custom_placeholder: None,
@@ -351,7 +351,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ClassId as Loggable>::name(),
+            <ClassId as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 16-bit ID representing a type of semantic class.",
                 custom_placeholder: Some(ClassId::default().to_arrow()?),
@@ -359,7 +359,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ClearIsRecursive as Loggable>::name(),
+            <ClearIsRecursive as Component>::name(),
             ComponentReflection {
                 docstring_md: "Configures how a clear operation should behave - recursive or not.",
                 custom_placeholder: Some(ClearIsRecursive::default().to_arrow()?),
@@ -367,7 +367,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Color as Loggable>::name(),
+            <Color as Component>::name(),
             ComponentReflection {
                 docstring_md: "An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.\n\nThe color is stored as a 32-bit integer, where the most significant\nbyte is `R` and the least significant byte is `A`.",
                 custom_placeholder: Some(Color::default().to_arrow()?),
@@ -375,7 +375,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Colormap as Loggable>::name(),
+            <Colormap as Component>::name(),
             ComponentReflection {
                 docstring_md: "Colormap for mapping scalar values within a given range to a color.\n\nThis provides a number of popular pre-defined colormaps.\nIn the future, the Rerun Viewer will allow users to define their own colormaps,\nbut currently the Viewer is limited to the types defined here.",
                 custom_placeholder: Some(Colormap::default().to_arrow()?),
@@ -383,7 +383,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <DepthMeter as Loggable>::name(),
+            <DepthMeter as Component>::name(),
             ComponentReflection {
                 docstring_md: "The world->depth map scaling factor.\n\nThis measures how many depth map units are in a world unit.\nFor instance, if a depth map uses millimeters and the world uses meters,\nthis value would be `1000`.\n\nNote that the only effect on 2D views is the physical depth values shown when hovering the image.\nIn 3D views on the other hand, this affects where the points of the point cloud are placed.",
                 custom_placeholder: Some(DepthMeter::default().to_arrow()?),
@@ -391,7 +391,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <DisconnectedSpace as Loggable>::name(),
+            <DisconnectedSpace as Component>::name(),
             ComponentReflection {
                 docstring_md: "Spatially disconnect this entity from its parent.\n\nSpecifies that the entity path at which this is logged is spatially disconnected from its parent,\nmaking it impossible to transform the entity path into its parent's space and vice versa.\nIt *only* applies to space views that work with spatial transformations, i.e. 2D & 3D space views.\nThis is useful for specifying that a subgraph is independent of the rest of the scene.",
                 custom_placeholder: Some(DisconnectedSpace::default().to_arrow()?),
@@ -399,7 +399,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <DrawOrder as Loggable>::name(),
+            <DrawOrder as Component>::name(),
             ComponentReflection {
                 docstring_md: "Draw order of 2D elements. Higher values are drawn on top of lower values.\n\nAn entity can have only a single draw order component.\nWithin an entity draw order is governed by the order of the components.\n\nDraw order for entities with the same draw order is generally undefined.",
                 custom_placeholder: Some(DrawOrder::default().to_arrow()?),
@@ -407,7 +407,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <EntityPath as Loggable>::name(),
+            <EntityPath as Component>::name(),
             ComponentReflection {
                 docstring_md: "A path to an entity, usually to reference some data that is part of the target entity.",
                 custom_placeholder: Some(EntityPath::default().to_arrow()?),
@@ -415,7 +415,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <FillMode as Loggable>::name(),
+            <FillMode as Component>::name(),
             ComponentReflection {
                 docstring_md: "How a geometric shape is drawn and colored.",
                 custom_placeholder: Some(FillMode::default().to_arrow()?),
@@ -423,7 +423,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <FillRatio as Loggable>::name(),
+            <FillRatio as Component>::name(),
             ComponentReflection {
                 docstring_md: "How much a primitive fills out the available space.\n\nUsed for instance to scale the points of the point cloud created from [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) projection in 3D views.\nValid range is from 0 to max float although typically values above 1.0 are not useful.\n\nDefaults to 1.0.",
                 custom_placeholder: Some(FillRatio::default().to_arrow()?),
@@ -431,7 +431,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <GammaCorrection as Loggable>::name(),
+            <GammaCorrection as Component>::name(),
             ComponentReflection {
                 docstring_md: "A gamma correction value to be used with a scalar value or color.\n\nUsed to adjust the gamma of a color or scalar value between 0 and 1 before rendering.\n`new_value = old_value ^ gamma`\n\nValid range is from 0 (excluding) to max float.\nDefaults to 1.0 unless otherwise specified.",
                 custom_placeholder: Some(GammaCorrection::default().to_arrow()?),
@@ -439,7 +439,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <GeoLineString as Loggable>::name(),
+            <GeoLineString as Component>::name(),
             ComponentReflection {
                 docstring_md: "A geospatial line string expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).",
                 custom_placeholder: Some(GeoLineString::default().to_arrow()?),
@@ -447,7 +447,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <HalfSize2D as Loggable>::name(),
+            <HalfSize2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "Half-size (radius) of a 2D box.\n\nMeasured in its local coordinate system.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
                 custom_placeholder: Some(HalfSize2D::default().to_arrow()?),
@@ -455,7 +455,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <HalfSize3D as Loggable>::name(),
+            <HalfSize3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "Half-size (radius) of a 3D box.\n\nMeasured in its local coordinate system.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
                 custom_placeholder: Some(HalfSize3D::default().to_arrow()?),
@@ -463,7 +463,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ImageBuffer as Loggable>::name(),
+            <ImageBuffer as Component>::name(),
             ComponentReflection {
                 docstring_md: "A buffer that is known to store image data.\n\nTo interpret the contents of this buffer, see, [`components.ImageFormat`](https://rerun.io/docs/reference/types/components/image_format).",
                 custom_placeholder: None,
@@ -471,7 +471,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ImageFormat as Loggable>::name(),
+            <ImageFormat as Component>::name(),
             ComponentReflection {
                 docstring_md: "The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).",
                 custom_placeholder: Some(ImageFormat::default().to_arrow()?),
@@ -479,7 +479,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ImagePlaneDistance as Loggable>::name(),
+            <ImagePlaneDistance as Component>::name(),
             ComponentReflection {
                 docstring_md: "The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.\n\nThis is only used for visualization purposes, and does not affect the projection itself.",
                 custom_placeholder: Some(ImagePlaneDistance::default().to_arrow()?),
@@ -487,7 +487,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <KeypointId as Loggable>::name(),
+            <KeypointId as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 16-bit ID representing a type of semantic keypoint within a class.",
                 custom_placeholder: Some(KeypointId::default().to_arrow()?),
@@ -495,7 +495,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <LatLon as Loggable>::name(),
+            <LatLon as Component>::name(),
             ComponentReflection {
                 docstring_md: "A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).",
                 custom_placeholder: Some(LatLon::default().to_arrow()?),
@@ -503,7 +503,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Length as Loggable>::name(),
+            <Length as Component>::name(),
             ComponentReflection {
                 docstring_md: "Length, or one-dimensional size.\n\nMeasured in its local coordinate system; consult the archetype in use to determine which\naxis or part of the entity this is the length of.",
                 custom_placeholder: Some(Length::default().to_arrow()?),
@@ -511,7 +511,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <LineStrip2D as Loggable>::name(),
+            <LineStrip2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A line strip in 2D space.\n\nA line strip is a list of points connected by line segments. It can be used to draw\napproximations of smooth curves.\n\nThe points will be connected in order, like so:\n```text\n       2------3     5\n      /        \\   /\n0----1          \\ /\n                 4\n```",
                 custom_placeholder: Some(LineStrip2D::default().to_arrow()?),
@@ -519,7 +519,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <LineStrip3D as Loggable>::name(),
+            <LineStrip3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A line strip in 3D space.\n\nA line strip is a list of points connected by line segments. It can be used to draw\napproximations of smooth curves.\n\nThe points will be connected in order, like so:\n```text\n       2------3     5\n      /        \\   /\n0----1          \\ /\n                 4\n```",
                 custom_placeholder: Some(LineStrip3D::default().to_arrow()?),
@@ -527,7 +527,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <MagnificationFilter as Loggable>::name(),
+            <MagnificationFilter as Component>::name(),
             ComponentReflection {
                 docstring_md: "Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.",
                 custom_placeholder: Some(MagnificationFilter::default().to_arrow()?),
@@ -535,7 +535,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <MarkerShape as Loggable>::name(),
+            <MarkerShape as Component>::name(),
             ComponentReflection {
                 docstring_md: "The visual appearance of a point in e.g. a 2D plot.",
                 custom_placeholder: Some(MarkerShape::default().to_arrow()?),
@@ -543,7 +543,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <MarkerSize as Loggable>::name(),
+            <MarkerSize as Component>::name(),
             ComponentReflection {
                 docstring_md: "Radius of a marker of a point in e.g. a 2D plot, measured in UI points.",
                 custom_placeholder: Some(MarkerSize::default().to_arrow()?),
@@ -551,7 +551,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <MediaType as Loggable>::name(),
+            <MediaType as Component>::name(),
             ComponentReflection {
                 docstring_md: "A standardized media type (RFC2046, formerly known as MIME types), encoded as a string.\n\nThe complete reference of officially registered media types is maintained by the IANA and can be\nconsulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.",
                 custom_placeholder: Some(MediaType::default().to_arrow()?),
@@ -559,7 +559,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Name as Loggable>::name(),
+            <Name as Component>::name(),
             ComponentReflection {
                 docstring_md: "A display name, typically for an entity or a item like a plot series.",
                 custom_placeholder: Some(Name::default().to_arrow()?),
@@ -567,7 +567,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Opacity as Loggable>::name(),
+            <Opacity as Component>::name(),
             ComponentReflection {
                 docstring_md: "Degree of transparency ranging from 0.0 (fully transparent) to 1.0 (fully opaque).\n\nThe final opacity value may be a result of multiplication with alpha values as specified by other color sources.\nUnless otherwise specified, the default value is 1.",
                 custom_placeholder: Some(Opacity::default().to_arrow()?),
@@ -575,7 +575,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <PinholeProjection as Loggable>::name(),
+            <PinholeProjection as Component>::name(),
             ComponentReflection {
                 docstring_md: "Camera projection, from image coordinates to view coordinates.\n\nChild from parent.\nImage coordinates from camera view coordinates.\n\nExample:\n```text\n1496.1     0.0  980.5\n   0.0  1496.1  744.5\n   0.0     0.0    1.0\n```",
                 custom_placeholder: Some(PinholeProjection::default().to_arrow()?),
@@ -583,7 +583,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <PoseRotationAxisAngle as Loggable>::name(),
+            <PoseRotationAxisAngle as Component>::name(),
             ComponentReflection {
                 docstring_md: "3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.",
                 custom_placeholder: Some(PoseRotationAxisAngle::default().to_arrow()?),
@@ -591,7 +591,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <PoseRotationQuat as Loggable>::name(),
+            <PoseRotationQuat as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 3D rotation expressed as a quaternion that doesn't propagate in the transform hierarchy.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer, quaternions will always be normalized.",
                 custom_placeholder: Some(PoseRotationQuat::default().to_arrow()?),
@@ -599,7 +599,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <PoseScale3D as Loggable>::name(),
+            <PoseScale3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 3D scale factor that doesn't propagate in the transform hierarchy.\n\nA scale of 1.0 means no scaling.\nA scale of 2.0 means doubling the size.\nEach component scales along the corresponding axis.",
                 custom_placeholder: Some(PoseScale3D::default().to_arrow()?),
@@ -607,7 +607,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <PoseTransformMat3x3 as Loggable>::name(),
+            <PoseTransformMat3x3 as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 3x3 transformation matrix Matrix that doesn't propagate in the transform hierarchy.\n\n3x3 matrixes are able to represent any affine transformation in 3D space,\ni.e. rotation, scaling, shearing, reflection etc.\n\nMatrices in Rerun are stored as flat list of coefficients in column-major order:\n```text\n            column 0       column 1       column 2\n       -------------------------------------------------\nrow 0 | flat_columns[0] flat_columns[3] flat_columns[6]\nrow 1 | flat_columns[1] flat_columns[4] flat_columns[7]\nrow 2 | flat_columns[2] flat_columns[5] flat_columns[8]\n```",
                 custom_placeholder: Some(PoseTransformMat3x3::default().to_arrow()?),
@@ -615,7 +615,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <PoseTranslation3D as Loggable>::name(),
+            <PoseTranslation3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A translation vector in 3D space that doesn't propagate in the transform hierarchy.",
                 custom_placeholder: Some(PoseTranslation3D::default().to_arrow()?),
@@ -623,7 +623,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Position2D as Loggable>::name(),
+            <Position2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A position in 2D space.",
                 custom_placeholder: Some(Position2D::default().to_arrow()?),
@@ -631,7 +631,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Position3D as Loggable>::name(),
+            <Position3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A position in 3D space.",
                 custom_placeholder: Some(Position3D::default().to_arrow()?),
@@ -639,7 +639,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Radius as Loggable>::name(),
+            <Radius as Component>::name(),
             ComponentReflection {
                 docstring_md: "The radius of something, e.g. a point.\n\nInternally, positive values indicate scene units, whereas negative values\nare interpreted as UI points.\n\nUI points are independent of zooming in Views, but are sensitive to the application UI scaling.\nat 100% UI scaling, UI points are equal to pixels\nThe Viewer's UI scaling defaults to the OS scaling which typically is 100% for full HD screens and 200% for 4k screens.",
                 custom_placeholder: Some(Radius::default().to_arrow()?),
@@ -647,7 +647,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Range1D as Loggable>::name(),
+            <Range1D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 1D range, specifying a lower and upper bound.",
                 custom_placeholder: Some(Range1D::default().to_arrow()?),
@@ -655,7 +655,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Resolution as Loggable>::name(),
+            <Resolution as Component>::name(),
             ComponentReflection {
                 docstring_md: "Pixel resolution width & height, e.g. of a camera sensor.\n\nTypically in integer units, but for some use cases floating point may be used.",
                 custom_placeholder: Some(Resolution::default().to_arrow()?),
@@ -663,7 +663,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <RotationAxisAngle as Loggable>::name(),
+            <RotationAxisAngle as Component>::name(),
             ComponentReflection {
                 docstring_md: "3D rotation represented by a rotation around a given axis.",
                 custom_placeholder: Some(RotationAxisAngle::default().to_arrow()?),
@@ -671,7 +671,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <RotationQuat as Loggable>::name(),
+            <RotationQuat as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 3D rotation expressed as a quaternion.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer, quaternions will always be normalized.",
                 custom_placeholder: Some(RotationQuat::default().to_arrow()?),
@@ -679,7 +679,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Scalar as Loggable>::name(),
+            <Scalar as Component>::name(),
             ComponentReflection {
                 docstring_md: "A scalar value, encoded as a 64-bit floating point.\n\nUsed for time series plots.",
                 custom_placeholder: Some(Scalar::default().to_arrow()?),
@@ -687,7 +687,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Scale3D as Loggable>::name(),
+            <Scale3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 3D scale factor.\n\nA scale of 1.0 means no scaling.\nA scale of 2.0 means doubling the size.\nEach component scales along the corresponding axis.",
                 custom_placeholder: Some(Scale3D::default().to_arrow()?),
@@ -695,7 +695,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ShowLabels as Loggable>::name(),
+            <ShowLabels as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether the entity's [`components.Text`](https://rerun.io/docs/reference/types/components/text) label is shown.\n\nThe main purpose of this component existing separately from the labels themselves\nis to be overridden when desired, to allow hiding and showing from the viewer and\nblueprints.",
                 custom_placeholder: None,
@@ -703,7 +703,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <StrokeWidth as Loggable>::name(),
+            <StrokeWidth as Component>::name(),
             ComponentReflection {
                 docstring_md: "The width of a stroke specified in UI points.",
                 custom_placeholder: Some(StrokeWidth::default().to_arrow()?),
@@ -711,7 +711,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <TensorData as Loggable>::name(),
+            <TensorData as Component>::name(),
             ComponentReflection {
                 docstring_md: "An N-dimensional array of numbers.\n\nThe number of dimensions and their respective lengths is specified by the `shape` field.\nThe dimensions are ordered from outermost to innermost. For example, in the common case of\na 2D RGB Image, the shape would be `[height, width, channel]`.\n\nThese dimensions are combined with an index to look up values from the `buffer` field,\nwhich stores a contiguous array of typed values.",
                 custom_placeholder: Some(TensorData::default().to_arrow()?),
@@ -719,7 +719,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <TensorDimensionIndexSelection as Loggable>::name(),
+            <TensorDimensionIndexSelection as Component>::name(),
             ComponentReflection {
                 docstring_md: "Specifies a concrete index on a tensor dimension.",
                 custom_placeholder: Some(
@@ -729,7 +729,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <TensorHeightDimension as Loggable>::name(),
+            <TensorHeightDimension as Component>::name(),
             ComponentReflection {
                 docstring_md: "Specifies which dimension to use for height.",
                 custom_placeholder: Some(TensorHeightDimension::default().to_arrow()?),
@@ -737,7 +737,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <TensorWidthDimension as Loggable>::name(),
+            <TensorWidthDimension as Component>::name(),
             ComponentReflection {
                 docstring_md: "Specifies which dimension to use for width.",
                 custom_placeholder: Some(TensorWidthDimension::default().to_arrow()?),
@@ -745,7 +745,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Texcoord2D as Loggable>::name(),
+            <Texcoord2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 2D texture UV coordinate.\n\nTexture coordinates specify a position on a 2D texture.\nA range from 0-1 covers the entire texture in the respective dimension.\nUnless configured otherwise, the texture repeats outside of this range.\nRerun uses top-left as the origin for UV coordinates.\n\n  0     U     1\n0 + --------- →\n  |           .\nV |           .\n  |           .\n1 ↓ . . . . . .\n\nThis is the same convention as in Vulkan/Metal/DX12/WebGPU, but (!) unlike OpenGL,\nwhich places the origin at the bottom-left.",
                 custom_placeholder: Some(Texcoord2D::default().to_arrow()?),
@@ -753,7 +753,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Text as Loggable>::name(),
+            <Text as Component>::name(),
             ComponentReflection {
                 docstring_md: "A string of text, e.g. for labels and text documents.",
                 custom_placeholder: Some(Text::default().to_arrow()?),
@@ -761,7 +761,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <TextLogLevel as Loggable>::name(),
+            <TextLogLevel as Component>::name(),
             ComponentReflection {
                 docstring_md: "The severity level of a text log message.\n\nRecommended to be one of:\n* `\"CRITICAL\"`\n* `\"ERROR\"`\n* `\"WARN\"`\n* `\"INFO\"`\n* `\"DEBUG\"`\n* `\"TRACE\"`",
                 custom_placeholder: Some(TextLogLevel::default().to_arrow()?),
@@ -769,7 +769,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <TransformMat3x3 as Loggable>::name(),
+            <TransformMat3x3 as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 3x3 transformation matrix Matrix.\n\n3x3 matrixes are able to represent any affine transformation in 3D space,\ni.e. rotation, scaling, shearing, reflection etc.\n\nMatrices in Rerun are stored as flat list of coefficients in column-major order:\n```text\n            column 0       column 1       column 2\n       -------------------------------------------------\nrow 0 | flat_columns[0] flat_columns[3] flat_columns[6]\nrow 1 | flat_columns[1] flat_columns[4] flat_columns[7]\nrow 2 | flat_columns[2] flat_columns[5] flat_columns[8]\n```",
                 custom_placeholder: Some(TransformMat3x3::default().to_arrow()?),
@@ -777,7 +777,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <TransformRelation as Loggable>::name(),
+            <TransformRelation as Component>::name(),
             ComponentReflection {
                 docstring_md: "Specifies relation a spatial transform describes.",
                 custom_placeholder: Some(TransformRelation::default().to_arrow()?),
@@ -785,7 +785,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Translation3D as Loggable>::name(),
+            <Translation3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A translation vector in 3D space.",
                 custom_placeholder: Some(Translation3D::default().to_arrow()?),
@@ -793,7 +793,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <TriangleIndices as Loggable>::name(),
+            <TriangleIndices as Component>::name(),
             ComponentReflection {
                 docstring_md: "The three indices of a triangle in a triangle mesh.",
                 custom_placeholder: Some(TriangleIndices::default().to_arrow()?),
@@ -801,7 +801,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ValueRange as Loggable>::name(),
+            <ValueRange as Component>::name(),
             ComponentReflection {
                 docstring_md: "Range of expected or valid values, specifying a lower and upper bound.",
                 custom_placeholder: Some(ValueRange::default().to_arrow()?),
@@ -809,7 +809,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Vector2D as Loggable>::name(),
+            <Vector2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A vector in 2D space.",
                 custom_placeholder: Some(Vector2D::default().to_arrow()?),
@@ -817,7 +817,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <Vector3D as Loggable>::name(),
+            <Vector3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A vector in 3D space.",
                 custom_placeholder: Some(Vector3D::default().to_arrow()?),
@@ -825,7 +825,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <VideoTimestamp as Loggable>::name(),
+            <VideoTimestamp as Component>::name(),
             ComponentReflection {
                 docstring_md: "Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).",
                 custom_placeholder: Some(VideoTimestamp::default().to_arrow()?),
@@ -833,7 +833,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <ViewCoordinates as Loggable>::name(),
+            <ViewCoordinates as Component>::name(),
             ComponentReflection {
                 docstring_md: "How we interpret the coordinate system of an entity/space.\n\nFor instance: What is \"up\"? What does the Z axis mean?\n\nThe three coordinates are always ordered as [x, y, z].\n\nFor example [Right, Down, Forward] means that the X axis points to the right, the Y axis points\ndown, and the Z axis points forward.\n\n⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).\n\nThe following constants are used to represent the different directions:\n * Up = 1\n * Down = 2\n * Right = 3\n * Left = 4\n * Forward = 5\n * Back = 6",
                 custom_placeholder: Some(ViewCoordinates::default().to_arrow()?),

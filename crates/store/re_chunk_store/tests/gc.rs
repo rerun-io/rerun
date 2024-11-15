@@ -14,7 +14,7 @@ use re_log_types::{
     EntityPath, ResolvedTimeRange, Time, TimeType, Timeline,
 };
 use re_types::testing::build_some_large_structs;
-use re_types_core::Loggable as _;
+use re_types_core::Component as _;
 
 // ---
 

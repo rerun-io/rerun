@@ -2,7 +2,7 @@ use re_viewer::external::{
     egui,
     re_log_types::{EntityPath, Instance},
     re_renderer,
-    re_types::{self, components::Color, ComponentName, Loggable as _},
+    re_types::{self, components::Color, Component as _, ComponentName},
     re_viewer_context::{
         self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
         ViewContextCollection, ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo,

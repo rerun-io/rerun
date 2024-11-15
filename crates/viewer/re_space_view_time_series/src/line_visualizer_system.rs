@@ -9,7 +9,7 @@ use re_types::external::arrow2::datatypes::DataType as ArrowDatatype;
 use re_types::{
     archetypes::SeriesLine,
     components::{Color, Name, Scalar, StrokeWidth},
-    Archetype as _, Loggable,
+    Archetype as _, Component, Loggable,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, SpaceViewStateExt as _,

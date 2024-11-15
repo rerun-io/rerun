@@ -11,7 +11,7 @@ use re_types::{
         PoseRotationQuat, PoseScale3D, PoseTransformMat3x3, PoseTranslation3D, RotationAxisAngle,
         RotationQuat, Scale3D, TransformMat3x3, TransformRelation, Translation3D, ViewCoordinates,
     },
-    Archetype, ComponentNameSet, Loggable as _,
+    Archetype, Component as _, ComponentNameSet,
 };
 use re_viewer_context::{IdentifiedViewSystem, ViewContext, ViewContextSystem};
 use vec1::smallvec_v1::SmallVec1;

@@ -1,5 +1,4 @@
 use nohash_hasher::IntMap;
-use re_types_blueprint::blueprint::components::VisualizerOverrides;
 use slotmap::SlotMap;
 use smallvec::SmallVec;
 
@@ -14,6 +13,7 @@ use re_types::{
     },
     Archetype as _, SpaceViewClassIdentifier,
 };
+use re_types_blueprint::blueprint::components::VisualizerOverrides;
 use re_types_core::ComponentName;
 use re_viewer_context::{
     ApplicableEntities, DataQueryResult, DataResult, DataResultHandle, DataResultNode,
@@ -480,7 +480,7 @@ impl DataQueryPropertyResolver<'_> {
                 }
 
                 // Figure out relevant visual time range.
-                use re_types::Loggable as _;
+                use re_types::Component as _;
                 let latest_at_results = blueprint.latest_at(
                     blueprint_query,
                     &recursive_override_path,

@@ -7,7 +7,7 @@ use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
 use re_types::View;
 use re_types::{
-    blueprint::archetypes::Background, components::ViewCoordinates, Loggable,
+    blueprint::archetypes::Background, components::ViewCoordinates, Component,
     SpaceViewClassIdentifier,
 };
 use re_ui::UiExt as _;

@@ -422,13 +422,6 @@ use re_types_core::Loggable;
 re_types_core::macros::impl_into_cow!(EntityPath);
 
 impl Loggable for EntityPath {
-    type Name = re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.controls.EntityPath".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         re_types_core::datatypes::Utf8::arrow_datatype()
@@ -441,7 +434,7 @@ impl Loggable for EntityPath {
         Self: 'a,
     {
         Err(re_types_core::SerializationError::not_implemented(
-            Self::name(),
+            "rerun.controls.EntityPath",
             "EntityPaths are never nullable, use `to_arrow()` instead",
         ))
     }

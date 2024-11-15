@@ -52,13 +52,6 @@ impl From<UVec2D> for [u32; 2usize] {
 ::re_types_core::macros::impl_into_cow!(UVec2D);
 
 impl ::re_types_core::Loggable for UVec2D {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.UVec2D".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

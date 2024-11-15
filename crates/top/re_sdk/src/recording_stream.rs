@@ -18,7 +18,7 @@ use re_log_types::{
     StoreId, StoreInfo, StoreKind, StoreSource, Time, TimeInt, TimePoint, TimeType, Timeline,
     TimelineName,
 };
-use re_types_core::{AsComponents, ComponentBatch, SerializationError};
+use re_types_core::{AsComponents, SerializationError};
 
 #[cfg(feature = "web_viewer")]
 use re_web_viewer_server::WebViewerServerPort;
@@ -1002,7 +1002,7 @@ impl RecordingStream {
         &self,
         ent_path: impl Into<EntityPath>,
         timelines: impl IntoIterator<Item = TimeColumn>,
-        components: impl IntoIterator<Item = &'a dyn ComponentBatch>,
+        components: impl IntoIterator<Item = &'a dyn re_types_core::ComponentBatch>,
     ) -> RecordingStreamResult<()> {
         let id = ChunkId::new();
 
@@ -1120,7 +1120,7 @@ impl RecordingStream {
         )
     }
 
-    /// Logs a set of [`ComponentBatch`]es into Rerun.
+    /// Logs a set of [`re_types_core::ComponentBatch`]es into Rerun.
     ///
     /// If `static_` is set to `true`, all timestamp data associated with this message will be
     /// dropped right before sending it to Rerun.
@@ -1147,7 +1147,7 @@ impl RecordingStream {
         &self,
         ent_path: impl Into<EntityPath>,
         static_: bool,
-        comp_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
+        comp_batches: impl IntoIterator<Item = &'a dyn re_types_core::ComponentBatch>,
     ) -> RecordingStreamResult<()> {
         let row_id = RowId::new(); // Create row-id as early as possible. It has a timestamp and is used to estimate e2e latency.
         self.log_component_batches_impl(row_id, ent_path, static_, comp_batches)
@@ -1158,7 +1158,7 @@ impl RecordingStream {
         row_id: RowId,
         entity_path: impl Into<EntityPath>,
         static_: bool,
-        comp_batches: impl IntoIterator<Item = &'a dyn ComponentBatch>,
+        comp_batches: impl IntoIterator<Item = &'a dyn re_types_core::ComponentBatch>,
     ) -> RecordingStreamResult<()> {
         if !self.is_enabled() {
             return Ok(()); // silently drop the message
@@ -2528,7 +2528,7 @@ mod tests {
 
     fn example_rows(timeless: bool) -> Vec<PendingRow> {
         use re_log_types::example_components::{MyColor, MyLabel, MyPoint};
-        use re_types_core::Loggable as _;
+        use re_types_core::Component as _;
 
         let mut tick = 0i64;
         let mut timepoint = |frame_nr: i64| {

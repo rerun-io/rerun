@@ -10,9 +10,7 @@ use parking_lot::RwLock;
 use re_chunk::{Chunk, RowId, UnitChunkShared};
 use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
 use re_log_types::EntityPath;
-use re_types_core::{
-    components::ClearIsRecursive, Component, ComponentName, Loggable as _, SizeBytes,
-};
+use re_types_core::{components::ClearIsRecursive, Component, ComponentName, SizeBytes};
 
 use crate::{QueryCache, QueryCacheKey, QueryError};
 
