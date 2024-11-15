@@ -1,16 +1,25 @@
 [package]
 name = "re_protos_builder"
 authors.workspace = true
+description = "Code generation for Rerun's Protobuf and gRPC definitions."
 edition.workspace = true
 homepage.workspace = true
 include.workspace = true
 license.workspace = true
-publish = false
+publish = true
+readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lints]
+workspace = true
+
+
+[package.metadata.docs.rs]
+all-features = true
+
 
 [dependencies]
 re_log = { workspace = true, features = ["setup"] }
@@ -20,6 +29,3 @@ camino.workspace = true
 tonic-build = { workspace = true, default-features = false, features = [
   "prost",
 ] }
-
-[lints]
-workspace = true
