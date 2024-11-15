@@ -89,6 +89,7 @@ pub enum LayoutState {
     Finished {
         timestamp: Timestamp,
         layout: Layout,
+        _provider: ForceLayout,
     },
 }
 
@@ -122,8 +123,8 @@ impl LayoutState {
     ) -> Self {
         match self {
             // Layout is up to date, nothing to do here.
-            Self::Finished { timestamp, layout } if timestamp == requested => {
-                Self::Finished { timestamp, layout } // no op
+            Self::Finished { ref timestamp, .. } if timestamp == &requested => {
+                self // no op
             }
             // We need to recompute the layout.
             Self::None | Self::Finished { .. } => {
@@ -142,7 +143,7 @@ impl LayoutState {
                 mut layout,
                 mut provider,
             } => match provider.tick(&mut layout) {
-                true => Self::Finished { timestamp, layout },
+                true => Self::Finished { timestamp, layout, _provider: provider },
                 false => Self::InProgress {
                     timestamp,
                     layout,
