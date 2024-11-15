@@ -147,9 +147,14 @@ int main(int argc, char** argv) {
 
     std::vector<size_t> offsets;
     if (temporal_batch_size.has_value()) {
+// GCC wrongfully thinks that `temporal_batch_size` might be uninit, even though we've
+// literally checked for that in the line above?!
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
         for (size_t i = 0; i < num_points_per_series; i += *temporal_batch_size) {
             offsets.push_back(i);
         }
+#pragma GCC diagnostic pop
     } else {
         offsets.resize(sim_times.size());
         std::iota(offsets.begin(), offsets.end(), 0);
