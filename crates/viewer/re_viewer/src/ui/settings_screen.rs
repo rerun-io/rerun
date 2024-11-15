@@ -226,7 +226,7 @@ fn ffmpeg_path_status_ui(ui: &mut Ui, app_options: &AppOptions) {
             Err(FFmpegVersionParseError::ParseVersion { raw_version }) => {
                 // We make this one a warning instead of an error because version parsing is flaky, and
                 // it might end up still working.
-                ui.warning_label(&format!(
+                ui.warning_label(format!(
                     "FFmpeg binary found but unable to parse version: {raw_version}"
                 ));
             }
