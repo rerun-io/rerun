@@ -89,16 +89,12 @@ fn sphere_or_circle_quad_span(vertex_idx: u32, point_pos: vec3f, world_radius: f
 }
 
 /// Computes coverage of a 3D sphere placed at `sphere_center` in the fragment shader using the currently set camera.
-fn sphere_quad_coverage(world_position: vec3f, radius: f32, sphere_center: vec3f) -> f32 {
-    let ray = camera_ray_to_world_pos(world_position);
-
+fn sphere_quad_coverage(sphere_intersection: SphereIntersection) -> f32 {
     // Sphere intersection with anti-aliasing as described by Iq here
     // https://www.shadertoy.com/view/MsSSWV
     // (but rearranged and labeled to it's easier to understand!)
-    let d = ray_sphere_distance(ray, sphere_center, radius);
-    let distance_to_sphere_surface = d.x;
-    let closest_ray_dist = d.y;
-    let pixel_world_size = approx_pixel_world_size_at(closest_ray_dist);
+    let distance_to_sphere_surface = sphere_intersection.distance_to_sphere_surface;
+    let pixel_world_size = approx_pixel_world_size_at(sphere_intersection.distance_to_closest_hit_on_ray);
 
     let distance_to_surface_in_pixels = distance_to_sphere_surface / pixel_world_size;
 

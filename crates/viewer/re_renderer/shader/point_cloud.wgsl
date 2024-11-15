@@ -4,7 +4,6 @@
 #import <./utils/flags.wgsl>
 #import <./utils/size.wgsl>
 #import <./utils/sphere_quad.wgsl>
-#import <./utils/sphere_depth.wgsl>
 #import <./utils/depth_offset.wgsl>
 
 @group(1) @binding(0)
@@ -65,10 +64,6 @@ struct VertexOut {
 
     @location(4) @interpolate(flat)
     picking_instance_id: vec2u,
-
-    // Offset on the projected Z axis corresponding to the frontmost point on the sphere.
-    @location(5) @interpolate(flat)
-    sphere_radius_projected_depth: f32,
 };
 
 struct FragmentOut {
@@ -132,7 +127,6 @@ fn vs_main(@builtin(vertex_index) vertex_idx: u32) -> VertexOut {
     out.world_position = quad.pos_in_world;
     out.point_center = point_data.pos;
     out.picking_instance_id = point_data.picking_instance_id;
-    out.sphere_radius_projected_depth = sphere_radius_projected_depth(point_data.pos, world_radius);
 
     return out;
 }
@@ -150,27 +144,29 @@ fn circle_quad_coverage(world_position: vec3f, radius: f32, circle_center: vec3f
     return smoothstep(radius + feathering_radius, radius - feathering_radius, distance);
 }
 
-fn coverage(world_position: vec3f, radius: f32, point_center: vec3f) -> f32 {
+fn coverage_and_depth(projected_z: f32, world_position: vec3f, radius: f32, point_center: vec3f) -> vec2f {
     if is_camera_orthographic() || has_any_flag(batch.flags, FLAG_DRAW_AS_CIRCLES) {
-        return circle_quad_coverage(world_position, radius, point_center);
+        let coverage = circle_quad_coverage(world_position, radius, point_center);
+        let depth = projected_z;
+        return vec2f(coverage, depth);
     } else {
-        return sphere_quad_coverage(world_position, radius, point_center);
+        let camera_ray = camera_ray_to_world_pos(world_position);
+        let sphere_intersection = ray_sphere_distance(camera_ray_to_world_pos(world_position), point_center, radius);
+        let coverage = sphere_quad_coverage(sphere_intersection);
+        let sphere_hit_position = camera_ray.origin + camera_ray.direction * sphere_intersection.distance_to_closest_hit_on_ray;
+        let sphere_hit_position_projected = apply_depth_offset(frame.projection_from_world * vec4f(sphere_hit_position, 1.0), batch.depth_offset);
+        let depth = sphere_hit_position_projected.z / sphere_hit_position_projected.w;
+        return vec2f(coverage, depth);
     }
 }
 
 
 @fragment
 fn fs_main(in: VertexOut) -> FragmentOut {
-    let coverage = coverage(in.world_position, in.radius, in.point_center);
-    if coverage < 0.001 {
+    let coverage_depth = coverage_and_depth(in.position.z, in.world_position, in.radius, in.point_center);
+    if coverage_depth.x < 0.001 {
         discard;
     }
-
-    let depth_offset = sphere_fragment_projected_depth(
-        in.radius,
-        in.sphere_radius_projected_depth,
-        in.world_position - in.point_center,
-    );
 
     // TODO(andreas): Proper shading
     // TODO(andreas): This doesn't even use the sphere's world position for shading, the world position used here is flat!
@@ -179,28 +175,47 @@ fn fs_main(in: VertexOut) -> FragmentOut {
         shading = max(0.4, sqrt(1.2 - distance(in.point_center, in.world_position) / in.radius)); // quick and dirty coloring
     }
     return FragmentOut(
-        vec4f(in.color.rgb * shading, coverage),
-        in.position.z + depth_offset,
+        vec4f(in.color.rgb * shading, coverage_depth.x),
+        coverage_depth.y,
     );
 }
 
-@fragment
-fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
-    let coverage = coverage(in.world_position, in.radius, in.point_center);
-    if coverage <= 0.5 {
-        discard;
-    }
-    return vec4u(batch.picking_layer_object_id, in.picking_instance_id);
+struct PickingLayerOut {
+    @location(0)
+    picking_id: vec4u,
+
+    @builtin(frag_depth)
+    depth: f32
 }
 
 @fragment
-fn fs_main_outline_mask(in: VertexOut) -> @location(0) vec2u {
+fn fs_main_picking_layer(in: VertexOut) -> PickingLayerOut {
+    let coverage_depth = coverage_and_depth(in.position.z, in.world_position, in.radius, in.point_center);
+    if coverage_depth.x <= 0.5 {
+        discard;
+    }
+    return PickingLayerOut(
+        vec4u(batch.picking_layer_object_id, in.picking_instance_id),
+        coverage_depth.y,
+    );
+}
+
+struct OutlineMaskOut {
+    @location(0)
+    mask: vec2u,
+
+    @builtin(frag_depth)
+    depth: f32
+}
+
+@fragment
+fn fs_main_outline_mask(in: VertexOut) -> OutlineMaskOut {
     // Output is an integer target, can't use coverage therefore.
     // But we still want to discard fragments where coverage is low.
     // Since the outline extends a bit, a very low cut off tends to look better.
-    let coverage = coverage(in.world_position, in.radius, in.point_center);
-    if coverage < 1.0 {
+    let coverage_depth = coverage_and_depth(in.position.z, in.world_position, in.radius, in.point_center);
+    if coverage_depth.x < 1.0 {
         discard;
     }
-    return batch.outline_mask;
+    return OutlineMaskOut(batch.outline_mask, coverage_depth.y);
 }

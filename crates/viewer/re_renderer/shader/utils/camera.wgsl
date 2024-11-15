@@ -63,16 +63,23 @@ fn camera_ray_direction_from_screenuv(texcoord: vec2f) -> vec3f {
     return normalize(world_space_dir);
 }
 
-// Returns distance to sphere surface (x) and distance to closest ray hit (y)
+struct SphereIntersection {
+    distance_to_sphere_surface: f32,
+    distance_to_closest_hit_on_ray: f32,
+}
+
+// Returns distance to sphere surface and distance to closest ray hit.
 // Via https://iquilezles.org/articles/spherefunctions/ but with more verbose names.
-fn ray_sphere_distance(ray: Ray, sphere_origin: vec3f, sphere_radius: f32) -> vec2f {
+fn ray_sphere_distance(ray: Ray, sphere_origin: vec3f, sphere_radius: f32) -> SphereIntersection {
     let sphere_radius_sq = sphere_radius * sphere_radius;
     let sphere_to_origin = ray.origin - sphere_origin;
     let b = dot(sphere_to_origin, ray.direction);
     let c = dot(sphere_to_origin, sphere_to_origin) - sphere_radius_sq;
     let h = b * b - c;
-    let d = sqrt(max(0.0, sphere_radius_sq - h)) - sphere_radius;
-    return vec2f(d, -b - sqrt(max(h, 0.0)));
+    var intersection: SphereIntersection;
+    intersection.distance_to_sphere_surface = sqrt(max(0.0, sphere_radius_sq - h)) - sphere_radius;
+    intersection.distance_to_closest_hit_on_ray = -b - sqrt(max(h, 0.0));
+    return intersection;
 }
 
 // Returns the projected size of a pixel at a given distance from the camera.
