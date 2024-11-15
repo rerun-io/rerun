@@ -264,7 +264,7 @@ class ImageExt:
             if self.format is None:
                 raise ValueError("Cannot JPEG compress an image without a known image_format")
 
-            image_format_arrow = self.format.as_arrow_array().storage[0].as_py()
+            image_format_arrow = self.format.as_arrow_array()[0].as_py()
 
             image_format = ImageFormat(
                 width=image_format_arrow["width"],
@@ -292,11 +292,7 @@ class ImageExt:
 
             buf = None
             if self.buffer is not None:
-                buf = (
-                    self.buffer.as_arrow_array()
-                    .storage.values.to_numpy()
-                    .view(image_format.channel_datatype.to_np_dtype())
-                )
+                buf = self.buffer.as_arrow_array().values.to_numpy().view(image_format.channel_datatype.to_np_dtype())
 
             if buf is None:
                 raise ValueError("Cannot JPEG compress an image without data")

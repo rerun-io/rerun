@@ -11,11 +11,10 @@ import pyarrow as pa
 
 from ..._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
 )
 
-__all__ = ["MapProvider", "MapProviderArrayLike", "MapProviderBatch", "MapProviderLike", "MapProviderType"]
+__all__ = ["MapProvider", "MapProviderArrayLike", "MapProviderBatch", "MapProviderLike"]
 
 
 from enum import Enum
@@ -74,15 +73,9 @@ MapProviderLike = Union[
 MapProviderArrayLike = Union[MapProviderLike, Sequence[MapProviderLike]]
 
 
-class MapProviderType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.blueprint.components.MapProvider"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
-
-
 class MapProviderBatch(BaseBatch[MapProviderArrayLike], ComponentBatchMixin):
-    _ARROW_TYPE = MapProviderType()
+    _ARROW_DATATYPE = pa.uint8()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.MapProvider"
 
     @staticmethod
     def _native_to_pa_array(data: MapProviderArrayLike, data_type: pa.DataType) -> pa.Array:

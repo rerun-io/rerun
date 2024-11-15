@@ -189,9 +189,9 @@ class TensorDataExt:
 
 
 def _build_shape_array(dims: list[TensorDimension]) -> pa.Array:
-    from . import TensorDimensionType
+    from . import TensorDimensionBatch
 
-    data_type = TensorDimensionType().storage_type
+    data_type = TensorDimensionBatch._ARROW_DATATYPE
 
     array = np.asarray([d.size for d in dims], dtype=np.uint64).flatten()
     names = pa.array([d.name for d in dims], mask=[d is None for d in dims], type=data_type.field("name").type)
@@ -224,9 +224,9 @@ DTYPE_MAP: Final[dict[npt.DTypeLike, str]] = {
 
 
 def _build_buffer_array(buffer: TensorBufferLike) -> pa.Array:
-    from . import TensorBuffer, TensorBufferType
+    from . import TensorBuffer, TensorBufferBatch
 
-    data_type = TensorBufferType().storage_type
+    data_type = TensorBufferBatch._ARROW_DATATYPE
 
     if isinstance(buffer, TensorBuffer):
         buffer = buffer.inner

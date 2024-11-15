@@ -14,10 +14,9 @@ from attrs import define, field
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 
-__all__ = ["Utf8", "Utf8ArrayLike", "Utf8Batch", "Utf8Like", "Utf8Type"]
+__all__ = ["Utf8", "Utf8ArrayLike", "Utf8Batch", "Utf8Like"]
 
 
 @define(init=False)
@@ -47,15 +46,8 @@ else:
 Utf8ArrayLike = Union[Utf8, Sequence[Utf8Like], str, Sequence[str], npt.ArrayLike]
 
 
-class Utf8Type(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.Utf8"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.utf8(), self._TYPE_NAME)
-
-
 class Utf8Batch(BaseBatch[Utf8ArrayLike]):
-    _ARROW_TYPE = Utf8Type()
+    _ARROW_DATATYPE = pa.utf8()
 
     @staticmethod
     def _native_to_pa_array(data: Utf8ArrayLike, data_type: pa.DataType) -> pa.Array:

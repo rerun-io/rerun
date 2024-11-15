@@ -11,7 +11,7 @@ from ..._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["AutoLayout", "AutoLayoutBatch", "AutoLayoutType"]
+__all__ = ["AutoLayout", "AutoLayoutBatch"]
 
 
 class AutoLayout(datatypes.Bool, ComponentMixin):
@@ -24,12 +24,8 @@ class AutoLayout(datatypes.Bool, ComponentMixin):
     pass
 
 
-class AutoLayoutType(datatypes.BoolType):
-    _TYPE_NAME: str = "rerun.blueprint.components.AutoLayout"
-
-
 class AutoLayoutBatch(datatypes.BoolBatch, ComponentBatchMixin):
-    _ARROW_TYPE = AutoLayoutType()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.AutoLayout"
 
 
 # This is patched in late to avoid circular dependencies.

@@ -2,71 +2,29 @@
 
 from __future__ import annotations
 
-from .affix_fuzzer1 import AffixFuzzer1, AffixFuzzer1Batch, AffixFuzzer1Type
-from .affix_fuzzer2 import AffixFuzzer2, AffixFuzzer2Batch, AffixFuzzer2Type
-from .affix_fuzzer3 import AffixFuzzer3, AffixFuzzer3Batch, AffixFuzzer3Type
-from .affix_fuzzer4 import AffixFuzzer4, AffixFuzzer4Batch, AffixFuzzer4Type
-from .affix_fuzzer5 import AffixFuzzer5, AffixFuzzer5Batch, AffixFuzzer5Type
-from .affix_fuzzer6 import AffixFuzzer6, AffixFuzzer6Batch, AffixFuzzer6Type
-from .affix_fuzzer7 import AffixFuzzer7, AffixFuzzer7ArrayLike, AffixFuzzer7Batch, AffixFuzzer7Like, AffixFuzzer7Type
-from .affix_fuzzer8 import AffixFuzzer8, AffixFuzzer8ArrayLike, AffixFuzzer8Batch, AffixFuzzer8Like, AffixFuzzer8Type
-from .affix_fuzzer9 import AffixFuzzer9, AffixFuzzer9ArrayLike, AffixFuzzer9Batch, AffixFuzzer9Like, AffixFuzzer9Type
-from .affix_fuzzer10 import (
-    AffixFuzzer10,
-    AffixFuzzer10ArrayLike,
-    AffixFuzzer10Batch,
-    AffixFuzzer10Like,
-    AffixFuzzer10Type,
-)
-from .affix_fuzzer11 import (
-    AffixFuzzer11,
-    AffixFuzzer11ArrayLike,
-    AffixFuzzer11Batch,
-    AffixFuzzer11Like,
-    AffixFuzzer11Type,
-)
-from .affix_fuzzer12 import (
-    AffixFuzzer12,
-    AffixFuzzer12ArrayLike,
-    AffixFuzzer12Batch,
-    AffixFuzzer12Like,
-    AffixFuzzer12Type,
-)
-from .affix_fuzzer13 import (
-    AffixFuzzer13,
-    AffixFuzzer13ArrayLike,
-    AffixFuzzer13Batch,
-    AffixFuzzer13Like,
-    AffixFuzzer13Type,
-)
-from .affix_fuzzer14 import AffixFuzzer14, AffixFuzzer14Batch, AffixFuzzer14Type
-from .affix_fuzzer15 import AffixFuzzer15, AffixFuzzer15Batch, AffixFuzzer15Type
-from .affix_fuzzer16 import (
-    AffixFuzzer16,
-    AffixFuzzer16ArrayLike,
-    AffixFuzzer16Batch,
-    AffixFuzzer16Like,
-    AffixFuzzer16Type,
-)
-from .affix_fuzzer17 import (
-    AffixFuzzer17,
-    AffixFuzzer17ArrayLike,
-    AffixFuzzer17Batch,
-    AffixFuzzer17Like,
-    AffixFuzzer17Type,
-)
-from .affix_fuzzer18 import (
-    AffixFuzzer18,
-    AffixFuzzer18ArrayLike,
-    AffixFuzzer18Batch,
-    AffixFuzzer18Like,
-    AffixFuzzer18Type,
-)
-from .affix_fuzzer19 import AffixFuzzer19, AffixFuzzer19Batch, AffixFuzzer19Type
-from .affix_fuzzer20 import AffixFuzzer20, AffixFuzzer20Batch, AffixFuzzer20Type
-from .affix_fuzzer21 import AffixFuzzer21, AffixFuzzer21Batch, AffixFuzzer21Type
-from .affix_fuzzer22 import AffixFuzzer22, AffixFuzzer22Batch, AffixFuzzer22Type
-from .affix_fuzzer23 import AffixFuzzer23, AffixFuzzer23Batch, AffixFuzzer23Type
+from .affix_fuzzer1 import AffixFuzzer1, AffixFuzzer1Batch
+from .affix_fuzzer2 import AffixFuzzer2, AffixFuzzer2Batch
+from .affix_fuzzer3 import AffixFuzzer3, AffixFuzzer3Batch
+from .affix_fuzzer4 import AffixFuzzer4, AffixFuzzer4Batch
+from .affix_fuzzer5 import AffixFuzzer5, AffixFuzzer5Batch
+from .affix_fuzzer6 import AffixFuzzer6, AffixFuzzer6Batch
+from .affix_fuzzer7 import AffixFuzzer7, AffixFuzzer7ArrayLike, AffixFuzzer7Batch, AffixFuzzer7Like
+from .affix_fuzzer8 import AffixFuzzer8, AffixFuzzer8ArrayLike, AffixFuzzer8Batch, AffixFuzzer8Like
+from .affix_fuzzer9 import AffixFuzzer9, AffixFuzzer9ArrayLike, AffixFuzzer9Batch, AffixFuzzer9Like
+from .affix_fuzzer10 import AffixFuzzer10, AffixFuzzer10ArrayLike, AffixFuzzer10Batch, AffixFuzzer10Like
+from .affix_fuzzer11 import AffixFuzzer11, AffixFuzzer11ArrayLike, AffixFuzzer11Batch, AffixFuzzer11Like
+from .affix_fuzzer12 import AffixFuzzer12, AffixFuzzer12ArrayLike, AffixFuzzer12Batch, AffixFuzzer12Like
+from .affix_fuzzer13 import AffixFuzzer13, AffixFuzzer13ArrayLike, AffixFuzzer13Batch, AffixFuzzer13Like
+from .affix_fuzzer14 import AffixFuzzer14, AffixFuzzer14Batch
+from .affix_fuzzer15 import AffixFuzzer15, AffixFuzzer15Batch
+from .affix_fuzzer16 import AffixFuzzer16, AffixFuzzer16ArrayLike, AffixFuzzer16Batch, AffixFuzzer16Like
+from .affix_fuzzer17 import AffixFuzzer17, AffixFuzzer17ArrayLike, AffixFuzzer17Batch, AffixFuzzer17Like
+from .affix_fuzzer18 import AffixFuzzer18, AffixFuzzer18ArrayLike, AffixFuzzer18Batch, AffixFuzzer18Like
+from .affix_fuzzer19 import AffixFuzzer19, AffixFuzzer19Batch
+from .affix_fuzzer20 import AffixFuzzer20, AffixFuzzer20Batch
+from .affix_fuzzer21 import AffixFuzzer21, AffixFuzzer21Batch
+from .affix_fuzzer22 import AffixFuzzer22, AffixFuzzer22Batch
+from .affix_fuzzer23 import AffixFuzzer23, AffixFuzzer23Batch
 
 __all__ = [
     "AffixFuzzer1",
@@ -74,88 +32,65 @@ __all__ = [
     "AffixFuzzer10ArrayLike",
     "AffixFuzzer10Batch",
     "AffixFuzzer10Like",
-    "AffixFuzzer10Type",
     "AffixFuzzer11",
     "AffixFuzzer11ArrayLike",
     "AffixFuzzer11Batch",
     "AffixFuzzer11Like",
-    "AffixFuzzer11Type",
     "AffixFuzzer12",
     "AffixFuzzer12ArrayLike",
     "AffixFuzzer12Batch",
     "AffixFuzzer12Like",
-    "AffixFuzzer12Type",
     "AffixFuzzer13",
     "AffixFuzzer13ArrayLike",
     "AffixFuzzer13Batch",
     "AffixFuzzer13Like",
-    "AffixFuzzer13Type",
     "AffixFuzzer14",
     "AffixFuzzer14Batch",
-    "AffixFuzzer14Type",
     "AffixFuzzer15",
     "AffixFuzzer15Batch",
-    "AffixFuzzer15Type",
     "AffixFuzzer16",
     "AffixFuzzer16ArrayLike",
     "AffixFuzzer16Batch",
     "AffixFuzzer16Like",
-    "AffixFuzzer16Type",
     "AffixFuzzer17",
     "AffixFuzzer17ArrayLike",
     "AffixFuzzer17Batch",
     "AffixFuzzer17Like",
-    "AffixFuzzer17Type",
     "AffixFuzzer18",
     "AffixFuzzer18ArrayLike",
     "AffixFuzzer18Batch",
     "AffixFuzzer18Like",
-    "AffixFuzzer18Type",
     "AffixFuzzer19",
     "AffixFuzzer19Batch",
-    "AffixFuzzer19Type",
     "AffixFuzzer1Batch",
-    "AffixFuzzer1Type",
     "AffixFuzzer2",
     "AffixFuzzer20",
     "AffixFuzzer20Batch",
-    "AffixFuzzer20Type",
     "AffixFuzzer21",
     "AffixFuzzer21Batch",
-    "AffixFuzzer21Type",
     "AffixFuzzer22",
     "AffixFuzzer22Batch",
-    "AffixFuzzer22Type",
     "AffixFuzzer23",
     "AffixFuzzer23Batch",
-    "AffixFuzzer23Type",
     "AffixFuzzer2Batch",
-    "AffixFuzzer2Type",
     "AffixFuzzer3",
     "AffixFuzzer3Batch",
-    "AffixFuzzer3Type",
     "AffixFuzzer4",
     "AffixFuzzer4Batch",
-    "AffixFuzzer4Type",
     "AffixFuzzer5",
     "AffixFuzzer5Batch",
-    "AffixFuzzer5Type",
     "AffixFuzzer6",
     "AffixFuzzer6Batch",
-    "AffixFuzzer6Type",
     "AffixFuzzer7",
     "AffixFuzzer7ArrayLike",
     "AffixFuzzer7Batch",
     "AffixFuzzer7Like",
-    "AffixFuzzer7Type",
     "AffixFuzzer8",
     "AffixFuzzer8ArrayLike",
     "AffixFuzzer8Batch",
     "AffixFuzzer8Like",
-    "AffixFuzzer8Type",
     "AffixFuzzer9",
     "AffixFuzzer9ArrayLike",
     "AffixFuzzer9Batch",
     "AffixFuzzer9Like",
-    "AffixFuzzer9Type",
 ]

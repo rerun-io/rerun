@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["Opacity", "OpacityBatch", "OpacityType"]
+__all__ = ["Opacity", "OpacityBatch"]
 
 
 class Opacity(datatypes.Float32, ComponentMixin):
@@ -29,12 +29,8 @@ class Opacity(datatypes.Float32, ComponentMixin):
     pass
 
 
-class OpacityType(datatypes.Float32Type):
-    _TYPE_NAME: str = "rerun.components.Opacity"
-
-
 class OpacityBatch(datatypes.Float32Batch, ComponentBatchMixin):
-    _ARROW_TYPE = OpacityType()
+    _COMPONENT_NAME: str = "rerun.components.Opacity"
 
 
 # This is patched in late to avoid circular dependencies.

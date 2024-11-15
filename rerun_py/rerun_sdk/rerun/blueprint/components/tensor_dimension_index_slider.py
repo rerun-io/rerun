@@ -11,7 +11,7 @@ from ..._baseclasses import (
 )
 from ...blueprint import datatypes as blueprint_datatypes
 
-__all__ = ["TensorDimensionIndexSlider", "TensorDimensionIndexSliderBatch", "TensorDimensionIndexSliderType"]
+__all__ = ["TensorDimensionIndexSlider", "TensorDimensionIndexSliderBatch"]
 
 
 class TensorDimensionIndexSlider(blueprint_datatypes.TensorDimensionIndexSlider, ComponentMixin):
@@ -24,12 +24,8 @@ class TensorDimensionIndexSlider(blueprint_datatypes.TensorDimensionIndexSlider,
     pass
 
 
-class TensorDimensionIndexSliderType(blueprint_datatypes.TensorDimensionIndexSliderType):
-    _TYPE_NAME: str = "rerun.blueprint.components.TensorDimensionIndexSlider"
-
-
 class TensorDimensionIndexSliderBatch(blueprint_datatypes.TensorDimensionIndexSliderBatch, ComponentBatchMixin):
-    _ARROW_TYPE = TensorDimensionIndexSliderType()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.TensorDimensionIndexSlider"
 
 
 # This is patched in late to avoid circular dependencies.

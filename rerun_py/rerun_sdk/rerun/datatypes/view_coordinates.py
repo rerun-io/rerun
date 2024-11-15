@@ -14,20 +14,13 @@ from attrs import define, field
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .._converters import (
     to_np_uint8,
 )
 from .view_coordinates_ext import ViewCoordinatesExt
 
-__all__ = [
-    "ViewCoordinates",
-    "ViewCoordinatesArrayLike",
-    "ViewCoordinatesBatch",
-    "ViewCoordinatesLike",
-    "ViewCoordinatesType",
-]
+__all__ = ["ViewCoordinates", "ViewCoordinatesArrayLike", "ViewCoordinatesBatch", "ViewCoordinatesLike"]
 
 
 @define(init=False)
@@ -85,17 +78,8 @@ else:
 ViewCoordinatesArrayLike = Union[ViewCoordinates, Sequence[ViewCoordinatesLike], npt.ArrayLike]
 
 
-class ViewCoordinatesType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.ViewCoordinates"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}), 3), self._TYPE_NAME
-        )
-
-
 class ViewCoordinatesBatch(BaseBatch[ViewCoordinatesArrayLike]):
-    _ARROW_TYPE = ViewCoordinatesType()
+    _ARROW_DATATYPE = pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}), 3)
 
     @staticmethod
     def _native_to_pa_array(data: ViewCoordinatesArrayLike, data_type: pa.DataType) -> pa.Array:

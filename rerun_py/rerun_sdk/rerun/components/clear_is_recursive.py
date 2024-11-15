@@ -12,7 +12,7 @@ from .._baseclasses import (
 )
 from .clear_is_recursive_ext import ClearIsRecursiveExt
 
-__all__ = ["ClearIsRecursive", "ClearIsRecursiveBatch", "ClearIsRecursiveType"]
+__all__ = ["ClearIsRecursive", "ClearIsRecursiveBatch"]
 
 
 class ClearIsRecursive(ClearIsRecursiveExt, datatypes.Bool, ComponentMixin):
@@ -25,12 +25,8 @@ class ClearIsRecursive(ClearIsRecursiveExt, datatypes.Bool, ComponentMixin):
     pass
 
 
-class ClearIsRecursiveType(datatypes.BoolType):
-    _TYPE_NAME: str = "rerun.components.ClearIsRecursive"
-
-
 class ClearIsRecursiveBatch(datatypes.BoolBatch, ComponentBatchMixin):
-    _ARROW_TYPE = ClearIsRecursiveType()
+    _COMPONENT_NAME: str = "rerun.components.ClearIsRecursive"
 
 
 # This is patched in late to avoid circular dependencies.

@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["Resolution", "ResolutionBatch", "ResolutionType"]
+__all__ = ["Resolution", "ResolutionBatch"]
 
 
 class Resolution(datatypes.Vec2D, ComponentMixin):
@@ -28,12 +28,8 @@ class Resolution(datatypes.Vec2D, ComponentMixin):
     pass
 
 
-class ResolutionType(datatypes.Vec2DType):
-    _TYPE_NAME: str = "rerun.components.Resolution"
-
-
 class ResolutionBatch(datatypes.Vec2DBatch, ComponentBatchMixin):
-    _ARROW_TYPE = ResolutionType()
+    _COMPONENT_NAME: str = "rerun.components.Resolution"
 
 
 # This is patched in late to avoid circular dependencies.

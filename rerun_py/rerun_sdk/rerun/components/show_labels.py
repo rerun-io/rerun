@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["ShowLabels", "ShowLabelsBatch", "ShowLabelsType"]
+__all__ = ["ShowLabels", "ShowLabelsBatch"]
 
 
 class ShowLabels(datatypes.Bool, ComponentMixin):
@@ -30,12 +30,8 @@ class ShowLabels(datatypes.Bool, ComponentMixin):
     pass
 
 
-class ShowLabelsType(datatypes.BoolType):
-    _TYPE_NAME: str = "rerun.components.ShowLabels"
-
-
 class ShowLabelsBatch(datatypes.BoolBatch, ComponentBatchMixin):
-    _ARROW_TYPE = ShowLabelsType()
+    _COMPONENT_NAME: str = "rerun.components.ShowLabels"
 
 
 # This is patched in late to avoid circular dependencies.

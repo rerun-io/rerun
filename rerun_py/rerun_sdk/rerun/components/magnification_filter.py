@@ -11,17 +11,10 @@ import pyarrow as pa
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
 )
 
-__all__ = [
-    "MagnificationFilter",
-    "MagnificationFilterArrayLike",
-    "MagnificationFilterBatch",
-    "MagnificationFilterLike",
-    "MagnificationFilterType",
-]
+__all__ = ["MagnificationFilter", "MagnificationFilterArrayLike", "MagnificationFilterBatch", "MagnificationFilterLike"]
 
 
 from enum import Enum
@@ -70,15 +63,9 @@ MagnificationFilterLike = Union[MagnificationFilter, Literal["Linear", "Nearest"
 MagnificationFilterArrayLike = Union[MagnificationFilterLike, Sequence[MagnificationFilterLike]]
 
 
-class MagnificationFilterType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.components.MagnificationFilter"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
-
-
 class MagnificationFilterBatch(BaseBatch[MagnificationFilterArrayLike], ComponentBatchMixin):
-    _ARROW_TYPE = MagnificationFilterType()
+    _ARROW_DATATYPE = pa.uint8()
+    _COMPONENT_NAME: str = "rerun.components.MagnificationFilter"
 
     @staticmethod
     def _native_to_pa_array(data: MagnificationFilterArrayLike, data_type: pa.DataType) -> pa.Array:

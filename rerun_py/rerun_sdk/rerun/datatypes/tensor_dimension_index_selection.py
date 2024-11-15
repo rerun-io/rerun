@@ -13,7 +13,6 @@ from attrs import define, field
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 
 __all__ = [
@@ -21,7 +20,6 @@ __all__ = [
     "TensorDimensionIndexSelectionArrayLike",
     "TensorDimensionIndexSelectionBatch",
     "TensorDimensionIndexSelectionLike",
-    "TensorDimensionIndexSelectionType",
 ]
 
 
@@ -67,22 +65,11 @@ TensorDimensionIndexSelectionArrayLike = Union[
 ]
 
 
-class TensorDimensionIndexSelectionType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.TensorDimensionIndexSelection"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.struct([
-                pa.field("dimension", pa.uint32(), nullable=False, metadata={}),
-                pa.field("index", pa.uint64(), nullable=False, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
-
-
 class TensorDimensionIndexSelectionBatch(BaseBatch[TensorDimensionIndexSelectionArrayLike]):
-    _ARROW_TYPE = TensorDimensionIndexSelectionType()
+    _ARROW_DATATYPE = pa.struct([
+        pa.field("dimension", pa.uint32(), nullable=False, metadata={}),
+        pa.field("index", pa.uint64(), nullable=False, metadata={}),
+    ])
 
     @staticmethod
     def _native_to_pa_array(data: TensorDimensionIndexSelectionArrayLike, data_type: pa.DataType) -> pa.Array:

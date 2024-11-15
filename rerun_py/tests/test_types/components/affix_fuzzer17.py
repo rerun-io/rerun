@@ -11,14 +11,13 @@ import pyarrow as pa
 from attrs import define, field
 from rerun._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
     ComponentMixin,
 )
 
 from .. import datatypes
 
-__all__ = ["AffixFuzzer17", "AffixFuzzer17ArrayLike", "AffixFuzzer17Batch", "AffixFuzzer17Like", "AffixFuzzer17Type"]
+__all__ = ["AffixFuzzer17", "AffixFuzzer17ArrayLike", "AffixFuzzer17Batch", "AffixFuzzer17Like"]
 
 
 @define(init=False)
@@ -41,79 +40,69 @@ AffixFuzzer17ArrayLike = Union[
 ]
 
 
-class AffixFuzzer17Type(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.testing.components.AffixFuzzer17"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.list_(
+class AffixFuzzer17Batch(BaseBatch[AffixFuzzer17ArrayLike], ComponentBatchMixin):
+    _ARROW_DATATYPE = pa.list_(
+        pa.field(
+            "item",
+            pa.dense_union([
+                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                pa.field("degrees", pa.float32(), nullable=False, metadata={}),
                 pa.field(
-                    "item",
-                    pa.dense_union([
-                        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                        pa.field("degrees", pa.float32(), nullable=False, metadata={}),
+                    "craziness",
+                    pa.list_(
                         pa.field(
-                            "craziness",
-                            pa.list_(
+                            "item",
+                            pa.struct([
+                                pa.field("single_float_optional", pa.float32(), nullable=True, metadata={}),
+                                pa.field("single_string_required", pa.utf8(), nullable=False, metadata={}),
+                                pa.field("single_string_optional", pa.utf8(), nullable=True, metadata={}),
                                 pa.field(
-                                    "item",
-                                    pa.struct([
-                                        pa.field("single_float_optional", pa.float32(), nullable=True, metadata={}),
-                                        pa.field("single_string_required", pa.utf8(), nullable=False, metadata={}),
-                                        pa.field("single_string_optional", pa.utf8(), nullable=True, metadata={}),
-                                        pa.field(
-                                            "many_floats_optional",
-                                            pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={})),
-                                            nullable=True,
-                                            metadata={},
-                                        ),
-                                        pa.field(
-                                            "many_strings_required",
-                                            pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={})),
-                                            nullable=False,
-                                            metadata={},
-                                        ),
-                                        pa.field(
-                                            "many_strings_optional",
-                                            pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={})),
-                                            nullable=True,
-                                            metadata={},
-                                        ),
-                                        pa.field("flattened_scalar", pa.float32(), nullable=False, metadata={}),
-                                        pa.field(
-                                            "almost_flattened_scalar",
-                                            pa.struct([pa.field("value", pa.float32(), nullable=False, metadata={})]),
-                                            nullable=False,
-                                            metadata={},
-                                        ),
-                                        pa.field("from_parent", pa.bool_(), nullable=True, metadata={}),
-                                    ]),
+                                    "many_floats_optional",
+                                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={})),
+                                    nullable=True,
+                                    metadata={},
+                                ),
+                                pa.field(
+                                    "many_strings_required",
+                                    pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={})),
                                     nullable=False,
                                     metadata={},
-                                )
-                            ),
+                                ),
+                                pa.field(
+                                    "many_strings_optional",
+                                    pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={})),
+                                    nullable=True,
+                                    metadata={},
+                                ),
+                                pa.field("flattened_scalar", pa.float32(), nullable=False, metadata={}),
+                                pa.field(
+                                    "almost_flattened_scalar",
+                                    pa.struct([pa.field("value", pa.float32(), nullable=False, metadata={})]),
+                                    nullable=False,
+                                    metadata={},
+                                ),
+                                pa.field("from_parent", pa.bool_(), nullable=True, metadata={}),
+                            ]),
                             nullable=False,
                             metadata={},
-                        ),
-                        pa.field(
-                            "fixed_size_shenanigans",
-                            pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
-                            nullable=False,
-                            metadata={},
-                        ),
-                        pa.field("empty_variant", pa.null(), nullable=True, metadata={}),
-                    ]),
+                        )
+                    ),
                     nullable=False,
                     metadata={},
-                )
-            ),
-            self._TYPE_NAME,
+                ),
+                pa.field(
+                    "fixed_size_shenanigans",
+                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field("empty_variant", pa.null(), nullable=True, metadata={}),
+            ]),
+            nullable=False,
+            metadata={},
         )
-
-
-class AffixFuzzer17Batch(BaseBatch[AffixFuzzer17ArrayLike], ComponentBatchMixin):
-    _ARROW_TYPE = AffixFuzzer17Type()
+    )
+    _COMPONENT_NAME: str = "rerun.testing.components.AffixFuzzer17"
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer17ArrayLike, data_type: pa.DataType) -> pa.Array:

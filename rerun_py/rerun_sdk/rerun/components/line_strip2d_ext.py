@@ -28,16 +28,16 @@ class LineStrip2DExt:
             if len(data) == 0:
                 inners = []
             elif data.ndim == 2:
-                inners = [Vec2DBatch(data).as_arrow_array().storage]
+                inners = [Vec2DBatch(data).as_arrow_array()]
             else:
                 o = 0
                 offsets = [o] + [o := next_offset(o, arr) for arr in data]
-                inner = Vec2DBatch(data.reshape(-1)).as_arrow_array().storage
+                inner = Vec2DBatch(data.reshape(-1)).as_arrow_array()
                 return pa.ListArray.from_arrays(offsets, inner, type=data_type)
 
         # pure-object
         elif isinstance(data, LineStrip2D):
-            inners = [Vec2DBatch(data.points).as_arrow_array().storage]
+            inners = [Vec2DBatch(data.points).as_arrow_array()]
 
         # sequences
         elif isinstance(data, Sequence):
@@ -49,7 +49,7 @@ class LineStrip2DExt:
                 if isinstance(data[0], Sequence) and len(data[0]) > 0 and isinstance(data[0][0], numbers.Number):
                     if len(data[0]) == 2:  # type: ignore[arg-type]
                         # If any of the following elements are not sequence of length 2, Vec2DBatch should raise an error.
-                        inners = [Vec2DBatch(data).as_arrow_array().storage]  # type: ignore[arg-type]
+                        inners = [Vec2DBatch(data).as_arrow_array()]  # type: ignore[arg-type]
                     else:
                         raise ValueError(
                             "Expected a sequence of sequences of 2D vectors, but the inner sequence length was not equal to 2."
@@ -57,7 +57,7 @@ class LineStrip2DExt:
                 # It could be a sequence of the style `[np.array([0, 0]), np.array([1, 1])]` which is a single strip.
                 elif isinstance(data[0], np.ndarray) and data[0].shape == (2,):
                     # If any of the following elements are not np arrays of shape 2, Vec2DBatch should raise an error.
-                    inners = [Vec2DBatch(data).as_arrow_array().storage]  # type: ignore[arg-type]
+                    inners = [Vec2DBatch(data).as_arrow_array()]  # type: ignore[arg-type]
                 # .. otherwise assume that it's several strips.
                 else:
 
@@ -71,13 +71,13 @@ class LineStrip2DExt:
                                 )
                             return Vec2DBatch(strip)
 
-                    inners = [to_vec2d_batch(strip).as_arrow_array().storage for strip in data]
+                    inners = [to_vec2d_batch(strip).as_arrow_array() for strip in data]
         else:
-            inners = [Vec2DBatch(data).storage]
+            inners = [Vec2DBatch(data)]
 
         if len(inners) == 0:
             offsets = pa.array([0], type=pa.int32())
-            inner = Vec2DBatch([]).as_arrow_array().storage
+            inner = Vec2DBatch([]).as_arrow_array()
             return pa.ListArray.from_arrays(offsets, inner, type=data_type)
 
         o = 0
