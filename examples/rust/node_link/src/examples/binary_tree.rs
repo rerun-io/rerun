@@ -70,12 +70,6 @@ pub fn run(args: &Args) -> anyhow::Result<()> {
         ("6", ("6", (0.0 * s, 0.0 * s))),
         ("5_0", ("5", (-20.0 * s, 30.0 * s))),
         ("9_0", ("9", (20.0 * s, 30.0 * s))),
-        // ("6", ("6", (-10.0 * s, 60.0 * s))),
-        // ("5_0", ("5", (-20.0 * s, 90.0 * s))),
-        // ("11", ("11", (0.0 * s, 90.0 * s))),
-        // ("9_0", ("9", (20.0 * s, 30.0 * s))),
-        // ("9_1", ("9", (30.0 * s, 60.0 * s))),
-        // ("5_1", ("5", (20.0 * s, 90.0 * s))),
     ]
     .into_iter()
     .collect();
@@ -111,6 +105,8 @@ pub fn run(args: &Args) -> anyhow::Result<()> {
         }
     }
 
+    let entity_offset_x = 400.0;
+
     for level in levels_sorted {
         if !level.nodes.is_empty() {
             t += 1;
@@ -119,7 +115,10 @@ pub fn run(args: &Args) -> anyhow::Result<()> {
                 "sorted",
                 &GraphNodes::new(level.nodes.iter().copied())
                     .with_labels(level.nodes.iter().map(|n| nodes_sorted[n].0))
-                    .with_positions(level.nodes.iter().map(|n| nodes_sorted[n].1)),
+                    .with_positions(level.nodes.iter().map(|n| {
+                        let (x, y) = nodes_sorted[n].1;
+                        [x + entity_offset_x, y]
+                    })),
             );
         }
 

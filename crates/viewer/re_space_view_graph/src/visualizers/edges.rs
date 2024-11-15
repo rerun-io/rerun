@@ -11,11 +11,18 @@ use re_viewer_context::{
     ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::{graph::NodeIndex, types::EdgeInstance};
+use crate::graph::NodeIndex;
 
 #[derive(Default)]
 pub struct EdgesVisualizer {
     pub data: ahash::HashMap<EntityPath, EdgeData>,
+}
+
+pub struct EdgeInstance {
+    pub source: GraphNode,
+    pub target: GraphNode,
+    pub source_index: NodeIndex,
+    pub target_index: NodeIndex,
 }
 
 pub struct EdgeData {

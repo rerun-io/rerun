@@ -1,6 +1,4 @@
-use std::collections::{BTreeSet, HashSet};
-
-use egui::{self, Vec2};
+use egui::{self, emath::TSTransform};
 
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
@@ -19,9 +17,9 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
-    graph::NodeIndex,
-    ui::{bounding_rect_from_iter, canvas::CanvasBuilder, GraphSpaceViewState},
-    visualizers::{EdgesVisualizer, NodeVisualizer},
+    graph::Graph,
+    ui::{canvas::CanvasBuilder, GraphSpaceViewState},
+    visualizers::{merge, EdgesVisualizer, NodeVisualizer},
 };
 
 #[derive(Default)]
@@ -61,25 +59,19 @@ impl SpaceViewClass for GraphSpaceView {
 
     fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32> {
         let state = state.downcast_ref::<GraphSpaceViewState>().ok()?;
-        let layout = state.layout.as_ref()?;
 
-        let (width, height) = state.world_bounds.map_or_else(
-            || {
-                let bbox = bounding_rect_from_iter(layout.values());
-                (
-                    (bbox.max.x - bbox.min.x).abs(),
-                    (bbox.max.y - bbox.min.y).abs(),
-                )
-            },
-            |bounds| {
-                (
-                    bounds.x_range.abs_len() as f32,
-                    bounds.y_range.abs_len() as f32,
-                )
-            },
-        );
+        if let Some(bounds) = state.world_bounds {
+            let width = bounds.x_range.abs_len() as f32;
+            let height = bounds.y_range.abs_len() as f32;
+            return Some(width / height);
+        }
 
-        Some(width / height)
+        if let Some(rect) = state.layout.bounding_rect() {
+            let width = rect.width().abs();
+            let height = rect.height().abs();
+            return Some(width / height);
+        }
+        None
     }
 
     // TODO(grtlr): implement `recommended_root_for_entities`
@@ -116,6 +108,7 @@ impl SpaceViewClass for GraphSpaceView {
 
         ui.selection_grid("graph_view_settings_ui").show(ui, |ui| {
             state.layout_ui(ui);
+            state.simulation_ui(ui);
             state.debug_ui(ui);
         });
 
@@ -138,11 +131,9 @@ impl SpaceViewClass for GraphSpaceView {
         let node_data = &system_output.view_systems.get::<NodeVisualizer>()?.data;
         let edge_data = &system_output.view_systems.get::<EdgesVisualizer>()?.data;
 
-        // We need to sort the entities to ensure that we are always drawing them in the right order.
-        let entities = node_data
-            .keys()
-            .chain(edge_data.keys())
-            .collect::<BTreeSet<_>>();
+        let graphs = merge(node_data, edge_data)
+            .map(|(ent, nodes, edges)| (ent, Graph::new(nodes, edges)))
+            .collect::<Vec<_>>();
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
@@ -156,10 +147,11 @@ impl SpaceViewClass for GraphSpaceView {
             bounds_property.component_or_fallback(ctx, self, state)?;
 
         let layout_was_empty = state.layout.is_none();
-
-        // For now, we reset the layout at every frame. Eventually, we want
-        // to keep information between frames so that the nodes don't jump around.
-        let layout = state.layout.insert(Default::default());
+        let layout = state.layout.get(
+            query.timeline,
+            query.latest_at,
+            graphs.iter().map(|(_, graph)| graph),
+        );
 
         state.world_bounds = Some(bounds);
         let bounds_rect: egui::Rect = bounds.into();
@@ -171,90 +163,50 @@ impl SpaceViewClass for GraphSpaceView {
             viewer.show_debug();
         }
 
-        // We keep track of the nodes in the data to clean up the layout.
-        // TODO(grtlr): once we settle on a design, it might make sense to create a
-        // `Layout` struct that keeps track of the layout and the nodes that
-        // get added and removed and cleans up automatically (guard pattern).
-        let mut seen: HashSet<NodeIndex> = HashSet::new();
-
         let (new_world_bounds, response) = viewer.canvas(ui, |mut scene| {
-            // We store the offset to draw entities next to each other.
-            // This is a workaround and will probably be removed once we have auto-layout.
-            let mut entity_offset = egui::Vec2::ZERO;
+            for (entity, graph) in &graphs {
+                // Draw explicit nodes.
+                for node in graph.nodes_explicit() {
+                    let pos = layout
+                        .get(&node.index)
+                        .unwrap_or(egui::Rect::ZERO); // TODO(grtlr): sometimes there just isn't any data.
+                        // .expect("explicit node should be in layout");
+                    let response = scene.explicit_node(pos.min, node);
+                    layout.update(&node.index, response.rect);
+                }
 
-            for entity in entities {
-                // We keep track of the size of the current entity.
-                let mut entity_rect = egui::Rect::NOTHING;
-                if let Some(data) = node_data.get(entity) {
-                    for node in &data.nodes {
-                        seen.insert(node.index);
-                        let current = layout.entry(node.index).or_insert(scene.initial_rect(node));
+                // Draw implicit nodes.
+                for node in graph.nodes_implicit() {
+                    let current = layout
+                        .get(&node.index)
+                        .unwrap_or(egui::Rect::ZERO); // TODO(grtlr): sometimes there just isn't any data.
+                        // .expect("implicit node should be in layout");
+                    let response = scene.implicit_node(current.min, node);
+                    layout.update(&node.index, response.rect);
+                }
 
-                        let response = scene.explicit_node(current.min + entity_offset, node);
-
-                        // TODO(grtlr): ⚠️ This is hacky:
-                        // We need to undo the `entity_offset` otherwise the offset will increase each frame.
-                        *current = response.rect.translate(-entity_offset);
-                        entity_rect = entity_rect.union(response.rect);
+                // Draw edges.
+                for edge in graph.edges() {
+                    if let (Some(from), Some(to)) = (
+                        layout.get(&edge.source_index),
+                        layout.get(&edge.target_index),
+                    ) {
+                        let show_arrow = graph.kind() == components::GraphType::Directed;
+                        scene.edge(from, to, edge, show_arrow);
                     }
                 }
 
-                if let Some(data) = edge_data.get(entity) {
-                    // An implicit node is a node that is not explicitly specified in the `GraphNodes` archetype.
-                    let implicit_nodes = data
-                        .edges
-                        .iter()
-                        .flat_map(|e| e.nodes())
-                        .filter(|n| !seen.contains(&NodeIndex::from_entity_node(entity, n)))
-                        .collect::<Vec<_>>();
+                // Draw entity rect.
+                let rect = layout.bounding_rect();
+                if rect.is_positive() {
+                    let response = scene.entity(entity, rect, &query.highlights);
 
-                    // TODO(grtlr): The following logic is quite hacky, because we have to place the implicit nodes somewhere.
-                    // A lot of this logic will probably go away once we ship auto-layouts.
-                    let mut current_implicit_offset =
-                        Vec2::new(entity_rect.min.x, entity_rect.height() + 40.0);
-                    for node in implicit_nodes {
-                        let ix = NodeIndex::from_entity_node(entity, node);
-                        seen.insert(ix);
-                        let current = layout.entry(ix).or_insert(
-                            egui::Rect::ZERO
-                                .translate(entity_offset)
-                                .translate(current_implicit_offset),
-                        );
-                        let response = scene.implicit_node(current.min, node);
-                        *current = response.rect.translate(-entity_offset);
-                        // entity_rect = entity_rect.union(response.rect);
-                        current_implicit_offset.x += 10.0;
-                    }
-
-                    for edge in &data.edges {
-                        if let (Some(source_pos), Some(target_pos)) = (
-                            layout.get(&edge.source_index),
-                            layout.get(&edge.target_index),
-                        ) {
-                            scene.edge(
-                                source_pos.translate(entity_offset),
-                                target_pos.translate(entity_offset),
-                                edge,
-                                data.graph_type == components::GraphType::Directed,
-                            );
-                        }
-                    }
-                }
-
-                if entity_rect.is_positive() {
-                    let response = scene.entity(entity, entity_rect, &query.highlights);
-
-                    let instance_path = InstancePath::entity_all(entity.clone());
+                    let instance_path = InstancePath::entity_all((*entity).clone());
                     ctx.select_hovered_on_click(
                         &response,
                         vec![(Item::DataResult(query.space_view_id, instance_path), None)]
                             .into_iter(),
                     );
-
-                    // TODO(grtlr): Should take padding from `draw_entity` into account.
-                    // It's very likely that this part of the code is going to change once we introduce auto-layout.
-                    let between_entities = 80.0;
-                    entity_offset.x += entity_rect.width() + between_entities;
                 }
             }
         });
@@ -268,6 +220,10 @@ impl SpaceViewClass for GraphSpaceView {
         }
         // Update stored bounds on the state, so visualizers see an up-to-date value.
         state.world_bounds = Some(bounds);
+
+        if state.layout.is_in_progress() {
+            ui.ctx().request_repaint();
+        }
 
         Ok(())
     }

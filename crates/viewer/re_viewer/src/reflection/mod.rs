@@ -439,6 +439,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <GeoLineString as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "A geospatial line string expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).",
+                custom_placeholder: Some(GeoLineString::default().to_arrow()?),
+                datatype: GeoLineString::arrow_datatype(),
+            },
+        ),
+        (
             <GraphEdge as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "An edge in a graph connecting two nodes.",
@@ -460,14 +468,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 docstring_md: "Specifies if a graph has directed or undirected edges.",
                 custom_placeholder: Some(GraphType::default().to_arrow()?),
                 datatype: GraphType::arrow_datatype(),
-            },
-        ),
-        (
-            <GeoLineString as Loggable>::name(),
-            ComponentReflection {
-                docstring_md: "A geospatial line string expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).",
-                custom_placeholder: Some(GeoLineString::default().to_arrow()?),
-                datatype: GeoLineString::arrow_datatype(),
             },
         ),
         (
@@ -1327,6 +1327,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.GraphEdges"),
             ArchetypeReflection {
                 display_name: "Graph edges",
+                view_types: &["Graph View"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.GraphEdge".into(), display_name : "Edges",
@@ -1343,6 +1344,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
             ArchetypeName::new("rerun.archetypes.GraphNodes"),
             ArchetypeReflection {
                 display_name: "Graph nodes",
+                view_types: &["Graph View"],
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.GraphNode".into(), display_name : "Node ids",

@@ -4,7 +4,7 @@ use re_types::components;
 use super::GraphNodeHash;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-pub(crate) struct NodeIndex {
+pub struct NodeIndex {
     pub entity_hash: EntityPathHash,
     pub node_hash: GraphNodeHash,
 }

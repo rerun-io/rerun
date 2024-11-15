@@ -6,9 +6,24 @@ title: "Utf8Pair"
 Stores a tuple of UTF-8 strings.
 
 ## Fields
+#### `first`
+Type: [`Utf8`](../datatypes/utf8.md)
 
-* first: [`Utf8`](../datatypes/utf8.md)
-* second: [`Utf8`](../datatypes/utf8.md)
+The first string.
+
+#### `second`
+Type: [`Utf8`](../datatypes/utf8.md)
+
+The second string.
+
+
+## Arrow datatype
+```
+Struct {
+    first: utf8
+    second: utf8
+}
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `Utf8Pair`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Utf8Pair.html?speculative-link)

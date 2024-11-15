@@ -6,9 +6,17 @@ title: "GraphType"
 Specifies if a graph has directed or undirected edges.
 
 ## Variants
+#### `Undirected` = 1
+The graph has undirected edges.
 
-* Undirected
-* Directed
+#### `Directed` = 2
+The graph has directed edges.
+
+
+## Arrow datatype
+```
+uint8
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `GraphType`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html?speculative-link)

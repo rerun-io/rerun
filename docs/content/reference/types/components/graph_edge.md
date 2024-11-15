@@ -5,9 +5,17 @@ title: "GraphEdge"
 
 An edge in a graph connecting two nodes.
 
-## Fields
+## Rerun datatype
+[`Utf8Pair`](../datatypes/utf8pair.md)
 
-* edge: [`Utf8Pair`](../datatypes/utf8pair.md)
+
+## Arrow datatype
+```
+Struct {
+    first: utf8
+    second: utf8
+}
+```
 
 ## API reference links
  * 🌊 [C++ API docs for `GraphEdge`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1GraphEdge.html?speculative-link)

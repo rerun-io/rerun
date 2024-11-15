@@ -23,11 +23,6 @@ pub fn run(args: &Args, num_nodes: usize) -> anyhow::Result<()> {
         "/lattice",
         &GraphNodes::new(nodes)
             .with_colors(colors)
-            .with_positions(coordinates.clone().map(|(x, y)| {
-                let x_scaling = 100.0;
-                let y_scaling = 75.0;
-                [x as f32 * x_scaling, y as f32 * y_scaling]
-            }))
             .with_labels(coordinates.clone().map(|(x, y)| format!("({}, {})", x, y))),
     )?;
 
