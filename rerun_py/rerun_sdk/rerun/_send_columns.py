@@ -7,6 +7,7 @@ import rerun_bindings as bindings
 
 from ._baseclasses import Archetype, ComponentBatchMixin, ComponentColumn
 from ._log import IndicatorComponentBatch
+from .any_value import AnyBatchValue
 from .error_utils import catch_and_log_exceptions
 from .recording_stream import RecordingStream
 
@@ -120,7 +121,7 @@ TArchetype = TypeVar("TArchetype", bound=Archetype)
 def send_columns(
     entity_path: str,
     times: Iterable[TimeColumnLike],
-    components: Iterable[Union[ComponentBatchMixin, ComponentColumn]],
+    components: Iterable[Union[ComponentBatchMixin, ComponentColumn, AnyBatchValue]],
     recording: RecordingStream | None = None,
     strict: bool | None = None,
 ) -> None:
@@ -227,6 +228,11 @@ def send_columns(
             component_column = c
         elif isinstance(c, ComponentBatchMixin):
             component_column = c.partition([1] * len(c))  # type: ignore[arg-type]
+        elif isinstance(c, AnyBatchValue):
+            array = c.as_arrow_array()
+            if array is None:
+                raise ValueError(f"Expected a non-null value for component: {component_name}")
+            component_column = c.partition([1] * len(c.as_arrow_array()))
         else:
             raise TypeError(
                 f"Expected either a type that implements the `ComponentMixin` or a `ComponentColumn`, got: {type(c)}"
