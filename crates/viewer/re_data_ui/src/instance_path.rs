@@ -46,7 +46,7 @@ impl DataUi for InstancePath {
                 .store()
                 .all_components_on_timeline(&query.timeline(), entity_path)
         } else {
-            ui.error_label(&format!("Unknown entity: {entity_path:?}"));
+            ui.error_label(format!("Unknown entity: {entity_path:?}"));
             return;
         };
         let Some(components) = component else {

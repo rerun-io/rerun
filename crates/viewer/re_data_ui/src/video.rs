@@ -42,7 +42,7 @@ pub fn video_result_ui(
             if ui_layout.is_single_line() {
                 ui.error_with_details_on_hover(&error_message);
             } else {
-                ui.error_label(&error_message);
+                ui.error_label(error_message);
             }
         }
     }
@@ -328,7 +328,7 @@ pub fn show_decoded_frame_info(
         }
 
         Err(err) => {
-            ui.error_label(&err.to_string());
+            ui.error_label(err.to_string());
 
             #[cfg(not(target_arch = "wasm32"))]
             if let re_renderer::video::VideoPlayerError::Decoding(

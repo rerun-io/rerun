@@ -282,7 +282,7 @@ impl TensorSpaceView {
             if let Err(err) =
                 self.tensor_slice_ui(ctx, ui, state, view_id, dimension_labels, &slice_selection)
             {
-                ui.error_label(&err.to_string());
+                ui.error_label(err.to_string());
             }
         });
 

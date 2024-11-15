@@ -220,7 +220,7 @@ fn ffmpeg_path_status_ui(ui: &mut Ui, app_options: &AppOptions) {
                 if version.is_compatible() {
                     ui.success_label(&format!("FFmpeg found (version {version})"));
                 } else {
-                    ui.error_label(&format!("Incompatible FFmpeg version: {version}"));
+                    ui.error_label(format!("Incompatible FFmpeg version: {version}"));
                 }
             }
             Err(FFmpegVersionParseError::ParseVersion { raw_version }) => {
@@ -232,7 +232,7 @@ fn ffmpeg_path_status_ui(ui: &mut Ui, app_options: &AppOptions) {
             }
 
             Err(err) => {
-                ui.error_label(&format!("Unable to check FFmpeg version: {err}"));
+                ui.error_label(format!("Unable to check FFmpeg version: {err}"));
             }
         }
     };
