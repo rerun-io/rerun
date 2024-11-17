@@ -6,7 +6,7 @@
 
 <h1 align="center">
   <a href="https://crates.io/crates/rerun">                             <img alt="Latest version" src="https://img.shields.io/crates/v/rerun.svg">                               </a>
-  <a href="https://docs.rs/rerun">                                      <img alt="Documentation"  src="https://docs.rs/rerun/badge.svg">                                         </a>
+  <a href="https://docs.rs/rerun">                                      <img alt="Documentation"  src="https://ref.rerun.io/docs/rust/stablebadge.svg">                                         </a>
   <a href="https://github.com/rerun-io/rerun/blob/main/LICENSE-MIT">    <img alt="MIT"            src="https://img.shields.io/badge/license-MIT-blue.svg">                        </a>
   <a href="https://github.com/rerun-io/rerun/blob/main/LICENSE-APACHE"> <img alt="Apache"         src="https://img.shields.io/badge/license-Apache-blue.svg">                     </a>
   <a href="https://discord.gg/Gcm8BbTaAj">                              <img alt="Rerun Discord"  src="https://img.shields.io/discord/1062300748202921994?label=Rerun%20Discord"> </a>
@@ -33,7 +33,7 @@ rec.log("image", &rerun::archetypes::Image::new(image))?;
 - [Examples](https://github.com/rerun-io/rerun/tree/latest/examples/rust)
 - [High-level docs](http://rerun.io/docs)
 <!-- TODO(#8165): docs.rs/rerun is broken right now -->
-<!-- - [Rust API docs](https://docs.rs/rerun/) -->
+<!-- - [Rust API docs](https://ref.rerun.io/docs/rust/stable) -->
 - [Rust API docs](https://ref.rerun.io/docs/rust/stable/rerun/)
 - [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
 

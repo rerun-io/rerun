@@ -26,7 +26,7 @@ Run `rerun --help` for more.
 - [Examples](https://github.com/rerun-io/rerun/tree/latest/examples/rust)
 - [High-level docs](http://rerun.io/docs)
 <!-- TODO(#8165): docs.rs/rerun is broken right now -->
-<!-- - [Rust API docs](https://docs.rs/rerun/) -->
+<!-- - [Rust API docs](https://ref.rerun.io/docs/rust/stable) -->
 - [Rust API docs](https://ref.rerun.io/docs/rust/stable/rerun/)
 - [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
 
