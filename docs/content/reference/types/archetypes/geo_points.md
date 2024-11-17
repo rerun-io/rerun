@@ -20,7 +20,7 @@ Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) 
 ## API reference links
  * 🌊 [C++ API docs for `GeoPoints`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1GeoPoints.html)
  * 🐍 [Python API docs for `GeoPoints`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.GeoPoints)
- * 🦀 [Rust API docs for `GeoPoints`](https://docs.rs/rerun/latest/rerun/archetypes/struct.GeoPoints.html)
+ * 🦀 [Rust API docs for `GeoPoints`](https://ref.rerun.io/docs/rust/stable/rerun/archetypes/struct.GeoPoints.html)
 
 ## Example
 

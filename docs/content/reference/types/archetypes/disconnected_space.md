@@ -22,7 +22,7 @@ This is useful for specifying that a subgraph is independent of the rest of the 
 ## API reference links
  * 🌊 [C++ API docs for `DisconnectedSpace`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1DisconnectedSpace.html)
  * 🐍 [Python API docs for `DisconnectedSpace`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.DisconnectedSpace)
- * 🦀 [Rust API docs for `DisconnectedSpace`](https://docs.rs/rerun/latest/rerun/archetypes/struct.DisconnectedSpace.html)
+ * 🦀 [Rust API docs for `DisconnectedSpace`](https://ref.rerun.io/docs/rust/stable/rerun/archetypes/struct.DisconnectedSpace.html)
 
 ## Example
 

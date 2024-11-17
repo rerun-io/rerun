@@ -20,7 +20,7 @@ Also known as "line strips" or "polylines".
 ## API reference links
  * 🌊 [C++ API docs for `GeoLineStrings`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1GeoLineStrings.html)
  * 🐍 [Python API docs for `GeoLineStrings`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.GeoLineStrings)
- * 🦀 [Rust API docs for `GeoLineStrings`](https://docs.rs/rerun/latest/rerun/archetypes/struct.GeoLineStrings.html)
+ * 🦀 [Rust API docs for `GeoLineStrings`](https://ref.rerun.io/docs/rust/stable/rerun/archetypes/struct.GeoLineStrings.html)
 
 ## Example
 

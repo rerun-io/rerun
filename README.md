@@ -73,7 +73,7 @@ You should now be able to run `rerun --help` in any terminal.
 - ⚙️ [Examples](http://rerun.io/examples)
 - 🌊 [C++ API docs](https://ref.rerun.io/docs/cpp)
 - 🐍 [Python API docs](https://ref.rerun.io/docs/python)
-- 🦀 [Rust API docs](https://docs.rs/rerun/)
+- 🦀 [Rust API docs](https://ref.rerun.io/docs/rust/stable)
 - ⁉️ [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
 
 
