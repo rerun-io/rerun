@@ -14,7 +14,7 @@ List<uint8>
 ## API reference links
  * 🌊 [C++ API docs for `Blob`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Blob.html)
  * 🐍 [Python API docs for `Blob`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.Blob)
- * 🦀 [Rust API docs for `Blob`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Blob.html)
+ * 🦀 [Rust API docs for `Blob`](https://ref.rerun.io/docs/rust/stable/rerun/datatypes/struct.Blob.html)
 
 
 ## Used by

@@ -52,7 +52,7 @@ Struct {
 ## API reference links
  * 🌊 [C++ API docs for `ImageFormat`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1ImageFormat.html)
  * 🐍 [Python API docs for `ImageFormat`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.ImageFormat)
- * 🦀 [Rust API docs for `ImageFormat`](https://docs.rs/rerun/latest/rerun/datatypes/struct.ImageFormat.html)
+ * 🦀 [Rust API docs for `ImageFormat`](https://ref.rerun.io/docs/rust/stable/rerun/datatypes/struct.ImageFormat.html)
 
 
 ## Used by

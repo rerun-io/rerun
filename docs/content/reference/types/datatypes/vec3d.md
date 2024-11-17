@@ -14,7 +14,7 @@ FixedSizeList<3, float32>
 ## API reference links
  * 🌊 [C++ API docs for `Vec3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Vec3D.html)
  * 🐍 [Python API docs for `Vec3D`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.Vec3D)
- * 🦀 [Rust API docs for `Vec3D`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Vec3D.html)
+ * 🦀 [Rust API docs for `Vec3D`](https://ref.rerun.io/docs/rust/stable/rerun/datatypes/struct.Vec3D.html)
 
 
 ## Used by

@@ -19,7 +19,7 @@ List<uint8>
 ## API reference links
  * 🌊 [C++ API docs for `ImageBuffer`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ImageBuffer.html)
  * 🐍 [Python API docs for `ImageBuffer`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.ImageBuffer)
- * 🦀 [Rust API docs for `ImageBuffer`](https://docs.rs/rerun/latest/rerun/components/struct.ImageBuffer.html)
+ * 🦀 [Rust API docs for `ImageBuffer`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.ImageBuffer.html)
 
 
 ## Used by

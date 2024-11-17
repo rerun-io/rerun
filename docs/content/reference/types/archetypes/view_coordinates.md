@@ -27,7 +27,7 @@ Make sure that this archetype is logged at or above the origin entity path of yo
 ## API reference links
  * 🌊 [C++ API docs for `ViewCoordinates`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1ViewCoordinates.html)
  * 🐍 [Python API docs for `ViewCoordinates`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.ViewCoordinates)
- * 🦀 [Rust API docs for `ViewCoordinates`](https://docs.rs/rerun/latest/rerun/archetypes/struct.ViewCoordinates.html)
+ * 🦀 [Rust API docs for `ViewCoordinates`](https://ref.rerun.io/docs/rust/stable/rerun/archetypes/struct.ViewCoordinates.html)
 
 ## Example
 

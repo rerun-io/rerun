@@ -17,7 +17,7 @@ uint32
 ## API reference links
  * 🌊 [C++ API docs for `AlbedoFactor`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1AlbedoFactor.html)
  * 🐍 [Python API docs for `AlbedoFactor`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.AlbedoFactor)
- * 🦀 [Rust API docs for `AlbedoFactor`](https://docs.rs/rerun/latest/rerun/components/struct.AlbedoFactor.html)
+ * 🦀 [Rust API docs for `AlbedoFactor`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.AlbedoFactor.html)
 
 
 ## Used by

@@ -27,7 +27,7 @@ This is the default behavior you get when running all of our C++/Python/Rust exa
 Call [`rr.spawn`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.spawn) once at the start of your program to start a Rerun Viewer in an external process and stream all the data to it via TCP. If an external Viewer was already running, `spawn` will connect to that one instead of spawning a new one.
 
 #### Rust
-[`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn) spawns a new Rerun Viewer process using an executable available in your PATH, then streams all the data to it via TCP. If an external Viewer was already running, `spawn` will connect to that one instead of spawning a new one.
+[`RecordingStream::spawn`](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStream.html#method.spawn) spawns a new Rerun Viewer process using an executable available in your PATH, then streams all the data to it via TCP. If an external Viewer was already running, `spawn` will connect to that one instead of spawning a new one.
 
 
 ### Connect
@@ -43,7 +43,7 @@ You will need to start a stand-alone Viewer first by typing `rerun` in your term
 [`rr.connect`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.connect)
 
 #### Rust
-[`RecordingStream::connect`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.connect)
+[`RecordingStream::connect`](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStream.html#method.connect)
 
 
 ### Serve
@@ -57,7 +57,7 @@ Not available yet.
 Use [`rr.serve`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.serve).
 
 #### Rust
-[`RecordingStream::serve`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.serve)
+[`RecordingStream::serve`](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStream.html#method.serve)
 
 
 ### Save
@@ -75,7 +75,7 @@ Use `RecordingStream::save`.
 Use [`rr.save`](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.save).
 
 #### Rust
-Use [`RecordingStream::save`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.save).
+Use [`RecordingStream::save`](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStream.html#method.save).
 
 
 ### Standard Input/Output
@@ -96,7 +96,7 @@ Check out our [dedicated example](https://github.com/rerun-io/rerun/tree/latest/
 
 #### Rust
 
-Use [`RecordingStream::stdout`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.stdout).
+Use [`RecordingStream::stdout`](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStream.html#method.stdout).
 
 Check out our [dedicated example](https://github.com/rerun-io/rerun/tree/latest/examples/rust/stdio/src/main.rs).
 
@@ -106,6 +106,6 @@ Check out our [dedicated example](https://github.com/rerun-io/rerun/tree/latest/
 We provide helpers for both Python & Rust to effortlessly add and properly handle all of these flags in your programs.
 
 - For Python, checkout the [`script_helpers`](https://ref.rerun.io/docs/python/stable/common/script_helpers/) module.
-- For Rust, checkout our [`clap`]() [integration](https://docs.rs/rerun/latest/rerun/clap/index.html).
+- For Rust, checkout our [`clap`]() [integration](https://ref.rerun.io/docs/rust/stable/rerun/clap/index.html).
 
 Have a look at the [official examples](/examples) to see these helpers in action.
