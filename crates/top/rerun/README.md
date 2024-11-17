@@ -32,7 +32,9 @@ rec.log("image", &rerun::archetypes::Image::new(image))?;
 ## Getting started
 - [Examples](https://github.com/rerun-io/rerun/tree/latest/examples/rust)
 - [High-level docs](http://rerun.io/docs)
-- [Rust API docs](https://docs.rs/rerun/)
+<!-- TODO(#8165): docs.rs/rerun is broken right now -->
+<!-- - [Rust API docs](https://docs.rs/rerun/) -->
+- [Rust API docs](https://ref.rerun.io/docs/rust/stable/rerun/)
 - [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
 
 ## Library

@@ -22,7 +22,7 @@ boolean
 ## API reference links
  * 🌊 [C++ API docs for `DisconnectedSpace`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1DisconnectedSpace.html)
  * 🐍 [Python API docs for `DisconnectedSpace`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.DisconnectedSpace)
- * 🦀 [Rust API docs for `DisconnectedSpace`](https://docs.rs/rerun/latest/rerun/components/struct.DisconnectedSpace.html)
+ * 🦀 [Rust API docs for `DisconnectedSpace`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.DisconnectedSpace.html)
 
 
 ## Used by

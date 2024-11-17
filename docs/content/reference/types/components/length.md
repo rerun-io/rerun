@@ -20,7 +20,7 @@ float32
 ## API reference links
  * 🌊 [C++ API docs for `Length`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Length.html)
  * 🐍 [Python API docs for `Length`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Length)
- * 🦀 [Rust API docs for `Length`](https://docs.rs/rerun/latest/rerun/components/struct.Length.html)
+ * 🦀 [Rust API docs for `Length`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.Length.html)
 
 
 ## Used by

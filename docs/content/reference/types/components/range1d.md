@@ -17,6 +17,6 @@ FixedSizeList<2, float64>
 ## API reference links
  * 🌊 [C++ API docs for `Range1D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Range1D.html)
  * 🐍 [Python API docs for `Range1D`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Range1D)
- * 🦀 [Rust API docs for `Range1D`](https://docs.rs/rerun/latest/rerun/components/struct.Range1D.html)
+ * 🦀 [Rust API docs for `Range1D`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.Range1D.html)
 
 

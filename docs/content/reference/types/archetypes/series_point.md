@@ -20,7 +20,7 @@ when possible. The underlying data needs to be logged to the same entity-path us
 ## API reference links
  * 🌊 [C++ API docs for `SeriesPoint`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1SeriesPoint.html)
  * 🐍 [Python API docs for `SeriesPoint`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.SeriesPoint)
- * 🦀 [Rust API docs for `SeriesPoint`](https://docs.rs/rerun/latest/rerun/archetypes/struct.SeriesPoint.html)
+ * 🦀 [Rust API docs for `SeriesPoint`](https://ref.rerun.io/docs/rust/stable/rerun/archetypes/struct.SeriesPoint.html)
 
 ## Example
 
