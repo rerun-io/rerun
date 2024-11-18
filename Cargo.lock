@@ -6046,7 +6046,6 @@ dependencies = [
  "egui_tiles",
  "itertools 0.13.0",
  "nohash-hasher",
- "once_cell",
  "re_chunk",
  "re_chunk_store",
  "re_context_menu",

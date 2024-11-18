@@ -39,7 +39,6 @@ re_viewport_blueprint.workspace = true
 egui_tiles.workspace = true
 egui.workspace = true
 itertools.workspace = true
-once_cell.workspace = true
 nohash-hasher.workspace = true
 serde = { workspace = true, features = ["derive"] }
 static_assertions.workspace = true
