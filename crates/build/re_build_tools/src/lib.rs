@@ -110,7 +110,7 @@ impl Environment {
             eprintln!("Environment: env-var IS_IN_RERUN_WORKSPACE is set");
             Self::DeveloperInWorkspace
         } else {
-            eprintln!("Environment: Not on CI anmd not in workspace");
+            eprintln!("Environment: Not on CI and not in workspace");
             Self::UsedAsDependency
         }
     }
