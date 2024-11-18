@@ -26,8 +26,6 @@ re_data_ui.workspace = true
 re_entity_db.workspace = true
 re_log_types.workspace = true
 re_log.workspace = true
-re_space_view_spatial.workspace = true
-re_space_view_time_series.workspace = true
 re_space_view.workspace = true
 re_tracing.workspace = true
 # TODO(jleibs): Remove this once VisualizerOverrides is gone

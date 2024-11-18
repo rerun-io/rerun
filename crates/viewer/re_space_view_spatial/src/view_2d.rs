@@ -106,6 +106,10 @@ impl SpaceViewClass for SpatialSpaceView2D {
             })
     }
 
+    fn supports_visible_time_range(&self) -> bool {
+        true
+    }
+
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {
         re_viewer_context::SpaceViewClassLayoutPriority::High
     }
