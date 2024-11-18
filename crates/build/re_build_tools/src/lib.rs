@@ -293,7 +293,7 @@ pub fn cargo_metadata() -> anyhow::Result<cargo_metadata::Metadata> {
         .no_deps()
         // Make sure this works without a connection, since docs.rs won't have one either.
         // See https://github.com/rerun-io/rerun/issues/8165
-        .other_options(vec!["--offline".to_owned()])
+        .other_options(vec!["--frozen".to_owned()])
         .exec()?)
 }
 
