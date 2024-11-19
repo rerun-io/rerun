@@ -1,6 +1,6 @@
 {
   "name": "@rerun-io/web-viewer",
-  "version": "0.20.1-alpha.2",
+  "version": "0.20.1-alpha.3",
   "description": "Embed the Rerun web viewer in your app",
   "licenses": [
     {
