@@ -161,7 +161,7 @@ arrow2 = { package = "re_arrow2", version = "0.17" }
 async-executor = "1.0"
 backtrace = "0.3"
 bincode = "1.3"
-bit-vec = "0.7"
+bit-vec = "0.8"
 bitflags = { version = "2.4", features = ["bytemuck"] }
 blackbox = "0.2.0"
 bytemuck = { version = "1.18", features = ["extern_crate_alloc"] }
@@ -232,7 +232,7 @@ pico-args = "0.5"
 ply-rs = { version = "0.1", default-features = false }
 poll-promise = "0.3"
 polling = "3.7.3"
-pollster = "0.3"
+pollster = "0.4"
 prettyplease = "0.2"
 proc-macro2 = { version = "1.0", default-features = false }
 profiling = { version = "1.0.12", default-features = false }

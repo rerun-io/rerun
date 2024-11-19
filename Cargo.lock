@@ -946,14 +946,8 @@ version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "08807e080ed7f9d5433fa9b275196cfc35414f66a0c79d864dc51a0d825231a3"
 dependencies = [
- "bit-vec 0.8.0",
+ "bit-vec",
 ]
-
-[[package]]
-name = "bit-vec"
-version = "0.7.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d2c54ff287cfc0a34f38a6b832ea1bd8e448a330b3e40a50859e6488bee07f22"
 
 [[package]]
 name = "bit-vec"
@@ -5890,7 +5884,7 @@ dependencies = [
  "glam",
  "image",
  "itertools 0.13.0",
- "pollster 0.3.0",
+ "pollster 0.4.0",
  "rand",
  "re_log",
  "re_math",
@@ -6394,7 +6388,7 @@ dependencies = [
 name = "re_video"
 version = "0.20.1-alpha.2"
 dependencies = [
- "bit-vec 0.7.0",
+ "bit-vec",
  "cfg_aliases 0.2.1",
  "criterion",
  "crossbeam",
@@ -6501,7 +6495,7 @@ dependencies = [
  "ahash",
  "anyhow",
  "arboard",
- "bit-vec 0.7.0",
+ "bit-vec",
  "bitflags 2.6.0",
  "bytemuck",
  "directories",
@@ -9254,7 +9248,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0e0c68e7b6322a03ee5b83fcd92caeac5c2a932f6457818179f4652ad2a9c065"
 dependencies = [
  "arrayvec",
- "bit-vec 0.8.0",
+ "bit-vec",
  "bitflags 2.6.0",
  "cfg_aliases 0.1.1",
  "document-features",
