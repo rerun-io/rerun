@@ -429,7 +429,8 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
     retry_attempts = 5
     while True:
         try:
-            cargo(f"publish --quiet --token {token}", cwd=crate.path, env=env, dry_run=False, capture=True)
+            # We added --locked here hoping that `cargo publish` would use the included `Cargo.lock` file, but it doesn't.
+            cargo(f"publish --quiet --locked --token {token}", cwd=crate.path, env=env, dry_run=False, capture=True)
             print(f"{G}Published{X} {B}{name}{X}@{B}{version}{X}")
             break
         except subprocess.CalledProcessError as e:
