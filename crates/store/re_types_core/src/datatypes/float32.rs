@@ -52,13 +52,6 @@ impl From<Float32> for f32 {
 crate::macros::impl_into_cow!(Float32);
 
 impl crate::Loggable for Float32 {
-    type Name = crate::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.Float32".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

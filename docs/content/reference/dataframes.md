@@ -6,7 +6,7 @@ order: 300
 Rerun, at its core, is a database. As such, you can always get your data back in the form of tables (also known as dataframes, or records, or batches...).
 
 This can be achieved in three different ways, depending on your needs:
-* using the dataframe API, currently available in [Python](https://ref.rerun.io/docs/python/stable/common/dataframe/) and [Rust](https://docs.rs/rerun/latest/rerun/dataframe/index.html),
+* using the dataframe API, currently available in [Python](https://ref.rerun.io/docs/python/stable/common/dataframe/) and [Rust](https://ref.rerun.io/docs/rust/stable/rerun/dataframe/index.html),
 * using the [blueprint API](../concepts/blueprint.md) to configure a [dataframe view](types/views/dataframe_view.md) from code,
 * or simply by setting up [dataframe view](types/views/dataframe_view.md) manually in the UI.
 
@@ -28,7 +28,7 @@ snippet: reference/dataframe_query
 Check out the API reference to learn more about all the ways that data can be searched and filtered:
 * [🐍 Python API reference](https://ref.rerun.io/docs/python/stable/common/dataframe/)
   * [Example](https://github.com/rerun-io/rerun/blob/c00a9f649fd4463f91620e8e2eac11355b245ac5/examples/python/dataframe_query/dataframe_query.py)
-* [🦀 Rust API reference](https://docs.rs/rerun/latest/rerun/dataframe/index.html)
+* [🦀 Rust API reference](https://ref.rerun.io/docs/rust/stable/rerun/dataframe/index.html)
   * [Example](https://github.com/rerun-io/rerun/blob/c00a9f649fd4463f91620e8e2eac11355b245ac5/examples/rust/dataframe_query/src/main.rs)
 
 
@@ -61,7 +61,7 @@ snippet: reference/dataframe_view_query_external
 Check out the blueprint API and `log_file_from_path` references to learn more:
 * [🐍 Python blueprint API reference](https://ref.rerun.io/docs/python/stable/common/blueprint_apis/)
 * [🐍 Python `log_file_from_path`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log_file_from_path)
-* [🦀 Rust `log_file_from_path`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log_file_from_path)
+* [🦀 Rust `log_file_from_path`](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStream.html#method.log_file_from_path)
 * [🌊 C++ `log_file_from_path`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a20798d7ea74cce5c8174e5cacd0a2c47)
 
 You can learn more in our [dedicated page about blueprint re-use](../howto/visualization/reuse-blueprints.md).

@@ -17,7 +17,7 @@ utf8
 ## API reference links
  * 🌊 [C++ API docs for `GraphNode`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1GraphNode.html?speculative-link)
  * 🐍 [Python API docs for `GraphNode`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.GraphNode)
- * 🦀 [Rust API docs for `GraphNode`](https://docs.rs/rerun/latest/rerun/components/struct.GraphNode.html?speculative-link)
+ * 🦀 [Rust API docs for `GraphNode`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.GraphNode.html?speculative-link)
 
 
 ## Used by

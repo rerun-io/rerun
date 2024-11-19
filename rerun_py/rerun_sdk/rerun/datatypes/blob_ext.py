@@ -23,7 +23,7 @@ class BlobExt:
 
         # someone or something is building things manually, let them!
         if isinstance(data, BlobBatch):
-            return data.as_arrow_array().storage
+            return data.as_arrow_array()
 
         # pure-numpy fast path
         elif isinstance(data, np.ndarray):

@@ -14,16 +14,9 @@ from attrs import define, field
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 
-__all__ = [
-    "VideoTimestamp",
-    "VideoTimestampArrayLike",
-    "VideoTimestampBatch",
-    "VideoTimestampLike",
-    "VideoTimestampType",
-]
+__all__ = ["VideoTimestamp", "VideoTimestampArrayLike", "VideoTimestampBatch", "VideoTimestampLike"]
 
 
 @define(init=False)
@@ -76,15 +69,8 @@ VideoTimestampArrayLike = Union[
 ]
 
 
-class VideoTimestampType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.VideoTimestamp"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.int64(), self._TYPE_NAME)
-
-
 class VideoTimestampBatch(BaseBatch[VideoTimestampArrayLike]):
-    _ARROW_TYPE = VideoTimestampType()
+    _ARROW_DATATYPE = pa.int64()
 
     @staticmethod
     def _native_to_pa_array(data: VideoTimestampArrayLike, data_type: pa.DataType) -> pa.Array:

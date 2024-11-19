@@ -70,13 +70,6 @@ impl std::fmt::Display for GraphType {
 ::re_types_core::macros::impl_into_cow!(GraphType);
 
 impl ::re_types_core::Loggable for GraphType {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.GraphType".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
@@ -148,5 +141,12 @@ impl ::re_types_core::Loggable for GraphType {
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.components.GraphType")?)
+    }
+}
+
+impl ::re_types_core::Component for GraphType {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.GraphType".into()
     }
 }

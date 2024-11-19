@@ -1,10 +1,13 @@
 use re_log_types::EntityPath;
 use re_renderer::{renderer::PointCloudDrawDataError, PickingLayerInstanceId};
-use re_space_view::{DataResultQuery as _, RangeResultsExt as _};
+use re_space_view::{
+    process_annotation_slices, process_color_slice, AnnotationSceneContext, DataResultQuery as _,
+    RangeResultsExt as _,
+};
 use re_types::{
     archetypes::GeoPoints,
-    components::{Color, LatLon, Radius},
-    Loggable as _,
+    components::{ClassId, Color, LatLon, Radius},
+    Component as _,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, SpaceViewHighlights,
@@ -41,10 +44,14 @@ impl VisualizerSystem for GeoPointsVisualizer {
         &mut self,
         ctx: &ViewContext<'_>,
         view_query: &ViewQuery<'_>,
-        _context_systems: &ViewContextCollection,
+        context_systems: &ViewContextCollection,
     ) -> Result<Vec<re_renderer::QueueableDrawData>, SpaceViewSystemExecutionError> {
+        let annotation_scene_context = context_systems.get::<AnnotationSceneContext>()?;
+        let latest_at_query = view_query.latest_at_query();
+
         for data_result in view_query.iter_visible_data_results(ctx, Self::identifier()) {
             let results = data_result.query_archetype_with_history::<GeoPoints>(ctx, view_query);
+            let annotation_context = annotation_scene_context.0.find(&data_result.entity_path);
 
             let mut batch_data = GeoPointBatch::default();
 
@@ -53,34 +60,49 @@ impl VisualizerSystem for GeoPointsVisualizer {
             let all_positions = results.iter_as(timeline, LatLon::name());
             let all_colors = results.iter_as(timeline, Color::name());
             let all_radii = results.iter_as(timeline, Radius::name());
+            let all_class_ids = results.iter_as(timeline, ClassId::name());
 
             // fallback component values
-            let fallback_color: Color =
-                self.fallback_for(&ctx.query_context(data_result, &view_query.latest_at_query()));
+            let query_context = ctx.query_context(data_result, &latest_at_query);
             let fallback_radius: Radius =
-                self.fallback_for(&ctx.query_context(data_result, &view_query.latest_at_query()));
+                self.fallback_for(&ctx.query_context(data_result, &latest_at_query));
 
             // iterate over each chunk and find all relevant component slices
-            for (_index, positions, colors, radii) in re_query::range_zip_1x2(
+            for (_index, positions, colors, radii, class_ids) in re_query::range_zip_1x3(
                 all_positions.component::<LatLon>(),
-                all_colors.component::<Color>(),
+                all_colors.primitive::<u32>(),
                 all_radii.component::<Radius>(),
+                all_class_ids.primitive::<u16>(),
             ) {
                 // required component
                 let positions = positions.as_slice();
+                let num_instances = positions.len();
+
+                // Resolve annotation info (if needed).
+                let annotation_infos = process_annotation_slices(
+                    view_query.latest_at,
+                    num_instances,
+                    class_ids.map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
+                    &annotation_context,
+                );
 
                 // optional components
-                let colors = colors.as_ref().map(|c| c.as_slice()).unwrap_or(&[]);
+                let colors = process_color_slice(
+                    &query_context,
+                    self,
+                    num_instances,
+                    &annotation_infos,
+                    colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
+                );
                 let radii = radii.as_ref().map(|r| r.as_slice()).unwrap_or(&[]);
 
                 // optional components values to be used for instance clamping semantics
-                let last_color = colors.last().copied().unwrap_or(fallback_color);
                 let last_radii = radii.last().copied().unwrap_or(fallback_radius);
 
                 // iterate over all instances
                 for (instance_index, (position, color, radius)) in itertools::izip!(
                     positions,
-                    colors.iter().chain(std::iter::repeat(&last_color)),
+                    colors.iter(),
                     radii.iter().chain(std::iter::repeat(&last_radii)),
                 )
                 .enumerate()
@@ -90,7 +112,7 @@ impl VisualizerSystem for GeoPointsVisualizer {
                         position.longitude(),
                     ));
                     batch_data.radii.push(*radius);
-                    batch_data.colors.push(color.0.into());
+                    batch_data.colors.push(*color);
                     batch_data
                         .instance_id
                         .push(re_renderer::PickingLayerInstanceId(instance_index as _));

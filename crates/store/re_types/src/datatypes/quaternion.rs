@@ -55,13 +55,6 @@ impl From<Quaternion> for [f32; 4usize] {
 ::re_types_core::macros::impl_into_cow!(Quaternion);
 
 impl ::re_types_core::Loggable for Quaternion {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.Quaternion".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

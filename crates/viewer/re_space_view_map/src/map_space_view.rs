@@ -1,4 +1,5 @@
 use egui::{Context, NumExt as _, Rect, Response};
+use re_space_view::AnnotationSceneContext;
 use walkers::{HttpTiles, Map, MapMemory, Tiles};
 
 use re_data_ui::{item_ui, DataUi};
@@ -119,7 +120,11 @@ Displays geospatial primitives on a map.
         system_registry: &mut SpaceViewSystemRegistrator<'_>,
     ) -> Result<(), SpaceViewClassRegistryError> {
         system_registry.register_visualizer::<GeoPointsVisualizer>()?;
-        system_registry.register_visualizer::<GeoLineStringsVisualizer>()
+        system_registry.register_visualizer::<GeoLineStringsVisualizer>()?;
+
+        system_registry.register_context_system::<AnnotationSceneContext>()?;
+
+        Ok(())
     }
 
     fn new_state(&self) -> Box<dyn SpaceViewState> {
@@ -133,6 +138,10 @@ Displays geospatial primitives on a map.
 
     fn layout_priority(&self) -> SpaceViewClassLayoutPriority {
         SpaceViewClassLayoutPriority::default()
+    }
+
+    fn supports_visible_time_range(&self) -> bool {
+        true
     }
 
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {

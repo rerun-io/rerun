@@ -9,7 +9,7 @@ use re_chunk_store::{
 use re_log_types::{EntityPath, EntityPathHash, StoreId};
 use re_types::{
     components::{DisconnectedSpace, PinholeProjection, ViewCoordinates},
-    Loggable,
+    Component,
 };
 
 bitflags::bitflags! {
@@ -432,7 +432,7 @@ mod tests {
     use re_log_types::EntityPath;
     use re_types::{
         components::{DisconnectedSpace, PinholeProjection, ViewCoordinates},
-        ComponentName, Loggable as _,
+        Component as _, ComponentName,
     };
 
     use crate::spatial_topology::{HeuristicHints, SubSpaceConnectionFlags};

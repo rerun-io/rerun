@@ -2,6 +2,7 @@ use egui::NumExt as _;
 
 use re_data_ui::{item_ui, DataUi as _};
 use re_log_types::Instance;
+use re_space_view::AnnotationSceneContext;
 use re_ui::{
     list_item::{list_item_scope, PropertyContent},
     UiExt as _,
@@ -12,7 +13,6 @@ use re_viewer_context::{
 };
 
 use crate::{
-    contexts::AnnotationSceneContext,
     picking::{PickableUiRect, PickingContext, PickingHitType},
     picking_ui_pixel::{textured_rect_hover_ui, PickedPixelInfo},
     ui::SpatialSpaceViewState,

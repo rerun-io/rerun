@@ -82,13 +82,6 @@ impl std::fmt::Display for TransformRelation {
 ::re_types_core::macros::impl_into_cow!(TransformRelation);
 
 impl ::re_types_core::Loggable for TransformRelation {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.TransformRelation".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
@@ -160,5 +153,12 @@ impl ::re_types_core::Loggable for TransformRelation {
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.components.TransformRelation")?)
+    }
+}
+
+impl ::re_types_core::Component for TransformRelation {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.TransformRelation".into()
     }
 }

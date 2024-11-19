@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["PoseTransformMat3x3", "PoseTransformMat3x3Batch", "PoseTransformMat3x3Type"]
+__all__ = ["PoseTransformMat3x3", "PoseTransformMat3x3Batch"]
 
 
 class PoseTransformMat3x3(datatypes.Mat3x3, ComponentMixin):
@@ -60,12 +60,8 @@ class PoseTransformMat3x3(datatypes.Mat3x3, ComponentMixin):
     pass
 
 
-class PoseTransformMat3x3Type(datatypes.Mat3x3Type):
-    _TYPE_NAME: str = "rerun.components.PoseTransformMat3x3"
-
-
 class PoseTransformMat3x3Batch(datatypes.Mat3x3Batch, ComponentBatchMixin):
-    _ARROW_TYPE = PoseTransformMat3x3Type()
+    _COMPONENT_NAME: str = "rerun.components.PoseTransformMat3x3"
 
 
 # This is patched in late to avoid circular dependencies.

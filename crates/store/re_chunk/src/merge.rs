@@ -274,7 +274,7 @@ mod tests {
     use super::*;
 
     use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoint64};
-    use re_types_core::Loggable;
+    use re_types_core::Component;
 
     use crate::{Chunk, RowId, Timeline};
 

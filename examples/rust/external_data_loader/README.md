@@ -19,6 +19,6 @@ This is an example executable data-loader plugin for the Rerun Viewer.
 It will log Rust source code files as markdown documents.
 To try it out, install it in your $PATH (`cargo install --path . -f`), then open a Rust source file with Rerun (`rerun file.rs`).
 
-Consider using the [`send_columns`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.send_columns) API for data loaders that ingest time series data from a file.
+Consider using the [`send_columns`](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStream.html#method.send_columns) API for data loaders that ingest time series data from a file.
 This can be much more efficient that the stateful `log` API as it allows bundling
 component data over time into a single call consuming a continuous block of memory.

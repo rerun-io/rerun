@@ -17,7 +17,7 @@ uint16
 ## API reference links
  * 🌊 [C++ API docs for `ClassId`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ClassId.html)
  * 🐍 [Python API docs for `ClassId`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.ClassId)
- * 🦀 [Rust API docs for `ClassId`](https://docs.rs/rerun/latest/rerun/components/struct.ClassId.html)
+ * 🦀 [Rust API docs for `ClassId`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.ClassId.html)
 
 
 ## Used by
@@ -26,8 +26,9 @@ uint16
 * [`Arrows3D`](../archetypes/arrows3d.md)
 * [`Boxes2D`](../archetypes/boxes2d.md)
 * [`Boxes3D`](../archetypes/boxes3d.md)
-* [`Capsules3D`](../archetypes/capsules3d.md?speculative-link)
+* [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
+* [`GeoPoints`](../archetypes/geo_points.md)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
 * [`LineStrips3D`](../archetypes/line_strips3d.md)
 * [`Mesh3D`](../archetypes/mesh3d.md)

@@ -79,13 +79,6 @@ impl std::fmt::Display for MagnificationFilter {
 ::re_types_core::macros::impl_into_cow!(MagnificationFilter);
 
 impl ::re_types_core::Loggable for MagnificationFilter {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.MagnificationFilter".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
@@ -157,5 +150,12 @@ impl ::re_types_core::Loggable for MagnificationFilter {
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.components.MagnificationFilter")?)
+    }
+}
+
+impl ::re_types_core::Component for MagnificationFilter {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.MagnificationFilter".into()
     }
 }

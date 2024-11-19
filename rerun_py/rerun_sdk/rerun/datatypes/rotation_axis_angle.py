@@ -13,17 +13,10 @@ from attrs import define, field
 from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .rotation_axis_angle_ext import RotationAxisAngleExt
 
-__all__ = [
-    "RotationAxisAngle",
-    "RotationAxisAngleArrayLike",
-    "RotationAxisAngleBatch",
-    "RotationAxisAngleLike",
-    "RotationAxisAngleType",
-]
+__all__ = ["RotationAxisAngle", "RotationAxisAngleArrayLike", "RotationAxisAngleBatch", "RotationAxisAngleLike"]
 
 
 def _rotation_axis_angle__axis__special_field_converter_override(x: datatypes.Vec3DLike) -> datatypes.Vec3D:
@@ -63,27 +56,16 @@ RotationAxisAngleArrayLike = Union[
 ]
 
 
-class RotationAxisAngleType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.RotationAxisAngle"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.struct([
-                pa.field(
-                    "axis",
-                    pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field("angle", pa.float32(), nullable=False, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
-
-
 class RotationAxisAngleBatch(BaseBatch[RotationAxisAngleArrayLike]):
-    _ARROW_TYPE = RotationAxisAngleType()
+    _ARROW_DATATYPE = pa.struct([
+        pa.field(
+            "axis",
+            pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 3),
+            nullable=False,
+            metadata={},
+        ),
+        pa.field("angle", pa.float32(), nullable=False, metadata={}),
+    ])
 
     @staticmethod
     def _native_to_pa_array(data: RotationAxisAngleArrayLike, data_type: pa.DataType) -> pa.Array:
@@ -94,8 +76,8 @@ class RotationAxisAngleBatch(BaseBatch[RotationAxisAngleArrayLike]):
 
         return pa.StructArray.from_arrays(
             [
-                Vec3DBatch([x.axis for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-                AngleBatch([x.angle for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                Vec3DBatch([x.axis for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                AngleBatch([x.angle for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

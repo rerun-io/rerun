@@ -43,13 +43,6 @@ impl ::re_types_core::SizeBytes for Utf8Pair {
 ::re_types_core::macros::impl_into_cow!(Utf8Pair);
 
 impl ::re_types_core::Loggable for Utf8Pair {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.Utf8Pair".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

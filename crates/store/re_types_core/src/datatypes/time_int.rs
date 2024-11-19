@@ -51,13 +51,6 @@ impl From<TimeInt> for i64 {
 crate::macros::impl_into_cow!(TimeInt);
 
 impl crate::Loggable for TimeInt {
-    type Name = crate::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.TimeInt".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

@@ -14,14 +14,13 @@ from attrs import define, field
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .._converters import (
     to_np_uint8,
 )
 from .uuid_ext import UuidExt
 
-__all__ = ["Uuid", "UuidArrayLike", "UuidBatch", "UuidLike", "UuidType"]
+__all__ = ["Uuid", "UuidArrayLike", "UuidBatch", "UuidLike"]
 
 
 @define(init=False)
@@ -62,17 +61,8 @@ UuidArrayLike = Union[
 ]
 
 
-class UuidType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.Uuid"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}), 16), self._TYPE_NAME
-        )
-
-
 class UuidBatch(BaseBatch[UuidArrayLike]):
-    _ARROW_TYPE = UuidType()
+    _ARROW_DATATYPE = pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}), 16)
 
     @staticmethod
     def _native_to_pa_array(data: UuidArrayLike, data_type: pa.DataType) -> pa.Array:

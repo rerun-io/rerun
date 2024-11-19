@@ -8,7 +8,7 @@ use re_types::{
     archetypes, components,
     datatypes::{ChannelDatatype, ColorModel},
     image::ImageKind,
-    static_assert_struct_has_fields, Archetype, ComponentName, Loggable,
+    static_assert_struct_has_fields, Archetype, Component, ComponentName,
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{
@@ -54,7 +54,7 @@ impl DataUi for InstancePath {
             ui_layout.label(
                 ui,
                 format!(
-                    "No components logged on timeline {:?}",
+                    "{self} has no components on timeline {:?}",
                     query.timeline().name()
                 ),
             );

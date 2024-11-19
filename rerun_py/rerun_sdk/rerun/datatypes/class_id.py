@@ -14,10 +14,9 @@ from attrs import define, field
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 
-__all__ = ["ClassId", "ClassIdArrayLike", "ClassIdBatch", "ClassIdLike", "ClassIdType"]
+__all__ = ["ClassId", "ClassIdArrayLike", "ClassIdBatch", "ClassIdLike"]
 
 
 @define(init=False)
@@ -51,15 +50,8 @@ else:
 ClassIdArrayLike = Union[ClassId, Sequence[ClassIdLike], int, npt.ArrayLike]
 
 
-class ClassIdType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.ClassId"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint16(), self._TYPE_NAME)
-
-
 class ClassIdBatch(BaseBatch[ClassIdArrayLike]):
-    _ARROW_TYPE = ClassIdType()
+    _ARROW_DATATYPE = pa.uint16()
 
     @staticmethod
     def _native_to_pa_array(data: ClassIdArrayLike, data_type: pa.DataType) -> pa.Array:

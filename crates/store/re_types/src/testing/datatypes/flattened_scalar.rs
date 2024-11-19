@@ -52,13 +52,6 @@ impl From<FlattenedScalar> for f32 {
 ::re_types_core::macros::impl_into_cow!(FlattenedScalar);
 
 impl ::re_types_core::Loggable for FlattenedScalar {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.testing.datatypes.FlattenedScalar".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

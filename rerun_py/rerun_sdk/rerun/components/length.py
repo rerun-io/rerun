@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["Length", "LengthBatch", "LengthType"]
+__all__ = ["Length", "LengthBatch"]
 
 
 class Length(datatypes.Float32, ComponentMixin):
@@ -29,12 +29,8 @@ class Length(datatypes.Float32, ComponentMixin):
     pass
 
 
-class LengthType(datatypes.Float32Type):
-    _TYPE_NAME: str = "rerun.components.Length"
-
-
 class LengthBatch(datatypes.Float32Batch, ComponentBatchMixin):
-    _ARROW_TYPE = LengthType()
+    _COMPONENT_NAME: str = "rerun.components.Length"
 
 
 # This is patched in late to avoid circular dependencies.

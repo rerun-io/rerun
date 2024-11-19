@@ -43,13 +43,6 @@ impl ::re_types_core::SizeBytes for ComponentColumnSelector {
 ::re_types_core::macros::impl_into_cow!(ComponentColumnSelector);
 
 impl ::re_types_core::Loggable for ComponentColumnSelector {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.datatypes.ComponentColumnSelector".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

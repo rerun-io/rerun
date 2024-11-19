@@ -75,13 +75,6 @@ impl std::fmt::Display for PanelState {
 ::re_types_core::macros::impl_into_cow!(PanelState);
 
 impl ::re_types_core::Loggable for PanelState {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.components.PanelState".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
@@ -154,5 +147,12 @@ impl ::re_types_core::Loggable for PanelState {
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.blueprint.components.PanelState")?)
+    }
+}
+
+impl ::re_types_core::Component for PanelState {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.PanelState".into()
     }
 }

@@ -45,7 +45,7 @@ uint8
 ## API reference links
  * 🌊 [C++ API docs for `MarkerShape`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
  * 🐍 [Python API docs for `MarkerShape`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.MarkerShape)
- * 🦀 [Rust API docs for `MarkerShape`](https://docs.rs/rerun/latest/rerun/components/enum.MarkerShape.html)
+ * 🦀 [Rust API docs for `MarkerShape`](https://ref.rerun.io/docs/rust/stable/rerun/components/enum.MarkerShape.html)
 
 
 ## Used by

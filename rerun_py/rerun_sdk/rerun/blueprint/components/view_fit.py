@@ -11,11 +11,10 @@ import pyarrow as pa
 
 from ..._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
 )
 
-__all__ = ["ViewFit", "ViewFitArrayLike", "ViewFitBatch", "ViewFitLike", "ViewFitType"]
+__all__ = ["ViewFit", "ViewFitArrayLike", "ViewFitBatch", "ViewFitLike"]
 
 
 from enum import Enum
@@ -60,15 +59,9 @@ ViewFitLike = Union[
 ViewFitArrayLike = Union[ViewFitLike, Sequence[ViewFitLike]]
 
 
-class ViewFitType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.blueprint.components.ViewFit"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
-
-
 class ViewFitBatch(BaseBatch[ViewFitArrayLike], ComponentBatchMixin):
-    _ARROW_TYPE = ViewFitType()
+    _ARROW_DATATYPE = pa.uint8()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.ViewFit"
 
     @staticmethod
     def _native_to_pa_array(data: ViewFitArrayLike, data_type: pa.DataType) -> pa.Array:

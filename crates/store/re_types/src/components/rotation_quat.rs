@@ -70,13 +70,6 @@ impl std::ops::DerefMut for RotationQuat {
 ::re_types_core::macros::impl_into_cow!(RotationQuat);
 
 impl ::re_types_core::Loggable for RotationQuat {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.RotationQuat".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Quaternion::arrow_datatype()
@@ -112,5 +105,12 @@ impl ::re_types_core::Loggable for RotationQuat {
         Self: Sized,
     {
         crate::datatypes::Quaternion::from_arrow(arrow_data).map(bytemuck::cast_vec)
+    }
+}
+
+impl ::re_types_core::Component for RotationQuat {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.RotationQuat".into()
     }
 }

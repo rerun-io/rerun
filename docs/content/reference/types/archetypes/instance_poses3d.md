@@ -30,7 +30,7 @@ will draw an object for every pose, a behavior also known as "instancing".
 ## API reference links
  * 🌊 [C++ API docs for `InstancePoses3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1InstancePoses3D.html)
  * 🐍 [Python API docs for `InstancePoses3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.InstancePoses3D)
- * 🦀 [Rust API docs for `InstancePoses3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.InstancePoses3D.html)
+ * 🦀 [Rust API docs for `InstancePoses3D`](https://ref.rerun.io/docs/rust/stable/rerun/archetypes/struct.InstancePoses3D.html)
 
 ## Examples
 

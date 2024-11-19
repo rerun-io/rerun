@@ -69,13 +69,6 @@ impl std::ops::DerefMut for ClearIsRecursive {
 crate::macros::impl_into_cow!(ClearIsRecursive);
 
 impl crate::Loggable for ClearIsRecursive {
-    type Name = crate::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.ClearIsRecursive".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Bool::arrow_datatype()
@@ -103,5 +96,12 @@ impl crate::Loggable for ClearIsRecursive {
     {
         crate::datatypes::Bool::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+    }
+}
+
+impl crate::Component for ClearIsRecursive {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.ClearIsRecursive".into()
     }
 }

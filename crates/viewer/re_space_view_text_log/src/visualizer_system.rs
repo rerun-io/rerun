@@ -8,7 +8,7 @@ use re_space_view::{range_with_blueprint_resolved_data, RangeResultsExt};
 use re_types::{
     archetypes::TextLog,
     components::{Color, Text, TextLogLevel},
-    Loggable as _,
+    Component as _,
 };
 use re_viewer_context::{
     IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext, ViewContextCollection,

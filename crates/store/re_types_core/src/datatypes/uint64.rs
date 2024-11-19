@@ -51,13 +51,6 @@ impl From<UInt64> for u64 {
 crate::macros::impl_into_cow!(UInt64);
 
 impl crate::Loggable for UInt64 {
-    type Name = crate::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.UInt64".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

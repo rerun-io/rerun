@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["Blob", "BlobBatch", "BlobType"]
+__all__ = ["Blob", "BlobBatch"]
 
 
 class Blob(datatypes.Blob, ComponentMixin):
@@ -24,12 +24,8 @@ class Blob(datatypes.Blob, ComponentMixin):
     pass
 
 
-class BlobType(datatypes.BlobType):
-    _TYPE_NAME: str = "rerun.components.Blob"
-
-
 class BlobBatch(datatypes.BlobBatch, ComponentBatchMixin):
-    _ARROW_TYPE = BlobType()
+    _COMPONENT_NAME: str = "rerun.components.Blob"
 
 
 # This is patched in late to avoid circular dependencies.

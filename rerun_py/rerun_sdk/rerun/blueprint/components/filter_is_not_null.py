@@ -11,7 +11,7 @@ from ..._baseclasses import (
 )
 from ...blueprint import datatypes as blueprint_datatypes
 
-__all__ = ["FilterIsNotNull", "FilterIsNotNullBatch", "FilterIsNotNullType"]
+__all__ = ["FilterIsNotNull", "FilterIsNotNullBatch"]
 
 
 class FilterIsNotNull(blueprint_datatypes.FilterIsNotNull, ComponentMixin):
@@ -24,12 +24,8 @@ class FilterIsNotNull(blueprint_datatypes.FilterIsNotNull, ComponentMixin):
     pass
 
 
-class FilterIsNotNullType(blueprint_datatypes.FilterIsNotNullType):
-    _TYPE_NAME: str = "rerun.blueprint.components.FilterIsNotNull"
-
-
 class FilterIsNotNullBatch(blueprint_datatypes.FilterIsNotNullBatch, ComponentBatchMixin):
-    _ARROW_TYPE = FilterIsNotNullType()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.FilterIsNotNull"
 
 
 # This is patched in late to avoid circular dependencies.

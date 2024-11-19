@@ -13,18 +13,11 @@ from attrs import define, field
 from ... import datatypes
 from ..._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from ...blueprint import datatypes as blueprint_datatypes
 from .filter_is_not_null_ext import FilterIsNotNullExt
 
-__all__ = [
-    "FilterIsNotNull",
-    "FilterIsNotNullArrayLike",
-    "FilterIsNotNullBatch",
-    "FilterIsNotNullLike",
-    "FilterIsNotNullType",
-]
+__all__ = ["FilterIsNotNull", "FilterIsNotNullArrayLike", "FilterIsNotNullBatch", "FilterIsNotNullLike"]
 
 
 def _filter_is_not_null__active__special_field_converter_override(x: datatypes.BoolLike) -> datatypes.Bool:
@@ -76,30 +69,19 @@ FilterIsNotNullArrayLike = Union[
 ]
 
 
-class FilterIsNotNullType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.blueprint.datatypes.FilterIsNotNull"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.struct([
-                pa.field("active", pa.bool_(), nullable=False, metadata={}),
-                pa.field(
-                    "column",
-                    pa.struct([
-                        pa.field("entity_path", pa.utf8(), nullable=False, metadata={}),
-                        pa.field("component", pa.utf8(), nullable=False, metadata={}),
-                    ]),
-                    nullable=False,
-                    metadata={},
-                ),
-            ]),
-            self._TYPE_NAME,
-        )
-
-
 class FilterIsNotNullBatch(BaseBatch[FilterIsNotNullArrayLike]):
-    _ARROW_TYPE = FilterIsNotNullType()
+    _ARROW_DATATYPE = pa.struct([
+        pa.field("active", pa.bool_(), nullable=False, metadata={}),
+        pa.field(
+            "column",
+            pa.struct([
+                pa.field("entity_path", pa.utf8(), nullable=False, metadata={}),
+                pa.field("component", pa.utf8(), nullable=False, metadata={}),
+            ]),
+            nullable=False,
+            metadata={},
+        ),
+    ])
 
     @staticmethod
     def _native_to_pa_array(data: FilterIsNotNullArrayLike, data_type: pa.DataType) -> pa.Array:

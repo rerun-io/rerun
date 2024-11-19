@@ -14,14 +14,13 @@ from attrs import define, field
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .._converters import (
     to_np_uint32,
 )
 from .uvec3d_ext import UVec3DExt
 
-__all__ = ["UVec3D", "UVec3DArrayLike", "UVec3DBatch", "UVec3DLike", "UVec3DType"]
+__all__ = ["UVec3D", "UVec3DArrayLike", "UVec3DBatch", "UVec3DLike"]
 
 
 @define(init=False)
@@ -51,17 +50,8 @@ UVec3DArrayLike = Union[
 ]
 
 
-class UVec3DType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.UVec3D"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.uint32(), nullable=False, metadata={}), 3), self._TYPE_NAME
-        )
-
-
 class UVec3DBatch(BaseBatch[UVec3DArrayLike]):
-    _ARROW_TYPE = UVec3DType()
+    _ARROW_DATATYPE = pa.list_(pa.field("item", pa.uint32(), nullable=False, metadata={}), 3)
 
     @staticmethod
     def _native_to_pa_array(data: UVec3DArrayLike, data_type: pa.DataType) -> pa.Array:

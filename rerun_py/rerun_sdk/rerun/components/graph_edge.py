@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["GraphEdge", "GraphEdgeBatch", "GraphEdgeType"]
+__all__ = ["GraphEdge", "GraphEdgeBatch"]
 
 
 class GraphEdge(datatypes.Utf8Pair, ComponentMixin):
@@ -24,12 +24,8 @@ class GraphEdge(datatypes.Utf8Pair, ComponentMixin):
     pass
 
 
-class GraphEdgeType(datatypes.Utf8PairType):
-    _TYPE_NAME: str = "rerun.components.GraphEdge"
-
-
 class GraphEdgeBatch(datatypes.Utf8PairBatch, ComponentBatchMixin):
-    _ARROW_TYPE = GraphEdgeType()
+    _COMPONENT_NAME: str = "rerun.components.GraphEdge"
 
 
 # This is patched in late to avoid circular dependencies.

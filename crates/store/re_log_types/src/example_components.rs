@@ -2,7 +2,7 @@
 
 use std::sync::Arc;
 
-use re_types_core::{DeserializationError, Loggable, SizeBytes};
+use re_types_core::{Component, ComponentName, DeserializationError, Loggable, SizeBytes};
 
 // ----------------------------------------------------------------------------
 
@@ -30,7 +30,7 @@ impl re_types_core::Archetype for MyPoints {
 
     fn recommended_components() -> std::borrow::Cow<'static, [re_types_core::ComponentName]> {
         vec![
-            re_types_core::LoggableBatch::name(&Self::Indicator::default()),
+            re_types_core::ComponentBatch::name(&Self::Indicator::default()),
             MyColor::name(),
             MyLabel::name(),
         ]
@@ -75,12 +75,6 @@ impl SizeBytes for MyPoint {
 }
 
 impl Loggable for MyPoint {
-    type Name = re_types_core::ComponentName;
-
-    fn name() -> Self::Name {
-        "example.MyPoint".into()
-    }
-
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::DataType::Float32;
         arrow2::datatypes::DataType::Struct(Arc::new(vec![
@@ -147,6 +141,12 @@ impl Loggable for MyPoint {
     }
 }
 
+impl Component for MyPoint {
+    fn name() -> ComponentName {
+        "example.MyPoint".into()
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
@@ -184,12 +184,6 @@ impl SizeBytes for MyPoint64 {
 }
 
 impl Loggable for MyPoint64 {
-    type Name = re_types_core::ComponentName;
-
-    fn name() -> Self::Name {
-        "example.MyPoint64".into()
-    }
-
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         use arrow2::datatypes::DataType::Float64;
         arrow2::datatypes::DataType::Struct(Arc::new(vec![
@@ -256,6 +250,12 @@ impl Loggable for MyPoint64 {
     }
 }
 
+impl Component for MyPoint64 {
+    fn name() -> ComponentName {
+        "example.MyPoint64".into()
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, bytemuck::Pod, bytemuck::Zeroable)]
@@ -296,12 +296,6 @@ impl SizeBytes for MyColor {
 }
 
 impl Loggable for MyColor {
-    type Name = re_types_core::ComponentName;
-
-    fn name() -> Self::Name {
-        "example.MyColor".into()
-    }
-
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         arrow2::datatypes::DataType::UInt32
     }
@@ -330,6 +324,12 @@ impl Loggable for MyColor {
     }
 }
 
+impl Component for MyColor {
+    fn name() -> ComponentName {
+        "example.MyColor".into()
+    }
+}
+
 // ----------------------------------------------------------------------------
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -347,12 +347,6 @@ impl SizeBytes for MyLabel {
 }
 
 impl Loggable for MyLabel {
-    type Name = re_types_core::ComponentName;
-
-    fn name() -> Self::Name {
-        "example.MyLabel".into()
-    }
-
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         re_types_core::datatypes::Utf8::arrow_datatype()
     }
@@ -378,6 +372,12 @@ impl Loggable for MyLabel {
             .into_iter()
             .map(|opt| opt.map(|v| Self(v.0.to_string())))
             .collect())
+    }
+}
+
+impl Component for MyLabel {
+    fn name() -> ComponentName {
+        "example.MyLabel".into()
     }
 }
 
@@ -407,12 +407,6 @@ impl SizeBytes for MyIndex {
 }
 
 impl Loggable for MyIndex {
-    type Name = re_types_core::ComponentName;
-
-    fn name() -> Self::Name {
-        "example.MyIndex".into()
-    }
-
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         arrow2::datatypes::DataType::UInt64
     }
@@ -438,5 +432,11 @@ impl Loggable for MyIndex {
             .into_iter()
             .map(|opt| opt.map(|v| Self(v.0)))
             .collect())
+    }
+}
+
+impl Component for MyIndex {
+    fn name() -> ComponentName {
+        "example.MyIndex".into()
     }
 }

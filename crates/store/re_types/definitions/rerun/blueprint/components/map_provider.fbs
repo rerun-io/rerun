@@ -3,8 +3,7 @@ namespace rerun.blueprint.components;
 /// Name of the map provider to be used in Map views.
 enum MapProvider: ubyte (
     "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Copy, PartialEq, Eq",
-    "attr.docs.unreleased"
+    "attr.rust.derive": "Copy, PartialEq, Eq"
 ) {
     /// Invalid value. Won't show up in generated types.
     Invalid = 0,

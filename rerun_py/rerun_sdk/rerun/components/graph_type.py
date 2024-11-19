@@ -11,11 +11,10 @@ import pyarrow as pa
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
 )
 
-__all__ = ["GraphType", "GraphTypeArrayLike", "GraphTypeBatch", "GraphTypeLike", "GraphTypeType"]
+__all__ = ["GraphType", "GraphTypeArrayLike", "GraphTypeBatch", "GraphTypeLike"]
 
 
 from enum import Enum
@@ -55,15 +54,9 @@ GraphTypeLike = Union[GraphType, Literal["Directed", "Undirected", "directed", "
 GraphTypeArrayLike = Union[GraphTypeLike, Sequence[GraphTypeLike]]
 
 
-class GraphTypeType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.components.GraphType"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
-
-
 class GraphTypeBatch(BaseBatch[GraphTypeArrayLike], ComponentBatchMixin):
-    _ARROW_TYPE = GraphTypeType()
+    _ARROW_DATATYPE = pa.uint8()
+    _COMPONENT_NAME: str = "rerun.components.GraphType"
 
     @staticmethod
     def _native_to_pa_array(data: GraphTypeArrayLike, data_type: pa.DataType) -> pa.Array:

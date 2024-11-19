@@ -13,17 +13,10 @@ from attrs import define, field
 from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .class_description_ext import ClassDescriptionExt
 
-__all__ = [
-    "ClassDescription",
-    "ClassDescriptionArrayLike",
-    "ClassDescriptionBatch",
-    "ClassDescriptionLike",
-    "ClassDescriptionType",
-]
+__all__ = ["ClassDescription", "ClassDescriptionArrayLike", "ClassDescriptionBatch", "ClassDescriptionLike"]
 
 
 @define(init=False)
@@ -84,15 +77,23 @@ ClassDescriptionArrayLike = Union[
 ]
 
 
-class ClassDescriptionType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.ClassDescription"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
+class ClassDescriptionBatch(BaseBatch[ClassDescriptionArrayLike]):
+    _ARROW_DATATYPE = pa.struct([
+        pa.field(
+            "info",
             pa.struct([
+                pa.field("id", pa.uint16(), nullable=False, metadata={}),
+                pa.field("label", pa.utf8(), nullable=True, metadata={}),
+                pa.field("color", pa.uint32(), nullable=True, metadata={}),
+            ]),
+            nullable=False,
+            metadata={},
+        ),
+        pa.field(
+            "keypoint_annotations",
+            pa.list_(
                 pa.field(
-                    "info",
+                    "item",
                     pa.struct([
                         pa.field("id", pa.uint16(), nullable=False, metadata={}),
                         pa.field("label", pa.utf8(), nullable=True, metadata={}),
@@ -100,47 +101,28 @@ class ClassDescriptionType(BaseExtensionType):
                     ]),
                     nullable=False,
                     metadata={},
-                ),
+                )
+            ),
+            nullable=False,
+            metadata={},
+        ),
+        pa.field(
+            "keypoint_connections",
+            pa.list_(
                 pa.field(
-                    "keypoint_annotations",
-                    pa.list_(
-                        pa.field(
-                            "item",
-                            pa.struct([
-                                pa.field("id", pa.uint16(), nullable=False, metadata={}),
-                                pa.field("label", pa.utf8(), nullable=True, metadata={}),
-                                pa.field("color", pa.uint32(), nullable=True, metadata={}),
-                            ]),
-                            nullable=False,
-                            metadata={},
-                        )
-                    ),
+                    "item",
+                    pa.struct([
+                        pa.field("keypoint0", pa.uint16(), nullable=False, metadata={}),
+                        pa.field("keypoint1", pa.uint16(), nullable=False, metadata={}),
+                    ]),
                     nullable=False,
                     metadata={},
-                ),
-                pa.field(
-                    "keypoint_connections",
-                    pa.list_(
-                        pa.field(
-                            "item",
-                            pa.struct([
-                                pa.field("keypoint0", pa.uint16(), nullable=False, metadata={}),
-                                pa.field("keypoint1", pa.uint16(), nullable=False, metadata={}),
-                            ]),
-                            nullable=False,
-                            metadata={},
-                        )
-                    ),
-                    nullable=False,
-                    metadata={},
-                ),
-            ]),
-            self._TYPE_NAME,
-        )
-
-
-class ClassDescriptionBatch(BaseBatch[ClassDescriptionArrayLike]):
-    _ARROW_TYPE = ClassDescriptionType()
+                )
+            ),
+            nullable=False,
+            metadata={},
+        ),
+    ])
 
     @staticmethod
     def _native_to_pa_array(data: ClassDescriptionArrayLike, data_type: pa.DataType) -> pa.Array:

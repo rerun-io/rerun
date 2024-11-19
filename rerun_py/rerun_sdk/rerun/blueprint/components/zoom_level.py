@@ -11,7 +11,7 @@ from ..._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["ZoomLevel", "ZoomLevelBatch", "ZoomLevelType"]
+__all__ = ["ZoomLevel", "ZoomLevelBatch"]
 
 
 class ZoomLevel(datatypes.Float64, ComponentMixin):
@@ -24,12 +24,8 @@ class ZoomLevel(datatypes.Float64, ComponentMixin):
     pass
 
 
-class ZoomLevelType(datatypes.Float64Type):
-    _TYPE_NAME: str = "rerun.blueprint.components.ZoomLevel"
-
-
 class ZoomLevelBatch(datatypes.Float64Batch, ComponentBatchMixin):
-    _ARROW_TYPE = ZoomLevelType()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.ZoomLevel"
 
 
 # This is patched in late to avoid circular dependencies.

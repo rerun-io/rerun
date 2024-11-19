@@ -84,13 +84,6 @@ impl std::ops::DerefMut for KeypointId {
 ::re_types_core::macros::impl_into_cow!(KeypointId);
 
 impl ::re_types_core::Loggable for KeypointId {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.KeypointId".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::KeypointId::arrow_datatype()
@@ -126,5 +119,12 @@ impl ::re_types_core::Loggable for KeypointId {
         Self: Sized,
     {
         crate::datatypes::KeypointId::from_arrow(arrow_data).map(bytemuck::cast_vec)
+    }
+}
+
+impl ::re_types_core::Component for KeypointId {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.KeypointId".into()
     }
 }

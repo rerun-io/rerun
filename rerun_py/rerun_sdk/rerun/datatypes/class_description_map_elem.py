@@ -13,7 +13,6 @@ from attrs import define, field
 from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .class_description_map_elem_ext import ClassDescriptionMapElemExt
 
@@ -22,7 +21,6 @@ __all__ = [
     "ClassDescriptionMapElemArrayLike",
     "ClassDescriptionMapElemBatch",
     "ClassDescriptionMapElemLike",
-    "ClassDescriptionMapElemType",
 ]
 
 
@@ -83,19 +81,27 @@ ClassDescriptionMapElemArrayLike = Union[
 ]
 
 
-class ClassDescriptionMapElemType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.ClassDescriptionMapElem"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
+class ClassDescriptionMapElemBatch(BaseBatch[ClassDescriptionMapElemArrayLike]):
+    _ARROW_DATATYPE = pa.struct([
+        pa.field("class_id", pa.uint16(), nullable=False, metadata={}),
+        pa.field(
+            "class_description",
             pa.struct([
-                pa.field("class_id", pa.uint16(), nullable=False, metadata={}),
                 pa.field(
-                    "class_description",
+                    "info",
                     pa.struct([
+                        pa.field("id", pa.uint16(), nullable=False, metadata={}),
+                        pa.field("label", pa.utf8(), nullable=True, metadata={}),
+                        pa.field("color", pa.uint32(), nullable=True, metadata={}),
+                    ]),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "keypoint_annotations",
+                    pa.list_(
                         pa.field(
-                            "info",
+                            "item",
                             pa.struct([
                                 pa.field("id", pa.uint16(), nullable=False, metadata={}),
                                 pa.field("label", pa.utf8(), nullable=True, metadata={}),
@@ -103,51 +109,32 @@ class ClassDescriptionMapElemType(BaseExtensionType):
                             ]),
                             nullable=False,
                             metadata={},
-                        ),
+                        )
+                    ),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "keypoint_connections",
+                    pa.list_(
                         pa.field(
-                            "keypoint_annotations",
-                            pa.list_(
-                                pa.field(
-                                    "item",
-                                    pa.struct([
-                                        pa.field("id", pa.uint16(), nullable=False, metadata={}),
-                                        pa.field("label", pa.utf8(), nullable=True, metadata={}),
-                                        pa.field("color", pa.uint32(), nullable=True, metadata={}),
-                                    ]),
-                                    nullable=False,
-                                    metadata={},
-                                )
-                            ),
+                            "item",
+                            pa.struct([
+                                pa.field("keypoint0", pa.uint16(), nullable=False, metadata={}),
+                                pa.field("keypoint1", pa.uint16(), nullable=False, metadata={}),
+                            ]),
                             nullable=False,
                             metadata={},
-                        ),
-                        pa.field(
-                            "keypoint_connections",
-                            pa.list_(
-                                pa.field(
-                                    "item",
-                                    pa.struct([
-                                        pa.field("keypoint0", pa.uint16(), nullable=False, metadata={}),
-                                        pa.field("keypoint1", pa.uint16(), nullable=False, metadata={}),
-                                    ]),
-                                    nullable=False,
-                                    metadata={},
-                                )
-                            ),
-                            nullable=False,
-                            metadata={},
-                        ),
-                    ]),
+                        )
+                    ),
                     nullable=False,
                     metadata={},
                 ),
             ]),
-            self._TYPE_NAME,
-        )
-
-
-class ClassDescriptionMapElemBatch(BaseBatch[ClassDescriptionMapElemArrayLike]):
-    _ARROW_TYPE = ClassDescriptionMapElemType()
+            nullable=False,
+            metadata={},
+        ),
+    ])
 
     @staticmethod
     def _native_to_pa_array(data: ClassDescriptionMapElemArrayLike, data_type: pa.DataType) -> pa.Array:

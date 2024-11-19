@@ -69,13 +69,6 @@ impl std::ops::DerefMut for AlbedoFactor {
 ::re_types_core::macros::impl_into_cow!(AlbedoFactor);
 
 impl ::re_types_core::Loggable for AlbedoFactor {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.AlbedoFactor".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Rgba32::arrow_datatype()
@@ -111,5 +104,12 @@ impl ::re_types_core::Loggable for AlbedoFactor {
         Self: Sized,
     {
         crate::datatypes::Rgba32::from_arrow(arrow_data).map(bytemuck::cast_vec)
+    }
+}
+
+impl ::re_types_core::Component for AlbedoFactor {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.AlbedoFactor".into()
     }
 }

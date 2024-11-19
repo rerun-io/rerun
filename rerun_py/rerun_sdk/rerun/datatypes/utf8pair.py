@@ -13,11 +13,10 @@ from attrs import define, field
 from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .utf8pair_ext import Utf8PairExt
 
-__all__ = ["Utf8Pair", "Utf8PairArrayLike", "Utf8PairBatch", "Utf8PairLike", "Utf8PairType"]
+__all__ = ["Utf8Pair", "Utf8PairArrayLike", "Utf8PairBatch", "Utf8PairLike"]
 
 
 def _utf8pair__first__special_field_converter_override(x: datatypes.Utf8Like) -> datatypes.Utf8:
@@ -76,22 +75,11 @@ Utf8PairArrayLike = Union[
 ]
 
 
-class Utf8PairType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.Utf8Pair"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.struct([
-                pa.field("first", pa.utf8(), nullable=False, metadata={}),
-                pa.field("second", pa.utf8(), nullable=False, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
-
-
 class Utf8PairBatch(BaseBatch[Utf8PairArrayLike]):
-    _ARROW_TYPE = Utf8PairType()
+    _ARROW_DATATYPE = pa.struct([
+        pa.field("first", pa.utf8(), nullable=False, metadata={}),
+        pa.field("second", pa.utf8(), nullable=False, metadata={}),
+    ])
 
     @staticmethod
     def _native_to_pa_array(data: Utf8PairArrayLike, data_type: pa.DataType) -> pa.Array:

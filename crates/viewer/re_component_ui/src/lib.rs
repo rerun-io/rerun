@@ -41,7 +41,7 @@ use re_types::{
         Name, Opacity, Range1D, Scale3D, ShowLabels, StrokeWidth, Text, TransformRelation,
         Translation3D, ValueRange,
     },
-    Loggable as _,
+    Component as _,
 };
 use re_types_blueprint::blueprint::components::{
     IncludedSpaceView, RootContainer, SpaceViewMaximized,

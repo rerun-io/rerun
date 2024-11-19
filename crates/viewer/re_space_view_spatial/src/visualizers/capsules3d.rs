@@ -1,10 +1,11 @@
 use std::iter;
 
 use ordered_float::NotNan;
+use re_space_view::clamped_or_nothing;
 use re_types::{
     archetypes::Capsules3D,
     components::{self, ClassId, Color, FillMode, HalfSize3D, Length, Radius, ShowLabels, Text},
-    ArrowString, Loggable as _,
+    ArrowString, Component as _,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
@@ -16,7 +17,6 @@ use re_viewer_context::{
 use crate::{contexts::SpatialSceneEntityContext, proc_mesh, view_kind::SpatialSpaceViewKind};
 
 use super::{
-    entity_iterator::clamped_or_nothing,
     filter_visualizable_3d_entities,
     utilities::{ProcMeshBatch, ProcMeshDrawableBuilder},
     SpatialViewVisualizerData,
@@ -85,7 +85,6 @@ impl Capsules3DVisualizer {
                     colors: batch.colors,
                     labels: &batch.labels,
                     show_labels: batch.show_labels,
-                    keypoint_ids: &[],
                     class_ids: batch.class_ids,
                 },
             )?;

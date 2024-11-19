@@ -13,17 +13,10 @@ from attrs import define, field
 from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .visible_time_range_ext import VisibleTimeRangeExt
 
-__all__ = [
-    "VisibleTimeRange",
-    "VisibleTimeRangeArrayLike",
-    "VisibleTimeRangeBatch",
-    "VisibleTimeRangeLike",
-    "VisibleTimeRangeType",
-]
+__all__ = ["VisibleTimeRange", "VisibleTimeRangeArrayLike", "VisibleTimeRangeBatch", "VisibleTimeRangeLike"]
 
 
 def _visible_time_range__timeline__special_field_converter_override(x: datatypes.Utf8Like) -> datatypes.Utf8:
@@ -57,50 +50,39 @@ VisibleTimeRangeArrayLike = Union[
 ]
 
 
-class VisibleTimeRangeType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.VisibleTimeRange"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
+class VisibleTimeRangeBatch(BaseBatch[VisibleTimeRangeArrayLike]):
+    _ARROW_DATATYPE = pa.struct([
+        pa.field("timeline", pa.utf8(), nullable=False, metadata={}),
+        pa.field(
+            "range",
             pa.struct([
-                pa.field("timeline", pa.utf8(), nullable=False, metadata={}),
                 pa.field(
-                    "range",
-                    pa.struct([
-                        pa.field(
-                            "start",
-                            pa.dense_union([
-                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                                pa.field("CursorRelative", pa.int64(), nullable=False, metadata={}),
-                                pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
-                                pa.field("Infinite", pa.null(), nullable=True, metadata={}),
-                            ]),
-                            nullable=False,
-                            metadata={},
-                        ),
-                        pa.field(
-                            "end",
-                            pa.dense_union([
-                                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                                pa.field("CursorRelative", pa.int64(), nullable=False, metadata={}),
-                                pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
-                                pa.field("Infinite", pa.null(), nullable=True, metadata={}),
-                            ]),
-                            nullable=False,
-                            metadata={},
-                        ),
+                    "start",
+                    pa.dense_union([
+                        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                        pa.field("CursorRelative", pa.int64(), nullable=False, metadata={}),
+                        pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
+                        pa.field("Infinite", pa.null(), nullable=True, metadata={}),
+                    ]),
+                    nullable=False,
+                    metadata={},
+                ),
+                pa.field(
+                    "end",
+                    pa.dense_union([
+                        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                        pa.field("CursorRelative", pa.int64(), nullable=False, metadata={}),
+                        pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
+                        pa.field("Infinite", pa.null(), nullable=True, metadata={}),
                     ]),
                     nullable=False,
                     metadata={},
                 ),
             ]),
-            self._TYPE_NAME,
-        )
-
-
-class VisibleTimeRangeBatch(BaseBatch[VisibleTimeRangeArrayLike]):
-    _ARROW_TYPE = VisibleTimeRangeType()
+            nullable=False,
+            metadata={},
+        ),
+    ])
 
     @staticmethod
     def _native_to_pa_array(data: VisibleTimeRangeArrayLike, data_type: pa.DataType) -> pa.Array:
@@ -111,8 +93,8 @@ class VisibleTimeRangeBatch(BaseBatch[VisibleTimeRangeArrayLike]):
 
         return pa.StructArray.from_arrays(
             [
-                Utf8Batch([x.timeline for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-                TimeRangeBatch([x.range for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                Utf8Batch([x.timeline for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                TimeRangeBatch([x.range for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["GraphNode", "GraphNodeBatch", "GraphNodeType"]
+__all__ = ["GraphNode", "GraphNodeBatch"]
 
 
 class GraphNode(datatypes.Utf8, ComponentMixin):
@@ -24,12 +24,8 @@ class GraphNode(datatypes.Utf8, ComponentMixin):
     pass
 
 
-class GraphNodeType(datatypes.Utf8Type):
-    _TYPE_NAME: str = "rerun.components.GraphNode"
-
-
 class GraphNodeBatch(datatypes.Utf8Batch, ComponentBatchMixin):
-    _ARROW_TYPE = GraphNodeType()
+    _COMPONENT_NAME: str = "rerun.components.GraphNode"
 
 
 # This is patched in late to avoid circular dependencies.

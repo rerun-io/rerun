@@ -2,7 +2,7 @@ use re_types::{
     archetypes::SegmentationImage,
     components::{DrawOrder, ImageBuffer, ImageFormat, Opacity},
     image::ImageKind,
-    Loggable as _,
+    Component as _,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ImageInfo, QueryContext,

@@ -245,7 +245,7 @@ def log_some_space_views() -> None:
     ), f"Some components are missing from the `ALL_COMPONENTS` dictionary: {missing_components}"
 
     # log all components as len=1 batches
-    rr.log_components(
+    rr.log(
         "all_components_single",
         [
             getattr(rr.components, component_name)(test_case.single())
@@ -255,7 +255,7 @@ def log_some_space_views() -> None:
     )
 
     # log all components as batches (except those for which it doesn't make sense)
-    rr.log_components(
+    rr.log(
         "all_components_batches",
         [
             getattr(rr.components, component_name)(test_case.batch())
@@ -271,7 +271,7 @@ def log_some_space_views() -> None:
             continue
 
         for i, alternative in enumerate(alternatives):
-            rr.log_components(
+            rr.log(
                 f"all_components_alternative_{i}",
                 [getattr(rr.components, component_name)(alternative)],
             )

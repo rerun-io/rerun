@@ -72,13 +72,6 @@ impl std::ops::DerefMut for IncludedContent {
 ::re_types_core::macros::impl_into_cow!(IncludedContent);
 
 impl ::re_types_core::Loggable for IncludedContent {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.components.IncludedContent".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::EntityPath::arrow_datatype()
@@ -106,5 +99,12 @@ impl ::re_types_core::Loggable for IncludedContent {
     {
         crate::datatypes::EntityPath::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+    }
+}
+
+impl ::re_types_core::Component for IncludedContent {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.IncludedContent".into()
     }
 }

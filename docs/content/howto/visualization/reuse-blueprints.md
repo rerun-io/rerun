@@ -7,7 +7,7 @@ While the [blueprint APIs](configure-viewer-through-code.md) are currently only 
 
 This enables you to re-use your saved blueprints both from any language we support as well as across different recordings that share a similar-enough structure, and makes it possible to share those blueprints with other users.
 
-For this you'll need to 1) create a blueprint file and B) _import_ that file when needed.
+For this you'll need to create a blueprint file and _import_ that file when needed.
 
 
 ## Creating a blueprint file
@@ -29,7 +29,7 @@ The interactive way is to import the blueprint file directly into the Rerun view
 
 The programmatic way works by calling `log_file_from_path`:
 * [🐍 Python `log_file_from_path`](https://ref.rerun.io/docs/python/stable/common/logging_functions/#rerun.log_file_from_path)
-* [🦀 Rust `log_file_from_path`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log_file_from_path)
+* [🦀 Rust `log_file_from_path`](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStream.html#method.log_file_from_path)
 * [🌊 C++ `log_file_from_path`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a20798d7ea74cce5c8174e5cacd0a2c47)
 
 This method allows you to log any file that contains data that Rerun understands (in this case, blueprint data) as part of your current recording:

@@ -7,8 +7,7 @@ table GeoPoints (
   "attr.rust.derive": "PartialEq",
   "attr.rust.new_pub_crate",
   "attr.docs.category": "Geospatial",
-  "attr.docs.view_types": "MapView",
-  "attr.docs.unreleased"
+  "attr.docs.view_types": "MapView"
 ) {
   // --- Required ---
 
@@ -27,6 +26,11 @@ table GeoPoints (
   /// \py The colors are interpreted as RGB or RGBA in sRGB gamma-space,
   /// \py As either 0-1 floats or 0-255 integers, with separate alpha.
   colors: [rerun.components.Color] ("attr.rerun.component_recommended", nullable, order: 2100);
+
+  /// Optional class Ids for the points.
+  ///
+  /// The [components.ClassId] provides colors if not specified explicitly.
+  class_ids: [rerun.components.ClassId] ("attr.rerun.component_optional", nullable, order: 3200);
 
   //TODO(ab): add `Label` and  `ShowLabels` components
   //TODO(ab): add `Altitude` component

@@ -44,13 +44,6 @@ impl crate::SizeBytes for TimeRange {
 crate::macros::impl_into_cow!(TimeRange);
 
 impl crate::Loggable for TimeRange {
-    type Name = crate::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.TimeRange".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

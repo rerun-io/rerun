@@ -2,8 +2,8 @@ use std::iter;
 
 use re_types::{
     archetypes::Boxes3D,
-    components::{ClassId, Color, FillMode, HalfSize3D, KeypointId, Radius, ShowLabels, Text},
-    ArrowString, Loggable as _,
+    components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels, Text},
+    ArrowString, Component as _,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
@@ -62,7 +62,6 @@ impl Boxes3DVisualizer {
                     colors: batch.colors,
                     labels: &batch.labels,
                     show_labels: batch.show_labels,
-                    keypoint_ids: batch.keypoint_ids,
                     class_ids: batch.class_ids,
                 },
             )?;
@@ -82,7 +81,6 @@ struct Boxes3DComponentData<'a> {
     colors: &'a [Color],
     radii: &'a [Radius],
     labels: Vec<ArrowString>,
-    keypoint_ids: &'a [KeypointId],
     class_ids: &'a [ClassId],
 
     // Non-repeated
@@ -155,7 +153,6 @@ impl VisualizerSystem for Boxes3DVisualizer {
                 let all_radii = results.iter_as(timeline, Radius::name());
                 let all_labels = results.iter_as(timeline, Text::name());
                 let all_class_ids = results.iter_as(timeline, ClassId::name());
-                let all_keypoint_ids = results.iter_as(timeline, KeypointId::name());
                 let all_show_labels = results.iter_as(timeline, ShowLabels::name());
 
                 // Deserialized because it's a union.
@@ -178,26 +175,16 @@ impl VisualizerSystem for Boxes3DVisualizer {
                     }
                 }
 
-                let data = re_query::range_zip_1x6(
+                let data = re_query::range_zip_1x5(
                     all_half_sizes_indexed,
                     all_colors.primitive::<u32>(),
                     all_radii.primitive::<f32>(),
                     all_labels.string(),
                     all_class_ids.primitive::<u16>(),
-                    all_keypoint_ids.primitive::<u16>(),
                     all_show_labels.component::<ShowLabels>(),
                 )
                 .map(
-                    |(
-                        _index,
-                        half_sizes,
-                        colors,
-                        radii,
-                        labels,
-                        class_ids,
-                        keypoint_ids,
-                        show_labels,
-                    )| {
+                    |(_index, half_sizes, colors, radii, labels, class_ids, show_labels)| {
                         Boxes3DComponentData {
                             half_sizes: bytemuck::cast_slice(half_sizes),
                             colors: colors.map_or(&[], |colors| bytemuck::cast_slice(colors)),
@@ -207,8 +194,6 @@ impl VisualizerSystem for Boxes3DVisualizer {
                             labels: labels.unwrap_or_default(),
                             class_ids: class_ids
                                 .map_or(&[], |class_ids| bytemuck::cast_slice(class_ids)),
-                            keypoint_ids: keypoint_ids
-                                .map_or(&[], |keypoint_ids| bytemuck::cast_slice(keypoint_ids)),
                             show_labels: show_labels.unwrap_or_default().first().copied(),
                         }
                     },

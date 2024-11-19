@@ -75,13 +75,6 @@ impl std::ops::DerefMut for TextLogLevel {
 ::re_types_core::macros::impl_into_cow!(TextLogLevel);
 
 impl ::re_types_core::Loggable for TextLogLevel {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.TextLogLevel".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Utf8::arrow_datatype()
@@ -109,5 +102,12 @@ impl ::re_types_core::Loggable for TextLogLevel {
     {
         crate::datatypes::Utf8::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+    }
+}
+
+impl ::re_types_core::Component for TextLogLevel {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.TextLogLevel".into()
     }
 }

@@ -66,13 +66,6 @@ impl ::re_types_core::SizeBytes for ImageFormat {
 ::re_types_core::macros::impl_into_cow!(ImageFormat);
 
 impl ::re_types_core::Loggable for ImageFormat {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.ImageFormat".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

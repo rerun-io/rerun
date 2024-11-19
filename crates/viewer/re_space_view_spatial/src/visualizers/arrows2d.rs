@@ -1,11 +1,12 @@
 use re_log_types::Instance;
 use re_renderer::{renderer::LineStripFlags, LineDrawableBuilder, PickingLayerInstanceId};
+use re_space_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_types::{
     archetypes::Arrows2D,
     components::{
         ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, ShowLabels, Text, Vector2D,
     },
-    ArrowString, Loggable as _,
+    ArrowString, Component as _,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
@@ -21,7 +22,7 @@ use crate::{
 
 use super::{
     entity_iterator::clamped_or,
-    process_annotation_and_keypoint_slices, process_color_slice, process_radius_slice,
+    process_radius_slice,
     utilities::{process_labels_2d, LabeledBatch},
     SpatialViewVisualizerData,
 };

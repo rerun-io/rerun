@@ -17,12 +17,12 @@ FixedSizeList<3, float32>
 ## API reference links
  * 🌊 [C++ API docs for `PoseTranslation3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1PoseTranslation3D.html)
  * 🐍 [Python API docs for `PoseTranslation3D`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.PoseTranslation3D)
- * 🦀 [Rust API docs for `PoseTranslation3D`](https://docs.rs/rerun/latest/rerun/components/struct.PoseTranslation3D.html)
+ * 🦀 [Rust API docs for `PoseTranslation3D`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.PoseTranslation3D.html)
 
 
 ## Used by
 
 * [`Boxes3D`](../archetypes/boxes3d.md)
-* [`Capsules3D`](../archetypes/capsules3d.md?speculative-link)
+* [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
 * [`InstancePoses3D`](../archetypes/instance_poses3d.md)

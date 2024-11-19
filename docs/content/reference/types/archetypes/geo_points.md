@@ -11,14 +11,16 @@ Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) 
 
 **Recommended**: [`Radius`](../components/radius.md), [`Color`](../components/color.md)
 
+**Optional**: [`ClassId`](../components/class_id.md)
+
 ## Shown in
 * [MapView](../views/map_view.md)
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
- * 🌊 [C++ API docs for `GeoPoints`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1GeoPoints.html?speculative-link)
- * 🐍 [Python API docs for `GeoPoints`](https://ref.rerun.io/docs/python/stable/common/archetypes?speculative-link#rerun.archetypes.GeoPoints)
- * 🦀 [Rust API docs for `GeoPoints`](https://docs.rs/rerun/latest/rerun/archetypes/struct.GeoPoints.html?speculative-link)
+ * 🌊 [C++ API docs for `GeoPoints`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1GeoPoints.html)
+ * 🐍 [Python API docs for `GeoPoints`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.GeoPoints)
+ * 🦀 [Rust API docs for `GeoPoints`](https://ref.rerun.io/docs/rust/stable/rerun/archetypes/struct.GeoPoints.html)
 
 ## Example
 

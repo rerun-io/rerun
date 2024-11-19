@@ -72,13 +72,6 @@ impl std::ops::DerefMut for DrawOrder {
 ::re_types_core::macros::impl_into_cow!(DrawOrder);
 
 impl ::re_types_core::Loggable for DrawOrder {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.DrawOrder".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Float32::arrow_datatype()
@@ -114,5 +107,12 @@ impl ::re_types_core::Loggable for DrawOrder {
         Self: Sized,
     {
         crate::datatypes::Float32::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
+    }
+}
+
+impl ::re_types_core::Component for DrawOrder {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.DrawOrder".into()
     }
 }

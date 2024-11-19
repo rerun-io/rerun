@@ -10,7 +10,7 @@ use parking_lot::RwLock;
 use re_chunk::ChunkId;
 use re_chunk_store::{ChunkStoreDiff, ChunkStoreEvent, ChunkStoreHandle, ChunkStoreSubscriber};
 use re_log_types::{EntityPath, ResolvedTimeRange, StoreId, TimeInt, Timeline};
-use re_types_core::{components::ClearIsRecursive, ComponentName, Loggable as _};
+use re_types_core::{components::ClearIsRecursive, Component as _, ComponentName};
 
 use crate::{LatestAtCache, RangeCache};
 

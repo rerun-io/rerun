@@ -13,13 +13,12 @@ import pyarrow as pa
 from attrs import define, field
 from rerun._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from rerun._converters import (
     to_np_float16,
 )
 
-__all__ = ["AffixFuzzer21", "AffixFuzzer21ArrayLike", "AffixFuzzer21Batch", "AffixFuzzer21Like", "AffixFuzzer21Type"]
+__all__ = ["AffixFuzzer21", "AffixFuzzer21ArrayLike", "AffixFuzzer21Batch", "AffixFuzzer21Like"]
 
 
 @define(init=False)
@@ -41,27 +40,16 @@ AffixFuzzer21ArrayLike = Union[
 ]
 
 
-class AffixFuzzer21Type(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.testing.datatypes.AffixFuzzer21"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.struct([
-                pa.field("single_half", pa.float16(), nullable=False, metadata={}),
-                pa.field(
-                    "many_halves",
-                    pa.list_(pa.field("item", pa.float16(), nullable=False, metadata={})),
-                    nullable=False,
-                    metadata={},
-                ),
-            ]),
-            self._TYPE_NAME,
-        )
-
-
 class AffixFuzzer21Batch(BaseBatch[AffixFuzzer21ArrayLike]):
-    _ARROW_TYPE = AffixFuzzer21Type()
+    _ARROW_DATATYPE = pa.struct([
+        pa.field("single_half", pa.float16(), nullable=False, metadata={}),
+        pa.field(
+            "many_halves",
+            pa.list_(pa.field("item", pa.float16(), nullable=False, metadata={})),
+            nullable=False,
+            metadata={},
+        ),
+    ])
 
     @staticmethod
     def _native_to_pa_array(data: AffixFuzzer21ArrayLike, data_type: pa.DataType) -> pa.Array:

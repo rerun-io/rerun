@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["DrawOrder", "DrawOrderBatch", "DrawOrderType"]
+__all__ = ["DrawOrder", "DrawOrderBatch"]
 
 
 class DrawOrder(datatypes.Float32, ComponentMixin):
@@ -31,12 +31,8 @@ class DrawOrder(datatypes.Float32, ComponentMixin):
     pass
 
 
-class DrawOrderType(datatypes.Float32Type):
-    _TYPE_NAME: str = "rerun.components.DrawOrder"
-
-
 class DrawOrderBatch(datatypes.Float32Batch, ComponentBatchMixin):
-    _ARROW_TYPE = DrawOrderType()
+    _COMPONENT_NAME: str = "rerun.components.DrawOrder"
 
 
 # This is patched in late to avoid circular dependencies.

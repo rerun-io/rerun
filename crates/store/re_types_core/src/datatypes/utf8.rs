@@ -52,13 +52,6 @@ impl From<Utf8> for crate::ArrowString {
 crate::macros::impl_into_cow!(Utf8);
 
 impl crate::Loggable for Utf8 {
-    type Name = crate::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.Utf8".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

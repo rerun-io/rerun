@@ -125,8 +125,10 @@ check-env = "python scripts/check_env.py"
 # Run the codegen. Optionally pass `--profile` argument if you want.
 codegen = "cargo --quiet run --package re_types_builder -- "
 
-# Run the codegen for remote store types.
-codegen-rstore = "cargo --quiet run --package re_protos_builder && pixi run -e cpp format"
+# Deprecated: use `codegen-proto` instead.
+codegen-rstore = "echo '⚠️ Deprecated: use `codegen-proto` instead ⚠️' ; pixi run codegen-proto"
+# Run the codegen for our Protobuf/gRPC definitions.
+codegen-proto = "cargo --quiet run --package re_protos_builder && pixi run -e cpp format"
 
 # Generate the Rerun CLI manual.
 

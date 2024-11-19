@@ -67,13 +67,6 @@ impl std::ops::DerefMut for AutoLayout {
 ::re_types_core::macros::impl_into_cow!(AutoLayout);
 
 impl ::re_types_core::Loggable for AutoLayout {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.components.AutoLayout".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Bool::arrow_datatype()
@@ -101,5 +94,12 @@ impl ::re_types_core::Loggable for AutoLayout {
     {
         crate::datatypes::Bool::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+    }
+}
+
+impl ::re_types_core::Component for AutoLayout {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.AutoLayout".into()
     }
 }

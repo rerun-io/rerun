@@ -18,13 +18,6 @@ impl SizeBytes for Tuid {
 }
 
 impl Loggable for Tuid {
-    type Name = crate::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.controls.TUID".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         DataType::Struct(Arc::new(vec![
@@ -40,7 +33,7 @@ impl Loggable for Tuid {
         Self: 'a,
     {
         Err(crate::SerializationError::not_implemented(
-            Self::name(),
+            Self::NAME,
             "TUIDs are never nullable, use `to_arrow()` instead",
         ))
     }
@@ -65,7 +58,7 @@ impl Loggable for Tuid {
         let validity = None;
 
         let datatype = arrow2::datatypes::DataType::Extension(
-            Self::name().to_string(),
+            Self::NAME.to_owned(),
             Arc::new(Self::arrow_datatype()),
             None,
         );
@@ -147,13 +140,6 @@ macro_rules! delegate_arrow_tuid {
         $crate::macros::impl_into_cow!($typ);
 
         impl $crate::Loggable for $typ {
-            type Name = $crate::ComponentName;
-
-            #[inline]
-            fn name() -> Self::Name {
-                $fqname.into()
-            }
-
             #[inline]
             fn arrow_datatype() -> ::arrow2::datatypes::DataType {
                 $crate::external::re_tuid::Tuid::arrow_datatype()
@@ -167,7 +153,7 @@ macro_rules! delegate_arrow_tuid {
                 Self: 'a,
             {
                 Err($crate::SerializationError::not_implemented(
-                    Self::name(),
+                    <Self as $crate::Component>::name(),
                     "TUIDs are never nullable, use `to_arrow()` instead",
                 ))
             }
@@ -195,6 +181,13 @@ macro_rules! delegate_arrow_tuid {
                         .map(|tuid| Self(tuid))
                         .collect(),
                 )
+            }
+        }
+
+        impl $crate::Component for $typ {
+            #[inline]
+            fn name() -> $crate::ComponentName {
+                $fqname.into()
             }
         }
     };

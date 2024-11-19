@@ -1,10 +1,11 @@
 use itertools::Itertools as _;
 
 use re_renderer::{LineDrawableBuilder, PickingLayerInstanceId, PointCloudBuilder};
+use re_space_view::{process_annotation_and_keypoint_slices, process_color_slice};
 use re_types::{
     archetypes::Points2D,
     components::{ClassId, Color, DrawOrder, KeypointId, Position2D, Radius, ShowLabels, Text},
-    ArrowString, Loggable as _,
+    ArrowString, Component as _,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,
@@ -16,10 +17,7 @@ use re_viewer_context::{
 use crate::{
     contexts::SpatialSceneEntityContext,
     view_kind::SpatialSpaceViewKind,
-    visualizers::{
-        load_keypoint_connections, process_annotation_and_keypoint_slices, process_color_slice,
-        process_radius_slice,
-    },
+    visualizers::{load_keypoint_connections, process_radius_slice},
 };
 
 use super::{

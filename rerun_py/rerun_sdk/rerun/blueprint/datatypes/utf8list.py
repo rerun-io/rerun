@@ -12,11 +12,10 @@ from attrs import define, field
 
 from ..._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .utf8list_ext import Utf8ListExt
 
-__all__ = ["Utf8List", "Utf8ListArrayLike", "Utf8ListBatch", "Utf8ListLike", "Utf8ListType"]
+__all__ = ["Utf8List", "Utf8ListArrayLike", "Utf8ListBatch", "Utf8ListLike"]
 
 
 @define(init=False)
@@ -45,17 +44,8 @@ Utf8ListArrayLike = Union[
 ]
 
 
-class Utf8ListType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.blueprint.datatypes.Utf8List"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={})), self._TYPE_NAME
-        )
-
-
 class Utf8ListBatch(BaseBatch[Utf8ListArrayLike]):
-    _ARROW_TYPE = Utf8ListType()
+    _ARROW_DATATYPE = pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={}))
 
     @staticmethod
     def _native_to_pa_array(data: Utf8ListArrayLike, data_type: pa.DataType) -> pa.Array:

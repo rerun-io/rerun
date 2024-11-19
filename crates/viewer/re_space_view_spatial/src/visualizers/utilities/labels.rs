@@ -5,7 +5,7 @@ use itertools::{izip, Either};
 use re_entity_db::InstancePathHash;
 use re_log_types::{EntityPath, Instance};
 use re_types::components::{ShowLabels, Text};
-use re_types::{Component, Loggable as _};
+use re_types::Component;
 use re_viewer_context::ResolvedAnnotationInfos;
 
 #[cfg(doc)]

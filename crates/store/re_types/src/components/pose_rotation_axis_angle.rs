@@ -67,13 +67,6 @@ impl std::ops::DerefMut for PoseRotationAxisAngle {
 ::re_types_core::macros::impl_into_cow!(PoseRotationAxisAngle);
 
 impl ::re_types_core::Loggable for PoseRotationAxisAngle {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.PoseRotationAxisAngle".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::RotationAxisAngle::arrow_datatype()
@@ -101,5 +94,12 @@ impl ::re_types_core::Loggable for PoseRotationAxisAngle {
     {
         crate::datatypes::RotationAxisAngle::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+    }
+}
+
+impl ::re_types_core::Component for PoseRotationAxisAngle {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.PoseRotationAxisAngle".into()
     }
 }

@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["HalfSize2D", "HalfSize2DBatch", "HalfSize2DType"]
+__all__ = ["HalfSize2D", "HalfSize2DBatch"]
 
 
 class HalfSize2D(datatypes.Vec2D, ComponentMixin):
@@ -31,12 +31,8 @@ class HalfSize2D(datatypes.Vec2D, ComponentMixin):
     pass
 
 
-class HalfSize2DType(datatypes.Vec2DType):
-    _TYPE_NAME: str = "rerun.components.HalfSize2D"
-
-
 class HalfSize2DBatch(datatypes.Vec2DBatch, ComponentBatchMixin):
-    _ARROW_TYPE = HalfSize2DType()
+    _COMPONENT_NAME: str = "rerun.components.HalfSize2D"
 
 
 # This is patched in late to avoid circular dependencies.

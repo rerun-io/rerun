@@ -44,13 +44,6 @@ impl ::re_types_core::SizeBytes for SelectedColumns {
 ::re_types_core::macros::impl_into_cow!(SelectedColumns);
 
 impl ::re_types_core::Loggable for SelectedColumns {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.datatypes.SelectedColumns".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

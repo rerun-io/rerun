@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["Name", "NameBatch", "NameType"]
+__all__ = ["Name", "NameBatch"]
 
 
 class Name(datatypes.Utf8, ComponentMixin):
@@ -24,12 +24,8 @@ class Name(datatypes.Utf8, ComponentMixin):
     pass
 
 
-class NameType(datatypes.Utf8Type):
-    _TYPE_NAME: str = "rerun.components.Name"
-
-
 class NameBatch(datatypes.Utf8Batch, ComponentBatchMixin):
-    _ARROW_TYPE = NameType()
+    _COMPONENT_NAME: str = "rerun.components.Name"
 
 
 # This is patched in late to avoid circular dependencies.

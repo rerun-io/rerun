@@ -14,7 +14,6 @@ from attrs import define, field
 
 from ..._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .tensor_dimension_index_slider_ext import TensorDimensionIndexSliderExt
 
@@ -23,7 +22,6 @@ __all__ = [
     "TensorDimensionIndexSliderArrayLike",
     "TensorDimensionIndexSliderBatch",
     "TensorDimensionIndexSliderLike",
-    "TensorDimensionIndexSliderType",
 ]
 
 
@@ -71,17 +69,8 @@ TensorDimensionIndexSliderArrayLike = Union[
 ]
 
 
-class TensorDimensionIndexSliderType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.blueprint.datatypes.TensorDimensionIndexSlider"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self, pa.struct([pa.field("dimension", pa.uint32(), nullable=False, metadata={})]), self._TYPE_NAME
-        )
-
-
 class TensorDimensionIndexSliderBatch(BaseBatch[TensorDimensionIndexSliderArrayLike]):
-    _ARROW_TYPE = TensorDimensionIndexSliderType()
+    _ARROW_DATATYPE = pa.struct([pa.field("dimension", pa.uint32(), nullable=False, metadata={})])
 
     @staticmethod
     def _native_to_pa_array(data: TensorDimensionIndexSliderArrayLike, data_type: pa.DataType) -> pa.Array:

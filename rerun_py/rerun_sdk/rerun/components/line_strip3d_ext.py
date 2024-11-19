@@ -28,16 +28,16 @@ class LineStrip3DExt:
             if len(data) == 0:
                 inners = []
             elif data.ndim == 2:
-                inners = [Vec3DBatch(data).as_arrow_array().storage]
+                inners = [Vec3DBatch(data).as_arrow_array()]
             else:
                 o = 0
                 offsets = [o] + [o := next_offset(o, arr) for arr in data]
-                inner = Vec3DBatch(data.reshape(-1)).as_arrow_array().storage
+                inner = Vec3DBatch(data.reshape(-1)).as_arrow_array()
                 return pa.ListArray.from_arrays(offsets, inner, type=data_type)
 
         # pure-object
         elif isinstance(data, LineStrip3D):
-            inners = [Vec3DBatch(data.points).as_arrow_array().storage]
+            inners = [Vec3DBatch(data.points).as_arrow_array()]
 
         # sequences
         elif isinstance(data, Sequence):
@@ -49,7 +49,7 @@ class LineStrip3DExt:
                 if isinstance(data[0], Sequence) and len(data[0]) > 0 and isinstance(data[0][0], numbers.Number):
                     if len(data[0]) == 3:  # type: ignore[arg-type]
                         # If any of the following elements are not sequence of length 2, Vec2DBatch should raise an error.
-                        inners = [Vec3DBatch(data).as_arrow_array().storage]  # type: ignore[arg-type]
+                        inners = [Vec3DBatch(data).as_arrow_array()]  # type: ignore[arg-type]
                     else:
                         raise ValueError(
                             "Expected a sequence of sequences of 3D vectors, but the inner sequence length was not equal to 2."
@@ -57,7 +57,7 @@ class LineStrip3DExt:
                 # It could be a sequence of the style `[np.array([0, 0, 0]), np.array([1, 1, 1])]` which is a single strip.
                 elif isinstance(data[0], np.ndarray) and data[0].shape == (3,):
                     # If any of the following elements are not sequence of length 3, Vec3DBatch should raise an error.
-                    inners = [Vec3DBatch(data).as_arrow_array().storage]  # type: ignore[arg-type]
+                    inners = [Vec3DBatch(data).as_arrow_array()]  # type: ignore[arg-type]
                 # .. otherwise assume that it's several strips.
                 else:
 
@@ -71,13 +71,13 @@ class LineStrip3DExt:
                                 )
                             return Vec3DBatch(strip)
 
-                    inners = [to_vec3d_batch(strip).as_arrow_array().storage for strip in data]
+                    inners = [to_vec3d_batch(strip).as_arrow_array() for strip in data]
         else:
-            inners = [Vec3DBatch(data).storage]
+            inners = [Vec3DBatch(data)]
 
         if len(inners) == 0:
             offsets = pa.array([0], type=pa.int32())
-            inner = Vec3DBatch([]).as_arrow_array().storage
+            inner = Vec3DBatch([]).as_arrow_array()
             return pa.ListArray.from_arrays(offsets, inner, type=data_type)
 
         o = 0

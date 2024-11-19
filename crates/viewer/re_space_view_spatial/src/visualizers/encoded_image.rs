@@ -2,7 +2,7 @@ use re_space_view::{diff_component_filter, HybridResults};
 use re_types::{
     archetypes::EncodedImage,
     components::{Blob, DrawOrder, MediaType, Opacity},
-    Loggable as _,
+    Component as _,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, ImageDecodeCache, QueryContext,

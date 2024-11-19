@@ -12,11 +12,11 @@ List<FixedSizeList<2, float64>>
 ```
 
 ## API reference links
- * 🌊 [C++ API docs for `GeoLineString`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1GeoLineString.html?speculative-link)
- * 🐍 [Python API docs for `GeoLineString`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.GeoLineString)
- * 🦀 [Rust API docs for `GeoLineString`](https://docs.rs/rerun/latest/rerun/components/struct.GeoLineString.html?speculative-link)
+ * 🌊 [C++ API docs for `GeoLineString`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1GeoLineString.html)
+ * 🐍 [Python API docs for `GeoLineString`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.GeoLineString)
+ * 🦀 [Rust API docs for `GeoLineString`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.GeoLineString.html)
 
 
 ## Used by
 
-* [`GeoLineStrings`](../archetypes/geo_line_strings.md?speculative-link)
+* [`GeoLineStrings`](../archetypes/geo_line_strings.md)

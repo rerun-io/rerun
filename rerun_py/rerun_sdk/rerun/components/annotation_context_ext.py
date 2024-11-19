@@ -38,6 +38,6 @@ class AnnotationContextExt:
         if not isinstance(data, AnnotationContext):
             data = AnnotationContext(class_map=data)  # type: ignore[arg-type]
 
-        internal_array = ClassDescriptionMapElemBatch(data.class_map).as_arrow_array().storage
+        internal_array = ClassDescriptionMapElemBatch(data.class_map).as_arrow_array()
 
         return pa.ListArray.from_arrays(offsets=[0, len(internal_array)], values=internal_array).cast(data_type)

@@ -14,10 +14,9 @@ from attrs import define, field
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 
-__all__ = ["UInt64", "UInt64ArrayLike", "UInt64Batch", "UInt64Like", "UInt64Type"]
+__all__ = ["UInt64", "UInt64ArrayLike", "UInt64Batch", "UInt64Like"]
 
 
 @define(init=False)
@@ -51,15 +50,8 @@ else:
 UInt64ArrayLike = Union[UInt64, Sequence[UInt64Like], int, npt.NDArray[np.uint64]]
 
 
-class UInt64Type(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.UInt64"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint64(), self._TYPE_NAME)
-
-
 class UInt64Batch(BaseBatch[UInt64ArrayLike]):
-    _ARROW_TYPE = UInt64Type()
+    _ARROW_DATATYPE = pa.uint64()
 
     @staticmethod
     def _native_to_pa_array(data: UInt64ArrayLike, data_type: pa.DataType) -> pa.Array:

@@ -14,14 +14,13 @@ from attrs import define, field
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .._converters import (
     to_np_uint8,
 )
 from .blob_ext import BlobExt
 
-__all__ = ["Blob", "BlobArrayLike", "BlobBatch", "BlobLike", "BlobType"]
+__all__ = ["Blob", "BlobArrayLike", "BlobBatch", "BlobLike"]
 
 
 @define(init=False)
@@ -49,17 +48,8 @@ else:
 BlobArrayLike = Union[Blob, Sequence[BlobLike], bytes, npt.NDArray[np.uint8]]
 
 
-class BlobType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.Blob"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={})), self._TYPE_NAME
-        )
-
-
 class BlobBatch(BaseBatch[BlobArrayLike]):
-    _ARROW_TYPE = BlobType()
+    _ARROW_DATATYPE = pa.list_(pa.field("item", pa.uint8(), nullable=False, metadata={}))
 
     @staticmethod
     def _native_to_pa_array(data: BlobArrayLike, data_type: pa.DataType) -> pa.Array:
