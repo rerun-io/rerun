@@ -92,7 +92,7 @@ impl App {
         UICommand::Settings.menu_button_ui(ui, &self.command_sender);
 
         #[cfg(target_arch = "wasm32")]
-        backend_menu_ui(&self.command_sender, ui, frame);
+        backend_menu_ui(&self.command_sender, ui, render_state);
 
         #[cfg(debug_assertions)]
         ui.menu_button("Debug", |ui| {
@@ -318,10 +318,7 @@ fn backend_menu_ui(
     ui: &mut egui::Ui,
     render_state: Option<&egui_wgpu::RenderState>,
 ) {
-    if let Some(backend) = frame
-        .wgpu_render_state()
-        .map(|state| state.adapter.get_info().backend)
-    {
+    if let Some(backend) = render_state.map(|state| state.adapter.get_info().backend) {
         if backend == wgpu::Backend::BrowserWebGpu {
             UICommand::RestartWithWebGl.menu_button_ui(ui, command_sender);
         } else {
