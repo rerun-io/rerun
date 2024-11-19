@@ -76,7 +76,10 @@ impl ForceLayout {
             .add_force("charge", fj::ManyBody::new())
             // TODO(grtlr): detect if we need a center force or a position force, depending on if the graph is disjoint
             // or not. More generally: how much heuristics do we want to bake in here?
-            .add_force("center", fj::Center::new());
+            // .add_force("center", fj::Center::new());
+            // TODO(grtlr): This is a small stop-gap until we have blueprints.
+            .add_force("x", fj::PositionX::new().strength(0.01))
+            .add_force("y", fj::PositionY::new().strength(0.01));
 
         Self {
             simulation,
