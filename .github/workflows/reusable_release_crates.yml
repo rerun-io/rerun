@@ -39,5 +39,12 @@ jobs:
       - name: Build web-viewer (release)
         run: pixi run rerun-build-web-release
 
+      # We added `+1.80.0` to cargo publish some dependency had MSRV 1.80 and that caused `cargo publish` to fail.
+      # TODO(#8174): remove eonce we update MSRV to 1.80.0 everywhere
+      - name: Install Rust 1.80.0
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: 1.80.0
+
       - name: Publish
         run: pixi run python scripts/ci/crates.py publish --token ${{ secrets.CRATES_IO_TOKEN }}

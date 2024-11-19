@@ -18,7 +18,6 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
-
 [dependencies]
 re_chunk_store.workspace = true
 re_chunk.workspace = true
