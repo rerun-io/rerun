@@ -5,7 +5,13 @@ categories = ["visualization", "computer-vision"]
 description = "Log images, point clouds, etc, and visualize them effortlessly"
 edition.workspace = true
 homepage.workspace = true
-include.workspace = true
+include = [
+  "../../Cargo.lock",     # So that users can pass `--locked` to `cargo install`
+  "../../LICENSE-APACHE",
+  "../../LICENSE-MIT",
+  "**/*.rs",
+  "Cargo.toml",
+]
 keywords = ["mesh", "plotting", "point-cloud", "robotics", "visualization"]
 license.workspace = true
 publish = true
