@@ -187,7 +187,7 @@ impl ChunkUi {
     }
 
     // Returns true if the user wants to exit the chunk viewer.
-    fn chunk_info_ui(& self, ui: &mut egui::Ui) -> bool {
+    fn chunk_info_ui(&self, ui: &mut egui::Ui) -> bool {
         let metadata_ui = |ui: &mut egui::Ui, metadata: &BTreeMap<String, String>| {
             for (key, value) in metadata {
                 ui.list_item_flat_noninteractive(

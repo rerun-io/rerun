@@ -23,7 +23,7 @@ impl SelectionHistoryUi {
     }
 
     fn prev_button_ui(
-        & self,
+        &self,
         ui: &mut egui::Ui,
         blueprint: &ViewportBlueprint,
         history: &mut SelectionHistory,
