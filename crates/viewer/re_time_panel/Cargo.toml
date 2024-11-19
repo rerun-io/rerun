@@ -41,6 +41,7 @@ vec1.workspace = true
 anyhow.workspace = true
 criterion.workspace = true
 rand.workspace = true
+egui_kittest.workspace = true
 
 [lib]
 bench = false

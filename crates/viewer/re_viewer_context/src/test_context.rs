@@ -4,11 +4,7 @@ use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
 use re_log_types::{StoreId, StoreKind, Timeline};
 
-use crate::{
-    blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
-    ComponentUiRegistry, RecordingConfig, SpaceViewClassRegistry, StoreContext, SystemCommand,
-    ViewerContext,
-};
+use crate::{blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender, ComponentUiRegistry, ComponentUiTypes, RecordingConfig, SpaceViewClassRegistry, StoreContext, SystemCommand, ViewerContext};
 
 /// Harness to execute code that rely on [`crate::ViewerContext`].
 ///
@@ -27,7 +23,10 @@ pub struct TestContext {
     pub blueprint_store: EntityDb,
     pub space_view_class_registry: SpaceViewClassRegistry,
     pub selection_state: ApplicationSelectionState,
-    pub active_timeline: Timeline,
+    pub recording_config: RecordingConfig,
+
+    blueprint_query: LatestAtQuery,
+    component_ui_registry: ComponentUiRegistry,
 
     command_sender: CommandSender,
     command_receiver: CommandReceiver,
@@ -37,15 +36,27 @@ impl Default for TestContext {
     fn default() -> Self {
         let recording_store = EntityDb::new(StoreId::random(StoreKind::Recording));
         let blueprint_store = EntityDb::new(StoreId::random(StoreKind::Blueprint));
-        let active_timeline = Timeline::new("time", re_log_types::TimeType::Time);
 
         let (command_sender, command_receiver) = command_channel();
+
+        let recording_config = RecordingConfig::default();
+
+
+        let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
+
+        let component_ui_registry = ComponentUiRegistry::new(Box::new(
+            |_ctx, _ui, _ui_layout, _query, _db, _entity_path, _row_id, _component| {},
+        ));
+
+
         Self {
             recording_store,
             blueprint_store,
             space_view_class_registry: Default::default(),
             selection_state: Default::default(),
-            active_timeline,
+            recording_config,
+            blueprint_query,
+            component_ui_registry,
             command_sender,
             command_receiver,
         }
@@ -67,50 +78,49 @@ impl TestContext {
     pub fn run(&self, mut func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui)) {
         egui::__run_test_ctx(|ctx| {
             egui::CentralPanel::default().show(ctx, |ui| {
-                re_ui::apply_style_and_install_loaders(ui.ctx());
-                let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
+                let egui_ctx = ui.ctx().clone();
 
-                let component_ui_registry = ComponentUiRegistry::new(Box::new(
-                    |_ctx, _ui, _ui_layout, _query, _db, _entity_path, _row_id, _component| {},
-                ));
-
-                let store_context = StoreContext {
-                    app_id: "rerun_test".into(),
-                    blueprint: &self.blueprint_store,
-                    default_blueprint: None,
-                    recording: &self.recording_store,
-                    bundle: &Default::default(),
-                    caches: &Default::default(),
-                    hub: &Default::default(),
-                };
-
-                let rec_cfg = RecordingConfig::default();
-                rec_cfg.time_ctrl.write().set_timeline(self.active_timeline);
-
-                let egui_context = ui.ctx().clone();
-                let ctx = ViewerContext {
-                    app_options: &Default::default(),
-                    cache: &Default::default(),
-                    reflection: &Default::default(),
-                    component_ui_registry: &component_ui_registry,
-                    space_view_class_registry: &self.space_view_class_registry,
-                    store_context: &store_context,
-                    applicable_entities_per_visualizer: &Default::default(),
-                    indicated_entities_per_visualizer: &Default::default(),
-                    query_results: &Default::default(),
-                    rec_cfg: &rec_cfg,
-                    blueprint_cfg: &Default::default(),
-                    selection_state: &self.selection_state,
-                    blueprint_query: &blueprint_query,
-                    egui_ctx: &egui_context,
-                    render_ctx: None,
-                    command_sender: &self.command_sender,
-                    focused_item: &None,
-                };
-
-                func(&ctx, ui);
+                self.run_simple(&egui_ctx, |ctx| {
+                    func(&ctx, ui);
+                });
             });
         });
+    }
+
+    pub fn run_simple(&self, egui_ctx: &egui::Context, mut func: impl FnOnce(&ViewerContext<'_>)) {
+        re_ui::apply_style_and_install_loaders(egui_ctx);
+
+        let store_context = StoreContext {
+            app_id: "rerun_test".into(),
+            blueprint: &self.blueprint_store,
+            default_blueprint: None,
+            recording: &self.recording_store,
+            bundle: &Default::default(),
+            caches: &Default::default(),
+            hub: &Default::default(),
+        };
+
+        let ctx = ViewerContext {
+            app_options: &Default::default(),
+            cache: &Default::default(),
+            reflection: &Default::default(),
+            component_ui_registry: &self.component_ui_registry,
+            space_view_class_registry: &self.space_view_class_registry,
+            store_context: &store_context,
+            applicable_entities_per_visualizer: &Default::default(),
+            indicated_entities_per_visualizer: &Default::default(),
+            query_results: &Default::default(),
+            rec_cfg: &self.recording_config,
+            blueprint_cfg: &Default::default(),
+            selection_state: &self.selection_state,
+            blueprint_query: &self.blueprint_query,
+            egui_ctx,
+            render_ctx: None,
+            command_sender: &self.command_sender,
+            focused_item: &None,
+        };
+
+        func(&ctx);
     }
 
     /// Run the given function with a [`ViewerContext`] produced by the [`Self`] and handle any
@@ -151,7 +161,7 @@ impl TestContext {
 
                 SystemCommand::SetActiveTimeline { rec_id, timeline } => {
                     assert_eq!(rec_id, self.recording_store.store_id());
-                    self.active_timeline = timeline;
+                    self.recording_config.time_ctrl.write().set_timeline(timeline);
                 }
 
                 // not implemented

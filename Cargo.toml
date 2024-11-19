@@ -138,6 +138,7 @@ egui_extras = { version = "0.29.1", features = [
   "puffin",
   "serde",
 ] }
+egui_kittest = { version = "0.29.1", features = ["wgpu", "snapshot"] }
 egui_plot = "0.29.0" # https://github.com/emilk/egui_plot
 egui_table = "0.1.0" # https://github.com/rerun-io/egui_table
 egui_tiles = "0.10.1" # https://github.com/rerun-io/egui_tiles
@@ -549,12 +550,13 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-# ecolor = { git = "https://github.com/emilk/egui.git", rev = "f97f85089df5e936999d5b7280e2e93e2958fac8" }      # egui master 2024-09-25
-# eframe = { git = "https://github.com/emilk/egui.git", rev = "f97f85089df5e936999d5b7280e2e93e2958fac8" }      # egui master 2024-09-25
-# egui = { git = "https://github.com/emilk/egui.git", rev = "f97f85089df5e936999d5b7280e2e93e2958fac8" }        # egui master 2024-09-25
-# egui_extras = { git = "https://github.com/emilk/egui.git", rev = "f97f85089df5e936999d5b7280e2e93e2958fac8" } # egui master 2024-09-25
-# egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "f97f85089df5e936999d5b7280e2e93e2958fac8" }   # egui master 2024-09-25
-# emath = { git = "https://github.com/emilk/egui.git", rev = "f97f85089df5e936999d5b7280e2e93e2958fac8" }       # egui master 2024-09-25
+ ecolor = { git = "https://github.com/emilk/egui.git", rev = "5bfff316c9818b3c140d02bb6cdc488556d46ab7" }       # egui master 2024-11-19
+ eframe = { git = "https://github.com/emilk/egui.git", rev = "5bfff316c9818b3c140d02bb6cdc488556d46ab7" }       # egui master 2024-11-19
+ egui = { git = "https://github.com/emilk/egui.git", rev = "5bfff316c9818b3c140d02bb6cdc488556d46ab7" }         # egui master 2024-11-19
+ egui_extras = { git = "https://github.com/emilk/egui.git", rev = "5bfff316c9818b3c140d02bb6cdc488556d46ab7" }  # egui master 2024-11-19
+ egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "5bfff316c9818b3c140d02bb6cdc488556d46ab7" }    # egui master 2024-11-19
+ emath = { git = "https://github.com/emilk/egui.git", rev = "5bfff316c9818b3c140d02bb6cdc488556d46ab7" }        # egui master 2024-11-19
+ egui_kittest = { git = "https://github.com/emilk/egui.git", rev = "5bfff316c9818b3c140d02bb6cdc488556d46ab7" } # egui master 2024-11-19
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
@@ -567,7 +569,7 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # egui_plot = { git = "https://github.com/emilk/egui_plot.git", rev = "1f6ae49a5f6bf43a869c215dea0d3028be8d742a" }
 # egui_plot = { path = "../../egui_plot/egui_plot" }
 
-# egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "b2f5e232524deed983bcad01c05f27d0e8b89d98" } # https://github.com/rerun-io/egui_tiles/pull/78 2024-08-28
+ egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "9e55a25983e34eb8eee004209ee3bd882223fdbb" } # 2024-11-19
 # egui_tiles = { path = "../egui_tiles" }
 
 # egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "7a9dc755bfa351a3796274cb8ca87129b051c084" } # https://github.com/lampsitter/egui_commonmark/pull/65
