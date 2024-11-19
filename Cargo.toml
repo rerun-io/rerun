@@ -377,13 +377,13 @@ opt-level = 0 # we often debug egui via Rerun
 unsafe_code = "deny"
 
 elided_lifetimes_in_paths = "warn"
-future_incompatible = "warn"
-nonstandard_style = "warn"
-rust_2018_idioms = "warn"
+future_incompatible = { level = "warn", priority = -1 }
+nonstandard_style = { level = "warn", priority = -1 }
+rust_2018_idioms = { level = "warn", priority = -1 }
 rust_2021_prelude_collisions = "warn"
 semicolon_in_expressions_from_macros = "warn"
 trivial_numeric_casts = "warn"
-unsafe_op_in_unsafe_fn = "warn"               # `unsafe_op_in_unsafe_fn` may become the default in future Rust versions: https://github.com/rust-lang/rust/issues/71668
+unsafe_op_in_unsafe_fn = "warn"                         # `unsafe_op_in_unsafe_fn` may become the default in future Rust versions: https://github.com/rust-lang/rust/issues/71668
 unused_extern_crates = "warn"
 unused_import_braces = "warn"
 unused_lifetimes = "warn"
