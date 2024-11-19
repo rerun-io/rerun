@@ -87,13 +87,6 @@ impl std::ops::DerefMut for ViewCoordinates {
 ::re_types_core::macros::impl_into_cow!(ViewCoordinates);
 
 impl ::re_types_core::Loggable for ViewCoordinates {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.ViewCoordinates".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::ViewCoordinates::arrow_datatype()
@@ -129,5 +122,12 @@ impl ::re_types_core::Loggable for ViewCoordinates {
         Self: Sized,
     {
         crate::datatypes::ViewCoordinates::from_arrow(arrow_data).map(bytemuck::cast_vec)
+    }
+}
+
+impl ::re_types_core::Component for ViewCoordinates {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.ViewCoordinates".into()
     }
 }

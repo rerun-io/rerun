@@ -194,7 +194,7 @@ mod tests {
         example_components::{MyColor, MyIndex, MyPoint},
         EntityPath, TimeInt, TimePoint, Timeline,
     };
-    use re_types_core::{ComponentName, Loggable as _};
+    use re_types_core::{Component as _, ComponentName};
 
     use crate::{ChunkStore, GarbageCollectionOptions};
 

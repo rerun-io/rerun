@@ -52,13 +52,6 @@ impl From<UVec4D> for [u32; 4usize] {
 ::re_types_core::macros::impl_into_cow!(UVec4D);
 
 impl ::re_types_core::Loggable for UVec4D {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.UVec4D".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

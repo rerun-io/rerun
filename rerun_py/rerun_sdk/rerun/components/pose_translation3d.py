@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["PoseTranslation3D", "PoseTranslation3DBatch", "PoseTranslation3DType"]
+__all__ = ["PoseTranslation3D", "PoseTranslation3DBatch"]
 
 
 class PoseTranslation3D(datatypes.Vec3D, ComponentMixin):
@@ -24,12 +24,8 @@ class PoseTranslation3D(datatypes.Vec3D, ComponentMixin):
     pass
 
 
-class PoseTranslation3DType(datatypes.Vec3DType):
-    _TYPE_NAME: str = "rerun.components.PoseTranslation3D"
-
-
 class PoseTranslation3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
-    _ARROW_TYPE = PoseTranslation3DType()
+    _COMPONENT_NAME: str = "rerun.components.PoseTranslation3D"
 
 
 # This is patched in late to avoid circular dependencies.

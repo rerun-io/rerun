@@ -68,13 +68,6 @@ impl std::ops::DerefMut for ImagePlaneDistance {
 ::re_types_core::macros::impl_into_cow!(ImagePlaneDistance);
 
 impl ::re_types_core::Loggable for ImagePlaneDistance {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.ImagePlaneDistance".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Float32::arrow_datatype()
@@ -110,5 +103,12 @@ impl ::re_types_core::Loggable for ImagePlaneDistance {
         Self: Sized,
     {
         crate::datatypes::Float32::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
+    }
+}
+
+impl ::re_types_core::Component for ImagePlaneDistance {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.ImagePlaneDistance".into()
     }
 }

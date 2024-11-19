@@ -76,13 +76,6 @@ impl std::ops::DerefMut for PinholeProjection {
 ::re_types_core::macros::impl_into_cow!(PinholeProjection);
 
 impl ::re_types_core::Loggable for PinholeProjection {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.PinholeProjection".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Mat3x3::arrow_datatype()
@@ -118,5 +111,12 @@ impl ::re_types_core::Loggable for PinholeProjection {
         Self: Sized,
     {
         crate::datatypes::Mat3x3::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
+    }
+}
+
+impl ::re_types_core::Component for PinholeProjection {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.PinholeProjection".into()
     }
 }

@@ -20,7 +20,7 @@ Struct {
 ## API reference links
  * 🌊 [C++ API docs for `PoseRotationAxisAngle`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1PoseRotationAxisAngle.html)
  * 🐍 [Python API docs for `PoseRotationAxisAngle`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.PoseRotationAxisAngle)
- * 🦀 [Rust API docs for `PoseRotationAxisAngle`](https://docs.rs/rerun/latest/rerun/components/struct.PoseRotationAxisAngle.html)
+ * 🦀 [Rust API docs for `PoseRotationAxisAngle`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.PoseRotationAxisAngle.html)
 
 
 ## Used by

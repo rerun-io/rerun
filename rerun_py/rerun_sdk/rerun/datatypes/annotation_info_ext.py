@@ -17,7 +17,7 @@ class AnnotationInfoExt:
 
     @staticmethod
     def native_to_pa_array_override(data: AnnotationInfoArrayLike, data_type: pa.DataType) -> pa.Array:
-        from . import AnnotationInfo, Rgba32Type, Utf8Type
+        from . import AnnotationInfo, Rgba32Batch, Utf8Batch
 
         if isinstance(data, AnnotationInfo):
             data = [data]
@@ -32,8 +32,8 @@ class AnnotationInfoExt:
 
         # Note: we can't use from_similar here because we need to handle optional values
         # fortunately these are fairly simple types
-        label_array = pa.array(labels, type=Utf8Type().storage_type)
-        color_array = pa.array(colors, type=Rgba32Type().storage_type)
+        label_array = pa.array(labels, type=Utf8Batch._ARROW_DATATYPE)
+        color_array = pa.array(colors, type=Rgba32Batch._ARROW_DATATYPE)
 
         return pa.StructArray.from_arrays(
             arrays=[id_array, label_array, color_array],

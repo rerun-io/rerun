@@ -32,12 +32,10 @@ class FilterIsNotNullExt:
 
         return pa.StructArray.from_arrays(
             [
-                BoolBatch([x.active for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                BoolBatch([x.active for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
                 ComponentColumnSelectorBatch(
                     [x.column for x in data],
-                )
-                .as_arrow_array()
-                .storage,  # type: ignore[misc, arg-type]
+                ).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

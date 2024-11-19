@@ -7,7 +7,7 @@ use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
 use re_types::View;
 use re_types::{
-    blueprint::archetypes::Background, components::ViewCoordinates, Loggable,
+    blueprint::archetypes::Background, components::ViewCoordinates, Component,
     SpaceViewClassIdentifier,
 };
 use re_ui::UiExt as _;
@@ -84,6 +84,10 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
     fn preferred_tile_aspect_ratio(&self, _state: &dyn SpaceViewState) -> Option<f32> {
         None
+    }
+
+    fn supports_visible_time_range(&self) -> bool {
+        true
     }
 
     fn layout_priority(&self) -> re_viewer_context::SpaceViewClassLayoutPriority {

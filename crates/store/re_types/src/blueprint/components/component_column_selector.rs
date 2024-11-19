@@ -71,13 +71,6 @@ impl std::ops::DerefMut for ComponentColumnSelector {
 ::re_types_core::macros::impl_into_cow!(ComponentColumnSelector);
 
 impl ::re_types_core::Loggable for ComponentColumnSelector {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.components.ComponentColumnSelector".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::blueprint::datatypes::ComponentColumnSelector::arrow_datatype()
@@ -107,5 +100,12 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
     {
         crate::blueprint::datatypes::ComponentColumnSelector::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+    }
+}
+
+impl ::re_types_core::Component for ComponentColumnSelector {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.ComponentColumnSelector".into()
     }
 }

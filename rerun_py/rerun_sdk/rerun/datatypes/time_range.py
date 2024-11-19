@@ -13,10 +13,9 @@ from attrs import define, field
 from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 
-__all__ = ["TimeRange", "TimeRangeArrayLike", "TimeRangeBatch", "TimeRangeLike", "TimeRangeType"]
+__all__ = ["TimeRange", "TimeRangeArrayLike", "TimeRangeBatch", "TimeRangeLike"]
 
 
 def _time_range__start__special_field_converter_override(
@@ -75,42 +74,31 @@ TimeRangeArrayLike = Union[
 ]
 
 
-class TimeRangeType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.TimeRange"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.struct([
-                pa.field(
-                    "start",
-                    pa.dense_union([
-                        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                        pa.field("CursorRelative", pa.int64(), nullable=False, metadata={}),
-                        pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
-                        pa.field("Infinite", pa.null(), nullable=True, metadata={}),
-                    ]),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field(
-                    "end",
-                    pa.dense_union([
-                        pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
-                        pa.field("CursorRelative", pa.int64(), nullable=False, metadata={}),
-                        pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
-                        pa.field("Infinite", pa.null(), nullable=True, metadata={}),
-                    ]),
-                    nullable=False,
-                    metadata={},
-                ),
-            ]),
-            self._TYPE_NAME,
-        )
-
-
 class TimeRangeBatch(BaseBatch[TimeRangeArrayLike]):
-    _ARROW_TYPE = TimeRangeType()
+    _ARROW_DATATYPE = pa.struct([
+        pa.field(
+            "start",
+            pa.dense_union([
+                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                pa.field("CursorRelative", pa.int64(), nullable=False, metadata={}),
+                pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
+                pa.field("Infinite", pa.null(), nullable=True, metadata={}),
+            ]),
+            nullable=False,
+            metadata={},
+        ),
+        pa.field(
+            "end",
+            pa.dense_union([
+                pa.field("_null_markers", pa.null(), nullable=True, metadata={}),
+                pa.field("CursorRelative", pa.int64(), nullable=False, metadata={}),
+                pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
+                pa.field("Infinite", pa.null(), nullable=True, metadata={}),
+            ]),
+            nullable=False,
+            metadata={},
+        ),
+    ])
 
     @staticmethod
     def _native_to_pa_array(data: TimeRangeArrayLike, data_type: pa.DataType) -> pa.Array:
@@ -121,8 +109,8 @@ class TimeRangeBatch(BaseBatch[TimeRangeArrayLike]):
 
         return pa.StructArray.from_arrays(
             [
-                TimeRangeBoundaryBatch([x.start for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-                TimeRangeBoundaryBatch([x.end for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                TimeRangeBoundaryBatch([x.start for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                TimeRangeBoundaryBatch([x.end for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

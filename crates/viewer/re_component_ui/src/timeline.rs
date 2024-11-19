@@ -1,5 +1,5 @@
 use re_types::blueprint::components;
-use re_types_core::LoggableBatch as _;
+use re_types_core::ComponentBatch as _;
 use re_viewer_context::external::re_log_types::TimelineName;
 use re_viewer_context::{MaybeMutRef, ViewerContext};
 

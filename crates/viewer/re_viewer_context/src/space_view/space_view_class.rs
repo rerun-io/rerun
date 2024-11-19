@@ -94,6 +94,11 @@ pub trait SpaceViewClass: Send + Sync {
     /// Controls how likely this space view will get a large tile in the ui.
     fn layout_priority(&self) -> SpaceViewClassLayoutPriority;
 
+    /// Controls whether the visible time range UI should be displayed for this view.
+    fn supports_visible_time_range(&self) -> bool {
+        false
+    }
+
     /// Default query range for this space view.
     //TODO(#6918): also provide ViewerContext and SpaceViewId, to enable reading view properties.
     fn default_query_range(&self, _state: &dyn SpaceViewState) -> QueryRange {

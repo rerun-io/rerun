@@ -67,13 +67,6 @@ impl std::ops::DerefMut for VideoTimestamp {
 ::re_types_core::macros::impl_into_cow!(VideoTimestamp);
 
 impl ::re_types_core::Loggable for VideoTimestamp {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.VideoTimestamp".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::VideoTimestamp::arrow_datatype()
@@ -110,5 +103,12 @@ impl ::re_types_core::Loggable for VideoTimestamp {
     {
         crate::datatypes::VideoTimestamp::from_arrow(arrow_data)
             .map(|v| v.into_iter().map(Self).collect())
+    }
+}
+
+impl ::re_types_core::Component for VideoTimestamp {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.VideoTimestamp".into()
     }
 }

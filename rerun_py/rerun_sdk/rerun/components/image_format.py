@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["ImageFormat", "ImageFormatBatch", "ImageFormatType"]
+__all__ = ["ImageFormat", "ImageFormatBatch"]
 
 
 class ImageFormat(datatypes.ImageFormat, ComponentMixin):
@@ -24,12 +24,8 @@ class ImageFormat(datatypes.ImageFormat, ComponentMixin):
     pass
 
 
-class ImageFormatType(datatypes.ImageFormatType):
-    _TYPE_NAME: str = "rerun.components.ImageFormat"
-
-
 class ImageFormatBatch(datatypes.ImageFormatBatch, ComponentBatchMixin):
-    _ARROW_TYPE = ImageFormatType()
+    _COMPONENT_NAME: str = "rerun.components.ImageFormat"
 
 
 # This is patched in late to avoid circular dependencies.

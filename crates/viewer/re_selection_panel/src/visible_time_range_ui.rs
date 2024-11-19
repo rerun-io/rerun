@@ -1,47 +1,23 @@
-use std::collections::HashSet;
-
 use egui::{NumExt as _, Ui};
 
 use re_log_types::{EntityPath, ResolvedTimeRange, TimeType, TimelineName};
-use re_space_view_spatial::{SpatialSpaceView2D, SpatialSpaceView3D};
-use re_space_view_time_series::TimeSeriesSpaceView;
 use re_types::{
     blueprint::components::VisibleTimeRange,
     datatypes::{TimeInt, TimeRange, TimeRangeBoundary},
-    Archetype, SpaceViewClassIdentifier,
+    Archetype,
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{QueryRange, SpaceViewClass, SpaceViewState, TimeDragValue, ViewerContext};
 use re_viewport_blueprint::{entity_path_for_view_property, SpaceViewBlueprint};
 
-/// These space views support the Visible History feature.
-static VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS: once_cell::sync::Lazy<
-    HashSet<SpaceViewClassIdentifier>,
-> = once_cell::sync::Lazy::new(|| {
-    [
-        SpatialSpaceView3D::identifier(),
-        SpatialSpaceView2D::identifier(),
-        TimeSeriesSpaceView::identifier(),
-        // TODO(#7876): replace with `MapSpaceView::identifier()` when we get rid of the cargo feature
-        "Map".into(),
-    ]
-    .map(Into::into)
-    .into()
-});
-
-// TODO(#4145): This method is obviously unfortunate. It's a temporary solution until the Visualizer
-// system is able to report its ability to handle the visible history feature.
-fn space_view_with_visible_history(space_view_class: SpaceViewClassIdentifier) -> bool {
-    VISIBLE_HISTORY_SUPPORTED_SPACE_VIEWS.contains(&space_view_class)
-}
-
 pub fn visible_time_range_ui_for_view(
     ctx: &ViewerContext<'_>,
     ui: &mut Ui,
     view: &SpaceViewBlueprint,
+    view_class: &dyn SpaceViewClass,
     view_state: &dyn SpaceViewState,
 ) {
-    if !space_view_with_visible_history(view.class_identifier()) {
+    if !view_class.supports_visible_time_range() {
         return;
     }
 
@@ -83,7 +59,7 @@ fn visible_time_range_ui(
     time_range_override_path: &EntityPath,
     is_space_view: bool,
 ) {
-    use re_types::Loggable as _;
+    use re_types::Component as _;
 
     let ranges = ctx
         .blueprint_db()

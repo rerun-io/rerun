@@ -11,7 +11,7 @@ from ..._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["IncludedSpaceView", "IncludedSpaceViewBatch", "IncludedSpaceViewType"]
+__all__ = ["IncludedSpaceView", "IncludedSpaceViewBatch"]
 
 
 class IncludedSpaceView(datatypes.Uuid, ComponentMixin):
@@ -24,12 +24,8 @@ class IncludedSpaceView(datatypes.Uuid, ComponentMixin):
     pass
 
 
-class IncludedSpaceViewType(datatypes.UuidType):
-    _TYPE_NAME: str = "rerun.blueprint.components.IncludedSpaceView"
-
-
 class IncludedSpaceViewBatch(datatypes.UuidBatch, ComponentBatchMixin):
-    _ARROW_TYPE = IncludedSpaceViewType()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.IncludedSpaceView"
 
 
 # This is patched in late to avoid circular dependencies.

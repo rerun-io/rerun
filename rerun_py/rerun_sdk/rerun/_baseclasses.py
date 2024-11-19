@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any, Generic, Iterable, Protocol, TypeVar
+from typing import Generic, Iterable, Protocol, TypeVar
 
 import numpy as np
 import numpy.typing as npt
@@ -56,7 +56,7 @@ class Archetype:
                 comp = getattr(self, fld.name)
                 datatype = getattr(comp, "type", None)
                 if datatype:
-                    s += f"  {datatype.extension_name}<{datatype.storage_type}>(\n    {comp.to_pylist()}\n  )\n"
+                    s += f"  {datatype.extension_name}<{datatype}>(\n    {comp.to_pylist()}\n  )\n"
         s += ")"
 
         return s
@@ -112,36 +112,8 @@ class Archetype:
     __repr__ = __str__
 
 
-class BaseExtensionType(pa.ExtensionType):  # type: ignore[misc]
-    """Extension type for datatypes and non-delegating components."""
-
-    _TYPE_NAME: str
-    """The name used when constructing the extension type.
-
-    Should following rerun typing conventions:
-     - `rerun.datatypes.<TYPE>` for datatypes
-     - `rerun.components.<TYPE>` for components
-
-    Many component types simply subclass a datatype type and override
-    the `_TYPE_NAME` field.
-    """
-
-    _ARRAY_TYPE: type[pa.ExtensionArray] = pa.ExtensionArray
-    """The extension array class associated with this class."""
-
-    # Note: (de)serialization is not used in the Python SDK
-
-    def __arrow_ext_serialize__(self) -> bytes:
-        return b""
-
-    # noinspection PyMethodOverriding
-    @classmethod
-    def __arrow_ext_deserialize__(cls, storage_type: Any, serialized: Any) -> pa.ExtensionType:
-        return cls()
-
-
 class BaseBatch(Generic[T]):
-    _ARROW_TYPE: BaseExtensionType = None  # type: ignore[assignment]
+    _ARROW_DATATYPE: pa.DataType | None = None
     """The pyarrow type of this batch."""
 
     def __init__(self, data: T | None, strict: bool | None = None) -> None:
@@ -173,17 +145,14 @@ class BaseBatch(Generic[T]):
         if data is not None:
             with catch_and_log_exceptions(self.__class__.__name__, strict=strict):
                 # If data is already an arrow array, use it
-                if isinstance(data, pa.Array) and data.type == self._ARROW_TYPE:
+                if isinstance(data, pa.Array) and data.type == self._ARROW_DATATYPE:
                     self.pa_array = data
-                elif isinstance(data, pa.Array) and data.type == self._ARROW_TYPE.storage_type:
-                    self.pa_array = self._ARROW_TYPE.wrap_array(data)
                 else:
-                    array = self._native_to_pa_array(data, self._ARROW_TYPE.storage_type)
-                    self.pa_array = self._ARROW_TYPE.wrap_array(array)
+                    self.pa_array = self._native_to_pa_array(data, self._ARROW_DATATYPE)
                 return
 
         # If we didn't return above, default to the empty array
-        self.pa_array = _empty_pa_array(self._ARROW_TYPE)
+        self.pa_array = _empty_pa_array(self._ARROW_DATATYPE)
 
     @classmethod
     def _required(cls, data: T | None) -> BaseBatch[T]:
@@ -317,7 +286,7 @@ class ComponentBatchMixin(ComponentBatchLike):
 
         Part of the `ComponentBatchLike` logging interface.
         """
-        return self._ARROW_TYPE._TYPE_NAME  # type: ignore[attr-defined, no-any-return]
+        return self._COMPONENT_NAME  # type: ignore[attr-defined, no-any-return]
 
     def partition(self, lengths: npt.ArrayLike) -> ComponentColumn:
         """
@@ -355,7 +324,7 @@ class ComponentMixin(ComponentBatchLike):
 
         Part of the `ComponentBatchLike` logging interface.
         """
-        return cls._BATCH_TYPE._ARROW_TYPE.storage_type  # type: ignore[attr-defined, no-any-return]
+        return cls._BATCH_TYPE._ARROW_DATATYPE  # type: ignore[attr-defined, no-any-return]
 
     def component_name(self) -> str:
         """
@@ -363,7 +332,7 @@ class ComponentMixin(ComponentBatchLike):
 
         Part of the `ComponentBatchLike` logging interface.
         """
-        return self._BATCH_TYPE._ARROW_TYPE._TYPE_NAME  # type: ignore[attr-defined, no-any-return]
+        return self._BATCH_TYPE._COMPONENT_NAME  # type: ignore[attr-defined, no-any-return]
 
     def as_arrow_array(self) -> pa.Array:
         """

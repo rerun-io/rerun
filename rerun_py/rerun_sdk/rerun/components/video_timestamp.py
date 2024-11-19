@@ -12,7 +12,7 @@ from .._baseclasses import (
 )
 from .video_timestamp_ext import VideoTimestampExt
 
-__all__ = ["VideoTimestamp", "VideoTimestampBatch", "VideoTimestampType"]
+__all__ = ["VideoTimestamp", "VideoTimestampBatch"]
 
 
 class VideoTimestamp(VideoTimestampExt, datatypes.VideoTimestamp, ComponentMixin):
@@ -25,12 +25,8 @@ class VideoTimestamp(VideoTimestampExt, datatypes.VideoTimestamp, ComponentMixin
     pass
 
 
-class VideoTimestampType(datatypes.VideoTimestampType):
-    _TYPE_NAME: str = "rerun.components.VideoTimestamp"
-
-
 class VideoTimestampBatch(datatypes.VideoTimestampBatch, ComponentBatchMixin):
-    _ARROW_TYPE = VideoTimestampType()
+    _COMPONENT_NAME: str = "rerun.components.VideoTimestamp"
 
 
 # This is patched in late to avoid circular dependencies.

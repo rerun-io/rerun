@@ -8,7 +8,7 @@ use re_chunk::{Chunk, RowId};
 use re_chunk_store::{ChunkStore, ChunkStoreHandle, LatestAtQuery};
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint, MyPoints};
 use re_log_types::{build_frame_nr, Timeline};
-use re_types::{ComponentBatch, Loggable as _};
+use re_types::Component as _;
 use re_types_core::Archetype as _;
 
 use re_query::{clamped_zip_1x2, LatestAtResults};
@@ -116,7 +116,8 @@ fn store() -> anyhow::Result<ChunkStoreHandle> {
                 RowId::new(),
                 timepoint,
                 [
-                    &[MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)] as &dyn ComponentBatch, //
+                    &[MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)]
+                        as &dyn re_types_core::ComponentBatch, //
                     &[MyColor::from_rgb(255, 0, 0)],
                     &[MyLabel("a".into()), MyLabel("b".into())],
                 ],

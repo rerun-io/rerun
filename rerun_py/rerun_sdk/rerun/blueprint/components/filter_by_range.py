@@ -11,7 +11,7 @@ from ..._baseclasses import (
 )
 from ...blueprint import datatypes as blueprint_datatypes
 
-__all__ = ["FilterByRange", "FilterByRangeBatch", "FilterByRangeType"]
+__all__ = ["FilterByRange", "FilterByRangeBatch"]
 
 
 class FilterByRange(blueprint_datatypes.FilterByRange, ComponentMixin):
@@ -24,12 +24,8 @@ class FilterByRange(blueprint_datatypes.FilterByRange, ComponentMixin):
     pass
 
 
-class FilterByRangeType(blueprint_datatypes.FilterByRangeType):
-    _TYPE_NAME: str = "rerun.blueprint.components.FilterByRange"
-
-
 class FilterByRangeBatch(blueprint_datatypes.FilterByRangeBatch, ComponentBatchMixin):
-    _ARROW_TYPE = FilterByRangeType()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.FilterByRange"
 
 
 # This is patched in late to avoid circular dependencies.

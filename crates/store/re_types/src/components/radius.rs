@@ -74,13 +74,6 @@ impl std::ops::DerefMut for Radius {
 ::re_types_core::macros::impl_into_cow!(Radius);
 
 impl ::re_types_core::Loggable for Radius {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.Radius".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Float32::arrow_datatype()
@@ -116,5 +109,12 @@ impl ::re_types_core::Loggable for Radius {
         Self: Sized,
     {
         crate::datatypes::Float32::from_arrow(arrow_data).map(bytemuck::cast_vec)
+    }
+}
+
+impl ::re_types_core::Component for Radius {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.Radius".into()
     }
 }

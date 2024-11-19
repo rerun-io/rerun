@@ -51,11 +51,11 @@ def test_utf8list() -> None:
 
     # A component delegating through to the underlying datatype should behave the same
     assert (
-        components.VisualizerOverrides(single_string).as_arrow_array().storage
-        == datatypes.Utf8ListBatch(array_of_array_of_single_string).as_arrow_array().storage
+        components.VisualizerOverrides(single_string).as_arrow_array()
+        == datatypes.Utf8ListBatch(array_of_array_of_single_string).as_arrow_array()
     )
 
     assert (
-        components.VisualizerOverrides(list_with_two_strings).as_arrow_array().storage
-        == datatypes.Utf8ListBatch(list_of_list_with_two_strings).as_arrow_array().storage
+        components.VisualizerOverrides(list_with_two_strings).as_arrow_array()
+        == datatypes.Utf8ListBatch(list_of_list_with_two_strings).as_arrow_array()
     )

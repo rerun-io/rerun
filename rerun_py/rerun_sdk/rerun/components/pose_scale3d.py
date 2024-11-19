@@ -12,7 +12,7 @@ from .._baseclasses import (
 )
 from .pose_scale3d_ext import PoseScale3DExt
 
-__all__ = ["PoseScale3D", "PoseScale3DBatch", "PoseScale3DType"]
+__all__ = ["PoseScale3D", "PoseScale3DBatch"]
 
 
 class PoseScale3D(PoseScale3DExt, datatypes.Vec3D, ComponentMixin):
@@ -31,12 +31,8 @@ class PoseScale3D(PoseScale3DExt, datatypes.Vec3D, ComponentMixin):
     pass
 
 
-class PoseScale3DType(datatypes.Vec3DType):
-    _TYPE_NAME: str = "rerun.components.PoseScale3D"
-
-
 class PoseScale3DBatch(datatypes.Vec3DBatch, ComponentBatchMixin):
-    _ARROW_TYPE = PoseScale3DType()
+    _COMPONENT_NAME: str = "rerun.components.PoseScale3D"
 
 
 # This is patched in late to avoid circular dependencies.

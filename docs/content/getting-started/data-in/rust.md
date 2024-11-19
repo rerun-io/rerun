@@ -59,9 +59,9 @@ Checkout `rerun --help` for more options.
 
 ## Initializing the SDK
 
-To get going we want to create a [`RecordingStream`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html):
-We can do all of this with the [`rerun::RecordingStreamBuilder::new`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.new) function which allows us to name the dataset we're working on by setting its [`ApplicationId`](https://docs.rs/rerun/latest/rerun/struct.ApplicationId.html).
-We then connect it to the already running Viewer via [`connect`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.connect), returning the `RecordingStream` upon success.
+To get going we want to create a [`RecordingStream`](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStream.html):
+We can do all of this with the [`rerun::RecordingStreamBuilder::new`](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStreamBuilder.html#method.new) function which allows us to name the dataset we're working on by setting its [`ApplicationId`](https://ref.rerun.io/docs/rust/stable/rerun/struct.ApplicationId.html).
+We then connect it to the already running Viewer via [`connect`](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStreamBuilder.html#method.connect), returning the `RecordingStream` upon success.
 
 ```rust
 fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -72,7 +72,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-Among other things, a stable [`ApplicationId`](https://docs.rs/rerun/latest/rerun/struct.ApplicationId.html) will make it so the [Rerun Viewer](../../reference/viewer/overview.md) retains its UI state across runs for this specific dataset, which will make our lives much easier as we iterate.
+Among other things, a stable [`ApplicationId`](https://ref.rerun.io/docs/rust/stable/rerun/struct.ApplicationId.html) will make it so the [Rerun Viewer](../../reference/viewer/overview.md) retains its UI state across runs for this specific dataset, which will make our lives much easier as we iterate.
 
 Check out the reference to learn more about how Rerun deals with [applications and recordings](../../concepts/apps-and-recordings.md).
 
@@ -120,9 +120,7 @@ This tiny snippet of code actually holds much more than meets the eye…
 
 ### Archetypes
 
-<!-- TODO(andreas): UPDATE DOC LINKS -->
-
-The easiest way to log geometric primitives is the use the [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) method with one of the built-in archetype class, such as [`Points3D`](https://docs.rs/rerun/latest/0.9.0-alpha.10/struct.Points3D.html). Archetypes take care of building batches
+The easiest way to log geometric primitives is the use the [`RecordingStream::log`](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStream.html#method.log) method with one of the built-in archetype class, such as [`Points3D`](https://ref.rerun.io/docs/rust/stable/rerun/struct.Points3D.html). Archetypes take care of building batches
 of components that are recognized and correctly displayed by the Rerun viewer.
 
 ### Components
@@ -133,11 +131,9 @@ cases, it's possible to add custom components to archetypes, or even log entirel
 archetypes altogether.
 For more information on how the Rerun data model works, refer to our section on [Entities and Components](../../concepts/entity-component.md).
 
-Notably, the [`RecordingStream::log`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.log) method
+Notably, the [`RecordingStream::log`](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStream.html#method.log) method
 
-<!-- TODO(andreas): UPDATE DOC LINKS -->
-
-will handle any data type that implements the [`AsComponents`](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html) trait, making it easy to add your own data.
+will handle any data type that implements the [`AsComponents`](https://ref.rerun.io/docs/rust/stable/rerun/trait.AsComponents.html) trait, making it easy to add your own data.
 For more information on how to supply your own components see [Use custom data](../../howto/extend/custom-data.md).
 
 ### Entities & hierarchies
@@ -265,7 +261,7 @@ for i in 0..400 {
 }
 ```
 
-First we use [`RecordingStream::set_time_seconds`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.set_time_seconds) to declare our own custom `Timeline` and set the current timestamp.
+First we use [`RecordingStream::set_time_seconds`](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStream.html#method.set_time_seconds) to declare our own custom `Timeline` and set the current timestamp.
 You can add as many timelines and timestamps as you want when logging data.
 
 ⚠️ If you run this code as is, the result will be.. surprising: the beads are animating as expected, but everything we've logged until that point is gone! ⚠️
@@ -334,7 +330,7 @@ Sometimes, sending the data over the network is not an option. Maybe you'd like 
 
 Rerun has you covered:
 
--   Use [`RecordingStream::save`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.save) to stream all logging data to disk.
+-   Use [`RecordingStream::save`](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStream.html#method.save) to stream all logging data to disk.
 -   Visualize it via `rerun path/to/recording.rrd`
 
 You can also save a recording (or a portion of it) as you're visualizing it, directly from the viewer.
@@ -343,7 +339,7 @@ You can also save a recording (or a portion of it) as you're visualizing it, dir
 
 ### Spawning the Viewer from your process
 
-If the Rerun Viewer is [installed](../installing-viewer.md) and available in your `PATH`, you can use [`RecordingStream::spawn`](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.spawn) to automatically start a Viewer in a new process and connect to it over TCP.
+If the Rerun Viewer is [installed](../installing-viewer.md) and available in your `PATH`, you can use [`RecordingStream::spawn`](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStream.html#method.spawn) to automatically start a Viewer in a new process and connect to it over TCP.
 If an external Viewer was already running, `spawn` will connect to that one instead of spawning a new one.
 
 ```rust
@@ -357,7 +353,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-Alternatively, you can use [`rerun::native_viewer::show`](https://docs.rs/rerun/latest/rerun/native_viewer/fn.show.html) to start a Viewer on the main thread (for platform-compatibility reasons) and feed it data from memory.
+Alternatively, you can use [`rerun::native_viewer::show`](https://ref.rerun.io/docs/rust/stable/rerun/native_viewer/fn.show.html) to start a Viewer on the main thread (for platform-compatibility reasons) and feed it data from memory.
 This requires the `native_viewer` feature to be enabled in `Cargo.toml`:
 
 ```toml

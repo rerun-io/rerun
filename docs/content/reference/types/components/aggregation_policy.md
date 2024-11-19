@@ -39,7 +39,7 @@ uint8
 ## API reference links
  * 🌊 [C++ API docs for `AggregationPolicy`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
  * 🐍 [Python API docs for `AggregationPolicy`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.AggregationPolicy)
- * 🦀 [Rust API docs for `AggregationPolicy`](https://docs.rs/rerun/latest/rerun/components/enum.AggregationPolicy.html)
+ * 🦀 [Rust API docs for `AggregationPolicy`](https://ref.rerun.io/docs/rust/stable/rerun/components/enum.AggregationPolicy.html)
 
 
 ## Used by

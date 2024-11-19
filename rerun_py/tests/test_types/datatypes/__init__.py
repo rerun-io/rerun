@@ -2,126 +2,81 @@
 
 from __future__ import annotations
 
-from .affix_fuzzer1 import AffixFuzzer1, AffixFuzzer1ArrayLike, AffixFuzzer1Batch, AffixFuzzer1Like, AffixFuzzer1Type
-from .affix_fuzzer2 import AffixFuzzer2, AffixFuzzer2ArrayLike, AffixFuzzer2Batch, AffixFuzzer2Like, AffixFuzzer2Type
-from .affix_fuzzer3 import AffixFuzzer3, AffixFuzzer3ArrayLike, AffixFuzzer3Batch, AffixFuzzer3Like, AffixFuzzer3Type
-from .affix_fuzzer4 import AffixFuzzer4, AffixFuzzer4ArrayLike, AffixFuzzer4Batch, AffixFuzzer4Like, AffixFuzzer4Type
-from .affix_fuzzer5 import AffixFuzzer5, AffixFuzzer5ArrayLike, AffixFuzzer5Batch, AffixFuzzer5Like, AffixFuzzer5Type
-from .affix_fuzzer20 import (
-    AffixFuzzer20,
-    AffixFuzzer20ArrayLike,
-    AffixFuzzer20Batch,
-    AffixFuzzer20Like,
-    AffixFuzzer20Type,
-)
-from .affix_fuzzer21 import (
-    AffixFuzzer21,
-    AffixFuzzer21ArrayLike,
-    AffixFuzzer21Batch,
-    AffixFuzzer21Like,
-    AffixFuzzer21Type,
-)
-from .affix_fuzzer22 import (
-    AffixFuzzer22,
-    AffixFuzzer22ArrayLike,
-    AffixFuzzer22Batch,
-    AffixFuzzer22Like,
-    AffixFuzzer22Type,
-)
-from .enum_test import EnumTest, EnumTestArrayLike, EnumTestBatch, EnumTestLike, EnumTestType
-from .flattened_scalar import (
-    FlattenedScalar,
-    FlattenedScalarArrayLike,
-    FlattenedScalarBatch,
-    FlattenedScalarLike,
-    FlattenedScalarType,
-)
-from .multi_enum import MultiEnum, MultiEnumArrayLike, MultiEnumBatch, MultiEnumLike, MultiEnumType
+from .affix_fuzzer1 import AffixFuzzer1, AffixFuzzer1ArrayLike, AffixFuzzer1Batch, AffixFuzzer1Like
+from .affix_fuzzer2 import AffixFuzzer2, AffixFuzzer2ArrayLike, AffixFuzzer2Batch, AffixFuzzer2Like
+from .affix_fuzzer3 import AffixFuzzer3, AffixFuzzer3ArrayLike, AffixFuzzer3Batch, AffixFuzzer3Like
+from .affix_fuzzer4 import AffixFuzzer4, AffixFuzzer4ArrayLike, AffixFuzzer4Batch, AffixFuzzer4Like
+from .affix_fuzzer5 import AffixFuzzer5, AffixFuzzer5ArrayLike, AffixFuzzer5Batch, AffixFuzzer5Like
+from .affix_fuzzer20 import AffixFuzzer20, AffixFuzzer20ArrayLike, AffixFuzzer20Batch, AffixFuzzer20Like
+from .affix_fuzzer21 import AffixFuzzer21, AffixFuzzer21ArrayLike, AffixFuzzer21Batch, AffixFuzzer21Like
+from .affix_fuzzer22 import AffixFuzzer22, AffixFuzzer22ArrayLike, AffixFuzzer22Batch, AffixFuzzer22Like
+from .enum_test import EnumTest, EnumTestArrayLike, EnumTestBatch, EnumTestLike
+from .flattened_scalar import FlattenedScalar, FlattenedScalarArrayLike, FlattenedScalarBatch, FlattenedScalarLike
+from .multi_enum import MultiEnum, MultiEnumArrayLike, MultiEnumBatch, MultiEnumLike
 from .primitive_component import (
     PrimitiveComponent,
     PrimitiveComponentArrayLike,
     PrimitiveComponentBatch,
     PrimitiveComponentLike,
-    PrimitiveComponentType,
 )
-from .string_component import (
-    StringComponent,
-    StringComponentArrayLike,
-    StringComponentBatch,
-    StringComponentLike,
-    StringComponentType,
-)
-from .valued_enum import ValuedEnum, ValuedEnumArrayLike, ValuedEnumBatch, ValuedEnumLike, ValuedEnumType
+from .string_component import StringComponent, StringComponentArrayLike, StringComponentBatch, StringComponentLike
+from .valued_enum import ValuedEnum, ValuedEnumArrayLike, ValuedEnumBatch, ValuedEnumLike
 
 __all__ = [
     "AffixFuzzer1",
     "AffixFuzzer1ArrayLike",
     "AffixFuzzer1Batch",
     "AffixFuzzer1Like",
-    "AffixFuzzer1Type",
     "AffixFuzzer2",
     "AffixFuzzer20",
     "AffixFuzzer20ArrayLike",
     "AffixFuzzer20Batch",
     "AffixFuzzer20Like",
-    "AffixFuzzer20Type",
     "AffixFuzzer21",
     "AffixFuzzer21ArrayLike",
     "AffixFuzzer21Batch",
     "AffixFuzzer21Like",
-    "AffixFuzzer21Type",
     "AffixFuzzer22",
     "AffixFuzzer22ArrayLike",
     "AffixFuzzer22Batch",
     "AffixFuzzer22Like",
-    "AffixFuzzer22Type",
     "AffixFuzzer2ArrayLike",
     "AffixFuzzer2Batch",
     "AffixFuzzer2Like",
-    "AffixFuzzer2Type",
     "AffixFuzzer3",
     "AffixFuzzer3ArrayLike",
     "AffixFuzzer3Batch",
     "AffixFuzzer3Like",
-    "AffixFuzzer3Type",
     "AffixFuzzer4",
     "AffixFuzzer4ArrayLike",
     "AffixFuzzer4Batch",
     "AffixFuzzer4Like",
-    "AffixFuzzer4Type",
     "AffixFuzzer5",
     "AffixFuzzer5ArrayLike",
     "AffixFuzzer5Batch",
     "AffixFuzzer5Like",
-    "AffixFuzzer5Type",
     "EnumTest",
     "EnumTestArrayLike",
     "EnumTestBatch",
     "EnumTestLike",
-    "EnumTestType",
     "FlattenedScalar",
     "FlattenedScalarArrayLike",
     "FlattenedScalarBatch",
     "FlattenedScalarLike",
-    "FlattenedScalarType",
     "MultiEnum",
     "MultiEnumArrayLike",
     "MultiEnumBatch",
     "MultiEnumLike",
-    "MultiEnumType",
     "PrimitiveComponent",
     "PrimitiveComponentArrayLike",
     "PrimitiveComponentBatch",
     "PrimitiveComponentLike",
-    "PrimitiveComponentType",
     "StringComponent",
     "StringComponentArrayLike",
     "StringComponentBatch",
     "StringComponentLike",
-    "StringComponentType",
     "ValuedEnum",
     "ValuedEnumArrayLike",
     "ValuedEnumBatch",
     "ValuedEnumLike",
-    "ValuedEnumType",
 ]

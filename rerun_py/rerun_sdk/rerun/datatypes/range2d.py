@@ -13,10 +13,9 @@ from attrs import define, field
 from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 
-__all__ = ["Range2D", "Range2DArrayLike", "Range2DBatch", "Range2DLike", "Range2DType"]
+__all__ = ["Range2D", "Range2DArrayLike", "Range2DBatch", "Range2DLike"]
 
 
 def _range2d__x_range__special_field_converter_override(x: datatypes.Range1DLike) -> datatypes.Range1D:
@@ -71,32 +70,21 @@ Range2DArrayLike = Union[
 ]
 
 
-class Range2DType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.Range2D"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.struct([
-                pa.field(
-                    "x_range",
-                    pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={}), 2),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field(
-                    "y_range",
-                    pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={}), 2),
-                    nullable=False,
-                    metadata={},
-                ),
-            ]),
-            self._TYPE_NAME,
-        )
-
-
 class Range2DBatch(BaseBatch[Range2DArrayLike]):
-    _ARROW_TYPE = Range2DType()
+    _ARROW_DATATYPE = pa.struct([
+        pa.field(
+            "x_range",
+            pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={}), 2),
+            nullable=False,
+            metadata={},
+        ),
+        pa.field(
+            "y_range",
+            pa.list_(pa.field("item", pa.float64(), nullable=False, metadata={}), 2),
+            nullable=False,
+            metadata={},
+        ),
+    ])
 
     @staticmethod
     def _native_to_pa_array(data: Range2DArrayLike, data_type: pa.DataType) -> pa.Array:
@@ -107,8 +95,8 @@ class Range2DBatch(BaseBatch[Range2DArrayLike]):
 
         return pa.StructArray.from_arrays(
             [
-                Range1DBatch([x.x_range for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-                Range1DBatch([x.y_range for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                Range1DBatch([x.x_range for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                Range1DBatch([x.y_range for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

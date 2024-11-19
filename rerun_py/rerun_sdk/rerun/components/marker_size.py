@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["MarkerSize", "MarkerSizeBatch", "MarkerSizeType"]
+__all__ = ["MarkerSize", "MarkerSizeBatch"]
 
 
 class MarkerSize(datatypes.Float32, ComponentMixin):
@@ -24,12 +24,8 @@ class MarkerSize(datatypes.Float32, ComponentMixin):
     pass
 
 
-class MarkerSizeType(datatypes.Float32Type):
-    _TYPE_NAME: str = "rerun.components.MarkerSize"
-
-
 class MarkerSizeBatch(datatypes.Float32Batch, ComponentBatchMixin):
-    _ARROW_TYPE = MarkerSizeType()
+    _COMPONENT_NAME: str = "rerun.components.MarkerSize"
 
 
 # This is patched in late to avoid circular dependencies.

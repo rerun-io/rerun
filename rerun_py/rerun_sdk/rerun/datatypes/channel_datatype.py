@@ -11,17 +11,10 @@ import pyarrow as pa
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .channel_datatype_ext import ChannelDatatypeExt
 
-__all__ = [
-    "ChannelDatatype",
-    "ChannelDatatypeArrayLike",
-    "ChannelDatatypeBatch",
-    "ChannelDatatypeLike",
-    "ChannelDatatypeType",
-]
+__all__ = ["ChannelDatatype", "ChannelDatatypeArrayLike", "ChannelDatatypeBatch", "ChannelDatatypeLike"]
 
 
 from enum import Enum
@@ -119,15 +112,8 @@ ChannelDatatypeLike = Union[
 ChannelDatatypeArrayLike = Union[ChannelDatatypeLike, Sequence[ChannelDatatypeLike]]
 
 
-class ChannelDatatypeType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.ChannelDatatype"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
-
-
 class ChannelDatatypeBatch(BaseBatch[ChannelDatatypeArrayLike]):
-    _ARROW_TYPE = ChannelDatatypeType()
+    _ARROW_DATATYPE = pa.uint8()
 
     @staticmethod
     def _native_to_pa_array(data: ChannelDatatypeArrayLike, data_type: pa.DataType) -> pa.Array:

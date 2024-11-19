@@ -54,13 +54,6 @@ impl From<Blob> for ::re_types_core::ArrowBuffer<u8> {
 ::re_types_core::macros::impl_into_cow!(Blob);
 
 impl ::re_types_core::Loggable for Blob {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.Blob".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

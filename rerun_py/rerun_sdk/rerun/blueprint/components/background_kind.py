@@ -11,17 +11,10 @@ import pyarrow as pa
 
 from ..._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
 )
 
-__all__ = [
-    "BackgroundKind",
-    "BackgroundKindArrayLike",
-    "BackgroundKindBatch",
-    "BackgroundKindLike",
-    "BackgroundKindType",
-]
+__all__ = ["BackgroundKind", "BackgroundKindArrayLike", "BackgroundKindBatch", "BackgroundKindLike"]
 
 
 from enum import Enum
@@ -76,15 +69,9 @@ BackgroundKindLike = Union[
 BackgroundKindArrayLike = Union[BackgroundKindLike, Sequence[BackgroundKindLike]]
 
 
-class BackgroundKindType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.blueprint.components.BackgroundKind"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
-
-
 class BackgroundKindBatch(BaseBatch[BackgroundKindArrayLike], ComponentBatchMixin):
-    _ARROW_TYPE = BackgroundKindType()
+    _ARROW_DATATYPE = pa.uint8()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.BackgroundKind"
 
     @staticmethod
     def _native_to_pa_array(data: BackgroundKindArrayLike, data_type: pa.DataType) -> pa.Array:

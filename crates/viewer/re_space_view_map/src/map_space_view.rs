@@ -140,6 +140,10 @@ Displays geospatial primitives on a map.
         SpaceViewClassLayoutPriority::default()
     }
 
+    fn supports_visible_time_range(&self) -> bool {
+        true
+    }
+
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
         re_tracing::profile_function!();
 

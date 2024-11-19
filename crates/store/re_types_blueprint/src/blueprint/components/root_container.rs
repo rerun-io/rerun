@@ -70,13 +70,6 @@ impl std::ops::DerefMut for RootContainer {
 ::re_types_core::macros::impl_into_cow!(RootContainer);
 
 impl ::re_types_core::Loggable for RootContainer {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.components.RootContainer".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Uuid::arrow_datatype()
@@ -112,5 +105,12 @@ impl ::re_types_core::Loggable for RootContainer {
         Self: Sized,
     {
         crate::datatypes::Uuid::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
+    }
+}
+
+impl ::re_types_core::Component for RootContainer {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.RootContainer".into()
     }
 }

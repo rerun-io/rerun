@@ -65,8 +65,8 @@ class ComponentColumnSelectorExt:
 
         return pa.StructArray.from_arrays(
             [
-                EntityPathBatch([x.entity_path for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-                Utf8Batch([x.component for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                EntityPathBatch([x.entity_path for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                Utf8Batch([x.component for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

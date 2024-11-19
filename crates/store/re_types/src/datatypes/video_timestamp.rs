@@ -57,13 +57,6 @@ impl From<VideoTimestamp> for i64 {
 ::re_types_core::macros::impl_into_cow!(VideoTimestamp);
 
 impl ::re_types_core::Loggable for VideoTimestamp {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.VideoTimestamp".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

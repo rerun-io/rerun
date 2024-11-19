@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["TensorDimensionIndexSelection", "TensorDimensionIndexSelectionBatch", "TensorDimensionIndexSelectionType"]
+__all__ = ["TensorDimensionIndexSelection", "TensorDimensionIndexSelectionBatch"]
 
 
 class TensorDimensionIndexSelection(datatypes.TensorDimensionIndexSelection, ComponentMixin):
@@ -24,12 +24,8 @@ class TensorDimensionIndexSelection(datatypes.TensorDimensionIndexSelection, Com
     pass
 
 
-class TensorDimensionIndexSelectionType(datatypes.TensorDimensionIndexSelectionType):
-    _TYPE_NAME: str = "rerun.components.TensorDimensionIndexSelection"
-
-
 class TensorDimensionIndexSelectionBatch(datatypes.TensorDimensionIndexSelectionBatch, ComponentBatchMixin):
-    _ARROW_TYPE = TensorDimensionIndexSelectionType()
+    _COMPONENT_NAME: str = "rerun.components.TensorDimensionIndexSelection"
 
 
 # This is patched in late to avoid circular dependencies.

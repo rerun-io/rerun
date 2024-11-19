@@ -69,13 +69,6 @@ impl std::ops::DerefMut for RowShare {
 ::re_types_core::macros::impl_into_cow!(RowShare);
 
 impl ::re_types_core::Loggable for RowShare {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.components.RowShare".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Float32::arrow_datatype()
@@ -111,5 +104,12 @@ impl ::re_types_core::Loggable for RowShare {
         Self: Sized,
     {
         crate::datatypes::Float32::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
+    }
+}
+
+impl ::re_types_core::Component for RowShare {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.RowShare".into()
     }
 }

@@ -79,13 +79,6 @@ impl std::ops::DerefMut for TransformMat3x3 {
 ::re_types_core::macros::impl_into_cow!(TransformMat3x3);
 
 impl ::re_types_core::Loggable for TransformMat3x3 {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.TransformMat3x3".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Mat3x3::arrow_datatype()
@@ -121,5 +114,12 @@ impl ::re_types_core::Loggable for TransformMat3x3 {
         Self: Sized,
     {
         crate::datatypes::Mat3x3::from_arrow(arrow_data).map(bytemuck::cast_vec)
+    }
+}
+
+impl ::re_types_core::Component for TransformMat3x3 {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.TransformMat3x3".into()
     }
 }

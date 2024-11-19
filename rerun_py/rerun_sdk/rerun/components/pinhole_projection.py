@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["PinholeProjection", "PinholeProjectionBatch", "PinholeProjectionType"]
+__all__ = ["PinholeProjection", "PinholeProjectionBatch"]
 
 
 class PinholeProjection(datatypes.Mat3x3, ComponentMixin):
@@ -38,12 +38,8 @@ class PinholeProjection(datatypes.Mat3x3, ComponentMixin):
     pass
 
 
-class PinholeProjectionType(datatypes.Mat3x3Type):
-    _TYPE_NAME: str = "rerun.components.PinholeProjection"
-
-
 class PinholeProjectionBatch(datatypes.Mat3x3Batch, ComponentBatchMixin):
-    _ARROW_TYPE = PinholeProjectionType()
+    _COMPONENT_NAME: str = "rerun.components.PinholeProjection"
 
 
 # This is patched in late to avoid circular dependencies.

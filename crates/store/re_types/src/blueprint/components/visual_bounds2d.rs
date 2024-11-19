@@ -70,13 +70,6 @@ impl std::ops::DerefMut for VisualBounds2D {
 ::re_types_core::macros::impl_into_cow!(VisualBounds2D);
 
 impl ::re_types_core::Loggable for VisualBounds2D {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.components.VisualBounds2D".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Range2D::arrow_datatype()
@@ -104,5 +97,12 @@ impl ::re_types_core::Loggable for VisualBounds2D {
     {
         crate::datatypes::Range2D::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+    }
+}
+
+impl ::re_types_core::Component for VisualBounds2D {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.VisualBounds2D".into()
     }
 }

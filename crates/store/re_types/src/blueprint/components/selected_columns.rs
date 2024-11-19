@@ -67,13 +67,6 @@ impl std::ops::DerefMut for SelectedColumns {
 ::re_types_core::macros::impl_into_cow!(SelectedColumns);
 
 impl ::re_types_core::Loggable for SelectedColumns {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.components.SelectedColumns".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::blueprint::datatypes::SelectedColumns::arrow_datatype()
@@ -101,5 +94,12 @@ impl ::re_types_core::Loggable for SelectedColumns {
     {
         crate::blueprint::datatypes::SelectedColumns::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+    }
+}
+
+impl ::re_types_core::Component for SelectedColumns {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.SelectedColumns".into()
     }
 }

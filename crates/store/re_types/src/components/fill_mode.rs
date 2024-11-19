@@ -93,13 +93,6 @@ impl std::fmt::Display for FillMode {
 ::re_types_core::macros::impl_into_cow!(FillMode);
 
 impl ::re_types_core::Loggable for FillMode {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.FillMode".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
@@ -172,5 +165,12 @@ impl ::re_types_core::Loggable for FillMode {
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.components.FillMode")?)
+    }
+}
+
+impl ::re_types_core::Component for FillMode {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.FillMode".into()
     }
 }

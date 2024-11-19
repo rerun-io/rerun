@@ -321,7 +321,7 @@ mod tests {
         example_components::{MyColor, MyPoint},
         EntityPath, Timeline,
     };
-    use re_types_core::Loggable as _;
+    use re_types_core::Component as _;
 
     use crate::{ChunkId, RowId};
 

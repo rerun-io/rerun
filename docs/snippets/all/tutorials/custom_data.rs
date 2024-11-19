@@ -3,6 +3,7 @@
 use rerun::{
     demo_util::grid,
     external::{arrow2, glam, re_types},
+    ComponentName,
 };
 
 // ---
@@ -56,13 +57,6 @@ impl rerun::SizeBytes for Confidence {
 }
 
 impl rerun::Loggable for Confidence {
-    type Name = rerun::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "user.Confidence".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         rerun::Float32::arrow_datatype()
@@ -76,6 +70,13 @@ impl rerun::Loggable for Confidence {
         Self: 'a,
     {
         rerun::Float32::to_arrow_opt(data.into_iter().map(|opt| opt.map(Into::into).map(|c| c.0)))
+    }
+}
+
+impl rerun::Component for Confidence {
+    #[inline]
+    fn name() -> ComponentName {
+        "user.Confidence".into()
     }
 }
 

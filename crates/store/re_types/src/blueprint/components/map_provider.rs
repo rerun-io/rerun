@@ -85,13 +85,6 @@ impl std::fmt::Display for MapProvider {
 ::re_types_core::macros::impl_into_cow!(MapProvider);
 
 impl ::re_types_core::Loggable for MapProvider {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.components.MapProvider".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
@@ -165,5 +158,12 @@ impl ::re_types_core::Loggable for MapProvider {
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.blueprint.components.MapProvider")?)
+    }
+}
+
+impl ::re_types_core::Component for MapProvider {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.MapProvider".into()
     }
 }

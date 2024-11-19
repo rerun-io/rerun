@@ -440,7 +440,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
             let view_ctx = view.bundle_context_with_state(ctx, view_state);
             view_components_defaults_section_ui(&view_ctx, ui, view);
 
-            visible_time_range_ui_for_view(ctx, ui, view, view_state);
+            visible_time_range_ui_for_view(ctx, ui, view, view_class, view_state);
         }
     }
 }
@@ -1185,7 +1185,7 @@ fn visible_interactive_toggle_ui(
     data_result: &DataResult,
 ) {
     use re_types::blueprint::components::Visible;
-    use re_types::Loggable as _;
+    use re_types::Component as _;
 
     {
         let visible_before = data_result.is_visible(ctx.viewer_ctx);

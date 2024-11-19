@@ -67,13 +67,6 @@ impl std::ops::DerefMut for TensorHeightDimension {
 ::re_types_core::macros::impl_into_cow!(TensorHeightDimension);
 
 impl ::re_types_core::Loggable for TensorHeightDimension {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.TensorHeightDimension".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::TensorDimensionSelection::arrow_datatype()
@@ -101,5 +94,12 @@ impl ::re_types_core::Loggable for TensorHeightDimension {
     {
         crate::datatypes::TensorDimensionSelection::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+    }
+}
+
+impl ::re_types_core::Component for TensorHeightDimension {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.TensorHeightDimension".into()
     }
 }

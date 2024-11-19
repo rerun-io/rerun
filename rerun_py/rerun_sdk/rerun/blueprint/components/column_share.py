@@ -11,7 +11,7 @@ from ..._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["ColumnShare", "ColumnShareBatch", "ColumnShareType"]
+__all__ = ["ColumnShare", "ColumnShareBatch"]
 
 
 class ColumnShare(datatypes.Float32, ComponentMixin):
@@ -24,12 +24,8 @@ class ColumnShare(datatypes.Float32, ComponentMixin):
     pass
 
 
-class ColumnShareType(datatypes.Float32Type):
-    _TYPE_NAME: str = "rerun.blueprint.components.ColumnShare"
-
-
 class ColumnShareBatch(datatypes.Float32Batch, ComponentBatchMixin):
-    _ARROW_TYPE = ColumnShareType()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.ColumnShare"
 
 
 # This is patched in late to avoid circular dependencies.

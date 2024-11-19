@@ -71,13 +71,6 @@ impl std::ops::DerefMut for Scale3D {
 ::re_types_core::macros::impl_into_cow!(Scale3D);
 
 impl ::re_types_core::Loggable for Scale3D {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.Scale3D".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Vec3D::arrow_datatype()
@@ -113,5 +106,12 @@ impl ::re_types_core::Loggable for Scale3D {
         Self: Sized,
     {
         crate::datatypes::Vec3D::from_arrow(arrow_data).map(bytemuck::cast_vec)
+    }
+}
+
+impl ::re_types_core::Component for Scale3D {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.Scale3D".into()
     }
 }

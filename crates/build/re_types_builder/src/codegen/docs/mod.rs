@@ -381,7 +381,9 @@ fn list_links(is_unreleased: bool, page: &mut String, object: &Object) {
 
         putln!(
             page,
-            " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/latest/rerun/{}/{}.{}.html{speculative_marker})",
+            // TODO(#8165): docs.rs/rerun is broken right now
+            // " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/latest/rerun/{}/{}.{}.html{speculative_marker})",
+            " * 🦀 [Rust API docs for `{}`](https://ref.rerun.io/docs/rust/stable/rerun/{}/{}.{}.html{speculative_marker})",
             object.name,
             object.kind.plural_snake_case(),
             if object.is_struct() { "struct" } else { "enum" },

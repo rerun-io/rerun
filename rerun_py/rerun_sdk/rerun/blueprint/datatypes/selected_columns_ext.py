@@ -76,9 +76,7 @@ class SelectedColumnsExt:
             offsets=_compute_offsets(d.time_columns for d in data),
             values=Utf8Batch(
                 list(itertools.chain.from_iterable(d.time_columns for d in data)),
-            )
-            .as_arrow_array()
-            .storage,
+            ).as_arrow_array(),
             type=data_type.field(0).type,
         )
 
@@ -86,9 +84,7 @@ class SelectedColumnsExt:
             offsets=_compute_offsets(d.component_columns for d in data),
             values=ComponentColumnSelectorBatch(
                 list(itertools.chain.from_iterable(d.component_columns for d in data)),
-            )
-            .as_arrow_array()
-            .storage,  # type: ignore[misc, arg-type]
+            ).as_arrow_array(),  # type: ignore[misc, arg-type]
             type=data_type.field(1).type,
         )
 

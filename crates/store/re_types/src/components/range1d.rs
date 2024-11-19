@@ -67,13 +67,6 @@ impl std::ops::DerefMut for Range1D {
 ::re_types_core::macros::impl_into_cow!(Range1D);
 
 impl ::re_types_core::Loggable for Range1D {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.Range1D".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Range1D::arrow_datatype()
@@ -109,5 +102,12 @@ impl ::re_types_core::Loggable for Range1D {
         Self: Sized,
     {
         crate::datatypes::Range1D::from_arrow(arrow_data).map(bytemuck::cast_vec)
+    }
+}
+
+impl ::re_types_core::Component for Range1D {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.Range1D".into()
     }
 }

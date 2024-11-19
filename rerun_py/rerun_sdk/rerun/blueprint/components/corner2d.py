@@ -11,11 +11,10 @@ import pyarrow as pa
 
 from ..._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
 )
 
-__all__ = ["Corner2D", "Corner2DArrayLike", "Corner2DBatch", "Corner2DLike", "Corner2DType"]
+__all__ = ["Corner2D", "Corner2DArrayLike", "Corner2DBatch", "Corner2DLike"]
 
 
 from enum import Enum
@@ -65,15 +64,9 @@ Corner2DLike = Union[
 Corner2DArrayLike = Union[Corner2DLike, Sequence[Corner2DLike]]
 
 
-class Corner2DType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.blueprint.components.Corner2D"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
-
-
 class Corner2DBatch(BaseBatch[Corner2DArrayLike], ComponentBatchMixin):
-    _ARROW_TYPE = Corner2DType()
+    _ARROW_DATATYPE = pa.uint8()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.Corner2D"
 
     @staticmethod
     def _native_to_pa_array(data: Corner2DArrayLike, data_type: pa.DataType) -> pa.Array:

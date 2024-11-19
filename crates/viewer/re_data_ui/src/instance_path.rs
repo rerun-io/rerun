@@ -8,7 +8,7 @@ use re_types::{
     archetypes, components,
     datatypes::{ChannelDatatype, ColorModel},
     image::ImageKind,
-    static_assert_struct_has_fields, Archetype, ComponentName, Loggable,
+    static_assert_struct_has_fields, Archetype, Component, ComponentName,
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{

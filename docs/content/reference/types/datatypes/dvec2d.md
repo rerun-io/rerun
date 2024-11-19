@@ -14,7 +14,7 @@ FixedSizeList<2, float64>
 ## API reference links
  * 🌊 [C++ API docs for `DVec2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1DVec2D.html)
  * 🐍 [Python API docs for `DVec2D`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.DVec2D)
- * 🦀 [Rust API docs for `DVec2D`](https://docs.rs/rerun/latest/rerun/datatypes/struct.DVec2D.html)
+ * 🦀 [Rust API docs for `DVec2D`](https://ref.rerun.io/docs/rust/stable/rerun/datatypes/struct.DVec2D.html)
 
 
 ## Used by

@@ -11,7 +11,7 @@ from ..._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["ApplyLatestAt", "ApplyLatestAtBatch", "ApplyLatestAtType"]
+__all__ = ["ApplyLatestAt", "ApplyLatestAtBatch"]
 
 
 class ApplyLatestAt(datatypes.Bool, ComponentMixin):
@@ -24,12 +24,8 @@ class ApplyLatestAt(datatypes.Bool, ComponentMixin):
     pass
 
 
-class ApplyLatestAtType(datatypes.BoolType):
-    _TYPE_NAME: str = "rerun.blueprint.components.ApplyLatestAt"
-
-
 class ApplyLatestAtBatch(datatypes.BoolBatch, ComponentBatchMixin):
-    _ARROW_TYPE = ApplyLatestAtType()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.ApplyLatestAt"
 
 
 # This is patched in late to avoid circular dependencies.

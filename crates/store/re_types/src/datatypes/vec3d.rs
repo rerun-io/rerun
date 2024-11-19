@@ -52,13 +52,6 @@ impl From<Vec3D> for [f32; 3usize] {
 ::re_types_core::macros::impl_into_cow!(Vec3D);
 
 impl ::re_types_core::Loggable for Vec3D {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.Vec3D".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

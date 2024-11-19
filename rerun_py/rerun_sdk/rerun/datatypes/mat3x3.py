@@ -14,14 +14,13 @@ from attrs import define, field
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .._converters import (
     to_np_float32,
 )
 from .mat3x3_ext import Mat3x3Ext
 
-__all__ = ["Mat3x3", "Mat3x3ArrayLike", "Mat3x3Batch", "Mat3x3Like", "Mat3x3Type"]
+__all__ = ["Mat3x3", "Mat3x3ArrayLike", "Mat3x3Batch", "Mat3x3Like"]
 
 
 @define(init=False)
@@ -81,17 +80,8 @@ else:
 Mat3x3ArrayLike = Union[Mat3x3, Sequence[Mat3x3Like], npt.ArrayLike]
 
 
-class Mat3x3Type(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.Mat3x3"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self, pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 9), self._TYPE_NAME
-        )
-
-
 class Mat3x3Batch(BaseBatch[Mat3x3ArrayLike]):
-    _ARROW_TYPE = Mat3x3Type()
+    _ARROW_DATATYPE = pa.list_(pa.field("item", pa.float32(), nullable=False, metadata={}), 9)
 
     @staticmethod
     def _native_to_pa_array(data: Mat3x3ArrayLike, data_type: pa.DataType) -> pa.Array:

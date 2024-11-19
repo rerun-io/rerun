@@ -3,7 +3,7 @@ use std::iter;
 use re_types::{
     archetypes::Ellipsoids3D,
     components::{ClassId, Color, FillMode, HalfSize3D, Radius, ShowLabels, Text},
-    ArrowString, Loggable as _,
+    ArrowString, Component as _,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,

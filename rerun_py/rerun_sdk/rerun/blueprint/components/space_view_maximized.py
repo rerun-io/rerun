@@ -11,7 +11,7 @@ from ..._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["SpaceViewMaximized", "SpaceViewMaximizedBatch", "SpaceViewMaximizedType"]
+__all__ = ["SpaceViewMaximized", "SpaceViewMaximizedBatch"]
 
 
 class SpaceViewMaximized(datatypes.Uuid, ComponentMixin):
@@ -24,12 +24,8 @@ class SpaceViewMaximized(datatypes.Uuid, ComponentMixin):
     pass
 
 
-class SpaceViewMaximizedType(datatypes.UuidType):
-    _TYPE_NAME: str = "rerun.blueprint.components.SpaceViewMaximized"
-
-
 class SpaceViewMaximizedBatch(datatypes.UuidBatch, ComponentBatchMixin):
-    _ARROW_TYPE = SpaceViewMaximizedType()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.SpaceViewMaximized"
 
 
 # This is patched in late to avoid circular dependencies.

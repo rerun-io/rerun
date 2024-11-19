@@ -26,7 +26,7 @@ In order to display a video, you also need to log a [`archetypes.VideoFrameRefer
 ## API reference links
  * 🌊 [C++ API docs for `AssetVideo`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1AssetVideo.html)
  * 🐍 [Python API docs for `AssetVideo`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.AssetVideo)
- * 🦀 [Rust API docs for `AssetVideo`](https://docs.rs/rerun/latest/rerun/archetypes/struct.AssetVideo.html)
+ * 🦀 [Rust API docs for `AssetVideo`](https://ref.rerun.io/docs/rust/stable/rerun/archetypes/struct.AssetVideo.html)
 
 ## Examples
 
