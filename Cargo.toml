@@ -22,7 +22,7 @@ authors = ["rerun.io <opensource@rerun.io>"]
 edition = "2021"
 homepage = "https://rerun.io"
 include = [
-  "../../Cargo.lock",
+  "../../Cargo.lock",     # So that users can pass `--locked` to `cargo install rerun-cli`
   "../../LICENSE-APACHE",
   "../../LICENSE-MIT",
   "**/*.rs",
