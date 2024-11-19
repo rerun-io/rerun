@@ -218,21 +218,21 @@ fn ffmpeg_path_status_ui(ui: &mut Ui, app_options: &AppOptions) {
         match res {
             Ok(version) => {
                 if version.is_compatible() {
-                    ui.success_label(&format!("FFmpeg found (version {version})"));
+                    ui.success_label(format!("FFmpeg found (version {version})"));
                 } else {
-                    ui.error_label(&format!("Incompatible FFmpeg version: {version}"));
+                    ui.error_label(format!("Incompatible FFmpeg version: {version}"));
                 }
             }
             Err(FFmpegVersionParseError::ParseVersion { raw_version }) => {
                 // We make this one a warning instead of an error because version parsing is flaky, and
                 // it might end up still working.
-                ui.warning_label(&format!(
+                ui.warning_label(format!(
                     "FFmpeg binary found but unable to parse version: {raw_version}"
                 ));
             }
 
             Err(err) => {
-                ui.error_label(&format!("Unable to check FFmpeg version: {err}"));
+                ui.error_label(format!("Unable to check FFmpeg version: {err}"));
             }
         }
     };

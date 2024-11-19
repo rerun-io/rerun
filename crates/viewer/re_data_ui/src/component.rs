@@ -81,7 +81,7 @@ impl<'a> DataUi for ComponentPathLatestAtResults<'a> {
                         *component_name,
                     );
                 if temporal_message_count > 0 {
-                    ui.error_label(&format!(
+                    ui.error_label(format!(
                         "Static component has {} event{} logged on timelines",
                         temporal_message_count,
                         if temporal_message_count > 1 { "s" } else { "" }

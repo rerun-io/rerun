@@ -178,7 +178,7 @@ pub fn show_zoomed_image_region(
         interaction_id,
         center_texel,
     ) {
-        ui.error_with_details_on_hover(&err.to_string());
+        ui.error_with_details_on_hover(err.to_string());
     }
 }
 

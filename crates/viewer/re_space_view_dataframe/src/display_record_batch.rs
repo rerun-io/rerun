@@ -254,7 +254,7 @@ impl DisplayColumn {
                             ui.label(timeline.typ().format(timestamp, ctx.app_options.time_zone));
                         }
                         Err(err) => {
-                            ui.error_with_details_on_hover(&err.to_string());
+                            ui.error_with_details_on_hover(err.to_string());
                         }
                     }
                 } else {
