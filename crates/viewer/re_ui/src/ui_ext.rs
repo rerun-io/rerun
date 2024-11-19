@@ -60,36 +60,38 @@ pub trait UiExt {
     /// Shows a success label with a large border.
     ///
     /// If you don't want a border, use [`crate::ContextExt::success_text`].
-    fn success_label(&mut self, success_text: &str) -> egui::Response {
+    fn success_label(&mut self, success_text: impl Into<String>) -> egui::Response {
         let ui = self.ui_mut();
-        notification_label(ui, SUCCESS_COLOR, "✅", success_text, success_text)
+        let success_text = success_text.into();
+        notification_label(ui, SUCCESS_COLOR, "✅", &success_text, &success_text)
     }
 
     /// Shows a warning label with a large border.
     ///
     /// If you don't want a border, use [`crate::ContextExt::warning_text`].
-    fn warning_label(&mut self, warning_text: &str) -> egui::Response {
+    fn warning_label(&mut self, warning_text: impl Into<String>) -> egui::Response {
         let ui = self.ui_mut();
+        let warning_text = warning_text.into();
         notification_label(
             ui,
             ui.style().visuals.warn_fg_color,
             "⚠",
-            warning_text,
-            warning_text,
+            &warning_text,
+            &warning_text,
         )
     }
 
     /// Shows a small error label with the given text on hover and copies the text to the clipboard on click with a large border.
     ///
     /// This has a large border! If you don't want a border, use [`crate::ContextExt::error_text`].
-    fn error_with_details_on_hover(&mut self, error_text: &str) -> egui::Response {
+    fn error_with_details_on_hover(&mut self, error_text: impl Into<String>) -> egui::Response {
         let ui = self.ui_mut();
         notification_label(
             ui,
             ui.style().visuals.error_fg_color,
             "⚠",
             "Error",
-            error_text,
+            &error_text.into(),
         )
     }
 
@@ -103,14 +105,15 @@ pub trait UiExt {
     /// Otherwise, use [`Self::error_with_details_on_hover`].
     ///
     /// This has a large border! If you don't want a border, use [`crate::ContextExt::error_text`].
-    fn error_label(&mut self, error_text: &str) -> egui::Response {
+    fn error_label(&mut self, error_text: impl Into<String>) -> egui::Response {
         let ui = self.ui_mut();
+        let error_text = error_text.into();
         notification_label(
             ui,
             ui.style().visuals.error_fg_color,
             "⚠",
-            error_text,
-            error_text,
+            &error_text,
+            &error_text,
         )
     }
 

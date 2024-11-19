@@ -47,7 +47,7 @@ impl DataUi for ComponentPath {
                     ));
                 }
             } else {
-                ui.error_label(&format!("Unknown component path: {self}"));
+                ui.error_label(format!("Unknown component path: {self}"));
             }
         }
     }
