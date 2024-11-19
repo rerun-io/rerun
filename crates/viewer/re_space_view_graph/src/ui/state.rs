@@ -143,7 +143,11 @@ impl LayoutState {
                 mut layout,
                 mut provider,
             } => match provider.tick(&mut layout) {
-                true => Self::Finished { timestamp, layout, _provider: provider },
+                true => Self::Finished {
+                    timestamp,
+                    layout,
+                    _provider: provider,
+                },
                 false => Self::InProgress {
                     timestamp,
                     layout,

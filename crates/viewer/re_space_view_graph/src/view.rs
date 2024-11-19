@@ -1,5 +1,3 @@
-use egui::{self, emath::TSTransform};
-
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
 use re_types::{
@@ -170,10 +168,8 @@ impl SpaceViewClass for GraphSpaceView {
 
                 // Draw explicit nodes.
                 for node in graph.nodes_explicit() {
-                    let pos = layout
-                        .get(&node.index)
-                        .unwrap_or(egui::Rect::ZERO); // TODO(grtlr): sometimes there just isn't any data.
-                        // .expect("explicit node should be in layout");
+                    let pos = layout.get(&node.index).unwrap_or(egui::Rect::ZERO); // TODO(grtlr): sometimes there just isn't any data.
+                                                                                   // .expect("explicit node should be in layout");
                     let response = scene.explicit_node(pos.min, node);
                     entity_rect = entity_rect.union(response.rect);
                     layout.update(&node.index, response.rect);
@@ -181,10 +177,8 @@ impl SpaceViewClass for GraphSpaceView {
 
                 // Draw implicit nodes.
                 for node in graph.nodes_implicit() {
-                    let current = layout
-                        .get(&node.index)
-                        .unwrap_or(egui::Rect::ZERO); // TODO(grtlr): sometimes there just isn't any data.
-                        // .expect("implicit node should be in layout");
+                    let current = layout.get(&node.index).unwrap_or(egui::Rect::ZERO); // TODO(grtlr): sometimes there just isn't any data.
+                                                                                       // .expect("implicit node should be in layout");
                     let response = scene.implicit_node(current.min, node);
                     entity_rect = entity_rect.union(response.rect);
                     layout.update(&node.index, response.rect);
