@@ -117,7 +117,7 @@ impl LayoutState {
 
     /// A simple state machine that keeps track of the different stages and if the layout needs to be recomputed.
     fn update<'a>(
-        mut self,
+        self,
         requested: Timestamp,
         graphs: impl Iterator<Item = &'a Graph<'a>> + Clone,
     ) -> Self {

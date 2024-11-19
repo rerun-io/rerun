@@ -4,7 +4,7 @@ use re_space_view::{DataResultQuery, RangeResultsExt};
 use re_types::{
     self, archetypes,
     components::{self, GraphEdge, GraphNode},
-    Loggable as _,
+    Component as _,
 };
 use re_viewer_context::{
     self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext, ViewContextCollection,

@@ -7,7 +7,7 @@ use re_types::datatypes::Float32;
 use re_types::{
     self, archetypes,
     components::{self},
-    ArrowString, Loggable as _,
+    ArrowString, Component as _,
 };
 use re_viewer_context::{
     self, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,
