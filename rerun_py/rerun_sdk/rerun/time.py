@@ -32,7 +32,11 @@ def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream |
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    bindings.set_time_sequence(timeline, sequence, recording=recording.to_native())
+    bindings.set_time_sequence(
+        timeline,
+        sequence,
+        recording=recording.to_native() if recording is not None else None,
+    )
 
 
 def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream | None = None) -> None:
@@ -68,7 +72,11 @@ def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream |
 
     """
 
-    bindings.set_time_seconds(timeline, seconds, recording=recording.to_native())
+    bindings.set_time_seconds(
+        timeline,
+        seconds,
+        recording=recording.to_native() if recording is not None else None,
+    )
 
 
 def set_time_nanos(timeline: str, nanos: int, recording: RecordingStream | None = None) -> None:
@@ -104,7 +112,11 @@ def set_time_nanos(timeline: str, nanos: int, recording: RecordingStream | None 
 
     """
 
-    bindings.set_time_nanos(timeline, nanos, recording=recording.to_native())
+    bindings.set_time_nanos(
+        timeline,
+        nanos,
+        recording=recording.to_native() if recording is not None else None,
+    )
 
 
 def disable_timeline(timeline: str, recording: RecordingStream | None = None) -> None:
@@ -122,7 +134,10 @@ def disable_timeline(timeline: str, recording: RecordingStream | None = None) ->
 
     """
 
-    bindings.disable_timeline(timeline, recording=recording.to_native())
+    bindings.disable_timeline(
+        timeline,
+        recording=recording.to_native() if recording is not None else None,
+    )
 
 
 def reset_time(recording: RecordingStream | None = None) -> None:
@@ -143,4 +158,6 @@ def reset_time(recording: RecordingStream | None = None) -> None:
 
     """
 
-    bindings.reset_time(recording=recording.to_native())
+    bindings.reset_time(
+        recording=recording.to_native() if recording is not None else None,
+    )
