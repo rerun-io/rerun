@@ -52,12 +52,16 @@ X = Fore.RESET
 def cargo(
     args: str,
     *,
+    cargo_version: str | None = None,
     cwd: str | Path | None = None,
     env: dict[str, Any] = {},
     dry_run: bool = False,
     capture: bool = False,
 ) -> Any:
-    cmd = [CARGO_PATH] + args.split()
+    if cargo_version is None:
+        cmd = [CARGO_PATH] + args.split()
+    else:
+        cmd = [CARGO_PATH, f"+{cargo_version}"] + args.split()
     # print(f"> {subprocess.list2cmdline(cmd)}")
     if not dry_run:
         stderr = subprocess.STDOUT if capture else None
@@ -430,7 +434,16 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
     while True:
         try:
             # We added --locked here hoping that `cargo publish` would use the included `Cargo.lock` file, but it doesn't.
-            cargo(f"publish --quiet --locked --token {token}", cwd=crate.path, env=env, dry_run=False, capture=True)
+            # We added `cargo_version="1.80.0"` because some dependency had MSRV 1.80 and that caused `cargo publish` to fail.
+            # TODO(#8174): remoove the locked cargo_version once we update MSRC to 1.80.0
+            cargo(
+                f"publish --quiet --locked --token {token}",
+                cargo_version="1.80.0",
+                cwd=crate.path,
+                env=env,
+                dry_run=False,
+                capture=True,
+            )
             print(f"{G}Published{X} {B}{name}{X}@{B}{version}{X}")
             break
         except subprocess.CalledProcessError as e:
