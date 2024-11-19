@@ -105,7 +105,7 @@ pub fn run(args: &Args) -> anyhow::Result<()> {
         }
     }
 
-    let entity_offset_x = 400.0;
+    let entity_offset_x = 200.0;
 
     for level in levels_sorted {
         if !level.nodes.is_empty() {
