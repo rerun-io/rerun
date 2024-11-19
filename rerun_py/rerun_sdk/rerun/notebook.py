@@ -190,6 +190,6 @@ def notebook_show(
         width=width,
         height=height,
         blueprint=blueprint,
-        recording=recording,
+        recording=recording,  # NOLINT
     )
     viewer.display()

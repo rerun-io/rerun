@@ -69,7 +69,10 @@ def connect(
     )
 
     return connect_tcp(
-        addr, flush_timeout_sec=flush_timeout_sec, default_blueprint=default_blueprint, recording=recording
+        addr,
+        flush_timeout_sec=flush_timeout_sec,
+        default_blueprint=default_blueprint,
+        recording=recording,  # NOLINT
     )
 
 
@@ -111,7 +114,7 @@ def connect_tcp(
         logging.warning("Rerun is disabled - connect() call ignored")
         return
 
-    application_id = get_application_id(recording=recording)
+    application_id = get_application_id(recording=recording)  # NOLINT
     if application_id is None:
         raise ValueError(
             "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
@@ -124,10 +127,11 @@ def connect_tcp(
             application_id=application_id, blueprint=default_blueprint
         ).storage
 
-    recording = RecordingStream.to_native(recording)
-
     bindings.connect_tcp(
-        addr=addr, flush_timeout_sec=flush_timeout_sec, default_blueprint=blueprint_storage, recording=recording
+        addr=addr,
+        flush_timeout_sec=flush_timeout_sec,
+        default_blueprint=blueprint_storage,
+        recording=RecordingStream.to_native(recording),
     )
 
 
@@ -163,7 +167,7 @@ def save(
         logging.warning("Rerun is disabled - save() call ignored. You must call rerun.init before saving a recording.")
         return
 
-    application_id = get_application_id(recording=recording)
+    application_id = get_application_id(recording=recording)  # NOLINT
     if application_id is None:
         raise ValueError(
             "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
@@ -176,9 +180,7 @@ def save(
             application_id=application_id, blueprint=default_blueprint
         ).storage
 
-    recording = RecordingStream.to_native(recording)
-
-    bindings.save(path=str(path), default_blueprint=blueprint_storage, recording=recording)
+    bindings.save(path=str(path), default_blueprint=blueprint_storage, recording=RecordingStream.to_native(recording))
 
 
 def stdout(default_blueprint: BlueprintLike | None = None, recording: RecordingStream | None = None) -> None:
@@ -210,7 +212,7 @@ def stdout(default_blueprint: BlueprintLike | None = None, recording: RecordingS
         logging.warning("Rerun is disabled - save() call ignored. You must call rerun.init before saving a recording.")
         return
 
-    application_id = get_application_id(recording=recording)
+    application_id = get_application_id(recording=recording)  # NOLINT
     if application_id is None:
         raise ValueError(
             "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
@@ -223,8 +225,7 @@ def stdout(default_blueprint: BlueprintLike | None = None, recording: RecordingS
             application_id=application_id, blueprint=default_blueprint
         ).storage
 
-    recording = RecordingStream.to_native(recording)
-    bindings.stdout(default_blueprint=blueprint_storage, recording=recording)
+    bindings.stdout(default_blueprint=blueprint_storage, recording=RecordingStream.to_native(recording))
 
 
 def disconnect(recording: RecordingStream | None = None) -> None:
@@ -243,8 +244,7 @@ def disconnect(recording: RecordingStream | None = None) -> None:
 
     """
 
-    recording = RecordingStream.to_native(recording)
-    bindings.disconnect(recording=recording)
+    bindings.disconnect(recording=RecordingStream.to_native(recording))
 
 
 @deprecated(
@@ -309,7 +309,7 @@ def serve(
         web_port=web_port,
         ws_port=ws_port,
         default_blueprint=default_blueprint,
-        recording=recording,
+        recording=recording,  # NOLINT
         server_memory_limit=server_memory_limit,
     )
 
@@ -362,7 +362,7 @@ def serve_web(
         logging.warning("Rerun is disabled - serve() call ignored")
         return
 
-    application_id = get_application_id(recording=recording)
+    application_id = get_application_id(recording=recording)  # NOLINT
     if application_id is None:
         raise ValueError(
             "No application id found. You must call rerun.init before connecting to a viewer, or provide a recording."
@@ -375,7 +375,6 @@ def serve_web(
             application_id=application_id, blueprint=default_blueprint
         ).storage
 
-    recording = RecordingStream.to_native(recording)
     # TODO(#5531): keep static data around.
     bindings.serve_web(
         open_browser,
@@ -383,7 +382,7 @@ def serve_web(
         ws_port,
         server_memory_limit=server_memory_limit,
         default_blueprint=blueprint_storage,
-        recording=recording,
+        recording=RecordingStream.to_native(recording),
     )
 
 
@@ -417,16 +416,16 @@ def send_blueprint(
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    application_id = get_application_id(recording=recording)
+    application_id = get_application_id(recording=recording)  # NOLINT
 
     if application_id is None:
         raise ValueError("No application id found. You must call rerun.init before sending a blueprint.")
 
-    recording = RecordingStream.to_native(recording)
-
     blueprint_storage = create_in_memory_blueprint(application_id=application_id, blueprint=blueprint).storage
 
-    bindings.send_blueprint(blueprint_storage, make_active, make_default, recording=recording)
+    bindings.send_blueprint(
+        blueprint_storage, make_active, make_default, recording=RecordingStream.to_native(recording)
+    )
 
 
 def spawn(
@@ -477,4 +476,8 @@ def spawn(
     _spawn_viewer(port=port, memory_limit=memory_limit, hide_welcome_screen=hide_welcome_screen)
 
     if connect:
-        connect_tcp(f"127.0.0.1:{port}", recording=recording, default_blueprint=default_blueprint)
+        connect_tcp(
+            f"127.0.0.1:{port}",
+            recording=recording,  # NOLINT
+            default_blueprint=default_blueprint,
+        )

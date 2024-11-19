@@ -154,7 +154,7 @@ def new_recording(
     if spawn:
         from rerun.sinks import spawn as _spawn
 
-        _spawn(recording=recording)
+        _spawn(recording=recording)  # NOLINT
 
     return recording
 
@@ -271,7 +271,7 @@ class RecordingStream:
         #
         # See: https://github.com/rerun-io/rerun/issues/6223 for context on why this is necessary.
         if recording is not None and not recording.is_forked_child():
-            bindings.flush(blocking=False, recording=recording)
+            bindings.flush(blocking=False, recording=recording)  # NOLINT
 
 
 def binary_stream(recording: RecordingStream | None = None) -> BinaryStream:
@@ -307,9 +307,7 @@ def binary_stream(recording: RecordingStream | None = None) -> BinaryStream:
         An object that can be used to flush or read the data.
 
     """
-
-    recording = RecordingStream.to_native(recording)
-    return BinaryStream(bindings.binary_stream(recording=recording))
+    return BinaryStream(bindings.binary_stream(recording=RecordingStream.to_native(recording)))
 
 
 class BinaryStream:

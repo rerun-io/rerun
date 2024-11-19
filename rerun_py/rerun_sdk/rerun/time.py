@@ -32,8 +32,7 @@ def set_time_sequence(timeline: str, sequence: int, recording: RecordingStream |
         See also: [`rerun.init`][], [`rerun.set_global_data_recording`][].
 
     """
-    recording = RecordingStream.to_native(recording)
-    bindings.set_time_sequence(timeline, sequence, recording=recording)
+    bindings.set_time_sequence(timeline, sequence, recording=RecordingStream.to_native(recording))
 
 
 def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream | None = None) -> None:
@@ -69,8 +68,7 @@ def set_time_seconds(timeline: str, seconds: float, recording: RecordingStream |
 
     """
 
-    recording = RecordingStream.to_native(recording)
-    bindings.set_time_seconds(timeline, seconds, recording=recording)
+    bindings.set_time_seconds(timeline, seconds, recording=RecordingStream.to_native(recording))
 
 
 def set_time_nanos(timeline: str, nanos: int, recording: RecordingStream | None = None) -> None:
@@ -106,9 +104,7 @@ def set_time_nanos(timeline: str, nanos: int, recording: RecordingStream | None 
 
     """
 
-    recording = RecordingStream.to_native(recording)
-
-    bindings.set_time_nanos(timeline, nanos, recording=recording)
+    bindings.set_time_nanos(timeline, nanos, recording=RecordingStream.to_native(recording))
 
 
 def disable_timeline(timeline: str, recording: RecordingStream | None = None) -> None:
@@ -126,9 +122,7 @@ def disable_timeline(timeline: str, recording: RecordingStream | None = None) ->
 
     """
 
-    recording = RecordingStream.to_native(recording)
-
-    bindings.disable_timeline(timeline, recording=recording)
+    bindings.disable_timeline(timeline, recording=RecordingStream.to_native(recording))
 
 
 def reset_time(recording: RecordingStream | None = None) -> None:
@@ -149,6 +143,4 @@ def reset_time(recording: RecordingStream | None = None) -> None:
 
     """
 
-    recording = RecordingStream.to_native(recording)
-
-    bindings.reset_time(recording=recording)
+    bindings.reset_time(recording=RecordingStream.to_native(recording))
