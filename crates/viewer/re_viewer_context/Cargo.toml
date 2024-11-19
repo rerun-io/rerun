@@ -18,10 +18,6 @@ workspace = true
 [package.metadata.docs.rs]
 all-features = true
 
-[package.metadata.cargo-machete]
-ignored = [
-  "zbus", # TODO(#8174): update MSRV to 1.80.
-]
 
 [dependencies]
 re_chunk_store.workspace = true
@@ -71,7 +67,6 @@ strum_macros.workspace = true
 thiserror.workspace = true
 uuid = { workspace = true, features = ["serde", "v4", "js"] }
 wgpu.workspace = true
-zbus = "3"                                                    # TODO(#8174): update MSRV to 1.80. zbus 5 is on msrv 1.80, and so we fail our `cargo publish` step
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
