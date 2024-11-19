@@ -25,90 +25,98 @@ impl App {
             .max_height(desired_icon_height);
 
         ui.menu_image_button(image, |ui| {
-            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend); // no wrapping: make as wide as needed
+            self.rerun_menu_ui(ui, render_state, _store_context);
+        });
+    }
 
-            ui.menu_button("About", |ui| self.about_rerun_ui(ui, render_state));
+    fn rerun_menu_ui(
+        &mut self,
+        ui: &mut egui::Ui,
+        render_state: Option<&egui_wgpu::RenderState>,
+        _store_context: Option<&StoreContext<'_>>,
+    ) {
+        ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+        // no wrapping: make as wide as needed
 
-            ui.add_space(SPACING);
+        ui.menu_button("About", |ui| self.about_rerun_ui(ui, render_state));
 
-            UICommand::ToggleCommandPalette.menu_button_ui(ui, &self.command_sender);
+        ui.add_space(SPACING);
 
-            ui.add_space(SPACING);
+        UICommand::ToggleCommandPalette.menu_button_ui(ui, &self.command_sender);
 
-            UICommand::Open.menu_button_ui(ui, &self.command_sender);
-            UICommand::Import.menu_button_ui(ui, &self.command_sender);
+        ui.add_space(SPACING);
 
-            self.save_buttons_ui(ui, _store_context);
+        UICommand::Open.menu_button_ui(ui, &self.command_sender);
+        UICommand::Import.menu_button_ui(ui, &self.command_sender);
 
-            UICommand::SaveBlueprint.menu_button_ui(ui, &self.command_sender);
+        self.save_buttons_ui(ui, _store_context);
 
-            UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
+        UICommand::SaveBlueprint.menu_button_ui(ui, &self.command_sender);
 
-            ui.add_space(SPACING);
+        UICommand::CloseCurrentRecording.menu_button_ui(ui, &self.command_sender);
 
-            #[cfg(not(target_arch = "wasm32"))]
-            {
-                // On the web the browser controls the zoom
-                let zoom_factor = ui.ctx().zoom_factor();
-                ui.weak(format!("Current zoom: {:.0}%", zoom_factor * 100.0))
-                    .on_hover_text(
-                        "The UI zoom level on top of the operating system's default value",
-                    );
-                UICommand::ZoomIn.menu_button_ui(ui, &self.command_sender);
-                UICommand::ZoomOut.menu_button_ui(ui, &self.command_sender);
-                ui.add_enabled_ui(zoom_factor != 1.0, |ui| {
-                    UICommand::ZoomReset.menu_button_ui(ui, &self.command_sender)
-                });
+        ui.add_space(SPACING);
 
-                UICommand::ToggleFullscreen.menu_button_ui(ui, &self.command_sender);
-
-                ui.add_space(SPACING);
-            }
-
-            {
-                UICommand::ResetViewer.menu_button_ui(ui, &self.command_sender);
-
-                #[cfg(not(target_arch = "wasm32"))]
-                UICommand::OpenProfiler.menu_button_ui(ui, &self.command_sender);
-
-                UICommand::ToggleMemoryPanel.menu_button_ui(ui, &self.command_sender);
-                UICommand::ToggleChunkStoreBrowser.menu_button_ui(ui, &self.command_sender);
-
-                #[cfg(debug_assertions)]
-                UICommand::ToggleEguiDebugPanel.menu_button_ui(ui, &self.command_sender);
-            }
-
-            ui.add_space(SPACING);
-
-            UICommand::Settings.menu_button_ui(ui, &self.command_sender);
-
-            #[cfg(target_arch = "wasm32")]
-            backend_menu_ui(&self.command_sender, ui, frame);
-
-            #[cfg(debug_assertions)]
-            ui.menu_button("Debug", |ui| {
-                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                debug_menu_options_ui(ui, &mut self.state.app_options, &self.command_sender);
-
-                ui.label("egui debug options:");
-                ui.weak(format!(
-                    "pixels_per_point: {:?}",
-                    ui.ctx().pixels_per_point()
-                ));
-                egui_debug_options_ui(ui);
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            // On the web the browser controls the zoom
+            let zoom_factor = ui.ctx().zoom_factor();
+            ui.weak(format!("Current zoom: {:.0}%", zoom_factor * 100.0))
+                .on_hover_text("The UI zoom level on top of the operating system's default value");
+            UICommand::ZoomIn.menu_button_ui(ui, &self.command_sender);
+            UICommand::ZoomOut.menu_button_ui(ui, &self.command_sender);
+            ui.add_enabled_ui(zoom_factor != 1.0, |ui| {
+                UICommand::ZoomReset.menu_button_ui(ui, &self.command_sender)
             });
 
-            ui.add_space(SPACING);
+            UICommand::ToggleFullscreen.menu_button_ui(ui, &self.command_sender);
 
-            UICommand::OpenWebHelp.menu_button_ui(ui, &self.command_sender);
-            UICommand::OpenRerunDiscord.menu_button_ui(ui, &self.command_sender);
+            ui.add_space(SPACING);
+        }
+
+        {
+            UICommand::ResetViewer.menu_button_ui(ui, &self.command_sender);
 
             #[cfg(not(target_arch = "wasm32"))]
-            {
-                ui.add_space(SPACING);
-                UICommand::Quit.menu_button_ui(ui, &self.command_sender);
-            }
+            UICommand::OpenProfiler.menu_button_ui(ui, &self.command_sender);
+
+            UICommand::ToggleMemoryPanel.menu_button_ui(ui, &self.command_sender);
+            UICommand::ToggleChunkStoreBrowser.menu_button_ui(ui, &self.command_sender);
+
+            #[cfg(debug_assertions)]
+            UICommand::ToggleEguiDebugPanel.menu_button_ui(ui, &self.command_sender);
+        }
+
+        ui.add_space(SPACING);
+
+        UICommand::Settings.menu_button_ui(ui, &self.command_sender);
+
+        #[cfg(target_arch = "wasm32")]
+        backend_menu_ui(&self.command_sender, ui, frame);
+
+        #[cfg(debug_assertions)]
+        ui.menu_button("Debug", |ui| {
+            ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
+            debug_menu_options_ui(ui, &mut self.state.app_options, &self.command_sender);
+
+            ui.label("egui debug options:");
+            ui.weak(format!(
+                "pixels_per_point: {:?}",
+                ui.ctx().pixels_per_point()
+            ));
+            egui_debug_options_ui(ui);
         });
+
+        ui.add_space(SPACING);
+
+        UICommand::OpenWebHelp.menu_button_ui(ui, &self.command_sender);
+        UICommand::OpenRerunDiscord.menu_button_ui(ui, &self.command_sender);
+
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            ui.add_space(SPACING);
+            UICommand::Quit.menu_button_ui(ui, &self.command_sender);
+        }
     }
 
     fn about_rerun_ui(&self, ui: &mut egui::Ui, render_state: Option<&egui_wgpu::RenderState>) {
