@@ -142,9 +142,7 @@ def lint_line(
             return "It's 'GitHub', not 'github'"
 
     if re.search(r"[.a-zA-Z]  [a-zA-Z]", line):
-        if (
-            r"\n  " not in line
-        ):  # Allow `\n  `, which happens e.g. when markdown is embeedded in a string
+        if r"\n  " not in line:  # Allow `\n  `, which happens e.g. when markdown is embeedded in a string
             return "Found double space"
 
     if double_the.search(line.lower()):
@@ -244,34 +242,22 @@ def lint_line(
             line,
         ):
             app_id = m.group(2)
-            if (
-                not app_id.startswith("rerun_example_")
-                and not app_id == "<your_app_name>"
-            ):
+            if not app_id.startswith("rerun_example_") and not app_id == "<your_app_name>":
                 return f"All examples should have an app_id starting with 'rerun_example_'. Found '{app_id}'"
 
     # Methods that return Self should usually be marked #[inline] or #[inline(always)] since they indicate a builder.
     if re.search(r"\(mut self.*-> Self", line):
-        if (
-            prev_line_stripped != "#[inline]"
-            and prev_line_stripped != "#[inline(always)]"
-        ):
+        if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
             return "Builder methods impls should be marked #[inline]"
 
     # Deref impls should be marked #[inline] or #[inline(always)].
     if "fn deref(&self)" in line or "fn deref_mut(&mut self)" in line:
-        if (
-            prev_line_stripped != "#[inline]"
-            and prev_line_stripped != "#[inline(always)]"
-        ):
+        if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
             return "Deref/DerefMut impls should be marked #[inline]"
 
     # Deref impls should be marked #[inline] or #[inline(always)].
     if "fn as_ref(&self)" in line or "fn borrow(&self)" in line:
-        if (
-            prev_line_stripped != "#[inline]"
-            and prev_line_stripped != "#[inline(always)]"
-        ):
+        if prev_line_stripped != "#[inline]" and prev_line_stripped != "#[inline(always)]":
             return "as_ref/borrow implementations should be marked #[inline]"
 
     if any(
@@ -443,9 +429,7 @@ def test_lint_line() -> None:
 
 # -----------------------------------------------------------------------------
 
-re_declaration = re.compile(
-    r"^\s*((pub(\(\w*\))? )?(async )?((impl|fn|struct|enum|union|trait|type)\b))"
-)
+re_declaration = re.compile(r"^\s*((pub(\(\w*\))? )?(async )?((impl|fn|struct|enum|union|trait|type)\b))")
 re_attribute = re.compile(r"^\s*\#\[(error|derive|inline)")
 re_docstring = re.compile(r"^\s*///")
 
@@ -465,11 +449,7 @@ def is_missing_blank_line_between(prev_line: str, line: str) -> bool:
         )
 
     """Only for Rust files."""
-    if (
-        re_declaration.match(line)
-        or re_attribute.match(line)
-        or re_docstring.match(line)
-    ):
+    if re_declaration.match(line) or re_attribute.match(line) or re_docstring.match(line):
         line = line.strip()
         prev_line = prev_line.strip()
 
@@ -510,9 +490,7 @@ def lint_vertical_spacing(lines_in: list[str]) -> tuple[list[str], list[str]]:
         line_nr = line_nr + 1
 
         if prev_line is not None and is_missing_blank_line_between(prev_line, line):
-            errors.append(
-                f"{line_nr}: for readability, add newline before `{line.strip()}`"
-            )
+            errors.append(f"{line_nr}: for readability, add newline before `{line.strip()}`")
             lines_out.append("\n")
 
         lines_out.append(line)
@@ -615,9 +593,7 @@ def lint_workspace_deps(lines_in: list[str]) -> tuple[list[str], list[str]]:
         line_nr = line_nr + 1
 
         if re_workspace_dep.search(line):
-            errors.append(
-                f"{line_nr}: Rust examples should never depend on workspace information (`{line.strip()}`)"
-            )
+            errors.append(f"{line_nr}: Rust examples should never depend on workspace information (`{line.strip()}`)")
             lines_out.append("\n")
 
         lines_out.append(line)
@@ -809,9 +785,7 @@ def test_split_words():
 
     for input, expected in test_cases:
         actual = split_words(input)
-        assert (
-            actual == expected
-        ), f"Expected '{input}' to split into {expected}, got {actual}"
+        assert actual == expected, f"Expected '{input}' to split into {expected}, got {actual}"
 
 
 def fix_header_casing(s: str) -> str:
@@ -846,11 +820,7 @@ def fix_header_casing(s: str) -> str:
         if last_punctuation:
             word = word.capitalize()
             last_punctuation = None
-        elif (
-            not inline_code_block
-            and not word.startswith("`")
-            and not word.startswith('"')
-        ):
+        elif not inline_code_block and not word.startswith("`") and not word.startswith('"'):
             try:
                 idx = force_capitalized_as_lower.index(word.lower())
             except ValueError:
@@ -861,9 +831,7 @@ def fix_header_casing(s: str) -> str:
                 word = word[:-1]
             elif idx is not None:
                 word = force_capitalized[idx]
-            elif is_acronym_or_pascal_case(word) or any(
-                c in ("_", "(", ".") for c in word
-            ):
+            elif is_acronym_or_pascal_case(word) or any(c in ("_", "(", ".") for c in word):
                 pass  # acroym, PascalCase, code, …
             elif word.lower() in allow_capitalized_as_lower:
                 pass
@@ -959,9 +927,7 @@ def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[st
             elif not in_frontmatter:
                 new_line = fix_enforced_upper_case(line)
                 if new_line != line:
-                    errors.append(
-                        f"{line_nr}: Certain words should be capitalized. This should be '{new_line}'."
-                    )
+                    errors.append(f"{line_nr}: Certain words should be capitalized. This should be '{new_line}'.")
                     line = new_line
 
             if in_example_readme and not in_metadata:
@@ -979,9 +945,7 @@ def lint_markdown(filepath: str, source: SourceFile) -> tuple[list[str], list[st
 def lint_example_description(filepath: str, fm: Frontmatter) -> list[str]:
     # only applies to examples' readme
 
-    if not filepath.startswith("./examples/python") or not filepath.endswith(
-        "README.md"
-    ):
+    if not filepath.startswith("./examples/python") or not filepath.endswith("README.md"):
         return []
 
     return []
@@ -1072,9 +1036,7 @@ class SourceFile:
             _index_to_line_nr(self.content, end_idx) if end_idx is not None else None,
         )
 
-    def error(
-        self, message: str, *, line_nr: int | None = None, index: int | None = None
-    ) -> str:
+    def error(self, message: str, *, line_nr: int | None = None, index: int | None = None) -> str:
         """Construct an error message. If either `line_nr` or `index` is passed, it's used to indicate a line number."""
         if line_nr is None and index is not None:
             line_nr = _index_to_line_nr(self.content, index)
@@ -1145,11 +1107,7 @@ def lint_file(filepath: str, args: Any) -> int:
         if args.fix:
             source.rewrite(lines_out)
 
-    if (
-        not filepath.startswith("./examples/rust")
-        and filepath != "./Cargo.toml"
-        and filepath.endswith("Cargo.toml")
-    ):
+    if not filepath.startswith("./examples/rust") and filepath != "./Cargo.toml" and filepath.endswith("Cargo.toml"):
         error = lint_workspace_lints(source.content)
 
         if error is not None:
@@ -1191,15 +1149,11 @@ def lint_crate_docs(should_ignore: Callable[[Any], bool]) -> int:
             del listed_crates[crate_name]
 
         if not re.search(r"\b" + crate_name + r"\b", architecture_md):
-            print(
-                f"{architecture_md_file}: missing documentation for crate {crate.name}"
-            )
+            print(f"{architecture_md_file}: missing documentation for crate {crate.name}")
             error_count += 1
 
     for crate_name, line_nr in sorted(listed_crates.items(), key=lambda x: x[1]):
-        print(
-            f"{architecture_md_file}:{line_nr}: crate name {crate_name} does not exist"
-        )
+        print(f"{architecture_md_file}:{line_nr}: crate name {crate_name} does not exist")
         error_count += 1
 
     return error_count
@@ -1298,9 +1252,7 @@ def main() -> None:
         "./rerun_js/web-viewer/re_viewer.js",
     )
 
-    should_ignore = parse_gitignore(
-        ".gitignore"
-    )  # TODO(#6730): parse all .gitignore files, not just top-level
+    should_ignore = parse_gitignore(".gitignore")  # TODO(#6730): parse all .gitignore files, not just top-level
 
     script_dirpath = os.path.dirname(os.path.realpath(__file__))
     root_dirpath = os.path.abspath(f"{script_dirpath}/..")
@@ -1323,9 +1275,7 @@ def main() -> None:
                 extension = filename.split(".")[-1]
                 if extension in extensions:
                     filepath = os.path.join(root, filename)
-                    filepath = os.path.join(
-                        ".", os.path.relpath(filepath, root_dirpath)
-                    )
+                    filepath = os.path.join(".", os.path.relpath(filepath, root_dirpath))
                     filepath = str(filepath).replace("\\", "/")
                     if should_ignore(filepath) or filepath.startswith(exclude_paths):
                         continue
