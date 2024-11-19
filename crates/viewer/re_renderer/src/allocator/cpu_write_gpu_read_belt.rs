@@ -422,7 +422,7 @@ impl Chunk {
 /// * lifetime of returned buffers is independent of the [`CpuWriteGpuReadBelt`] (allows working with several in parallel!)
 /// * use of `re_renderer`'s resource pool
 /// * handles alignment in a defined manner
-///  (see this as of writing open wgpu issue on [Alignment guarantees for mapped buffers](https://github.com/gfx-rs/wgpu/issues/3508))
+///   (see this as of writing open wgpu issue on [Alignment guarantees for mapped buffers](https://github.com/gfx-rs/wgpu/issues/3508))
 pub struct CpuWriteGpuReadBelt {
     /// Minimum size for new buffers.
     chunk_size: u64,

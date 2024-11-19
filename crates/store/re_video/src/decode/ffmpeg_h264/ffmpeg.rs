@@ -364,7 +364,7 @@ impl FFmpegProcessAndListener {
         }
     }
 
-    fn end_of_video(&mut self) {
+    fn end_of_video(&self) {
         // Close stdin. That will let ffmpeg know that it should flush its buffers.
         self.frame_data_tx.send(FFmpegFrameData::Quit).ok();
     }

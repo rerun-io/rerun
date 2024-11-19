@@ -836,7 +836,7 @@ impl IngestionStatistics {
         }
     }
 
-    fn on_new_row_id(&mut self, row_id: RowId) {
+    fn on_new_row_id(&self, row_id: RowId) {
         if let Ok(duration_since_epoch) = web_time::SystemTime::UNIX_EPOCH.elapsed() {
             let nanos_since_epoch = duration_since_epoch.as_nanos() as u64;
 

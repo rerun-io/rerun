@@ -171,7 +171,7 @@ impl App {
         }
     }
 
-    fn save_buttons_ui(&mut self, ui: &mut egui::Ui, store_ctx: Option<&StoreContext<'_>>) {
+    fn save_buttons_ui(&self, ui: &mut egui::Ui, store_ctx: Option<&StoreContext<'_>>) {
         use re_ui::UICommandSender;
 
         let file_save_in_progress = self.background_tasks.is_file_save_in_progress();

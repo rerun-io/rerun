@@ -23,7 +23,7 @@ pub fn to_snake_case(s: &str) -> String {
             .replace("UVec", "uvec")
             .replace("DVec", "dvec")
             .replace("UInt", "uint");
-        *last = rerun_snake.convert(&last);
+        *last = rerun_snake.convert(last.as_str());
     }
     parts.join(".")
 }
@@ -116,7 +116,7 @@ pub fn to_pascal_case(s: &str) -> String {
             .replace("2d", "2D") // NOLINT
             .replace("3d", "3D") // NOLINT
             .replace("4d", "4D");
-        *last = rerun_pascal.convert(&last);
+        *last = rerun_pascal.convert(last.as_str());
     }
     parts.join(".")
 }
@@ -189,7 +189,7 @@ pub fn to_human_case(s: &str) -> String {
 
     let mut parts: Vec<_> = s.split('.').map(ToOwned::to_owned).collect();
     if let Some(last) = parts.last_mut() {
-        *last = rerun_human.convert(&last);
+        *last = rerun_human.convert(last.as_str());
         *last = last
             .replace("Uvec", "UVec")
             .replace("Uint", "UInt")

@@ -391,7 +391,7 @@ impl ChunkStore {
     /// Everytime we encounter a neighbor, it earns points.
     ///
     /// The neighbor with the most points at the end of the process is elected.
-    fn find_and_elect_compaction_candidate(&mut self, chunk: &Arc<Chunk>) -> Option<Arc<Chunk>> {
+    fn find_and_elect_compaction_candidate(&self, chunk: &Arc<Chunk>) -> Option<Arc<Chunk>> {
         re_tracing::profile_function!();
 
         let mut candidates_below_threshold: HashMap<ChunkId, bool> = HashMap::default();

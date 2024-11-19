@@ -101,7 +101,7 @@ impl VideoChunkDecoder {
     /// Returns [`VideoPlayerError::EmptyBuffer`] if the internal buffer is empty,
     /// which it is just after startup or after a call to [`Self::reset`].
     pub fn update_video_texture(
-        &mut self,
+        &self,
         render_ctx: &RenderContext,
         video_texture: &mut VideoTexture,
         presentation_timestamp: Time,
@@ -168,7 +168,7 @@ impl VideoChunkDecoder {
     }
 
     /// Return and clear the latest error that happened during decoding.
-    pub fn take_error(&mut self) -> Option<TimedDecodingError> {
+    pub fn take_error(&self) -> Option<TimedDecodingError> {
         self.decoder_output.lock().error.take()
     }
 }

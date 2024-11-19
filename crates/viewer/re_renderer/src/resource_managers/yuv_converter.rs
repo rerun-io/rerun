@@ -19,6 +19,7 @@ use crate::{
 /// * `YUV` is an analog signal
 /// * `YCbCr` is scaled and offsetted version of YUV, used in digital signals (we denote this as "limited range YUV")
 /// * `YPbPr` is the physical component cabel to transmit `YCbCr`
+///
 /// Actual use in the wild seems to be all over the place.
 /// For instance `OpenCV` uses `YCbCr` when talking about the full range and YUV when talking about
 /// limited range. [Source](https://docs.opencv.org/4.x/de/d25/imgproc_color_conversions.html):
@@ -196,6 +197,7 @@ impl std::fmt::Display for YuvPixelLayout {
 /// * Bt709 & sRGB primaries are practically identical
 /// * Bt601 PAL & Bt709 color primaries are the same (with some slight differences for Bt709 NTSC)
 /// * Bt709 & sRGB transfer function are almost identical (and the difference is widely ignored)
+///
 /// (sources: <https://en.wikipedia.org/wiki/Rec._709>, <https://en.wikipedia.org/wiki/Rec._601>)
 /// …which means for the moment we pretty much only care about the (actually quite) different YUV conversion matrices!
 #[derive(Clone, Copy, Debug)]

@@ -12,7 +12,7 @@ pub struct SelectionHistoryUi {}
 
 impl SelectionHistoryUi {
     pub(crate) fn selection_ui(
-        &mut self,
+        &self,
         ui: &mut egui::Ui,
         blueprint: &ViewportBlueprint,
         history: &mut SelectionHistory,
@@ -23,7 +23,7 @@ impl SelectionHistoryUi {
     }
 
     fn prev_button_ui(
-        &mut self,
+        & self,
         ui: &mut egui::Ui,
         blueprint: &ViewportBlueprint,
         history: &mut SelectionHistory,
@@ -71,7 +71,7 @@ impl SelectionHistoryUi {
     }
 
     fn next_button_ui(
-        &mut self,
+        &self,
         ui: &mut egui::Ui,
         blueprint: &ViewportBlueprint,
         history: &mut SelectionHistory,
@@ -120,7 +120,7 @@ impl SelectionHistoryUi {
 
     #[allow(clippy::unused_self)]
     fn history_item_ui(
-        &mut self,
+        &self,
         blueprint: &ViewportBlueprint,
         ui: &mut egui::Ui,
         index: usize,

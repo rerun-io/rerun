@@ -486,7 +486,7 @@ fn edit_timeline_name(
     value: &mut TimelineName,
 ) -> egui::Response {
     let mut changed = false;
-    let mut combobox_response = egui::ComboBox::from_id_salt(&value)
+    let mut combobox_response = egui::ComboBox::from_id_salt(value.as_str())
         .selected_text(value.as_str())
         .show_ui(ui, |ui| {
             for timeline in ctx.recording().timelines() {
