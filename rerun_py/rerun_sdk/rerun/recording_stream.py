@@ -307,7 +307,7 @@ def binary_stream(recording: RecordingStream | None = None) -> BinaryStream:
         An object that can be used to flush or read the data.
 
     """
-    return BinaryStream(bindings.binary_stream(recording=RecordingStream.to_native(recording)))
+    return BinaryStream(bindings.binary_stream(recording=recording.to_native()))
 
 
 class BinaryStream:
@@ -380,7 +380,7 @@ def is_enabled(
     This can be controlled with the environment variable `RERUN` (e.g. `RERUN=on` or `RERUN=off`).
 
     """
-    return bindings.is_enabled(recording=RecordingStream.to_native(recording))  # type: ignore[no-any-return]
+    return bindings.is_enabled(recording=recording.to_native())  # type: ignore[no-any-return]
 
 
 def get_application_id(
@@ -402,7 +402,7 @@ def get_application_id(
         The application ID that this recording is associated with.
 
     """
-    app_id = bindings.get_application_id(recording=RecordingStream.to_native(recording))
+    app_id = bindings.get_application_id(recording=recording.to_native())
     return str(app_id) if app_id is not None else None
 
 
@@ -434,7 +434,7 @@ def get_recording_id(
         The recording ID that this recording is logging to.
 
     """
-    rec_id = bindings.get_recording_id(recording=RecordingStream.to_native(recording))
+    rec_id = bindings.get_recording_id(recording=recording.to_native())
     return str(rec_id) if rec_id is not None else None
 
 
@@ -467,7 +467,7 @@ def get_data_recording(
         The most appropriate recording to log data to, in the current context, if any.
 
     """
-    result = bindings.get_data_recording(recording=RecordingStream.to_native(recording))
+    result = bindings.get_data_recording(recording=recording.to_native())
     return RecordingStream(result) if result is not None else None
 
 
@@ -495,7 +495,7 @@ def set_global_data_recording(recording: RecordingStream) -> RecordingStream | N
         The newly active global recording.
 
     """
-    result = bindings.set_global_data_recording(RecordingStream.to_native(recording))
+    result = bindings.set_global_data_recording(recording.to_native())
     return RecordingStream(result) if result is not None else None
 
 
@@ -523,7 +523,7 @@ def set_thread_local_data_recording(recording: RecordingStream) -> RecordingStre
         The newly active thread-local recording.
 
     """
-    result = bindings.set_thread_local_data_recording(recording=RecordingStream.to_native(recording))
+    result = bindings.set_thread_local_data_recording(recording=recording.to_native())
     return RecordingStream(result) if result is not None else None
 
 

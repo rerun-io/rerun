@@ -28,7 +28,7 @@ def memory_recording(recording: RecordingStream | None = None) -> MemoryRecordin
 
     """
 
-    return MemoryRecording(bindings.memory_recording(recording=RecordingStream.to_native(recording)))
+    return MemoryRecording(bindings.memory_recording(recording=recording.to_native()))
 
 
 class MemoryRecording:

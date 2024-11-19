@@ -131,7 +131,7 @@ def connect_tcp(
         addr=addr,
         flush_timeout_sec=flush_timeout_sec,
         default_blueprint=blueprint_storage,
-        recording=RecordingStream.to_native(recording),
+        recording=recording.to_native(),
     )
 
 
@@ -180,7 +180,7 @@ def save(
             application_id=application_id, blueprint=default_blueprint
         ).storage
 
-    bindings.save(path=str(path), default_blueprint=blueprint_storage, recording=RecordingStream.to_native(recording))
+    bindings.save(path=str(path), default_blueprint=blueprint_storage, recording=recording.to_native())
 
 
 def stdout(default_blueprint: BlueprintLike | None = None, recording: RecordingStream | None = None) -> None:
@@ -225,7 +225,7 @@ def stdout(default_blueprint: BlueprintLike | None = None, recording: RecordingS
             application_id=application_id, blueprint=default_blueprint
         ).storage
 
-    bindings.stdout(default_blueprint=blueprint_storage, recording=RecordingStream.to_native(recording))
+    bindings.stdout(default_blueprint=blueprint_storage, recording=recording.to_native())
 
 
 def disconnect(recording: RecordingStream | None = None) -> None:
@@ -244,7 +244,7 @@ def disconnect(recording: RecordingStream | None = None) -> None:
 
     """
 
-    bindings.disconnect(recording=RecordingStream.to_native(recording))
+    bindings.disconnect(recording=recording.to_native())
 
 
 @deprecated(
@@ -382,7 +382,7 @@ def serve_web(
         ws_port,
         server_memory_limit=server_memory_limit,
         default_blueprint=blueprint_storage,
-        recording=RecordingStream.to_native(recording),
+        recording=recording.to_native(),
     )
 
 
@@ -423,9 +423,7 @@ def send_blueprint(
 
     blueprint_storage = create_in_memory_blueprint(application_id=application_id, blueprint=blueprint).storage
 
-    bindings.send_blueprint(
-        blueprint_storage, make_active, make_default, recording=RecordingStream.to_native(recording)
-    )
+    bindings.send_blueprint(blueprint_storage, make_active, make_default, recording=recording.to_native())
 
 
 def spawn(
