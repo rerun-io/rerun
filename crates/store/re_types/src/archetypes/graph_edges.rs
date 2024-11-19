@@ -21,6 +21,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Archetype**: A list of edges in a graph.
 ///
 /// By default, edges are undirected.
+///
+/// ⚠️ **This type is experimental and may be removed in future versions**
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GraphEdges {
     /// A list of node IDs.

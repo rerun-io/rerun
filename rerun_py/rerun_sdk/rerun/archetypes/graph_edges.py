@@ -24,6 +24,8 @@ class GraphEdges(Archetype):
     **Archetype**: A list of edges in a graph.
 
     By default, edges are undirected.
+
+    ⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
     """
 
     def __init__(self: Any, edges: datatypes.Utf8PairArrayLike, *, graph_type: components.GraphTypeLike | None = None):

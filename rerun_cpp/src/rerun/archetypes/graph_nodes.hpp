@@ -22,6 +22,8 @@
 
 namespace rerun::archetypes {
     /// **Archetype**: A list of nodes in a graph with optional labels, colors, etc.
+    ///
+    /// ⚠ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
     struct GraphNodes {
         /// A list of node IDs.
         Collection<rerun::components::GraphNode> node_ids;

@@ -1331,11 +1331,12 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.GraphEdge".into(), display_name : "Edges",
-                    docstring_md : "A list of node IDs.", is_required : true, },
-                    ArchetypeFieldReflection { component_name :
+                    docstring_md :
+                    "A list of node IDs.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.GraphType".into(), display_name : "Graph type",
                     docstring_md :
-                    "Specifies if the graph is directed or undirected.\n\nIf no `GraphType` is provided, the graph is assumed to be undirected.",
+                    "Specifies if the graph is directed or undirected.\n\nIf no `GraphType` is provided, the graph is assumed to be undirected.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
                     is_required : false, },
                 ],
             },
@@ -1348,23 +1349,29 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                 fields: vec![
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.GraphNode".into(), display_name : "Node ids",
-                    docstring_md : "A list of node IDs.", is_required : true, },
-                    ArchetypeFieldReflection { component_name :
+                    docstring_md :
+                    "A list of node IDs.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.Position2D".into(), display_name : "Positions",
-                    docstring_md : "Optional center positions of the nodes.", is_required
-                    : false, }, ArchetypeFieldReflection { component_name :
+                    docstring_md :
+                    "Optional center positions of the nodes.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.Color".into(), display_name : "Colors",
-                    docstring_md : "Optional colors for the boxes.", is_required : false,
-                    }, ArchetypeFieldReflection { component_name :
+                    docstring_md :
+                    "Optional colors for the boxes.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.Text".into(), display_name : "Labels", docstring_md
-                    : "Optional text labels for the node.", is_required : false, },
-                    ArchetypeFieldReflection { component_name :
+                    :
+                    "Optional text labels for the node.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.ShowLabels".into(), display_name : "Show labels",
                     docstring_md :
-                    "Optional choice of whether the text labels should be shown by default.",
+                    "Optional choice of whether the text labels should be shown by default.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.Radius".into(), display_name : "Radii",
-                    docstring_md : "Optional radii for nodes.", is_required : false, },
+                    docstring_md :
+                    "Optional radii for nodes.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : false, },
                 ],
             },
         ),

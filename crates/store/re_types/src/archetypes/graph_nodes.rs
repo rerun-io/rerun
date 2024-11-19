@@ -19,6 +19,8 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A list of nodes in a graph with optional labels, colors, etc.
+///
+/// ⚠️ **This type is experimental and may be removed in future versions**
 #[derive(Clone, Debug, PartialEq)]
 pub struct GraphNodes {
     /// A list of node IDs.

@@ -14,7 +14,8 @@ table GraphEdges (
   "attr.docs.category": "Graph",
   "attr.docs.unreleased",
   "attr.docs.view_types": "Graph View",
-  "attr.rust.derive": "PartialEq, Eq"
+  "attr.rust.derive": "PartialEq, Eq",
+  "attr.rerun.experimental"
 ) {
   // --- Required ---
 

@@ -20,7 +20,11 @@ __all__ = ["GraphNodes"]
 
 @define(str=False, repr=False, init=False)
 class GraphNodes(Archetype):
-    """**Archetype**: A list of nodes in a graph with optional labels, colors, etc."""
+    """
+    **Archetype**: A list of nodes in a graph with optional labels, colors, etc.
+
+    ⚠️ **This is an experimental API! It is not fully supported, and is likely to change significantly in future versions.**
+    """
 
     def __init__(
         self: Any,

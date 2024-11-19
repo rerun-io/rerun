@@ -12,7 +12,8 @@ table GraphNodes (
   "attr.docs.category": "Graph",
   "attr.docs.unreleased",
   "attr.docs.view_types": "Graph View",
-  "attr.rust.derive": "PartialEq"
+  "attr.rust.derive": "PartialEq",
+  "attr.rerun.experimental"
 ) {
   // --- Required ---
 
