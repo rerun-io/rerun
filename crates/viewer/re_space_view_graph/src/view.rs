@@ -165,6 +165,9 @@ impl SpaceViewClass for GraphSpaceView {
 
         let (new_world_bounds, response) = viewer.canvas(ui, |mut scene| {
             for (entity, graph) in &graphs {
+                // We use the following to keep track of the bounding box over nodes in an entity.
+                let mut entity_rect = egui::Rect::NOTHING;
+
                 // Draw explicit nodes.
                 for node in graph.nodes_explicit() {
                     let pos = layout
@@ -172,6 +175,7 @@ impl SpaceViewClass for GraphSpaceView {
                         .unwrap_or(egui::Rect::ZERO); // TODO(grtlr): sometimes there just isn't any data.
                         // .expect("explicit node should be in layout");
                     let response = scene.explicit_node(pos.min, node);
+                    entity_rect = entity_rect.union(response.rect);
                     layout.update(&node.index, response.rect);
                 }
 
@@ -182,6 +186,7 @@ impl SpaceViewClass for GraphSpaceView {
                         .unwrap_or(egui::Rect::ZERO); // TODO(grtlr): sometimes there just isn't any data.
                         // .expect("implicit node should be in layout");
                     let response = scene.implicit_node(current.min, node);
+                    entity_rect = entity_rect.union(response.rect);
                     layout.update(&node.index, response.rect);
                 }
 
@@ -197,9 +202,8 @@ impl SpaceViewClass for GraphSpaceView {
                 }
 
                 // Draw entity rect.
-                let rect = layout.bounding_rect();
-                if rect.is_positive() {
-                    let response = scene.entity(entity, rect, &query.highlights);
+                if entity_rect.is_positive() {
+                    let response = scene.entity(entity, entity_rect, &query.highlights);
 
                     let instance_path = InstancePath::entity_all((*entity).clone());
                     ctx.select_hovered_on_click(
