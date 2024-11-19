@@ -6631,6 +6631,7 @@ dependencies = [
  "uuid",
  "wasm-bindgen-futures",
  "wgpu",
+ "zbus",
 ]
 
 [[package]]

@@ -22,7 +22,7 @@ authors = ["rerun.io <opensource@rerun.io>"]
 edition = "2021"
 homepage = "https://rerun.io"
 include = [
-  "../../Cargo.lock",     # So we can run `cargo publish --frozen` and not have failures due to deps having updated with higher msrv
+  "../../Cargo.lock",
   "../../LICENSE-APACHE",
   "../../LICENSE-MIT",
   "**/*.rs",
