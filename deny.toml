@@ -58,6 +58,7 @@ skip = [
   { name = "pulldown-cmark" },    # Build-dependency via `ply-rs` (!). TODO(emilk): use a better crate for .ply parsing
   { name = "raw-window-handle" }, # Pretty small crate; some crates still on old version
   { name = "redox_syscall" },     # Plenty of versions in the wild
+  { name = "pollster" },          # rfd is still on 0.3, but
 ]
 skip-tree = [
   { name = "cargo-run-wasm" }, # Dev-tool

@@ -161,7 +161,7 @@ arrow2 = { package = "re_arrow2", version = "0.17" }
 async-executor = "1.0"
 backtrace = "0.3"
 bincode = "1.3"
-bit-vec = "0.7"
+bit-vec = "0.8"
 bitflags = { version = "2.4", features = ["bytemuck"] }
 blackbox = "0.2.0"
 bytemuck = { version = "1.18", features = ["extern_crate_alloc"] }
@@ -232,7 +232,7 @@ pico-args = "0.5"
 ply-rs = { version = "0.1", default-features = false }
 poll-promise = "0.3"
 polling = "3.7.3"
-pollster = "0.3"
+pollster = "0.4"
 prettyplease = "0.2"
 proc-macro2 = { version = "1.0", default-features = false }
 profiling = { version = "1.0.12", default-features = false }
@@ -300,8 +300,8 @@ walkers = "0.29"
 #       `crates/viewer/re_viewer/Cargo.toml`, and make sure that the build script still works.
 #       Do not make this an `=` dependency, because that may break Rust users’ builds when a newer
 #       version is released, even if they are not building the web viewer.
-wasm-bindgen = "0.2.93"
-wasm-bindgen-cli-support = "=0.2.93"
+wasm-bindgen = "0.2.95"
+wasm-bindgen-cli-support = "=0.2.95"
 wasm-bindgen-futures = "0.4.33"
 wayland-sys = "0.31.5"
 web-sys = "0.3"
@@ -310,7 +310,7 @@ webbrowser = "1.0"
 winit = { version = "0.30.5", default-features = false }
 # TODO(andreas): Try to get rid of `fragile-send-sync-non-atomic-wasm`. This requires re_renderer being aware of single-thread restriction on resources.
 # See also https://gpuweb.github.io/gpuweb/explainer/#multithreading-transfer (unsolved part of the Spec as of writing!)
-wgpu = { version = "22.1", default-features = false, features = [
+wgpu = { version = "23.0", default-features = false, features = [
   # Backends (see https://docs.rs/wgpu/latest/wgpu/#feature-flags)
   "webgl",
   "metal",
@@ -324,8 +324,8 @@ wgpu = { version = "22.1", default-features = false, features = [
   # Other:
   "fragile-send-sync-non-atomic-wasm",
 ] }
-wgpu-core = "22.1"
-wgpu-types = "22.0"
+wgpu-core = "23.0"
+wgpu-types = "23.0"
 xshell = "0.2"
 zip = { version = "0.6", default-features = false } # We're stuck on 0.6 because https://crates.io/crates/protoc-prebuilt is still using 0.6
 
@@ -555,12 +555,12 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-# ecolor = { git = "https://github.com/emilk/egui.git", rev = "f97f85089df5e936999d5b7280e2e93e2958fac8" }      # egui master 2024-09-25
-# eframe = { git = "https://github.com/emilk/egui.git", rev = "f97f85089df5e936999d5b7280e2e93e2958fac8" }      # egui master 2024-09-25
-# egui = { git = "https://github.com/emilk/egui.git", rev = "f97f85089df5e936999d5b7280e2e93e2958fac8" }        # egui master 2024-09-25
-# egui_extras = { git = "https://github.com/emilk/egui.git", rev = "f97f85089df5e936999d5b7280e2e93e2958fac8" } # egui master 2024-09-25
-# egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "f97f85089df5e936999d5b7280e2e93e2958fac8" }   # egui master 2024-09-25
-# emath = { git = "https://github.com/emilk/egui.git", rev = "f97f85089df5e936999d5b7280e2e93e2958fac8" }       # egui master 2024-09-25
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "83a30064f4812d0029532675a5f2bf38c257ad0e" }      # egui master 2024-11-19
+eframe = { git = "https://github.com/emilk/egui.git", rev = "83a30064f4812d0029532675a5f2bf38c257ad0e" }      # egui master 2024-11-19
+egui = { git = "https://github.com/emilk/egui.git", rev = "83a30064f4812d0029532675a5f2bf38c257ad0e" }        # egui master 2024-11-19
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "83a30064f4812d0029532675a5f2bf38c257ad0e" } # egui master 2024-11-19
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "83a30064f4812d0029532675a5f2bf38c257ad0e" }   # egui master 2024-11-19
+emath = { git = "https://github.com/emilk/egui.git", rev = "83a30064f4812d0029532675a5f2bf38c257ad0e" }       # egui master 2024-11-19
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
@@ -573,8 +573,8 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # egui_plot = { git = "https://github.com/emilk/egui_plot.git", rev = "1f6ae49a5f6bf43a869c215dea0d3028be8d742a" }
 # egui_plot = { path = "../../egui_plot/egui_plot" }
 
-# egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "b2f5e232524deed983bcad01c05f27d0e8b89d98" } # https://github.com/rerun-io/egui_tiles/pull/78 2024-08-28
-# egui_tiles = { path = "../egui_tiles" }
+egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "48e0ef566479000a23d8dabf84badced98f1b9a6" } # https://github.com/rerun-io/egui_tiles/pull/89 2024-11-19
+#egui_tiles = { path = "../egui_tiles" }
 
 # egui_commonmark = { git = "https://github.com/rerun-io/egui_commonmark", rev = "7a9dc755bfa351a3796274cb8ca87129b051c084" } # https://github.com/lampsitter/egui_commonmark/pull/65
 
