@@ -12,7 +12,7 @@ const SPACING: f32 = 12.0;
 impl App {
     pub fn rerun_menu_button_ui(
         &mut self,
-        frame: &eframe::Frame,
+        render_state: Option<&egui_wgpu::RenderState>,
         _store_context: Option<&StoreContext<'_>>,
         ui: &mut egui::Ui,
     ) {
@@ -27,7 +27,7 @@ impl App {
         ui.menu_image_button(image, |ui| {
             ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend); // no wrapping: make as wide as needed
 
-            ui.menu_button("About", |ui| self.about_rerun_ui(frame, ui));
+            ui.menu_button("About", |ui| self.about_rerun_ui(ui, render_state));
 
             ui.add_space(SPACING);
 
@@ -111,7 +111,7 @@ impl App {
         });
     }
 
-    fn about_rerun_ui(&self, frame: &eframe::Frame, ui: &mut egui::Ui) {
+    fn about_rerun_ui(&self, ui: &mut egui::Ui, render_state: Option<&egui_wgpu::RenderState>) {
         let re_build_info::BuildInfo {
             crate_name,
             features,
@@ -158,7 +158,7 @@ impl App {
 
         ui.label(label);
 
-        if let Some(render_state) = frame.wgpu_render_state() {
+        if let Some(render_state) = render_state {
             render_state_ui(ui, render_state);
         }
     }
@@ -308,7 +308,7 @@ fn render_state_ui(ui: &mut egui::Ui, render_state: &egui_wgpu::RenderState) {
 fn backend_menu_ui(
     command_sender: &re_viewer_context::CommandSender,
     ui: &mut egui::Ui,
-    frame: &eframe::Frame,
+    render_state: Option<&egui_wgpu::RenderState>,
 ) {
     if let Some(backend) = frame
         .wgpu_render_state()

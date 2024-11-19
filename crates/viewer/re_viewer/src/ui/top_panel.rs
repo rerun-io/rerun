@@ -84,7 +84,7 @@ fn top_bar_ui(
     ui: &mut egui::Ui,
     gpu_resource_stats: &WgpuResourcePoolStatistics,
 ) {
-    app.rerun_menu_button_ui(frame, store_context, ui);
+    app.rerun_menu_button_ui(frame.wgpu_render_state(), store_context, ui);
 
     ui.add_space(12.0);
     website_link_ui(ui);
