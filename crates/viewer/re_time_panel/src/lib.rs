@@ -14,12 +14,14 @@ mod time_ranges_ui;
 mod time_selection_ui;
 
 use egui::emath::Rangef;
-use egui::{pos2, Color32, CursorIcon, NumExt, Painter, PointerButton, Rect, Shape, Ui, Vec2};
+use egui::{
+    pos2, Color32, CursorIcon, Margin, NumExt, Painter, PointerButton, Rect, Shape, Ui, Vec2,
+};
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_data_ui::DataUi as _;
 use re_data_ui::{item_ui::guess_instance_path_icon, sorted_component_list_for_ui};
-use re_entity_db::{EntityTree, InstancePath};
+use re_entity_db::{EntityDb, EntityTree, InstancePath};
 use re_log_types::{
     external::re_types_core::ComponentName, ComponentPath, EntityPath, EntityPathPart,
     ResolvedTimeRange, TimeInt, TimeReal, TimeType,
@@ -169,7 +171,6 @@ impl TimePanel {
         // etc.)
         let screen_header_height = ui.cursor().top();
 
-        let top_bar_height = re_ui::DesignTokens::top_bar_height();
         let margin = DesignTokens::bottom_panel_margin();
         let mut panel_frame = DesignTokens::bottom_panel_frame();
 
@@ -210,50 +211,20 @@ impl TimePanel {
                 if expansion < 1.0 {
                     // Collapsed or animating
                     ui.horizontal(|ui| {
-                        ui.spacing_mut().interact_size = Vec2::splat(top_bar_height);
+                        ui.spacing_mut().interact_size =
+                            Vec2::splat(re_ui::DesignTokens::top_bar_height());
                         ui.visuals_mut().button_frame = true;
                         self.collapsed_ui(ctx, entity_db, ui, &mut time_ctrl_after);
                     });
                 } else {
                     // Expanded:
-                    ui.vertical(|ui| {
-                        // Add back the margin we removed from the panel:
-                        let mut top_row_frame = egui::Frame::default();
-                        top_row_frame.inner_margin.right = margin.right;
-                        top_row_frame.inner_margin.bottom = margin.bottom;
-                        let top_row_rect = top_row_frame
-                            .show(ui, |ui| {
-                                ui.horizontal(|ui| {
-                                    ui.spacing_mut().interact_size = Vec2::splat(top_bar_height);
-                                    ui.visuals_mut().button_frame = true;
-                                    self.top_row_ui(ctx, entity_db, ui, &mut time_ctrl_after);
-                                });
-                            })
-                            .response
-                            .rect;
-
-                        // Draw separator between top bar and the rest:
-                        ui.painter().hline(
-                            0.0..=top_row_rect.right(),
-                            top_row_rect.bottom(),
-                            ui.visuals().widgets.noninteractive.bg_stroke,
-                        );
-
-                        ui.spacing_mut().scroll.bar_outer_margin = 4.0; // needed, because we have no panel margin on the right side.
-
-                        // Add extra margin on the left which was intentionally missing on the controls.
-                        let mut streams_frame = egui::Frame::default();
-                        streams_frame.inner_margin.left = margin.left;
-                        streams_frame.show(ui, |ui| {
-                            self.expanded_ui(
-                                ctx,
-                                viewport_blueprint,
-                                entity_db,
-                                ui,
-                                &mut time_ctrl_after,
-                            );
-                        });
-                    });
+                    self.show_expanded_with_header(
+                        ctx,
+                        viewport_blueprint,
+                        entity_db,
+                        &mut time_ctrl_after,
+                        ui,
+                    );
                 }
             },
         );
@@ -265,6 +236,50 @@ impl TimePanel {
         if time_ctrl_before != time_ctrl_after {
             *rec_cfg.time_ctrl.write() = time_ctrl_after;
         }
+    }
+
+    pub fn show_expanded_with_header(
+        &mut self,
+        ctx: &ViewerContext,
+        viewport_blueprint: &ViewportBlueprint,
+        entity_db: &EntityDb,
+        mut time_ctrl_after: &mut TimeControl,
+        ui: &mut Ui,
+    ) {
+        ui.vertical(|ui| {
+            // Add back the margin we removed from the panel:
+            let mut top_row_frame = egui::Frame::default();
+            let margin = DesignTokens::bottom_panel_margin();
+            top_row_frame.inner_margin.right = margin.right;
+            top_row_frame.inner_margin.bottom = margin.bottom;
+            let top_row_rect = top_row_frame
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.spacing_mut().interact_size =
+                            Vec2::splat(re_ui::DesignTokens::top_bar_height());
+                        ui.visuals_mut().button_frame = true;
+                        self.top_row_ui(ctx, entity_db, ui, &mut time_ctrl_after);
+                    });
+                })
+                .response
+                .rect;
+
+            // Draw separator between top bar and the rest:
+            ui.painter().hline(
+                0.0..=top_row_rect.right(),
+                top_row_rect.bottom(),
+                ui.visuals().widgets.noninteractive.bg_stroke,
+            );
+
+            ui.spacing_mut().scroll.bar_outer_margin = 4.0; // needed, because we have no panel margin on the right side.
+
+            // Add extra margin on the left which was intentionally missing on the controls.
+            let mut streams_frame = egui::Frame::default();
+            streams_frame.inner_margin.left = margin.left;
+            streams_frame.show(ui, |ui| {
+                self.expanded_ui(ctx, viewport_blueprint, entity_db, ui, &mut time_ctrl_after);
+            });
+        });
     }
 
     #[allow(clippy::unused_self)]
@@ -336,7 +351,7 @@ impl TimePanel {
         }
     }
 
-    fn expanded_ui(
+    pub fn expanded_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
         viewport_blueprint: &ViewportBlueprint,
