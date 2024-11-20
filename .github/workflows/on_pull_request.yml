@@ -243,15 +243,6 @@ jobs:
       PR_NUMBER: ${{ github.event.pull_request.number }}
     secrets: inherit
 
-  update-pr-body:
-    name: "Update PR Body"
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-    uses: ./.github/workflows/reusable_update_pr_body.yml
-    with:
-      CONCURRENCY: pr-${{ github.event.pull_request.number }}
-      PR_NUMBER: ${{ github.event.pull_request.number }}
-    secrets: inherit
-
   deploy-landing-preview:
     name: "Deploy Landing Preview"
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.docs-paths-filter.outputs.docs_changes == 'true'

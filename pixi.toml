@@ -480,7 +480,7 @@ cryptography = "==38.0.4"        # For `upload_image.py`
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
 hatch = "==1.12.0"               # For `rerun_notebook`
 Pillow = "==10.0.0"              # For `thumbnails.py`
-pygithub = "==1.59.0"            # Among others for `generate_pr_summary.py`, `sync_release_assets.py`, `update_pr_body.py`.
+pygithub = "==1.59.0"            # Among others for `generate_pr_summary.py`, `sync_release_assets.py`.
 requests = ">=2.31,<3"           # For `thumbnails.py` & `upload_image.py`
 types-Deprecated = "==1.2.9.2"   # Type hint stubs
 types-requests = ">=2.31,<3"     # Type hint stubs
