@@ -25,11 +25,15 @@ jobs:
       CHANNEL: pr
     secrets: inherit
 
-  cpp-paths-filter:
+  paths-filter:
     if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
     runs-on: ubuntu-latest
     outputs:
       cpp_changes: ${{ steps.filter.outputs.cpp_changes }}
+      docs_changes: ${{ steps.filter.outputs.docs_changes }}
+      python_changes: ${{ steps.filter.outputs.python_changes }}
+      rust_changes: ${{ steps.filter.outputs.rust_changes }}
+      web_changes: ${{ steps.filter.outputs.web_changes }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -48,16 +52,6 @@ jobs:
               - '**/CMakeLists.txt'
               - '**/*cmake'
 
-  docs-paths-filter:
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-    runs-on: ubuntu-latest
-    outputs:
-      docs_changes: ${{ steps.filter.outputs.docs_changes }}
-    steps:
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
             docs_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
               - .github/actions/vercel/**/*
@@ -68,19 +62,6 @@ jobs:
               - 'examples/**/*.md'
               - 'examples/manifest.toml'
 
-  python-paths-filter:
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-    runs-on: ubuntu-latest
-    outputs:
-      python_changes: ${{ steps.filter.outputs.python_changes }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
             python_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
               - pixi.lock # maybe out build commands have changed
@@ -90,19 +71,6 @@ jobs:
               - '**/requirements.txt'
               - '**/pyproject.toml'
 
-  rust-paths-filter:
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-    runs-on: ubuntu-latest
-    outputs:
-      rust_changes: ${{ steps.filter.outputs.rust_changes }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
             rust_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
               - Cargo.lock
@@ -112,19 +80,6 @@ jobs:
               - "**/*.rs"
               - "**/*.toml"
 
-  web-paths-filter:
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
-    runs-on: ubuntu-latest
-    outputs:
-      web_changes: ${{ steps.filter.outputs.web_changes }}
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
-      - uses: dorny/paths-filter@v3
-        id: filter
-        with:
-          filters: |
             web_changes:
               # - .github/**/*.yml  -  this is tempting, but leads to constant rebuilds
               - Cargo.lock
@@ -141,8 +96,8 @@ jobs:
 
   rust-checks:
     name: "Rust Checks"
-    needs: rust-paths-filter
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.rust-paths-filter.outputs.rust_changes == 'true'
+    needs: [paths-filter]
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.paths-filter.outputs.rust_changes == 'true'
     uses: ./.github/workflows/reusable_checks_rust.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
@@ -151,8 +106,8 @@ jobs:
 
   python-checks:
     name: "Python Checks"
-    needs: python-paths-filter
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.python-paths-filter.outputs.python_changes == 'true'
+    needs: [paths-filter]
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.paths-filter.outputs.python_changes == 'true'
     uses: ./.github/workflows/reusable_checks_python.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
@@ -160,8 +115,8 @@ jobs:
 
   cpp-tests:
     name: "C++ tests"
-    needs: cpp-paths-filter
-    if: needs.cpp-paths-filter.outputs.cpp_changes == 'true'
+    needs: [paths-filter]
+    if: needs.paths-filter.outputs.cpp_changes == 'true'
     uses: ./.github/workflows/reusable_checks_cpp.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
@@ -170,8 +125,8 @@ jobs:
 
   min-cli-build:
     name: "Minimum CLI Build"
-    needs: [python-paths-filter, rust-paths-filter]
-    if: needs.python-paths-filter.outputs.python_changes == 'true' || needs.rust-paths-filter.outputs.rust_changes == 'true'
+    needs: [paths-filter]
+    if: needs.paths-filter.outputs.python_changes == 'true' || needs.paths-filter.outputs.rust_changes == 'true'
     uses: ./.github/workflows/reusable_build_and_upload_rerun_cli.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
@@ -182,8 +137,8 @@ jobs:
   # choice, but reusable_test_wheels.yml is broken for that target (https://github.com/rerun-io/rerun/issues/5525)
   min-wheel-build:
     name: "Minimum Wheel Build"
-    needs: [min-cli-build, python-paths-filter, rust-paths-filter]
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && (needs.python-paths-filter.outputs.python_changes == 'true' || needs.rust-paths-filter.outputs.rust_changes == 'true')
+    needs: [min-cli-build, paths-filter]
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && (needs.paths-filter.outputs.python_changes == 'true' || needs.paths-filter.outputs.rust_changes == 'true')
     uses: ./.github/workflows/reusable_build_and_upload_wheels.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
@@ -194,8 +149,8 @@ jobs:
 
   min-wheel-test:
     name: "Minimum Wheel Test"
-    needs: [min-wheel-build, python-paths-filter, rust-paths-filter]
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && (needs.python-paths-filter.outputs.python_changes == 'true' || needs.rust-paths-filter.outputs.rust_changes == 'true')
+    needs: [min-wheel-build, paths-filter]
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && (needs.paths-filter.outputs.python_changes == 'true' || needs.paths-filter.outputs.rust_changes == 'true')
     uses: ./.github/workflows/reusable_test_wheels.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
@@ -206,8 +161,8 @@ jobs:
 
   build-js:
     name: "Build rerun_js"
-    needs: [web-paths-filter]
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.web-paths-filter.outputs.web_changes == 'true'
+    needs: [paths-filter]
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.paths-filter.outputs.web_changes == 'true'
     uses: ./.github/workflows/reusable_build_js.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
@@ -215,8 +170,8 @@ jobs:
 
   build-web:
     name: "Build web viewer"
-    needs: [web-paths-filter]
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.web-paths-filter.outputs.web_changes == 'true'
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.paths-filter.outputs.web_changes == 'true'
+    needs: [paths-filter]
     uses: ./.github/workflows/reusable_build_web.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
@@ -225,8 +180,8 @@ jobs:
 
   upload-web:
     name: "Upload Web"
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
     needs: [build-web]
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io'
     uses: ./.github/workflows/reusable_upload_web.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
@@ -235,8 +190,8 @@ jobs:
 
   deploy-landing-preview:
     name: "Deploy Landing Preview"
-    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.docs-paths-filter.outputs.docs_changes == 'true'
-    needs: docs-paths-filter
+    needs: [paths-filter]
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && needs.paths-filter.outputs.docs_changes == 'true'
     uses: ./.github/workflows/reusable_deploy_landing_preview.yml
     with:
       CONCURRENCY: pr-${{ github.event.pull_request.number }}
