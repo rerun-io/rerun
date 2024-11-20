@@ -197,7 +197,7 @@ impl SpaceViewClass for GraphSpaceView {
                 }
 
                 // Draw entity rect.
-                if entity_rect.is_positive() {
+                if graphs.len() > 1 && entity_rect.is_positive() {
                     let response = scene.entity(entity, entity_rect, &query.highlights);
 
                     let instance_path = InstancePath::entity_all((*entity).clone());
