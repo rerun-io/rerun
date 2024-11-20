@@ -113,7 +113,7 @@ impl ForceLayout {
 
         let positions = self.simulation.positions().collect::<Vec<_>>();
 
-        for (node, extent) in layout.extents.iter_mut() {
+        for (node, extent) in &mut layout.extents {
             let i = self.node_index[node];
             let [x, y] = positions[i];
             let pos = Pos2::new(x as f32, y as f32);
