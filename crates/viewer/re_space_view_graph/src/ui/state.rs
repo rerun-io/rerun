@@ -1,6 +1,7 @@
 use egui::Rect;
 use re_chunk::{TimeInt, Timeline};
 use re_format::format_f32;
+use re_log::external::log;
 use re_types::blueprint::components::VisualBounds2D;
 use re_ui::UiExt;
 use re_viewer_context::SpaceViewState;
@@ -128,6 +129,16 @@ impl LayoutState {
             }
             // We need to recompute the layout.
             Self::None | Self::Finished { .. } => {
+                let provider = ForceLayout::new(graphs);
+                let layout = provider.init_layout();
+
+                Self::InProgress {
+                    timestamp: requested,
+                    layout,
+                    provider,
+                }
+            }
+            Self::InProgress { ref timestamp, .. } if timestamp != &requested => {
                 let provider = ForceLayout::new(graphs);
                 let layout = provider.init_layout();
 

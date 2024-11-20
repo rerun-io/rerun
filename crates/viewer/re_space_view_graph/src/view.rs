@@ -151,6 +151,7 @@ impl SpaceViewClass for GraphSpaceView {
             query.latest_at,
             graphs.iter().map(|(_, graph)| graph),
         );
+        let needs_remeasure = layout.has_zero_size();
 
         state.world_bounds = Some(bounds);
         let bounds_rect: egui::Rect = bounds.into();
@@ -169,8 +170,8 @@ impl SpaceViewClass for GraphSpaceView {
 
                 // Draw explicit nodes.
                 for node in graph.nodes_explicit() {
-                    let pos = layout.get(&node.index).unwrap_or(egui::Rect::ZERO); // TODO(grtlr): sometimes there just isn't any data.
-                                                                                   // .expect("explicit node should be in layout");
+                    let pos = layout.get(&node.index).unwrap_or(egui::Rect::ZERO);
+
                     let response = scene.explicit_node(pos.min, node);
                     entity_rect = entity_rect.union(response.rect);
                     layout.update(&node.index, response.rect);
@@ -178,8 +179,7 @@ impl SpaceViewClass for GraphSpaceView {
 
                 // Draw implicit nodes.
                 for node in graph.nodes_implicit() {
-                    let current = layout.get(&node.index).unwrap_or(egui::Rect::ZERO); // TODO(grtlr): sometimes there just isn't any data.
-                                                                                       // .expect("implicit node should be in layout");
+                    let current = layout.get(&node.index).unwrap_or(egui::Rect::ZERO);
                     let response = scene.implicit_node(current.min, node);
                     entity_rect = entity_rect.union(response.rect);
                     layout.update(&node.index, response.rect);
@@ -219,6 +219,10 @@ impl SpaceViewClass for GraphSpaceView {
         }
         // Update stored bounds on the state, so visualizers see an up-to-date value.
         state.world_bounds = Some(bounds);
+
+        if needs_remeasure {
+            ui.ctx().request_discard("layout needed a remeasure");
+        }
 
         if state.layout_state.is_in_progress() {
             ui.ctx().request_repaint();

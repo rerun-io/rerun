@@ -27,6 +27,11 @@ impl Layout {
             .get_mut(node)
             .expect("node should exist in layout") = rect;
     }
+
+    /// Returns `true` if any node has a zero size.
+    pub fn has_zero_size(&self) -> bool {
+        self.extents.values().any(|r| r.size() == Vec2::ZERO)
+    }
 }
 
 impl<'a> From<&'a NodeInstance> for fj::Node {
