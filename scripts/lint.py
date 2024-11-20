@@ -177,6 +177,7 @@ def lint_line(
         "recording=rec" in line
         and "recording=rec.to_native()" not in line
         and "recording=recording.to_native()" not in line
+        and "rr.log" not in line
         and "rr.notebook_show" not in line
     ):
         return "you must cast the RecordingStream first: `recording=recording.to_native()"
