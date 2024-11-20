@@ -513,7 +513,7 @@ def get_thread_local_data_recording() -> RecordingStream | None:
     return RecordingStream(result) if result is not None else None
 
 
-def set_thread_local_data_recording(recording: RecordingStream) -> RecordingStream | None:
+def set_thread_local_data_recording(recording: RecordingStream | None) -> RecordingStream | None:
     """
     Replaces the currently active thread-local recording with the specified one.
 
@@ -523,7 +523,9 @@ def set_thread_local_data_recording(recording: RecordingStream) -> RecordingStre
         The newly active thread-local recording.
 
     """
-    result = bindings.set_thread_local_data_recording(recording=recording.to_native())
+    result = bindings.set_thread_local_data_recording(
+        recording=recording.to_native() if recording is not None else None,
+    )
     return RecordingStream(result) if result is not None else None
 
 
