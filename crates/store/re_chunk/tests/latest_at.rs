@@ -3,7 +3,7 @@ use nohash_hasher::IntMap;
 
 use re_chunk::{Chunk, ComponentName, LatestAtQuery, RowId, TimePoint, Timeline};
 use re_log_types::example_components::{MyColor, MyLabel, MyPoint};
-use re_types_core::Loggable;
+use re_types_core::{Component, Loggable};
 
 // ---
 

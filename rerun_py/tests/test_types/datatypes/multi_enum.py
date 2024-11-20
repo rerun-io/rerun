@@ -11,12 +11,11 @@ import pyarrow as pa
 from attrs import define, field
 from rerun._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 
 from .. import datatypes
 
-__all__ = ["MultiEnum", "MultiEnumArrayLike", "MultiEnumBatch", "MultiEnumLike", "MultiEnumType"]
+__all__ = ["MultiEnum", "MultiEnumArrayLike", "MultiEnumBatch", "MultiEnumLike"]
 
 
 @define(init=False)
@@ -55,22 +54,11 @@ MultiEnumArrayLike = Union[
 ]
 
 
-class MultiEnumType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.testing.datatypes.MultiEnum"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.struct([
-                pa.field("value1", pa.uint8(), nullable=False, metadata={}),
-                pa.field("value2", pa.uint8(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
-
-
 class MultiEnumBatch(BaseBatch[MultiEnumArrayLike]):
-    _ARROW_TYPE = MultiEnumType()
+    _ARROW_DATATYPE = pa.struct([
+        pa.field("value1", pa.uint8(), nullable=False, metadata={}),
+        pa.field("value2", pa.uint8(), nullable=True, metadata={}),
+    ])
 
     @staticmethod
     def _native_to_pa_array(data: MultiEnumArrayLike, data_type: pa.DataType) -> pa.Array:
@@ -81,8 +69,8 @@ class MultiEnumBatch(BaseBatch[MultiEnumArrayLike]):
 
         return pa.StructArray.from_arrays(
             [
-                EnumTestBatch([x.value1 for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-                ValuedEnumBatch([x.value2 for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                EnumTestBatch([x.value1 for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                ValuedEnumBatch([x.value2 for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

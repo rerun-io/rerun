@@ -67,13 +67,6 @@ impl std::ops::DerefMut for Vector2D {
 ::re_types_core::macros::impl_into_cow!(Vector2D);
 
 impl ::re_types_core::Loggable for Vector2D {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.Vector2D".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Vec2D::arrow_datatype()
@@ -109,5 +102,12 @@ impl ::re_types_core::Loggable for Vector2D {
         Self: Sized,
     {
         crate::datatypes::Vec2D::from_arrow(arrow_data).map(bytemuck::cast_vec)
+    }
+}
+
+impl ::re_types_core::Component for Vector2D {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.Vector2D".into()
     }
 }

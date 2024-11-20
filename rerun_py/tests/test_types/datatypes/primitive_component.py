@@ -13,16 +13,9 @@ import pyarrow as pa
 from attrs import define, field
 from rerun._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 
-__all__ = [
-    "PrimitiveComponent",
-    "PrimitiveComponentArrayLike",
-    "PrimitiveComponentBatch",
-    "PrimitiveComponentLike",
-    "PrimitiveComponentType",
-]
+__all__ = ["PrimitiveComponent", "PrimitiveComponentArrayLike", "PrimitiveComponentBatch", "PrimitiveComponentLike"]
 
 
 @define(init=False)
@@ -53,15 +46,8 @@ PrimitiveComponentArrayLike = Union[
 ]
 
 
-class PrimitiveComponentType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.testing.datatypes.PrimitiveComponent"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint32(), self._TYPE_NAME)
-
-
 class PrimitiveComponentBatch(BaseBatch[PrimitiveComponentArrayLike]):
-    _ARROW_TYPE = PrimitiveComponentType()
+    _ARROW_DATATYPE = pa.uint32()
 
     @staticmethod
     def _native_to_pa_array(data: PrimitiveComponentArrayLike, data_type: pa.DataType) -> pa.Array:

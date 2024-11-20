@@ -110,7 +110,7 @@ impl Environment {
             eprintln!("Environment: env-var IS_IN_RERUN_WORKSPACE is set");
             Self::DeveloperInWorkspace
         } else {
-            eprintln!("Environment: Not on CI anmd not in workspace");
+            eprintln!("Environment: Not on CI and not in workspace");
             Self::UsedAsDependency
         }
     }
@@ -289,7 +289,12 @@ pub fn cargo_metadata() -> anyhow::Result<cargo_metadata::Metadata> {
         "Can't get metadata during crate publishing - it would create a Cargo.lock file"
     );
 
-    Ok(cargo_metadata::MetadataCommand::new().exec()?)
+    Ok(cargo_metadata::MetadataCommand::new()
+        .no_deps()
+        // Make sure this works without a connection, since docs.rs won't have one either.
+        // See https://github.com/rerun-io/rerun/issues/8165
+        .other_options(vec!["--frozen".to_owned()])
+        .exec()?)
 }
 
 /// Returns a list of all the enabled features of the given package.

@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["LatLon", "LatLonBatch", "LatLonType"]
+__all__ = ["LatLon", "LatLonBatch"]
 
 
 class LatLon(datatypes.DVec2D, ComponentMixin):
@@ -24,12 +24,8 @@ class LatLon(datatypes.DVec2D, ComponentMixin):
     pass
 
 
-class LatLonType(datatypes.DVec2DType):
-    _TYPE_NAME: str = "rerun.components.LatLon"
-
-
 class LatLonBatch(datatypes.DVec2DBatch, ComponentBatchMixin):
-    _ARROW_TYPE = LatLonType()
+    _COMPONENT_NAME: str = "rerun.components.LatLon"
 
 
 # This is patched in late to avoid circular dependencies.

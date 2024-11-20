@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["ImageBuffer", "ImageBufferBatch", "ImageBufferType"]
+__all__ = ["ImageBuffer", "ImageBufferBatch"]
 
 
 class ImageBuffer(datatypes.Blob, ComponentMixin):
@@ -28,12 +28,8 @@ class ImageBuffer(datatypes.Blob, ComponentMixin):
     pass
 
 
-class ImageBufferType(datatypes.BlobType):
-    _TYPE_NAME: str = "rerun.components.ImageBuffer"
-
-
 class ImageBufferBatch(datatypes.BlobBatch, ComponentBatchMixin):
-    _ARROW_TYPE = ImageBufferType()
+    _COMPONENT_NAME: str = "rerun.components.ImageBuffer"
 
 
 # This is patched in late to avoid circular dependencies.

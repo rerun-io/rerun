@@ -11,10 +11,9 @@ import pyarrow as pa
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 
-__all__ = ["ColorModel", "ColorModelArrayLike", "ColorModelBatch", "ColorModelLike", "ColorModelType"]
+__all__ = ["ColorModel", "ColorModelArrayLike", "ColorModelBatch", "ColorModelLike"]
 
 
 from enum import Enum
@@ -67,15 +66,8 @@ ColorModelLike = Union[ColorModel, Literal["BGR", "BGRA", "L", "RGB", "RGBA", "b
 ColorModelArrayLike = Union[ColorModelLike, Sequence[ColorModelLike]]
 
 
-class ColorModelType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.ColorModel"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
-
-
 class ColorModelBatch(BaseBatch[ColorModelArrayLike]):
-    _ARROW_TYPE = ColorModelType()
+    _ARROW_DATATYPE = pa.uint8()
 
     @staticmethod
     def _native_to_pa_array(data: ColorModelArrayLike, data_type: pa.DataType) -> pa.Array:

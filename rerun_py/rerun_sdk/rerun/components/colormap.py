@@ -11,11 +11,10 @@ import pyarrow as pa
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
 )
 
-__all__ = ["Colormap", "ColormapArrayLike", "ColormapBatch", "ColormapLike", "ColormapType"]
+__all__ = ["Colormap", "ColormapArrayLike", "ColormapBatch", "ColormapLike"]
 
 
 from enum import Enum
@@ -132,15 +131,9 @@ ColormapLike = Union[
 ColormapArrayLike = Union[ColormapLike, Sequence[ColormapLike]]
 
 
-class ColormapType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.components.Colormap"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
-
-
 class ColormapBatch(BaseBatch[ColormapArrayLike], ComponentBatchMixin):
-    _ARROW_TYPE = ColormapType()
+    _ARROW_DATATYPE = pa.uint8()
+    _COMPONENT_NAME: str = "rerun.components.Colormap"
 
     @staticmethod
     def _native_to_pa_array(data: ColormapArrayLike, data_type: pa.DataType) -> pa.Array:

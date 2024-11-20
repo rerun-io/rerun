@@ -67,13 +67,6 @@ impl std::ops::DerefMut for LatLon {
 ::re_types_core::macros::impl_into_cow!(LatLon);
 
 impl ::re_types_core::Loggable for LatLon {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.LatLon".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::DVec2D::arrow_datatype()
@@ -109,5 +102,12 @@ impl ::re_types_core::Loggable for LatLon {
         Self: Sized,
     {
         crate::datatypes::DVec2D::from_arrow(arrow_data).map(bytemuck::cast_vec)
+    }
+}
+
+impl ::re_types_core::Component for LatLon {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.LatLon".into()
     }
 }

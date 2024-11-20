@@ -13,18 +13,11 @@ from attrs import define, field
 from ... import datatypes
 from ..._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from ...blueprint import datatypes as blueprint_datatypes
 from .selected_columns_ext import SelectedColumnsExt
 
-__all__ = [
-    "SelectedColumns",
-    "SelectedColumnsArrayLike",
-    "SelectedColumnsBatch",
-    "SelectedColumnsLike",
-    "SelectedColumnsType",
-]
+__all__ = ["SelectedColumns", "SelectedColumnsArrayLike", "SelectedColumnsBatch", "SelectedColumnsLike"]
 
 
 @define(init=False)
@@ -57,42 +50,31 @@ SelectedColumnsArrayLike = Union[
 ]
 
 
-class SelectedColumnsType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.blueprint.datatypes.SelectedColumns"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.struct([
-                pa.field(
-                    "time_columns",
-                    pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={})),
-                    nullable=False,
-                    metadata={},
-                ),
-                pa.field(
-                    "component_columns",
-                    pa.list_(
-                        pa.field(
-                            "item",
-                            pa.struct([
-                                pa.field("entity_path", pa.utf8(), nullable=False, metadata={}),
-                                pa.field("component", pa.utf8(), nullable=False, metadata={}),
-                            ]),
-                            nullable=False,
-                            metadata={},
-                        )
-                    ),
-                    nullable=False,
-                    metadata={},
-                ),
-            ]),
-            self._TYPE_NAME,
-        )
-
-
 class SelectedColumnsBatch(BaseBatch[SelectedColumnsArrayLike]):
-    _ARROW_TYPE = SelectedColumnsType()
+    _ARROW_DATATYPE = pa.struct([
+        pa.field(
+            "time_columns",
+            pa.list_(pa.field("item", pa.utf8(), nullable=False, metadata={})),
+            nullable=False,
+            metadata={},
+        ),
+        pa.field(
+            "component_columns",
+            pa.list_(
+                pa.field(
+                    "item",
+                    pa.struct([
+                        pa.field("entity_path", pa.utf8(), nullable=False, metadata={}),
+                        pa.field("component", pa.utf8(), nullable=False, metadata={}),
+                    ]),
+                    nullable=False,
+                    metadata={},
+                )
+            ),
+            nullable=False,
+            metadata={},
+        ),
+    ])
 
     @staticmethod
     def _native_to_pa_array(data: SelectedColumnsArrayLike, data_type: pa.DataType) -> pa.Array:

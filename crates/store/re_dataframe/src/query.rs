@@ -535,7 +535,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             (!chunk.is_empty()).then_some(chunk)
         }
 
-        use re_types_core::Loggable as _;
+        use re_types_core::Component as _;
         let component_names = [re_types_core::components::ClearIsRecursive::name()];
 
         // All unique entity paths present in the view contents.
@@ -1296,7 +1296,7 @@ mod tests {
     };
     use re_query::StorageEngine;
     use re_types::components::ClearIsRecursive;
-    use re_types_core::Loggable as _;
+    use re_types_core::Component as _;
 
     use crate::{QueryCache, QueryEngine};
 

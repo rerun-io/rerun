@@ -52,13 +52,6 @@ impl From<EntityPath> for crate::ArrowString {
 crate::macros::impl_into_cow!(EntityPath);
 
 impl crate::Loggable for EntityPath {
-    type Name = crate::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.EntityPath".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

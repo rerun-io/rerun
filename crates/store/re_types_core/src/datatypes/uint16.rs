@@ -51,13 +51,6 @@ impl From<UInt16> for u16 {
 crate::macros::impl_into_cow!(UInt16);
 
 impl crate::Loggable for UInt16 {
-    type Name = crate::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.UInt16".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

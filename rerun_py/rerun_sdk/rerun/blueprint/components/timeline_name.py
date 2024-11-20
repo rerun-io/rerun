@@ -11,7 +11,7 @@ from ..._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["TimelineName", "TimelineNameBatch", "TimelineNameType"]
+__all__ = ["TimelineName", "TimelineNameBatch"]
 
 
 class TimelineName(datatypes.Utf8, ComponentMixin):
@@ -24,12 +24,8 @@ class TimelineName(datatypes.Utf8, ComponentMixin):
     pass
 
 
-class TimelineNameType(datatypes.Utf8Type):
-    _TYPE_NAME: str = "rerun.blueprint.components.TimelineName"
-
-
 class TimelineNameBatch(datatypes.Utf8Batch, ComponentBatchMixin):
-    _ARROW_TYPE = TimelineNameType()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.TimelineName"
 
 
 # This is patched in late to avoid circular dependencies.

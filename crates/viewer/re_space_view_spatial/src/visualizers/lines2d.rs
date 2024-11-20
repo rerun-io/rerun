@@ -4,7 +4,7 @@ use re_space_view::{process_annotation_slices, process_color_slice};
 use re_types::{
     archetypes::LineStrips2D,
     components::{ClassId, Color, DrawOrder, LineStrip2D, Radius, ShowLabels, Text},
-    ArrowString, Loggable as _,
+    ArrowString, Component as _,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,

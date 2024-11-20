@@ -11,17 +11,10 @@ import pyarrow as pa
 
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
 )
 
-__all__ = [
-    "TransformRelation",
-    "TransformRelationArrayLike",
-    "TransformRelationBatch",
-    "TransformRelationLike",
-    "TransformRelationType",
-]
+__all__ = ["TransformRelation", "TransformRelationArrayLike", "TransformRelationBatch", "TransformRelationLike"]
 
 
 from enum import Enum
@@ -75,15 +68,9 @@ TransformRelationLike = Union[
 TransformRelationArrayLike = Union[TransformRelationLike, Sequence[TransformRelationLike]]
 
 
-class TransformRelationType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.components.TransformRelation"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.uint8(), self._TYPE_NAME)
-
-
 class TransformRelationBatch(BaseBatch[TransformRelationArrayLike], ComponentBatchMixin):
-    _ARROW_TYPE = TransformRelationType()
+    _ARROW_DATATYPE = pa.uint8()
+    _COMPONENT_NAME: str = "rerun.components.TransformRelation"
 
     @staticmethod
     def _native_to_pa_array(data: TransformRelationArrayLike, data_type: pa.DataType) -> pa.Array:

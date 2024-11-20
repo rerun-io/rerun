@@ -13,16 +13,9 @@ import pyarrow as pa
 from attrs import define, field
 from rerun._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 
-__all__ = [
-    "StringComponent",
-    "StringComponentArrayLike",
-    "StringComponentBatch",
-    "StringComponentLike",
-    "StringComponentType",
-]
+__all__ = ["StringComponent", "StringComponentArrayLike", "StringComponentBatch", "StringComponentLike"]
 
 
 @define(init=False)
@@ -49,15 +42,8 @@ StringComponentArrayLike = Union[
 ]
 
 
-class StringComponentType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.testing.datatypes.StringComponent"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(self, pa.utf8(), self._TYPE_NAME)
-
-
 class StringComponentBatch(BaseBatch[StringComponentArrayLike]):
-    _ARROW_TYPE = StringComponentType()
+    _ARROW_DATATYPE = pa.utf8()
 
     @staticmethod
     def _native_to_pa_array(data: StringComponentArrayLike, data_type: pa.DataType) -> pa.Array:

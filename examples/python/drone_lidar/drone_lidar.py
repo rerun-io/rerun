@@ -116,7 +116,7 @@ def log_lidar_data() -> None:
         [rr.components.Position3DBatch(positions).partition(partitions)],
     )
 
-    rr.log_components(
+    rr.log(
         "/lidar",
         [
             # TODO(#6889): indicator component no longer needed not needed when we have tagged components
@@ -139,7 +139,7 @@ def log_drone_trajectory() -> None:
         [rr.components.Position3DBatch(positions)],
     )
 
-    rr.log_components(
+    rr.log(
         "/drone",
         [
             # TODO(#6889): indicator component no longer needed not needed when we have tagged components

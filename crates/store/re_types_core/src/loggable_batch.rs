@@ -17,24 +17,19 @@ use crate::Archetype;
 /// You should almost never need to implement [`LoggableBatch`] manually, as it is already
 /// blanket implemented for most common use cases (arrays/vectors/slices of loggables, etc).
 pub trait LoggableBatch {
-    type Name;
-
     // NOTE: It'd be tempting to have the following associated type, but that'd be
     // counterproductive, the whole point of this is to allow for heterogeneous collections!
     // type Loggable: Loggable;
-
-    /// The fully-qualified name of this batch, e.g. `rerun.datatypes.Vec2D`.
-    fn name(&self) -> Self::Name;
 
     /// Serializes the batch into an Arrow array.
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>>;
 }
 
 /// A [`ComponentBatch`] represents an array's worth of [`Component`] instances.
-///
-/// Any [`LoggableBatch`] with a [`Loggable::Name`] set to [`ComponentName`] automatically
-/// implements [`ComponentBatch`].
-pub trait ComponentBatch: LoggableBatch<Name = ComponentName> {
+pub trait ComponentBatch: LoggableBatch {
+    /// The fully-qualified name of this component batch, e.g. `rerun.components.Position2D`.
+    fn name(&self) -> ComponentName;
+
     /// Serializes the batch into an Arrow list array with a single component per list.
     fn to_arrow_list_array(&self) -> SerializationResult<ArrowListArray<i32>> {
         let array = self.to_arrow()?;
@@ -92,85 +87,69 @@ impl<'a> std::ops::Deref for MaybeOwnedComponentBatch<'a> {
 }
 
 impl<'a> LoggableBatch for MaybeOwnedComponentBatch<'a> {
-    type Name = ComponentName;
-
-    #[inline]
-    fn name(&self) -> Self::Name {
-        self.as_ref().name()
-    }
-
     #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         self.as_ref().to_arrow()
     }
 }
 
-impl<'a> ComponentBatch for MaybeOwnedComponentBatch<'a> {}
+impl<'a> ComponentBatch for MaybeOwnedComponentBatch<'a> {
+    #[inline]
+    fn name(&self) -> ComponentName {
+        self.as_ref().name()
+    }
+}
 
 // --- Unary ---
 
 impl<L: Clone + Loggable> LoggableBatch for L {
-    type Name = L::Name;
-
-    #[inline]
-    fn name(&self) -> Self::Name {
-        L::name()
-    }
-
     #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow([std::borrow::Cow::Borrowed(self)])
     }
 }
 
-impl<C: Component> ComponentBatch for C {}
+impl<C: Component> ComponentBatch for C {
+    fn name(&self) -> ComponentName {
+        C::name()
+    }
+}
 
 // --- Unary Option ---
 
 impl<L: Clone + Loggable> LoggableBatch for Option<L> {
-    type Name = L::Name;
-
-    #[inline]
-    fn name(&self) -> Self::Name {
-        L::name()
-    }
-
     #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
 }
 
-impl<C: Component> ComponentBatch for Option<C> {}
+impl<C: Component> ComponentBatch for Option<C> {
+    #[inline]
+    fn name(&self) -> ComponentName {
+        C::name()
+    }
+}
 
 // --- Vec ---
 
 impl<L: Clone + Loggable> LoggableBatch for Vec<L> {
-    type Name = L::Name;
-
-    #[inline]
-    fn name(&self) -> Self::Name {
-        L::name()
-    }
-
     #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
 }
 
-impl<C: Component> ComponentBatch for Vec<C> {}
+impl<C: Component> ComponentBatch for Vec<C> {
+    #[inline]
+    fn name(&self) -> ComponentName {
+        C::name()
+    }
+}
 
 // --- Vec<Option> ---
 
 impl<L: Loggable> LoggableBatch for Vec<Option<L>> {
-    type Name = L::Name;
-
-    #[inline]
-    fn name(&self) -> Self::Name {
-        L::name()
-    }
-
     #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow_opt(
@@ -180,36 +159,32 @@ impl<L: Loggable> LoggableBatch for Vec<Option<L>> {
     }
 }
 
-impl<C: Component> ComponentBatch for Vec<Option<C>> {}
+impl<C: Component> ComponentBatch for Vec<Option<C>> {
+    #[inline]
+    fn name(&self) -> ComponentName {
+        C::name()
+    }
+}
 
 // --- Array ---
 
 impl<L: Loggable, const N: usize> LoggableBatch for [L; N] {
-    type Name = L::Name;
-
-    #[inline]
-    fn name(&self) -> Self::Name {
-        L::name()
-    }
-
     #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
 }
 
-impl<C: Component, const N: usize> ComponentBatch for [C; N] {}
+impl<C: Component, const N: usize> ComponentBatch for [C; N] {
+    #[inline]
+    fn name(&self) -> ComponentName {
+        C::name()
+    }
+}
 
 // --- Array<Option> ---
 
 impl<L: Loggable, const N: usize> LoggableBatch for [Option<L>; N] {
-    type Name = L::Name;
-
-    #[inline]
-    fn name(&self) -> Self::Name {
-        L::name()
-    }
-
     #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow_opt(
@@ -219,36 +194,32 @@ impl<L: Loggable, const N: usize> LoggableBatch for [Option<L>; N] {
     }
 }
 
-impl<C: Component, const N: usize> ComponentBatch for [Option<C>; N] {}
+impl<C: Component, const N: usize> ComponentBatch for [Option<C>; N] {
+    #[inline]
+    fn name(&self) -> ComponentName {
+        C::name()
+    }
+}
 
 // --- Slice ---
 
 impl<'a, L: Loggable> LoggableBatch for &'a [L] {
-    type Name = L::Name;
-
-    #[inline]
-    fn name(&self) -> Self::Name {
-        L::name()
-    }
-
     #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
 }
 
-impl<'a, C: Component> ComponentBatch for &'a [C] {}
+impl<'a, C: Component> ComponentBatch for &'a [C] {
+    #[inline]
+    fn name(&self) -> ComponentName {
+        C::name()
+    }
+}
 
 // --- Slice<Option> ---
 
 impl<'a, L: Loggable> LoggableBatch for &'a [Option<L>] {
-    type Name = L::Name;
-
-    #[inline]
-    fn name(&self) -> Self::Name {
-        L::name()
-    }
-
     #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow_opt(
@@ -258,36 +229,32 @@ impl<'a, L: Loggable> LoggableBatch for &'a [Option<L>] {
     }
 }
 
-impl<'a, C: Component> ComponentBatch for &'a [Option<C>] {}
+impl<'a, C: Component> ComponentBatch for &'a [Option<C>] {
+    #[inline]
+    fn name(&self) -> ComponentName {
+        C::name()
+    }
+}
 
 // --- ArrayRef ---
 
 impl<'a, L: Loggable, const N: usize> LoggableBatch for &'a [L; N] {
-    type Name = L::Name;
-
-    #[inline]
-    fn name(&self) -> Self::Name {
-        L::name()
-    }
-
     #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
 }
 
-impl<'a, C: Component, const N: usize> ComponentBatch for &'a [C; N] {}
+impl<'a, C: Component, const N: usize> ComponentBatch for &'a [C; N] {
+    #[inline]
+    fn name(&self) -> ComponentName {
+        C::name()
+    }
+}
 
 // --- ArrayRef<Option> ---
 
 impl<'a, L: Loggable, const N: usize> LoggableBatch for &'a [Option<L>; N] {
-    type Name = L::Name;
-
-    #[inline]
-    fn name(&self) -> Self::Name {
-        L::name()
-    }
-
     #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow_opt(
@@ -297,4 +264,9 @@ impl<'a, L: Loggable, const N: usize> LoggableBatch for &'a [Option<L>; N] {
     }
 }
 
-impl<'a, C: Component, const N: usize> ComponentBatch for &'a [Option<C>; N] {}
+impl<'a, C: Component, const N: usize> ComponentBatch for &'a [Option<C>; N] {
+    #[inline]
+    fn name(&self) -> ComponentName {
+        C::name()
+    }
+}

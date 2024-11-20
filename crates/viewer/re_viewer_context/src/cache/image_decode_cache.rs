@@ -8,7 +8,7 @@ use re_types::{
     archetypes::Image,
     components::MediaType,
     image::{ImageKind, ImageLoadError},
-    Loggable as _,
+    Component as _,
 };
 
 use crate::{Cache, ImageInfo};

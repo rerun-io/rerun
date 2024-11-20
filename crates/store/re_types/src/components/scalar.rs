@@ -69,13 +69,6 @@ impl std::ops::DerefMut for Scalar {
 ::re_types_core::macros::impl_into_cow!(Scalar);
 
 impl ::re_types_core::Loggable for Scalar {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.Scalar".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Float64::arrow_datatype()
@@ -111,5 +104,12 @@ impl ::re_types_core::Loggable for Scalar {
         Self: Sized,
     {
         crate::datatypes::Float64::from_arrow(arrow_data).map(bytemuck::cast_vec)
+    }
+}
+
+impl ::re_types_core::Component for Scalar {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.Scalar".into()
     }
 }

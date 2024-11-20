@@ -5,7 +5,7 @@ order: 500
 
 This guide will familiarize you with the basics of using the Rerun Viewer with an example dataset. By the end you should be comfortable with the following topics:
 
--   [Launching the demo](#launching-the-demo)
+-   [Launching the demo](#launching-an-example)
 -   [The Viewer panels](#the-viewer-panels)
 -   [Exploring data](#exploring-data)
 -   [Navigating the timeline](#navigating-the-timeline)

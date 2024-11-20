@@ -12,7 +12,7 @@ use re_renderer::{
 use re_types::{
     archetypes::{AssetVideo, VideoFrameReference},
     components::{Blob, MediaType, VideoTimestamp},
-    Archetype, Loggable as _,
+    Archetype, Component as _,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, SpaceViewClass as _, SpaceViewId,

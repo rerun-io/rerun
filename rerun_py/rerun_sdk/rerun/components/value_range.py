@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["ValueRange", "ValueRangeBatch", "ValueRangeType"]
+__all__ = ["ValueRange", "ValueRangeBatch"]
 
 
 class ValueRange(datatypes.Range1D, ComponentMixin):
@@ -24,12 +24,8 @@ class ValueRange(datatypes.Range1D, ComponentMixin):
     pass
 
 
-class ValueRangeType(datatypes.Range1DType):
-    _TYPE_NAME: str = "rerun.components.ValueRange"
-
-
 class ValueRangeBatch(datatypes.Range1DBatch, ComponentBatchMixin):
-    _ARROW_TYPE = ValueRangeType()
+    _COMPONENT_NAME: str = "rerun.components.ValueRange"
 
 
 # This is patched in late to avoid circular dependencies.

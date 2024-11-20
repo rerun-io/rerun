@@ -70,13 +70,6 @@ impl std::ops::DerefMut for Length {
 ::re_types_core::macros::impl_into_cow!(Length);
 
 impl ::re_types_core::Loggable for Length {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.Length".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Float32::arrow_datatype()
@@ -112,5 +105,12 @@ impl ::re_types_core::Loggable for Length {
         Self: Sized,
     {
         crate::datatypes::Float32::from_arrow(arrow_data).map(bytemuck::cast_vec)
+    }
+}
+
+impl ::re_types_core::Component for Length {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.Length".into()
     }
 }

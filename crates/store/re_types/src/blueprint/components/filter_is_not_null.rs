@@ -67,13 +67,6 @@ impl std::ops::DerefMut for FilterIsNotNull {
 ::re_types_core::macros::impl_into_cow!(FilterIsNotNull);
 
 impl ::re_types_core::Loggable for FilterIsNotNull {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.components.FilterIsNotNull".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::blueprint::datatypes::FilterIsNotNull::arrow_datatype()
@@ -101,5 +94,12 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
     {
         crate::blueprint::datatypes::FilterIsNotNull::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+    }
+}
+
+impl ::re_types_core::Component for FilterIsNotNull {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.FilterIsNotNull".into()
     }
 }

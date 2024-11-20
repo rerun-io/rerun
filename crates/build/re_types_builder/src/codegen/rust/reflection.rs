@@ -46,7 +46,8 @@ pub fn generate_reflection(
         use re_types_core::{
             ArchetypeName,
             ComponentName,
-            Loggable,
+            Component,
+            Loggable as _,
             LoggableBatch as _,
             reflection::{
                 ArchetypeFieldReflection,
@@ -103,7 +104,7 @@ fn generate_component_reflection(
         let type_name = format_ident!("{}", obj.name);
 
         let quoted_name = if true {
-            quote!( <#type_name as Loggable>::name() )
+            quote!( <#type_name as Component>::name() )
         } else {
             // Works too
             let fqname = &obj.fqname;

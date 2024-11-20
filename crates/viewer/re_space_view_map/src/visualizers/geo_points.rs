@@ -7,7 +7,7 @@ use re_space_view::{
 use re_types::{
     archetypes::GeoPoints,
     components::{ClassId, Color, LatLon, Radius},
-    Loggable as _,
+    Component as _,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, IdentifiedViewSystem, QueryContext, SpaceViewHighlights,

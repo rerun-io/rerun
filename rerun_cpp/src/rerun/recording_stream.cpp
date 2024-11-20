@@ -7,6 +7,7 @@
 
 #include <arrow/buffer.h>
 
+#include <cassert>
 #include <string> // to_string
 #include <vector>
 
@@ -18,6 +19,9 @@ namespace rerun {
 
             case StoreKind::Blueprint:
                 return RR_STORE_KIND_BLUEPRINT;
+
+            default:
+                assert(false && "unreachable");
         }
 
         // This should never happen since if we missed a switch case we'll get a warning on

@@ -10,7 +10,7 @@ use re_types::{
         ViewCoordinates,
     },
     image::ImageKind,
-    Loggable as _,
+    Component as _,
 };
 use re_viewer_context::{
     ApplicableEntities, ColormapWithRange, IdentifiedViewSystem, ImageInfo, ImageStatsCache,

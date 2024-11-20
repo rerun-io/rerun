@@ -161,15 +161,3 @@ enum SparseFillStrategy {
     NONE = 0;
     LATEST_AT_GLOBAL = 1;
 }
-
-// Error codes for application level errors
-enum ErrorCode {
-    // unused
-    _UNUSED = 0;
-
-    // object store access error
-    OBJECT_STORE_ERROR = 1;
-
-    // metadata database access error
-    METADATA_DB_ERROR = 2;
-}

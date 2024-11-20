@@ -50,13 +50,6 @@ impl From<AffixFuzzer2> for Option<f32> {
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer2);
 
 impl ::re_types_core::Loggable for AffixFuzzer2 {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.testing.datatypes.AffixFuzzer2".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

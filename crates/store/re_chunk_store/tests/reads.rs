@@ -14,7 +14,7 @@ use re_log_types::{
 };
 use re_types::testing::{build_some_large_structs, LargeStruct};
 use re_types::ComponentNameSet;
-use re_types_core::{ComponentName, Loggable as _};
+use re_types_core::{Component as _, ComponentName};
 
 // ---
 

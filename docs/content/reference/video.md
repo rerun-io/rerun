@@ -64,9 +64,20 @@ In those cases where encoding time matters, we recommend H.264/avc.
 
 ### Native viewer
 
-* AV1 is supported out of the box using a software decoder paired with gpu based image conversion
-* H.264/avc is supported via a system installed `FFmpeg` binary
-  * When no binary is found, Rerun offers a download link to a build of `FFmpeg` for your platform in the selection panel upon selecting the failed video
+#### AV1
+
+AV1 is supported out of the box using a software decoder paired with gpu based image conversion
+
+#### H.264/avc
+
+H.264/avc is supported via a separately installed `FFmpeg` binary, requiring a minimum version of `5.1`.
+
+The viewer does intentionally not come bundled with `FFmpeg` to avoid licensing issues.
+By default rerun will look for a system installed `FFmpeg` installation in `PATH`,
+but you can specify a custom path in the viewer's settings.
+
+If you select a video that failed to play due to missing or incompatible `FFmpeg` binaries it will offer a download link to a build of `FFmpeg` for your platform.
+<!-- TODO(#8004): there should be a download button that updates the path in the settings -->
 
 ### Web viewer
 Video playback in the Rerun Web Viewer is done using the browser's own video decoder, so the exact supported codecs depend on your browser.
@@ -87,7 +98,7 @@ We tested the following codecs in more detail:
 | ---------- | ------------- | ---------------- | ------------- | ------------ | ------------ | --------------- | ------------------ |
 | AV1        | ✅             | ✅                | ✅             | ✅            | 🚧[^4]        | ✅               | ✅                  |
 | H.264/avc  | ✅[^4]         | ✅                | ✅             | ✅            | ✅            | ✅               | ✅                  |
-| H.265/hevc | ❌             | ❌                | ❌             | ✅            | 🚧[^6]        | ❌               | 🚧[^7]              |
+| H.265/hevc | ❌             | ❌                | ❌             | ✅            | 🚧[^5]        | ❌               | 🚧[^6]              |
 
 [^1]: Firefox on Linux has been observed to [stutter when playing back H.264 video](https://github.com/rerun-io/rerun/issues/7532).
 [^2]: Any Chromium-based browser should work, but we don't test all of them.

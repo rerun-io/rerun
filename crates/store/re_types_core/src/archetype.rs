@@ -215,15 +215,6 @@ impl<A: Archetype> Default for GenericIndicatorComponent<A> {
 }
 
 impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponent<A> {
-    type Name = ComponentName;
-
-    #[inline]
-    fn name(&self) -> Self::Name {
-        format!("{}Indicator", A::name().full_name())
-            .replace("archetypes", "components")
-            .into()
-    }
-
     #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
         let datatype = arrow2::datatypes::DataType::Null;
@@ -231,7 +222,14 @@ impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponent<A> {
     }
 }
 
-impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponent<A> {}
+impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponent<A> {
+    #[inline]
+    fn name(&self) -> ComponentName {
+        format!("{}Indicator", A::name().full_name())
+            .replace("archetypes", "components")
+            .into()
+    }
+}
 
 /// A generic [indicator component] array of a given length.
 ///
@@ -248,13 +246,6 @@ pub struct GenericIndicatorComponentArray<A: Archetype> {
 }
 
 impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponentArray<A> {
-    type Name = ComponentName;
-
-    #[inline]
-    fn name(&self) -> Self::Name {
-        GenericIndicatorComponent::<A>::DEFAULT.name()
-    }
-
     #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
         let datatype = arrow2::datatypes::DataType::Null;
@@ -262,7 +253,12 @@ impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponentArray<A> {
     }
 }
 
-impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponentArray<A> {}
+impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponentArray<A> {
+    #[inline]
+    fn name(&self) -> ComponentName {
+        GenericIndicatorComponent::<A>::DEFAULT.name()
+    }
+}
 
 // ---
 
@@ -285,13 +281,6 @@ impl NamedIndicatorComponent {
 }
 
 impl crate::LoggableBatch for NamedIndicatorComponent {
-    type Name = ComponentName;
-
-    #[inline]
-    fn name(&self) -> Self::Name {
-        self.0
-    }
-
     #[inline]
     fn to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
         let datatype = arrow2::datatypes::DataType::Null;
@@ -299,4 +288,9 @@ impl crate::LoggableBatch for NamedIndicatorComponent {
     }
 }
 
-impl crate::ComponentBatch for NamedIndicatorComponent {}
+impl crate::ComponentBatch for NamedIndicatorComponent {
+    #[inline]
+    fn name(&self) -> ComponentName {
+        self.0
+    }
+}

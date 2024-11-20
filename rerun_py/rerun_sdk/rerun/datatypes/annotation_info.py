@@ -13,17 +13,10 @@ from attrs import define, field
 from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .annotation_info_ext import AnnotationInfoExt
 
-__all__ = [
-    "AnnotationInfo",
-    "AnnotationInfoArrayLike",
-    "AnnotationInfoBatch",
-    "AnnotationInfoLike",
-    "AnnotationInfoType",
-]
+__all__ = ["AnnotationInfo", "AnnotationInfoArrayLike", "AnnotationInfoBatch", "AnnotationInfoLike"]
 
 
 def _annotation_info__label__special_field_converter_override(x: datatypes.Utf8Like | None) -> datatypes.Utf8 | None:
@@ -106,23 +99,12 @@ AnnotationInfoArrayLike = Union[
 ]
 
 
-class AnnotationInfoType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.datatypes.AnnotationInfo"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.struct([
-                pa.field("id", pa.uint16(), nullable=False, metadata={}),
-                pa.field("label", pa.utf8(), nullable=True, metadata={}),
-                pa.field("color", pa.uint32(), nullable=True, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
-
-
 class AnnotationInfoBatch(BaseBatch[AnnotationInfoArrayLike]):
-    _ARROW_TYPE = AnnotationInfoType()
+    _ARROW_DATATYPE = pa.struct([
+        pa.field("id", pa.uint16(), nullable=False, metadata={}),
+        pa.field("label", pa.utf8(), nullable=True, metadata={}),
+        pa.field("color", pa.uint32(), nullable=True, metadata={}),
+    ])
 
     @staticmethod
     def _native_to_pa_array(data: AnnotationInfoArrayLike, data_type: pa.DataType) -> pa.Array:

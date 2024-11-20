@@ -83,13 +83,6 @@ impl std::fmt::Display for BackgroundKind {
 ::re_types_core::macros::impl_into_cow!(BackgroundKind);
 
 impl ::re_types_core::Loggable for BackgroundKind {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.components.BackgroundKind".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
@@ -162,5 +155,12 @@ impl ::re_types_core::Loggable for BackgroundKind {
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.blueprint.components.BackgroundKind")?)
+    }
+}
+
+impl ::re_types_core::Component for BackgroundKind {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.BackgroundKind".into()
     }
 }

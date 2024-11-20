@@ -58,7 +58,7 @@ Struct {
 ## API reference links
  * 🌊 [C++ API docs for `ClassDescription`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1ClassDescription.html)
  * 🐍 [Python API docs for `ClassDescription`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.ClassDescription)
- * 🦀 [Rust API docs for `ClassDescription`](https://docs.rs/rerun/latest/rerun/datatypes/struct.ClassDescription.html)
+ * 🦀 [Rust API docs for `ClassDescription`](https://ref.rerun.io/docs/rust/stable/rerun/datatypes/struct.ClassDescription.html)
 
 
 ## Used by

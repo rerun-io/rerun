@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["RotationQuat", "RotationQuatBatch", "RotationQuatType"]
+__all__ = ["RotationQuat", "RotationQuatBatch"]
 
 
 class RotationQuat(datatypes.Quaternion, ComponentMixin):
@@ -29,12 +29,8 @@ class RotationQuat(datatypes.Quaternion, ComponentMixin):
     pass
 
 
-class RotationQuatType(datatypes.QuaternionType):
-    _TYPE_NAME: str = "rerun.components.RotationQuat"
-
-
 class RotationQuatBatch(datatypes.QuaternionBatch, ComponentBatchMixin):
-    _ARROW_TYPE = RotationQuatType()
+    _COMPONENT_NAME: str = "rerun.components.RotationQuat"
 
 
 # This is patched in late to avoid circular dependencies.

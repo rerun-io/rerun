@@ -5,7 +5,7 @@ use re_renderer::RenderContext;
 use re_types::{
     archetypes::Asset3D,
     components::{AlbedoFactor, Blob, MediaType},
-    ArrowBuffer, ArrowString, Loggable as _,
+    ArrowBuffer, ArrowString, Component as _,
 };
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, QueryContext, SpaceViewSystemExecutionError,

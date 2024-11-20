@@ -65,13 +65,6 @@ impl std::ops::DerefMut for AffixFuzzer21 {
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer21);
 
 impl ::re_types_core::Loggable for AffixFuzzer21 {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.testing.components.AffixFuzzer21".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::testing::datatypes::AffixFuzzer21::arrow_datatype()
@@ -99,5 +92,12 @@ impl ::re_types_core::Loggable for AffixFuzzer21 {
     {
         crate::testing::datatypes::AffixFuzzer21::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+    }
+}
+
+impl ::re_types_core::Component for AffixFuzzer21 {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.testing.components.AffixFuzzer21".into()
     }
 }

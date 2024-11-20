@@ -71,13 +71,6 @@ impl std::ops::DerefMut for TensorDimensionIndexSelection {
 ::re_types_core::macros::impl_into_cow!(TensorDimensionIndexSelection);
 
 impl ::re_types_core::Loggable for TensorDimensionIndexSelection {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.TensorDimensionIndexSelection".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::TensorDimensionIndexSelection::arrow_datatype()
@@ -107,5 +100,12 @@ impl ::re_types_core::Loggable for TensorDimensionIndexSelection {
     {
         crate::datatypes::TensorDimensionIndexSelection::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+    }
+}
+
+impl ::re_types_core::Component for TensorDimensionIndexSelection {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.TensorDimensionIndexSelection".into()
     }
 }

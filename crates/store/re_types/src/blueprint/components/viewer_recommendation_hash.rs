@@ -69,13 +69,6 @@ impl std::ops::DerefMut for ViewerRecommendationHash {
 ::re_types_core::macros::impl_into_cow!(ViewerRecommendationHash);
 
 impl ::re_types_core::Loggable for ViewerRecommendationHash {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.blueprint.components.ViewerRecommendationHash".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::UInt64::arrow_datatype()
@@ -111,5 +104,12 @@ impl ::re_types_core::Loggable for ViewerRecommendationHash {
         Self: Sized,
     {
         crate::datatypes::UInt64::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
+    }
+}
+
+impl ::re_types_core::Component for ViewerRecommendationHash {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.blueprint.components.ViewerRecommendationHash".into()
     }
 }

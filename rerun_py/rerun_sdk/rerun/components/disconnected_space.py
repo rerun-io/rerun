@@ -12,7 +12,7 @@ from .._baseclasses import (
 )
 from .disconnected_space_ext import DisconnectedSpaceExt
 
-__all__ = ["DisconnectedSpace", "DisconnectedSpaceBatch", "DisconnectedSpaceType"]
+__all__ = ["DisconnectedSpace", "DisconnectedSpaceBatch"]
 
 
 class DisconnectedSpace(DisconnectedSpaceExt, datatypes.Bool, ComponentMixin):
@@ -32,12 +32,8 @@ class DisconnectedSpace(DisconnectedSpaceExt, datatypes.Bool, ComponentMixin):
     pass
 
 
-class DisconnectedSpaceType(datatypes.BoolType):
-    _TYPE_NAME: str = "rerun.components.DisconnectedSpace"
-
-
 class DisconnectedSpaceBatch(datatypes.BoolBatch, ComponentBatchMixin):
-    _ARROW_TYPE = DisconnectedSpaceType()
+    _COMPONENT_NAME: str = "rerun.components.DisconnectedSpace"
 
 
 # This is patched in late to avoid circular dependencies.

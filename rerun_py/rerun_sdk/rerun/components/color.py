@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["Color", "ColorBatch", "ColorType"]
+__all__ = ["Color", "ColorBatch"]
 
 
 class Color(datatypes.Rgba32, ComponentMixin):
@@ -33,12 +33,8 @@ class Color(datatypes.Rgba32, ComponentMixin):
     pass
 
 
-class ColorType(datatypes.Rgba32Type):
-    _TYPE_NAME: str = "rerun.components.Color"
-
-
 class ColorBatch(datatypes.Rgba32Batch, ComponentBatchMixin):
-    _ARROW_TYPE = ColorType()
+    _COMPONENT_NAME: str = "rerun.components.Color"
 
 
 # This is patched in late to avoid circular dependencies.

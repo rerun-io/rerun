@@ -8,7 +8,7 @@ channel = "release"
 
 
 Download [`OpenStreetMap`](https://www.openstreetmap.org) data via the [Overpass](https://overpass-api.de) API and [query language](https://wiki.openstreetmap.org/wiki/Overpass_API/Overpass_QL),
-and display it on a [map view](https://www.rerun.io/docs/reference/types/view/map_view).
+and display it on a [map view](https://www.rerun.io/docs/reference/types/views/map_view).
 
 <picture>
   <img src="https://static.rerun.io/openstreetmap_data/5da23e9244d5cfead76ad484d09ba70cf62c4e57/full.png" alt="">

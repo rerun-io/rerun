@@ -11,7 +11,7 @@ from ..._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["SpaceViewOrigin", "SpaceViewOriginBatch", "SpaceViewOriginType"]
+__all__ = ["SpaceViewOrigin", "SpaceViewOriginBatch"]
 
 
 class SpaceViewOrigin(datatypes.EntityPath, ComponentMixin):
@@ -24,12 +24,8 @@ class SpaceViewOrigin(datatypes.EntityPath, ComponentMixin):
     pass
 
 
-class SpaceViewOriginType(datatypes.EntityPathType):
-    _TYPE_NAME: str = "rerun.blueprint.components.SpaceViewOrigin"
-
-
 class SpaceViewOriginBatch(datatypes.EntityPathBatch, ComponentBatchMixin):
-    _ARROW_TYPE = SpaceViewOriginType()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.SpaceViewOrigin"
 
 
 # This is patched in late to avoid circular dependencies.

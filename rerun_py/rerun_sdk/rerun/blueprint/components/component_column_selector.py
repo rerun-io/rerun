@@ -11,7 +11,7 @@ from ..._baseclasses import (
 )
 from ...blueprint import datatypes as blueprint_datatypes
 
-__all__ = ["ComponentColumnSelector", "ComponentColumnSelectorBatch", "ComponentColumnSelectorType"]
+__all__ = ["ComponentColumnSelector", "ComponentColumnSelectorBatch"]
 
 
 class ComponentColumnSelector(blueprint_datatypes.ComponentColumnSelector, ComponentMixin):
@@ -24,12 +24,8 @@ class ComponentColumnSelector(blueprint_datatypes.ComponentColumnSelector, Compo
     pass
 
 
-class ComponentColumnSelectorType(blueprint_datatypes.ComponentColumnSelectorType):
-    _TYPE_NAME: str = "rerun.blueprint.components.ComponentColumnSelector"
-
-
 class ComponentColumnSelectorBatch(blueprint_datatypes.ComponentColumnSelectorBatch, ComponentBatchMixin):
-    _ARROW_TYPE = ComponentColumnSelectorType()
+    _COMPONENT_NAME: str = "rerun.blueprint.components.ComponentColumnSelector"
 
 
 # This is patched in late to avoid circular dependencies.

@@ -11,7 +11,7 @@ from .._baseclasses import (
     ComponentMixin,
 )
 
-__all__ = ["TensorData", "TensorDataBatch", "TensorDataType"]
+__all__ = ["TensorData", "TensorDataBatch"]
 
 
 class TensorData(datatypes.TensorData, ComponentMixin):
@@ -33,12 +33,8 @@ class TensorData(datatypes.TensorData, ComponentMixin):
     pass
 
 
-class TensorDataType(datatypes.TensorDataType):
-    _TYPE_NAME: str = "rerun.components.TensorData"
-
-
 class TensorDataBatch(datatypes.TensorDataBatch, ComponentBatchMixin):
-    _ARROW_TYPE = TensorDataType()
+    _COMPONENT_NAME: str = "rerun.components.TensorData"
 
 
 # This is patched in late to avoid circular dependencies.

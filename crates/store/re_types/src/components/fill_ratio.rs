@@ -72,13 +72,6 @@ impl std::ops::DerefMut for FillRatio {
 ::re_types_core::macros::impl_into_cow!(FillRatio);
 
 impl ::re_types_core::Loggable for FillRatio {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.FillRatio".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::Float32::arrow_datatype()
@@ -114,5 +107,12 @@ impl ::re_types_core::Loggable for FillRatio {
         Self: Sized,
     {
         crate::datatypes::Float32::from_arrow(arrow_data).map(bytemuck::cast_vec)
+    }
+}
+
+impl ::re_types_core::Component for FillRatio {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.FillRatio".into()
     }
 }

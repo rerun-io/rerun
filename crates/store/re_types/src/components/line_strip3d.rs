@@ -54,13 +54,6 @@ impl<I: Into<crate::datatypes::Vec3D>, T: IntoIterator<Item = I>> From<T> for Li
 ::re_types_core::macros::impl_into_cow!(LineStrip3D);
 
 impl ::re_types_core::Loggable for LineStrip3D {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.LineStrip3D".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
@@ -270,5 +263,12 @@ impl ::re_types_core::Loggable for LineStrip3D {
         .collect::<DeserializationResult<Vec<Option<_>>>>()
         .with_context("rerun.components.LineStrip3D#points")
         .with_context("rerun.components.LineStrip3D")?)
+    }
+}
+
+impl ::re_types_core::Component for LineStrip3D {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.LineStrip3D".into()
     }
 }

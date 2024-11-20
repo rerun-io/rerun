@@ -12,7 +12,7 @@ from .._baseclasses import (
 )
 from .view_coordinates_ext import ViewCoordinatesExt
 
-__all__ = ["ViewCoordinates", "ViewCoordinatesBatch", "ViewCoordinatesType"]
+__all__ = ["ViewCoordinates", "ViewCoordinatesBatch"]
 
 
 class ViewCoordinates(ViewCoordinatesExt, datatypes.ViewCoordinates, ComponentMixin):
@@ -44,12 +44,8 @@ class ViewCoordinates(ViewCoordinatesExt, datatypes.ViewCoordinates, ComponentMi
     pass
 
 
-class ViewCoordinatesType(datatypes.ViewCoordinatesType):
-    _TYPE_NAME: str = "rerun.components.ViewCoordinates"
-
-
 class ViewCoordinatesBatch(datatypes.ViewCoordinatesBatch, ComponentBatchMixin):
-    _ARROW_TYPE = ViewCoordinatesType()
+    _COMPONENT_NAME: str = "rerun.components.ViewCoordinates"
 
 
 # This is patched in late to avoid circular dependencies.

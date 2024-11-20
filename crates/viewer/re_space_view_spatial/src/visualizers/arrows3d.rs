@@ -4,7 +4,7 @@ use re_space_view::{process_annotation_slices, process_color_slice};
 use re_types::{
     archetypes::Arrows3D,
     components::{ClassId, Color, Position3D, Radius, ShowLabels, Text, Vector3D},
-    ArrowString, Loggable as _,
+    ArrowString, Component as _,
 };
 use re_viewer_context::{
     auto_color_for_entity_path, ApplicableEntities, IdentifiedViewSystem, QueryContext,

@@ -35,6 +35,12 @@ impl std::ops::Deref for GpuBindGroup {
     }
 }
 
+impl<'a> From<&'a GpuBindGroup> for Option<&'a wgpu::BindGroup> {
+    fn from(bind_group: &'a GpuBindGroup) -> Self {
+        Some(&bind_group.resource.inner)
+    }
+}
+
 #[derive(Clone, Hash, PartialEq, Eq, Debug)]
 pub enum BindGroupEntry {
     DefaultTextureView(GpuTextureHandle), // TODO(andreas) what about non-default views?

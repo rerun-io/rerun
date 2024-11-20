@@ -17,7 +17,7 @@ FixedSizeList<4, float32>
 ## API reference links
  * 🌊 [C++ API docs for `Quaternion`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Quaternion.html)
  * 🐍 [Python API docs for `Quaternion`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.Quaternion)
- * 🦀 [Rust API docs for `Quaternion`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Quaternion.html)
+ * 🦀 [Rust API docs for `Quaternion`](https://ref.rerun.io/docs/rust/stable/rerun/datatypes/struct.Quaternion.html)
 
 
 ## Used by

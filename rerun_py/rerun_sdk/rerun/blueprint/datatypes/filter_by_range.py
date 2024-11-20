@@ -13,11 +13,10 @@ from attrs import define, field
 from ... import datatypes
 from ..._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
 )
 from .filter_by_range_ext import FilterByRangeExt
 
-__all__ = ["FilterByRange", "FilterByRangeArrayLike", "FilterByRangeBatch", "FilterByRangeLike", "FilterByRangeType"]
+__all__ = ["FilterByRange", "FilterByRangeArrayLike", "FilterByRangeBatch", "FilterByRangeLike"]
 
 
 @define(init=False)
@@ -62,22 +61,11 @@ FilterByRangeArrayLike = Union[
 ]
 
 
-class FilterByRangeType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.blueprint.datatypes.FilterByRange"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.struct([
-                pa.field("start", pa.int64(), nullable=False, metadata={}),
-                pa.field("end", pa.int64(), nullable=False, metadata={}),
-            ]),
-            self._TYPE_NAME,
-        )
-
-
 class FilterByRangeBatch(BaseBatch[FilterByRangeArrayLike]):
-    _ARROW_TYPE = FilterByRangeType()
+    _ARROW_DATATYPE = pa.struct([
+        pa.field("start", pa.int64(), nullable=False, metadata={}),
+        pa.field("end", pa.int64(), nullable=False, metadata={}),
+    ])
 
     @staticmethod
     def _native_to_pa_array(data: FilterByRangeArrayLike, data_type: pa.DataType) -> pa.Array:
@@ -88,8 +76,8 @@ class FilterByRangeBatch(BaseBatch[FilterByRangeArrayLike]):
 
         return pa.StructArray.from_arrays(
             [
-                TimeIntBatch([x.start for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
-                TimeIntBatch([x.end for x in data]).as_arrow_array().storage,  # type: ignore[misc, arg-type]
+                TimeIntBatch([x.start for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
+                TimeIntBatch([x.end for x in data]).as_arrow_array(),  # type: ignore[misc, arg-type]
             ],
             fields=list(data_type),
         )

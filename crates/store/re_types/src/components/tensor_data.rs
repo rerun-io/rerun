@@ -74,13 +74,6 @@ impl std::ops::DerefMut for TensorData {
 ::re_types_core::macros::impl_into_cow!(TensorData);
 
 impl ::re_types_core::Loggable for TensorData {
-    type Name = ::re_types_core::ComponentName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.components.TensorData".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         crate::datatypes::TensorData::arrow_datatype()
@@ -108,5 +101,12 @@ impl ::re_types_core::Loggable for TensorData {
     {
         crate::datatypes::TensorData::from_arrow_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+    }
+}
+
+impl ::re_types_core::Component for TensorData {
+    #[inline]
+    fn name() -> ComponentName {
+        "rerun.components.TensorData".into()
     }
 }

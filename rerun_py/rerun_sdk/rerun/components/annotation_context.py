@@ -13,19 +13,12 @@ from attrs import define, field
 from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
-    BaseExtensionType,
     ComponentBatchMixin,
     ComponentMixin,
 )
 from .annotation_context_ext import AnnotationContextExt
 
-__all__ = [
-    "AnnotationContext",
-    "AnnotationContextArrayLike",
-    "AnnotationContextBatch",
-    "AnnotationContextLike",
-    "AnnotationContextType",
-]
+__all__ = ["AnnotationContext", "AnnotationContextArrayLike", "AnnotationContextBatch", "AnnotationContextLike"]
 
 
 @define(init=False)
@@ -77,22 +70,30 @@ AnnotationContextArrayLike = Union[
 ]
 
 
-class AnnotationContextType(BaseExtensionType):
-    _TYPE_NAME: str = "rerun.components.AnnotationContext"
-
-    def __init__(self) -> None:
-        pa.ExtensionType.__init__(
-            self,
-            pa.list_(
+class AnnotationContextBatch(BaseBatch[AnnotationContextArrayLike], ComponentBatchMixin):
+    _ARROW_DATATYPE = pa.list_(
+        pa.field(
+            "item",
+            pa.struct([
+                pa.field("class_id", pa.uint16(), nullable=False, metadata={}),
                 pa.field(
-                    "item",
+                    "class_description",
                     pa.struct([
-                        pa.field("class_id", pa.uint16(), nullable=False, metadata={}),
                         pa.field(
-                            "class_description",
+                            "info",
                             pa.struct([
+                                pa.field("id", pa.uint16(), nullable=False, metadata={}),
+                                pa.field("label", pa.utf8(), nullable=True, metadata={}),
+                                pa.field("color", pa.uint32(), nullable=True, metadata={}),
+                            ]),
+                            nullable=False,
+                            metadata={},
+                        ),
+                        pa.field(
+                            "keypoint_annotations",
+                            pa.list_(
                                 pa.field(
-                                    "info",
+                                    "item",
                                     pa.struct([
                                         pa.field("id", pa.uint16(), nullable=False, metadata={}),
                                         pa.field("label", pa.utf8(), nullable=True, metadata={}),
@@ -100,55 +101,37 @@ class AnnotationContextType(BaseExtensionType):
                                     ]),
                                     nullable=False,
                                     metadata={},
-                                ),
+                                )
+                            ),
+                            nullable=False,
+                            metadata={},
+                        ),
+                        pa.field(
+                            "keypoint_connections",
+                            pa.list_(
                                 pa.field(
-                                    "keypoint_annotations",
-                                    pa.list_(
-                                        pa.field(
-                                            "item",
-                                            pa.struct([
-                                                pa.field("id", pa.uint16(), nullable=False, metadata={}),
-                                                pa.field("label", pa.utf8(), nullable=True, metadata={}),
-                                                pa.field("color", pa.uint32(), nullable=True, metadata={}),
-                                            ]),
-                                            nullable=False,
-                                            metadata={},
-                                        )
-                                    ),
+                                    "item",
+                                    pa.struct([
+                                        pa.field("keypoint0", pa.uint16(), nullable=False, metadata={}),
+                                        pa.field("keypoint1", pa.uint16(), nullable=False, metadata={}),
+                                    ]),
                                     nullable=False,
                                     metadata={},
-                                ),
-                                pa.field(
-                                    "keypoint_connections",
-                                    pa.list_(
-                                        pa.field(
-                                            "item",
-                                            pa.struct([
-                                                pa.field("keypoint0", pa.uint16(), nullable=False, metadata={}),
-                                                pa.field("keypoint1", pa.uint16(), nullable=False, metadata={}),
-                                            ]),
-                                            nullable=False,
-                                            metadata={},
-                                        )
-                                    ),
-                                    nullable=False,
-                                    metadata={},
-                                ),
-                            ]),
+                                )
+                            ),
                             nullable=False,
                             metadata={},
                         ),
                     ]),
                     nullable=False,
                     metadata={},
-                )
-            ),
-            self._TYPE_NAME,
+                ),
+            ]),
+            nullable=False,
+            metadata={},
         )
-
-
-class AnnotationContextBatch(BaseBatch[AnnotationContextArrayLike], ComponentBatchMixin):
-    _ARROW_TYPE = AnnotationContextType()
+    )
+    _COMPONENT_NAME: str = "rerun.components.AnnotationContext"
 
     @staticmethod
     def _native_to_pa_array(data: AnnotationContextArrayLike, data_type: pa.DataType) -> pa.Array:

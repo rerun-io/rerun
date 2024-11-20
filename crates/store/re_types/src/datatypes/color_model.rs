@@ -91,13 +91,6 @@ impl std::fmt::Display for ColorModel {
 ::re_types_core::macros::impl_into_cow!(ColorModel);
 
 impl ::re_types_core::Loggable for ColorModel {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.ColorModel".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]

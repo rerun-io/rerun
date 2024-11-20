@@ -170,7 +170,7 @@ Displays text from a text component, as raw text or markdown."
                             }));
                         } else {
                             // TODO(jleibs): better handling for multiple results
-                            ui.label(format!(
+                            ui.error_label(format!(
                                 "Can only show one text document at a time; was given {}. Update \
                                 the query so that it returns a single text document and create \
                                 additional views for the others.",

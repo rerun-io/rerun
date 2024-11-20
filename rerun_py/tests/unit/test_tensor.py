@@ -50,7 +50,7 @@ def tensor_data_expected() -> Any:
 
 def compare_tensors(left: Any, right: Any, check_fields: list[int]) -> None:
     for field in check_fields:
-        assert left.as_arrow_array().storage.field(field) == right.as_arrow_array().storage.field(field)
+        assert left.as_arrow_array().field(field) == right.as_arrow_array().field(field)
 
 
 def test_tensor() -> None:

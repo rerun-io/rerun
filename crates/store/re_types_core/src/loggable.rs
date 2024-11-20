@@ -1,6 +1,4 @@
-use crate::{
-    result::_Backtrace, DeserializationResult, ResultExt as _, SerializationResult, SizeBytes,
-};
+use crate::{result::_Backtrace, DeserializationResult, SerializationResult, SizeBytes};
 
 #[allow(unused_imports)] // used in docstrings
 use crate::{Archetype, ComponentBatch, LoggableBatch};
@@ -12,18 +10,12 @@ use crate::{Archetype, ComponentBatch, LoggableBatch};
 /// Internally, Arrow, and by extension Rerun, only deal with arrays of data.
 /// We refer to individual entries in these arrays as instances.
 ///
-/// [`Component`] is a specialization of the [`Loggable`] trait where [`Loggable::Name`] ==
-/// [`ComponentName`].
+/// A [`Loggable`] has no semantics (such as a name, for example): it's just data.
+/// If you want to encode semantics, then you're looking for a [`Component`], which extends [`Loggable`].
 ///
-/// Implementing the [`Loggable`] trait (and by extension [`Component`]) automatically derives the
-/// [`LoggableBatch`] implementation (and by extension [`ComponentBatch`]), which makes it possible to
-/// work with lists' worth of data in a generic fashion.
+/// Implementing the [`Loggable`] trait automatically derives the [`LoggableBatch`] implementation,
+/// which makes it possible to work with lists' worth of data in a generic fashion.
 pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
-    type Name: std::fmt::Display;
-
-    /// The fully-qualified name of this loggable, e.g. `rerun.datatypes.Vec2D`.
-    fn name() -> Self::Name;
-
     /// The underlying [`arrow2::datatypes::DataType`], excluding datatype extensions.
     fn arrow_datatype() -> arrow2::datatypes::DataType;
 
@@ -72,7 +64,6 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
                 })
             })
             .collect::<DeserializationResult<Vec<_>>>()
-            .with_context(Self::name().to_string())
     }
 
     /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
@@ -81,7 +72,7 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     ) -> DeserializationResult<Vec<Option<Self>>> {
         _ = data; // NOTE: do this here to avoid breaking users' autocomplete snippets
         Err(crate::DeserializationError::NotImplemented {
-            fqname: Self::name().to_string(),
+            fqname: "<unknown>".to_owned(),
             backtrace: _Backtrace::new_unresolved(),
         })
     }
@@ -89,11 +80,12 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
 
 /// A [`Component`] describes semantic data that can be used by any number of [`Archetype`]s.
 ///
-/// Any [`Loggable`] with a [`Loggable::Name`] set to [`ComponentName`] automatically implements
-/// [`Component`].
-pub trait Component: Loggable<Name = ComponentName> {}
-
-impl<L: Loggable<Name = ComponentName>> Component for L {}
+/// Implementing the [`Component`] trait automatically derives the [`ComponentBatch`] implementation,
+/// which makes it possible to work with lists' worth of data in a generic fashion.
+pub trait Component: Loggable {
+    /// The fully-qualified name of this component, e.g. `rerun.components.Position2D`.
+    fn name() -> ComponentName;
+}
 
 // ---
 

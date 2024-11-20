@@ -211,13 +211,6 @@ impl std::fmt::Display for PixelFormat {
 ::re_types_core::macros::impl_into_cow!(PixelFormat);
 
 impl ::re_types_core::Loggable for PixelFormat {
-    type Name = ::re_types_core::DatatypeName;
-
-    #[inline]
-    fn name() -> Self::Name {
-        "rerun.datatypes.PixelFormat".into()
-    }
-
     #[inline]
     fn arrow_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
