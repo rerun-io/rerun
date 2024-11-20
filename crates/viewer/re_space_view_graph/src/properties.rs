@@ -13,7 +13,7 @@ impl TypedComponentFallbackProvider<VisualBounds2D> for GraphSpaceView {
             return VisualBounds2D::default();
         };
 
-        match state.layout.bounding_rect() {
+        match state.layout_state.bounding_rect() {
             Some(rect) if valid_bound(&rect) => rect.into(),
             _ => VisualBounds2D::default(),
         }

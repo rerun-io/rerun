@@ -31,15 +31,15 @@ class Utf8PairExt:
         from . import Utf8Batch, Utf8Pair
 
         if isinstance(data, Utf8Pair):
-            data = [data]
-
-        strings = [_utf8_pair_converter(item) for item in data]
+            strings = [data]
+        else:
+            strings = [_utf8_pair_converter(item) for item in data]
 
         string0 = [pair.first for pair in strings]
         string1 = [pair.second for pair in strings]
 
-        string0_array = Utf8Batch(string0).as_arrow_array().storage
-        string1_array = Utf8Batch(string1).as_arrow_array().storage
+        string0_array = Utf8Batch(string0).as_arrow_array()
+        string1_array = Utf8Batch(string1).as_arrow_array()
 
         return pa.StructArray.from_arrays(
             arrays=[string0_array, string1_array],

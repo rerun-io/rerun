@@ -15,7 +15,7 @@ use crate::{
 /// This state is preserved between frames, but not across Viewer sessions.
 #[derive(Default)]
 pub struct GraphSpaceViewState {
-    pub layout: LayoutState,
+    pub layout_state: LayoutState,
 
     pub show_debug: bool,
 
@@ -24,7 +24,7 @@ pub struct GraphSpaceViewState {
 
 impl GraphSpaceViewState {
     pub fn layout_ui(&mut self, ui: &mut egui::Ui) {
-        let Some(rect) = self.layout.bounding_rect() else {
+        let Some(rect) = self.layout_state.bounding_rect() else {
             return;
         };
         ui.grid_left_hand_label("Layout")
@@ -46,7 +46,7 @@ impl GraphSpaceViewState {
 
     pub fn simulation_ui(&mut self, ui: &mut egui::Ui) {
         if ui.button("Reset simulation").clicked() {
-            self.layout.reset();
+            self.layout_state.reset();
         }
     }
 }

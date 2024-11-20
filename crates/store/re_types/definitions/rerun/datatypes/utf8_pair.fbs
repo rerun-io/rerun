@@ -3,7 +3,7 @@ namespace rerun.datatypes;
 /// Stores a tuple of UTF-8 strings.
 table Utf8Pair (
   "attr.docs.unreleased",
-  "attr.python.aliases": "Sequence[datatypes.Utf8Like]",
+  "attr.python.aliases": "Tuple[datatypes.Utf8Like, datatypes.Utf8Like]",
   "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord"
 ) {
   /// The first string.

@@ -64,7 +64,7 @@ impl SpaceViewClass for GraphSpaceView {
             return Some(width / height);
         }
 
-        if let Some(rect) = state.layout.bounding_rect() {
+        if let Some(rect) = state.layout_state.bounding_rect() {
             let width = rect.width().abs();
             let height = rect.height().abs();
             return Some(width / height);
@@ -145,8 +145,8 @@ impl SpaceViewClass for GraphSpaceView {
         let bounds: blueprint::components::VisualBounds2D =
             bounds_property.component_or_fallback(ctx, self, state)?;
 
-        let layout_was_empty = state.layout.is_none();
-        let layout = state.layout.get(
+        let layout_was_empty = state.layout_state.is_none();
+        let layout = state.layout_state.get(
             query.timeline,
             query.latest_at,
             graphs.iter().map(|(_, graph)| graph),
@@ -220,7 +220,7 @@ impl SpaceViewClass for GraphSpaceView {
         // Update stored bounds on the state, so visualizers see an up-to-date value.
         state.world_bounds = Some(bounds);
 
-        if state.layout.is_in_progress() {
+        if state.layout_state.is_in_progress() {
             ui.ctx().request_repaint();
         }
 
