@@ -1,10 +1,13 @@
 use re_log_types::EntityPath;
-use re_space_view::view_property_ui;
+use re_space_view::{
+    controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER},
+    view_property_ui,
+};
 use re_types::{
     blueprint::{self, archetypes::VisualBounds2D},
     components, SpaceViewClassIdentifier,
 };
-use re_ui::{self, UiExt as _};
+use re_ui::{self, ModifiersMarkdown, MouseButtonMarkdown, UiExt as _};
 use re_viewer_context::{
     external::re_entity_db::InstancePath, IdentifiedViewSystem as _, Item, RecommendedSpaceView,
     SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
@@ -38,8 +41,19 @@ impl SpaceViewClass for GraphSpaceView {
         &re_ui::icons::SPACE_VIEW_GRAPH
     }
 
-    fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
-        "A space view that shows a graph as a node link diagram.".to_owned()
+    fn help_markdown(&self, egui_ctx: &egui::Context) -> String {
+        format!(
+            r"# Graph View
+
+Display a graph of nodes and edges.
+
+## Navigation controls
+- Pinch gesture or {zoom_scroll_modifier} + scroll to zoom.
+- Click and drag with the {drag_pan2d_button} to pan.
+- Double-click to reset the view.",
+            zoom_scroll_modifier = ModifiersMarkdown(ZOOM_SCROLL_MODIFIER, egui_ctx),
+            drag_pan2d_button = MouseButtonMarkdown(DRAG_PAN2D_BUTTON),
+        )
     }
 
     /// Register all systems (contexts & parts) that the space view needs.
