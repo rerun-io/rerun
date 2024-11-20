@@ -6,8 +6,8 @@ use re_types::{
 };
 use re_ui::{self, UiExt as _};
 use re_viewer_context::{
-    external::re_entity_db::InstancePath, IdentifiedViewSystem as _, Item, SpaceViewClass,
-    SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
+    external::re_entity_db::InstancePath, IdentifiedViewSystem as _, Item, RecommendedSpaceView,
+    SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
     SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
     ViewerContext,
@@ -72,22 +72,23 @@ impl SpaceViewClass for GraphSpaceView {
         None
     }
 
-    // TODO(grtlr): implement `recommended_root_for_entities`
-
     fn layout_priority(&self) -> SpaceViewClassLayoutPriority {
         Default::default()
     }
 
     fn spawn_heuristics(&self, ctx: &ViewerContext<'_>) -> SpaceViewSpawnHeuristics {
-        // By default spawn a single view at the root if there's anything the visualizer is applicable to.
-        if ctx
+        if let Some(applicable) = ctx
             .applicable_entities_per_visualizer
             .get(&NodeVisualizer::identifier())
-            .map_or(true, |entities| entities.is_empty())
         {
-            SpaceViewSpawnHeuristics::default()
+            SpaceViewSpawnHeuristics::new(
+                applicable
+                    .iter()
+                    .cloned()
+                    .map(RecommendedSpaceView::new_single_entity),
+            )
         } else {
-            SpaceViewSpawnHeuristics::root()
+            SpaceViewSpawnHeuristics::empty()
         }
     }
 
