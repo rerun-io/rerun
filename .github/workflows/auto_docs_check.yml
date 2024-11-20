@@ -26,7 +26,7 @@ jobs:
   check-cherry-pick:
     name: Check if merge commit can be cherry-picked
     runs-on: ubuntu-latest
-    if: ${{ contains(github.event.pull_request.labels.*.name, 'deploy docs') }}
+    if: github.event.pull_request.head.repo.owner.login == 'rerun-io' && contains(github.event.pull_request.labels.*.name, 'deploy docs')
     steps:
       - uses: actions/checkout@v3
         with:
