@@ -230,7 +230,7 @@ impl ::re_types_core::Archetype for Boxes3D {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -244,7 +244,7 @@ impl ::re_types_core::Archetype for Boxes3D {
                 .get("rerun.components.HalfSize3D")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Boxes3D#half_sizes")?;
-            <crate::components::HalfSize3D>::from_arrow_opt(&**array)
+            <crate::components::HalfSize3D>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.Boxes3D#half_sizes")?
                 .into_iter()
                 .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -254,7 +254,7 @@ impl ::re_types_core::Archetype for Boxes3D {
         let centers = if let Some(array) = arrays_by_name.get("rerun.components.PoseTranslation3D")
         {
             Some({
-                <crate::components::PoseTranslation3D>::from_arrow_opt(&**array)
+                <crate::components::PoseTranslation3D>::from_arrow2_opt(&**array)
                     .with_context("rerun.archetypes.Boxes3D#centers")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -267,7 +267,7 @@ impl ::re_types_core::Archetype for Boxes3D {
         let rotation_axis_angles =
             if let Some(array) = arrays_by_name.get("rerun.components.PoseRotationAxisAngle") {
                 Some({
-                    <crate::components::PoseRotationAxisAngle>::from_arrow_opt(&**array)
+                    <crate::components::PoseRotationAxisAngle>::from_arrow2_opt(&**array)
                         .with_context("rerun.archetypes.Boxes3D#rotation_axis_angles")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -280,7 +280,7 @@ impl ::re_types_core::Archetype for Boxes3D {
         let quaternions =
             if let Some(array) = arrays_by_name.get("rerun.components.PoseRotationQuat") {
                 Some({
-                    <crate::components::PoseRotationQuat>::from_arrow_opt(&**array)
+                    <crate::components::PoseRotationQuat>::from_arrow2_opt(&**array)
                         .with_context("rerun.archetypes.Boxes3D#quaternions")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -292,7 +292,7 @@ impl ::re_types_core::Archetype for Boxes3D {
             };
         let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
             Some({
-                <crate::components::Color>::from_arrow_opt(&**array)
+                <crate::components::Color>::from_arrow2_opt(&**array)
                     .with_context("rerun.archetypes.Boxes3D#colors")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -304,7 +304,7 @@ impl ::re_types_core::Archetype for Boxes3D {
         };
         let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
             Some({
-                <crate::components::Radius>::from_arrow_opt(&**array)
+                <crate::components::Radius>::from_arrow2_opt(&**array)
                     .with_context("rerun.archetypes.Boxes3D#radii")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -315,7 +315,7 @@ impl ::re_types_core::Archetype for Boxes3D {
             None
         };
         let fill_mode = if let Some(array) = arrays_by_name.get("rerun.components.FillMode") {
-            <crate::components::FillMode>::from_arrow_opt(&**array)
+            <crate::components::FillMode>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.Boxes3D#fill_mode")?
                 .into_iter()
                 .next()
@@ -325,7 +325,7 @@ impl ::re_types_core::Archetype for Boxes3D {
         };
         let labels = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
             Some({
-                <crate::components::Text>::from_arrow_opt(&**array)
+                <crate::components::Text>::from_arrow2_opt(&**array)
                     .with_context("rerun.archetypes.Boxes3D#labels")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -336,7 +336,7 @@ impl ::re_types_core::Archetype for Boxes3D {
             None
         };
         let show_labels = if let Some(array) = arrays_by_name.get("rerun.components.ShowLabels") {
-            <crate::components::ShowLabels>::from_arrow_opt(&**array)
+            <crate::components::ShowLabels>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.Boxes3D#show_labels")?
                 .into_iter()
                 .next()
@@ -346,7 +346,7 @@ impl ::re_types_core::Archetype for Boxes3D {
         };
         let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
             Some({
-                <crate::components::ClassId>::from_arrow_opt(&**array)
+                <crate::components::ClassId>::from_arrow2_opt(&**array)
                     .with_context("rerun.archetypes.Boxes3D#class_ids")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))

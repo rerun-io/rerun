@@ -53,7 +53,7 @@ impl From<Utf8List> for Vec<::re_types_core::ArrowString> {
 
 impl ::re_types_core::Loggable for Utf8List {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
         DataType::List(std::sync::Arc::new(Field::new(
@@ -63,7 +63,7 @@ impl ::re_types_core::Loggable for Utf8List {
         )))
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
@@ -97,7 +97,7 @@ impl ::re_types_core::Loggable for Utf8List {
                 let data0_inner_data: Vec<_> = data0.into_iter().flatten().flatten().collect();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                 ListArray::try_new(
-                    Self::arrow_datatype(),
+                    Self::arrow2_datatype(),
                     offsets,
                     {
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
@@ -125,7 +125,7 @@ impl ::re_types_core::Loggable for Utf8List {
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -139,7 +139,7 @@ impl ::re_types_core::Loggable for Utf8List {
                 .as_any()
                 .downcast_ref::<arrow2::array::ListArray<i32>>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
+                    let expected = Self::arrow2_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })

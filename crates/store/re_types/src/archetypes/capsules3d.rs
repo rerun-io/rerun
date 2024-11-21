@@ -232,7 +232,7 @@ impl ::re_types_core::Archetype for Capsules3D {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -246,7 +246,7 @@ impl ::re_types_core::Archetype for Capsules3D {
                 .get("rerun.components.Length")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Capsules3D#lengths")?;
-            <crate::components::Length>::from_arrow_opt(&**array)
+            <crate::components::Length>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.Capsules3D#lengths")?
                 .into_iter()
                 .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -258,7 +258,7 @@ impl ::re_types_core::Archetype for Capsules3D {
                 .get("rerun.components.Radius")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Capsules3D#radii")?;
-            <crate::components::Radius>::from_arrow_opt(&**array)
+            <crate::components::Radius>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.Capsules3D#radii")?
                 .into_iter()
                 .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -268,7 +268,7 @@ impl ::re_types_core::Archetype for Capsules3D {
         let translations =
             if let Some(array) = arrays_by_name.get("rerun.components.PoseTranslation3D") {
                 Some({
-                    <crate::components::PoseTranslation3D>::from_arrow_opt(&**array)
+                    <crate::components::PoseTranslation3D>::from_arrow2_opt(&**array)
                         .with_context("rerun.archetypes.Capsules3D#translations")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -281,7 +281,7 @@ impl ::re_types_core::Archetype for Capsules3D {
         let rotation_axis_angles =
             if let Some(array) = arrays_by_name.get("rerun.components.PoseRotationAxisAngle") {
                 Some({
-                    <crate::components::PoseRotationAxisAngle>::from_arrow_opt(&**array)
+                    <crate::components::PoseRotationAxisAngle>::from_arrow2_opt(&**array)
                         .with_context("rerun.archetypes.Capsules3D#rotation_axis_angles")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -294,7 +294,7 @@ impl ::re_types_core::Archetype for Capsules3D {
         let quaternions =
             if let Some(array) = arrays_by_name.get("rerun.components.PoseRotationQuat") {
                 Some({
-                    <crate::components::PoseRotationQuat>::from_arrow_opt(&**array)
+                    <crate::components::PoseRotationQuat>::from_arrow2_opt(&**array)
                         .with_context("rerun.archetypes.Capsules3D#quaternions")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -306,7 +306,7 @@ impl ::re_types_core::Archetype for Capsules3D {
             };
         let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
             Some({
-                <crate::components::Color>::from_arrow_opt(&**array)
+                <crate::components::Color>::from_arrow2_opt(&**array)
                     .with_context("rerun.archetypes.Capsules3D#colors")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -318,7 +318,7 @@ impl ::re_types_core::Archetype for Capsules3D {
         };
         let labels = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
             Some({
-                <crate::components::Text>::from_arrow_opt(&**array)
+                <crate::components::Text>::from_arrow2_opt(&**array)
                     .with_context("rerun.archetypes.Capsules3D#labels")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -329,7 +329,7 @@ impl ::re_types_core::Archetype for Capsules3D {
             None
         };
         let show_labels = if let Some(array) = arrays_by_name.get("rerun.components.ShowLabels") {
-            <crate::components::ShowLabels>::from_arrow_opt(&**array)
+            <crate::components::ShowLabels>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.Capsules3D#show_labels")?
                 .into_iter()
                 .next()
@@ -339,7 +339,7 @@ impl ::re_types_core::Archetype for Capsules3D {
         };
         let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
             Some({
-                <crate::components::ClassId>::from_arrow_opt(&**array)
+                <crate::components::ClassId>::from_arrow2_opt(&**array)
                     .with_context("rerun.archetypes.Capsules3D#class_ids")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))

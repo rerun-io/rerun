@@ -14,9 +14,9 @@ const ENTITY_PATH: &str = "my/entity";
 
 fn datatypes() -> IntMap<ComponentName, ArrowDatatype> {
     [
-        (MyPoint::name(), MyPoint::arrow_datatype()),
-        (MyColor::name(), MyColor::arrow_datatype()),
-        (MyLabel::name(), MyLabel::arrow_datatype()),
+        (MyPoint::name(), MyPoint::arrow2_datatype()),
+        (MyColor::name(), MyColor::arrow2_datatype()),
+        (MyLabel::name(), MyLabel::arrow2_datatype()),
     ]
     .into_iter()
     .collect()

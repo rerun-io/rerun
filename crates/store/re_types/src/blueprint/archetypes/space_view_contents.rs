@@ -141,7 +141,7 @@ impl ::re_types_core::Archetype for SpaceViewContents {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -155,7 +155,7 @@ impl ::re_types_core::Archetype for SpaceViewContents {
                 .get("rerun.blueprint.components.QueryExpression")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.SpaceViewContents#query")?;
-            <crate::blueprint::components::QueryExpression>::from_arrow_opt(&**array)
+            <crate::blueprint::components::QueryExpression>::from_arrow2_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.SpaceViewContents#query")?
                 .into_iter()
                 .map(|v| v.ok_or_else(DeserializationError::missing_data))

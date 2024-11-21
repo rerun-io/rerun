@@ -45,24 +45,24 @@ crate::macros::impl_into_cow!(TimeRange);
 
 impl crate::Loggable for TimeRange {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
             Field::new(
                 "start",
-                <crate::datatypes::TimeRangeBoundary>::arrow_datatype(),
+                <crate::datatypes::TimeRangeBoundary>::arrow2_datatype(),
                 false,
             ),
             Field::new(
                 "end",
-                <crate::datatypes::TimeRangeBoundary>::arrow_datatype(),
+                <crate::datatypes::TimeRangeBoundary>::arrow2_datatype(),
                 false,
             ),
         ]))
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
@@ -85,7 +85,7 @@ impl crate::Loggable for TimeRange {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                Self::arrow_datatype(),
+                Self::arrow2_datatype(),
                 vec![
                     {
                         let (somes, start): (Vec<_>, Vec<_>) = data
@@ -101,7 +101,7 @@ impl crate::Loggable for TimeRange {
                         };
                         {
                             _ = start_bitmap;
-                            crate::datatypes::TimeRangeBoundary::to_arrow_opt(start)?
+                            crate::datatypes::TimeRangeBoundary::to_arrow2_opt(start)?
                         }
                     },
                     {
@@ -118,7 +118,7 @@ impl crate::Loggable for TimeRange {
                         };
                         {
                             _ = end_bitmap;
-                            crate::datatypes::TimeRangeBoundary::to_arrow_opt(end)?
+                            crate::datatypes::TimeRangeBoundary::to_arrow2_opt(end)?
                         }
                     },
                 ],
@@ -128,7 +128,7 @@ impl crate::Loggable for TimeRange {
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -142,7 +142,7 @@ impl crate::Loggable for TimeRange {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
+                    let expected = Self::arrow2_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -160,26 +160,26 @@ impl crate::Loggable for TimeRange {
                 let start = {
                     if !arrays_by_name.contains_key("start") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow2_datatype(),
                             "start",
                         ))
                         .with_context("rerun.datatypes.TimeRange");
                     }
                     let arrow_data = &**arrays_by_name["start"];
-                    crate::datatypes::TimeRangeBoundary::from_arrow_opt(arrow_data)
+                    crate::datatypes::TimeRangeBoundary::from_arrow2_opt(arrow_data)
                         .with_context("rerun.datatypes.TimeRange#start")?
                         .into_iter()
                 };
                 let end = {
                     if !arrays_by_name.contains_key("end") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow2_datatype(),
                             "end",
                         ))
                         .with_context("rerun.datatypes.TimeRange");
                     }
                     let arrow_data = &**arrays_by_name["end"];
-                    crate::datatypes::TimeRangeBoundary::from_arrow_opt(arrow_data)
+                    crate::datatypes::TimeRangeBoundary::from_arrow2_opt(arrow_data)
                         .with_context("rerun.datatypes.TimeRange#end")?
                         .into_iter()
                 };

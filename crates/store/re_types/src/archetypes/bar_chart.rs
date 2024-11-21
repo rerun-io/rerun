@@ -133,7 +133,7 @@ impl ::re_types_core::Archetype for BarChart {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -147,7 +147,7 @@ impl ::re_types_core::Archetype for BarChart {
                 .get("rerun.components.TensorData")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.BarChart#values")?;
-            <crate::components::TensorData>::from_arrow_opt(&**array)
+            <crate::components::TensorData>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.BarChart#values")?
                 .into_iter()
                 .next()
@@ -156,7 +156,7 @@ impl ::re_types_core::Archetype for BarChart {
                 .with_context("rerun.archetypes.BarChart#values")?
         };
         let color = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
-            <crate::components::Color>::from_arrow_opt(&**array)
+            <crate::components::Color>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.BarChart#color")?
                 .into_iter()
                 .next()

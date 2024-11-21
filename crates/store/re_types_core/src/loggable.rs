@@ -17,7 +17,7 @@ use crate::{Archetype, ComponentBatch, LoggableBatch};
 /// which makes it possible to work with lists' worth of data in a generic fashion.
 pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     /// The underlying [`arrow2::datatypes::DataType`], excluding datatype extensions.
-    fn arrow_datatype() -> arrow2::datatypes::DataType;
+    fn arrow2_datatype() -> arrow2::datatypes::DataType;
 
     /// Given an iterator of options of owned or reference values to the current
     /// [`Loggable`], serializes them into an Arrow array.
@@ -25,7 +25,7 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     /// When using Rerun's builtin components & datatypes, this can only fail if the data
     /// exceeds the maximum number of entries in an Arrow array (2^31 for standard arrays,
     /// 2^63 for large arrays).
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
@@ -40,23 +40,23 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     /// exceeds the maximum number of entries in an Arrow array (2^31 for standard arrays,
     /// 2^63 for large arrays).
     #[inline]
-    fn to_arrow<'a>(
+    fn to_arrow2<'a>(
         data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
     ) -> SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: 'a,
     {
         re_tracing::profile_function!();
-        Self::to_arrow_opt(data.into_iter().map(Some))
+        Self::to_arrow2_opt(data.into_iter().map(Some))
     }
 
     // --- Optional deserialization methods ---
 
     /// Given an Arrow array, deserializes it into a collection of [`Loggable`]s.
     #[inline]
-    fn from_arrow(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
+    fn from_arrow2(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Self>> {
         re_tracing::profile_function!();
-        Self::from_arrow_opt(data)?
+        Self::from_arrow2_opt(data)?
             .into_iter()
             .map(|opt| {
                 opt.ok_or_else(|| crate::DeserializationError::MissingData {
@@ -67,7 +67,7 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     }
 
     /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         data: &dyn ::arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>> {
         _ = data; // NOTE: do this here to avoid breaking users' autocomplete snippets

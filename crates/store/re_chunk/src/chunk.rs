@@ -265,7 +265,7 @@ impl Chunk {
         .collect_vec();
 
         #[allow(clippy::unwrap_used)]
-        let row_ids = <RowId as Loggable>::to_arrow(&row_ids)
+        let row_ids = <RowId as Loggable>::to_arrow2(&row_ids)
             // Unwrap: native RowIds cannot fail to serialize.
             .unwrap()
             .as_any()
@@ -295,7 +295,7 @@ impl Chunk {
             .collect_vec();
 
         #[allow(clippy::unwrap_used)]
-        let row_ids = <RowId as Loggable>::to_arrow(&row_ids)
+        let row_ids = <RowId as Loggable>::to_arrow2(&row_ids)
             // Unwrap: native RowIds cannot fail to serialize.
             .unwrap()
             .as_any()
@@ -623,7 +623,7 @@ impl Chunk {
     ) -> ChunkResult<Self> {
         re_tracing::profile_function!();
         let row_ids = row_ids
-            .to_arrow()
+            .to_arrow2()
             // NOTE: impossible, but better safe than sorry.
             .map_err(|err| ChunkError::Malformed {
                 reason: format!("RowIds failed to serialize: {err}"),
@@ -700,7 +700,7 @@ impl Chunk {
             entity_path,
             heap_size_bytes: Default::default(),
             is_sorted: true,
-            row_ids: ArrowStructArray::new_empty(RowId::arrow_datatype()),
+            row_ids: ArrowStructArray::new_empty(RowId::arrow2_datatype()),
             timelines: Default::default(),
             components: Default::default(),
         }
@@ -1264,11 +1264,11 @@ impl Chunk {
 
         // Row IDs
         {
-            if *row_ids.data_type().to_logical_type() != RowId::arrow_datatype() {
+            if *row_ids.data_type().to_logical_type() != RowId::arrow2_datatype() {
                 return Err(ChunkError::Malformed {
                     reason: format!(
                         "RowId data has the wrong datatype: expected {:?} but got {:?} instead",
-                        RowId::arrow_datatype(),
+                        RowId::arrow2_datatype(),
                         *row_ids.data_type(),
                     ),
                 });

@@ -158,7 +158,7 @@ impl ::re_types_core::Archetype for TextLog {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -172,7 +172,7 @@ impl ::re_types_core::Archetype for TextLog {
                 .get("rerun.components.Text")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.TextLog#text")?;
-            <crate::components::Text>::from_arrow_opt(&**array)
+            <crate::components::Text>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.TextLog#text")?
                 .into_iter()
                 .next()
@@ -181,7 +181,7 @@ impl ::re_types_core::Archetype for TextLog {
                 .with_context("rerun.archetypes.TextLog#text")?
         };
         let level = if let Some(array) = arrays_by_name.get("rerun.components.TextLogLevel") {
-            <crate::components::TextLogLevel>::from_arrow_opt(&**array)
+            <crate::components::TextLogLevel>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.TextLog#level")?
                 .into_iter()
                 .next()
@@ -190,7 +190,7 @@ impl ::re_types_core::Archetype for TextLog {
             None
         };
         let color = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
-            <crate::components::Color>::from_arrow_opt(&**array)
+            <crate::components::Color>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.TextLog#color")?
                 .into_iter()
                 .next()

@@ -48,7 +48,7 @@ impl Chunk {
             Err(err) => return Some(Err(err)),
         };
 
-        let data = C::from_arrow(&*array);
+        let data = C::from_arrow2(&*array);
         Some(data.map_err(Into::into))
     }
 
@@ -99,7 +99,7 @@ impl Chunk {
             Err(err) => return Some(Err(err)),
         };
 
-        match C::from_arrow(&*array) {
+        match C::from_arrow2(&*array) {
             Ok(data) => data.into_iter().next().map(Ok), // NOTE: It's already sliced!
             Err(err) => Some(Err(err.into())),
         }
@@ -148,7 +148,7 @@ impl Chunk {
             Err(err) => return Some(Err(err)),
         };
 
-        match C::from_arrow(&*array) {
+        match C::from_arrow2(&*array) {
             Ok(data) => data.into_iter().next().map(Ok), // NOTE: It's already sliced!
             Err(err) => Some(Err(err.into())),
         }
@@ -268,7 +268,7 @@ impl UnitChunkShared {
     /// Returns an error if the data cannot be deserialized.
     #[inline]
     pub fn component_batch<C: Component>(&self) -> Option<ChunkResult<Vec<C>>> {
-        let data = C::from_arrow(&*self.component_batch_raw(&C::name())?);
+        let data = C::from_arrow2(&*self.component_batch_raw(&C::name())?);
         Some(data.map_err(Into::into))
     }
 
@@ -310,7 +310,7 @@ impl UnitChunkShared {
             Err(err) => return Some(Err(err)),
         };
 
-        match C::from_arrow(&*array) {
+        match C::from_arrow2(&*array) {
             Ok(data) => data.into_iter().next().map(Ok), // NOTE: It's already sliced!
             Err(err) => Some(Err(err.into())),
         }
@@ -350,7 +350,7 @@ impl UnitChunkShared {
             Err(err) => return Some(Err(err)),
         };
 
-        match C::from_arrow(&*array) {
+        match C::from_arrow2(&*array) {
             Ok(data) => data.into_iter().next().map(Ok), // NOTE: It's already sliced!
             Err(err) => Some(Err(err.into())),
         }

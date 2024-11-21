@@ -104,7 +104,7 @@ impl ::re_types_core::Archetype for MapZoom {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -118,7 +118,7 @@ impl ::re_types_core::Archetype for MapZoom {
                 .get("rerun.blueprint.components.ZoomLevel")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.MapZoom#zoom")?;
-            <crate::blueprint::components::ZoomLevel>::from_arrow_opt(&**array)
+            <crate::blueprint::components::ZoomLevel>::from_arrow2_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.MapZoom#zoom")?
                 .into_iter()
                 .next()

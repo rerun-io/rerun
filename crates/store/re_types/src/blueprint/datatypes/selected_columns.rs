@@ -45,7 +45,7 @@ impl ::re_types_core::SizeBytes for SelectedColumns {
 
 impl ::re_types_core::Loggable for SelectedColumns {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
@@ -53,7 +53,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                 "time_columns",
                 DataType::List(std::sync::Arc::new(Field::new(
                     "item",
-                    <crate::datatypes::Utf8>::arrow_datatype(),
+                    <crate::datatypes::Utf8>::arrow2_datatype(),
                     false,
                 ))),
                 false,
@@ -62,7 +62,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                 "component_columns",
                 DataType::List(std::sync::Arc::new(Field::new(
                     "item",
-                    <crate::blueprint::datatypes::ComponentColumnSelector>::arrow_datatype(),
+                    <crate::blueprint::datatypes::ComponentColumnSelector>::arrow2_datatype(),
                     false,
                 ))),
                 false,
@@ -70,7 +70,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
         ]))
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
@@ -93,7 +93,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                    Self::arrow_datatype(),
+                    Self::arrow2_datatype(),
                     vec![
                         { let (somes, time_columns) : (Vec < _ >, Vec < _ >) = data
                         .iter().map(| datum | { let datum = datum.as_ref().map(| datum |
@@ -109,7 +109,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                         time_columns_inner_bitmap : Option < arrow2::bitmap::Bitmap > =
                         None;
                         ListArray::try_new(DataType::List(std::sync::Arc::new(Field::new("item",
-                        < crate ::datatypes::Utf8 > ::arrow_datatype(), false))),
+                        < crate ::datatypes::Utf8 > ::arrow2_datatype(), false))),
                         offsets, { let offsets = arrow2::offset::Offsets:: < i32 >
                         ::try_from_lengths(time_columns_inner_data.iter().map(| datum | {
                         datum.0.len() })) ? .into(); let inner_data :
@@ -136,9 +136,9 @@ impl ::re_types_core::Loggable for SelectedColumns {
                         > = None;
                         ListArray::try_new(DataType::List(std::sync::Arc::new(Field::new("item",
                         < crate ::blueprint::datatypes::ComponentColumnSelector >
-                        ::arrow_datatype(), false))), offsets, { _ =
+                        ::arrow2_datatype(), false))), offsets, { _ =
                         component_columns_inner_bitmap; crate
-                        ::blueprint::datatypes::ComponentColumnSelector::to_arrow_opt(component_columns_inner_data
+                        ::blueprint::datatypes::ComponentColumnSelector::to_arrow2_opt(component_columns_inner_data
                         .into_iter().map(Some)) ? }, component_columns_bitmap,) ?
                         .boxed() } },
                     ],
@@ -148,7 +148,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -162,7 +162,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
+                    let expected = Self::arrow2_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -180,7 +180,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                 let time_columns = {
                     if !arrays_by_name.contains_key("time_columns") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow2_datatype(),
                             "time_columns",
                         ))
                         .with_context("rerun.blueprint.datatypes.SelectedColumns");
@@ -193,7 +193,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                             .ok_or_else(|| {
                                 let expected = DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::datatypes::Utf8>::arrow_datatype(),
+                                    <crate::datatypes::Utf8>::arrow2_datatype(),
                                     false,
                                 )));
                                 let actual = arrow_data.data_type().clone();
@@ -304,7 +304,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                 let component_columns = {
                     if !arrays_by_name.contains_key("component_columns") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow2_datatype(),
                             "component_columns",
                         ))
                         .with_context("rerun.blueprint.datatypes.SelectedColumns");
@@ -319,7 +319,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                                     std::sync::Arc::new(
                                         Field::new(
                                             "item",
-                                            <crate::blueprint::datatypes::ComponentColumnSelector>::arrow_datatype(),
+                                            <crate::blueprint::datatypes::ComponentColumnSelector>::arrow2_datatype(),
                                             false,
                                         ),
                                     ),
@@ -335,7 +335,7 @@ impl ::re_types_core::Loggable for SelectedColumns {
                         } else {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
-                                crate::blueprint::datatypes::ComponentColumnSelector::from_arrow_opt(
+                                crate::blueprint::datatypes::ComponentColumnSelector::from_arrow2_opt(
                                         arrow_data_inner,
                                     )
                                     .with_context(

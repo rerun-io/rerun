@@ -247,7 +247,7 @@ fn roundtrip() {
     .into();
 
         eprintln!("arch = {arch:#?}");
-        let serialized = arch.to_arrow().unwrap();
+        let serialized = arch.to_arrow2().unwrap();
         for (field, array) in &serialized {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
@@ -270,7 +270,7 @@ fn roundtrip() {
             }
         }
 
-        let deserialized = AffixFuzzer1::from_arrow(serialized).unwrap();
+        let deserialized = AffixFuzzer1::from_arrow2(serialized).unwrap();
         similar_asserts::assert_eq!(arch, deserialized);
     }
 
@@ -309,7 +309,7 @@ fn roundtrip() {
     .into();
 
         eprintln!("arch = {arch:#?}");
-        let serialized = arch.to_arrow().unwrap();
+        let serialized = arch.to_arrow2().unwrap();
         for (field, array) in &serialized {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
@@ -332,7 +332,7 @@ fn roundtrip() {
             }
         }
 
-        let deserialized = AffixFuzzer2::from_arrow(serialized).unwrap();
+        let deserialized = AffixFuzzer2::from_arrow2(serialized).unwrap();
         similar_asserts::assert_eq!(arch, deserialized);
     }
 
@@ -362,7 +362,7 @@ fn roundtrip() {
     .into();
 
         eprintln!("arch = {arch:#?}");
-        let serialized = arch.to_arrow().unwrap();
+        let serialized = arch.to_arrow2().unwrap();
         for (field, array) in &serialized {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
@@ -385,7 +385,7 @@ fn roundtrip() {
             }
         }
 
-        let deserialized = AffixFuzzer3::from_arrow(serialized).unwrap();
+        let deserialized = AffixFuzzer3::from_arrow2(serialized).unwrap();
         similar_asserts::assert_eq!(arch, deserialized);
     }
 
@@ -415,7 +415,7 @@ fn roundtrip() {
     .into();
 
         eprintln!("arch = {arch:#?}");
-        let serialized = arch.to_arrow().unwrap();
+        let serialized = arch.to_arrow2().unwrap();
         for (field, array) in &serialized {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
@@ -438,7 +438,7 @@ fn roundtrip() {
             }
         }
 
-        let deserialized = AffixFuzzer4::from_arrow(serialized).unwrap();
+        let deserialized = AffixFuzzer4::from_arrow2(serialized).unwrap();
         similar_asserts::assert_eq!(arch, deserialized);
     }
 }

@@ -705,7 +705,7 @@ impl Chunk {
         };
 
         let values = list_array.values();
-        let values = match C::from_arrow(&**values) {
+        let values = match C::from_arrow2(&**values) {
             Ok(values) => values,
             Err(err) => {
                 if cfg!(debug_assertions) {

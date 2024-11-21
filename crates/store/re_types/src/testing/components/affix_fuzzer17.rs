@@ -45,17 +45,17 @@ impl<I: Into<crate::testing::datatypes::AffixFuzzer3>, T: IntoIterator<Item = I>
 
 impl ::re_types_core::Loggable for AffixFuzzer17 {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
         DataType::List(std::sync::Arc::new(Field::new(
             "item",
-            <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
+            <crate::testing::datatypes::AffixFuzzer3>::arrow2_datatype(),
             false,
         )))
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
@@ -89,11 +89,11 @@ impl ::re_types_core::Loggable for AffixFuzzer17 {
                 let data0_inner_data: Vec<_> = data0.into_iter().flatten().flatten().collect();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                 ListArray::try_new(
-                    Self::arrow_datatype(),
+                    Self::arrow2_datatype(),
                     offsets,
                     {
                         _ = data0_inner_bitmap;
-                        crate::testing::datatypes::AffixFuzzer3::to_arrow_opt(
+                        crate::testing::datatypes::AffixFuzzer3::to_arrow2_opt(
                             data0_inner_data.into_iter().map(Some),
                         )?
                     },
@@ -104,7 +104,7 @@ impl ::re_types_core::Loggable for AffixFuzzer17 {
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -118,7 +118,7 @@ impl ::re_types_core::Loggable for AffixFuzzer17 {
                 .as_any()
                 .downcast_ref::<arrow2::array::ListArray<i32>>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
+                    let expected = Self::arrow2_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -128,7 +128,7 @@ impl ::re_types_core::Loggable for AffixFuzzer17 {
             } else {
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
-                    crate::testing::datatypes::AffixFuzzer3::from_arrow_opt(arrow_data_inner)
+                    crate::testing::datatypes::AffixFuzzer3::from_arrow2_opt(arrow_data_inner)
                         .with_context(
                             "rerun.testing.components.AffixFuzzer17#many_optional_unions",
                         )?
