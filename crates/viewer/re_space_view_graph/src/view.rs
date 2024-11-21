@@ -19,7 +19,7 @@ use re_viewport_blueprint::ViewProperty;
 
 use crate::{
     graph::Graph,
-    ui::{canvas::CanvasBuilder, GraphSpaceViewState},
+    ui::{scene::SceneBuilder, GraphSpaceViewState},
     visualizers::{merge, EdgesVisualizer, NodeVisualizer},
 };
 
@@ -170,14 +170,14 @@ Display a graph of nodes and edges.
         state.world_bounds = Some(bounds);
         let bounds_rect: egui::Rect = bounds.into();
 
-        let mut viewer = CanvasBuilder::from_world_bounds(bounds_rect);
+        let mut scene = SceneBuilder::from_world_bounds(bounds_rect);
 
         // TODO(grtlr): Is there a blueprint archetype for debug information?
         if state.show_debug {
-            viewer.show_debug();
+            scene.show_debug();
         }
 
-        let (new_world_bounds, response) = viewer.canvas(ui, |mut scene| {
+        let (new_world_bounds, response) = scene.add(ui, |mut scene| {
             for (entity, graph) in &graphs {
                 // We use the following to keep track of the bounding box over nodes in an entity.
                 let mut entity_rect = egui::Rect::NOTHING;

@@ -1,9 +1,9 @@
 use egui::{Frame, Label, Response, RichText, Sense, Stroke, TextWrapMode, Ui, Vec2};
 
-use crate::{graph::NodeInstanceImplicit, ui::canvas::CanvasContext, visualizers::NodeInstance};
+use crate::{graph::NodeInstanceImplicit, ui::scene::SceneContext, visualizers::NodeInstance};
 
 /// The `world_to_ui_scale` parameter is used to convert between world and ui coordinates.
-pub fn draw_explicit(ui: &mut Ui, ctx: &CanvasContext, node: &NodeInstance) -> Response {
+pub fn draw_explicit(ui: &mut Ui, ctx: &SceneContext, node: &NodeInstance) -> Response {
     let visuals = &ui.style().visuals;
 
     let fg = node.color.unwrap_or_else(|| visuals.text_color());

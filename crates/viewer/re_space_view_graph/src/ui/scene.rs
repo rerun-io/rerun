@@ -34,7 +34,7 @@ fn fit_to_world_rect(clip_rect_window: Rect, world_rect: Rect) -> TSTransform {
         * TSTransform::from_scaling(scale)
 }
 
-pub struct CanvasBuilder {
+pub struct SceneBuilder {
     show_debug: bool,
     world_bounds: Rect,
     bounding_rect: Rect,
@@ -42,7 +42,7 @@ pub struct CanvasBuilder {
     children_hovered: bool,
 }
 
-impl CanvasBuilder {
+impl SceneBuilder {
     pub fn from_world_bounds(world_bounds: impl Into<Rect>) -> Self {
         Self {
             world_bounds: world_bounds.into(),
@@ -57,10 +57,10 @@ impl CanvasBuilder {
         self.show_debug = true;
     }
 
-    /// Return the clip rect of the canvas in window coordinates.
-    pub fn canvas<F>(mut self, ui: &mut Ui, add_canvas_contents: F) -> (Rect, Response)
+    /// Return the clip rect of the scene in window coordinates.
+    pub fn add<F>(mut self, ui: &mut Ui, add_scene_contents: F) -> (Rect, Response)
     where
-        F: for<'b> FnOnce(Canvas<'b>),
+        F: for<'b> FnOnce(Scene<'b>),
     {
         re_tracing::profile_function!();
 
@@ -75,11 +75,11 @@ impl CanvasBuilder {
 
         let window_layer = ui.layer_id();
 
-        add_canvas_contents(Canvas {
+        add_scene_contents(Scene {
             ui,
             id,
             window_layer,
-            context: CanvasContext {
+            context: SceneContext {
                 clip_rect_world,
                 world_to_window,
             },
@@ -148,12 +148,12 @@ impl CanvasBuilder {
     }
 }
 
-pub struct CanvasContext {
+pub struct SceneContext {
     clip_rect_world: Rect,
     world_to_window: TSTransform,
 }
 
-impl CanvasContext {
+impl SceneContext {
     pub fn distance_to_world(&self, distance: f32) -> f32 {
         distance / self.world_to_window.scaling
     }
@@ -167,17 +167,17 @@ impl CanvasContext {
     }
 }
 
-pub struct Canvas<'a> {
+pub struct Scene<'a> {
     ui: &'a mut Ui,
     id: Id,
     window_layer: LayerId,
-    context: CanvasContext,
+    context: SceneContext,
     bounding_rect: &'a mut Rect,
     children_drag_delta: &'a mut Vec2,
     children_hovered: &'a mut bool,
 }
 
-impl<'a> Canvas<'a> {
+impl<'a> Scene<'a> {
     /// Draws a regular node, i.e. an explicit node instance.
     pub fn explicit_node(&mut self, pos: Pos2, node: &NodeInstance) -> Response {
         self.node_wrapper(node.index, pos, |ui, world_to_ui| {
@@ -192,7 +192,7 @@ impl<'a> Canvas<'a> {
     /// `pos` is the top-left position of the node in world coordinates.
     fn node_wrapper<F>(&mut self, id: impl Hash, pos: Pos2, add_node_contents: F) -> Response
     where
-        F: for<'b> FnOnce(&'b mut Ui, &'b CanvasContext) -> Response,
+        F: for<'b> FnOnce(&'b mut Ui, &'b SceneContext) -> Response,
     {
         let response = Area::new(self.id.with(id))
             .fixed_pos(pos)

@@ -1,7 +1,7 @@
 mod draw;
 mod state;
 
-pub mod canvas;
+pub mod scene;
 
 pub use state::GraphSpaceViewState;
 
