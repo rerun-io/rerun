@@ -7,6 +7,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any, Sequence, Tuple, Union
 
+import numpy as np
+import numpy.typing as npt
 import pyarrow as pa
 from attrs import define, field
 
@@ -69,10 +71,7 @@ if TYPE_CHECKING:
 else:
     Utf8PairLike = Any
 
-Utf8PairArrayLike = Union[
-    Utf8Pair,
-    Sequence[Utf8PairLike],
-]
+Utf8PairArrayLike = Union[Utf8Pair, Sequence[Utf8PairLike], npt.NDArray[np.str_]]
 
 
 class Utf8PairBatch(BaseBatch[Utf8PairArrayLike]):
