@@ -7,6 +7,15 @@ import argparse
 from github import Github
 
 
+def get_checkboxes(s: str) -> list[str]:
+    s = s.lower()
+    lines: list[str] = []
+    for line in s.splitlines():
+        if "* [ ]" in line or "- [ ]" in line:
+            lines.append(line)
+    return lines
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Generate a PR summary page")
     parser.add_argument("--github-token", required=True, help="GitHub token")
@@ -17,17 +26,18 @@ def main() -> None:
     gh = Github(args.github_token)
     repo = gh.get_repo(args.github_repository)
     pr = repo.get_pull(args.pr_number)
-    if not pr.body:
-        # body is empty
-        print("Don't delete the PR description")
-        exit(1)
 
     latest_commit = pr.get_commits().reversed[0]
     print(f"Latest commit: {latest_commit.sha}")
 
-    body_lower = pr.body.lower()
-    if "* [ ]" in body_lower or "- [ ]" in body_lower:
-        print("PR contains unchecked checkboxes")
+    checkboxes = get_checkboxes(pr.body)
+    for comment in pr.get_comments():
+        checkboxes += get_checkboxes(comment.body)
+
+    if len(checkboxes) != 0:
+        print("Unchecked checkboxes found:")
+        for checkbox in checkboxes:
+            print(f"  {checkbox}")
         exit(1)
 
 
