@@ -247,7 +247,7 @@ fn roundtrip() {
     .into();
 
         eprintln!("arch = {arch:#?}");
-        let serialized = arch.to_arrow().unwrap();
+        let serialized = arch.to_arrow2().unwrap();
         for (field, array) in &serialized {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
@@ -309,7 +309,7 @@ fn roundtrip() {
     .into();
 
         eprintln!("arch = {arch:#?}");
-        let serialized = arch.to_arrow().unwrap();
+        let serialized = arch.to_arrow2().unwrap();
         for (field, array) in &serialized {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
@@ -362,7 +362,7 @@ fn roundtrip() {
     .into();
 
         eprintln!("arch = {arch:#?}");
-        let serialized = arch.to_arrow().unwrap();
+        let serialized = arch.to_arrow2().unwrap();
         for (field, array) in &serialized {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
@@ -415,7 +415,7 @@ fn roundtrip() {
     .into();
 
         eprintln!("arch = {arch:#?}");
-        let serialized = arch.to_arrow().unwrap();
+        let serialized = arch.to_arrow2().unwrap();
         for (field, array) in &serialized {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");

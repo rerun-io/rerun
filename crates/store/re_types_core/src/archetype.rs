@@ -216,7 +216,7 @@ impl<A: Archetype> Default for GenericIndicatorComponent<A> {
 
 impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponent<A> {
     #[inline]
-    fn to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
+    fn to_arrow2(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
         let datatype = arrow2::datatypes::DataType::Null;
         Ok(arrow2::array::NullArray::new(datatype, 1).boxed())
     }
@@ -247,7 +247,7 @@ pub struct GenericIndicatorComponentArray<A: Archetype> {
 
 impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponentArray<A> {
     #[inline]
-    fn to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
+    fn to_arrow2(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
         let datatype = arrow2::datatypes::DataType::Null;
         Ok(arrow2::array::NullArray::new(datatype, self.len).boxed())
     }
@@ -282,7 +282,7 @@ impl NamedIndicatorComponent {
 
 impl crate::LoggableBatch for NamedIndicatorComponent {
     #[inline]
-    fn to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
+    fn to_arrow2(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
         let datatype = arrow2::datatypes::DataType::Null;
         Ok(arrow2::array::NullArray::new(datatype, 1).boxed())
     }

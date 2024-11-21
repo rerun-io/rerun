@@ -146,7 +146,7 @@ impl ChunkBuilder {
             row_id,
             timepoint,
             component_batch
-                .to_arrow()
+                .to_arrow2()
                 .ok()
                 .map(|array| (component_batch.name(), array)),
         )
@@ -165,7 +165,7 @@ impl ChunkBuilder {
             timepoint,
             component_batches.into_iter().filter_map(|component_batch| {
                 component_batch
-                    .to_arrow()
+                    .to_arrow2()
                     .ok()
                     .map(|array| (component_batch.name(), array))
             }),
@@ -188,7 +188,7 @@ impl ChunkBuilder {
                 .map(|(component_name, component_batch)| {
                     (
                         component_name,
-                        component_batch.and_then(|batch| batch.to_arrow().ok()),
+                        component_batch.and_then(|batch| batch.to_arrow2().ok()),
                     )
                 }),
         )

@@ -1170,7 +1170,7 @@ impl RecordingStream {
             .into_iter()
             .map(|comp_batch| {
                 comp_batch
-                    .to_arrow()
+                    .to_arrow2()
                     .map(|array| (comp_batch.name(), array))
             })
             .collect();

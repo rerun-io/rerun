@@ -31,7 +31,7 @@ fn tensor_roundtrip() {
 
     let all_arch_serialized = [Tensor::try_from(ndarray::array![[1u8, 2, 3], [4, 5, 6]])
         .unwrap()
-        .to_arrow()
+        .to_arrow2()
         .unwrap()];
 
     let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.TensorData"])].into();

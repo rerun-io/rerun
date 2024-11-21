@@ -354,7 +354,7 @@ impl ComponentUiRegistry {
 
                         if response.changed() {
                             use re_types::LoggableBatch as _;
-                            deserialized_value.to_arrow().ok_or_log_error_once()
+                            deserialized_value.to_arrow2().ok_or_log_error_once()
                         } else {
                             None
                         }

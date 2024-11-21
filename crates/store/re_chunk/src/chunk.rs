@@ -623,7 +623,7 @@ impl Chunk {
     ) -> ChunkResult<Self> {
         re_tracing::profile_function!();
         let row_ids = row_ids
-            .to_arrow()
+            .to_arrow2()
             // NOTE: impossible, but better safe than sorry.
             .map_err(|err| ChunkError::Malformed {
                 reason: format!("RowIds failed to serialize: {err}"),

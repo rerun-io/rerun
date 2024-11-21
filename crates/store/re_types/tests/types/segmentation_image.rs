@@ -30,7 +30,7 @@ fn segmentation_image_roundtrip() {
         [4, 5, 6]
     ])
     .unwrap()
-    .to_arrow()
+    .to_arrow2()
     .unwrap()];
 
     let expected_extensions: HashMap<_, _> = [("data", vec!["rerun.components.Blob"])].into();
