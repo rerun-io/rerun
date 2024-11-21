@@ -2,8 +2,8 @@
 
 <!--
 Include links to any related issues/PRs in a bulleted list, for example:
-* #1234
-* #1337
+* Closes #1234
+* Part of #1337
 -->
 
 ### What
