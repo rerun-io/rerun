@@ -270,7 +270,7 @@ fn roundtrip() {
             }
         }
 
-        let deserialized = AffixFuzzer1::from_arrow(serialized).unwrap();
+        let deserialized = AffixFuzzer1::from_arrow2(serialized).unwrap();
         similar_asserts::assert_eq!(arch, deserialized);
     }
 
@@ -332,7 +332,7 @@ fn roundtrip() {
             }
         }
 
-        let deserialized = AffixFuzzer2::from_arrow(serialized).unwrap();
+        let deserialized = AffixFuzzer2::from_arrow2(serialized).unwrap();
         similar_asserts::assert_eq!(arch, deserialized);
     }
 
@@ -385,7 +385,7 @@ fn roundtrip() {
             }
         }
 
-        let deserialized = AffixFuzzer3::from_arrow(serialized).unwrap();
+        let deserialized = AffixFuzzer3::from_arrow2(serialized).unwrap();
         similar_asserts::assert_eq!(arch, deserialized);
     }
 
@@ -438,7 +438,7 @@ fn roundtrip() {
             }
         }
 
-        let deserialized = AffixFuzzer4::from_arrow(serialized).unwrap();
+        let deserialized = AffixFuzzer4::from_arrow2(serialized).unwrap();
         similar_asserts::assert_eq!(arch, deserialized);
     }
 }

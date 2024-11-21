@@ -35,7 +35,7 @@ fn image_roundtrip() {
             }
         }
 
-        let deserialized = Image::from_arrow(serialized).unwrap();
+        let deserialized = Image::from_arrow2(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }
@@ -82,7 +82,7 @@ fn dynamic_image_roundtrip() {
             }
         }
 
-        let deserialized = Image::from_arrow(serialized).unwrap();
+        let deserialized = Image::from_arrow2(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }

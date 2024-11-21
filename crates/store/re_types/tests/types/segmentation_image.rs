@@ -52,7 +52,7 @@ fn segmentation_image_roundtrip() {
             }
         }
 
-        let deserialized = SegmentationImage::from_arrow(serialized).unwrap();
+        let deserialized = SegmentationImage::from_arrow2(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }

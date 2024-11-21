@@ -46,7 +46,7 @@ fn roundtrip() {
             }
         }
 
-        let deserialized = Clear::from_arrow(serialized).unwrap();
+        let deserialized = Clear::from_arrow2(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }

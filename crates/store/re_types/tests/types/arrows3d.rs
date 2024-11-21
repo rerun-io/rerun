@@ -76,6 +76,6 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = Arrows3D::from_arrow(serialized).unwrap();
+    let deserialized = Arrows3D::from_arrow2(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
