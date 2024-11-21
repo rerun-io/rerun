@@ -22,10 +22,13 @@ impl Layout {
     }
 
     pub fn update(&mut self, node: &NodeIndex, rect: Rect) {
-        *self
-            .extents
-            .get_mut(node)
-            .expect("node should exist in layout") = rect;
+        debug_assert!(
+            self.extents.contains_key(node),
+            "node should exist in the layout"
+        );
+        if let Some(extent) = self.extents.get_mut(node) {
+            *extent = rect;
+        }
     }
 
     /// Returns `true` if any node has a zero size.

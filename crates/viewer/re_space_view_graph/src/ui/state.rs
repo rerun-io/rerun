@@ -1,7 +1,6 @@
 use egui::Rect;
 use re_chunk::{TimeInt, Timeline};
 use re_format::format_f32;
-use re_log::external::log;
 use re_types::blueprint::components::VisualBounds2D;
 use re_ui::UiExt;
 use re_viewer_context::SpaceViewState;
@@ -179,7 +178,7 @@ impl LayoutState {
 
         match self {
             Self::Finished { layout, .. } | Self::InProgress { layout, .. } => layout,
-            _ => unreachable!(), // We just set the state to `Self::Current` above.
+            Self::None => unreachable!(), // We just set the state to `Self::Current` above.
         }
     }
 }
