@@ -5,12 +5,6 @@ on:
     types:
       - opened
 
-permissions:
-  id-token: write
-  contents: read
-  issues: write
-  pull-requests: write
-
 jobs:
   comment:
     name: Comment on PRs
@@ -18,7 +12,7 @@ jobs:
     steps:
       - uses: actions/first-interaction@v1.3.0
         with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          repo-token: ${{ secrets.RERUN_BOT_TOKEN }}
           pr-message: |
             Hi! Thanks for opening this pull request.
 
