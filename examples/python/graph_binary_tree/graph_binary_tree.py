@@ -62,7 +62,7 @@ levels: list[Level] = [
 
 
 def main() -> None:
-    rr.init("rerun_example_py_node_link", spawn=True)
+    rr.init("rerun_example_py_graph_binary_tree", spawn=True)
 
     t = 0
     for level in levels:

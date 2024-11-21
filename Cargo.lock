@@ -2828,6 +2828,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "graph_binary_tree"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "rerun",
+]
+
+[[package]]
+name = "graph_lattice"
+version = "0.21.0-alpha.1+dev"
+dependencies = [
+ "anyhow",
+ "clap",
+ "itertools 0.13.0",
+ "rerun",
+]
+
+[[package]]
 name = "h2"
 version = "0.3.26"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4095,18 +4114,6 @@ dependencies = [
  "cfg_aliases 0.2.1",
  "libc",
  "memoffset",
-]
-
-[[package]]
-name = "node_link"
-version = "0.20.0-alpha.1+dev"
-dependencies = [
- "anyhow",
- "clap",
- "itertools 0.13.0",
- "rerun",
- "strum",
- "strum_macros",
 ]
 
 [[package]]

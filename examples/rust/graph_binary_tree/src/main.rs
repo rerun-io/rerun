@@ -1,10 +1,30 @@
-use rerun::{components::GraphType, GraphEdges, GraphNodes};
+//! Shows how to draw a graph that varies over time.
+//! Please not that this example makes use of fixed positions.
+//!
+//! Usage:
+//! ```
+//!  cargo run -p graph_binary_tree -- --connect
+//! ```
 
-use crate::Args;
+use rerun::{external::re_log, Color, GraphEdges, GraphNodes};
 use std::collections::HashMap;
 
-pub fn run(args: &Args) -> anyhow::Result<()> {
+#[derive(Debug, clap::Parser)]
+#[clap(author, version, about)]
+pub struct Args {
+    #[command(flatten)]
+    rerun: rerun::clap::RerunArgs,
+}
+
+
+fn main() -> anyhow::Result<()> {
+    re_log::setup_logging();
+
+    use clap::Parser as _;
+    let args = Args::parse();
+
     let (rec, _serve_guard) = args.rerun.init("rerun_example_graph_binary_tree")?;
+
     let s = 3.0; // scaling factor for the positions
 
     // Potentially unbalanced and not sorted binary tree. :nerd_face:.
@@ -127,7 +147,7 @@ pub fn run(args: &Args) -> anyhow::Result<()> {
             rec.set_time_seconds("stable_time", t as f64);
             let _ = rec.log(
                 "sorted",
-                &GraphEdges::new(level.edges).with_graph_type(GraphType::Directed),
+                &GraphEdges::new(level.edges).with_directed_edges(),
             );
         }
     }

@@ -1,6 +1,6 @@
 [package]
-name = "node_link"
-version = "0.20.0-alpha.1+dev"
+name = "graph_binary_tree"
+version = "0.21.0-alpha.1+dev"
 edition = "2021"
 rust-version = "1.79"
 license = "MIT OR Apache-2.0"
@@ -11,8 +11,3 @@ rerun = { path = "../../../crates/top/rerun", features = ["clap"] }
 
 anyhow = "1.0"
 clap = { version = "4.0", features = ["derive"] }
-
-# Iterate over enums
-strum = "0.26"
-strum_macros = "0.26"
-itertools = "0.13"

@@ -148,7 +148,7 @@ examples = [
   "plots",
   "live_scrolling_plot",
   "raw_mesh",
-  "node_link",
+  "graph_lattice",
 ]
 
 # These are examples that we explicitly exclude from our website. You can check that all examples are either included

@@ -1,0 +1,10 @@
+namespace rerun.blueprint.archetypes;
+
+table GraphForces (
+    "attr.rerun.scope": "blueprint",
+) {
+    // --- Optional ---
+
+    /// The X position of the node.
+
+}

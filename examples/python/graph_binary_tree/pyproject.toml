@@ -1,11 +1,11 @@
 [project]
-name = "node_link"
+name = "graph_binary_tree"
 version = "0.1.0"
 readme = "README.md"
 dependencies = ["rerun-sdk"]
 
 [project.scripts]
-node_link = "node_link:main"
+graph_binary_tree = "graph_binary_tree:main"
 
 [build-system]
 requires = ["hatchling"]
