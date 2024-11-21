@@ -13,6 +13,7 @@ def get_checkboxes(s: str) -> list[str]:
     for line in s.splitlines():
         if "* [ ]" in line or "- [ ]" in line:
             lines.append(line)
+
     return lines
 
 
