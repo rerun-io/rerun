@@ -140,7 +140,7 @@ impl LayoutState {
             // We need to recompute the layout.
             Self::None | Self::Finished { .. } => {
                 let provider = ForceLayout::new(graphs);
-                let layout = provider.init_layout();
+                let layout = provider.init();
 
                 Self::InProgress {
                     discriminator: requested,
@@ -152,7 +152,7 @@ impl LayoutState {
                 ref discriminator, ..
             } if discriminator != &requested => {
                 let provider = ForceLayout::new(graphs);
-                let layout = provider.init_layout();
+                let layout = provider.init();
 
                 Self::InProgress {
                     discriminator: requested,

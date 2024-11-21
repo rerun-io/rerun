@@ -94,7 +94,7 @@ impl ForceLayout {
         }
     }
 
-    pub fn init_layout(&self) -> Layout {
+    pub fn init(&self) -> Layout {
         let positions = self.simulation.positions().collect::<Vec<_>>();
         let mut extents = ahash::HashMap::default();
 
