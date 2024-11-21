@@ -36,8 +36,9 @@ defaults:
     shell: bash
 
 permissions:
-  contents: "read"
+  contents: "write"
   id-token: "write"
+  pull-requests: "write"
 
 jobs:
   upload-web:
@@ -137,3 +138,37 @@ jobs:
           process_gcloudignore: false
           headers: |-
             cache-control: no-cache, max-age=0
+
+      - name: Status comment
+        if: success() && github.event_name == 'pull_request'
+        # https://github.com/mshick/add-pr-comment
+        uses: mshick/add-pr-comment@v2.8.2
+        with:
+          message-id: "web-viewer-build-status"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            Web viewer built successfully. If applicable, you should also test it:
+
+            - [ ] I have tested the web viewer
+
+            | Result | Commit  | Link  |
+            | ------ | ------- | ----- |
+            | ✅ | ${{ steps.get-sha.outputs.sha }} | https://rerun.io/viewer/pr/${{ github.event.pull_request.number }} |
+
+            <sup>Note: This comment is updated whenever you push a commit.</sup>
+
+      - name: Status comment
+        if: failure() && github.event_name == 'pull_request'
+        # https://github.com/mshick/add-pr-comment
+        uses: mshick/add-pr-comment@v2.8.2
+        with:
+          message-id: "web-viewer-build-status"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            Web viewer failed to build.
+
+            | Result | Commit  | Link  |
+            | ------ | ------- | ----- |
+            | ❌ | ${{ steps.get-sha.outputs.sha }} | https://rerun.io/viewer/pr/${{ github.event.pull_request.number }} |
+
+            <sup>Note: This comment is updated whenever you push a commit.</sup>
