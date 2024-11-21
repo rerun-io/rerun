@@ -11,7 +11,7 @@ namespace rerun.archetypes;
 table GraphNodes (
   "attr.docs.category": "Graph",
   "attr.docs.unreleased",
-  "attr.docs.view_types": "Graph View",
+  "attr.docs.view_types": "GraphView",
   "attr.rust.derive": "PartialEq",
   "attr.rerun.experimental"
 ) {

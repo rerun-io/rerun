@@ -13,7 +13,7 @@ namespace rerun.archetypes;
 table GraphEdges (
   "attr.docs.category": "Graph",
   "attr.docs.unreleased",
-  "attr.docs.view_types": "Graph View",
+  "attr.docs.view_types": "GraphView",
   "attr.rust.derive": "PartialEq, Eq",
   "attr.rerun.experimental"
 ) {

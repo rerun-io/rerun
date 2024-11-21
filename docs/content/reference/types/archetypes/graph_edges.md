@@ -17,7 +17,7 @@ By default, edges are undirected.
 **Recommended**: [`GraphType`](../components/graph_type.md)
 
 ## Shown in
-* [Graph View](../views/graph_view.md)
+* [GraphView](../views/graph_view.md)
 * [DataframeView](../views/dataframe_view.md)
 
 ## API reference links
