@@ -209,7 +209,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -223,7 +223,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer1")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1001")?;
-            <crate::testing::components::AffixFuzzer1>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer1>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1001")?
                 .into_iter()
                 .next()
@@ -236,7 +236,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer2")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1002")?;
-            <crate::testing::components::AffixFuzzer2>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer2>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1002")?
                 .into_iter()
                 .next()
@@ -249,7 +249,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer3")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1003")?;
-            <crate::testing::components::AffixFuzzer3>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer3>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1003")?
                 .into_iter()
                 .next()
@@ -262,7 +262,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer4")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1004")?;
-            <crate::testing::components::AffixFuzzer4>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer4>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1004")?
                 .into_iter()
                 .next()
@@ -275,7 +275,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer5")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1005")?;
-            <crate::testing::components::AffixFuzzer5>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer5>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1005")?
                 .into_iter()
                 .next()
@@ -288,7 +288,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer6")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1006")?;
-            <crate::testing::components::AffixFuzzer6>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer6>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1006")?
                 .into_iter()
                 .next()
@@ -301,7 +301,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer7")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1007")?;
-            <crate::testing::components::AffixFuzzer7>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer7>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1007")?
                 .into_iter()
                 .next()
@@ -314,7 +314,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer8")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1008")?;
-            <crate::testing::components::AffixFuzzer8>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer8>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1008")?
                 .into_iter()
                 .next()
@@ -327,7 +327,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer9")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1009")?;
-            <crate::testing::components::AffixFuzzer9>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer9>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1009")?
                 .into_iter()
                 .next()
@@ -340,7 +340,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer10")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1010")?;
-            <crate::testing::components::AffixFuzzer10>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer10>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1010")?
                 .into_iter()
                 .next()
@@ -353,7 +353,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer11")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1011")?;
-            <crate::testing::components::AffixFuzzer11>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer11>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1011")?
                 .into_iter()
                 .next()
@@ -366,7 +366,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer12")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1012")?;
-            <crate::testing::components::AffixFuzzer12>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer12>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1012")?
                 .into_iter()
                 .next()
@@ -379,7 +379,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer13")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1013")?;
-            <crate::testing::components::AffixFuzzer13>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer13>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1013")?
                 .into_iter()
                 .next()
@@ -392,7 +392,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer14")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1014")?;
-            <crate::testing::components::AffixFuzzer14>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer14>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1014")?
                 .into_iter()
                 .next()
@@ -405,7 +405,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer15")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1015")?;
-            <crate::testing::components::AffixFuzzer15>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer15>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1015")?
                 .into_iter()
                 .next()
@@ -418,7 +418,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer16")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1016")?;
-            <crate::testing::components::AffixFuzzer16>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer16>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1016")?
                 .into_iter()
                 .next()
@@ -431,7 +431,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer17")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1017")?;
-            <crate::testing::components::AffixFuzzer17>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer17>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1017")?
                 .into_iter()
                 .next()
@@ -444,7 +444,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer18")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1018")?;
-            <crate::testing::components::AffixFuzzer18>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer18>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1018")?
                 .into_iter()
                 .next()
@@ -457,7 +457,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer19")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1019")?;
-            <crate::testing::components::AffixFuzzer19>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer19>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1019")?
                 .into_iter()
                 .next()
@@ -470,7 +470,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer20")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1020")?;
-            <crate::testing::components::AffixFuzzer20>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer20>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1020")?
                 .into_iter()
                 .next()
@@ -483,7 +483,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer21")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1021")?;
-            <crate::testing::components::AffixFuzzer21>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer21>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1021")?
                 .into_iter()
                 .next()
@@ -496,7 +496,7 @@ impl ::re_types_core::Archetype for AffixFuzzer1 {
                 .get("rerun.testing.components.AffixFuzzer22")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1022")?;
-            <crate::testing::components::AffixFuzzer22>::from_arrow_opt(&**array)
+            <crate::testing::components::AffixFuzzer22>::from_arrow2_opt(&**array)
                 .with_context("rerun.testing.archetypes.AffixFuzzer1#fuzz1022")?
                 .into_iter()
                 .next()

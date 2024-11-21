@@ -53,13 +53,13 @@ crate::macros::impl_into_cow!(Float64);
 
 impl crate::Loggable for Float64 {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
         DataType::Float64
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
@@ -83,7 +83,7 @@ impl crate::Loggable for Float64 {
                 any_nones.then(|| somes.into())
             };
             PrimitiveArray::new(
-                Self::arrow_datatype(),
+                Self::arrow2_datatype(),
                 data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
                 data0_bitmap,
             )
@@ -91,7 +91,7 @@ impl crate::Loggable for Float64 {
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -104,7 +104,7 @@ impl crate::Loggable for Float64 {
             .as_any()
             .downcast_ref::<Float64Array>()
             .ok_or_else(|| {
-                let expected = Self::arrow_datatype();
+                let expected = Self::arrow2_datatype();
                 let actual = arrow_data.data_type().clone();
                 DeserializationError::datatype_mismatch(expected, actual)
             })
@@ -119,7 +119,7 @@ impl crate::Loggable for Float64 {
     }
 
     #[inline]
-    fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
+    fn from_arrow2(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
     where
         Self: Sized,
     {

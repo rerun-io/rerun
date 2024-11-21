@@ -66,7 +66,7 @@ impl std::ops::DerefMut for AffixFuzzer22 {
 
 impl ::re_types_core::Loggable for AffixFuzzer22 {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![Field::new(
@@ -79,7 +79,7 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
         )]))
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
@@ -104,12 +104,12 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
             };
             {
                 _ = data0_bitmap;
-                crate::testing::datatypes::AffixFuzzer22::to_arrow_opt(data0)?
+                crate::testing::datatypes::AffixFuzzer22::to_arrow2_opt(data0)?
             }
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -119,7 +119,7 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
         Ok(
-            crate::testing::datatypes::AffixFuzzer22::from_arrow_opt(arrow_data)
+            crate::testing::datatypes::AffixFuzzer22::from_arrow2_opt(arrow_data)
                 .with_context("rerun.testing.components.AffixFuzzer22#nullable_nested_array")?
                 .into_iter()
                 .map(Ok)

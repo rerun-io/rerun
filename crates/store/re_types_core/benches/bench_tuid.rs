@@ -16,7 +16,7 @@ fn bench_arrow(c: &mut Criterion) {
 
             group.bench_function("arrow2", |b| {
                 b.iter(|| {
-                    let data: Box<dyn Array> = re_tuid::Tuid::to_arrow(tuids.clone()).unwrap();
+                    let data: Box<dyn Array> = re_tuid::Tuid::to_arrow2(tuids.clone()).unwrap();
                     criterion::black_box(data)
                 });
             });
@@ -27,11 +27,11 @@ fn bench_arrow(c: &mut Criterion) {
             group.throughput(criterion::Throughput::Elements(elem_count));
 
             let data: Box<dyn Array> =
-                re_tuid::Tuid::to_arrow(vec![re_tuid::Tuid::new(); elem_count as usize]).unwrap();
+                re_tuid::Tuid::to_arrow2(vec![re_tuid::Tuid::new(); elem_count as usize]).unwrap();
 
             group.bench_function("arrow2", |b| {
                 b.iter(|| {
-                    let tuids = re_tuid::Tuid::from_arrow(data.as_ref()).unwrap();
+                    let tuids = re_tuid::Tuid::from_arrow2(data.as_ref()).unwrap();
                     criterion::black_box(tuids)
                 });
             });

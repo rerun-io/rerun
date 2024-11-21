@@ -476,7 +476,7 @@ impl Chunk {
                 .ok_or_else(|| ChunkError::Malformed {
                     reason: format!(
                         "RowId data has the wrong datatype: expected {:?} but got {:?} instead",
-                        RowId::arrow_datatype(),
+                        RowId::arrow2_datatype(),
                         *row_ids.data_type(),
                     ),
                 })?
@@ -660,21 +660,21 @@ mod tests {
 
         let timelines2 = BTreeMap::default(); // static
 
-        let points1 = MyPoint::to_arrow([
+        let points1 = MyPoint::to_arrow2([
             MyPoint::new(1.0, 2.0),
             MyPoint::new(3.0, 4.0),
             MyPoint::new(5.0, 6.0),
         ])?;
         let points2 = None;
-        let points3 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0)])?;
-        let points4 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
+        let points3 = MyPoint::to_arrow2([MyPoint::new(10.0, 20.0)])?;
+        let points4 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
-        let colors1 = MyColor::to_arrow([
+        let colors1 = MyColor::to_arrow2([
             MyColor::from_rgb(1, 2, 3),
             MyColor::from_rgb(4, 5, 6),
             MyColor::from_rgb(7, 8, 9),
         ])?;
-        let colors2 = MyColor::to_arrow([MyColor::from_rgb(10, 20, 30)])?;
+        let colors2 = MyColor::to_arrow2([MyColor::from_rgb(10, 20, 30)])?;
         let colors3 = None;
         let colors4 = None;
 

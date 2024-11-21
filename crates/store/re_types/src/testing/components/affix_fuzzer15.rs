@@ -66,7 +66,7 @@ impl std::ops::DerefMut for AffixFuzzer15 {
 
 impl ::re_types_core::Loggable for AffixFuzzer15 {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
         DataType::Union(
@@ -77,7 +77,7 @@ impl ::re_types_core::Loggable for AffixFuzzer15 {
                     "craziness",
                     DataType::List(std::sync::Arc::new(Field::new(
                         "item",
-                        <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
+                        <crate::testing::datatypes::AffixFuzzer1>::arrow2_datatype(),
                         false,
                     ))),
                     false,
@@ -97,7 +97,7 @@ impl ::re_types_core::Loggable for AffixFuzzer15 {
         )
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
@@ -122,12 +122,12 @@ impl ::re_types_core::Loggable for AffixFuzzer15 {
             };
             {
                 _ = data0_bitmap;
-                crate::testing::datatypes::AffixFuzzer3::to_arrow_opt(data0)?
+                crate::testing::datatypes::AffixFuzzer3::to_arrow2_opt(data0)?
             }
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -137,7 +137,7 @@ impl ::re_types_core::Loggable for AffixFuzzer15 {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
         Ok(
-            crate::testing::datatypes::AffixFuzzer3::from_arrow_opt(arrow_data)
+            crate::testing::datatypes::AffixFuzzer3::from_arrow2_opt(arrow_data)
                 .with_context("rerun.testing.components.AffixFuzzer15#single_optional_union")?
                 .into_iter()
                 .map(Ok)

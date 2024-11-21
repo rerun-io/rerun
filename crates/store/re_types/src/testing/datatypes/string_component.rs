@@ -52,13 +52,13 @@ impl From<StringComponent> for ::re_types_core::ArrowString {
 
 impl ::re_types_core::Loggable for StringComponent {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
         DataType::Utf8
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
@@ -94,7 +94,7 @@ impl ::re_types_core::Loggable for StringComponent {
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                 unsafe {
                     Utf8Array::<i32>::new_unchecked(
-                        Self::arrow_datatype(),
+                        Self::arrow2_datatype(),
                         offsets,
                         inner_data,
                         data0_bitmap,
@@ -105,7 +105,7 @@ impl ::re_types_core::Loggable for StringComponent {
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -119,7 +119,7 @@ impl ::re_types_core::Loggable for StringComponent {
                 .as_any()
                 .downcast_ref::<arrow2::array::Utf8Array<i32>>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
+                    let expected = Self::arrow2_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })

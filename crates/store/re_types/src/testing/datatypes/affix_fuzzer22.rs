@@ -53,7 +53,7 @@ impl From<AffixFuzzer22> for [u8; 4usize] {
 
 impl ::re_types_core::Loggable for AffixFuzzer22 {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![Field::new(
@@ -66,7 +66,7 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
         )]))
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
@@ -89,7 +89,7 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                Self::arrow_datatype(),
+                Self::arrow2_datatype(),
                 vec![{
                     let (somes, fixed_sized_native): (Vec<_>, Vec<_>) = data
                         .iter()
@@ -145,7 +145,7 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -159,7 +159,7 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
+                    let expected = Self::arrow2_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -177,7 +177,7 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                 let fixed_sized_native = {
                     if !arrays_by_name.contains_key("fixed_sized_native") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow2_datatype(),
                             "fixed_sized_native",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer22");

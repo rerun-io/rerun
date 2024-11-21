@@ -82,13 +82,13 @@ impl std::fmt::Display for ViewFit {
 
 impl ::re_types_core::Loggable for ViewFit {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
         DataType::UInt8
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
@@ -112,7 +112,7 @@ impl ::re_types_core::Loggable for ViewFit {
                 any_nones.then(|| somes.into())
             };
             PrimitiveArray::new(
-                Self::arrow_datatype(),
+                Self::arrow2_datatype(),
                 data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
                 data0_bitmap,
             )
@@ -120,7 +120,7 @@ impl ::re_types_core::Loggable for ViewFit {
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -133,7 +133,7 @@ impl ::re_types_core::Loggable for ViewFit {
             .as_any()
             .downcast_ref::<UInt8Array>()
             .ok_or_else(|| {
-                let expected = Self::arrow_datatype();
+                let expected = Self::arrow2_datatype();
                 let actual = arrow_data.data_type().clone();
                 DeserializationError::datatype_mismatch(expected, actual)
             })
@@ -146,7 +146,7 @@ impl ::re_types_core::Loggable for ViewFit {
                 Some(3) => Ok(Some(Self::FillKeepAspectRatio)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
-                    Self::arrow_datatype(),
+                    Self::arrow2_datatype(),
                     "<invalid>",
                     invalid as _,
                 )),

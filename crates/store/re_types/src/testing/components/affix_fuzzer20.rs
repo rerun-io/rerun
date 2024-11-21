@@ -66,17 +66,17 @@ impl std::ops::DerefMut for AffixFuzzer20 {
 
 impl ::re_types_core::Loggable for AffixFuzzer20 {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
-        crate::testing::datatypes::AffixFuzzer20::arrow_datatype()
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+        crate::testing::datatypes::AffixFuzzer20::arrow2_datatype()
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
-        crate::testing::datatypes::AffixFuzzer20::to_arrow_opt(data.into_iter().map(|datum| {
+        crate::testing::datatypes::AffixFuzzer20::to_arrow2_opt(data.into_iter().map(|datum| {
             datum.map(|datum| match datum.into() {
                 ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
                 ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
@@ -84,13 +84,13 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
         }))
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
-        crate::testing::datatypes::AffixFuzzer20::from_arrow_opt(arrow_data)
+        crate::testing::datatypes::AffixFuzzer20::from_arrow2_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 }

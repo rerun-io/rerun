@@ -155,7 +155,7 @@ impl crate::Archetype for Clear {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -169,7 +169,7 @@ impl crate::Archetype for Clear {
                 .get("rerun.components.ClearIsRecursive")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Clear#is_recursive")?;
-            <crate::components::ClearIsRecursive>::from_arrow_opt(&**array)
+            <crate::components::ClearIsRecursive>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.Clear#is_recursive")?
                 .into_iter()
                 .next()

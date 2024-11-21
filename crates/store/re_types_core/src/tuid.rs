@@ -19,14 +19,14 @@ impl SizeBytes for Tuid {
 
 impl Loggable for Tuid {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
         DataType::Struct(Arc::new(vec![
             Field::new("time_ns", DataType::UInt64, false),
             Field::new("inc", DataType::UInt64, false),
         ]))
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         _data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
     ) -> crate::SerializationResult<Box<dyn arrow2::array::Array>>
     where
@@ -34,12 +34,12 @@ impl Loggable for Tuid {
     {
         Err(crate::SerializationError::not_implemented(
             Self::NAME,
-            "TUIDs are never nullable, use `to_arrow()` instead",
+            "TUIDs are never nullable, use `to_arrow2()` instead",
         ))
     }
 
     #[inline]
-    fn to_arrow<'a>(
+    fn to_arrow2<'a>(
         data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
     ) -> crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
@@ -59,7 +59,7 @@ impl Loggable for Tuid {
 
         let datatype = arrow2::datatypes::DataType::Extension(
             Self::NAME.to_owned(),
-            Arc::new(Self::arrow_datatype()),
+            Arc::new(Self::arrow2_datatype()),
             None,
         );
 
@@ -67,8 +67,8 @@ impl Loggable for Tuid {
         Ok(StructArray::new(datatype, values, validity).boxed())
     }
 
-    fn from_arrow(array: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>> {
-        let expected_datatype = Self::arrow_datatype();
+    fn from_arrow2(array: &dyn ::arrow2::array::Array) -> crate::DeserializationResult<Vec<Self>> {
+        let expected_datatype = Self::arrow2_datatype();
         let actual_datatype = array.data_type().to_logical_type();
         if actual_datatype != &expected_datatype {
             return Err(DeserializationError::datatype_mismatch(
@@ -141,12 +141,12 @@ macro_rules! delegate_arrow_tuid {
 
         impl $crate::Loggable for $typ {
             #[inline]
-            fn arrow_datatype() -> ::arrow2::datatypes::DataType {
-                $crate::external::re_tuid::Tuid::arrow_datatype()
+            fn arrow2_datatype() -> ::arrow2::datatypes::DataType {
+                $crate::external::re_tuid::Tuid::arrow2_datatype()
             }
 
             #[inline]
-            fn to_arrow_opt<'a>(
+            fn to_arrow2_opt<'a>(
                 values: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
             ) -> $crate::SerializationResult<Box<dyn ::arrow2::array::Array>>
             where
@@ -154,29 +154,29 @@ macro_rules! delegate_arrow_tuid {
             {
                 Err($crate::SerializationError::not_implemented(
                     <Self as $crate::Component>::name(),
-                    "TUIDs are never nullable, use `to_arrow()` instead",
+                    "TUIDs are never nullable, use `to_arrow2()` instead",
                 ))
             }
 
             #[inline]
-            fn to_arrow<'a>(
+            fn to_arrow2<'a>(
                 values: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
             ) -> $crate::SerializationResult<Box<dyn ::arrow2::array::Array>> {
                 let values = values.into_iter().map(|value| {
                     let value: ::std::borrow::Cow<'a, Self> = value.into();
                     value.into_owned()
                 });
-                <$crate::external::re_tuid::Tuid as $crate::Loggable>::to_arrow(
+                <$crate::external::re_tuid::Tuid as $crate::Loggable>::to_arrow2(
                     values.into_iter().map(|$typ(tuid)| tuid),
                 )
             }
 
             #[inline]
-            fn from_arrow(
+            fn from_arrow2(
                 array: &dyn arrow2::array::Array,
             ) -> $crate::DeserializationResult<Vec<Self>> {
                 Ok(
-                    <$crate::external::re_tuid::Tuid as $crate::Loggable>::from_arrow(array)?
+                    <$crate::external::re_tuid::Tuid as $crate::Loggable>::from_arrow2(array)?
                         .into_iter()
                         .map(|tuid| Self(tuid))
                         .collect(),

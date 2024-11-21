@@ -110,7 +110,7 @@ impl ::re_types_core::Archetype for VisualBounds2D {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -124,7 +124,7 @@ impl ::re_types_core::Archetype for VisualBounds2D {
                 .get("rerun.blueprint.components.VisualBounds2D")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.VisualBounds2D#range")?;
-            <crate::blueprint::components::VisualBounds2D>::from_arrow_opt(&**array)
+            <crate::blueprint::components::VisualBounds2D>::from_arrow2_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.VisualBounds2D#range")?
                 .into_iter()
                 .next()
