@@ -12,7 +12,7 @@ pub unsafe fn arrow_array_from_c_ffi(
     array: &arrow2::ffi::ArrowArray,
     datatype: arrow2::datatypes::DataType,
 ) -> Result<Box<dyn arrow2::array::Array>, CError> {
-    // Arrow2 implements drop for Arrow2Array and ArrowSchema.
+    // Arrow2 implements drop for Arrow2Array and Arrow2Schema.
     //
     // Therefore, for things to work correctly we have to take ownership of the array!
     // All methods passing arrow arrays through our C interface are documented to take ownership of the component batch.

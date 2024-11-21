@@ -8,11 +8,11 @@ use std::{
 
 use arrow2::{
     array::{
-        Array as Arrow2Array, BooleanArray as ArrowBooleanArray,
-        PrimitiveArray as ArrowPrimitiveArray,
+        Array as Arrow2Array, BooleanArray as Arrow2BooleanArray,
+        PrimitiveArray as Arrow2PrimitiveArray,
     },
-    chunk::Chunk as ArrowChunk,
-    datatypes::Schema as ArrowSchema,
+    chunk::Chunk as Arrow2Chunk,
+    datatypes::Schema as Arrow2Schema,
     Either,
 };
 use itertools::Itertools;
@@ -104,7 +104,7 @@ struct QueryHandleState {
     /// The Arrow schema that corresponds to the `selected_contents`.
     ///
     /// All returned rows will have this schema.
-    arrow_schema: ArrowSchema,
+    arrow_schema: Arrow2Schema,
 
     /// All the [`Chunk`]s included in the view contents.
     ///
@@ -185,7 +185,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         // 3. Compute the Arrow schema of the selected components.
         //
         // Every result returned using this `QueryHandle` will match this schema exactly.
-        let arrow_schema = ArrowSchema {
+        let arrow_schema = Arrow2Schema {
             fields: selected_contents
                 .iter()
                 .map(|(_, descr)| descr.to_arrow_field())
@@ -518,9 +518,9 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             let values = list_array
                 .values()
                 .as_any()
-                .downcast_ref::<ArrowBooleanArray>()?;
+                .downcast_ref::<Arrow2BooleanArray>()?;
 
-            let indices = ArrowPrimitiveArray::from_vec(
+            let indices = Arrow2PrimitiveArray::from_vec(
                 values
                     .iter()
                     .enumerate()
@@ -668,7 +668,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     ///
     /// Columns that do not yield any data will still be present in the results, filled with null values.
     #[inline]
-    pub fn schema(&self) -> &ArrowSchema {
+    pub fn schema(&self) -> &Arrow2Schema {
         &self.init().arrow_schema
     }
 
@@ -1137,7 +1137,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
                     state.filtered_index,
                     (
                         *cur_index_value,
-                        ArrowPrimitiveArray::<i64>::from_vec(vec![cur_index_value.as_i64()])
+                        Arrow2PrimitiveArray::<i64>::from_vec(vec![cur_index_value.as_i64()])
                             .to(state.filtered_index.datatype())
                             .to_boxed(),
                     ),
@@ -1227,7 +1227,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     pub fn next_row_batch(&self) -> Option<RecordBatch> {
         Some(RecordBatch {
             schema: self.schema().clone(),
-            data: ArrowChunk::new(self.next_row()?),
+            data: Arrow2Chunk::new(self.next_row()?),
         })
     }
 
@@ -1245,7 +1245,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
         Some(RecordBatch {
             schema,
-            data: ArrowChunk::new(row),
+            data: Arrow2Chunk::new(row),
         })
     }
 }

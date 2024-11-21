@@ -6,7 +6,7 @@ use thiserror::Error;
 use re_chunk_store::external::arrow2::{
     array::{
         Array as Arrow2Array, DictionaryArray as Arrow2DictionaryArray,
-        ListArray as Arrow2ListArray, PrimitiveArray as ArrowPrimitiveArray,
+        ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
     },
     datatypes::DataType,
     datatypes::DataType as Arrow2DataType,
@@ -167,7 +167,7 @@ impl ComponentData {
 pub(crate) enum DisplayColumn {
     Timeline {
         timeline: Timeline,
-        time_data: ArrowPrimitiveArray<i64>,
+        time_data: Arrow2PrimitiveArray<i64>,
     },
     Component {
         entity_path: EntityPath,
@@ -186,7 +186,7 @@ impl DisplayColumn {
             ColumnDescriptor::Time(desc) => {
                 let time_data = column_data
                     .as_any()
-                    .downcast_ref::<ArrowPrimitiveArray<i64>>()
+                    .downcast_ref::<Arrow2PrimitiveArray<i64>>()
                     .ok_or_else(|| {
                         DisplayRecordBatchError::UnexpectedTimeColumnDataType(
                             desc.timeline.name().as_str().to_owned(),

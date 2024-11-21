@@ -1,4 +1,4 @@
-use arrow2::datatypes::DataType as ArrowDatatype;
+use arrow2::datatypes::DataType as Arrow2Datatype;
 use nohash_hasher::IntMap;
 
 use re_chunk::{Chunk, ComponentName, RangeQuery, RowId, TimePoint, Timeline};
@@ -12,7 +12,7 @@ use re_types_core::{Component as _, Loggable as _};
 
 const ENTITY_PATH: &str = "my/entity";
 
-fn datatypes() -> IntMap<ComponentName, ArrowDatatype> {
+fn datatypes() -> IntMap<ComponentName, Arrow2Datatype> {
     [
         (MyPoint::name(), MyPoint::arrow2_datatype()),
         (MyColor::name(), MyColor::arrow2_datatype()),

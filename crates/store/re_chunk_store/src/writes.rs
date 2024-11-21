@@ -1,7 +1,7 @@
 use std::{collections::BTreeSet, sync::Arc};
 
 use ahash::HashMap;
-use arrow2::array::{Array as _, ListArray as ArrowListArray};
+use arrow2::array::{Array as _, ListArray as Arrow2ListArray};
 use itertools::Itertools as _;
 
 use re_chunk::{Chunk, EntityPath, RowId};
@@ -339,7 +339,7 @@ impl ChunkStore {
         for (&component_name, list_array) in chunk.components() {
             self.type_registry.insert(
                 component_name,
-                ArrowListArray::<i32>::get_child_type(list_array.data_type()).clone(),
+                Arrow2ListArray::<i32>::get_child_type(list_array.data_type()).clone(),
             );
 
             let column_metadata_state = self

@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
-use arrow2::datatypes::DataType as ArrowDataType;
+use arrow2::datatypes::DataType as Arrow2DataType;
 use nohash_hasher::IntMap;
 
 use re_chunk::{Chunk, ChunkId, RowId, TransportChunk};
@@ -407,7 +407,7 @@ pub struct ChunkStore {
     //
     // TODO(cmc): this would become fairly problematic in a world where each chunk can use a
     // different datatype for a given component.
-    pub(crate) type_registry: IntMap<ComponentName, ArrowDataType>,
+    pub(crate) type_registry: IntMap<ComponentName, Arrow2DataType>,
 
     pub(crate) per_column_metadata:
         BTreeMap<EntityPath, BTreeMap<ComponentName, ColumnMetadataState>>,
@@ -633,9 +633,9 @@ impl ChunkStore {
         self.chunks_per_chunk_id.len()
     }
 
-    /// Lookup the _latest_ arrow [`ArrowDataType`] used by a specific [`re_types_core::Component`].
+    /// Lookup the _latest_ arrow [`Arrow2DataType`] used by a specific [`re_types_core::Component`].
     #[inline]
-    pub fn lookup_datatype(&self, component_name: &ComponentName) -> Option<&ArrowDataType> {
+    pub fn lookup_datatype(&self, component_name: &ComponentName) -> Option<&Arrow2DataType> {
         self.type_registry.get(component_name)
     }
 

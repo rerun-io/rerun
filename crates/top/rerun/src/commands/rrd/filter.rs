@@ -186,7 +186,7 @@ impl FilterCommand {
 // ---
 
 use re_sdk::{
-    external::arrow2::{datatypes::Field as ArrowField, datatypes::Schema as ArrowSchema},
+    external::arrow2::{datatypes::Field as ArrowField, datatypes::Schema as Arrow2Schema},
     EntityPath,
 };
 
@@ -204,7 +204,7 @@ fn should_keep_timeline(dropped_timelines: &HashSet<&String>, field: &ArrowField
 
 fn should_keep_entity_path(
     dropped_entity_paths: &HashSet<EntityPath>,
-    schema: &ArrowSchema,
+    schema: &Arrow2Schema,
 ) -> bool {
     let Some(entity_path) = schema
         .metadata

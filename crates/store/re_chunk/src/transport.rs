@@ -7,7 +7,7 @@ use arrow2::{
     },
     chunk::Chunk as Arrow2Chunk,
     datatypes::{
-        DataType as ArrowDatatype, Field as ArrowField, Metadata as ArrowMetadata,
+        DataType as Arrow2Datatype, Field as ArrowField, Metadata as Arrow2Metadata,
         Schema as Arrow2Schema, TimeUnit as ArrowTimeUnit,
     },
 };
@@ -100,7 +100,7 @@ impl TransportChunk {
 
     /// Returns the appropriate chunk-level [`Arrow2Schema`] metadata for a Rerun [`ChunkId`].
     #[inline]
-    pub fn chunk_metadata_id(id: ChunkId) -> ArrowMetadata {
+    pub fn chunk_metadata_id(id: ChunkId) -> Arrow2Metadata {
         [
             (
                 Self::CHUNK_METADATA_KEY_ID.to_owned(),
@@ -112,7 +112,7 @@ impl TransportChunk {
 
     /// Returns the appropriate chunk-level [`Arrow2Schema`] metadata for the in-memory size in bytes.
     #[inline]
-    pub fn chunk_metadata_heap_size_bytes(heap_size_bytes: u64) -> ArrowMetadata {
+    pub fn chunk_metadata_heap_size_bytes(heap_size_bytes: u64) -> Arrow2Metadata {
         [
             (
                 Self::CHUNK_METADATA_KEY_HEAP_SIZE_BYTES.to_owned(),
@@ -124,7 +124,7 @@ impl TransportChunk {
 
     /// Returns the appropriate chunk-level [`Arrow2Schema`] metadata for a Rerun [`EntityPath`].
     #[inline]
-    pub fn chunk_metadata_entity_path(entity_path: &EntityPath) -> ArrowMetadata {
+    pub fn chunk_metadata_entity_path(entity_path: &EntityPath) -> Arrow2Metadata {
         [
             (
                 Self::CHUNK_METADATA_KEY_ENTITY_PATH.to_owned(),
@@ -136,7 +136,7 @@ impl TransportChunk {
 
     /// Returns the appropriate chunk-level [`Arrow2Schema`] metadata for an `IS_SORTED` marker.
     #[inline]
-    pub fn chunk_metadata_is_sorted() -> ArrowMetadata {
+    pub fn chunk_metadata_is_sorted() -> Arrow2Metadata {
         [
             (
                 Self::CHUNK_METADATA_MARKER_IS_SORTED_BY_ROW_ID.to_owned(),
@@ -148,7 +148,7 @@ impl TransportChunk {
 
     /// Returns the appropriate field-level [`Arrow2Schema`] metadata for a Rerun time column.
     #[inline]
-    pub fn field_metadata_time_column() -> ArrowMetadata {
+    pub fn field_metadata_time_column() -> Arrow2Metadata {
         [
             (
                 Self::FIELD_METADATA_KEY_KIND.to_owned(),
@@ -160,7 +160,7 @@ impl TransportChunk {
 
     /// Returns the appropriate field-level [`Arrow2Schema`] metadata for a Rerun control column.
     #[inline]
-    pub fn field_metadata_control_column() -> ArrowMetadata {
+    pub fn field_metadata_control_column() -> Arrow2Metadata {
         [
             (
                 Self::FIELD_METADATA_KEY_KIND.to_owned(),
@@ -172,7 +172,7 @@ impl TransportChunk {
 
     /// Returns the appropriate field-level [`Arrow2Schema`] metadata for a Rerun data column.
     #[inline]
-    pub fn field_metadata_data_column() -> ArrowMetadata {
+    pub fn field_metadata_data_column() -> Arrow2Metadata {
         [
             (
                 Self::FIELD_METADATA_KEY_KIND.to_owned(),
@@ -184,7 +184,7 @@ impl TransportChunk {
 
     /// Returns the appropriate field-level [`Arrow2Schema`] metadata for an `IS_SORTED` marker.
     #[inline]
-    pub fn field_metadata_is_sorted() -> ArrowMetadata {
+    pub fn field_metadata_is_sorted() -> Arrow2Metadata {
         [
             (
                 Self::FIELD_METADATA_MARKER_IS_SORTED_BY_TIME.to_owned(),
@@ -492,8 +492,8 @@ impl Chunk {
             for (field, column) in transport.timelines() {
                 // See also [`Timeline::datatype`]
                 let timeline = match column.data_type().to_logical_type() {
-                    ArrowDatatype::Int64 => Timeline::new_sequence(field.name.as_str()),
-                    ArrowDatatype::Timestamp(ArrowTimeUnit::Nanosecond, None) => {
+                    Arrow2Datatype::Int64 => Timeline::new_sequence(field.name.as_str()),
+                    Arrow2Datatype::Timestamp(ArrowTimeUnit::Nanosecond, None) => {
                         Timeline::new_temporal(field.name.as_str())
                     }
                     _ => {

@@ -5,7 +5,7 @@ use re_types::components::VideoTimestamp;
 use re_types::Archetype;
 use re_types::{components::MediaType, ComponentBatch};
 
-use arrow2::array::PrimitiveArray as ArrowPrimitiveArray;
+use arrow2::array::PrimitiveArray as Arrow2PrimitiveArray;
 use arrow2::Either;
 
 use crate::{DataLoader, DataLoaderError, LoadedData};
@@ -193,7 +193,7 @@ fn load_video(
         Ok(frame_timestamps_ns) => {
             // Time column.
             let is_sorted = Some(true);
-            let time_column_times = ArrowPrimitiveArray::from_slice(&frame_timestamps_ns);
+            let time_column_times = Arrow2PrimitiveArray::from_slice(&frame_timestamps_ns);
             let time_column =
                 re_chunk::TimeColumn::new(is_sorted, video_timeline, time_column_times);
 
