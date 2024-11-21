@@ -20,7 +20,7 @@ float32
 ## API reference links
  * 🌊 [C++ API docs for `Opacity`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Opacity.html)
  * 🐍 [Python API docs for `Opacity`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Opacity)
- * 🦀 [Rust API docs for `Opacity`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.Opacity.html)
+ * 🦀 [Rust API docs for `Opacity`](https://docs.rs/rerun/latest/rerun/components/struct.Opacity.html)
 
 
 ## Used by

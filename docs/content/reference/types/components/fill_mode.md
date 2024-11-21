@@ -36,7 +36,7 @@ uint8
 ## API reference links
  * 🌊 [C++ API docs for `FillMode`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
  * 🐍 [Python API docs for `FillMode`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.FillMode)
- * 🦀 [Rust API docs for `FillMode`](https://ref.rerun.io/docs/rust/stable/rerun/components/enum.FillMode.html)
+ * 🦀 [Rust API docs for `FillMode`](https://docs.rs/rerun/latest/rerun/components/enum.FillMode.html)
 
 
 ## Used by

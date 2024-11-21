@@ -63,7 +63,7 @@ uint8
 ## API reference links
  * 🌊 [C++ API docs for `Colormap`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html)
  * 🐍 [Python API docs for `Colormap`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Colormap)
- * 🦀 [Rust API docs for `Colormap`](https://ref.rerun.io/docs/rust/stable/rerun/components/enum.Colormap.html)
+ * 🦀 [Rust API docs for `Colormap`](https://docs.rs/rerun/latest/rerun/components/enum.Colormap.html)
 
 
 ## Used by

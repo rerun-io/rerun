@@ -26,7 +26,7 @@ an instance of the mesh will be drawn for each transform.
 ## API reference links
  * 🌊 [C++ API docs for `Mesh3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Mesh3D.html)
  * 🐍 [Python API docs for `Mesh3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Mesh3D)
- * 🦀 [Rust API docs for `Mesh3D`](https://ref.rerun.io/docs/rust/stable/rerun/archetypes/struct.Mesh3D.html)
+ * 🦀 [Rust API docs for `Mesh3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Mesh3D.html)
 
 ## Examples
 

@@ -25,7 +25,7 @@ If there's more instance poses than half sizes, the last half size will be repea
 ## API reference links
  * 🌊 [C++ API docs for `Boxes3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Boxes3D.html)
  * 🐍 [Python API docs for `Boxes3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Boxes3D)
- * 🦀 [Rust API docs for `Boxes3D`](https://ref.rerun.io/docs/rust/stable/rerun/archetypes/struct.Boxes3D.html)
+ * 🦀 [Rust API docs for `Boxes3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Boxes3D.html)
 
 ## Examples
 

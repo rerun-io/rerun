@@ -105,7 +105,7 @@ uint8
 ## API reference links
  * 🌊 [C++ API docs for `PixelFormat`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1datatypes.html)
  * 🐍 [Python API docs for `PixelFormat`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.PixelFormat)
- * 🦀 [Rust API docs for `PixelFormat`](https://ref.rerun.io/docs/rust/stable/rerun/datatypes/enum.PixelFormat.html)
+ * 🦀 [Rust API docs for `PixelFormat`](https://docs.rs/rerun/latest/rerun/datatypes/enum.PixelFormat.html)
 
 
 ## Used by

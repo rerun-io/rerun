@@ -21,7 +21,7 @@ Camera perspective projection (a.k.a. intrinsics).
 ## API reference links
  * 🌊 [C++ API docs for `Pinhole`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Pinhole.html)
  * 🐍 [Python API docs for `Pinhole`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Pinhole)
- * 🦀 [Rust API docs for `Pinhole`](https://ref.rerun.io/docs/rust/stable/rerun/archetypes/struct.Pinhole.html)
+ * 🦀 [Rust API docs for `Pinhole`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Pinhole.html)
 
 ## Examples
 

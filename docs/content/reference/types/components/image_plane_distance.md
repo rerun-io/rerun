@@ -19,7 +19,7 @@ float32
 ## API reference links
  * 🌊 [C++ API docs for `ImagePlaneDistance`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ImagePlaneDistance.html)
  * 🐍 [Python API docs for `ImagePlaneDistance`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.ImagePlaneDistance)
- * 🦀 [Rust API docs for `ImagePlaneDistance`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.ImagePlaneDistance.html)
+ * 🦀 [Rust API docs for `ImagePlaneDistance`](https://docs.rs/rerun/latest/rerun/components/struct.ImagePlaneDistance.html)
 
 
 ## Used by
