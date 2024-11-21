@@ -17,10 +17,12 @@ impl Layout {
         bounding_rect_from_iter(self.extents.values().copied())
     }
 
+    /// Gets the position and size of a node in the layout.
     pub fn get(&self, node: &NodeIndex) -> Option<Rect> {
         self.extents.get(node).copied()
     }
 
+    /// Updates the size and position of a node, for example after size changes.
     pub fn update(&mut self, node: &NodeIndex, rect: Rect) {
         debug_assert!(
             self.extents.contains_key(node),
@@ -82,10 +84,7 @@ impl ForceLayout {
             .build(all_nodes)
             .add_force("link", fj::Link::new(all_edges))
             .add_force("charge", fj::ManyBody::new())
-            // TODO(grtlr): detect if we need a center force or a position force, depending on if the graph is disjoint
-            // or not. More generally: how much heuristics do we want to bake in here?
-            // .add_force("center", fj::Center::new());
-            // TODO(grtlr): This is a small stop-gap until we have blueprints.
+            // TODO(grtlr): This is a small stop-gap until we have blueprints to prevent nodes from flying away.
             .add_force("x", fj::PositionX::new().strength(0.01))
             .add_force("y", fj::PositionY::new().strength(0.01));
 
