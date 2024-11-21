@@ -14,7 +14,7 @@ In contrast to the `log` function, `send_columns` does NOT add any other timelin
 API docs of `send_columns`:
 * [🌊 C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#ad17571d51185ce2fc2fc2f5c3070ad65)
 * [🐍 Python](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_columns)
-* [🦀 Rust](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStream.html#method.send_columns)
+* [🦀 Rust](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.send_columns)
 
 
 ### Using `send_columns` for logging scalars

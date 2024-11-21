@@ -17,7 +17,7 @@ FixedSizeList<3, uint32>
 ## API reference links
  * 🌊 [C++ API docs for `TriangleIndices`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1TriangleIndices.html)
  * 🐍 [Python API docs for `TriangleIndices`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.TriangleIndices)
- * 🦀 [Rust API docs for `TriangleIndices`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.TriangleIndices.html)
+ * 🦀 [Rust API docs for `TriangleIndices`](https://docs.rs/rerun/latest/rerun/components/struct.TriangleIndices.html)
 
 
 ## Used by

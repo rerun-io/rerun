@@ -21,7 +21,7 @@ title: "Arrows3D"
 ## API reference links
  * 🌊 [C++ API docs for `Arrows3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Arrows3D.html)
  * 🐍 [Python API docs for `Arrows3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Arrows3D)
- * 🦀 [Rust API docs for `Arrows3D`](https://ref.rerun.io/docs/rust/stable/rerun/archetypes/struct.Arrows3D.html)
+ * 🦀 [Rust API docs for `Arrows3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Arrows3D.html)
 
 ## Example
 

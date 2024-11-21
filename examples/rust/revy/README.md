@@ -86,4 +86,4 @@ For more information, check out the [Revy repository](https://github.com/rerun-i
     })
     ```
     This will start a Rerun Viewer in the background and stream the recording data to it.\
-    Check out the [`RecordingStreamBuilder`](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStreamBuilder.html) docs for other options (saving to file, connecting to a remote viewer, etc).
+    Check out the [`RecordingStreamBuilder`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html) docs for other options (saving to file, connecting to a remote viewer, etc).

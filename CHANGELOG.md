@@ -313,7 +313,7 @@ This can both greatly simplify logging code and drastically improve performance 
 API documentation:
 * 🐍 [Python `send_columns` docs](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_columns)
 * 🌊 [C++ `send_columns` docs](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#ad17571d51185ce2fc2fc2f5c3070ad65)
-* 🦀 [Rust `send_columns` docs](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStream.html#method.send_columns)
+* 🦀 [Rust `send_columns` docs](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.send_columns)
 
 API usage examples:
 <details>

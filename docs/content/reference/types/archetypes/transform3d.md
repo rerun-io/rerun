@@ -28,7 +28,7 @@ For transforms that affect only a single entity and do not propagate along the e
 ## API reference links
  * 🌊 [C++ API docs for `Transform3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Transform3D.html)
  * 🐍 [Python API docs for `Transform3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Transform3D)
- * 🦀 [Rust API docs for `Transform3D`](https://ref.rerun.io/docs/rust/stable/rerun/archetypes/struct.Transform3D.html)
+ * 🦀 [Rust API docs for `Transform3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Transform3D.html)
 
 ## Examples
 

@@ -25,7 +25,7 @@ See also [`datatypes.ClassDescription`](https://rerun.io/docs/reference/types/da
 ## API reference links
  * 🌊 [C++ API docs for `AnnotationContext`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1AnnotationContext.html)
  * 🐍 [Python API docs for `AnnotationContext`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.AnnotationContext)
- * 🦀 [Rust API docs for `AnnotationContext`](https://ref.rerun.io/docs/rust/stable/rerun/archetypes/struct.AnnotationContext.html)
+ * 🦀 [Rust API docs for `AnnotationContext`](https://docs.rs/rerun/latest/rerun/archetypes/struct.AnnotationContext.html)
 
 ## Examples
 

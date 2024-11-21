@@ -14,7 +14,7 @@ float64
 ## API reference links
  * 🌊 [C++ API docs for `Float64`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Float64.html)
  * 🐍 [Python API docs for `Float64`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.Float64)
- * 🦀 [Rust API docs for `Float64`](https://ref.rerun.io/docs/rust/stable/rerun/datatypes/struct.Float64.html)
+ * 🦀 [Rust API docs for `Float64`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Float64.html)
 
 
 ## Used by
