@@ -146,7 +146,7 @@ jobs:
           message-id: "web-viewer-build-status"
           repo-token: ${{ secrets.GITHUB_TOKEN }}
           message: |
-            Web viewer built successfully.
+            Web viewer built successfully. If applicable, you should also test it.
 
             | Result | Commit  | Link  |
             | ------ | ------- | ----- |
