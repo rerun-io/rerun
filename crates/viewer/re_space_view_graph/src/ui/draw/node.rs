@@ -8,7 +8,7 @@ pub fn draw_explicit(ui: &mut Ui, ctx: &SceneContext, node: &NodeInstance) -> Re
 
     let fg = node.color.unwrap_or_else(|| visuals.text_color());
 
-    if let Some(ref label) = node.label {
+    let response = if let (Some(label), true) = (node.label.as_ref(), node.show_label) {
         // Draw a text node.
 
         let bg = visuals.widgets.noninteractive.bg_fill;
@@ -41,8 +41,16 @@ pub fn draw_explicit(ui: &mut Ui, ctx: &SceneContext, node: &NodeInstance) -> Re
                 })
             })
             .response
+    };
+
+    if let Some(label) = node.label.as_ref() {
+        response.on_hover_text(format!(
+            "Graph Node: {}\nLabel: {label}",
+            node.node.as_str(),
+        ))
+    } else {
+        response.on_hover_text(format!("Graph Node: {}", node.node.as_str(),))
     }
-    .on_hover_text(format!("Node: `{}`", node.node.as_str()))
 }
 
 /// Draws an implicit node instance (dummy node).

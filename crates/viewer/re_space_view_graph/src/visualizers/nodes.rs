@@ -26,6 +26,7 @@ pub struct NodeInstance {
     pub node: components::GraphNode,
     pub index: NodeIndex,
     pub label: Option<ArrowString>,
+    pub show_label: bool,
     pub color: Option<egui::Color32>,
     pub position: Option<egui::Pos2>,
     pub radius: Option<components::Radius>,
@@ -67,7 +68,7 @@ impl VisualizerSystem for NodeVisualizer {
             let all_positions = results.iter_as(query.timeline, components::Position2D::name());
             let all_labels = results.iter_as(query.timeline, components::Text::name());
             let all_radii = results.iter_as(query.timeline, components::Radius::name());
-            let show_labels = results
+            let show_label = results
                 .get_mono::<components::ShowLabels>()
                 .map_or(true, bool::from);
 
@@ -93,7 +94,7 @@ impl VisualizerSystem for NodeVisualizer {
                     labels
                         .unwrap_or_default()
                         .iter()
-                        .map(|l| show_labels.then_some(l)),
+                        .map(Option::Some),
                     Option::<&ArrowString>::default,
                     radii.unwrap_or_default().iter().map(Option::Some),
                     Option::<&components::Radius>::default,
@@ -103,7 +104,8 @@ impl VisualizerSystem for NodeVisualizer {
                     index: NodeIndex::from_entity_node(&data_result.entity_path, node),
                     color: color.map(|&Color(color)| color.into()),
                     position: position.map(|[x, y]| egui::Pos2::new(x, y)),
-                    label: if show_labels { label.cloned() } else { None },
+                    label: label.cloned(),
+                    show_label,
                     radius: radius.copied(),
                 })
                 .collect();
