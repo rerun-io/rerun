@@ -7,7 +7,7 @@ import argparse
 from github import Github
 
 
-def get_checkboxes(s: str) -> list[str]:
+def get_unchecked_checkboxes(s: str) -> list[str]:
     s = s.lower()
     lines: list[str] = []
     for line in s.splitlines():
@@ -31,7 +31,7 @@ def main() -> None:
     latest_commit = pr.get_commits().reversed[0]
     print(f"Latest commit: {latest_commit.sha}")
 
-    checkboxes = get_checkboxes(pr.body)
+    checkboxes = get_unchecked_checkboxes(pr.body)
 
     if len(checkboxes) != 0:
         print("Unchecked checkboxes found:")
