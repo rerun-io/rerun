@@ -42,7 +42,9 @@ re_tuid.workspace = true
 
 # External
 anyhow.workspace = true
+arrow.workspace = true
 arrow2 = { workspace = true, features = [
+  "arrow",
   "io_ipc",
   "io_print",
   "compute_concatenate",
