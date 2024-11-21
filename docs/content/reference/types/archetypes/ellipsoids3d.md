@@ -29,7 +29,7 @@ If there's more instance poses than half sizes, the last half size will be repea
 ## API reference links
  * 🌊 [C++ API docs for `Ellipsoids3D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Ellipsoids3D.html)
  * 🐍 [Python API docs for `Ellipsoids3D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Ellipsoids3D)
- * 🦀 [Rust API docs for `Ellipsoids3D`](https://ref.rerun.io/docs/rust/stable/rerun/archetypes/struct.Ellipsoids3D.html)
+ * 🦀 [Rust API docs for `Ellipsoids3D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Ellipsoids3D.html)
 
 ## Example
 

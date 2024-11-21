@@ -25,9 +25,7 @@ Run `rerun --help` for more.
 ## What is Rerun?
 - [Examples](https://github.com/rerun-io/rerun/tree/latest/examples/rust)
 - [High-level docs](http://rerun.io/docs)
-<!-- TODO(#8165): docs.rs/rerun is broken right now -->
-<!-- - [Rust API docs](https://ref.rerun.io/docs/rust/stable) -->
-- [Rust API docs](https://ref.rerun.io/docs/rust/stable/rerun/)
+- [Rust API docs](https://docs.rs/rerun/)
 - [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
 
 

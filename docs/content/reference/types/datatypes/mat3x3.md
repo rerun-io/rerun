@@ -23,7 +23,7 @@ FixedSizeList<9, float32>
 ## API reference links
  * 🌊 [C++ API docs for `Mat3x3`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Mat3x3.html)
  * 🐍 [Python API docs for `Mat3x3`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.Mat3x3)
- * 🦀 [Rust API docs for `Mat3x3`](https://ref.rerun.io/docs/rust/stable/rerun/datatypes/struct.Mat3x3.html)
+ * 🦀 [Rust API docs for `Mat3x3`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Mat3x3.html)
 
 
 ## Used by

@@ -20,7 +20,7 @@ FixedSizeList<4, float32>
 ## API reference links
  * 🌊 [C++ API docs for `PoseRotationQuat`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1PoseRotationQuat.html)
  * 🐍 [Python API docs for `PoseRotationQuat`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.PoseRotationQuat)
- * 🦀 [Rust API docs for `PoseRotationQuat`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.PoseRotationQuat.html)
+ * 🦀 [Rust API docs for `PoseRotationQuat`](https://docs.rs/rerun/latest/rerun/components/struct.PoseRotationQuat.html)
 
 
 ## Used by
