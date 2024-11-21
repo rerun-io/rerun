@@ -45,7 +45,7 @@ impl ChunkStore {
             return Ok(Vec::new());
         };
 
-        re_tracing::profile_function!(format!("{}", row_id_range.0));
+        re_tracing::profile_function!();
 
         self.insert_id += 1;
 
