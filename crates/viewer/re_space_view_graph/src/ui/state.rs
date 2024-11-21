@@ -91,12 +91,12 @@ pub enum LayoutState {
     #[default]
     None,
     InProgress {
-        timestamp: Discriminator,
+        discriminator: Discriminator,
         layout: Layout,
         provider: ForceLayout,
     },
     Finished {
-        timestamp: Discriminator,
+        discriminator: Discriminator,
         layout: Layout,
         _provider: ForceLayout,
     },
@@ -132,7 +132,9 @@ impl LayoutState {
     ) -> Self {
         match self {
             // Layout is up to date, nothing to do here.
-            Self::Finished { ref timestamp, .. } if timestamp == &requested => {
+            Self::Finished {
+                ref discriminator, ..
+            } if discriminator == &requested => {
                 self // no op
             }
             // We need to recompute the layout.
@@ -141,34 +143,36 @@ impl LayoutState {
                 let layout = provider.init_layout();
 
                 Self::InProgress {
-                    timestamp: requested,
+                    discriminator: requested,
                     layout,
                     provider,
                 }
             }
-            Self::InProgress { ref timestamp, .. } if timestamp != &requested => {
+            Self::InProgress {
+                ref discriminator, ..
+            } if discriminator != &requested => {
                 let provider = ForceLayout::new(graphs);
                 let layout = provider.init_layout();
 
                 Self::InProgress {
-                    timestamp: requested,
+                    discriminator: requested,
                     layout,
                     provider,
                 }
             }
             // We keep iterating on the layout until it is stable.
             Self::InProgress {
-                timestamp,
+                discriminator,
                 mut layout,
                 mut provider,
             } => match provider.tick(&mut layout) {
                 true => Self::Finished {
-                    timestamp,
+                    discriminator,
                     layout,
                     _provider: provider,
                 },
                 false => Self::InProgress {
-                    timestamp,
+                    discriminator,
                     layout,
                     provider,
                 },
