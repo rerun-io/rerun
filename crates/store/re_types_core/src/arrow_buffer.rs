@@ -9,7 +9,7 @@ use arrow2::buffer::Buffer;
 /// arise from returning a `&[T]` directly, but is significantly more
 /// performant than doing the full allocation necessary to return a `Vec<T>`.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct ArrowBuffer<T>(pub Buffer<T>);
+pub struct ArrowBuffer<T>(Buffer<T>);
 
 impl<T: crate::SizeBytes> crate::SizeBytes for ArrowBuffer<T> {
     #[inline]
@@ -48,11 +48,6 @@ impl<T> ArrowBuffer<T> {
     #[inline]
     pub fn as_slice(&self) -> &[T] {
         self.0.as_slice()
-    }
-
-    #[inline]
-    pub fn into_inner(self) -> Buffer<T> {
-        self.0
     }
 
     /// Returns a new [`Buffer`] that is a slice of this buffer starting at `offset`.
