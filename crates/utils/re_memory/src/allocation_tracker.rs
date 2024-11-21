@@ -39,6 +39,7 @@ impl std::fmt::Display for ReadableBacktrace {
 
 impl ReadableBacktrace {
     fn new(mut backtrace: Backtrace) -> Self {
+        #![allow(unused_mut)] // difference between native and wasm
         Self {
             readable: backtrace.format(),
         }

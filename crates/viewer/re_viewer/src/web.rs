@@ -232,7 +232,7 @@ impl WebHandle {
 
     /// Add an rrd to the viewer directly from a byte array.
     #[wasm_bindgen]
-    pub fn send_rrd_to_channel(&mut self, id: &str, data: &[u8]) {
+    pub fn send_rrd_to_channel(&self, id: &str, data: &[u8]) {
         use std::{ops::ControlFlow, sync::Arc};
         let Some(app) = self.runner.app_mut::<crate::App>() else {
             return;
