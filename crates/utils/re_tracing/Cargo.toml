@@ -26,6 +26,9 @@ default = []
 ## Enable to easily host a puffin server. For binaries.
 server = ["dep:puffin_http", "dep:re_log", "dep:rfd", "dep:wayland-sys"]
 
+## Enable to use Superluminal perf markers.
+superluminal = ["dep:superluminal-perf"]
+
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 puffin.workspace = true
@@ -34,6 +37,7 @@ puffin.workspace = true
 puffin_http = { workspace = true, optional = true }
 re_log = { workspace = true, optional = true }
 rfd = { workspace = true, optional = true }
+superluminal-perf = { workspace = true, optional = true }
 
 [target.'cfg(target_os = "linux")'.dependencies]
 # Work-around for https://github.com/Smithay/wayland-rs/issues/767

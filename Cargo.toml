@@ -267,6 +267,7 @@ static_assertions = "1.1"
 strum = { version = "0.26", features = ["derive"] }
 strum_macros = "0.26"
 sublime_fuzzy = "0.7"
+superluminal-perf = "0.3.0"
 syn = "2.0"
 sysinfo = { version = "0.30.1", default-features = false }
 tempfile = "3.0"

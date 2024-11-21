@@ -43,7 +43,6 @@ map_view = ["dep:re_space_view_map"]
 ## Enable the gRPC Rerun Data Platform data source.
 grpc = ["re_data_source/grpc", "dep:re_grpc_client"]
 
-
 [dependencies]
 # Internal:
 re_blueprint_tree.workspace = true

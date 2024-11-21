@@ -49,6 +49,9 @@ nasm = ["rerun/nasm"]
 ## This adds a lot of extra dependencies, so only enable this feature if you need it!
 native_viewer = ["rerun/native_viewer"]
 
+## Enable to use Superluminal perf markers in the native viewer.
+superluminal = ["rerun/superluminal"]
+
 ## Support the map view.
 ## This adds a lot of extra dependencies.
 #TODO(#7876): remove this feature when we have fewer dependencies
