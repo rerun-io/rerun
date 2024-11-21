@@ -163,6 +163,7 @@ Display a graph of nodes and edges.
         let layout = state.layout_state.get(
             query.timeline,
             query.latest_at,
+            graphs.iter().map(|g| (g.0).clone()),
             graphs.iter().map(|(_, graph)| graph),
         );
         let needs_remeasure = layout.has_zero_size();

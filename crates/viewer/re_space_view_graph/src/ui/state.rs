@@ -1,5 +1,5 @@
 use egui::Rect;
-use re_chunk::{TimeInt, Timeline};
+use re_chunk::{EntityPath, TimeInt, Timeline};
 use re_format::format_f32;
 use re_types::blueprint::components::VisualBounds2D;
 use re_ui::UiExt;
@@ -63,14 +63,23 @@ impl SpaceViewState for GraphSpaceViewState {
 
 /// Used to determine if a layout is up-to-date or outdated.
 #[derive(Debug, PartialEq, Eq)]
-pub struct Timestamp {
+pub struct Discriminator {
     timeline: Timeline,
     time: TimeInt,
+    entities: ahash::HashSet<EntityPath>,
 }
 
-impl Timestamp {
-    pub fn new(timeline: Timeline, time: TimeInt) -> Self {
-        Self { timeline, time }
+impl Discriminator {
+    pub fn new(
+        timeline: Timeline,
+        time: TimeInt,
+        entities: impl IntoIterator<Item = EntityPath>,
+    ) -> Self {
+        Self {
+            timeline,
+            time,
+            entities: entities.into_iter().collect(),
+        }
     }
 }
 
@@ -82,12 +91,12 @@ pub enum LayoutState {
     #[default]
     None,
     InProgress {
-        timestamp: Timestamp,
+        timestamp: Discriminator,
         layout: Layout,
         provider: ForceLayout,
     },
     Finished {
-        timestamp: Timestamp,
+        timestamp: Discriminator,
         layout: Layout,
         _provider: ForceLayout,
     },
@@ -118,7 +127,7 @@ impl LayoutState {
     /// A simple state machine that keeps track of the different stages and if the layout needs to be recomputed.
     fn update<'a>(
         self,
-        requested: Timestamp,
+        requested: Discriminator,
         graphs: impl Iterator<Item = &'a Graph<'a>> + Clone,
     ) -> Self {
         match self {
@@ -172,9 +181,10 @@ impl LayoutState {
         &'a mut self,
         timeline: Timeline,
         time: TimeInt,
+        entities: impl IntoIterator<Item = EntityPath>,
         graphs: impl Iterator<Item = &'a Graph<'a>> + Clone,
     ) -> &'a mut Layout {
-        *self = std::mem::take(self).update(Timestamp::new(timeline, time), graphs);
+        *self = std::mem::take(self).update(Discriminator::new(timeline, time, entities), graphs);
 
         match self {
             Self::Finished { layout, .. } | Self::InProgress { layout, .. } => layout,
