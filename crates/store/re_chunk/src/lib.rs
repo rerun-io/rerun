@@ -40,7 +40,7 @@ pub use self::batcher::{
 // Re-exports
 
 #[doc(no_inline)]
-pub use arrow2::array::Array as ArrowArray;
+pub use arrow2::array::Array as Arrow2Array;
 #[doc(no_inline)]
 pub use re_log_types::{EntityPath, TimeInt, TimePoint, Timeline, TimelineName};
 #[doc(no_inline)]

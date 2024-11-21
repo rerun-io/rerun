@@ -160,7 +160,7 @@ fn visualizer_components(
     fn non_empty_component_batch_raw(
         unit: Option<&UnitChunkShared>,
         component_name: &ComponentName,
-    ) -> Option<(Option<RowId>, Box<dyn re_chunk::ArrowArray>)> {
+    ) -> Option<(Option<RowId>, Box<dyn re_chunk::Arrow2Array>)> {
         let unit = unit?;
         let batch = unit.component_batch_raw(component_name)?;
         if batch.is_empty() {

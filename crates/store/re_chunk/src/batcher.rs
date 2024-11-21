@@ -5,7 +5,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use arrow2::array::{Array as ArrowArray, PrimitiveArray as ArrowPrimitiveArray};
+use arrow2::array::{Array as Arrow2Array, PrimitiveArray as Arrow2PrimitiveArray};
 use crossbeam::channel::{Receiver, Sender};
 use nohash_hasher::IntMap;
 
@@ -679,14 +679,14 @@ pub struct PendingRow {
     /// The component data.
     ///
     /// Each array is a single component, i.e. _not_ a list array.
-    pub components: BTreeMap<ComponentName, Box<dyn ArrowArray>>,
+    pub components: BTreeMap<ComponentName, Box<dyn Arrow2Array>>,
 }
 
 impl PendingRow {
     #[inline]
     pub fn new(
         timepoint: TimePoint,
-        components: BTreeMap<ComponentName, Box<dyn ArrowArray>>,
+        components: BTreeMap<ComponentName, Box<dyn Arrow2Array>>,
     ) -> Self {
         Self {
             row_id: RowId::new(),
@@ -726,7 +726,7 @@ impl PendingRow {
         let timelines = timepoint
             .into_iter()
             .map(|(timeline, time)| {
-                let times = ArrowPrimitiveArray::<i64>::from_vec(vec![time.as_i64()]);
+                let times = Arrow2PrimitiveArray::<i64>::from_vec(vec![time.as_i64()]);
                 let time_column = TimeColumn::new(Some(true), timeline, times);
                 (timeline, time_column)
             })
@@ -826,7 +826,7 @@ impl PendingRow {
 
                 // Create all the logical list arrays that we're going to need, accounting for the
                 // possibility of sparse components in the data.
-                let mut all_components: IntMap<ComponentName, Vec<Option<&dyn ArrowArray>>> =
+                let mut all_components: IntMap<ComponentName, Vec<Option<&dyn Arrow2Array>>> =
                     IntMap::default();
                 for row in &rows {
                     for component_name in row.components.keys() {
@@ -893,7 +893,7 @@ impl PendingRow {
                         arrays.push(
                             row_components
                                 .get(component_name)
-                                .map(|array| &**array as &dyn ArrowArray),
+                                .map(|array| &**array as &dyn Arrow2Array),
                         );
                     }
                 }
@@ -967,7 +967,7 @@ impl PendingTimeColumn {
 
         TimeColumn {
             timeline,
-            times: ArrowPrimitiveArray::<i64>::from_vec(times).to(timeline.datatype()),
+            times: Arrow2PrimitiveArray::<i64>::from_vec(times).to(timeline.datatype()),
             is_sorted,
             time_range,
         }
@@ -1047,7 +1047,7 @@ mod tests {
                 TimeColumn::new(
                     Some(true),
                     timeline1,
-                    ArrowPrimitiveArray::from_vec(vec![42, 43, 44]),
+                    Arrow2PrimitiveArray::from_vec(vec![42, 43, 44]),
                 ),
             )];
             let expected_components = [(
@@ -1203,7 +1203,7 @@ mod tests {
                 TimeColumn::new(
                     Some(true),
                     timeline1,
-                    ArrowPrimitiveArray::from_vec(vec![42, 44]),
+                    Arrow2PrimitiveArray::from_vec(vec![42, 44]),
                 ),
             )];
             let expected_components = [(
@@ -1231,7 +1231,7 @@ mod tests {
                 TimeColumn::new(
                     Some(true),
                     timeline1,
-                    ArrowPrimitiveArray::from_vec(vec![43]),
+                    Arrow2PrimitiveArray::from_vec(vec![43]),
                 ),
             )];
             let expected_components = [(
@@ -1318,7 +1318,7 @@ mod tests {
                 TimeColumn::new(
                     Some(true),
                     timeline1,
-                    ArrowPrimitiveArray::from_vec(vec![42]),
+                    Arrow2PrimitiveArray::from_vec(vec![42]),
                 ),
             )];
             let expected_components = [(
@@ -1347,7 +1347,7 @@ mod tests {
                     TimeColumn::new(
                         Some(true),
                         timeline1,
-                        ArrowPrimitiveArray::from_vec(vec![43, 44]),
+                        Arrow2PrimitiveArray::from_vec(vec![43, 44]),
                     ),
                 ),
                 (
@@ -1355,7 +1355,7 @@ mod tests {
                     TimeColumn::new(
                         Some(true),
                         timeline2,
-                        ArrowPrimitiveArray::from_vec(vec![1000, 1001]),
+                        Arrow2PrimitiveArray::from_vec(vec![1000, 1001]),
                     ),
                 ),
             ];
@@ -1439,7 +1439,7 @@ mod tests {
                 TimeColumn::new(
                     Some(true),
                     timeline1,
-                    ArrowPrimitiveArray::from_vec(vec![42, 44]),
+                    Arrow2PrimitiveArray::from_vec(vec![42, 44]),
                 ),
             )];
             let expected_components = [(
@@ -1467,7 +1467,7 @@ mod tests {
                 TimeColumn::new(
                     Some(true),
                     timeline1,
-                    ArrowPrimitiveArray::from_vec(vec![43]),
+                    Arrow2PrimitiveArray::from_vec(vec![43]),
                 ),
             )];
             let expected_components = [(
@@ -1569,7 +1569,7 @@ mod tests {
                     TimeColumn::new(
                         Some(false),
                         timeline1,
-                        ArrowPrimitiveArray::from_vec(vec![45, 42, 43, 44]),
+                        Arrow2PrimitiveArray::from_vec(vec![45, 42, 43, 44]),
                     ),
                 ),
                 (
@@ -1577,7 +1577,7 @@ mod tests {
                     TimeColumn::new(
                         Some(false),
                         timeline2,
-                        ArrowPrimitiveArray::from_vec(vec![1003, 1000, 1001, 1002]),
+                        Arrow2PrimitiveArray::from_vec(vec![1003, 1000, 1001, 1002]),
                     ),
                 ),
             ];
@@ -1683,7 +1683,7 @@ mod tests {
                     TimeColumn::new(
                         Some(false),
                         timeline1,
-                        ArrowPrimitiveArray::from_vec(vec![45, 42, 43]),
+                        Arrow2PrimitiveArray::from_vec(vec![45, 42, 43]),
                     ),
                 ),
                 (
@@ -1691,7 +1691,7 @@ mod tests {
                     TimeColumn::new(
                         Some(false),
                         timeline2,
-                        ArrowPrimitiveArray::from_vec(vec![1003, 1000, 1001]),
+                        Arrow2PrimitiveArray::from_vec(vec![1003, 1000, 1001]),
                     ),
                 ),
             ];
@@ -1722,7 +1722,7 @@ mod tests {
                     TimeColumn::new(
                         Some(true),
                         timeline1,
-                        ArrowPrimitiveArray::from_vec(vec![44]),
+                        Arrow2PrimitiveArray::from_vec(vec![44]),
                     ),
                 ),
                 (
@@ -1730,7 +1730,7 @@ mod tests {
                     TimeColumn::new(
                         Some(true),
                         timeline2,
-                        ArrowPrimitiveArray::from_vec(vec![1002]),
+                        Arrow2PrimitiveArray::from_vec(vec![1002]),
                     ),
                 ),
             ];

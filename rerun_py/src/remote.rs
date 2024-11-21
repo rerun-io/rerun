@@ -156,7 +156,7 @@ enum MetadataLike {
 }
 
 impl MetadataLike {
-    fn to_arrow2(&self) -> PyResult<Box<dyn re_chunk::ArrowArray>> {
+    fn to_arrow2(&self) -> PyResult<Box<dyn re_chunk::Arrow2Array>> {
         match self {
             Self::PyArrow(array) => {
                 let array = arrow2::array::from_data(&array.0);

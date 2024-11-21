@@ -5,11 +5,11 @@ use thiserror::Error;
 
 use re_chunk_store::external::arrow2::{
     array::{
-        Array as ArrowArray, DictionaryArray as ArrowDictionaryArray, ListArray as ArrowListArray,
-        PrimitiveArray as ArrowPrimitiveArray,
+        Array as Arrow2Array, DictionaryArray as Arrow2DictionaryArray,
+        ListArray as Arrow2ListArray, PrimitiveArray as ArrowPrimitiveArray,
     },
     datatypes::DataType,
-    datatypes::DataType as ArrowDataType,
+    datatypes::DataType as Arrow2DataType,
 };
 use re_chunk_store::{ColumnDescriptor, ComponentColumnDescriptor, LatestAtQuery};
 use re_log_types::{EntityPath, TimeInt, Timeline};
@@ -21,10 +21,10 @@ use re_viewer_context::{UiLayout, ViewerContext};
 #[derive(Error, Debug)]
 pub(crate) enum DisplayRecordBatchError {
     #[error("Unexpected column data type for timeline '{0}': {1:?}")]
-    UnexpectedTimeColumnDataType(String, ArrowDataType),
+    UnexpectedTimeColumnDataType(String, Arrow2DataType),
 
     #[error("Unexpected column data type for component '{0}': {1:?}")]
-    UnexpectedComponentColumnDataType(String, ArrowDataType),
+    UnexpectedComponentColumnDataType(String, Arrow2DataType),
 }
 
 /// A single column of component data.
@@ -33,10 +33,10 @@ pub(crate) enum DisplayRecordBatchError {
 #[derive(Debug)]
 pub(crate) enum ComponentData {
     Null,
-    ListArray(ArrowListArray<i32>),
+    ListArray(Arrow2ListArray<i32>),
     DictionaryArray {
-        dict: ArrowDictionaryArray<i32>,
-        values: ArrowListArray<i32>,
+        dict: Arrow2DictionaryArray<i32>,
+        values: Arrow2ListArray<i32>,
     },
 }
 
@@ -44,27 +44,27 @@ impl ComponentData {
     #[allow(clippy::borrowed_box)] // https://github.com/rust-lang/rust-clippy/issues/11940
     fn try_new(
         descriptor: &ComponentColumnDescriptor,
-        column_data: &Box<dyn ArrowArray>,
+        column_data: &Box<dyn Arrow2Array>,
     ) -> Result<Self, DisplayRecordBatchError> {
         match column_data.data_type() {
             DataType::Null => Ok(Self::Null),
             DataType::List(_) => Ok(Self::ListArray(
                 column_data
                     .as_any()
-                    .downcast_ref::<ArrowListArray<i32>>()
+                    .downcast_ref::<Arrow2ListArray<i32>>()
                     .expect("`data_type` checked, failure is a bug in re_dataframe")
                     .clone(),
             )),
             DataType::Dictionary(IntegerType::Int32, _, _) => {
                 let dict = column_data
                     .as_any()
-                    .downcast_ref::<ArrowDictionaryArray<i32>>()
+                    .downcast_ref::<Arrow2DictionaryArray<i32>>()
                     .expect("`data_type` checked, failure is a bug in re_dataframe")
                     .clone();
                 let values = dict
                     .values()
                     .as_any()
-                    .downcast_ref::<ArrowListArray<i32>>()
+                    .downcast_ref::<Arrow2ListArray<i32>>()
                     .expect("`data_type` checked, failure is a bug in re_dataframe")
                     .clone();
                 Ok(Self::DictionaryArray { dict, values })
@@ -180,7 +180,7 @@ impl DisplayColumn {
     #[allow(clippy::borrowed_box)] // https://github.com/rust-lang/rust-clippy/issues/11940
     fn try_new(
         column_descriptor: &ColumnDescriptor,
-        column_data: &Box<dyn ArrowArray>,
+        column_data: &Box<dyn Arrow2Array>,
     ) -> Result<Self, DisplayRecordBatchError> {
         match column_descriptor {
             ColumnDescriptor::Time(desc) => {
@@ -305,7 +305,7 @@ impl DisplayRecordBatch {
     /// The columns in the record batch must match the selected columns. This is guaranteed by
     /// `re_datastore`.
     pub(crate) fn try_new(
-        row_data: &Vec<Box<dyn ArrowArray>>,
+        row_data: &Vec<Box<dyn Arrow2Array>>,
         selected_columns: &[ColumnDescriptor],
     ) -> Result<Self, DisplayRecordBatchError> {
         let num_rows = row_data.first().map(|arr| arr.len()).unwrap_or(0);

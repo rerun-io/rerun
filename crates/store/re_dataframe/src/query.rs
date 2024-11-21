@@ -8,7 +8,7 @@ use std::{
 
 use arrow2::{
     array::{
-        Array as ArrowArray, BooleanArray as ArrowBooleanArray,
+        Array as Arrow2Array, BooleanArray as ArrowBooleanArray,
         PrimitiveArray as ArrowPrimitiveArray,
     },
     chunk::Chunk as ArrowChunk,
@@ -791,7 +791,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     /// }
     /// ```
     #[inline]
-    pub fn next_row(&self) -> Option<Vec<Box<dyn ArrowArray>>> {
+    pub fn next_row(&self) -> Option<Vec<Box<dyn Arrow2Array>>> {
         self.engine
             .with(|store, cache| self._next_row(store, cache))
     }
@@ -814,7 +814,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
     #[cfg(not(target_arch = "wasm32"))]
     pub fn next_row_async(
         &self,
-    ) -> impl std::future::Future<Output = Option<Vec<Box<dyn ArrowArray>>>>
+    ) -> impl std::future::Future<Output = Option<Vec<Box<dyn Arrow2Array>>>>
     where
         E: 'static + Send + Clone,
     {
@@ -853,7 +853,7 @@ impl<E: StorageEngineLike> QueryHandle<E> {
         &self,
         store: &ChunkStore,
         cache: &QueryCache,
-    ) -> Option<Vec<Box<dyn ArrowArray>>> {
+    ) -> Option<Vec<Box<dyn Arrow2Array>>> {
         re_tracing::profile_function!();
 
         /// Temporary state used to resolve the streaming join for the current iteration.
@@ -1253,13 +1253,13 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 impl<E: StorageEngineLike> QueryHandle<E> {
     /// Returns an iterator backed by [`Self::next_row`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn iter(&self) -> impl Iterator<Item = Vec<Box<dyn ArrowArray>>> + '_ {
+    pub fn iter(&self) -> impl Iterator<Item = Vec<Box<dyn Arrow2Array>>> + '_ {
         std::iter::from_fn(move || self.next_row())
     }
 
     /// Returns an iterator backed by [`Self::next_row`].
     #[allow(clippy::should_implement_trait)] // we need an anonymous closure, this won't work
-    pub fn into_iter(self) -> impl Iterator<Item = Vec<Box<dyn ArrowArray>>> {
+    pub fn into_iter(self) -> impl Iterator<Item = Vec<Box<dyn Arrow2Array>>> {
         std::iter::from_fn(move || self.next_row())
     }
 

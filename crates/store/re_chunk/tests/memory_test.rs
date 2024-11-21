@@ -56,7 +56,7 @@ fn memory_use<R>(run: impl Fn() -> R) -> (R, usize) {
 
 use arrow2::{
     array::{
-        Array as ArrowArray, BooleanArray as ArrowBooleanArray, ListArray as ArrowListArray,
+        Array as Arrow2Array, BooleanArray as ArrowBooleanArray, ListArray as ArrowListArray,
         PrimitiveArray as ArrowPrimitiveArray,
     },
     offset::Offsets as ArrowOffsets,
@@ -86,7 +86,7 @@ fn concat_does_allocate() {
         let unconcatenated_refs = unconcatenated
             .0
             .iter()
-            .map(|a| &**a as &dyn ArrowArray)
+            .map(|a| &**a as &dyn Arrow2Array)
             .collect_vec();
 
         let concatenated =

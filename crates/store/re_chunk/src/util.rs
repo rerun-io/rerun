@@ -1,6 +1,6 @@
 use arrow2::{
     array::{
-        Array as ArrowArray, BooleanArray as ArrowBooleanArray,
+        Array as Arrow2Array, BooleanArray as ArrowBooleanArray,
         DictionaryArray as ArrowDictionaryArray, ListArray as ArrowListArray,
         PrimitiveArray as ArrowPrimitiveArray,
     },
@@ -42,7 +42,9 @@ pub fn is_list_array_semantically_empty(list_array: &ArrowListArray<i32>) -> boo
 ///
 /// Returns `None` if `arrays` is empty.
 #[inline]
-pub fn arrays_to_list_array_opt(arrays: &[Option<&dyn ArrowArray>]) -> Option<ArrowListArray<i32>> {
+pub fn arrays_to_list_array_opt(
+    arrays: &[Option<&dyn Arrow2Array>],
+) -> Option<ArrowListArray<i32>> {
     let datatype = arrays
         .iter()
         .flatten()
@@ -58,7 +60,7 @@ pub fn arrays_to_list_array_opt(arrays: &[Option<&dyn ArrowArray>]) -> Option<Ar
 /// Returns an empty list if `arrays` is empty.
 pub fn arrays_to_list_array(
     array_datatype: ArrowDatatype,
-    arrays: &[Option<&dyn ArrowArray>],
+    arrays: &[Option<&dyn Arrow2Array>],
 ) -> Option<ArrowListArray<i32>> {
     let arrays_dense = arrays.iter().flatten().copied().collect_vec();
 
@@ -108,7 +110,7 @@ pub fn arrays_to_list_array(
 // on the cardinality of the input arrays.
 pub fn arrays_to_dictionary<Idx: Copy + Eq>(
     array_datatype: &ArrowDatatype,
-    arrays: &[Option<(Idx, &dyn ArrowArray)>],
+    arrays: &[Option<(Idx, &dyn Arrow2Array)>],
 ) -> Option<ArrowDictionaryArray<i32>> {
     // Dedupe the input arrays based on the given primary key.
     let arrays_dense_deduped = arrays
@@ -329,7 +331,7 @@ pub fn new_list_array_of_empties(child_datatype: ArrowDatatype, len: usize) -> A
 /// Returns an error if the arrays don't share the exact same datatype.
 ///
 /// [concatenate]: arrow2::compute::concatenate::concatenate
-pub fn concat_arrays(arrays: &[&dyn ArrowArray]) -> arrow2::error::Result<Box<dyn ArrowArray>> {
+pub fn concat_arrays(arrays: &[&dyn Arrow2Array]) -> arrow2::error::Result<Box<dyn Arrow2Array>> {
     if arrays.len() == 1 {
         return Ok(arrays[0].to_boxed());
     }
@@ -350,7 +352,7 @@ pub fn concat_arrays(arrays: &[&dyn ArrowArray]) -> arrow2::error::Result<Box<dy
 /// Takes care of up- and down-casting the data back and forth on behalf of the caller.
 ///
 /// [filter]: arrow2::compute::filter::filter
-pub fn filter_array<A: ArrowArray + Clone>(array: &A, filter: &ArrowBooleanArray) -> A {
+pub fn filter_array<A: Arrow2Array + Clone>(array: &A, filter: &ArrowBooleanArray) -> A {
     assert_eq!(
         array.len(), filter.len(),
         "the length of the filter must match the length of the array (the underlying kernel will panic otherwise)",
@@ -388,7 +390,7 @@ pub fn filter_array<A: ArrowArray + Clone>(array: &A, filter: &ArrowBooleanArray
 // That is not possible with vanilla `ListArray`s since they don't expose any way to encode optional lengths,
 // in addition to offsets.
 // For internal stuff, we could perhaps provide a custom implementation that returns a `DictionaryArray` instead?
-pub fn take_array<A: ArrowArray + Clone, O: arrow2::types::Index>(
+pub fn take_array<A: Arrow2Array + Clone, O: arrow2::types::Index>(
     array: &A,
     indices: &ArrowPrimitiveArray<O>,
 ) -> A {
@@ -453,7 +455,7 @@ pub fn concatenate_record_batches(
             let array = concat_arrays(
                 &batches
                     .iter()
-                    .map(|batch| &*batch.data[i] as &dyn ArrowArray)
+                    .map(|batch| &*batch.data[i] as &dyn Arrow2Array)
                     .collect_vec(),
             )?;
             arrays.push(array);

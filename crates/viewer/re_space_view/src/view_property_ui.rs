@@ -1,4 +1,4 @@
-use re_chunk_store::{external::re_chunk::ArrowArray, RowId};
+use re_chunk_store::{external::re_chunk::Arrow2Array, RowId};
 use re_types_core::{
     reflection::{ArchetypeFieldReflection, ArchetypeReflection},
     Archetype, ArchetypeName, ArchetypeReflectionMarker, ComponentName,
@@ -120,7 +120,7 @@ fn view_property_component_ui(
     field: &ArchetypeFieldReflection,
     blueprint_path: &re_log_types::EntityPath,
     row_id: Option<RowId>,
-    component_array: Option<&dyn ArrowArray>,
+    component_array: Option<&dyn Arrow2Array>,
     fallback_provider: &dyn ComponentFallbackProvider,
 ) {
     let singleline_list_item_content = singleline_list_item_content(
@@ -179,7 +179,7 @@ fn menu_more(
     ui: &mut egui::Ui,
     blueprint_path: &re_log_types::EntityPath,
     component_name: ComponentName,
-    component_array: Option<&dyn ArrowArray>,
+    component_array: Option<&dyn Arrow2Array>,
 ) {
     let property_differs_from_default = component_array
         != ctx
@@ -228,7 +228,7 @@ fn singleline_list_item_content<'a>(
     blueprint_path: &'a re_log_types::EntityPath,
     component_name: ComponentName,
     row_id: Option<RowId>,
-    component_array: Option<&'a dyn ArrowArray>,
+    component_array: Option<&'a dyn Arrow2Array>,
     fallback_provider: &'a dyn ComponentFallbackProvider,
 ) -> list_item::PropertyContent<'a> {
     list_item::PropertyContent::new(display_name)
