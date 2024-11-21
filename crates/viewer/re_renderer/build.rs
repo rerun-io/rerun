@@ -119,11 +119,6 @@ fn should_run() -> bool {
 }
 
 fn main() {
-    // https://blog.rust-lang.org/2024/05/06/check-cfg.html
-    println!("cargo::rustc-check-cfg=cfg(native)");
-    println!("cargo::rustc-check-cfg=cfg(web)");
-    println!("cargo::rustc-check-cfg=cfg(load_shaders_from_disk)");
-
     cfg_aliases::cfg_aliases! {
         native: { not(target_arch = "wasm32") },
         web: { target_arch = "wasm32" },
