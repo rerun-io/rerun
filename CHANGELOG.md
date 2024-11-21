@@ -2,6 +2,11 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
+
+## [0.20.1](https://github.com/rerun-io/rerun/compare/0.20.0...0.20.1) - Fix Rust docs
+- Fix Rust docs [#8168](https://github.com/rerun-io/rerun/pull/8168)
+
+
 ## [0.20.0](https://github.com/rerun-io/rerun/compare/0.19.1...0.20.0) - Map view & native H.264 video support
 
 https://github.com/user-attachments/assets/553b6d88-143d-4cf9-a4bc-6b620534ab95
