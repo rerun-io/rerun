@@ -16,7 +16,7 @@ rr.log(
 )
 ```
 
-You can also create your own component by implementing the `AsComponents` [Python protocol](https://ref.rerun.io/docs/python/0.9.0/common/interfaces/#rerun.AsComponents) or [Rust trait](https://ref.rerun.io/docs/rust/stable/rerun/trait.AsComponents.html), which means implementing the function, `as_component_batches()`.
+You can also create your own component by implementing the `AsComponents` [Python protocol](https://ref.rerun.io/docs/python/0.9.0/common/interfaces/#rerun.AsComponents) or [Rust trait](https://docs.rs/rerun/latest/rerun/trait.AsComponents.html), which means implementing the function, `as_component_batches()`.
 
 ## Remapping to a Rerun archetype
 Let's start with a simple example where you have your own point cloud class that is perfectly representable as a Rerun archetype.

@@ -28,7 +28,7 @@ Struct {
 ## API reference links
  * 🌊 [C++ API docs for `TensorDimensionSelection`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1TensorDimensionSelection.html)
  * 🐍 [Python API docs for `TensorDimensionSelection`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.TensorDimensionSelection)
- * 🦀 [Rust API docs for `TensorDimensionSelection`](https://ref.rerun.io/docs/rust/stable/rerun/datatypes/struct.TensorDimensionSelection.html)
+ * 🦀 [Rust API docs for `TensorDimensionSelection`](https://docs.rs/rerun/latest/rerun/datatypes/struct.TensorDimensionSelection.html)
 
 
 ## Used by

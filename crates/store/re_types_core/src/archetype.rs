@@ -102,13 +102,13 @@ pub trait Archetype {
     /// Arrow arrays that are unknown to this [`Archetype`] will simply be ignored and a warning
     /// logged to stderr.
     #[inline]
-    fn from_arrow(
+    fn from_arrow2(
         data: impl IntoIterator<Item = (arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>,
     ) -> DeserializationResult<Self>
     where
         Self: Sized,
     {
-        Self::from_arrow_components(
+        Self::from_arrow2_components(
             data.into_iter()
                 .map(|(field, array)| (field.name.into(), array)),
         )
@@ -120,7 +120,7 @@ pub trait Archetype {
     /// Arrow arrays that are unknown to this [`Archetype`] will simply be ignored and a warning
     /// logged to stderr.
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         data: impl IntoIterator<Item = (ComponentName, Box<dyn ::arrow2::array::Array>)>,
     ) -> DeserializationResult<Self>
     where
@@ -216,7 +216,7 @@ impl<A: Archetype> Default for GenericIndicatorComponent<A> {
 
 impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponent<A> {
     #[inline]
-    fn to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
+    fn to_arrow2(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
         let datatype = arrow2::datatypes::DataType::Null;
         Ok(arrow2::array::NullArray::new(datatype, 1).boxed())
     }
@@ -247,7 +247,7 @@ pub struct GenericIndicatorComponentArray<A: Archetype> {
 
 impl<A: Archetype> crate::LoggableBatch for GenericIndicatorComponentArray<A> {
     #[inline]
-    fn to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
+    fn to_arrow2(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
         let datatype = arrow2::datatypes::DataType::Null;
         Ok(arrow2::array::NullArray::new(datatype, self.len).boxed())
     }
@@ -282,7 +282,7 @@ impl NamedIndicatorComponent {
 
 impl crate::LoggableBatch for NamedIndicatorComponent {
     #[inline]
-    fn to_arrow(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
+    fn to_arrow2(&self) -> SerializationResult<Box<dyn arrow2::array::Array>> {
         let datatype = arrow2::datatypes::DataType::Null;
         Ok(arrow2::array::NullArray::new(datatype, 1).boxed())
     }

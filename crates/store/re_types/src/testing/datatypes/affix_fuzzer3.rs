@@ -50,7 +50,7 @@ impl ::re_types_core::SizeBytes for AffixFuzzer3 {
 
 impl ::re_types_core::Loggable for AffixFuzzer3 {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
         DataType::Union(
@@ -61,7 +61,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     "craziness",
                     DataType::List(std::sync::Arc::new(Field::new(
                         "item",
-                        <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
+                        <crate::testing::datatypes::AffixFuzzer1>::arrow2_datatype(),
                         false,
                     ))),
                     false,
@@ -81,7 +81,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
         )
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
@@ -149,13 +149,13 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         ListArray::try_new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
-                                <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
+                                <crate::testing::datatypes::AffixFuzzer1>::arrow2_datatype(),
                                 false,
                             ))),
                             offsets,
                             {
                                 _ = craziness_inner_bitmap;
-                                crate::testing::datatypes::AffixFuzzer1::to_arrow_opt(
+                                crate::testing::datatypes::AffixFuzzer1::to_arrow2_opt(
                                     craziness_inner_data.into_iter().map(Some),
                                 )?
                             },
@@ -239,11 +239,11 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     })
                     .collect()
             });
-            UnionArray::new(Self::arrow_datatype(), types, fields, offsets).boxed()
+            UnionArray::new(Self::arrow2_datatype(), types, fields, offsets).boxed()
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -257,7 +257,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                 .as_any()
                 .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
+                    let expected = Self::arrow2_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -270,7 +270,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        let expected = Self::arrow_datatype();
+                        let expected = Self::arrow2_datatype();
                         let actual = arrow_data.data_type().clone();
                         DeserializationError::datatype_mismatch(expected, actual)
                     })
@@ -312,7 +312,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                             .ok_or_else(|| {
                                 let expected = DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
+                                    <crate::testing::datatypes::AffixFuzzer1>::arrow2_datatype(),
                                     false,
                                 )));
                                 let actual = arrow_data.data_type().clone();
@@ -324,7 +324,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         } else {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
-                                crate::testing::datatypes::AffixFuzzer1::from_arrow_opt(
+                                crate::testing::datatypes::AffixFuzzer1::from_arrow2_opt(
                                     arrow_data_inner,
                                 )
                                 .with_context("rerun.testing.datatypes.AffixFuzzer3#craziness")?
@@ -531,7 +531,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                         _ => {
                                             return Err(
                                                 DeserializationError::missing_union_arm(
-                                                    Self::arrow_datatype(),
+                                                    Self::arrow2_datatype(),
                                                     "<invalid>",
                                                     *typ as _,
                                                 ),

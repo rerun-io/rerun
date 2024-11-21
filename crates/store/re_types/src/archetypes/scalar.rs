@@ -136,7 +136,7 @@ impl ::re_types_core::Archetype for Scalar {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -150,7 +150,7 @@ impl ::re_types_core::Archetype for Scalar {
                 .get("rerun.components.Scalar")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Scalar#scalar")?;
-            <crate::components::Scalar>::from_arrow_opt(&**array)
+            <crate::components::Scalar>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.Scalar#scalar")?
                 .into_iter()
                 .next()

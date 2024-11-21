@@ -44,24 +44,24 @@ crate::macros::impl_into_cow!(VisibleTimeRange);
 
 impl crate::Loggable for VisibleTimeRange {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
             Field::new(
                 "timeline",
-                <crate::datatypes::Utf8>::arrow_datatype(),
+                <crate::datatypes::Utf8>::arrow2_datatype(),
                 false,
             ),
             Field::new(
                 "range",
-                <crate::datatypes::TimeRange>::arrow_datatype(),
+                <crate::datatypes::TimeRange>::arrow2_datatype(),
                 false,
             ),
         ]))
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
@@ -84,7 +84,7 @@ impl crate::Loggable for VisibleTimeRange {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                Self::arrow_datatype(),
+                Self::arrow2_datatype(),
                 vec![
                     {
                         let (somes, timeline): (Vec<_>, Vec<_>) = data
@@ -137,7 +137,7 @@ impl crate::Loggable for VisibleTimeRange {
                         };
                         {
                             _ = range_bitmap;
-                            crate::datatypes::TimeRange::to_arrow_opt(range)?
+                            crate::datatypes::TimeRange::to_arrow2_opt(range)?
                         }
                     },
                 ],
@@ -147,7 +147,7 @@ impl crate::Loggable for VisibleTimeRange {
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -161,7 +161,7 @@ impl crate::Loggable for VisibleTimeRange {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
+                    let expected = Self::arrow2_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -179,7 +179,7 @@ impl crate::Loggable for VisibleTimeRange {
                 let timeline = {
                     if !arrays_by_name.contains_key("timeline") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow2_datatype(),
                             "timeline",
                         ))
                         .with_context("rerun.datatypes.VisibleTimeRange");
@@ -232,13 +232,13 @@ impl crate::Loggable for VisibleTimeRange {
                 let range = {
                     if !arrays_by_name.contains_key("range") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow2_datatype(),
                             "range",
                         ))
                         .with_context("rerun.datatypes.VisibleTimeRange");
                     }
                     let arrow_data = &**arrays_by_name["range"];
-                    crate::datatypes::TimeRange::from_arrow_opt(arrow_data)
+                    crate::datatypes::TimeRange::from_arrow2_opt(arrow_data)
                         .with_context("rerun.datatypes.VisibleTimeRange#range")?
                         .into_iter()
                 };

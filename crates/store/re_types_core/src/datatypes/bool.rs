@@ -53,13 +53,13 @@ crate::macros::impl_into_cow!(Bool);
 
 impl crate::Loggable for Bool {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
         DataType::Boolean
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
@@ -83,7 +83,7 @@ impl crate::Loggable for Bool {
                 any_nones.then(|| somes.into())
             };
             BooleanArray::new(
-                Self::arrow_datatype(),
+                Self::arrow2_datatype(),
                 data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
                 data0_bitmap,
             )
@@ -91,7 +91,7 @@ impl crate::Loggable for Bool {
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -104,7 +104,7 @@ impl crate::Loggable for Bool {
             .as_any()
             .downcast_ref::<BooleanArray>()
             .ok_or_else(|| {
-                let expected = Self::arrow_datatype();
+                let expected = Self::arrow2_datatype();
                 let actual = arrow_data.data_type().clone();
                 DeserializationError::datatype_mismatch(expected, actual)
             })

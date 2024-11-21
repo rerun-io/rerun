@@ -354,7 +354,7 @@ impl ComponentUiRegistry {
 
                         if response.changed() {
                             use re_types::LoggableBatch as _;
-                            deserialized_value.to_arrow().ok_or_log_error_once()
+                            deserialized_value.to_arrow2().ok_or_log_error_once()
                         } else {
                             None
                         }
@@ -680,7 +680,7 @@ impl ComponentUiRegistry {
 
 fn try_deserialize<C: re_types::Component>(value: &dyn arrow2::array::Array) -> Option<C> {
     let component_name = C::name();
-    let deserialized = C::from_arrow(value);
+    let deserialized = C::from_arrow2(value);
     match deserialized {
         Ok(values) => {
             if values.len() > 1 {

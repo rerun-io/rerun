@@ -52,7 +52,7 @@ impl ::re_types_core::SizeBytes for TensorData {
 
 impl ::re_types_core::Loggable for TensorData {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
@@ -60,20 +60,20 @@ impl ::re_types_core::Loggable for TensorData {
                 "shape",
                 DataType::List(std::sync::Arc::new(Field::new(
                     "item",
-                    <crate::datatypes::TensorDimension>::arrow_datatype(),
+                    <crate::datatypes::TensorDimension>::arrow2_datatype(),
                     false,
                 ))),
                 false,
             ),
             Field::new(
                 "buffer",
-                <crate::datatypes::TensorBuffer>::arrow_datatype(),
+                <crate::datatypes::TensorBuffer>::arrow2_datatype(),
                 false,
             ),
         ]))
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
@@ -96,7 +96,7 @@ impl ::re_types_core::Loggable for TensorData {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                Self::arrow_datatype(),
+                Self::arrow2_datatype(),
                 vec![
                     {
                         let (somes, shape): (Vec<_>, Vec<_>) = data
@@ -124,13 +124,13 @@ impl ::re_types_core::Loggable for TensorData {
                             ListArray::try_new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::datatypes::TensorDimension>::arrow_datatype(),
+                                    <crate::datatypes::TensorDimension>::arrow2_datatype(),
                                     false,
                                 ))),
                                 offsets,
                                 {
                                     _ = shape_inner_bitmap;
-                                    crate::datatypes::TensorDimension::to_arrow_opt(
+                                    crate::datatypes::TensorDimension::to_arrow2_opt(
                                         shape_inner_data.into_iter().map(Some),
                                     )?
                                 },
@@ -153,7 +153,7 @@ impl ::re_types_core::Loggable for TensorData {
                         };
                         {
                             _ = buffer_bitmap;
-                            crate::datatypes::TensorBuffer::to_arrow_opt(buffer)?
+                            crate::datatypes::TensorBuffer::to_arrow2_opt(buffer)?
                         }
                     },
                 ],
@@ -163,7 +163,7 @@ impl ::re_types_core::Loggable for TensorData {
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -177,7 +177,7 @@ impl ::re_types_core::Loggable for TensorData {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
+                    let expected = Self::arrow2_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -195,7 +195,7 @@ impl ::re_types_core::Loggable for TensorData {
                 let shape = {
                     if !arrays_by_name.contains_key("shape") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow2_datatype(),
                             "shape",
                         ))
                         .with_context("rerun.datatypes.TensorData");
@@ -208,7 +208,7 @@ impl ::re_types_core::Loggable for TensorData {
                             .ok_or_else(|| {
                                 let expected = DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::datatypes::TensorDimension>::arrow_datatype(),
+                                    <crate::datatypes::TensorDimension>::arrow2_datatype(),
                                     false,
                                 )));
                                 let actual = arrow_data.data_type().clone();
@@ -220,7 +220,7 @@ impl ::re_types_core::Loggable for TensorData {
                         } else {
                             let arrow_data_inner = {
                                 let arrow_data_inner = &**arrow_data.values();
-                                crate::datatypes::TensorDimension::from_arrow_opt(arrow_data_inner)
+                                crate::datatypes::TensorDimension::from_arrow2_opt(arrow_data_inner)
                                     .with_context("rerun.datatypes.TensorData#shape")?
                                     .into_iter()
                                     .collect::<Vec<_>>()
@@ -261,13 +261,13 @@ impl ::re_types_core::Loggable for TensorData {
                 let buffer = {
                     if !arrays_by_name.contains_key("buffer") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow2_datatype(),
                             "buffer",
                         ))
                         .with_context("rerun.datatypes.TensorData");
                     }
                     let arrow_data = &**arrays_by_name["buffer"];
-                    crate::datatypes::TensorBuffer::from_arrow_opt(arrow_data)
+                    crate::datatypes::TensorBuffer::from_arrow2_opt(arrow_data)
                         .with_context("rerun.datatypes.TensorData#buffer")?
                         .into_iter()
                 };

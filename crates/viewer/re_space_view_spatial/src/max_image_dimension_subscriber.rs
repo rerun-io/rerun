@@ -80,8 +80,9 @@ impl ChunkStoreSubscriber for MaxImageDimensionSubscriber {
             // Handle `Image`, `DepthImage`, `SegmentationImage`…
             if let Some(all_dimensions) = event.diff.chunk.components().get(&ImageFormat::name()) {
                 for new_dim in all_dimensions.iter().filter_map(|array| {
-                    array
-                        .and_then(|array| ImageFormat::from_arrow(&*array).ok()?.into_iter().next())
+                    array.and_then(|array| {
+                        ImageFormat::from_arrow2(&*array).ok()?.into_iter().next()
+                    })
                 }) {
                     let max_dim = self
                         .max_dimensions
@@ -122,10 +123,10 @@ impl ChunkStoreSubscriber for MaxImageDimensionSubscriber {
 fn size_from_blob(blob: &dyn Array, media_type: Option<&dyn Array>) -> Option<[u32; 2]> {
     re_tracing::profile_function!();
 
-    let blob = Blob::from_arrow_opt(blob).ok()?.first()?.clone()?;
+    let blob = Blob::from_arrow2_opt(blob).ok()?.first()?.clone()?;
 
     let media_type: Option<MediaType> = media_type
-        .and_then(|media_type| MediaType::from_arrow_opt(media_type).ok())
+        .and_then(|media_type| MediaType::from_arrow2_opt(media_type).ok())
         .and_then(|list| list.first().cloned())
         .flatten();
 

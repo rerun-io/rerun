@@ -118,7 +118,7 @@ impl<'a> HybridLatestAtResults<'a> {
             .or_else(|| {
                 // No override, no store, no default -> try fallback instead
                 let raw_fallback = self.fallback_raw(C::name());
-                C::from_arrow(raw_fallback.as_ref())
+                C::from_arrow2(raw_fallback.as_ref())
                     .ok()
                     .and_then(|r| r.first().cloned())
             })

@@ -58,18 +58,18 @@ impl rerun::SizeBytes for Confidence {
 
 impl rerun::Loggable for Confidence {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
-        rerun::Float32::arrow_datatype()
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+        rerun::Float32::arrow2_datatype()
     }
 
     #[inline]
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
     ) -> re_types::SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: 'a,
     {
-        rerun::Float32::to_arrow_opt(data.into_iter().map(|opt| opt.map(Into::into).map(|c| c.0)))
+        rerun::Float32::to_arrow2_opt(data.into_iter().map(|opt| opt.map(Into::into).map(|c| c.0)))
     }
 }
 

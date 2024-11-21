@@ -35,7 +35,7 @@ Different recordings (i.e. different _Recording IDs_) will share the same bluepr
 
 Check out the API to learn more about SDK initialization:
 * [🐍 Python](https://ref.rerun.io/docs/python/stable/common/initialization_functions/#rerun.init)
-* [🦀 Rust](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStreamBuilder.html#method.new)
+* [🦀 Rust](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.new)
 * [🌊 C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#abda6202900fa439fe5c27f7aa0d1105a)
 
 

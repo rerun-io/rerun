@@ -58,7 +58,7 @@ pub trait AsComponents {
     /// The default implementation will simply serialize the result of [`Self::as_component_batches`]
     /// as-is, which is what you want in 99.9% of cases.
     #[inline]
-    fn to_arrow(
+    fn to_arrow2(
         &self,
     ) -> SerializationResult<Vec<(::arrow2::datatypes::Field, Box<dyn ::arrow2::array::Array>)>>
     {
@@ -67,7 +67,7 @@ pub trait AsComponents {
             .map(|comp_batch| {
                 comp_batch
                     .as_ref()
-                    .to_arrow()
+                    .to_arrow2()
                     .map(|array| {
                         let field = arrow2::datatypes::Field::new(
                             comp_batch.name().to_string(),

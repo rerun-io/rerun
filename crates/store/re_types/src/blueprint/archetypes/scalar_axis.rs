@@ -114,7 +114,7 @@ impl ::re_types_core::Archetype for ScalarAxis {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -124,7 +124,7 @@ impl ::re_types_core::Archetype for ScalarAxis {
             .map(|(name, array)| (name.full_name(), array))
             .collect();
         let range = if let Some(array) = arrays_by_name.get("rerun.components.Range1D") {
-            <crate::components::Range1D>::from_arrow_opt(&**array)
+            <crate::components::Range1D>::from_arrow2_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.ScalarAxis#range")?
                 .into_iter()
                 .next()
@@ -135,7 +135,7 @@ impl ::re_types_core::Archetype for ScalarAxis {
         let zoom_lock = if let Some(array) =
             arrays_by_name.get("rerun.blueprint.components.LockRangeDuringZoom")
         {
-            <crate::blueprint::components::LockRangeDuringZoom>::from_arrow_opt(&**array)
+            <crate::blueprint::components::LockRangeDuringZoom>::from_arrow2_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.ScalarAxis#zoom_lock")?
                 .into_iter()
                 .next()

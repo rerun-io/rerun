@@ -65,7 +65,7 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
             DataType::Extension(fqname, datatype, _metadata) => {
                 if *recursive {
                     let fqname_use = quote_fqname_as_type_path(fqname);
-                    quote!(<#fqname_use>::arrow_datatype())
+                    quote!(<#fqname_use>::arrow2_datatype())
                 } else {
                     let datatype = ArrowDataTypeTokenizer(datatype.to_logical_type(), false);
                     quote!(#datatype)

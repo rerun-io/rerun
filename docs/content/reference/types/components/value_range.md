@@ -17,7 +17,7 @@ FixedSizeList<2, float64>
 ## API reference links
  * 🌊 [C++ API docs for `ValueRange`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ValueRange.html)
  * 🐍 [Python API docs for `ValueRange`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.ValueRange)
- * 🦀 [Rust API docs for `ValueRange`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.ValueRange.html)
+ * 🦀 [Rust API docs for `ValueRange`](https://docs.rs/rerun/latest/rerun/components/struct.ValueRange.html)
 
 
 ## Used by

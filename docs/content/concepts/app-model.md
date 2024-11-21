@@ -84,7 +84,7 @@ Dataflow:
 Reference:
 * [SDK operating modes: `connect`](../reference/sdk/operating-modes.md#connect)
 * [🐍 Python `connect`](https://ref.rerun.io/docs/python/0.19.0/common/initialization_functions/#rerun.connect)
-* [🦀 Rust `connect`](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStreamBuilder.html#method.connect)
+* [🦀 Rust `connect`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.connect)
 * [🌊 C++ `connect`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#aef3377ffaa2441b906d2bac94dd8fc64)
 
 ### Asynchronous workflow
@@ -125,7 +125,7 @@ Dataflow:
 Reference:
 * [SDK operating modes: `save`](../reference/sdk/operating-modes.md#save)
 * [🐍 Python `save`](https://ref.rerun.io/docs/python/0.19.0/common/initialization_functions/#rerun.save)
-* [🦀 Rust `save`](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStreamBuilder.html#method.save)
+* [🦀 Rust `save`](https://docs.rs/rerun/latest/rerun/struct.RecordingStreamBuilder.html#method.save)
 * [🌊 C++ `save`](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#a555a7940a076c93d951de5b139d14918)
 
 <!--

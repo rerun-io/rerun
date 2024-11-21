@@ -146,7 +146,7 @@ impl ::re_types_core::Archetype for Tensor {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -160,7 +160,7 @@ impl ::re_types_core::Archetype for Tensor {
                 .get("rerun.components.TensorData")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Tensor#data")?;
-            <crate::components::TensorData>::from_arrow_opt(&**array)
+            <crate::components::TensorData>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.Tensor#data")?
                 .into_iter()
                 .next()
@@ -169,7 +169,7 @@ impl ::re_types_core::Archetype for Tensor {
                 .with_context("rerun.archetypes.Tensor#data")?
         };
         let value_range = if let Some(array) = arrays_by_name.get("rerun.components.ValueRange") {
-            <crate::components::ValueRange>::from_arrow_opt(&**array)
+            <crate::components::ValueRange>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.Tensor#value_range")?
                 .into_iter()
                 .next()

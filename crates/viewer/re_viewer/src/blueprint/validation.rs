@@ -6,13 +6,13 @@ use re_types_core::Component;
 pub(crate) fn validate_component<C: Component>(blueprint: &EntityDb) -> bool {
     let engine = blueprint.storage_engine();
     if let Some(data_type) = engine.store().lookup_datatype(&C::name()) {
-        if data_type != &C::arrow_datatype() {
+        if data_type != &C::arrow2_datatype() {
             // If the schemas don't match, we definitely have a problem
             re_log::debug!(
                 "Unexpected datatype for component {:?}.\nFound: {:#?}\nExpected: {:#?}",
                 C::name(),
                 data_type,
-                C::arrow_datatype()
+                C::arrow2_datatype()
             );
             return false;
         } else {
@@ -26,7 +26,7 @@ pub(crate) fn validate_component<C: Component>(blueprint: &EntityDb) -> bool {
                     .latest_at(&query, path, [C::name()])
                     .component_batch_raw(&C::name())
                 {
-                    if let Err(err) = C::from_arrow_opt(&*array) {
+                    if let Err(err) = C::from_arrow2_opt(&*array) {
                         re_log::debug!(
                             "Failed to deserialize component {:?}: {:?}",
                             C::name(),

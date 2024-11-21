@@ -20,7 +20,7 @@ utf8
 ## API reference links
  * 🌊 [C++ API docs for `MediaType`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1MediaType.html)
  * 🐍 [Python API docs for `MediaType`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.MediaType)
- * 🦀 [Rust API docs for `MediaType`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.MediaType.html)
+ * 🦀 [Rust API docs for `MediaType`](https://docs.rs/rerun/latest/rerun/components/struct.MediaType.html)
 
 
 ## Used by

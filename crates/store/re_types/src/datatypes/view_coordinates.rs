@@ -73,7 +73,7 @@ impl From<ViewCoordinates> for [u8; 3usize] {
 
 impl ::re_types_core::Loggable for ViewCoordinates {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
         DataType::FixedSizeList(
@@ -82,7 +82,7 @@ impl ::re_types_core::Loggable for ViewCoordinates {
         )
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
@@ -126,7 +126,7 @@ impl ::re_types_core::Loggable for ViewCoordinates {
                             .into()
                     });
                 FixedSizeListArray::new(
-                    Self::arrow_datatype(),
+                    Self::arrow2_datatype(),
                     PrimitiveArray::new(
                         DataType::UInt8,
                         data0_inner_data.into_iter().collect(),
@@ -140,7 +140,7 @@ impl ::re_types_core::Loggable for ViewCoordinates {
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -154,7 +154,7 @@ impl ::re_types_core::Loggable for ViewCoordinates {
                 .as_any()
                 .downcast_ref::<arrow2::array::FixedSizeListArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
+                    let expected = Self::arrow2_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -216,7 +216,7 @@ impl ::re_types_core::Loggable for ViewCoordinates {
     }
 
     #[inline]
-    fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
+    fn from_arrow2(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
     where
         Self: Sized,
     {

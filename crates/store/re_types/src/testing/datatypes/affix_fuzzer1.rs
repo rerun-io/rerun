@@ -63,7 +63,7 @@ impl ::re_types_core::SizeBytes for AffixFuzzer1 {
 
 impl ::re_types_core::Loggable for AffixFuzzer1 {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
@@ -100,14 +100,14 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
             Field::new("flattened_scalar", DataType::Float32, false),
             Field::new(
                 "almost_flattened_scalar",
-                <crate::testing::datatypes::FlattenedScalar>::arrow_datatype(),
+                <crate::testing::datatypes::FlattenedScalar>::arrow2_datatype(),
                 false,
             ),
             Field::new("from_parent", DataType::Boolean, true),
         ]))
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
@@ -130,7 +130,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                Self::arrow_datatype(),
+                Self::arrow2_datatype(),
                 vec![
                     {
                         let (somes, single_float_optional): (Vec<_>, Vec<_>) = data
@@ -452,7 +452,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                         };
                         {
                             _ = almost_flattened_scalar_bitmap;
-                            crate::testing::datatypes::FlattenedScalar::to_arrow_opt(
+                            crate::testing::datatypes::FlattenedScalar::to_arrow2_opt(
                                 almost_flattened_scalar,
                             )?
                         }
@@ -489,7 +489,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -503,7 +503,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
+                    let expected = Self::arrow2_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -521,7 +521,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                 let single_float_optional = {
                     if !arrays_by_name.contains_key("single_float_optional") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow2_datatype(),
                             "single_float_optional",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer1");
@@ -542,7 +542,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                 let single_string_required = {
                     if !arrays_by_name.contains_key("single_string_required") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow2_datatype(),
                             "single_string_required",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer1");
@@ -599,7 +599,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                 let single_string_optional = {
                     if !arrays_by_name.contains_key("single_string_optional") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow2_datatype(),
                             "single_string_optional",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer1");
@@ -656,7 +656,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                 let many_floats_optional = {
                     if !arrays_by_name.contains_key("many_floats_optional") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow2_datatype(),
                             "many_floats_optional",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer1");
@@ -731,7 +731,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                 let many_strings_required = {
                     if !arrays_by_name.contains_key("many_strings_required") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow2_datatype(),
                             "many_strings_required",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer1");
@@ -852,7 +852,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                 let many_strings_optional = {
                     if !arrays_by_name.contains_key("many_strings_optional") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow2_datatype(),
                             "many_strings_optional",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer1");
@@ -973,7 +973,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                 let flattened_scalar = {
                     if !arrays_by_name.contains_key("flattened_scalar") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow2_datatype(),
                             "flattened_scalar",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer1");
@@ -994,13 +994,13 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                 let almost_flattened_scalar = {
                     if !arrays_by_name.contains_key("almost_flattened_scalar") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow2_datatype(),
                             "almost_flattened_scalar",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer1");
                     }
                     let arrow_data = &**arrays_by_name["almost_flattened_scalar"];
-                    crate::testing::datatypes::FlattenedScalar::from_arrow_opt(arrow_data)
+                    crate::testing::datatypes::FlattenedScalar::from_arrow2_opt(arrow_data)
                         .with_context(
                             "rerun.testing.datatypes.AffixFuzzer1#almost_flattened_scalar",
                         )?
@@ -1009,7 +1009,7 @@ impl ::re_types_core::Loggable for AffixFuzzer1 {
                 let from_parent = {
                     if !arrays_by_name.contains_key("from_parent") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow2_datatype(),
                             "from_parent",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer1");

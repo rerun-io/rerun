@@ -22,7 +22,7 @@ float32
 ## API reference links
  * 🌊 [C++ API docs for `FillRatio`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1FillRatio.html)
  * 🐍 [Python API docs for `FillRatio`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.FillRatio)
- * 🦀 [Rust API docs for `FillRatio`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.FillRatio.html)
+ * 🦀 [Rust API docs for `FillRatio`](https://docs.rs/rerun/latest/rerun/components/struct.FillRatio.html)
 
 
 ## Used by
