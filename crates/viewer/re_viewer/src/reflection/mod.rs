@@ -86,7 +86,9 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ComponentColumnSelector as Component>::name(),
             ComponentReflection {
                 docstring_md: "Describe a component column to be selected in the dataframe view.",
-                custom_placeholder: Some(ComponentColumnSelector::default().to_arrow2()?),
+                custom_placeholder: Some(
+                    ComponentColumnSelector::default().to_arrow2()?,
+                ),
                 datatype: ComponentColumnSelector::arrow2_datatype(),
             },
         ),
