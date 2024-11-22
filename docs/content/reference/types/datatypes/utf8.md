@@ -22,6 +22,7 @@ utf8
 * [`AnnotationInfo`](../datatypes/annotation_info.md)
 * [`MediaType`](../components/media_type.md)
 * [`Name`](../components/name.md)
+* [`RecordingUri`](../components/recording_uri.md)
 * [`TextLogLevel`](../components/text_log_level.md)
 * [`Text`](../components/text.md)
 * [`VisibleTimeRange`](../datatypes/visible_time_range.md)

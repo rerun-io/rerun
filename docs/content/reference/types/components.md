@@ -56,6 +56,7 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`Position3D`](components/position3d.md): A position in 3D space.
 * [`Radius`](components/radius.md): The radius of something, e.g. a point.
 * [`Range1D`](components/range1d.md): A 1D range, specifying a lower and upper bound.
+* [`RecordingUri`](components/recording_uri.md): A recording URI (Uniform Resource Identifier).
 * [`Resolution`](components/resolution.md): Pixel resolution width & height, e.g. of a camera sensor.
 * [`RotationAxisAngle`](components/rotation_axis_angle.md): 3D rotation represented by a rotation around a given axis.
 * [`RotationQuat`](components/rotation_quat.md): A 3D rotation expressed as a quaternion.
