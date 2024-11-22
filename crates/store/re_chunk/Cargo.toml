@@ -31,7 +31,7 @@ serde = [
 ]
 
 ## Enable conversion to and from arrow-rs types
-arrow = ["arrow2/arrow", "dep:arrow"]
+arrow = ["arrow2/arrow"]
 
 
 [dependencies]
@@ -49,6 +49,7 @@ re_types_core.workspace = true
 # External
 ahash.workspace = true
 anyhow.workspace = true
+arrow.workspace = true
 arrow2 = { workspace = true, features = [
   "compute_concatenate",
   "compute_filter",
@@ -64,7 +65,6 @@ thiserror.workspace = true
 
 # Optional dependencies:
 serde = { workspace = true, optional = true, features = ["derive", "rc"] }
-arrow = { workspace = true, optional = true }
 
 # Native dependencies:
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
