@@ -6,11 +6,11 @@ use arrow2::{
     array::ListArray as ArrowListArray,
     datatypes::{DataType as Arrow2Datatype, Field as Arrow2Field},
 };
-
 use itertools::Itertools;
+
 use re_chunk::TimelineName;
 use re_log_types::{ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, Timeline};
-use re_types_core::{ArchetypeName, ComponentName};
+use re_types_core::{ArchetypeName, ComponentName, ComponentNameSet};
 
 use crate::{ChunkStore, ColumnMetadata};
 
@@ -472,7 +472,7 @@ impl std::fmt::Display for SparseFillStrategy {
 ///
 // TODO(cmc): we need to be able to build that easily in a command-line context, otherwise it's just
 // very annoying. E.g. `--with /world/points:[rr.Position3D, rr.Radius] --with /cam:[rr.Pinhole]`.
-pub type ViewContentsSelector = BTreeMap<EntityPath, Option<BTreeSet<ComponentName>>>;
+pub type ViewContentsSelector = BTreeMap<EntityPath, Option<ComponentNameSet>>;
 
 // TODO(cmc): Ultimately, this shouldn't be hardcoded to `Timeline`, but to a generic `I: Index`.
 //            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).

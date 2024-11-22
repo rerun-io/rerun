@@ -6,7 +6,7 @@ use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
 use re_data_ui::{sorted_component_list_for_ui, DataUi as _};
 use re_log_types::EntityPath;
-use re_types_core::ComponentName;
+use re_types_core::{ComponentName, ComponentNameSet};
 use re_ui::{list_item::LabelContent, UiExt as _};
 use re_viewer_context::{
     blueprint_timeline, ComponentUiTypes, QueryContext, SystemCommand, SystemCommandSender as _,
@@ -79,7 +79,7 @@ Click on the `+` button to add a new default value.";
 fn active_default_ui(
     ctx: &ViewContext<'_>,
     ui: &mut egui::Ui,
-    active_defaults: &BTreeSet<ComponentName>,
+    active_defaults: &ComponentNameSet,
     component_to_vis: &BTreeMap<ComponentName, ViewSystemIdentifier>,
     view: &SpaceViewBlueprint,
     query: &LatestAtQuery,
@@ -188,9 +188,8 @@ fn active_defaults(
     view: &SpaceViewBlueprint,
     db: &re_entity_db::EntityDb,
     query: &LatestAtQuery,
-    // TODO: rename these, use ComponentNameSet everywhere
     // TODO: does this need sorting?
-) -> BTreeSet<ComponentName> {
+) -> ComponentNameSet {
     // Cleared components should act as unset, so we filter out everything that's empty,
     // even if they are listed in `all_components`.
     ctx.blueprint_db()
@@ -212,7 +211,7 @@ fn active_defaults(
 fn components_to_show_in_add_menu(
     ctx: &ViewContext<'_>,
     component_to_vis: &BTreeMap<ComponentName, ViewSystemIdentifier>,
-    active_defaults: &BTreeSet<ComponentName>,
+    active_defaults: &ComponentNameSet,
 ) -> Result<Vec<(ComponentName, ViewSystemIdentifier)>, String> {
     if component_to_vis.is_empty() {
         return Err("No components to visualize".to_owned());

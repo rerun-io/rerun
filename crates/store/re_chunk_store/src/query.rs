@@ -84,7 +84,7 @@ impl ChunkStore {
     }
 
     /// Retrieve all [`ComponentName`]s in the store.
-    pub fn all_components_sorted(&self) -> BTreeSet<ComponentName> {
+    pub fn all_components_sorted(&self) -> ComponentNameSet {
         self.static_chunk_ids_per_entity
             .values()
             .flat_map(|static_chunks_per_component| static_chunks_per_component.keys())
@@ -675,8 +675,9 @@ impl ChunkStore {
             .take_while(|(time, _)| time.as_i64() >= lower_bound)
             .flat_map(|(_time, chunk_ids)| chunk_ids.iter())
             .copied()
-            // TODO: okay what about that one?
-            .collect::<BTreeSet<_>>();
+            .collect_vec();
+        // // TODO: okay what about that one?
+        // .collect::<BTreeSet<_>>();
 
         Some(
             temporal_chunk_ids
