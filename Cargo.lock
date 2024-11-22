@@ -6271,6 +6271,7 @@ dependencies = [
  "criterion",
  "egui",
  "itertools 0.13.0",
+ "once_cell",
  "rand",
  "re_chunk_store",
  "re_context_menu",

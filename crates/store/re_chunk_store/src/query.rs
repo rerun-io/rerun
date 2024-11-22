@@ -772,8 +772,7 @@ impl ChunkStore {
         query: &RangeQuery,
         entity_path: &EntityPath,
     ) -> Vec<Arc<Chunk>> {
-        // Too small & frequent for profiling scopes.
-        //re_tracing::profile_function!(format!("{query:?}"));
+        re_tracing::profile_function!(format!("{query:?}"));
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 

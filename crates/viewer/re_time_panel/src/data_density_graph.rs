@@ -18,6 +18,7 @@ use re_log_types::{ComponentPath, ResolvedTimeRange};
 use re_types::ComponentName;
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
+use crate::chunk_statistics_store_subscriber::PathRecursiveChunksPerTimeline;
 use crate::TimePanelItem;
 
 use super::time_ranges_ui::TimeRangesUi;
@@ -713,6 +714,7 @@ fn visit_relevant_chunks(
     let query = RangeQuery::new(timeline, time_range);
 
     if let Some(component_name) = component_name {
+        // TODO:
         let chunks = store.range_relevant_chunks(&query, entity_path, component_name);
 
         for chunk in chunks {
@@ -726,15 +728,21 @@ fn visit_relevant_chunks(
 
             visitor(Arc::clone(&chunk), chunk_timeline.time_range(), num_events);
         }
-    } else if let Some(subtree) = db.tree().subtree(entity_path) {
-        subtree.visit_children_recursively(|entity_path| {
-            for chunk in store.range_relevant_chunks_for_all_components(&query, entity_path) {
+    } else {
+        PathRecursiveChunksPerTimeline::access(&store.id(), |chunks_per_timeline| {
+            let Some(stats) = chunks_per_timeline.entity_timeline_stats(entity_path, timeline)
+            else {
+                return;
+            };
+
+            for chunk in stats.recursive_chunks.values() {
                 let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
+                    debug_assert!(false, "`PathRecursiveChunksPerTimeline` advertised a chunk that for a timeline it doesn't have.");
                     continue;
                 };
 
                 visitor(
-                    Arc::clone(&chunk),
+                    chunk.clone(),
                     chunk_timeline.time_range(),
                     chunk.num_events_cumulative(),
                 );
