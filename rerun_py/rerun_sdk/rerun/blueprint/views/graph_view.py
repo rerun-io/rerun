@@ -59,7 +59,7 @@ class GraphView(SpaceView):
             do not yet support `$origin` relative paths or glob expressions.
             This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
         visual_bounds:
-            Everything within these bounds are guaranteed to be visible.
+            Everything within these bounds is guaranteed to be visible.
             Somethings outside of these bounds may also be visible due to letterboxing.
 
         """

@@ -21,7 +21,7 @@ uint8
 ## API reference links
  * 🌊 [C++ API docs for `GraphType`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1components.html?speculative-link)
  * 🐍 [Python API docs for `GraphType`](https://ref.rerun.io/docs/python/stable/common/components?speculative-link#rerun.components.GraphType)
- * 🦀 [Rust API docs for `GraphType`](https://ref.rerun.io/docs/rust/stable/rerun/components/enum.GraphType.html?speculative-link)
+ * 🦀 [Rust API docs for `GraphType`](https://docs.rs/rerun/latest/rerun/components/enum.GraphType.html?speculative-link)
 
 
 ## Used by

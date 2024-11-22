@@ -452,24 +452,24 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <GraphEdge as Component>::name(),
             ComponentReflection {
                 docstring_md: "An edge in a graph connecting two nodes.",
-                custom_placeholder: Some(GraphEdge::default().to_arrow()?),
-                datatype: GraphEdge::arrow_datatype(),
+                custom_placeholder: Some(GraphEdge::default().to_arrow2()?),
+                datatype: GraphEdge::arrow2_datatype(),
             },
         ),
         (
             <GraphNode as Component>::name(),
             ComponentReflection {
                 docstring_md: "A string-based ID representing a node in a graph.",
-                custom_placeholder: Some(GraphNode::default().to_arrow()?),
-                datatype: GraphNode::arrow_datatype(),
+                custom_placeholder: Some(GraphNode::default().to_arrow2()?),
+                datatype: GraphNode::arrow2_datatype(),
             },
         ),
         (
             <GraphType as Component>::name(),
             ComponentReflection {
                 docstring_md: "Specifies if a graph has directed or undirected edges.",
-                custom_placeholder: Some(GraphType::default().to_arrow()?),
-                datatype: GraphType::arrow_datatype(),
+                custom_placeholder: Some(GraphType::default().to_arrow2()?),
+                datatype: GraphType::arrow2_datatype(),
             },
         ),
         (

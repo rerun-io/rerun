@@ -21,7 +21,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **View**: A graph view to display time-variying, directed or undirected graph visualization.
 #[derive(Clone, Debug)]
 pub struct GraphView {
-    /// Everything within these bounds are guaranteed to be visible.
+    /// Everything within these bounds is guaranteed to be visible.
     /// Somethings outside of these bounds may also be visible due to letterboxing.
     pub visual_bounds: crate::blueprint::archetypes::VisualBounds2D,
 }
