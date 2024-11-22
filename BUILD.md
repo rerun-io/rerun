@@ -86,7 +86,7 @@ pixi run py-fmt
 ### Building an installable Python wheel
 The `py-wheel` command builds a whl file:
 ```sh
-pixi run py-wheel --release
+pixi run py-build-release
 ```
 Which you can then install in your own Python environment:
 ```sh
