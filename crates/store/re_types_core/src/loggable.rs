@@ -148,7 +148,6 @@ pub trait Component: Loggable {
 // ---
 
 pub type UnorderedComponentNameSet = IntSet<ComponentName>;
-// TODO: we need to check for usages of this guy too
 pub type ComponentNameSet = std::collections::BTreeSet<ComponentName>;
 
 re_string_interner::declare_new_type!(

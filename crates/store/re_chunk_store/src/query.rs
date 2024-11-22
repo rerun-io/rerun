@@ -676,8 +676,6 @@ impl ChunkStore {
             .flat_map(|(_time, chunk_ids)| chunk_ids.iter())
             .copied()
             .collect_vec();
-        // // TODO: okay what about that one?
-        // .collect::<BTreeSet<_>>();
 
         Some(
             temporal_chunk_ids
