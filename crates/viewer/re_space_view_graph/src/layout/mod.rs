@@ -23,17 +23,16 @@ impl Layout {
     }
 
     /// Updates the size and position of a node, for example after size changes.
-    /// Returns `true` if the node was updated.
+    /// Returns `true` if the node changed its size.
     pub fn update(&mut self, node: &NodeIndex, rect: Rect) -> bool {
         debug_assert!(
             self.extents.contains_key(node),
             "node should exist in the layout"
         );
         if let Some(extent) = self.extents.get_mut(node) {
-            if extent != &rect {
-                *extent = rect;
-                return true;
-            }
+            let size_changed = (extent.size() - rect.size()).length_sq() > 0.01;
+            *extent = rect;
+            return size_changed;
         }
         false
     }
@@ -82,7 +81,7 @@ impl ForceLayout {
         let simulation = fj::SimulationBuilder::default()
             .with_alpha_decay(0.01) // TODO(grtlr): slows down the simulation for demo
             .build(all_nodes)
-            .add_force("link", fj::Link::new(all_edges).distance(50.0))
+            .add_force("link", fj::Link::new(all_edges).distance(50.0).iterations(2))
             .add_force("charge", fj::ManyBody::new())
             // TODO(grtlr): This is a small stop-gap until we have blueprints to prevent nodes from flying away.
             .add_force("x", fj::PositionX::new().strength(0.01))
