@@ -98,7 +98,7 @@ impl SceneBuilder {
         }
 
         if let Some(pointer) = ui.ctx().input(|i| i.pointer.hover_pos()) {
-            // Note: Catch zooming / panning either in the container, or on the entitys.
+            // Note: Catch zooming / panning either in the container, or on the entities.
             if response.hovered() || self.children_hovered {
                 let pointer_in_world = world_to_window.inverse() * pointer;
                 let zoom_delta = ui.ctx().input(|i| i.zoom_delta());
