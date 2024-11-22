@@ -24,7 +24,7 @@ pub fn singleline_view_recording_uri(
 
     if response.clicked() {
         let data_source = re_data_source::DataSource::from_uri(
-            re_log_types::FileSource::Cli,
+            re_log_types::FileSource::Uri,
             value.uri().to_owned(),
         );
 

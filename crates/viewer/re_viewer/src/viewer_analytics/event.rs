@@ -75,6 +75,7 @@ pub fn open_recording(
             S::RustSdk { .. } => "rust_sdk".to_owned(),
             S::File { file_source } => match file_source {
                 re_log_types::FileSource::Cli => "file_cli".to_owned(),
+                re_log_types::FileSource::Uri => "file_uri".to_owned(),
                 re_log_types::FileSource::DragAndDrop { .. } => "file_drag_and_drop".to_owned(),
                 re_log_types::FileSource::FileDialog { .. } => "file_dialog".to_owned(),
                 re_log_types::FileSource::Sdk => "file_sdk".to_owned(),
