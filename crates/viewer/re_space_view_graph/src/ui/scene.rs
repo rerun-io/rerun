@@ -198,7 +198,7 @@ impl<'a> Scene<'a> {
     {
         let response = Area::new(self.id.with(id))
             .fixed_pos(pos)
-            .order(Order::Foreground)
+            .order(Order::Middle)
             .constrain(false)
             .show(self.ui.ctx(), |ui| {
                 ui.set_clip_rect(self.context.clip_rect_world);
