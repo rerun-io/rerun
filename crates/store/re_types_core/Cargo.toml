@@ -45,9 +45,9 @@ anyhow.workspace = true
 arrow.workspace = true
 arrow2 = { workspace = true, features = [
   "arrow",
+  "compute_concatenate",
   "io_ipc",
   "io_print",
-  "compute_concatenate",
 ] }
 backtrace.workspace = true
 bytemuck.workspace = true
