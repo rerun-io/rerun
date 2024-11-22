@@ -7,6 +7,7 @@ use arrow2::{
     datatypes::{DataType as Arrow2Datatype, Field as Arrow2Field},
 };
 
+use itertools::Itertools;
 use re_chunk::TimelineName;
 use re_log_types::{ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_types_core::{ArchetypeName, ComponentName};
@@ -644,7 +645,7 @@ impl ChunkStore {
             })
         });
 
-        let components = self
+        let mut components = self
             .per_column_metadata
             .iter()
             .flat_map(|(entity_path, per_component)| {
@@ -668,7 +669,7 @@ impl ChunkStore {
 
                 // TODO(#6889): Fill `archetype_name`/`archetype_field_name` (or whatever their
                 // final name ends up being) once we generate tags.
-                ColumnDescriptor::Component(ComponentColumnDescriptor {
+                ComponentColumnDescriptor {
                     entity_path: entity_path.clone(),
                     archetype_name: None,
                     archetype_field_name: None,
@@ -681,10 +682,26 @@ impl ChunkStore {
                     is_indicator,
                     is_tombstone,
                     is_semantically_empty,
-                })
-            });
+                }
+            })
+            .collect_vec();
 
-        timelines.chain(components).collect()
+        components.sort_by(|descr1, descr2| {
+            descr1
+                .entity_path
+                .cmp(&descr2.entity_path)
+                .then(descr1.archetype_name.cmp(&descr2.archetype_name))
+                .then(
+                    descr1
+                        .archetype_field_name
+                        .cmp(&descr2.archetype_field_name),
+                )
+                .then(descr1.component_name.cmp(&descr2.component_name))
+        });
+
+        timelines
+            .chain(components.into_iter().map(ColumnDescriptor::Component))
+            .collect()
     }
 
     /// Given a [`TimeColumnSelector`], returns the corresponding [`TimeColumnDescriptor`].
