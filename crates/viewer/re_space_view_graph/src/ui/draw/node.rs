@@ -4,7 +4,12 @@ use re_viewer_context::{InteractionHighlight, SelectionHighlight};
 use crate::{graph::NodeInstanceImplicit, ui::scene::SceneContext, visualizers::NodeInstance};
 
 /// The `world_to_ui_scale` parameter is used to convert between world and ui coordinates.
-pub fn draw_explicit(ui: &mut Ui, ctx: &SceneContext, node: &NodeInstance, highlight: InteractionHighlight) -> Response {
+pub fn draw_explicit(
+    ui: &mut Ui,
+    ctx: &SceneContext,
+    node: &NodeInstance,
+    highlight: InteractionHighlight,
+) -> Response {
     let visuals = &ui.style().visuals;
 
     let fg = node.color.unwrap_or_else(|| visuals.text_color());
@@ -17,7 +22,6 @@ pub fn draw_explicit(ui: &mut Ui, ctx: &SceneContext, node: &NodeInstance, highl
             SelectionHighlight::Selection => visuals.selection.stroke,
             _ => Stroke::new(1.0, visuals.text_color()),
         };
-
 
         let text = RichText::new(label.as_str()).color(fg);
         let label = Label::new(text).wrap_mode(TextWrapMode::Extend);

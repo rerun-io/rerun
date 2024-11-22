@@ -3,8 +3,9 @@
 
 from __future__ import annotations
 
-import rerun as rr
 import itertools
+
+import rerun as rr
 
 NUM_NODES = 10
 

@@ -16,7 +16,6 @@ pub struct Args {
     rerun: rerun::clap::RerunArgs,
 }
 
-
 fn main() -> anyhow::Result<()> {
     re_log::setup_logging();
 

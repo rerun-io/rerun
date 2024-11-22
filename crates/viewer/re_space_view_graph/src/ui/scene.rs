@@ -107,9 +107,9 @@ impl SceneBuilder {
                 // Zoom in on pointer, but only if we are not zoomed out too far.
                 if zoom_delta < 1.0 || world_to_view.scaling < 1.0 {
                     world_to_view = world_to_view
-                    * TSTransform::from_translation(pointer_in_world.to_vec2())
-                    * TSTransform::from_scaling(zoom_delta)
-                    * TSTransform::from_translation(-pointer_in_world.to_vec2());
+                        * TSTransform::from_translation(pointer_in_world.to_vec2())
+                        * TSTransform::from_scaling(zoom_delta)
+                        * TSTransform::from_translation(-pointer_in_world.to_vec2());
                 }
 
                 // Pan:
@@ -181,7 +181,12 @@ pub struct Scene<'a> {
 
 impl<'a> Scene<'a> {
     /// Draws a regular node, i.e. an explicit node instance.
-    pub fn explicit_node(&mut self, pos: Pos2, node: &NodeInstance, highlights: InteractionHighlight) -> Response {
+    pub fn explicit_node(
+        &mut self,
+        pos: Pos2,
+        node: &NodeInstance,
+        highlights: InteractionHighlight,
+    ) -> Response {
         self.node_wrapper(node.index, pos, |ui, world_to_ui| {
             draw_explicit(ui, world_to_ui, node, highlights)
         })

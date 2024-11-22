@@ -81,7 +81,10 @@ impl ForceLayout {
         let simulation = fj::SimulationBuilder::default()
             .with_alpha_decay(0.01) // TODO(grtlr): slows down the simulation for demo
             .build(all_nodes)
-            .add_force("link", fj::Link::new(all_edges).distance(50.0).iterations(2))
+            .add_force(
+                "link",
+                fj::Link::new(all_edges).distance(50.0).iterations(2),
+            )
             .add_force("charge", fj::ManyBody::new())
             // TODO(grtlr): This is a small stop-gap until we have blueprints to prevent nodes from flying away.
             .add_force("x", fj::PositionX::new().strength(0.01))

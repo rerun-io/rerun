@@ -1,9 +1,0 @@
-namespace rerun.blueprint.components;
-
-struct GraphForceCenter(
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.override_crate": "re_types_blueprint"
-) {
-    /// The position to where the graph is centered
-    position: rerun.datatypes.Vec2 (order: 100);
-}
