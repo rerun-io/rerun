@@ -34,11 +34,11 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     /// 2^63 for large arrays).
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<arrow::array::ArrayData>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: 'a,
     {
-        Self::to_arrow2_opt(data).map(|array| arrow2::array::to_data(array.as_ref()))
+        Self::to_arrow2_opt(data).map(|array| array.into())
     }
 
     /// Given an iterator of options of owned or reference values to the current
@@ -64,7 +64,7 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     #[inline]
     fn to_arrow<'a>(
         data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
-    ) -> SerializationResult<arrow::array::ArrayData>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: 'a,
     {
@@ -93,7 +93,7 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
 
     /// Given an Arrow array, deserializes it into a collection of [`Loggable`]s.
     #[inline]
-    fn from_arrow(data: &arrow::array::ArrayData) -> DeserializationResult<Vec<Self>> {
+    fn from_arrow(data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Self>> {
         re_tracing::profile_function!();
         Self::from_arrow_opt(data)?
             .into_iter()
@@ -120,8 +120,9 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     }
 
     /// Given an Arrow array, deserializes it into a collection of optional [`Loggable`]s.
-    fn from_arrow_opt(data: &arrow::array::ArrayData) -> DeserializationResult<Vec<Option<Self>>> {
-        Self::from_arrow2_opt(arrow2::array::from_data(data).as_ref())
+    fn from_arrow_opt(data: &dyn arrow::array::Array) -> DeserializationResult<Vec<Option<Self>>> {
+        let boxed_arrow2_array: Box<dyn arrow2::array::Array> = data.into();
+        Self::from_arrow2_opt(boxed_arrow2_array.as_ref())
     }
 
     /// Given an Arrow2 array, deserializes it into a collection of optional [`Loggable`]s.
