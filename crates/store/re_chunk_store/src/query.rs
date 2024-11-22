@@ -772,7 +772,8 @@ impl ChunkStore {
         query: &RangeQuery,
         entity_path: &EntityPath,
     ) -> Vec<Arc<Chunk>> {
-        re_tracing::profile_function!(format!("{query:?}"));
+        // Too small & frequent for profiling scopes.
+        //re_tracing::profile_function!(format!("{query:?}"));
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
 
@@ -810,7 +811,8 @@ impl ChunkStore {
         query: &RangeQuery,
         temporal_chunk_ids_per_times: impl Iterator<Item = &'a ChunkIdSetPerTime>,
     ) -> Vec<Arc<Chunk>> {
-        re_tracing::profile_function!();
+        // Too small & frequent for profiling scopes.
+        //re_tracing::profile_function!();
 
         temporal_chunk_ids_per_times
             .map(|temporal_chunk_ids_per_time| {

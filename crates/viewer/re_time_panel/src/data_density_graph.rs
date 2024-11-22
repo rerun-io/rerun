@@ -494,8 +494,6 @@ pub fn build_density_graph<'a>(
         }
 
         for (chunk, time_range, num_events_in_chunk) in chunk_ranges {
-            re_tracing::profile_scope!("chunk_range");
-
             let should_render_individual_events = can_render_individual_events
                 && if chunk.is_timeline_sorted(&timeline) {
                     num_events_in_chunk < config.max_events_in_sorted_chunk
