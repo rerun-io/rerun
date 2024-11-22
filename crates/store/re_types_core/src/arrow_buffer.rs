@@ -106,10 +106,9 @@ impl<T: ArrowNativeType + arrow2::types::NativeType> From<arrow2::buffer::Buffer
 {
     #[inline]
     fn from(arrow2_buffer: arrow2::buffer::Buffer<T>) -> Self {
-        let offset = arrow2_buffer.offset();
-        let len = arrow2_buffer.len(); // TODO: is this elements or bytes?
-        let arrow1_buffer = arrow::buffer::Buffer::from(arrow2_buffer); // TODO: are we already applying offset/len here?
-        let scalar_buffer = arrow::buffer::ScalarBuffer::new(arrow1_buffer, offset, len); // TODO: is this elements or bytes?
+        let num_elements = arrow2_buffer.len();
+        let arrow1_buffer = arrow::buffer::Buffer::from(arrow2_buffer);
+        let scalar_buffer = arrow::buffer::ScalarBuffer::new(arrow1_buffer, 0, num_elements);
         Self(scalar_buffer)
     }
 }
@@ -140,5 +139,23 @@ impl<T: ArrowNativeType> std::ops::Deref for ArrowBuffer<T> {
     #[inline]
     fn deref(&self) -> &[T] {
         self.as_slice()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_arrow2_compatibility() {
+        let arrow2_buffer = arrow2::buffer::Buffer::<f32>::from(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
+        assert_eq!(arrow2_buffer.as_slice(), &[1.0, 2.0, 3.0, 4.0, 5.0]);
+
+        let sliced_arrow2_buffer = arrow2_buffer.sliced(1, 3);
+        assert_eq!(sliced_arrow2_buffer.as_slice(), &[2.0, 3.0, 4.0]);
+
+        let arrow_buffer = ArrowBuffer::<f32>::from(sliced_arrow2_buffer);
+        assert_eq!(arrow_buffer.num_instances(), 3);
+        assert_eq!(arrow_buffer.as_slice(), &[2.0, 3.0, 4.0]);
     }
 }
