@@ -73,11 +73,6 @@ impl Hash128 {
     }
 
     #[inline]
-    pub fn hash64(&self) -> u64 {
-        self.0[0]
-    }
-
-    #[inline]
     pub fn first64(&self) -> u64 {
         self.0[0]
     }
