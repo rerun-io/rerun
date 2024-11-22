@@ -1,8 +1,8 @@
 use std::collections::BTreeMap;
 
 use arrow2::{
-    array::{Array as ArrowArray, PrimitiveArray as ArrowPrimitiveArray},
-    datatypes::DataType as ArrowDatatype,
+    array::{Array as Arrow2Array, PrimitiveArray as Arrow2PrimitiveArray},
+    datatypes::DataType as Arrow2Datatype,
 };
 use itertools::Itertools;
 
@@ -23,7 +23,7 @@ pub struct ChunkBuilder {
 
     row_ids: Vec<RowId>,
     timelines: BTreeMap<Timeline, TimeColumnBuilder>,
-    components: BTreeMap<ComponentName, Vec<Option<Box<dyn ArrowArray>>>>,
+    components: BTreeMap<ComponentName, Vec<Option<Box<dyn Arrow2Array>>>>,
 }
 
 impl Chunk {
@@ -63,7 +63,7 @@ impl ChunkBuilder {
         mut self,
         row_id: RowId,
         timepoint: impl Into<TimePoint>,
-        components: impl IntoIterator<Item = (ComponentName, Option<Box<dyn ArrowArray>>)>,
+        components: impl IntoIterator<Item = (ComponentName, Option<Box<dyn Arrow2Array>>)>,
     ) -> Self {
         let components = components.into_iter().collect_vec();
 
@@ -107,7 +107,7 @@ impl ChunkBuilder {
         self,
         row_id: RowId,
         timepoint: impl Into<TimePoint>,
-        components: impl IntoIterator<Item = (ComponentName, Box<dyn ArrowArray>)>,
+        components: impl IntoIterator<Item = (ComponentName, Box<dyn Arrow2Array>)>,
     ) -> Self {
         self.with_sparse_row(
             row_id,
@@ -258,7 +258,7 @@ impl ChunkBuilder {
     #[inline]
     pub fn build_with_datatypes(
         self,
-        datatypes: &IntMap<ComponentName, ArrowDatatype>,
+        datatypes: &IntMap<ComponentName, Arrow2Datatype>,
     ) -> ChunkResult<Chunk> {
         let Self {
             id,
@@ -343,7 +343,7 @@ impl TimeColumnBuilder {
     pub fn build(self) -> TimeColumn {
         let Self { timeline, times } = self;
 
-        let times = ArrowPrimitiveArray::<i64>::from_vec(times).to(timeline.datatype());
+        let times = Arrow2PrimitiveArray::<i64>::from_vec(times).to(timeline.datatype());
         TimeColumn::new(None, timeline, times)
     }
 }

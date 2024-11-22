@@ -9,7 +9,7 @@ use crossbeam::channel::{Receiver, Sender};
 use itertools::Either;
 use parking_lot::Mutex;
 
-use arrow2::array::{ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray};
+use arrow2::array::{ListArray as ArrowListArray, PrimitiveArray as Arrow2PrimitiveArray};
 use re_chunk::{Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, PendingRow, RowId};
 
 use re_chunk::{ChunkError, ChunkId, ComponentName, TimeColumn};
@@ -1541,7 +1541,7 @@ impl RecordingStream {
                 let time_timeline = Timeline::log_time();
                 let time = TimeInt::new_temporal(Time::now().nanos_since_epoch());
 
-                let repeated_time = ArrowPrimitiveArray::<i64>::from_values(
+                let repeated_time = Arrow2PrimitiveArray::<i64>::from_values(
                     std::iter::repeat(time.as_i64()).take(chunk.num_rows()),
                 )
                 .to(time_timeline.datatype());
@@ -1565,7 +1565,7 @@ impl RecordingStream {
                     .tick
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-                let repeated_tick = ArrowPrimitiveArray::<i64>::from_values(
+                let repeated_tick = Arrow2PrimitiveArray::<i64>::from_values(
                     std::iter::repeat(tick).take(chunk.num_rows()),
                 )
                 .to(tick_timeline.datatype());

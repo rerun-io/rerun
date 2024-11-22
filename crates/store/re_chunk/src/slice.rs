@@ -1,6 +1,6 @@
 use arrow2::array::{
-    Array as ArrowArray, BooleanArray as ArrowBooleanArray, ListArray as ArrowListArray,
-    PrimitiveArray as ArrowPrimitiveArray, StructArray as ArrowStructArray,
+    Array as Arrow2Array, BooleanArray as Arrow2BooleanArray, ListArray as Arrow2ListArray,
+    PrimitiveArray as Arrow2PrimitiveArray, StructArray as Arrow2StructArray,
 };
 
 use itertools::Itertools;
@@ -26,7 +26,7 @@ impl Chunk {
         &self,
         row_id: RowId,
         component_name: &ComponentName,
-    ) -> Option<Box<dyn ArrowArray>> {
+    ) -> Option<Box<dyn Arrow2Array>> {
         let list_array = self.components.get(component_name)?;
 
         if self.is_sorted() {
@@ -352,7 +352,7 @@ impl Chunk {
 
         let mask = validity.iter().collect_vec();
         let is_sorted = *is_sorted || (mask.iter().filter(|&&b| b).count() < 2);
-        let validity_filter = ArrowBooleanArray::from_slice(mask);
+        let validity_filter = Arrow2BooleanArray::from_slice(mask);
 
         let mut chunk = Self {
             id: *id,
@@ -378,7 +378,7 @@ impl Chunk {
                         filtered
                             .with_validity(None)
                             .as_any()
-                            .downcast_ref::<ArrowListArray<i32>>()
+                            .downcast_ref::<Arrow2ListArray<i32>>()
                             // Unwrap: cannot possibly fail -- going from a ListArray back to a ListArray.
                             .unwrap()
                             .clone()
@@ -440,7 +440,7 @@ impl Chunk {
             entity_path: entity_path.clone(),
             heap_size_bytes: Default::default(),
             is_sorted: true,
-            row_ids: ArrowStructArray::new_empty(row_ids.data_type().clone()),
+            row_ids: Arrow2StructArray::new_empty(row_ids.data_type().clone()),
             timelines: timelines
                 .iter()
                 .map(|(&timeline, time_column)| (timeline, time_column.emptied()))
@@ -450,7 +450,7 @@ impl Chunk {
                 .map(|(&component_name, list_array)| {
                     (
                         component_name,
-                        ArrowListArray::new_empty(list_array.data_type().clone()),
+                        Arrow2ListArray::new_empty(list_array.data_type().clone()),
                     )
                 })
                 .collect(),
@@ -528,7 +528,7 @@ impl Chunk {
                     i.saturating_sub(1) as i32
                 })
                 .collect_vec();
-            ArrowPrimitiveArray::<i32>::from_vec(indices)
+            Arrow2PrimitiveArray::<i32>::from_vec(indices)
         };
 
         let chunk = Self {
@@ -575,7 +575,7 @@ impl Chunk {
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn filtered(&self, filter: &ArrowBooleanArray) -> Option<Self> {
+    pub fn filtered(&self, filter: &Arrow2BooleanArray) -> Option<Self> {
         let Self {
             id,
             entity_path,
@@ -661,7 +661,7 @@ impl Chunk {
     /// WARNING: the returned chunk has the same old [`crate::ChunkId`]! Change it with [`Self::with_id`].
     #[must_use]
     #[inline]
-    pub fn taken<O: arrow2::types::Index>(&self, indices: &ArrowPrimitiveArray<O>) -> Self {
+    pub fn taken<O: arrow2::types::Index>(&self, indices: &Arrow2PrimitiveArray<O>) -> Self {
         let Self {
             id,
             entity_path,
@@ -785,7 +785,7 @@ impl TimeColumn {
         Self::new(
             is_sorted_opt,
             *timeline,
-            ArrowPrimitiveArray::sliced(times.clone(), index, len),
+            Arrow2PrimitiveArray::sliced(times.clone(), index, len),
         )
     }
 
@@ -804,7 +804,7 @@ impl TimeColumn {
         Self::new(
             Some(true),
             *timeline,
-            ArrowPrimitiveArray::new_empty(times.data_type().clone()),
+            Arrow2PrimitiveArray::new_empty(times.data_type().clone()),
         )
     }
 
@@ -812,7 +812,7 @@ impl TimeColumn {
     ///
     /// [filter]: arrow2::compute::filter::filter
     #[inline]
-    pub(crate) fn filtered(&self, filter: &ArrowBooleanArray) -> Self {
+    pub(crate) fn filtered(&self, filter: &Arrow2BooleanArray) -> Self {
         let Self {
             timeline,
             times,
@@ -850,7 +850,7 @@ impl TimeColumn {
     ///
     /// [take]: arrow2::compute::take::take
     #[inline]
-    pub(crate) fn taken<O: arrow2::types::Index>(&self, indices: &ArrowPrimitiveArray<O>) -> Self {
+    pub(crate) fn taken<O: arrow2::types::Index>(&self, indices: &Arrow2PrimitiveArray<O>) -> Self {
         let Self {
             timeline,
             times,
@@ -1363,7 +1363,7 @@ mod tests {
 
         // basic
         {
-            let filter = ArrowBooleanArray::from_slice(
+            let filter = Arrow2BooleanArray::from_slice(
                 (0..chunk.num_rows()).map(|i| i % 2 == 0).collect_vec(),
             );
             let got = chunk.filtered(&filter).unwrap();
@@ -1394,7 +1394,7 @@ mod tests {
 
         // shorter
         {
-            let filter = ArrowBooleanArray::from_slice(
+            let filter = Arrow2BooleanArray::from_slice(
                 (0..chunk.num_rows() / 2).map(|i| i % 2 == 0).collect_vec(),
             );
             let got = chunk.filtered(&filter);
@@ -1403,7 +1403,7 @@ mod tests {
 
         // longer
         {
-            let filter = ArrowBooleanArray::from_slice(
+            let filter = Arrow2BooleanArray::from_slice(
                 (0..chunk.num_rows() * 2).map(|i| i % 2 == 0).collect_vec(),
             );
             let got = chunk.filtered(&filter);
@@ -1508,7 +1508,7 @@ mod tests {
 
         // basic
         {
-            let indices = ArrowPrimitiveArray::<i32>::from_vec(
+            let indices = Arrow2PrimitiveArray::<i32>::from_vec(
                 (0..chunk.num_rows() as i32)
                     .filter(|i| i % 2 == 0)
                     .collect_vec(),
@@ -1541,7 +1541,7 @@ mod tests {
 
         // repeated
         {
-            let indices = ArrowPrimitiveArray::<i32>::from_vec(
+            let indices = Arrow2PrimitiveArray::<i32>::from_vec(
                 std::iter::repeat(2i32)
                     .take(chunk.num_rows() * 2)
                     .collect_vec(),

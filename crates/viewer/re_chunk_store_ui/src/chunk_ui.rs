@@ -4,7 +4,7 @@ use std::sync::Arc;
 use egui_extras::{Column, TableRow};
 use itertools::Itertools;
 
-use re_chunk_store::external::re_chunk::{ArrowArray, TransportChunk};
+use re_chunk_store::external::re_chunk::{Arrow2Array, TransportChunk};
 use re_chunk_store::Chunk;
 use re_log_types::external::re_types_core::SizeBytes;
 use re_log_types::{TimeZone, Timeline};

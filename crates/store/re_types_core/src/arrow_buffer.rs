@@ -1,15 +1,13 @@
-use arrow2::buffer::Buffer;
-
-/// Convenience-wrapper around an arrow [`Buffer`] that is known to contain a
+/// Convenience-wrapper around an [`arrow2::buffer::Buffer`] that is known to contain a
 /// a primitive type.
 ///
-/// The arrow2 [`Buffer`] object is internally reference-counted and can be
+/// The [`ArrowBuffer`] object is internally reference-counted and can be
 /// easily converted back to a `&[T]` referencing the underlying storage.
 /// This avoids some of the lifetime complexities that would otherwise
 /// arise from returning a `&[T]` directly, but is significantly more
 /// performant than doing the full allocation necessary to return a `Vec<T>`.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct ArrowBuffer<T>(pub Buffer<T>);
+pub struct ArrowBuffer<T>(arrow2::buffer::Buffer<T>);
 
 impl<T: crate::SizeBytes> crate::SizeBytes for ArrowBuffer<T> {
     #[inline]
@@ -50,12 +48,7 @@ impl<T> ArrowBuffer<T> {
         self.0.as_slice()
     }
 
-    #[inline]
-    pub fn into_inner(self) -> Buffer<T> {
-        self.0
-    }
-
-    /// Returns a new [`Buffer`] that is a slice of this buffer starting at `offset`.
+    /// Returns a new [`ArrowBuffer`] that is a slice of this buffer starting at `offset`.
     ///
     /// Doing so allows the same memory region to be shared between buffers.
     ///
@@ -100,9 +93,18 @@ impl<T: Clone> ArrowBuffer<T> {
     }
 }
 
-impl<T> From<Buffer<T>> for ArrowBuffer<T> {
+impl<T: arrow::datatypes::ArrowNativeType + arrow2::types::NativeType>
+    From<arrow::buffer::ScalarBuffer<T>> for ArrowBuffer<T>
+{
     #[inline]
-    fn from(value: Buffer<T>) -> Self {
+    fn from(value: arrow::buffer::ScalarBuffer<T>) -> Self {
+        Self(value.into_inner().into())
+    }
+}
+
+impl<T> From<arrow2::buffer::Buffer<T>> for ArrowBuffer<T> {
+    #[inline]
+    fn from(value: arrow2::buffer::Buffer<T>) -> Self {
         Self(value)
     }
 }
@@ -123,7 +125,7 @@ impl<T: Clone> From<&[T]> for ArrowBuffer<T> {
 
 impl<T> FromIterator<T> for ArrowBuffer<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        Self(Buffer::from_iter(iter))
+        Self(arrow2::buffer::Buffer::from_iter(iter))
     }
 }
 

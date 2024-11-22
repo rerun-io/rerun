@@ -4,7 +4,7 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use arrow2::{
     array::ListArray as ArrowListArray,
-    datatypes::{DataType as ArrowDatatype, Field as ArrowField},
+    datatypes::{DataType as Arrow2Datatype, Field as Arrow2Field},
 };
 
 use re_chunk::TimelineName;
@@ -40,7 +40,7 @@ impl ColumnDescriptor {
     }
 
     #[inline]
-    pub fn datatype(&self) -> ArrowDatatype {
+    pub fn datatype(&self) -> Arrow2Datatype {
         match self {
             Self::Time(descr) => descr.datatype.clone(),
             Self::Component(descr) => descr.returned_datatype(),
@@ -48,7 +48,7 @@ impl ColumnDescriptor {
     }
 
     #[inline]
-    pub fn to_arrow_field(&self) -> ArrowField {
+    pub fn to_arrow_field(&self) -> Arrow2Field {
         match self {
             Self::Time(descr) => descr.to_arrow_field(),
             Self::Component(descr) => descr.to_arrow_field(),
@@ -79,7 +79,7 @@ pub struct TimeColumnDescriptor {
     pub timeline: Timeline,
 
     /// The Arrow datatype of the column.
-    pub datatype: ArrowDatatype,
+    pub datatype: Arrow2Datatype,
 }
 
 impl PartialOrd for TimeColumnDescriptor {
@@ -103,9 +103,9 @@ impl Ord for TimeColumnDescriptor {
 impl TimeColumnDescriptor {
     #[inline]
     // Time column must be nullable since static data doesn't have a time.
-    pub fn to_arrow_field(&self) -> ArrowField {
+    pub fn to_arrow_field(&self) -> Arrow2Field {
         let Self { timeline, datatype } = self;
-        ArrowField::new(
+        Arrow2Field::new(
             timeline.name().to_string(),
             datatype.clone(),
             true, /* nullable */
@@ -149,7 +149,7 @@ pub struct ComponentColumnDescriptor {
     /// This is the log-time datatype corresponding to how this data is encoded
     /// in a chunk. Currently this will always be an [`ArrowListArray`], but as
     /// we introduce mono-type optimization, this might be a native type instead.
-    pub store_datatype: ArrowDatatype,
+    pub store_datatype: Arrow2Datatype,
 
     /// Whether this column represents static data.
     pub is_static: bool,
@@ -289,13 +289,13 @@ impl ComponentColumnDescriptor {
     }
 
     #[inline]
-    pub fn returned_datatype(&self) -> ArrowDatatype {
+    pub fn returned_datatype(&self) -> Arrow2Datatype {
         self.store_datatype.clone()
     }
 
     #[inline]
-    pub fn to_arrow_field(&self) -> ArrowField {
-        ArrowField::new(
+    pub fn to_arrow_field(&self) -> Arrow2Field {
+        Arrow2Field::new(
             format!(
                 "{}:{}",
                 self.entity_path,
@@ -752,7 +752,7 @@ impl ChunkStore {
         let datatype = self
             .lookup_datatype(&component_name)
             .cloned()
-            .unwrap_or_else(|| ArrowDatatype::Null);
+            .unwrap_or_else(|| Arrow2Datatype::Null);
 
         ComponentColumnDescriptor {
             entity_path: selector.entity_path.clone(),

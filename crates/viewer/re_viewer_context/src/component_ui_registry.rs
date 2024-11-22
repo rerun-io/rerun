@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_chunk::{ArrowArray, RowId, UnitChunkShared};
+use re_chunk::{Arrow2Array, RowId, UnitChunkShared};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_log::ResultExt;
@@ -522,7 +522,7 @@ impl ComponentUiRegistry {
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
         row_id: Option<RowId>,
-        component_array: Option<&dyn ArrowArray>,
+        component_array: Option<&dyn Arrow2Array>,
         fallback_provider: &dyn ComponentFallbackProvider,
     ) {
         let multiline = true;
@@ -553,7 +553,7 @@ impl ComponentUiRegistry {
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
         row_id: Option<RowId>,
-        component_query_result: Option<&dyn ArrowArray>,
+        component_query_result: Option<&dyn Arrow2Array>,
         fallback_provider: &dyn ComponentFallbackProvider,
     ) {
         let multiline = false;
@@ -579,7 +579,7 @@ impl ComponentUiRegistry {
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
         row_id: Option<RowId>,
-        component_array: Option<&dyn ArrowArray>,
+        component_array: Option<&dyn Arrow2Array>,
         fallback_provider: &dyn ComponentFallbackProvider,
         allow_multiline: bool,
     ) {

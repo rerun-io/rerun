@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use arrow2::array::Array as ArrowArray;
+use arrow2::array::Array as Arrow2Array;
 
 use re_log_types::{TimeInt, Timeline};
 use re_types_core::{Component, ComponentName, SizeBytes};
@@ -20,7 +20,7 @@ impl Chunk {
         &self,
         component_name: &ComponentName,
         row_index: usize,
-    ) -> Option<ChunkResult<Box<dyn ArrowArray>>> {
+    ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
         self.components.get(component_name).and_then(|list_array| {
             if list_array.len() > row_index {
                 list_array
@@ -63,7 +63,7 @@ impl Chunk {
         component_name: &ComponentName,
         row_index: usize,
         instance_index: usize,
-    ) -> Option<ChunkResult<Box<dyn ArrowArray>>> {
+    ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
         let res = self.component_batch_raw(component_name, row_index)?;
 
         let array = match res {
@@ -116,7 +116,7 @@ impl Chunk {
         &self,
         component_name: &ComponentName,
         row_index: usize,
-    ) -> Option<ChunkResult<Box<dyn ArrowArray>>> {
+    ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
         let res = self.component_batch_raw(component_name, row_index)?;
 
         let array = match res {
@@ -256,7 +256,7 @@ impl UnitChunkShared {
     pub fn component_batch_raw(
         &self,
         component_name: &ComponentName,
-    ) -> Option<Box<dyn ArrowArray>> {
+    ) -> Option<Box<dyn Arrow2Array>> {
         debug_assert!(self.num_rows() == 1);
         self.components
             .get(component_name)
@@ -282,7 +282,7 @@ impl UnitChunkShared {
         &self,
         component_name: &ComponentName,
         instance_index: usize,
-    ) -> Option<ChunkResult<Box<dyn ArrowArray>>> {
+    ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
         let array = self.component_batch_raw(component_name)?;
         if array.len() > instance_index {
             Some(Ok(array.sliced(instance_index, 1)))
@@ -325,7 +325,7 @@ impl UnitChunkShared {
     pub fn component_mono_raw(
         &self,
         component_name: &ComponentName,
-    ) -> Option<ChunkResult<Box<dyn ArrowArray>>> {
+    ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
         let array = self.component_batch_raw(component_name)?;
         if array.len() == 1 {
             Some(Ok(array.sliced(0, 1)))
