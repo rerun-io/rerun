@@ -4,7 +4,7 @@ use egui::{
 };
 use re_chunk::EntityPath;
 use re_types::{components::Radius, datatypes::Float32};
-use re_viewer_context::{InteractionHighlight, OptionalSpaceViewEntityHighlight, SpaceViewHighlights};
+use re_viewer_context::{InteractionHighlight, SpaceViewHighlights};
 use std::hash::Hash;
 
 use crate::{
@@ -98,17 +98,19 @@ impl SceneBuilder {
         }
 
         if let Some(pointer) = ui.ctx().input(|i| i.pointer.hover_pos()) {
-            // Note: doesn't catch zooming / panning if a button in this PanZoom container is hovered.
+            // Note: Catch zooming / panning either in the container, or on the entitys.
             if response.hovered() || self.children_hovered {
                 let pointer_in_world = world_to_window.inverse() * pointer;
                 let zoom_delta = ui.ctx().input(|i| i.zoom_delta());
                 let pan_delta = ui.ctx().input(|i| i.smooth_scroll_delta);
 
-                // Zoom in on pointer:
-                world_to_view = world_to_view
+                // Zoom in on pointer, but only if we are not zoomed out too far.
+                if zoom_delta < 1.0 || world_to_view.scaling < 1.0 {
+                    world_to_view = world_to_view
                     * TSTransform::from_translation(pointer_in_world.to_vec2())
                     * TSTransform::from_scaling(zoom_delta)
                     * TSTransform::from_translation(-pointer_in_world.to_vec2());
+                }
 
                 // Pan:
                 world_to_view = TSTransform::from_translation(pan_delta) * world_to_view;
