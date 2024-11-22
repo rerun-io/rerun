@@ -10,7 +10,11 @@ import rerun.blueprint as rrb
 README = """\
 # Graph view
 
-TODO: describe the expected behavior that should be checked here.
+Please check the following:
+* All graphs have a proper layout.
+* `graph` has directed edges, while `graph2` has undirected edges.
+* `graph` and `graph2` are shown in two different viewers.
+* There is a third viewer, `Both`, that shows both `graph` and `graph2` in the same viewer.
 """
 
 
@@ -39,7 +43,7 @@ def log_graphs() -> None:
 
         rr.set_time_sequence("frame", i)
         rr.log("graph", rr.GraphNodes(nodes, labels=nodes), rr.GraphEdges(edges, graph_type=rr.GraphType.Directed))
-        rr.log("graph2", rr.GraphNodes(nodes, labels=nodes), rr.GraphEdges(edges, graph_type=rr.GraphType.Directed))
+        rr.log("graph2", rr.GraphNodes(nodes, labels=nodes), rr.GraphEdges(edges, graph_type=rr.GraphType.Undirected))
 
     rr.send_blueprint(
         rrb.Blueprint(
