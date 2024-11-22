@@ -50,6 +50,7 @@ arrow2 = { workspace = true, features = [
 backtrace.workspace = true
 bytemuck.workspace = true
 document-features.workspace = true
+half.workspace = true
 itertools.workspace = true
 nohash-hasher.workspace = true
 once_cell.workspace = true
