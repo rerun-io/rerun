@@ -172,7 +172,7 @@ impl QueryCache {
     }
 
     /// Free up some RAM by forgetting the older parts of all timelines.
-    pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
+    pub fn purge_fraction_of_ram(&self, fraction_to_purge: f32) {
         re_tracing::profile_function!();
 
         let mut caches = self.latest_at_per_cache_key.write();

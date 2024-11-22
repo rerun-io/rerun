@@ -253,15 +253,15 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     /// Possible values:
     ///
     /// * `auto`
-    /// May use hardware acceleration if available and compatible with the codec.
+    ///   May use hardware acceleration if available and compatible with the codec.
     ///
     /// * `prefer_software`
-    /// Should use a software decoder even if hardware acceleration is available.
-    /// If no software decoder is present, this may cause decoding to fail.
+    ///   Should use a software decoder even if hardware acceleration is available.
+    ///   If no software decoder is present, this may cause decoding to fail.
     ///
     /// * `prefer_hardware`
-    /// Should use a hardware decoder.
-    /// If no hardware decoder is present, this may cause decoding to fail.
+    ///   Should use a hardware decoder.
+    ///   If no hardware decoder is present, this may cause decoding to fail.
     #[clap(long, verbatim_doc_comment)]
     video_decoder: Option<String>,
 

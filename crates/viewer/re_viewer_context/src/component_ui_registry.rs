@@ -238,10 +238,10 @@ pub struct ComponentUiRegistry {
     ///
     /// Other issues:
     /// * duality of edit & view:
-    /// In this old system we didn't take into account that most types should also be editable in the UI.
-    /// This makes implementations of view & edit overly asymmetric when instead they are often rather similar.
+    ///   In this old system we didn't take into account that most types should also be editable in the UI.
+    ///   This makes implementations of view & edit overly asymmetric when instead they are often rather similar.
     /// * unawareness of `ListItem` context:
-    /// We often want to display components as list items and in the older callbacks we don't know whether we're in a list item or not.
+    ///   We often want to display components as list items and in the older callbacks we don't know whether we're in a list item or not.
     legacy_display_component_uis: BTreeMap<ComponentName, LegacyDisplayComponentUiCallback>,
 
     /// Implements viewing and probably editing

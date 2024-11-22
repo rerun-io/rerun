@@ -433,11 +433,8 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
     retry_attempts = 5
     while True:
         try:
-            # We added `cargo_version="1.80.0"` because some dependency had MSRV 1.80 and that caused `cargo publish` to fail.
-            # TODO(#8174): remove the locked cargo_version once we update MSRV to 1.80.0
             cargo(
                 f"publish --quiet --token {token}",
-                cargo_version="1.80.0",
                 cwd=crate.path,
                 env=env,
                 dry_run=False,

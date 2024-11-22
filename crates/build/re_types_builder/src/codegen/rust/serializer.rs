@@ -455,6 +455,7 @@ enum InnerRepr {
 /// This is useful for:
 /// * unions: nullability is encoded as a separate variant
 /// * lists inside of fields that are lists: we don't support intra-list nullability
+///
 /// TODO(#2993): However, we still emit a validity bitmap for lists inside lists
 /// to `validity_bitmap_ident`since Python and Rust do so.
 #[allow(clippy::too_many_arguments)]

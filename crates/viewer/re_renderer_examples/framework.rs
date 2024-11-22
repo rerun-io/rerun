@@ -176,7 +176,7 @@ impl<E: Example + 'static> Application<E> {
         })
     }
 
-    fn configure_surface(&mut self, size: winit::dpi::PhysicalSize<u32>) {
+    fn configure_surface(&self, size: winit::dpi::PhysicalSize<u32>) {
         if size.width == 0 || size.height == 0 {
             return;
         }
