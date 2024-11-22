@@ -1,4 +1,7 @@
-use std::sync::atomic::{AtomicU64, Ordering};
+use std::{
+    collections::BTreeMap,
+    sync::atomic::{AtomicU64, Ordering},
+};
 
 use arrow2::{
     array::{
@@ -8,7 +11,6 @@ use arrow2::{
     Either,
 };
 
-use ahash::HashMap;
 use itertools::{izip, Itertools};
 use nohash_hasher::IntMap;
 
@@ -462,7 +464,7 @@ impl Chunk {
                     )
                 )
             })
-            .fold(HashMap::default(), |mut acc, (time, is_valid)| {
+            .fold(BTreeMap::default(), |mut acc, (time, is_valid)| {
                 *acc.entry(time).or_default() += is_valid;
                 acc
             })
