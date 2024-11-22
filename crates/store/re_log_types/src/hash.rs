@@ -86,7 +86,7 @@ impl Hash128 {
 impl std::hash::Hash for Hash128 {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_u64(self.0[0]);
+        state.write_u128((self.first64() as u128) << 64 | self.second64() as u128);
     }
 }
 
