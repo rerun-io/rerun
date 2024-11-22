@@ -5213,8 +5213,7 @@ dependencies = [
 [[package]]
 name = "re_arrow2"
 version = "0.17.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "787fa1df3020f018e02c1f957edfc6890a73372444de397c36011cda61c9b489"
+source = "git+https://github.com/rerun-io/re_arrow2?rev=79ba149e823c88c1baa770a33c6ea8b6244d0597#79ba149e823c88c1baa770a33c6ea8b6244d0597"
 dependencies = [
  "ahash",
  "arrow-array",
@@ -5230,6 +5229,7 @@ dependencies = [
  "ethnum",
  "foreign_vec",
  "getrandom",
+ "half",
  "hash_hasher",
  "hashbrown 0.14.5",
  "num-traits",
@@ -6347,6 +6347,7 @@ dependencies = [
  "bytemuck",
  "criterion",
  "document-features",
+ "half",
  "itertools 0.13.0",
  "nohash-hasher",
  "once_cell",

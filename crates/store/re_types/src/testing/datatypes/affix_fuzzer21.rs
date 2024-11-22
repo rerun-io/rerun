@@ -20,8 +20,8 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer21 {
-    pub single_half: arrow2::types::f16,
-    pub many_halves: ::re_types_core::ArrowBuffer<arrow2::types::f16>,
+    pub single_half: half::f16,
+    pub many_halves: ::re_types_core::ArrowBuffer<half::f16>,
 }
 
 impl ::re_types_core::SizeBytes for AffixFuzzer21 {
@@ -32,8 +32,7 @@ impl ::re_types_core::SizeBytes for AffixFuzzer21 {
 
     #[inline]
     fn is_pod() -> bool {
-        <arrow2::types::f16>::is_pod()
-            && <::re_types_core::ArrowBuffer<arrow2::types::f16>>::is_pod()
+        <half::f16>::is_pod() && <::re_types_core::ArrowBuffer<half::f16>>::is_pod()
     }
 }
 

@@ -2,7 +2,6 @@
 
 use std::collections::HashMap;
 
-use arrow2::types::f16;
 use re_types::{
     testing::{
         archetypes::{AffixFuzzer1, AffixFuzzer2, AffixFuzzer3, AffixFuzzer4},
@@ -10,6 +9,8 @@ use re_types::{
     },
     Archetype as _, AsComponents as _,
 };
+
+use half::f16;
 
 use crate::util;
 

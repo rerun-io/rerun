@@ -233,7 +233,7 @@ tensor_type!(i16, I16);
 tensor_type!(i32, I32);
 tensor_type!(i64, I64);
 
-tensor_type!(arrow2::types::f16, F16);
+tensor_type!(half::f16, F16);
 
 tensor_type!(f32, F32);
 tensor_type!(f64, F64);
@@ -252,98 +252,6 @@ impl<'a> TryFrom<&'a TensorData> for ::ndarray::ArrayViewD<'a, u8> {
                     .map_err(|err| TensorCastError::BadTensorShape { source: err })
             }
             _ => Err(TensorCastError::TypeMismatch),
-        }
-    }
-}
-
-// Manual expansion of tensor_type! macro for `half::f16` types. We need to do this
-// because arrow uses its own half type. The two use the same underlying representation
-// but are still distinct types. `half::f16`, however, is more full-featured and
-// generally a better choice to use when converting to ndarray.
-// ==========================================
-// TODO(jleibs): would be nice to support this with the macro definition as well
-// but the bytemuck casts add a bit of complexity here.
-impl<'a> TryFrom<&'a TensorData> for ::ndarray::ArrayViewD<'a, half::f16> {
-    type Error = TensorCastError;
-
-    fn try_from(value: &'a TensorData) -> Result<Self, Self::Error> {
-        let shape: Vec<_> = value.shape.iter().map(|d| d.size as usize).collect();
-        if let TensorBuffer::F16(data) = &value.buffer {
-            ndarray::ArrayViewD::from_shape(shape, bytemuck::cast_slice(data.as_slice()))
-                .map_err(|err| TensorCastError::BadTensorShape { source: err })
-        } else {
-            Err(TensorCastError::TypeMismatch)
-        }
-    }
-}
-
-impl<'a, D: ::ndarray::Dimension> TryFrom<::ndarray::ArrayView<'a, half::f16, D>> for TensorData {
-    type Error = TensorCastError;
-
-    fn try_from(view: ::ndarray::ArrayView<'a, half::f16, D>) -> Result<Self, Self::Error> {
-        let shape = view
-            .shape()
-            .iter()
-            .map(|dim| TensorDimension {
-                size: *dim as u64,
-                name: None,
-            })
-            .collect();
-        match view.to_slice() {
-            Some(slice) => Ok(Self {
-                shape,
-                buffer: TensorBuffer::F16(Vec::from(bytemuck::cast_slice(slice)).into()),
-            }),
-            None => Ok(Self {
-                shape,
-                buffer: TensorBuffer::F16(
-                    view.iter()
-                        .map(|f| arrow2::types::f16::from_bits(f.to_bits()))
-                        .collect::<Vec<_>>()
-                        .into(),
-                ),
-            }),
-        }
-    }
-}
-
-impl<D: ::ndarray::Dimension> TryFrom<::ndarray::Array<half::f16, D>> for TensorData {
-    type Error = TensorCastError;
-
-    fn try_from(value: ndarray::Array<half::f16, D>) -> Result<Self, Self::Error> {
-        let shape = value
-            .shape()
-            .iter()
-            .map(|dim| TensorDimension {
-                size: *dim as u64,
-                name: None,
-            })
-            .collect();
-        if value.is_standard_layout() {
-            let (vec, offset) = value.into_raw_vec_and_offset();
-            // into_raw_vec_and_offset() guarantees that the logical element order (.iter()) matches the internal
-            // storage order in the returned vector if the array is in standard layout.
-            let vec_slice = if let Some(offset) = offset {
-                &vec[offset..]
-            } else {
-                debug_assert!(vec.is_empty());
-                &vec
-            };
-            Ok(Self {
-                shape,
-                buffer: TensorBuffer::F16(Vec::from(bytemuck::cast_slice(vec_slice)).into()),
-            })
-        } else {
-            Ok(Self {
-                shape,
-                buffer: TensorBuffer::F16(
-                    value
-                        .iter()
-                        .map(|f| arrow2::types::f16::from_bits(f.to_bits()))
-                        .collect::<Vec<_>>()
-                        .into(),
-                ),
-            })
         }
     }
 }
