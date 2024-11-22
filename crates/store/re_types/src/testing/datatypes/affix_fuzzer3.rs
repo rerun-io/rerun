@@ -83,17 +83,21 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
         )
     }
 
-    fn to_arrow2_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow::datatypes::*;
-        use arrow2::array::*;
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
             // Dense Arrow union
             let data: Vec<_> = data
@@ -103,7 +107,30 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     datum
                 })
                 .collect();
-            let types = data
+            let field_type_ids = [0, 1, 2, 3, 4];
+            let fields = vec![
+                Field::new("_null_markers", DataType::Null, true),
+                Field::new("degrees", DataType::Float32, false),
+                Field::new(
+                    "craziness",
+                    DataType::List(std::sync::Arc::new(Field::new(
+                        "item",
+                        <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
+                        false,
+                    ))),
+                    false,
+                ),
+                Field::new(
+                    "fixed_size_shenanigans",
+                    DataType::FixedSizeList(
+                        std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
+                        3,
+                    ),
+                    false,
+                ),
+                Field::new("empty_variant", DataType::Null, true),
+            ];
+            let type_ids: Vec<i8> = data
                 .iter()
                 .map(|a| match a.as_deref() {
                     None => 0,
@@ -113,106 +140,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     Some(Self::EmptyVariant) => 4i8,
                 })
                 .collect();
-            let fields = vec![
-                NullArray::new(
-                    arrow2::datatypes::DataType::Null,
-                    data.iter().filter(|v| v.is_none()).count(),
-                )
-                .boxed(),
-                {
-                    let degrees: Vec<_> = data
-                        .iter()
-                        .filter_map(|datum| match datum.as_deref() {
-                            Some(Self::Degrees(v)) => Some(v.clone()),
-                            _ => None,
-                        })
-                        .collect();
-                    let degrees_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                    PrimitiveArray::new(
-                        DataType::Float32.into(),
-                        degrees.into_iter().collect(),
-                        degrees_bitmap,
-                    )
-                    .boxed()
-                },
-                {
-                    let craziness: Vec<_> = data
-                        .iter()
-                        .filter_map(|datum| match datum.as_deref() {
-                            Some(Self::Craziness(v)) => Some(v.clone()),
-                            _ => None,
-                        })
-                        .collect();
-                    let craziness_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                    {
-                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            craziness.iter().map(|datum| datum.len()),
-                        )?
-                        .into();
-                        let craziness_inner_data: Vec<_> =
-                            craziness.into_iter().flatten().collect();
-                        let craziness_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::try_new(
-                            DataType::List(std::sync::Arc::new(Field::new(
-                                "item",
-                                <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
-                                false,
-                            )))
-                            .into(),
-                            offsets,
-                            {
-                                _ = craziness_inner_bitmap;
-                                crate::testing::datatypes::AffixFuzzer1::to_arrow2_opt(
-                                    craziness_inner_data.into_iter().map(Some),
-                                )?
-                            },
-                            craziness_bitmap,
-                        )?
-                        .boxed()
-                    }
-                },
-                {
-                    let fixed_size_shenanigans: Vec<_> = data
-                        .iter()
-                        .filter_map(|datum| match datum.as_deref() {
-                            Some(Self::FixedSizeShenanigans(v)) => Some(v.clone()),
-                            _ => None,
-                        })
-                        .collect();
-                    let fixed_size_shenanigans_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                    {
-                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let fixed_size_shenanigans_inner_data: Vec<_> =
-                            fixed_size_shenanigans.into_iter().flatten().collect();
-                        let fixed_size_shenanigans_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                            None;
-                        FixedSizeListArray::new(
-                            DataType::FixedSizeList(
-                                std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
-                                3,
-                            )
-                            .into(),
-                            PrimitiveArray::new(
-                                DataType::Float32.into(),
-                                fixed_size_shenanigans_inner_data.into_iter().collect(),
-                                fixed_size_shenanigans_inner_bitmap,
-                            )
-                            .boxed(),
-                            fixed_size_shenanigans_bitmap,
-                        )
-                        .boxed()
-                    }
-                },
-                NullArray::new(
-                    arrow2::datatypes::DataType::Null,
-                    data.iter()
-                        .filter(|datum| matches!(datum.as_deref(), Some(Self::EmptyVariant)))
-                        .count(),
-                )
-                .boxed(),
-            ];
-            let offsets = Some({
+            let offsets = {
                 let mut degrees_offset = 0;
                 let mut craziness_offset = 0;
                 let mut fixed_size_shenanigans_offset = 0;
@@ -247,8 +175,100 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         }
                     })
                     .collect()
-            });
-            UnionArray::new(Self::arrow_datatype().into(), types, fields, offsets).boxed()
+            };
+            let children = vec![
+                as_array_ref(NullArray::new(data.iter().filter(|v| v.is_none()).count())),
+                {
+                    let degrees: Vec<_> = data
+                        .iter()
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Self::Degrees(v)) => Some(v.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    let degrees_validity: Option<arrow::buffer::NullBuffer> = None;
+                    as_array_ref(PrimitiveArray::<Float32Type>::new(
+                        ScalarBuffer::from(degrees.into_iter().collect::<Vec<_>>()),
+                        degrees_validity,
+                    ))
+                },
+                {
+                    let craziness: Vec<_> = data
+                        .iter()
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Self::Craziness(v)) => Some(v.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    let craziness_validity: Option<arrow::buffer::NullBuffer> = None;
+                    {
+                        let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                            craziness.iter().map(|datum| datum.len()),
+                        );
+                        let craziness_inner_data: Vec<_> =
+                            craziness.into_iter().flatten().collect();
+                        let craziness_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        as_array_ref(ListArray::try_new(
+                            std::sync::Arc::new(Field::new(
+                                "item",
+                                <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
+                                false,
+                            )),
+                            offsets,
+                            {
+                                _ = craziness_inner_validity;
+                                crate::testing::datatypes::AffixFuzzer1::to_arrow_opt(
+                                    craziness_inner_data.into_iter().map(Some),
+                                )?
+                            },
+                            craziness_validity,
+                        )?)
+                    }
+                },
+                {
+                    let fixed_size_shenanigans: Vec<_> = data
+                        .iter()
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Self::FixedSizeShenanigans(v)) => Some(v.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    let fixed_size_shenanigans_validity: Option<arrow::buffer::NullBuffer> = None;
+                    {
+                        let fixed_size_shenanigans_inner_data: Vec<_> =
+                            fixed_size_shenanigans.into_iter().flatten().collect();
+                        let fixed_size_shenanigans_inner_validity: Option<
+                            arrow::buffer::NullBuffer,
+                        > = None;
+                        as_array_ref(FixedSizeListArray::new(
+                            std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
+                            3,
+                            as_array_ref(PrimitiveArray::<Float32Type>::new(
+                                ScalarBuffer::from(
+                                    fixed_size_shenanigans_inner_data
+                                        .into_iter()
+                                        .collect::<Vec<_>>(),
+                                ),
+                                fixed_size_shenanigans_inner_validity,
+                            )),
+                            fixed_size_shenanigans_validity,
+                        ))
+                    }
+                },
+                as_array_ref(NullArray::new(
+                    data.iter()
+                        .filter(|datum| matches!(datum.as_deref(), Some(Self::EmptyVariant)))
+                        .count(),
+                )),
+            ];
+            debug_assert_eq!(field_type_ids.len(), fields.len());
+            debug_assert_eq!(fields.len(), children.len());
+            as_array_ref(UnionArray::try_new(
+                UnionFields::new(field_type_ids, fields),
+                ScalarBuffer::from(type_ids),
+                Some(offsets),
+                children,
+            )?)
         })
     }
 

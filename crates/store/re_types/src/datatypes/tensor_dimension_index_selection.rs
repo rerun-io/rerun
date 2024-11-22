@@ -55,18 +55,26 @@ impl ::re_types_core::Loggable for TensorDimensionIndexSelection {
         ]))
     }
 
-    fn to_arrow2_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow::datatypes::*;
-        use arrow2::array::*;
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
+            let fields = Fields::from(vec![
+                Field::new("dimension", DataType::UInt32, false),
+                Field::new("index", DataType::UInt64, false),
+            ]);
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
@@ -74,12 +82,12 @@ impl ::re_types_core::Loggable for TensorDimensionIndexSelection {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let validity: Option<arrow::buffer::NullBuffer> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            StructArray::new(
-                Self::arrow_datatype().into(),
+            as_array_ref(StructArray::new(
+                fields,
                 vec![
                     {
                         let (somes, dimension): (Vec<_>, Vec<_>) = data
@@ -89,19 +97,19 @@ impl ::re_types_core::Loggable for TensorDimensionIndexSelection {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let dimension_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let dimension_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
-                        PrimitiveArray::new(
-                            DataType::UInt32.into(),
-                            dimension
-                                .into_iter()
-                                .map(|v| v.unwrap_or_default())
-                                .collect(),
-                            dimension_bitmap,
-                        )
-                        .boxed()
+                        as_array_ref(PrimitiveArray::<UInt32Type>::new(
+                            ScalarBuffer::from(
+                                dimension
+                                    .into_iter()
+                                    .map(|v| v.unwrap_or_default())
+                                    .collect::<Vec<_>>(),
+                            ),
+                            dimension_validity,
+                        ))
                     },
                     {
                         let (somes, index): (Vec<_>, Vec<_>) = data
@@ -111,21 +119,23 @@ impl ::re_types_core::Loggable for TensorDimensionIndexSelection {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let index_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let index_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
-                        PrimitiveArray::new(
-                            DataType::UInt64.into(),
-                            index.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                            index_bitmap,
-                        )
-                        .boxed()
+                        as_array_ref(PrimitiveArray::<UInt64Type>::new(
+                            ScalarBuffer::from(
+                                index
+                                    .into_iter()
+                                    .map(|v| v.unwrap_or_default())
+                                    .collect::<Vec<_>>(),
+                            ),
+                            index_validity,
+                        ))
                     },
                 ],
-                bitmap,
-            )
-            .boxed()
+                validity,
+            ))
         })
     }
 

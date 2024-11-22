@@ -5,6 +5,10 @@ use quote::quote;
 // ---
 
 /// `(Datatype, is_recursive)`
+///
+/// If `is_recursive` is set to `true`,
+/// then the generate code will often be shorter, as it it will
+/// defer to calling `arrow_datatype()` on the inner type.
 pub struct ArrowDataTypeTokenizer<'a>(pub &'a ::arrow2::datatypes::DataType, pub bool);
 
 impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
@@ -77,7 +81,7 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
                 } else {
                     let datatype = ArrowDataTypeTokenizer(datatype.to_logical_type(), false);
                     quote!(#datatype)
-                    // TODO(cmc): Bring back extensions once we've fully replaced `arrow2-convert`!
+                    // TODO(#3741): Bring back extensions once we've fully replaced `arrow2-convert`!
                     // let datatype = ArrowDataTypeTokenizer(datatype, false);
                     // let metadata = OptionTokenizer(metadata.as_ref());
                     // quote!(DataType::Extension(#fqname.to_owned(), Box::new(#datatype), #metadata))
@@ -163,4 +167,23 @@ pub fn is_backed_by_arrow_buffer(typ: &DataType) -> bool {
             | DataType::Float32
             | DataType::Float64
     )
+}
+
+pub fn quoted_arrow_primitive_type(datatype: &DataType) -> TokenStream {
+    match datatype {
+        DataType::Null => quote!(NullType),
+        DataType::Boolean => quote!(BooleanType),
+        DataType::Int8 => quote!(Int8Type),
+        DataType::Int16 => quote!(Int16Type),
+        DataType::Int32 => quote!(Int32Type),
+        DataType::Int64 => quote!(Int64Type),
+        DataType::UInt8 => quote!(UInt8Type),
+        DataType::UInt16 => quote!(UInt16Type),
+        DataType::UInt32 => quote!(UInt32Type),
+        DataType::UInt64 => quote!(UInt64Type),
+        DataType::Float16 => quote!(Float16Type),
+        DataType::Float32 => quote!(Float32Type),
+        DataType::Float64 => quote!(Float64Type),
+        _ => unimplemented!("Not a primitive type: {datatype:#?}"),
+    }
 }

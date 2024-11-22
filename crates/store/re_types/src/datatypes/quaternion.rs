@@ -65,17 +65,21 @@ impl ::re_types_core::Loggable for Quaternion {
         )
     }
 
-    fn to_arrow2_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow::datatypes::*;
-        use arrow2::array::*;
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -85,12 +89,11 @@ impl ::re_types_core::Loggable for Quaternion {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let data0_validity: Option<arrow::buffer::NullBuffer> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
-                use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let data0_inner_data: Vec<_> = data0
                     .into_iter()
                     .flat_map(|v| match v {
@@ -100,26 +103,24 @@ impl ::re_types_core::Loggable for Quaternion {
                         ),
                     })
                     .collect();
-                let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                    data0_bitmap.as_ref().map(|bitmap| {
-                        bitmap
+                let data0_inner_validity: Option<arrow::buffer::NullBuffer> =
+                    data0_validity.as_ref().map(|validity| {
+                        validity
                             .iter()
                             .map(|b| std::iter::repeat(b).take(4usize))
                             .flatten()
                             .collect::<Vec<_>>()
                             .into()
                     });
-                FixedSizeListArray::new(
-                    Self::arrow_datatype().into(),
-                    PrimitiveArray::new(
-                        DataType::Float32.into(),
-                        data0_inner_data.into_iter().collect(),
-                        data0_inner_bitmap,
-                    )
-                    .boxed(),
-                    data0_bitmap,
-                )
-                .boxed()
+                as_array_ref(FixedSizeListArray::new(
+                    std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
+                    4,
+                    as_array_ref(PrimitiveArray::<Float32Type>::new(
+                        ScalarBuffer::from(data0_inner_data.into_iter().collect::<Vec<_>>()),
+                        data0_inner_validity,
+                    )),
+                    data0_validity,
+                ))
             }
         })
     }

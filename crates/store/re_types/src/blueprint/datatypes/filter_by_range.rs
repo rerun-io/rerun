@@ -57,18 +57,30 @@ impl ::re_types_core::Loggable for FilterByRange {
         ]))
     }
 
-    fn to_arrow2_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow::datatypes::*;
-        use arrow2::array::*;
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
+            let fields = Fields::from(vec![
+                Field::new(
+                    "start",
+                    <crate::datatypes::TimeInt>::arrow_datatype(),
+                    false,
+                ),
+                Field::new("end", <crate::datatypes::TimeInt>::arrow_datatype(), false),
+            ]);
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
@@ -76,12 +88,12 @@ impl ::re_types_core::Loggable for FilterByRange {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let validity: Option<arrow::buffer::NullBuffer> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            StructArray::new(
-                Self::arrow_datatype().into(),
+            as_array_ref(StructArray::new(
+                fields,
                 vec![
                     {
                         let (somes, start): (Vec<_>, Vec<_>) = data
@@ -91,19 +103,19 @@ impl ::re_types_core::Loggable for FilterByRange {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let start_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let start_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
-                        PrimitiveArray::new(
-                            DataType::Int64.into(),
-                            start
-                                .into_iter()
-                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
-                                .collect(),
-                            start_bitmap,
-                        )
-                        .boxed()
+                        as_array_ref(PrimitiveArray::<Int64Type>::new(
+                            ScalarBuffer::from(
+                                start
+                                    .into_iter()
+                                    .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
+                                    .collect::<Vec<_>>(),
+                            ),
+                            start_validity,
+                        ))
                     },
                     {
                         let (somes, end): (Vec<_>, Vec<_>) = data
@@ -113,23 +125,22 @@ impl ::re_types_core::Loggable for FilterByRange {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let end_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let end_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
-                        PrimitiveArray::new(
-                            DataType::Int64.into(),
-                            end.into_iter()
-                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
-                                .collect(),
-                            end_bitmap,
-                        )
-                        .boxed()
+                        as_array_ref(PrimitiveArray::<Int64Type>::new(
+                            ScalarBuffer::from(
+                                end.into_iter()
+                                    .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
+                                    .collect::<Vec<_>>(),
+                            ),
+                            end_validity,
+                        ))
                     },
                 ],
-                bitmap,
-            )
-            .boxed()
+                validity,
+            ))
         })
     }
 
