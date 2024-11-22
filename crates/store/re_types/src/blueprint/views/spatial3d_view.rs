@@ -29,18 +29,24 @@ pub struct Spatial3DView {
     /// If not specified, the default is to show the latest state of each component.
     /// If a timeline is specified more than once, the first entry will be used.
     pub time_ranges: crate::blueprint::archetypes::VisibleTimeRanges,
+
+    /// Configures the default camera position of the 3D view.
+    pub default_camera: crate::blueprint::archetypes::DefaultCamera,
 }
 
 impl ::re_types_core::SizeBytes for Spatial3DView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
-        self.background.heap_size_bytes() + self.time_ranges.heap_size_bytes()
+        self.background.heap_size_bytes()
+            + self.time_ranges.heap_size_bytes()
+            + self.default_camera.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <crate::blueprint::archetypes::Background>::is_pod()
             && <crate::blueprint::archetypes::VisibleTimeRanges>::is_pod()
+            && <crate::blueprint::archetypes::DefaultCamera>::is_pod()
     }
 }
 

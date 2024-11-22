@@ -29,6 +29,7 @@ from .api import (
 )
 from .archetypes import (
     Background as Background,
+    DefaultCamera as DefaultCamera,
     PlotLegend as PlotLegend,
     ScalarAxis as ScalarAxis,
     TensorScalarMapping as TensorScalarMapping,

@@ -13,7 +13,13 @@ use re_space_view::controls::{
     ROTATE3D_BUTTON, SPEED_UP_3D_MODIFIER, TRACKED_OBJECT_RESTORE_KEY,
 };
 use re_types::{
-    blueprint::archetypes::Background, components::ViewCoordinates, view_coordinates::SignedAxis3,
+    blueprint::{
+        archetypes::{Background, DefaultCamera},
+        components::{CameraOrigin, CameraTarget},
+    },
+    components::ViewCoordinates,
+    datatypes::Vec3D,
+    view_coordinates::SignedAxis3,
 };
 use re_ui::{ContextExt, ModifiersMarkdown, MouseButtonMarkdown};
 use re_viewer_context::{
@@ -40,6 +46,8 @@ use super::eye::{Eye, ViewEye};
 #[derive(Clone)]
 pub struct View3DState {
     pub view_eye: Option<ViewEye>,
+
+    pub view_eye_default: Option<ViewEye>,
 
     /// Used to show the orbit center of the eye-camera when the user interacts.
     /// None: user has never interacted with the eye-camera.
@@ -73,6 +81,7 @@ impl Default for View3DState {
     fn default() -> Self {
         Self {
             view_eye: Default::default(),
+            view_eye_default: Default::default(),
             last_eye_interaction: None,
             tracked_entity: None,
             camera_before_tracked_entity: None,
@@ -92,6 +101,10 @@ fn ease_out(t: f32) -> f32 {
     1. - (1. - t) * (1. - t)
 }
 
+fn vec3(v: Vec3D) -> Vec3 {
+    Vec3::from_array(v.0)
+}
+
 impl View3DState {
     pub fn reset_camera(
         &mut self,
@@ -101,7 +114,10 @@ impl View3DState {
         // Mark as interaction since we want to stop doing any automatic interpolations,
         // even if this is caused by a full reset.
         self.last_eye_interaction = Some(Instant::now());
-        self.interpolate_to_view_eye(default_eye(&scene_bbox.current, scene_view_coordinates));
+        self.interpolate_to_view_eye(
+            self.view_eye_default
+                .unwrap_or(default_eye(&scene_bbox.current, scene_view_coordinates)),
+        );
         self.tracked_entity = None;
         self.camera_before_tracked_entity = None;
     }
@@ -112,7 +128,28 @@ impl View3DState {
         bounding_boxes: &SceneBoundingBoxes,
         space_cameras: &[SpaceCamera3D],
         scene_view_coordinates: Option<ViewCoordinates>,
+        default_camera: &ViewProperty,
     ) -> ViewEye {
+        if let Ok(Some(pos_origin)) = default_camera.component_or_empty::<CameraOrigin>() {
+            if let Ok(Some(pos_target)) = default_camera.component_or_empty::<CameraTarget>() {
+                if self.view_eye_default.is_none() {
+                    // Facking last eye interaction. Otherwise the next `if`
+                    // statement in this function causes the camera to change
+                    // if there is a change to the bounding box (e.g. when new
+                    // objects are added to the scene.)
+                    self.last_eye_interaction = Some(Instant::now());
+
+                    self.view_eye_default = Some(from_to_eye(
+                        vec3(pos_origin.0),
+                        vec3(pos_target.0),
+                        scene_view_coordinates,
+                    ));
+
+                    self.view_eye = self.view_eye_default;
+                }
+            }
+        }
+
         // If the user has not interacted with the eye-camera yet, continue to
         // interpolate to the new default eye. This gives much better robustness
         // with scenes that change over time.
@@ -446,11 +483,18 @@ impl SpatialSpaceView3D {
             return Ok(()); // protect against problems with zero-sized views
         }
 
+        let default_camera = ViewProperty::from_archetype::<DefaultCamera>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.space_view_id,
+        );
+
         let view_eye = state.state_3d.update_eye(
             &response,
             &state.bounding_boxes,
             space_cameras,
             scene_view_coordinates,
+            &default_camera,
         );
         let eye = view_eye.to_eye();
 
@@ -907,6 +951,22 @@ fn add_picking_ray(
         .color(ray_color.gamma_multiply(0.7))
         // TODO(andreas): Make this dashed.
         .radius(Size::new_ui_points(0.5));
+}
+
+fn from_to_eye(from: Vec3, to: Vec3, scene_view_coordinates: Option<ViewCoordinates>) -> ViewEye {
+    let scene_up = scene_view_coordinates
+        .unwrap_or_default()
+        .up()
+        .unwrap_or(SignedAxis3::POSITIVE_Z);
+
+    let eye_up: glam::Vec3 = scene_up.into();
+
+    ViewEye::new_orbital(
+        to,
+        from.distance(to),
+        Quat::from_affine3(&Affine3A::look_at_rh(from, to, eye_up).inverse()),
+        eye_up,
+    )
 }
 
 fn default_eye(

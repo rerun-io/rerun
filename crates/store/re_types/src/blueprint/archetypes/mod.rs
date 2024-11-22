@@ -2,6 +2,7 @@
 
 mod background;
 mod dataframe_query;
+mod default_camera;
 mod map_background;
 mod map_zoom;
 mod plot_legend;
@@ -17,6 +18,7 @@ mod visual_bounds2d;
 
 pub use self::background::Background;
 pub use self::dataframe_query::DataframeQuery;
+pub use self::default_camera::DefaultCamera;
 pub use self::map_background::MapBackground;
 pub use self::map_zoom::MapZoom;
 pub use self::plot_legend::PlotLegend;

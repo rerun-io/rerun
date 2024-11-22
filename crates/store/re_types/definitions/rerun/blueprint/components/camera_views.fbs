@@ -1,0 +1,24 @@
+namespace rerun.blueprint.components;
+
+
+/// Origin of a camera.
+struct CameraOrigin (
+  "attr.rust.derive": "PartialEq, Copy",
+  "attr.rust.repr": "transparent",
+  "attr.rerun.scope": "blueprint"
+) {
+    /// Position of the camera origin.
+    pos: rerun.datatypes.Vec3D (order: 100);
+}
+
+
+/// Target of a camera.
+struct CameraTarget (
+  "attr.rust.derive": "PartialEq, Copy",
+  "attr.rust.repr": "transparent",
+  "attr.rerun.scope": "blueprint"
+) {
+    /// Position of the camera target.
+    pos: rerun.datatypes.Vec3D (order: 100);
+}
+

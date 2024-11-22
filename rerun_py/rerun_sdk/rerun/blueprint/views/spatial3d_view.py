@@ -80,6 +80,7 @@ class Spatial3DView(SpaceView):
         | datatypes.VisibleTimeRangeLike
         | Sequence[datatypes.VisibleTimeRangeLike]
         | None = None,
+        default_camera: blueprint_archetypes.DefaultCamera | None = None,
     ) -> None:
         """
         Construct a blueprint for a new Spatial3DView view.
@@ -117,6 +118,8 @@ class Spatial3DView(SpaceView):
 
             If not specified, the default is to show the latest state of each component.
             If a timeline is specified more than once, the first entry will be used.
+        default_camera:
+            Configures the default camera position of the 3D view.
 
         """
 
@@ -130,6 +133,11 @@ class Spatial3DView(SpaceView):
             if not isinstance(time_ranges, blueprint_archetypes.VisibleTimeRanges):
                 time_ranges = blueprint_archetypes.VisibleTimeRanges(time_ranges)
             properties["VisibleTimeRanges"] = time_ranges
+
+        if default_camera is not None:
+            if not isinstance(default_camera, blueprint_archetypes.DefaultCamera):
+                default_camera = blueprint_archetypes.DefaultCamera(default_camera)
+            properties["DefaultCamera"] = default_camera
 
         super().__init__(
             class_identifier="3D",

@@ -70,6 +70,20 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <CameraOrigin as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Origin of a camera.",
+                custom_placeholder: None,
+            },
+        ),
+        (
+            <CameraTarget as Loggable>::name(),
+            ComponentReflection {
+                docstring_md: "Target of a camera.",
+                custom_placeholder: None,
+            },
+        ),
+        (
             <ColumnShare as Loggable>::name(),
             ComponentReflection {
                 docstring_md: "The layout share of a column in the container.",
@@ -1678,6 +1692,21 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Select", docstring_md :
                     "Selected columns. If unset, all columns are selected.", is_required
                     : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.DefaultCamera"),
+            ArchetypeReflection {
+                display_name: "Default camera",
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.CameraOrigin".into(), display_name :
+                    "Origin", docstring_md : "Origin of the camera view.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.CameraTarget".into(), display_name :
+                    "Target", docstring_md : "Target of the camera view.", is_required :
+                    false, },
                 ],
             },
         ),

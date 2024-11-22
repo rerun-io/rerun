@@ -17,6 +17,11 @@ Configures which range on each timeline is shown by this view (unless specified 
 
 If not specified, the default is to show the latest state of each component.
 If a timeline is specified more than once, the first entry will be used.
+### `default_camera`
+Configures the default camera position of the 3D view.
+
+* `origin`: Origin of the camera view.
+* `target`: Target of the camera view.
 
 ## API reference links
  * 🐍 [Python API docs for `Spatial3DView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views#rerun.blueprint.views.Spatial3DView)
@@ -52,6 +57,7 @@ snippet: views/spatial3d
 * [`Points3D`](../archetypes/points3d.md)
 * [`Transform3D`](../archetypes/transform3d.md)
 * [`ViewCoordinates`](../archetypes/view_coordinates.md)
+* [`DefaultCamera`](../archetypes/default_camera.md)
 * [`Arrows2D`](../archetypes/arrows2d.md) (if logged under a projection)
 * [`AssetVideo`](../archetypes/asset_video.md) (if logged under a projection)
 * [`Boxes2D`](../archetypes/boxes2d.md) (if logged under a projection)

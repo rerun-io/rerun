@@ -13,6 +13,8 @@ from .background_kind import (
     BackgroundKindLike,
     BackgroundKindType,
 )
+from .camera_origin import CameraOrigin, CameraOriginBatch, CameraOriginType
+from .camera_target import CameraTarget, CameraTargetBatch, CameraTargetType
 from .column_share import ColumnShare, ColumnShareBatch, ColumnShareType
 from .component_column_selector import (
     ComponentColumnSelector,
@@ -79,6 +81,12 @@ __all__ = [
     "BackgroundKindBatch",
     "BackgroundKindLike",
     "BackgroundKindType",
+    "CameraOrigin",
+    "CameraOriginBatch",
+    "CameraOriginType",
+    "CameraTarget",
+    "CameraTargetBatch",
+    "CameraTargetType",
     "ColumnShare",
     "ColumnShareBatch",
     "ColumnShareType",

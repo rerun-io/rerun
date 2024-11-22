@@ -1,0 +1,16 @@
+namespace rerun.blueprint.archetypes;
+
+
+/// Defines a default camera view.
+table DefaultCamera (
+  "attr.docs.category": "Spatial 3D",
+  "attr.docs.view_types": "Spatial3DView, Spatial2DView: if logged above active projection",
+  "attr.rust.derive": "Copy, PartialEq",
+  "attr.rerun.scope": "blueprint"
+) {
+  /// Origin of the camera view.
+  origin: rerun.blueprint.components.CameraOrigin ("attr.rerun.component_optional", nullable, order: 1100);
+
+  /// Target of the camera view.
+  target: rerun.blueprint.components.CameraTarget ("attr.rerun.component_optional", nullable, order: 1200);
+}
