@@ -72,8 +72,8 @@ impl std::ops::DerefMut for TensorDimensionIndexSlider {
 
 impl ::re_types_core::Loggable for TensorDimensionIndexSlider {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
-        crate::blueprint::datatypes::TensorDimensionIndexSlider::arrow2_datatype()
+    fn arrow_datatype() -> arrow::datatypes::DataType {
+        crate::blueprint::datatypes::TensorDimensionIndexSlider::arrow_datatype()
     }
 
     fn to_arrow2_opt<'a>(

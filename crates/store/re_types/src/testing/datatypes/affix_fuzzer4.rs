@@ -45,28 +45,30 @@ impl ::re_types_core::SizeBytes for AffixFuzzer4 {
 
 impl ::re_types_core::Loggable for AffixFuzzer4 {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
+        use arrow::datatypes::*;
         DataType::Union(
-            std::sync::Arc::new(vec![
-                Field::new("_null_markers", DataType::Null, true),
-                Field::new(
-                    "single_required",
-                    <crate::testing::datatypes::AffixFuzzer3>::arrow2_datatype(),
-                    false,
-                ),
-                Field::new(
-                    "many_required",
-                    DataType::List(std::sync::Arc::new(Field::new(
-                        "item",
-                        <crate::testing::datatypes::AffixFuzzer3>::arrow2_datatype(),
+            UnionFields::new(
+                vec![0, 1, 2],
+                vec![
+                    Field::new("_null_markers", DataType::Null, true),
+                    Field::new(
+                        "single_required",
+                        <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
                         false,
-                    ))),
-                    false,
-                ),
-            ]),
-            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32])),
+                    ),
+                    Field::new(
+                        "many_required",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
+                            false,
+                        ))),
+                        false,
+                    ),
+                ],
+            ),
             UnionMode::Dense,
         )
     }
@@ -80,7 +82,8 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             // Dense Arrow union
             let data: Vec<_> = data
@@ -99,7 +102,11 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                 })
                 .collect();
             let fields = vec![
-                NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count()).boxed(),
+                NullArray::new(
+                    arrow2::datatypes::DataType::Null,
+                    data.iter().filter(|v| v.is_none()).count(),
+                )
+                .boxed(),
                 {
                     let single_required: Vec<_> = data
                         .iter()
@@ -137,9 +144,10 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                         ListArray::try_new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
-                                <crate::testing::datatypes::AffixFuzzer3>::arrow2_datatype(),
+                                <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
                                 false,
-                            ))),
+                            )))
+                            .into(),
                             offsets,
                             {
                                 _ = many_required_inner_bitmap;
@@ -177,7 +185,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                     })
                     .collect()
             });
-            UnionArray::new(Self::arrow2_datatype(), types, fields, offsets).boxed()
+            UnionArray::new(Self::arrow_datatype().into(), types, fields, offsets).boxed()
         })
     }
 
@@ -189,13 +197,14 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -208,7 +217,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        let expected = Self::arrow2_datatype();
+                        let expected = Self::arrow_datatype();
                         let actual = arrow_data.data_type().clone();
                         DeserializationError::datatype_mismatch(expected, actual)
                     })
@@ -242,7 +251,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                             .ok_or_else(|| {
                                 let expected = DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::testing::datatypes::AffixFuzzer3>::arrow2_datatype(),
+                                    <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
                                     false,
                                 )));
                                 let actual = arrow_data.data_type().clone();
@@ -344,7 +353,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                                 }),
                                 _ => {
                                     return Err(DeserializationError::missing_union_arm(
-                                        Self::arrow2_datatype(),
+                                        Self::arrow_datatype(),
                                         "<invalid>",
                                         *typ as _,
                                     ));

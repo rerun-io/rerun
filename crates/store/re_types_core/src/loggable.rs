@@ -18,11 +18,13 @@ use crate::{Archetype, ComponentBatch, LoggableBatch};
 pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
     /// The underlying [`arrow::datatypes::DataType`], excluding datatype extensions.
     fn arrow_datatype() -> arrow::datatypes::DataType {
-        Self::arrow2_datatype().into()
+        Self::arrow2_datatype().into() // TODO(#3741): remove as part of porting to arrow2 (obviously)
     }
 
     /// The underlying [`arrow2::datatypes::DataType`], excluding datatype extensions.
-    fn arrow2_datatype() -> arrow2::datatypes::DataType;
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+        Self::arrow_datatype().into()
+    }
 
     /// Given an iterator of options of owned or reference values to the current
     /// [`Loggable`], serializes them into an Arrow array.

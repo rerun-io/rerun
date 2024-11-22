@@ -50,33 +50,35 @@ impl ::re_types_core::SizeBytes for AffixFuzzer3 {
 
 impl ::re_types_core::Loggable for AffixFuzzer3 {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
+        use arrow::datatypes::*;
         DataType::Union(
-            std::sync::Arc::new(vec![
-                Field::new("_null_markers", DataType::Null, true),
-                Field::new("degrees", DataType::Float32, false),
-                Field::new(
-                    "craziness",
-                    DataType::List(std::sync::Arc::new(Field::new(
-                        "item",
-                        <crate::testing::datatypes::AffixFuzzer1>::arrow2_datatype(),
+            UnionFields::new(
+                vec![0, 1, 2, 3, 4],
+                vec![
+                    Field::new("_null_markers", DataType::Null, true),
+                    Field::new("degrees", DataType::Float32, false),
+                    Field::new(
+                        "craziness",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
+                            false,
+                        ))),
                         false,
-                    ))),
-                    false,
-                ),
-                Field::new(
-                    "fixed_size_shenanigans",
-                    DataType::FixedSizeList(
-                        std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
-                        3usize,
                     ),
-                    false,
-                ),
-                Field::new("empty_variant", DataType::Null, true),
-            ]),
-            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32, 4i32])),
+                    Field::new(
+                        "fixed_size_shenanigans",
+                        DataType::FixedSizeList(
+                            std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
+                            3,
+                        ),
+                        false,
+                    ),
+                    Field::new("empty_variant", DataType::Null, true),
+                ],
+            ),
             UnionMode::Dense,
         )
     }
@@ -90,7 +92,8 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             // Dense Arrow union
             let data: Vec<_> = data
@@ -111,7 +114,11 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                 })
                 .collect();
             let fields = vec![
-                NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count()).boxed(),
+                NullArray::new(
+                    arrow2::datatypes::DataType::Null,
+                    data.iter().filter(|v| v.is_none()).count(),
+                )
+                .boxed(),
                 {
                     let degrees: Vec<_> = data
                         .iter()
@@ -122,7 +129,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         .collect();
                     let degrees_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                     PrimitiveArray::new(
-                        DataType::Float32,
+                        DataType::Float32.into(),
                         degrees.into_iter().collect(),
                         degrees_bitmap,
                     )
@@ -149,9 +156,10 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         ListArray::try_new(
                             DataType::List(std::sync::Arc::new(Field::new(
                                 "item",
-                                <crate::testing::datatypes::AffixFuzzer1>::arrow2_datatype(),
+                                <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
                                 false,
-                            ))),
+                            )))
+                            .into(),
                             offsets,
                             {
                                 _ = craziness_inner_bitmap;
@@ -182,10 +190,11 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                         FixedSizeListArray::new(
                             DataType::FixedSizeList(
                                 std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
-                                3usize,
-                            ),
+                                3,
+                            )
+                            .into(),
                             PrimitiveArray::new(
-                                DataType::Float32,
+                                DataType::Float32.into(),
                                 fixed_size_shenanigans_inner_data.into_iter().collect(),
                                 fixed_size_shenanigans_inner_bitmap,
                             )
@@ -196,7 +205,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     }
                 },
                 NullArray::new(
-                    DataType::Null,
+                    arrow2::datatypes::DataType::Null,
                     data.iter()
                         .filter(|datum| matches!(datum.as_deref(), Some(Self::EmptyVariant)))
                         .count(),
@@ -239,7 +248,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                     })
                     .collect()
             });
-            UnionArray::new(Self::arrow2_datatype(), types, fields, offsets).boxed()
+            UnionArray::new(Self::arrow_datatype().into(), types, fields, offsets).boxed()
         })
     }
 
@@ -251,13 +260,14 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -270,7 +280,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        let expected = Self::arrow2_datatype();
+                        let expected = Self::arrow_datatype();
                         let actual = arrow_data.data_type().clone();
                         DeserializationError::datatype_mismatch(expected, actual)
                     })
@@ -312,7 +322,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                             .ok_or_else(|| {
                                 let expected = DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::testing::datatypes::AffixFuzzer1>::arrow2_datatype(),
+                                    <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
                                     false,
                                 )));
                                 let actual = arrow_data.data_type().clone();
@@ -379,7 +389,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                     std::sync::Arc::new(
                                         Field::new("item", DataType::Float32, false),
                                     ),
-                                    3usize,
+                                    3,
                                 );
                                 let actual = arrow_data.data_type().clone();
                                 DeserializationError::datatype_mismatch(expected, actual)
@@ -531,7 +541,7 @@ impl ::re_types_core::Loggable for AffixFuzzer3 {
                                         _ => {
                                             return Err(
                                                 DeserializationError::missing_union_arm(
-                                                    Self::arrow2_datatype(),
+                                                    Self::arrow_datatype(),
                                                     "<invalid>",
                                                     *typ as _,
                                                 ),

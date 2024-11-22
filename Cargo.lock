@@ -6264,6 +6264,7 @@ version = "0.21.0-alpha.1+dev"
 dependencies = [
  "anyhow",
  "array-init",
+ "arrow",
  "bytemuck",
  "document-features",
  "ecolor",

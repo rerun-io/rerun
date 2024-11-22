@@ -53,9 +53,9 @@ crate::macros::impl_into_cow!(Utf8);
 
 impl crate::Loggable for Utf8 {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
+        use arrow::datatypes::*;
         DataType::Utf8
     }
 
@@ -68,7 +68,8 @@ impl crate::Loggable for Utf8 {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use crate::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -95,7 +96,7 @@ impl crate::Loggable for Utf8 {
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                 unsafe {
                     Utf8Array::<i32>::new_unchecked(
-                        Self::arrow2_datatype(),
+                        Self::arrow_datatype().into(),
                         offsets,
                         inner_data,
                         data0_bitmap,
@@ -114,13 +115,14 @@ impl crate::Loggable for Utf8 {
     {
         #![allow(clippy::wildcard_imports)]
         use crate::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::Utf8Array<i32>>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })

@@ -64,20 +64,20 @@ impl ::re_types_core::SizeBytes for ClassDescription {
 
 impl ::re_types_core::Loggable for ClassDescription {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![
             Field::new(
                 "info",
-                <crate::datatypes::AnnotationInfo>::arrow2_datatype(),
+                <crate::datatypes::AnnotationInfo>::arrow_datatype(),
                 false,
             ),
             Field::new(
                 "keypoint_annotations",
                 DataType::List(std::sync::Arc::new(Field::new(
                     "item",
-                    <crate::datatypes::AnnotationInfo>::arrow2_datatype(),
+                    <crate::datatypes::AnnotationInfo>::arrow_datatype(),
                     false,
                 ))),
                 false,
@@ -86,7 +86,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                 "keypoint_connections",
                 DataType::List(std::sync::Arc::new(Field::new(
                     "item",
-                    <crate::datatypes::KeypointPair>::arrow2_datatype(),
+                    <crate::datatypes::KeypointPair>::arrow_datatype(),
                     false,
                 ))),
                 false,
@@ -103,7 +103,8 @@ impl ::re_types_core::Loggable for ClassDescription {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -117,7 +118,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                Self::arrow2_datatype(),
+                Self::arrow_datatype().into(),
                 vec![
                     {
                         let (somes, info): (Vec<_>, Vec<_>) = data
@@ -168,9 +169,10 @@ impl ::re_types_core::Loggable for ClassDescription {
                             ListArray::try_new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::datatypes::AnnotationInfo>::arrow2_datatype(),
+                                    <crate::datatypes::AnnotationInfo>::arrow_datatype(),
                                     false,
-                                ))),
+                                )))
+                                .into(),
                                 offsets,
                                 {
                                     _ = keypoint_annotations_inner_bitmap;
@@ -215,9 +217,10 @@ impl ::re_types_core::Loggable for ClassDescription {
                             ListArray::try_new(
                                 DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::datatypes::KeypointPair>::arrow2_datatype(),
+                                    <crate::datatypes::KeypointPair>::arrow_datatype(),
                                     false,
-                                ))),
+                                )))
+                                .into(),
                                 offsets,
                                 {
                                     _ = keypoint_connections_inner_bitmap;
@@ -245,13 +248,14 @@ impl ::re_types_core::Loggable for ClassDescription {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -269,7 +273,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                 let info = {
                     if !arrays_by_name.contains_key("info") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "info",
                         ))
                         .with_context("rerun.datatypes.ClassDescription");
@@ -282,7 +286,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                 let keypoint_annotations = {
                     if !arrays_by_name.contains_key("keypoint_annotations") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "keypoint_annotations",
                         ))
                         .with_context("rerun.datatypes.ClassDescription");
@@ -295,7 +299,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                             .ok_or_else(|| {
                                 let expected = DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::datatypes::AnnotationInfo>::arrow2_datatype(),
+                                    <crate::datatypes::AnnotationInfo>::arrow_datatype(),
                                     false,
                                 )));
                                 let actual = arrow_data.data_type().clone();
@@ -352,7 +356,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                 let keypoint_connections = {
                     if !arrays_by_name.contains_key("keypoint_connections") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "keypoint_connections",
                         ))
                         .with_context("rerun.datatypes.ClassDescription");
@@ -365,7 +369,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                             .ok_or_else(|| {
                                 let expected = DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::datatypes::KeypointPair>::arrow2_datatype(),
+                                    <crate::datatypes::KeypointPair>::arrow_datatype(),
                                     false,
                                 )));
                                 let actual = arrow_data.data_type().clone();

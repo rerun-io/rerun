@@ -864,17 +864,17 @@ fn quote_trait_impls_for_datatype_or_component(
     let quoted_arrow_datatype = if let Some(forwarded_type) = forwarded_type.as_ref() {
         quote! {
             #[inline]
-            fn arrow2_datatype() -> arrow2::datatypes::DataType {
-                #forwarded_type::arrow2_datatype()
+            fn arrow_datatype() -> arrow::datatypes::DataType {
+                #forwarded_type::arrow_datatype()
             }
         }
     } else {
         let datatype = ArrowDataTypeTokenizer(&datatype, false);
         quote! {
             #[inline]
-            fn arrow2_datatype() -> arrow2::datatypes::DataType {
+            fn arrow_datatype() -> arrow::datatypes::DataType {
                 #![allow(clippy::wildcard_imports)]
-                use arrow2::datatypes::*;
+                use arrow::datatypes::*;
                 #datatype
             }
         }
@@ -906,7 +906,8 @@ fn quote_trait_impls_for_datatype_or_component(
                 // re_tracing::profile_function!();
 
                 #![allow(clippy::wildcard_imports)]
-                use arrow2::{datatypes::*, array::*, buffer::*};
+                use arrow::datatypes::*;
+                use arrow2::{ array::*, buffer::*};
                 use ::re_types_core::{Loggable as _, ResultExt as _};
 
                 // This code-path cannot have null fields. If it does have a validity mask
@@ -948,7 +949,8 @@ fn quote_trait_impls_for_datatype_or_component(
             // re_tracing::profile_function!();
 
             #![allow(clippy::wildcard_imports)]
-            use arrow2::{datatypes::*, array::*, buffer::*};
+            use arrow::datatypes::*;
+            use arrow2::{ array::*, buffer::*};
             use ::re_types_core::{Loggable as _, ResultExt as _};
             Ok(#quoted_deserializer)
         }
@@ -987,7 +989,8 @@ fn quote_trait_impls_for_datatype_or_component(
 
                 #![allow(clippy::wildcard_imports)]
                 #![allow(clippy::manual_is_variant_and)]
-                use arrow2::{datatypes::*, array::*};
+                use arrow::datatypes::*;
+                use arrow2::array::*;
                 use ::re_types_core::{Loggable as _, ResultExt as _};
 
                 Ok(#quoted_serializer)

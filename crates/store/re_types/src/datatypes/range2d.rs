@@ -45,18 +45,18 @@ impl ::re_types_core::SizeBytes for Range2D {
 
 impl ::re_types_core::Loggable for Range2D {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![
             Field::new(
                 "x_range",
-                <crate::datatypes::Range1D>::arrow2_datatype(),
+                <crate::datatypes::Range1D>::arrow_datatype(),
                 false,
             ),
             Field::new(
                 "y_range",
-                <crate::datatypes::Range1D>::arrow2_datatype(),
+                <crate::datatypes::Range1D>::arrow_datatype(),
                 false,
             ),
         ]))
@@ -71,7 +71,8 @@ impl ::re_types_core::Loggable for Range2D {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -85,7 +86,7 @@ impl ::re_types_core::Loggable for Range2D {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                Self::arrow2_datatype(),
+                Self::arrow_datatype().into(),
                 vec![
                     {
                         let (somes, x_range): (Vec<_>, Vec<_>) = data
@@ -122,10 +123,11 @@ impl ::re_types_core::Loggable for Range2D {
                                         DataType::Float64,
                                         false,
                                     )),
-                                    2usize,
-                                ),
+                                    2,
+                                )
+                                .into(),
                                 PrimitiveArray::new(
-                                    DataType::Float64,
+                                    DataType::Float64.into(),
                                     x_range_inner_data.into_iter().collect(),
                                     x_range_inner_bitmap,
                                 )
@@ -170,10 +172,11 @@ impl ::re_types_core::Loggable for Range2D {
                                         DataType::Float64,
                                         false,
                                     )),
-                                    2usize,
-                                ),
+                                    2,
+                                )
+                                .into(),
                                 PrimitiveArray::new(
-                                    DataType::Float64,
+                                    DataType::Float64.into(),
                                     y_range_inner_data.into_iter().collect(),
                                     y_range_inner_bitmap,
                                 )
@@ -198,13 +201,14 @@ impl ::re_types_core::Loggable for Range2D {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -222,7 +226,7 @@ impl ::re_types_core::Loggable for Range2D {
                 let x_range = {
                     if !arrays_by_name.contains_key("x_range") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "x_range",
                         ))
                         .with_context("rerun.datatypes.Range2D");
@@ -239,7 +243,7 @@ impl ::re_types_core::Loggable for Range2D {
                                         DataType::Float64,
                                         false,
                                     )),
-                                    2usize,
+                                    2,
                                 );
                                 let actual = arrow_data.data_type().clone();
                                 DeserializationError::datatype_mismatch(expected, actual)
@@ -303,7 +307,7 @@ impl ::re_types_core::Loggable for Range2D {
                 let y_range = {
                     if !arrays_by_name.contains_key("y_range") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "y_range",
                         ))
                         .with_context("rerun.datatypes.Range2D");
@@ -320,7 +324,7 @@ impl ::re_types_core::Loggable for Range2D {
                                         DataType::Float64,
                                         false,
                                     )),
-                                    2usize,
+                                    2,
                                 );
                                 let actual = arrow_data.data_type().clone();
                                 DeserializationError::datatype_mismatch(expected, actual)

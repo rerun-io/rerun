@@ -55,12 +55,12 @@ impl<I: Into<crate::datatypes::Vec2D>, T: IntoIterator<Item = I>> From<T> for Li
 
 impl ::re_types_core::Loggable for LineStrip2D {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
+        use arrow::datatypes::*;
         DataType::List(std::sync::Arc::new(Field::new(
             "item",
-            <crate::datatypes::Vec2D>::arrow2_datatype(),
+            <crate::datatypes::Vec2D>::arrow_datatype(),
             false,
         )))
     }
@@ -74,7 +74,8 @@ impl ::re_types_core::Loggable for LineStrip2D {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -99,7 +100,7 @@ impl ::re_types_core::Loggable for LineStrip2D {
                 let data0_inner_data: Vec<_> = data0.into_iter().flatten().flatten().collect();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                 ListArray::try_new(
-                    Self::arrow2_datatype(),
+                    Self::arrow_datatype().into(),
                     offsets,
                     {
                         use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
@@ -112,10 +113,11 @@ impl ::re_types_core::Loggable for LineStrip2D {
                         FixedSizeListArray::new(
                             DataType::FixedSizeList(
                                 std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
-                                2usize,
-                            ),
+                                2,
+                            )
+                            .into(),
                             PrimitiveArray::new(
-                                DataType::Float32,
+                                DataType::Float32.into(),
                                 data0_inner_data_inner_data.into_iter().collect(),
                                 data0_inner_data_inner_bitmap,
                             )
@@ -139,13 +141,14 @@ impl ::re_types_core::Loggable for LineStrip2D {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::ListArray<i32>>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -166,7 +169,7 @@ impl ::re_types_core::Loggable for LineStrip2D {
                                         DataType::Float32,
                                         false,
                                     )),
-                                    2usize,
+                                    2,
                                 );
                                 let actual = arrow_data_inner.data_type().clone();
                                 DeserializationError::datatype_mismatch(expected, actual)

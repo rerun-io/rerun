@@ -98,9 +98,9 @@ impl std::fmt::Display for EnumTest {
 
 impl ::re_types_core::Loggable for EnumTest {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
+        use arrow::datatypes::*;
         DataType::UInt8
     }
 
@@ -113,7 +113,8 @@ impl ::re_types_core::Loggable for EnumTest {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -128,7 +129,7 @@ impl ::re_types_core::Loggable for EnumTest {
                 any_nones.then(|| somes.into())
             };
             PrimitiveArray::new(
-                Self::arrow2_datatype(),
+                Self::arrow_datatype().into(),
                 data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
                 data0_bitmap,
             )
@@ -144,12 +145,13 @@ impl ::re_types_core::Loggable for EnumTest {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok(arrow_data
             .as_any()
             .downcast_ref::<UInt8Array>()
             .ok_or_else(|| {
-                let expected = Self::arrow2_datatype();
+                let expected = Self::arrow_datatype();
                 let actual = arrow_data.data_type().clone();
                 DeserializationError::datatype_mismatch(expected, actual)
             })
@@ -165,7 +167,7 @@ impl ::re_types_core::Loggable for EnumTest {
                 Some(6) => Ok(Some(Self::Back)),
                 None => Ok(None),
                 Some(invalid) => Err(DeserializationError::missing_union_arm(
-                    Self::arrow2_datatype(),
+                    Self::arrow_datatype(),
                     "<invalid>",
                     invalid as _,
                 )),

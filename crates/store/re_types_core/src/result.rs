@@ -145,7 +145,7 @@ pub enum DeserializationError {
 
     #[error("Expected field {field_name:?} to be present in {datatype:#?}")]
     MissingStructField {
-        datatype: ::arrow2::datatypes::DataType,
+        datatype: arrow2::datatypes::DataType,
         field_name: String,
         backtrace: _Backtrace,
     },
@@ -163,7 +163,7 @@ pub enum DeserializationError {
 
     #[error("Expected union arm {arm_name:?} (#{arm_index}) to be present in {datatype:#?}")]
     MissingUnionArm {
-        datatype: ::arrow2::datatypes::DataType,
+        datatype: arrow2::datatypes::DataType,
         arm_name: String,
         arm_index: usize,
         backtrace: _Backtrace,
@@ -171,8 +171,8 @@ pub enum DeserializationError {
 
     #[error("Expected {expected:#?} but found {got:#?} instead")]
     DatatypeMismatch {
-        expected: ::arrow2::datatypes::DataType,
-        got: ::arrow2::datatypes::DataType,
+        expected: arrow2::datatypes::DataType,
+        got: arrow2::datatypes::DataType,
         backtrace: _Backtrace,
     },
 
@@ -229,11 +229,11 @@ impl DeserializationError {
 
     #[inline]
     pub fn missing_struct_field(
-        datatype: arrow2::datatypes::DataType,
+        datatype: impl Into<arrow2::datatypes::DataType>,
         field_name: impl AsRef<str>,
     ) -> Self {
         Self::MissingStructField {
-            datatype,
+            datatype: datatype.into(),
             field_name: field_name.as_ref().into(),
             backtrace: ::backtrace::Backtrace::new_unresolved(),
         }
@@ -257,12 +257,12 @@ impl DeserializationError {
 
     #[inline]
     pub fn missing_union_arm(
-        datatype: arrow2::datatypes::DataType,
+        datatype: impl Into<arrow2::datatypes::DataType>,
         arm_name: impl AsRef<str>,
         arm_index: usize,
     ) -> Self {
         Self::MissingUnionArm {
-            datatype,
+            datatype: datatype.into(),
             arm_name: arm_name.as_ref().into(),
             arm_index,
             backtrace: ::backtrace::Backtrace::new_unresolved(),
@@ -271,12 +271,12 @@ impl DeserializationError {
 
     #[inline]
     pub fn datatype_mismatch(
-        expected: arrow2::datatypes::DataType,
-        got: arrow2::datatypes::DataType,
+        expected: impl Into<arrow2::datatypes::DataType>,
+        got: impl Into<arrow2::datatypes::DataType>,
     ) -> Self {
         Self::DatatypeMismatch {
-            expected,
-            got,
+            expected: expected.into(),
+            got: got.into(),
             backtrace: ::backtrace::Backtrace::new_unresolved(),
         }
     }

@@ -44,18 +44,18 @@ impl ::re_types_core::SizeBytes for KeypointPair {
 
 impl ::re_types_core::Loggable for KeypointPair {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![
             Field::new(
                 "keypoint0",
-                <crate::datatypes::KeypointId>::arrow2_datatype(),
+                <crate::datatypes::KeypointId>::arrow_datatype(),
                 false,
             ),
             Field::new(
                 "keypoint1",
-                <crate::datatypes::KeypointId>::arrow2_datatype(),
+                <crate::datatypes::KeypointId>::arrow_datatype(),
                 false,
             ),
         ]))
@@ -70,7 +70,8 @@ impl ::re_types_core::Loggable for KeypointPair {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -84,7 +85,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                Self::arrow2_datatype(),
+                Self::arrow_datatype().into(),
                 vec![
                     {
                         let (somes, keypoint0): (Vec<_>, Vec<_>) = data
@@ -99,7 +100,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                             any_nones.then(|| somes.into())
                         };
                         PrimitiveArray::new(
-                            DataType::UInt16,
+                            DataType::UInt16.into(),
                             keypoint0
                                 .into_iter()
                                 .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
@@ -121,7 +122,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                             any_nones.then(|| somes.into())
                         };
                         PrimitiveArray::new(
-                            DataType::UInt16,
+                            DataType::UInt16.into(),
                             keypoint1
                                 .into_iter()
                                 .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
@@ -145,13 +146,14 @@ impl ::re_types_core::Loggable for KeypointPair {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -169,7 +171,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                 let keypoint0 = {
                     if !arrays_by_name.contains_key("keypoint0") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "keypoint0",
                         ))
                         .with_context("rerun.datatypes.KeypointPair");
@@ -191,7 +193,7 @@ impl ::re_types_core::Loggable for KeypointPair {
                 let keypoint1 = {
                     if !arrays_by_name.contains_key("keypoint1") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "keypoint1",
                         ))
                         .with_context("rerun.datatypes.KeypointPair");

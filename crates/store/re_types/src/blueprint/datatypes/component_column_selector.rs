@@ -44,18 +44,18 @@ impl ::re_types_core::SizeBytes for ComponentColumnSelector {
 
 impl ::re_types_core::Loggable for ComponentColumnSelector {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![
             Field::new(
                 "entity_path",
-                <crate::datatypes::EntityPath>::arrow2_datatype(),
+                <crate::datatypes::EntityPath>::arrow_datatype(),
                 false,
             ),
             Field::new(
                 "component",
-                <crate::datatypes::Utf8>::arrow2_datatype(),
+                <crate::datatypes::Utf8>::arrow_datatype(),
                 false,
             ),
         ]))
@@ -70,7 +70,8 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -84,7 +85,7 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                Self::arrow2_datatype(),
+                Self::arrow_datatype().into(),
                 vec![
                     {
                         let (somes, entity_path): (Vec<_>, Vec<_>) = data
@@ -114,7 +115,7 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(
-                                    DataType::Utf8,
+                                    DataType::Utf8.into(),
                                     offsets,
                                     inner_data,
                                     entity_path_bitmap,
@@ -151,7 +152,7 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(
-                                    DataType::Utf8,
+                                    DataType::Utf8.into(),
                                     offsets,
                                     inner_data,
                                     component_bitmap,
@@ -175,13 +176,14 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -199,7 +201,7 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
                 let entity_path = {
                     if !arrays_by_name.contains_key("entity_path") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "entity_path",
                         ))
                         .with_context("rerun.blueprint.datatypes.ComponentColumnSelector");
@@ -258,7 +260,7 @@ impl ::re_types_core::Loggable for ComponentColumnSelector {
                 let component = {
                     if !arrays_by_name.contains_key("component") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "component",
                         ))
                         .with_context("rerun.blueprint.datatypes.ComponentColumnSelector");

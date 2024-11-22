@@ -72,8 +72,8 @@ impl std::ops::DerefMut for ComponentColumnSelector {
 
 impl ::re_types_core::Loggable for ComponentColumnSelector {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
-        crate::blueprint::datatypes::ComponentColumnSelector::arrow2_datatype()
+    fn arrow_datatype() -> arrow::datatypes::DataType {
+        crate::blueprint::datatypes::ComponentColumnSelector::arrow_datatype()
     }
 
     fn to_arrow2_opt<'a>(

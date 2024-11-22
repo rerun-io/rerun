@@ -66,14 +66,14 @@ impl std::ops::DerefMut for AffixFuzzer22 {
 
 impl ::re_types_core::Loggable for AffixFuzzer22 {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![Field::new(
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![Field::new(
             "fixed_sized_native",
             DataType::FixedSizeList(
                 std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
-                4usize,
+                4,
             ),
             false,
         )]))
@@ -88,7 +88,8 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -117,7 +118,8 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer22::from_arrow2_opt(arrow_data)
                 .with_context("rerun.testing.components.AffixFuzzer22#nullable_nested_array")?
