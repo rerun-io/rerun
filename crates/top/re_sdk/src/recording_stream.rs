@@ -1,4 +1,3 @@
-use std::collections::BTreeMap;
 use std::fmt;
 use std::io::IsTerminal;
 use std::sync::Weak;
@@ -7,6 +6,7 @@ use std::sync::{atomic::AtomicI64, Arc};
 use ahash::HashMap;
 use crossbeam::channel::{Receiver, Sender};
 use itertools::Either;
+use nohash_hasher::IntMap;
 use parking_lot::Mutex;
 
 use arrow2::array::{ListArray as ArrowListArray, PrimitiveArray as Arrow2PrimitiveArray};
@@ -1009,14 +1009,14 @@ impl RecordingStream {
         let timelines = timelines
             .into_iter()
             .map(|timeline| (*timeline.timeline(), timeline))
-            .collect::<BTreeMap<_, _>>();
+            .collect::<IntMap<_, _>>();
 
         let components: Result<Vec<_>, ChunkError> = components
             .into_iter()
             .map(|batch| Ok((batch.name(), batch.to_arrow_list_array()?)))
             .collect();
 
-        let components: BTreeMap<ComponentName, ArrowListArray<i32>> =
+        let components: IntMap<ComponentName, ArrowListArray<i32>> =
             components?.into_iter().collect();
 
         let chunk = Chunk::from_auto_row_ids(id, ent_path.into(), timelines, components)?;
@@ -1174,7 +1174,7 @@ impl RecordingStream {
                     .map(|array| (comp_batch.name(), array))
             })
             .collect();
-        let components: BTreeMap<_, _> = comp_batches?.into_iter().collect();
+        let components: IntMap<_, _> = comp_batches?.into_iter().collect();
 
         // NOTE: The timepoint is irrelevant, the `RecordingStream` will overwrite it using its
         // internal clock.
