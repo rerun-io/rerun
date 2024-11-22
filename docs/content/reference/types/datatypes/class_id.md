@@ -14,7 +14,7 @@ uint16
 ## API reference links
  * 🌊 [C++ API docs for `ClassId`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1ClassId.html)
  * 🐍 [Python API docs for `ClassId`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.ClassId)
- * 🦀 [Rust API docs for `ClassId`](https://ref.rerun.io/docs/rust/stable/rerun/datatypes/struct.ClassId.html)
+ * 🦀 [Rust API docs for `ClassId`](https://docs.rs/rerun/latest/rerun/datatypes/struct.ClassId.html)
 
 
 ## Used by

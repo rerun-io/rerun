@@ -158,7 +158,7 @@ impl Modal {
     ///
     /// Typically called by [`ModalHandler::ui`].
     pub fn ui<R>(
-        &mut self,
+        &self,
         ctx: &egui::Context,
         content_ui: impl FnOnce(&mut egui::Ui, &mut bool) -> R,
     ) -> ModalResponse<R> {

@@ -193,8 +193,12 @@ pub(crate) fn wgpu_options(force_wgpu_backend: Option<String>) -> egui_wgpu::Wgp
                     egui_wgpu::SurfaceErrorAction::SkipFrame
                 }
             }),
-            supported_backends: supported_graphics_backends(force_wgpu_backend),
-            device_descriptor: std::sync::Arc::new(|adapter| re_renderer::config::DeviceCaps::from_adapter(adapter).device_descriptor()),
+            wgpu_setup: egui_wgpu::WgpuSetup::CreateNew {
+                device_descriptor: std::sync::Arc::new(|adapter| re_renderer::config::DeviceCaps::from_adapter(adapter).device_descriptor()),
+                supported_backends: supported_graphics_backends(force_wgpu_backend),
+                // TODO(andreas): Use ..Default::default(), please patch egui to have this
+                power_preference: wgpu::util::power_preference_from_env().unwrap_or(wgpu::PowerPreference::HighPerformance),
+             },
             ..Default::default()
         }
 }

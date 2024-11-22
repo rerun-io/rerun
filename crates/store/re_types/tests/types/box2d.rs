@@ -58,7 +58,7 @@ fn roundtrip() {
     .into();
 
     eprintln!("arch = {arch:#?}");
-    let serialized = arch.to_arrow().unwrap();
+    let serialized = arch.to_arrow2().unwrap();
     for (field, array) in &serialized {
         // NOTE: Keep those around please, very useful when debugging.
         // eprintln!("field = {field:#?}");
@@ -75,7 +75,7 @@ fn roundtrip() {
         }
     }
 
-    let deserialized = Boxes2D::from_arrow(serialized).unwrap();
+    let deserialized = Boxes2D::from_arrow2(serialized).unwrap();
     similar_asserts::assert_eq!(expected, deserialized);
 }
 

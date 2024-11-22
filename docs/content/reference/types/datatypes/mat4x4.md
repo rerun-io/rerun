@@ -24,6 +24,6 @@ FixedSizeList<16, float32>
 ## API reference links
  * 🌊 [C++ API docs for `Mat4x4`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1datatypes_1_1Mat4x4.html)
  * 🐍 [Python API docs for `Mat4x4`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.Mat4x4)
- * 🦀 [Rust API docs for `Mat4x4`](https://ref.rerun.io/docs/rust/stable/rerun/datatypes/struct.Mat4x4.html)
+ * 🦀 [Rust API docs for `Mat4x4`](https://docs.rs/rerun/latest/rerun/datatypes/struct.Mat4x4.html)
 
 

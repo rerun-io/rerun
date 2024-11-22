@@ -19,7 +19,7 @@ pub fn quote_arrow_serializer(
 ) -> TokenStream {
     let datatype = &arrow_registry.get(&obj.fqname);
 
-    let quoted_datatype = quote! { Self::arrow_datatype() };
+    let quoted_datatype = quote! { Self::arrow2_datatype() };
 
     let is_enum = obj.is_enum();
     let is_arrow_transparent = obj.datatype.is_none();
@@ -51,7 +51,7 @@ pub fn quote_arrow_serializer(
         let bitmap_dst = format_ident!("{quoted_data_dst}_bitmap");
 
         // The choice of true or false for `elements_are_nullable` here is a bit confusing.
-        // This code-gen path forms the basis of `to_arrow_opt`, which implies that we
+        // This code-gen path forms the basis of `to_arrow2_opt`, which implies that we
         // support nullable elements. Additionally, this MAY be used as a recursive code
         // path when using an enum within a struct, and that struct within the field may
         // be null, as such the elements are always handled as nullable.
@@ -455,6 +455,7 @@ enum InnerRepr {
 /// This is useful for:
 /// * unions: nullability is encoded as a separate variant
 /// * lists inside of fields that are lists: we don't support intra-list nullability
+///
 /// TODO(#2993): However, we still emit a validity bitmap for lists inside lists
 /// to `validity_bitmap_ident`since Python and Rust do so.
 #[allow(clippy::too_many_arguments)]
@@ -485,7 +486,7 @@ fn quote_arrow_field_serializer(
 
             return quote! {{
                 _ = #bitmap_src;
-                #fqname_use::to_arrow_opt(#data_src #option_wrapper)?
+                #fqname_use::to_arrow2_opt(#data_src #option_wrapper)?
             }};
         }
     }
@@ -903,7 +904,7 @@ fn quote_arrow_field_serializer(
 
             quote! {{
                 _ = #bitmap_src;
-                #fqname_use::to_arrow_opt(#data_src #option_wrapper)?
+                #fqname_use::to_arrow2_opt(#data_src #option_wrapper)?
             }}
         }
 

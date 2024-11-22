@@ -33,7 +33,7 @@ fn depth_image_roundtrip() {
         DepthImage::try_from(ndarray::array![[1u8, 2, 3], [4, 5, 6]])
             .unwrap()
             .with_meter(1000.0)
-            .to_arrow()
+            .to_arrow2()
             .unwrap(),
     ];
 
@@ -56,7 +56,7 @@ fn depth_image_roundtrip() {
             }
         }
 
-        let deserialized = DepthImage::from_arrow(serialized).unwrap();
+        let deserialized = DepthImage::from_arrow2(serialized).unwrap();
         similar_asserts::assert_eq!(expected, deserialized);
     }
 }

@@ -204,7 +204,7 @@ impl<'a> Viewport<'a> {
         self.blueprint.set_maximized(maximized, ctx);
     }
 
-    pub fn on_frame_start(&mut self, ctx: &ViewerContext<'_>) {
+    pub fn on_frame_start(&self, ctx: &ViewerContext<'_>) {
         re_tracing::profile_function!();
 
         // Handle pending view screenshots:

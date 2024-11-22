@@ -228,7 +228,7 @@ impl ::re_types_core::Archetype for LineStrips3D {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -242,7 +242,7 @@ impl ::re_types_core::Archetype for LineStrips3D {
                 .get("rerun.components.LineStrip3D")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.LineStrips3D#strips")?;
-            <crate::components::LineStrip3D>::from_arrow_opt(&**array)
+            <crate::components::LineStrip3D>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.LineStrips3D#strips")?
                 .into_iter()
                 .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -251,7 +251,7 @@ impl ::re_types_core::Archetype for LineStrips3D {
         };
         let radii = if let Some(array) = arrays_by_name.get("rerun.components.Radius") {
             Some({
-                <crate::components::Radius>::from_arrow_opt(&**array)
+                <crate::components::Radius>::from_arrow2_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips3D#radii")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -263,7 +263,7 @@ impl ::re_types_core::Archetype for LineStrips3D {
         };
         let colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
             Some({
-                <crate::components::Color>::from_arrow_opt(&**array)
+                <crate::components::Color>::from_arrow2_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips3D#colors")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -275,7 +275,7 @@ impl ::re_types_core::Archetype for LineStrips3D {
         };
         let labels = if let Some(array) = arrays_by_name.get("rerun.components.Text") {
             Some({
-                <crate::components::Text>::from_arrow_opt(&**array)
+                <crate::components::Text>::from_arrow2_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips3D#labels")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -286,7 +286,7 @@ impl ::re_types_core::Archetype for LineStrips3D {
             None
         };
         let show_labels = if let Some(array) = arrays_by_name.get("rerun.components.ShowLabels") {
-            <crate::components::ShowLabels>::from_arrow_opt(&**array)
+            <crate::components::ShowLabels>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.LineStrips3D#show_labels")?
                 .into_iter()
                 .next()
@@ -296,7 +296,7 @@ impl ::re_types_core::Archetype for LineStrips3D {
         };
         let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
             Some({
-                <crate::components::ClassId>::from_arrow_opt(&**array)
+                <crate::components::ClassId>::from_arrow2_opt(&**array)
                     .with_context("rerun.archetypes.LineStrips3D#class_ids")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))

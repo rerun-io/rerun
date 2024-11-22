@@ -144,7 +144,7 @@ impl ::re_types_core::Archetype for DisconnectedSpace {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -158,7 +158,7 @@ impl ::re_types_core::Archetype for DisconnectedSpace {
                 .get("rerun.components.DisconnectedSpace")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?;
-            <crate::components::DisconnectedSpace>::from_arrow_opt(&**array)
+            <crate::components::DisconnectedSpace>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.DisconnectedSpace#disconnected_space")?
                 .into_iter()
                 .next()

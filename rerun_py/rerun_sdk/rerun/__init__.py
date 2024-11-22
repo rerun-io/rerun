@@ -57,6 +57,7 @@ from ._send_columns import (
     send_columns as send_columns,
 )
 from .any_value import (
+    AnyBatchValue as AnyBatchValue,
     AnyValues as AnyValues,
 )
 from .archetypes import (

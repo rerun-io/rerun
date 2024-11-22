@@ -22,7 +22,7 @@ impl Backtrace {
         Self(Error::new().stack())
     }
 
-    pub fn format(&mut self) -> std::sync::Arc<str> {
+    pub fn format(&self) -> std::sync::Arc<str> {
         trim_backtrace(&self.0).into()
     }
 }

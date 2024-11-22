@@ -261,7 +261,7 @@ impl ::re_types_core::Archetype for Mesh3D {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -275,7 +275,7 @@ impl ::re_types_core::Archetype for Mesh3D {
                 .get("rerun.components.Position3D")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.Mesh3D#vertex_positions")?;
-            <crate::components::Position3D>::from_arrow_opt(&**array)
+            <crate::components::Position3D>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.Mesh3D#vertex_positions")?
                 .into_iter()
                 .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -285,7 +285,7 @@ impl ::re_types_core::Archetype for Mesh3D {
         let triangle_indices =
             if let Some(array) = arrays_by_name.get("rerun.components.TriangleIndices") {
                 Some({
-                    <crate::components::TriangleIndices>::from_arrow_opt(&**array)
+                    <crate::components::TriangleIndices>::from_arrow2_opt(&**array)
                         .with_context("rerun.archetypes.Mesh3D#triangle_indices")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -297,7 +297,7 @@ impl ::re_types_core::Archetype for Mesh3D {
             };
         let vertex_normals = if let Some(array) = arrays_by_name.get("rerun.components.Vector3D") {
             Some({
-                <crate::components::Vector3D>::from_arrow_opt(&**array)
+                <crate::components::Vector3D>::from_arrow2_opt(&**array)
                     .with_context("rerun.archetypes.Mesh3D#vertex_normals")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -309,7 +309,7 @@ impl ::re_types_core::Archetype for Mesh3D {
         };
         let vertex_colors = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
             Some({
-                <crate::components::Color>::from_arrow_opt(&**array)
+                <crate::components::Color>::from_arrow2_opt(&**array)
                     .with_context("rerun.archetypes.Mesh3D#vertex_colors")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -322,7 +322,7 @@ impl ::re_types_core::Archetype for Mesh3D {
         let vertex_texcoords =
             if let Some(array) = arrays_by_name.get("rerun.components.Texcoord2D") {
                 Some({
-                    <crate::components::Texcoord2D>::from_arrow_opt(&**array)
+                    <crate::components::Texcoord2D>::from_arrow2_opt(&**array)
                         .with_context("rerun.archetypes.Mesh3D#vertex_texcoords")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -334,7 +334,7 @@ impl ::re_types_core::Archetype for Mesh3D {
             };
         let albedo_factor = if let Some(array) = arrays_by_name.get("rerun.components.AlbedoFactor")
         {
-            <crate::components::AlbedoFactor>::from_arrow_opt(&**array)
+            <crate::components::AlbedoFactor>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.Mesh3D#albedo_factor")?
                 .into_iter()
                 .next()
@@ -344,7 +344,7 @@ impl ::re_types_core::Archetype for Mesh3D {
         };
         let albedo_texture_buffer =
             if let Some(array) = arrays_by_name.get("rerun.components.ImageBuffer") {
-                <crate::components::ImageBuffer>::from_arrow_opt(&**array)
+                <crate::components::ImageBuffer>::from_arrow2_opt(&**array)
                     .with_context("rerun.archetypes.Mesh3D#albedo_texture_buffer")?
                     .into_iter()
                     .next()
@@ -354,7 +354,7 @@ impl ::re_types_core::Archetype for Mesh3D {
             };
         let albedo_texture_format =
             if let Some(array) = arrays_by_name.get("rerun.components.ImageFormat") {
-                <crate::components::ImageFormat>::from_arrow_opt(&**array)
+                <crate::components::ImageFormat>::from_arrow2_opt(&**array)
                     .with_context("rerun.archetypes.Mesh3D#albedo_texture_format")?
                     .into_iter()
                     .next()
@@ -364,7 +364,7 @@ impl ::re_types_core::Archetype for Mesh3D {
             };
         let class_ids = if let Some(array) = arrays_by_name.get("rerun.components.ClassId") {
             Some({
-                <crate::components::ClassId>::from_arrow_opt(&**array)
+                <crate::components::ClassId>::from_arrow2_opt(&**array)
                     .with_context("rerun.archetypes.Mesh3D#class_ids")?
                     .into_iter()
                     .map(|v| v.ok_or_else(DeserializationError::missing_data))

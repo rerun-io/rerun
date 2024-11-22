@@ -1,4 +1,4 @@
 fn main() {
-    // Once we bump to Rust 1.80+ this will tell the checker that this flag actually exists for releases.
+    // https://blog.rust-lang.org/2024/05/06/check-cfg.html
     println!("cargo::rustc-check-cfg=cfg(disable_web_viewer_server)");
 }

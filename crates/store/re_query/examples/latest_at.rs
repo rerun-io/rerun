@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::Context;
-use arrow2::array::PrimitiveArray as ArrowPrimitiveArray;
+use arrow2::array::PrimitiveArray as Arrow2PrimitiveArray;
 use itertools::Itertools;
 
 use re_chunk::{Chunk, RowId};
@@ -78,7 +78,7 @@ fn main() -> anyhow::Result<()> {
             .context("invalid")?;
         let colors = colors
             .as_any()
-            .downcast_ref::<ArrowPrimitiveArray<u32>>()
+            .downcast_ref::<Arrow2PrimitiveArray<u32>>()
             .context("invalid")?;
         let colors = colors
             .values()

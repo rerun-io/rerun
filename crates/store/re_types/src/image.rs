@@ -278,6 +278,7 @@ fn test_find_non_empty_dim_indices() {
 /// * Bt709 & sRGB primaries are practically identical
 /// * Bt601 PAL & Bt709 color primaries are the same (with some slight differences for Bt709 NTSC)
 /// * Bt709 & sRGB transfer function are almost identical (and the difference is widely ignored)
+///
 /// (sources: <https://en.wikipedia.org/wiki/Rec._709>, <https://en.wikipedia.org/wiki/Rec._601>)
 /// …which means for the moment we pretty much only care about the (actually quite) different YUV conversion matrices!
 #[derive(Clone, Copy, Debug)]

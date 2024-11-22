@@ -390,8 +390,12 @@ impl EntityDb {
                 .filter(|event| event.kind == ChunkStoreDiffKind::Deletion)
                 .map(|event| event.chunk.entity_path().clone())
                 .collect();
-            self.tree
-                .on_store_deletions(&engine, &entity_paths_with_deletions, &store_events);
+
+            {
+                re_tracing::profile_scope!("on_store_deletions");
+                self.tree
+                    .on_store_deletions(&engine, &entity_paths_with_deletions, &store_events);
+            }
 
             // We inform the stats last, since it measures e2e latency.
             self.stats.on_events(&store_events);
@@ -543,8 +547,6 @@ impl EntityDb {
         mut engine: StorageEngineWriteGuard<'_>,
         store_events: &[ChunkStoreEvent],
     ) {
-        re_tracing::profile_function!();
-
         engine.cache().on_events(store_events);
         times_per_timeline.on_events(store_events);
         time_histogram_per_timeline.on_events(store_events);
@@ -834,7 +836,7 @@ impl IngestionStatistics {
         }
     }
 
-    fn on_new_row_id(&mut self, row_id: RowId) {
+    fn on_new_row_id(&self, row_id: RowId) {
         if let Ok(duration_since_epoch) = web_time::SystemTime::UNIX_EPOCH.elapsed() {
             let nanos_since_epoch = duration_since_epoch.as_nanos() as u64;
 

@@ -52,12 +52,16 @@ X = Fore.RESET
 def cargo(
     args: str,
     *,
+    cargo_version: str | None = None,
     cwd: str | Path | None = None,
     env: dict[str, Any] = {},
     dry_run: bool = False,
     capture: bool = False,
 ) -> Any:
-    cmd = [CARGO_PATH] + args.split()
+    if cargo_version is None:
+        cmd = [CARGO_PATH] + args.split()
+    else:
+        cmd = [CARGO_PATH, f"+{cargo_version}"] + args.split()
     # print(f"> {subprocess.list2cmdline(cmd)}")
     if not dry_run:
         stderr = subprocess.STDOUT if capture else None
@@ -429,7 +433,13 @@ def publish_crate(crate: Crate, token: str, version: str, env: dict[str, Any]) -
     retry_attempts = 5
     while True:
         try:
-            cargo(f"publish --quiet --token {token}", cwd=crate.path, env=env, dry_run=False, capture=True)
+            cargo(
+                f"publish --quiet --token {token}",
+                cwd=crate.path,
+                env=env,
+                dry_run=False,
+                capture=True,
+            )
             print(f"{G}Published{X} {B}{name}{X}@{B}{version}{X}")
             break
         except subprocess.CalledProcessError as e:

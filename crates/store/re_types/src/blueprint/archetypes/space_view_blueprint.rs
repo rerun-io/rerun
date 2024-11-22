@@ -137,7 +137,7 @@ impl ::re_types_core::Archetype for SpaceViewBlueprint {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -151,7 +151,7 @@ impl ::re_types_core::Archetype for SpaceViewBlueprint {
                 .get("rerun.blueprint.components.SpaceViewClass")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.SpaceViewBlueprint#class_identifier")?;
-            <crate::blueprint::components::SpaceViewClass>::from_arrow_opt(&**array)
+            <crate::blueprint::components::SpaceViewClass>::from_arrow2_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.SpaceViewBlueprint#class_identifier")?
                 .into_iter()
                 .next()
@@ -160,7 +160,7 @@ impl ::re_types_core::Archetype for SpaceViewBlueprint {
                 .with_context("rerun.blueprint.archetypes.SpaceViewBlueprint#class_identifier")?
         };
         let display_name = if let Some(array) = arrays_by_name.get("rerun.components.Name") {
-            <crate::components::Name>::from_arrow_opt(&**array)
+            <crate::components::Name>::from_arrow2_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.SpaceViewBlueprint#display_name")?
                 .into_iter()
                 .next()
@@ -170,7 +170,7 @@ impl ::re_types_core::Archetype for SpaceViewBlueprint {
         };
         let space_origin =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.SpaceViewOrigin") {
-                <crate::blueprint::components::SpaceViewOrigin>::from_arrow_opt(&**array)
+                <crate::blueprint::components::SpaceViewOrigin>::from_arrow2_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.SpaceViewBlueprint#space_origin")?
                     .into_iter()
                     .next()
@@ -180,7 +180,7 @@ impl ::re_types_core::Archetype for SpaceViewBlueprint {
             };
         let visible = if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Visible")
         {
-            <crate::blueprint::components::Visible>::from_arrow_opt(&**array)
+            <crate::blueprint::components::Visible>::from_arrow2_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.SpaceViewBlueprint#visible")?
                 .into_iter()
                 .next()

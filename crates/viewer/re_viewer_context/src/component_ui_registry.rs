@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 
-use re_chunk::{ArrowArray, RowId, UnitChunkShared};
+use re_chunk::{Arrow2Array, RowId, UnitChunkShared};
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::{EntityDb, EntityPath};
 use re_log::ResultExt;
@@ -238,10 +238,10 @@ pub struct ComponentUiRegistry {
     ///
     /// Other issues:
     /// * duality of edit & view:
-    /// In this old system we didn't take into account that most types should also be editable in the UI.
-    /// This makes implementations of view & edit overly asymmetric when instead they are often rather similar.
+    ///   In this old system we didn't take into account that most types should also be editable in the UI.
+    ///   This makes implementations of view & edit overly asymmetric when instead they are often rather similar.
     /// * unawareness of `ListItem` context:
-    /// We often want to display components as list items and in the older callbacks we don't know whether we're in a list item or not.
+    ///   We often want to display components as list items and in the older callbacks we don't know whether we're in a list item or not.
     legacy_display_component_uis: BTreeMap<ComponentName, LegacyDisplayComponentUiCallback>,
 
     /// Implements viewing and probably editing
@@ -354,7 +354,7 @@ impl ComponentUiRegistry {
 
                         if response.changed() {
                             use re_types::LoggableBatch as _;
-                            deserialized_value.to_arrow().ok_or_log_error_once()
+                            deserialized_value.to_arrow2().ok_or_log_error_once()
                         } else {
                             None
                         }
@@ -411,7 +411,7 @@ impl ComponentUiRegistry {
         // Also, it allows us to slice the array without cloning any elements.
         let Some(array) = unit.component_batch_raw(&component_name) else {
             re_log::error_once!("Couldn't get {component_name}: missing");
-            ui.error_with_details_on_hover(&format!("Couldn't get {component_name}: missing"));
+            ui.error_with_details_on_hover(format!("Couldn't get {component_name}: missing"));
             return;
         };
 
@@ -522,7 +522,7 @@ impl ComponentUiRegistry {
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
         row_id: Option<RowId>,
-        component_array: Option<&dyn ArrowArray>,
+        component_array: Option<&dyn Arrow2Array>,
         fallback_provider: &dyn ComponentFallbackProvider,
     ) {
         let multiline = true;
@@ -553,7 +553,7 @@ impl ComponentUiRegistry {
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
         row_id: Option<RowId>,
-        component_query_result: Option<&dyn ArrowArray>,
+        component_query_result: Option<&dyn Arrow2Array>,
         fallback_provider: &dyn ComponentFallbackProvider,
     ) {
         let multiline = false;
@@ -579,7 +579,7 @@ impl ComponentUiRegistry {
         blueprint_write_path: &EntityPath,
         component_name: ComponentName,
         row_id: Option<RowId>,
-        component_array: Option<&dyn ArrowArray>,
+        component_array: Option<&dyn Arrow2Array>,
         fallback_provider: &dyn ComponentFallbackProvider,
         allow_multiline: bool,
     ) {
@@ -680,7 +680,7 @@ impl ComponentUiRegistry {
 
 fn try_deserialize<C: re_types::Component>(value: &dyn arrow2::array::Array) -> Option<C> {
     let component_name = C::name();
-    let deserialized = C::from_arrow(value);
+    let deserialized = C::from_arrow2(value);
     match deserialized {
         Ok(values) => {
             if values.len() > 1 {

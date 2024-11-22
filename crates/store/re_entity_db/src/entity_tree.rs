@@ -169,8 +169,6 @@ impl EntityTree {
         entity_paths_with_deletions: &IntSet<EntityPath>,
         events: &[ChunkStoreEvent],
     ) {
-        re_tracing::profile_function!();
-
         // We don't actually use the events for anything, we just want to
         // have a direct dependency on the chunk store which must have
         // produced them by the time this function was called.

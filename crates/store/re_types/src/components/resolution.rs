@@ -69,17 +69,17 @@ impl std::ops::DerefMut for Resolution {
 
 impl ::re_types_core::Loggable for Resolution {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
-        crate::datatypes::Vec2D::arrow_datatype()
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+        crate::datatypes::Vec2D::arrow2_datatype()
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
         Self: Clone + 'a,
     {
-        crate::datatypes::Vec2D::to_arrow_opt(data.into_iter().map(|datum| {
+        crate::datatypes::Vec2D::to_arrow2_opt(data.into_iter().map(|datum| {
             datum.map(|datum| match datum.into() {
                 ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
                 ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
@@ -87,22 +87,22 @@ impl ::re_types_core::Loggable for Resolution {
         }))
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
-        crate::datatypes::Vec2D::from_arrow_opt(arrow_data)
+        crate::datatypes::Vec2D::from_arrow2_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 
     #[inline]
-    fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
+    fn from_arrow2(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
     where
         Self: Sized,
     {
-        crate::datatypes::Vec2D::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
+        crate::datatypes::Vec2D::from_arrow2(arrow_data).map(|v| v.into_iter().map(Self).collect())
     }
 }
 

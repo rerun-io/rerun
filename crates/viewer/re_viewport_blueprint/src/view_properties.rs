@@ -103,7 +103,7 @@ impl ViewProperty {
         view_state: &dyn re_viewer_context::SpaceViewState,
     ) -> Result<Vec<C>, ViewPropertyQueryError> {
         let component_name = C::name();
-        C::from_arrow(
+        C::from_arrow2(
             self.component_or_fallback_raw(ctx, component_name, fallback_provider, view_state)
                 .as_ref(),
         )
@@ -125,7 +125,7 @@ impl ViewProperty {
     ) -> Result<Option<Vec<C>>, DeserializationError> {
         let component_name = C::name();
         self.component_raw(component_name)
-            .map(|raw| C::from_arrow(raw.as_ref()))
+            .map(|raw| C::from_arrow2(raw.as_ref()))
             .transpose()
     }
 

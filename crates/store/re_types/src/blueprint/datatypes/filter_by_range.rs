@@ -44,20 +44,20 @@ impl ::re_types_core::SizeBytes for FilterByRange {
 
 impl ::re_types_core::Loggable for FilterByRange {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
             Field::new(
                 "start",
-                <crate::datatypes::TimeInt>::arrow_datatype(),
+                <crate::datatypes::TimeInt>::arrow2_datatype(),
                 false,
             ),
-            Field::new("end", <crate::datatypes::TimeInt>::arrow_datatype(), false),
+            Field::new("end", <crate::datatypes::TimeInt>::arrow2_datatype(), false),
         ]))
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
@@ -80,7 +80,7 @@ impl ::re_types_core::Loggable for FilterByRange {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                Self::arrow_datatype(),
+                Self::arrow2_datatype(),
                 vec![
                     {
                         let (somes, start): (Vec<_>, Vec<_>) = data
@@ -132,7 +132,7 @@ impl ::re_types_core::Loggable for FilterByRange {
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -146,7 +146,7 @@ impl ::re_types_core::Loggable for FilterByRange {
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow_datatype();
+                    let expected = Self::arrow2_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -164,7 +164,7 @@ impl ::re_types_core::Loggable for FilterByRange {
                 let start = {
                     if !arrays_by_name.contains_key("start") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow2_datatype(),
                             "start",
                         ))
                         .with_context("rerun.blueprint.datatypes.FilterByRange");
@@ -186,7 +186,7 @@ impl ::re_types_core::Loggable for FilterByRange {
                 let end = {
                     if !arrays_by_name.contains_key("end") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow_datatype(),
+                            Self::arrow2_datatype(),
                             "end",
                         ))
                         .with_context("rerun.blueprint.datatypes.FilterByRange");

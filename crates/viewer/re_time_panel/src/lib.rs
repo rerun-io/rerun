@@ -918,7 +918,7 @@ impl TimePanel {
     }
 
     fn top_row_ui(
-        &mut self,
+        &self,
         ctx: &ViewerContext<'_>,
         entity_db: &re_entity_db::EntityDb,
         ui: &mut egui::Ui,

@@ -10,7 +10,7 @@ readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
-include = ["../../LICENSE-APACHE", "../../LICENSE-MIT", "**/*.rs", "Cargo.toml"]
+include.workspace = true
 
 [lints]
 workspace = true

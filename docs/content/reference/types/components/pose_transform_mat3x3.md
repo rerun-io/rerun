@@ -29,7 +29,7 @@ FixedSizeList<9, float32>
 ## API reference links
  * 🌊 [C++ API docs for `PoseTransformMat3x3`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1PoseTransformMat3x3.html)
  * 🐍 [Python API docs for `PoseTransformMat3x3`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.PoseTransformMat3x3)
- * 🦀 [Rust API docs for `PoseTransformMat3x3`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.PoseTransformMat3x3.html)
+ * 🦀 [Rust API docs for `PoseTransformMat3x3`](https://docs.rs/rerun/latest/rerun/components/struct.PoseTransformMat3x3.html)
 
 
 ## Used by

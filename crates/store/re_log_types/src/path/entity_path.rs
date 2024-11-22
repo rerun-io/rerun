@@ -423,11 +423,11 @@ re_types_core::macros::impl_into_cow!(EntityPath);
 
 impl Loggable for EntityPath {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
-        re_types_core::datatypes::Utf8::arrow_datatype()
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+        re_types_core::datatypes::Utf8::arrow2_datatype()
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         _data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
     ) -> re_types_core::SerializationResult<Box<dyn arrow2::array::Array>>
     where
@@ -440,23 +440,23 @@ impl Loggable for EntityPath {
     }
 
     #[inline]
-    fn to_arrow<'a>(
+    fn to_arrow2<'a>(
         data: impl IntoIterator<Item = impl Into<std::borrow::Cow<'a, Self>>>,
     ) -> re_types_core::SerializationResult<Box<dyn ::arrow2::array::Array>>
     where
         Self: 'a,
     {
-        re_types_core::datatypes::Utf8::to_arrow(
+        re_types_core::datatypes::Utf8::to_arrow2(
             data.into_iter()
                 .map(Into::into)
                 .map(|ent_path| re_types_core::datatypes::Utf8(ent_path.to_string().into())),
         )
     }
 
-    fn from_arrow(
+    fn from_arrow2(
         array: &dyn ::arrow2::array::Array,
     ) -> re_types_core::DeserializationResult<Vec<Self>> {
-        Ok(re_types_core::datatypes::Utf8::from_arrow(array)?
+        Ok(re_types_core::datatypes::Utf8::from_arrow2(array)?
             .into_iter()
             .map(|utf8| Self::from(utf8.to_string()))
             .collect())

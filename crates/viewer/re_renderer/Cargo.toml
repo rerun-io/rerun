@@ -11,6 +11,7 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 include = [
+  "../../Cargo.lock",
   "../../LICENSE-APACHE",
   "../../LICENSE-MIT",
   "**/*.rs",

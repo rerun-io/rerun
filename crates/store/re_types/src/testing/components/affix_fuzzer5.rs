@@ -66,7 +66,7 @@ impl std::ops::DerefMut for AffixFuzzer5 {
 
 impl ::re_types_core::Loggable for AffixFuzzer5 {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow2_datatype() -> arrow2::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
         use arrow2::datatypes::*;
         DataType::Struct(std::sync::Arc::new(vec![
@@ -103,14 +103,14 @@ impl ::re_types_core::Loggable for AffixFuzzer5 {
             Field::new("flattened_scalar", DataType::Float32, false),
             Field::new(
                 "almost_flattened_scalar",
-                <crate::testing::datatypes::FlattenedScalar>::arrow_datatype(),
+                <crate::testing::datatypes::FlattenedScalar>::arrow2_datatype(),
                 false,
             ),
             Field::new("from_parent", DataType::Boolean, true),
         ]))
     }
 
-    fn to_arrow_opt<'a>(
+    fn to_arrow2_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
@@ -135,12 +135,12 @@ impl ::re_types_core::Loggable for AffixFuzzer5 {
             };
             {
                 _ = data0_bitmap;
-                crate::testing::datatypes::AffixFuzzer1::to_arrow_opt(data0)?
+                crate::testing::datatypes::AffixFuzzer1::to_arrow2_opt(data0)?
             }
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -150,7 +150,7 @@ impl ::re_types_core::Loggable for AffixFuzzer5 {
         use ::re_types_core::{Loggable as _, ResultExt as _};
         use arrow2::{array::*, buffer::*, datatypes::*};
         Ok(
-            crate::testing::datatypes::AffixFuzzer1::from_arrow_opt(arrow_data)
+            crate::testing::datatypes::AffixFuzzer1::from_arrow2_opt(arrow_data)
                 .with_context("rerun.testing.components.AffixFuzzer5#single_optional")?
                 .into_iter()
                 .map(Ok)

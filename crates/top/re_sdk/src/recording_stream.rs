@@ -9,7 +9,7 @@ use crossbeam::channel::{Receiver, Sender};
 use itertools::Either;
 use parking_lot::Mutex;
 
-use arrow2::array::{ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray};
+use arrow2::array::{ListArray as ArrowListArray, PrimitiveArray as Arrow2PrimitiveArray};
 use re_chunk::{Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, PendingRow, RowId};
 
 use re_chunk::{ChunkError, ChunkId, ComponentName, TimeColumn};
@@ -1170,7 +1170,7 @@ impl RecordingStream {
             .into_iter()
             .map(|comp_batch| {
                 comp_batch
-                    .to_arrow()
+                    .to_arrow2()
                     .map(|array| (comp_batch.name(), array))
             })
             .collect();
@@ -1541,7 +1541,7 @@ impl RecordingStream {
                 let time_timeline = Timeline::log_time();
                 let time = TimeInt::new_temporal(Time::now().nanos_since_epoch());
 
-                let repeated_time = ArrowPrimitiveArray::<i64>::from_values(
+                let repeated_time = Arrow2PrimitiveArray::<i64>::from_values(
                     std::iter::repeat(time.as_i64()).take(chunk.num_rows()),
                 )
                 .to(time_timeline.datatype());
@@ -1565,7 +1565,7 @@ impl RecordingStream {
                     .tick
                     .fetch_add(1, std::sync::atomic::Ordering::Relaxed);
 
-                let repeated_tick = ArrowPrimitiveArray::<i64>::from_values(
+                let repeated_tick = Arrow2PrimitiveArray::<i64>::from_values(
                     std::iter::repeat(tick).take(chunk.num_rows()),
                 )
                 .to(tick_timeline.datatype());
@@ -2549,7 +2549,7 @@ mod tests {
                 components: [
                     (
                         MyPoint::name(),
-                        <MyPoint as re_types_core::Loggable>::to_arrow([
+                        <MyPoint as re_types_core::Loggable>::to_arrow2([
                             MyPoint::new(10.0, 10.0),
                             MyPoint::new(20.0, 20.0),
                         ])
@@ -2557,12 +2557,13 @@ mod tests {
                     ), //
                     (
                         MyColor::name(),
-                        <MyColor as re_types_core::Loggable>::to_arrow([MyColor(0x8080_80FF)])
+                        <MyColor as re_types_core::Loggable>::to_arrow2([MyColor(0x8080_80FF)])
                             .unwrap(),
                     ), //
                     (
                         MyLabel::name(),
-                        <MyLabel as re_types_core::Loggable>::to_arrow([] as [MyLabel; 0]).unwrap(),
+                        <MyLabel as re_types_core::Loggable>::to_arrow2([] as [MyLabel; 0])
+                            .unwrap(),
                     ), //
                 ]
                 .into_iter()
@@ -2577,15 +2578,18 @@ mod tests {
                 components: [
                     (
                         MyPoint::name(),
-                        <MyPoint as re_types_core::Loggable>::to_arrow([] as [MyPoint; 0]).unwrap(),
+                        <MyPoint as re_types_core::Loggable>::to_arrow2([] as [MyPoint; 0])
+                            .unwrap(),
                     ), //
                     (
                         MyColor::name(),
-                        <MyColor as re_types_core::Loggable>::to_arrow([] as [MyColor; 0]).unwrap(),
+                        <MyColor as re_types_core::Loggable>::to_arrow2([] as [MyColor; 0])
+                            .unwrap(),
                     ), //
                     (
                         MyLabel::name(),
-                        <MyLabel as re_types_core::Loggable>::to_arrow([] as [MyLabel; 0]).unwrap(),
+                        <MyLabel as re_types_core::Loggable>::to_arrow2([] as [MyLabel; 0])
+                            .unwrap(),
                     ), //
                 ]
                 .into_iter()
@@ -2600,16 +2604,17 @@ mod tests {
                 components: [
                     (
                         MyPoint::name(),
-                        <MyPoint as re_types_core::Loggable>::to_arrow([] as [MyPoint; 0]).unwrap(),
+                        <MyPoint as re_types_core::Loggable>::to_arrow2([] as [MyPoint; 0])
+                            .unwrap(),
                     ), //
                     (
                         MyColor::name(),
-                        <MyColor as re_types_core::Loggable>::to_arrow([MyColor(0xFFFF_FFFF)])
+                        <MyColor as re_types_core::Loggable>::to_arrow2([MyColor(0xFFFF_FFFF)])
                             .unwrap(),
                     ), //
                     (
                         MyLabel::name(),
-                        <MyLabel as re_types_core::Loggable>::to_arrow([MyLabel("hey".into())])
+                        <MyLabel as re_types_core::Loggable>::to_arrow2([MyLabel("hey".into())])
                             .unwrap(),
                     ), //
                 ]

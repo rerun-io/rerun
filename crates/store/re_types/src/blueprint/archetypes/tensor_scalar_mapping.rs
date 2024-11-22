@@ -131,7 +131,7 @@ impl ::re_types_core::Archetype for TensorScalarMapping {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -142,7 +142,7 @@ impl ::re_types_core::Archetype for TensorScalarMapping {
             .collect();
         let mag_filter =
             if let Some(array) = arrays_by_name.get("rerun.components.MagnificationFilter") {
-                <crate::components::MagnificationFilter>::from_arrow_opt(&**array)
+                <crate::components::MagnificationFilter>::from_arrow2_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.TensorScalarMapping#mag_filter")?
                     .into_iter()
                     .next()
@@ -151,7 +151,7 @@ impl ::re_types_core::Archetype for TensorScalarMapping {
                 None
             };
         let colormap = if let Some(array) = arrays_by_name.get("rerun.components.Colormap") {
-            <crate::components::Colormap>::from_arrow_opt(&**array)
+            <crate::components::Colormap>::from_arrow2_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.TensorScalarMapping#colormap")?
                 .into_iter()
                 .next()
@@ -160,7 +160,7 @@ impl ::re_types_core::Archetype for TensorScalarMapping {
             None
         };
         let gamma = if let Some(array) = arrays_by_name.get("rerun.components.GammaCorrection") {
-            <crate::components::GammaCorrection>::from_arrow_opt(&**array)
+            <crate::components::GammaCorrection>::from_arrow2_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.TensorScalarMapping#gamma")?
                 .into_iter()
                 .next()
