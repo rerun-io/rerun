@@ -637,7 +637,7 @@ impl ChunkStore {
     pub fn schema(&self) -> Vec<ColumnDescriptor> {
         re_tracing::profile_function!();
 
-        let timelines = self.all_timelines().into_iter().map(|timeline| {
+        let timelines = self.all_timelines_sorted().into_iter().map(|timeline| {
             ColumnDescriptor::Time(TimeColumnDescriptor {
                 timeline,
                 datatype: timeline.datatype(),

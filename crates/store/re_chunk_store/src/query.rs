@@ -4,10 +4,12 @@ use std::{
 };
 
 use itertools::Itertools;
+use nohash_hasher::IntSet;
+
 use re_chunk::{Chunk, LatestAtQuery, RangeQuery};
 use re_log_types::ResolvedTimeRange;
 use re_log_types::{EntityPath, TimeInt, Timeline};
-use re_types_core::{ComponentName, ComponentNameSet};
+use re_types_core::{ComponentName, ComponentNameSet, UnorderedComponentNameSet};
 
 use crate::{store::ChunkIdSetPerTime, ChunkStore};
 
@@ -24,7 +26,17 @@ use crate::RowId;
 
 impl ChunkStore {
     /// Retrieve all [`Timeline`]s in the store.
-    pub fn all_timelines(&self) -> BTreeSet<Timeline> {
+    #[inline]
+    pub fn all_timelines(&self) -> IntSet<Timeline> {
+        self.temporal_chunk_ids_per_entity
+            .values()
+            .flat_map(|per_timeline| per_timeline.keys().copied())
+            .collect()
+    }
+
+    /// Retrieve all [`Timeline`]s in the store.
+    #[inline]
+    pub fn all_timelines_sorted(&self) -> BTreeSet<Timeline> {
         self.temporal_chunk_ids_per_entity
             .values()
             .flat_map(|per_timeline| per_timeline.keys().copied())
@@ -32,7 +44,18 @@ impl ChunkStore {
     }
 
     /// Retrieve all [`EntityPath`]s in the store.
-    pub fn all_entities(&self) -> BTreeSet<EntityPath> {
+    #[inline]
+    pub fn all_entities(&self) -> IntSet<EntityPath> {
+        self.static_chunk_ids_per_entity
+            .keys()
+            .cloned()
+            .chain(self.temporal_chunk_ids_per_entity.keys().cloned())
+            .collect()
+    }
+
+    /// Retrieve all [`EntityPath`]s in the store.
+    #[inline]
+    pub fn all_entities_sorted(&self) -> BTreeSet<EntityPath> {
         self.static_chunk_ids_per_entity
             .keys()
             .cloned()
@@ -41,7 +64,27 @@ impl ChunkStore {
     }
 
     /// Retrieve all [`ComponentName`]s in the store.
-    pub fn all_components(&self) -> BTreeSet<ComponentName> {
+    pub fn all_components(&self) -> IntSet<ComponentName> {
+        self.static_chunk_ids_per_entity
+            .values()
+            .flat_map(|static_chunks_per_component| static_chunks_per_component.keys())
+            .chain(
+                self.temporal_chunk_ids_per_entity_per_component
+                    .values()
+                    .flat_map(|temporal_chunk_ids_per_timeline| {
+                        temporal_chunk_ids_per_timeline.values().flat_map(
+                            |temporal_chunk_ids_per_component| {
+                                temporal_chunk_ids_per_component.keys()
+                            },
+                        )
+                    }),
+            )
+            .copied()
+            .collect()
+    }
+
+    /// Retrieve all [`ComponentName`]s in the store.
+    pub fn all_components_sorted(&self) -> BTreeSet<ComponentName> {
         self.static_chunk_ids_per_entity
             .values()
             .flat_map(|static_chunks_per_component| static_chunks_per_component.keys())
@@ -67,6 +110,50 @@ impl ChunkStore {
     ///
     /// Returns `None` if the entity doesn't exist at all on this `timeline`.
     pub fn all_components_on_timeline(
+        &self,
+        timeline: &Timeline,
+        entity_path: &EntityPath,
+    ) -> Option<UnorderedComponentNameSet> {
+        re_tracing::profile_function!();
+
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        let static_components: Option<UnorderedComponentNameSet> = self
+            .static_chunk_ids_per_entity
+            .get(entity_path)
+            .map(|static_chunks_per_component| {
+                static_chunks_per_component.keys().copied().collect()
+            });
+
+        let temporal_components: Option<UnorderedComponentNameSet> = self
+            .temporal_chunk_ids_per_entity_per_component
+            .get(entity_path)
+            .map(|temporal_chunk_ids_per_timeline| {
+                temporal_chunk_ids_per_timeline
+                    .iter()
+                    .filter(|(cur_timeline, _)| *cur_timeline == timeline)
+                    .flat_map(|(_, temporal_chunk_ids_per_component)| {
+                        temporal_chunk_ids_per_component.keys().copied()
+                    })
+                    .collect()
+            });
+
+        match (static_components, temporal_components) {
+            (None, None) => None,
+            (None, comps @ Some(_)) | (comps @ Some(_), None) => comps,
+            (Some(static_comps), Some(temporal_comps)) => {
+                Some(static_comps.into_iter().chain(temporal_comps).collect())
+            }
+        }
+    }
+
+    /// Retrieve all the [`ComponentName`]s that have been written to for a given [`EntityPath`] on
+    /// the specified [`Timeline`].
+    ///
+    /// Static components are always included in the results.
+    ///
+    /// Returns `None` if the entity doesn't exist at all on this `timeline`.
+    pub fn all_components_on_timeline_sorted(
         &self,
         timeline: &Timeline,
         entity_path: &EntityPath,
@@ -109,7 +196,51 @@ impl ChunkStore {
     /// Static components are always included in the results.
     ///
     /// Returns `None` if the entity has never had any data logged to it.
-    pub fn all_components_for_entity(&self, entity_path: &EntityPath) -> Option<ComponentNameSet> {
+    pub fn all_components_for_entity(
+        &self,
+        entity_path: &EntityPath,
+    ) -> Option<UnorderedComponentNameSet> {
+        re_tracing::profile_function!();
+
+        self.query_id.fetch_add(1, Ordering::Relaxed);
+
+        let static_components: Option<UnorderedComponentNameSet> = self
+            .static_chunk_ids_per_entity
+            .get(entity_path)
+            .map(|static_chunks_per_component| {
+                static_chunks_per_component.keys().copied().collect()
+            });
+
+        let temporal_components: Option<UnorderedComponentNameSet> = self
+            .temporal_chunk_ids_per_entity_per_component
+            .get(entity_path)
+            .map(|temporal_chunk_ids_per_timeline| {
+                temporal_chunk_ids_per_timeline
+                    .iter()
+                    .flat_map(|(_, temporal_chunk_ids_per_component)| {
+                        temporal_chunk_ids_per_component.keys().copied()
+                    })
+                    .collect()
+            });
+
+        match (static_components, temporal_components) {
+            (None, None) => None,
+            (None, comps @ Some(_)) | (comps @ Some(_), None) => comps,
+            (Some(static_comps), Some(temporal_comps)) => {
+                Some(static_comps.into_iter().chain(temporal_comps).collect())
+            }
+        }
+    }
+
+    /// Retrieve all the [`ComponentName`]s that have been written to for a given [`EntityPath`].
+    ///
+    /// Static components are always included in the results.
+    ///
+    /// Returns `None` if the entity has never had any data logged to it.
+    pub fn all_components_for_entity_sorted(
+        &self,
+        entity_path: &EntityPath,
+    ) -> Option<ComponentNameSet> {
         re_tracing::profile_function!();
 
         self.query_id.fetch_add(1, Ordering::Relaxed);
@@ -544,6 +675,7 @@ impl ChunkStore {
             .take_while(|(time, _)| time.as_i64() >= lower_bound)
             .flat_map(|(_time, chunk_ids)| chunk_ids.iter())
             .copied()
+            // TODO: okay what about that one?
             .collect::<BTreeSet<_>>();
 
         Some(

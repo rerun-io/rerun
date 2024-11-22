@@ -133,7 +133,7 @@ fn entity_ui(
     if let Some(components) = entity_db
         .storage_engine()
         .store()
-        .all_components_on_timeline(&timeline, entity_path)
+        .all_components_on_timeline_sorted(&timeline, entity_path)
     {
         for component in components {
             ui.collapsing(component.to_string(), |ui| {

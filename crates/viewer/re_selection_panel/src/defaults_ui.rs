@@ -188,6 +188,8 @@ fn active_defaults(
     view: &SpaceViewBlueprint,
     db: &re_entity_db::EntityDb,
     query: &LatestAtQuery,
+    // TODO: rename these, use ComponentNameSet everywhere
+    // TODO: does this need sorting?
 ) -> BTreeSet<ComponentName> {
     // Cleared components should act as unset, so we filter out everything that's empty,
     // even if they are listed in `all_components`.

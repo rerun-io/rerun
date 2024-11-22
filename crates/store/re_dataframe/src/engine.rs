@@ -103,13 +103,13 @@ impl<E: StorageEngineLike + Clone> QueryEngine<E> {
 
     /// Returns an iterator over all the [`EntityPath`]s present in the database.
     #[inline]
-    pub fn iter_entity_paths<'a>(
+    pub fn iter_entity_paths_sorted<'a>(
         &self,
         filter: &'a EntityPathFilter,
     ) -> impl Iterator<Item = EntityPath> + 'a {
         self.engine.with(|store, _cache| {
             store
-                .all_entities()
+                .all_entities_sorted()
                 .into_iter()
                 .filter(|entity_path| filter.matches(entity_path))
         })
