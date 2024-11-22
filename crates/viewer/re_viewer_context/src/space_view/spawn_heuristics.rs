@@ -51,7 +51,7 @@ impl SpaceViewSpawnHeuristics {
 impl RecommendedSpaceView {
     #[inline]
     pub fn new<'a>(origin: EntityPath, expressions: impl IntoIterator<Item = &'a str>) -> Self {
-        let space_env = EntityPathSubs::new_with_origin(&origin);
+        let space_env = EntityPathSubs::new_with_builtin(&origin, std::iter::empty());
         Self {
             origin,
             query_filter: EntityPathFilter::from_query_expressions_forgiving(

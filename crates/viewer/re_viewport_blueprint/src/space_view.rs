@@ -18,9 +18,9 @@ use re_types::{
 };
 use re_types_core::Archetype as _;
 use re_viewer_context::{
-    ContentsName, QueryRange, RecommendedSpaceView, SpaceViewClass, SpaceViewClassRegistry,
-    SpaceViewId, SpaceViewState, StoreContext, SystemCommand, SystemCommandSender as _,
-    ViewContext, ViewStates, ViewerContext, VisualizerCollection,
+    ApplicationSelectionState, ContentsName, QueryRange, RecommendedSpaceView, SpaceViewClass,
+    SpaceViewClassRegistry, SpaceViewId, SpaceViewState, StoreContext, SystemCommand,
+    SystemCommandSender as _, ViewContext, ViewStates, ViewerContext, VisualizerCollection,
 };
 
 use crate::{SpaceViewContents, ViewProperty};
@@ -128,6 +128,7 @@ impl SpaceViewBlueprint {
         id: SpaceViewId,
         blueprint_db: &EntityDb,
         query: &LatestAtQuery,
+        selection_state: &ApplicationSelectionState,
     ) -> Option<Self> {
         re_tracing::profile_function!();
 
@@ -161,7 +162,13 @@ impl SpaceViewBlueprint {
         let class_identifier: SpaceViewClassIdentifier = class_identifier.0.as_str().into();
         let display_name = display_name.map(|v| v.0.to_string());
 
-        let space_env = EntityPathSubs::new_with_origin(&space_origin);
+        let space_env = EntityPathSubs::new_with_builtin(
+            &space_origin,
+            selection_state
+                .selected_items()
+                .iter_items()
+                .filter_map(|item| item.entity_path()),
+        );
 
         let content = SpaceViewContents::from_db_or_default(
             id,

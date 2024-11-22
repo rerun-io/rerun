@@ -21,8 +21,21 @@ pub struct EntityPathSubs(pub HashMap<String, String>);
 
 impl EntityPathSubs {
     /// Create a new set of substitutions from a single origin.
-    pub fn new_with_origin(origin: &EntityPath) -> Self {
-        Self(std::iter::once(("origin".to_owned(), origin.to_string())).collect())
+    pub fn new_with_builtin<'a>(
+        origin: &EntityPath,
+        selected_entities: impl Iterator<Item = &'a EntityPath>,
+    ) -> Self {
+        Self(
+            [
+                ("origin".to_owned(), origin.to_string()),
+                (
+                    "selected".to_owned(),
+                    selected_entities.map(|e| format!("{e}")).join("\n"),
+                ),
+            ]
+            .into_iter()
+            .collect(),
+        )
     }
 }
 
@@ -796,7 +809,8 @@ mod tests {
     fn test_entity_path_filter_subs() {
         // Make sure we use a string longer than `$origin` here.
         // We can't do in-place substitution.
-        let subst_env = EntityPathSubs::new_with_origin(&EntityPath::from("/annoyingly/long/path"));
+        let subst_env =
+            EntityPathSubs::new_with_builtin(&EntityPath::from("/annoyingly/long/path"));
 
         let filter = EntityPathFilter::parse_forgiving(
             r#"

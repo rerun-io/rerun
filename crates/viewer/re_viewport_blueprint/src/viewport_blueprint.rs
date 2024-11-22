@@ -15,7 +15,8 @@ use re_types_blueprint::blueprint::components::{
     AutoLayout, AutoSpaceViews, IncludedSpaceView, RootContainer, SpaceViewMaximized,
 };
 use re_viewer_context::{
-    blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewId, ViewerContext,
+    blueprint_id_to_tile_id, ApplicationSelectionState, ContainerId, Contents, Item, SpaceViewId,
+    ViewerContext,
 };
 
 use crate::{container::ContainerBlueprint, SpaceViewBlueprint, TreeAction, VIEWPORT_PATH};
@@ -65,6 +66,7 @@ impl ViewportBlueprint {
         blueprint_db: &re_entity_db::EntityDb,
         query: &LatestAtQuery,
         tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
+        selection_state: &ApplicationSelectionState,
     ) -> Self {
         re_tracing::profile_function!();
 
@@ -110,7 +112,7 @@ impl ViewportBlueprint {
         let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = all_space_view_ids
             .into_iter()
             .filter_map(|space_view: SpaceViewId| {
-                SpaceViewBlueprint::try_from_db(space_view, blueprint_db, query)
+                SpaceViewBlueprint::try_from_db(space_view, blueprint_db, query, selection_state)
             })
             .map(|sv| (sv.id, sv))
             .collect();

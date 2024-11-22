@@ -179,6 +179,7 @@ impl AppState {
             store_context.blueprint,
             &blueprint_query,
             sender.clone(),
+            selection_state,
         );
         let mut viewport = Viewport::new(
             &viewport_blueprint,
