@@ -475,7 +475,7 @@ impl Chunk {
     /// * [`Self::iter_string`].
     /// * [`Self::iter_component_arrays`].
     /// * [`Self::iter_component`].
-    pub fn iter_buffer<T: arrow2::types::NativeType>(
+    pub fn iter_buffer<T: arrow::datatypes::ArrowNativeType + arrow2::types::NativeType>(
         &self,
         component_name: &ComponentName,
     ) -> impl Iterator<Item = Vec<ArrowBuffer<T>>> + '_ {

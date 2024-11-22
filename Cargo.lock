@@ -5990,6 +5990,7 @@ name = "re_space_view"
 version = "0.21.0-alpha.1+dev"
 dependencies = [
  "ahash",
+ "arrow",
  "bytemuck",
  "egui",
  "glam",
@@ -6080,6 +6081,7 @@ version = "0.21.0-alpha.1+dev"
 dependencies = [
  "ahash",
  "anyhow",
+ "arrow",
  "bitflags 2.6.0",
  "bytemuck",
  "criterion",

@@ -1,3 +1,5 @@
+use arrow::datatypes::ArrowNativeType;
+
 /// Convenience-wrapper around an [`arrow2::buffer::Buffer`] that is known to contain a
 /// a primitive type.
 ///
@@ -7,9 +9,9 @@
 /// arise from returning a `&[T]` directly, but is significantly more
 /// performant than doing the full allocation necessary to return a `Vec<T>`.
 #[derive(Clone, Debug, Default, PartialEq)]
-pub struct ArrowBuffer<T>(arrow2::buffer::Buffer<T>);
+pub struct ArrowBuffer<T: ArrowNativeType>(arrow2::buffer::Buffer<T>);
 
-impl<T: crate::SizeBytes> crate::SizeBytes for ArrowBuffer<T> {
+impl<T: crate::SizeBytes + ArrowNativeType> crate::SizeBytes for ArrowBuffer<T> {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         let Self(buf) = self;
@@ -17,7 +19,7 @@ impl<T: crate::SizeBytes> crate::SizeBytes for ArrowBuffer<T> {
     }
 }
 
-impl<T> ArrowBuffer<T> {
+impl<T: ArrowNativeType> ArrowBuffer<T> {
     /// The number of instances of T stored in this buffer.
     #[inline]
     pub fn num_instances(&self) -> usize {
@@ -60,12 +62,12 @@ impl<T> ArrowBuffer<T> {
     }
 }
 
-impl<T: bytemuck::Pod> ArrowBuffer<T> {
+impl<T: bytemuck::Pod + ArrowNativeType> ArrowBuffer<T> {
     /// Cast POD (plain-old-data) types to another POD type.
     ///
     /// For instance: cast a buffer of `u8` to a buffer of `f32`.
     #[inline]
-    pub fn cast_pod<Target: bytemuck::Pod>(
+    pub fn cast_pod<Target: bytemuck::Pod + ArrowNativeType>(
         &self,
     ) -> Result<ArrowBuffer<Target>, bytemuck::PodCastError> {
         // TODO(emilk): when we switch from arrow2, see if we can make this function zero-copy
@@ -84,17 +86,17 @@ impl<T: bytemuck::Pod> ArrowBuffer<T> {
     }
 }
 
-impl<T: Eq> Eq for ArrowBuffer<T> {}
+impl<T: Eq + ArrowNativeType> Eq for ArrowBuffer<T> {}
 
-impl<T: Clone> ArrowBuffer<T> {
+impl<T: ArrowNativeType> ArrowBuffer<T> {
     #[inline]
     pub fn to_vec(&self) -> Vec<T> {
         self.0.as_slice().to_vec()
     }
 }
 
-impl<T: arrow::datatypes::ArrowNativeType + arrow2::types::NativeType>
-    From<arrow::buffer::ScalarBuffer<T>> for ArrowBuffer<T>
+impl<T: ArrowNativeType + arrow2::types::NativeType> From<arrow::buffer::ScalarBuffer<T>>
+    for ArrowBuffer<T>
 {
     #[inline]
     fn from(value: arrow::buffer::ScalarBuffer<T>) -> Self {
@@ -102,34 +104,34 @@ impl<T: arrow::datatypes::ArrowNativeType + arrow2::types::NativeType>
     }
 }
 
-impl<T> From<arrow2::buffer::Buffer<T>> for ArrowBuffer<T> {
+impl<T: ArrowNativeType> From<arrow2::buffer::Buffer<T>> for ArrowBuffer<T> {
     #[inline]
     fn from(value: arrow2::buffer::Buffer<T>) -> Self {
         Self(value)
     }
 }
 
-impl<T> From<Vec<T>> for ArrowBuffer<T> {
+impl<T: ArrowNativeType> From<Vec<T>> for ArrowBuffer<T> {
     #[inline]
     fn from(value: Vec<T>) -> Self {
         Self(value.into())
     }
 }
 
-impl<T: Clone> From<&[T]> for ArrowBuffer<T> {
+impl<T: ArrowNativeType> From<&[T]> for ArrowBuffer<T> {
     #[inline]
     fn from(value: &[T]) -> Self {
-        Self(value.iter().cloned().collect()) // TODO(emilk): avoid extra clones
+        Self(value.iter().copied().collect())
     }
 }
 
-impl<T> FromIterator<T> for ArrowBuffer<T> {
+impl<T: ArrowNativeType> FromIterator<T> for ArrowBuffer<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         Self(arrow2::buffer::Buffer::from_iter(iter))
     }
 }
 
-impl<T> std::ops::Deref for ArrowBuffer<T> {
+impl<T: ArrowNativeType> std::ops::Deref for ArrowBuffer<T> {
     type Target = [T];
 
     #[inline]
