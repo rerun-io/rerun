@@ -1,5 +1,4 @@
 use egui::Rect;
-use re_chunk::{EntityPath, TimeInt, Timeline};
 use re_format::format_f32;
 use re_types::blueprint::components::VisualBounds2D;
 use re_ui::UiExt;
@@ -61,25 +60,15 @@ impl SpaceViewState for GraphSpaceViewState {
     }
 }
 
-/// Used to determine if a layout is up-to-date or outdated.
+/// Used to determine if a layout is up-to-date or outdated. For now we use a
+/// hash of the data the comes from the visualizers.
 #[derive(Debug, PartialEq, Eq)]
-pub struct Discriminator {
-    timeline: Timeline,
-    time: TimeInt,
-    entities: ahash::HashSet<EntityPath>,
-}
+#[repr(transparent)]
+pub struct Discriminator(u64);
 
 impl Discriminator {
-    pub fn new(
-        timeline: Timeline,
-        time: TimeInt,
-        entities: impl IntoIterator<Item = EntityPath>,
-    ) -> Self {
-        Self {
-            timeline,
-            time,
-            entities: entities.into_iter().collect(),
-        }
+    pub fn new(hash: u64) -> Self {
+        Self(hash)
     }
 }
 
@@ -183,12 +172,10 @@ impl LayoutState {
     /// This method is lazy. A new layout is only computed if the current timestamp requires it.
     pub fn get<'a>(
         &'a mut self,
-        timeline: Timeline,
-        time: TimeInt,
-        entities: impl IntoIterator<Item = EntityPath>,
+        hash: Discriminator,
         graphs: impl Iterator<Item = &'a Graph<'a>> + Clone,
     ) -> &'a mut Layout {
-        *self = std::mem::take(self).update(Discriminator::new(timeline, time, entities), graphs);
+        *self = std::mem::take(self).update(hash, graphs);
 
         match self {
             Self::Finished { layout, .. } | Self::InProgress { layout, .. } => layout,

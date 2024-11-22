@@ -12,6 +12,13 @@ pub struct NodeInstanceImplicit {
     pub index: NodeIndex,
 }
 
+impl std::hash::Hash for NodeInstanceImplicit {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.index.hash(state);
+    }
+}
+
+#[derive(Hash)]
 pub struct Graph<'a> {
     explicit: &'a [NodeInstance],
     implicit: Vec<NodeInstanceImplicit>,

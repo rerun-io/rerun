@@ -23,19 +23,19 @@ impl Layout {
     }
 
     /// Updates the size and position of a node, for example after size changes.
-    pub fn update(&mut self, node: &NodeIndex, rect: Rect) {
+    /// Returns `true` if the node was updated.
+    pub fn update(&mut self, node: &NodeIndex, rect: Rect) -> bool {
         debug_assert!(
             self.extents.contains_key(node),
             "node should exist in the layout"
         );
         if let Some(extent) = self.extents.get_mut(node) {
-            *extent = rect;
+            if extent != &rect {
+                *extent = rect;
+                return true;
+            }
         }
-    }
-
-    /// Returns `true` if any node has a zero size.
-    pub fn has_zero_size(&self) -> bool {
-        self.extents.values().any(|r| r.size() == Vec2::ZERO)
+        false
     }
 }
 

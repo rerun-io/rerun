@@ -33,6 +33,35 @@ pub struct NodeInstance {
     pub radius: Option<components::Radius>,
 }
 
+impl std::hash::Hash for NodeInstance {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        // We use the more verbose destructring here, to make sure that we
+        // exhaustively consider all fields when hashing (we get a compiler
+        // warning when we forget a field).
+        let Self {
+            // The index already uniquely identifies a node, so we don't need to
+            // hash the node itself.
+            node: _,
+            instance,
+            index,
+            label,
+            show_label,
+            color,
+            position,
+            radius,
+        } = self;
+        instance.hash(state);
+        index.hash(state);
+        label.hash(state);
+        show_label.hash(state);
+        color.hash(state);
+        // The following fields don't implement `Hash`.
+        position.as_ref().map(bytemuck::bytes_of).hash(state);
+        radius.as_ref().map(bytemuck::bytes_of).hash(state);
+    }
+}
+
+#[derive(Hash)]
 pub struct NodeData {
     pub nodes: Vec<NodeInstance>,
 }
@@ -110,7 +139,7 @@ impl VisualizerSystem for NodeVisualizer {
                         radius: radius.copied(),
                     },
                 )
-                .collect();
+                .collect::<Vec<_>>();
 
                 self.data
                     .insert(data_result.entity_path.clone(), NodeData { nodes });

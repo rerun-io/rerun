@@ -1,3 +1,5 @@
+use std::hash::{Hash as _, Hasher as _};
+
 use re_log_types::EntityPath;
 use re_space_view::{
     controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER},
@@ -19,7 +21,7 @@ use re_viewport_blueprint::ViewProperty;
 
 use crate::{
     graph::Graph,
-    ui::{scene::SceneBuilder, GraphSpaceViewState},
+    ui::{scene::SceneBuilder, Discriminator, GraphSpaceViewState},
     visualizers::{merge, EdgesVisualizer, NodeVisualizer},
 };
 
@@ -148,6 +150,14 @@ Display a graph of nodes and edges.
             .map(|(ent, nodes, edges)| (ent, Graph::new(nodes, edges)))
             .collect::<Vec<_>>();
 
+        // We could move this computation to the visualizers to improve
+        // performance if needed.
+        let discriminator = {
+            let mut hasher = ahash::AHasher::default();
+            graphs.hash(&mut hasher);
+            Discriminator::new(hasher.finish())
+        };
+
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
         let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
@@ -160,42 +170,41 @@ Display a graph of nodes and edges.
             bounds_property.component_or_fallback(ctx, self, state)?;
 
         let layout_was_empty = state.layout_state.is_none();
-        let layout = state.layout_state.get(
-            query.timeline,
-            query.latest_at,
-            graphs.iter().map(|g| (g.0).clone()),
-            graphs.iter().map(|(_, graph)| graph),
-        );
-        let needs_remeasure = layout.has_zero_size();
+        let layout = state
+            .layout_state
+            .get(discriminator, graphs.iter().map(|(_, graph)| graph));
+
+        let mut needs_remeasure = false;
 
         state.world_bounds = Some(bounds);
         let bounds_rect: egui::Rect = bounds.into();
 
         let mut scene_builder = SceneBuilder::from_world_bounds(bounds_rect);
 
-        // TODO(grtlr): Is there a blueprint archetype for debug information?
         if state.show_debug {
             scene_builder.show_debug();
         }
-
-
 
         let (new_world_bounds, response) = scene_builder.add(ui, |mut scene| {
             for (entity, graph) in &graphs {
                 // We use the following to keep track of the bounding box over nodes in an entity.
                 let mut entity_rect = egui::Rect::NOTHING;
 
-                let ent_highlights = query.highlights.entity_highlight(entity.hash());
+                let ent_highlights = query.highlights.entity_highlight((*entity).hash());
 
                 // Draw explicit nodes.
                 for node in graph.nodes_explicit() {
                     let pos = layout.get(&node.index).unwrap_or(egui::Rect::ZERO);
 
-
-                    let response = scene.explicit_node(pos.min, node, ent_highlights.index_highlight(node.instance));
+                    let response = scene.explicit_node(
+                        pos.min,
+                        node,
+                        ent_highlights.index_highlight(node.instance),
+                    );
 
                     if response.clicked() {
-                        let instance_path = InstancePath::instance((*entity).clone(), node.instance);
+                        let instance_path =
+                            InstancePath::instance((*entity).clone(), node.instance);
                         ctx.select_hovered_on_click(
                             &response,
                             vec![(Item::DataResult(query.space_view_id, instance_path), None)]
@@ -204,7 +213,7 @@ Display a graph of nodes and edges.
                     }
 
                     entity_rect = entity_rect.union(response.rect);
-                    layout.update(&node.index, response.rect);
+                    needs_remeasure |= layout.update(&node.index, response.rect);
                 }
 
                 // Draw implicit nodes.
@@ -212,7 +221,7 @@ Display a graph of nodes and edges.
                     let current = layout.get(&node.index).unwrap_or(egui::Rect::ZERO);
                     let response = scene.implicit_node(current.min, node);
                     entity_rect = entity_rect.union(response.rect);
-                    layout.update(&node.index, response.rect);
+                    needs_remeasure |= layout.update(&node.index, response.rect);
                 }
 
                 // Draw edges.
