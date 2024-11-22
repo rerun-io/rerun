@@ -4,7 +4,7 @@ use egui::{
 };
 use re_chunk::EntityPath;
 use re_types::{components::Radius, datatypes::Float32};
-use re_viewer_context::SpaceViewHighlights;
+use re_viewer_context::{InteractionHighlight, OptionalSpaceViewEntityHighlight, SpaceViewHighlights};
 use std::hash::Hash;
 
 use crate::{
@@ -179,9 +179,9 @@ pub struct Scene<'a> {
 
 impl<'a> Scene<'a> {
     /// Draws a regular node, i.e. an explicit node instance.
-    pub fn explicit_node(&mut self, pos: Pos2, node: &NodeInstance) -> Response {
+    pub fn explicit_node(&mut self, pos: Pos2, node: &NodeInstance, highlights: InteractionHighlight) -> Response {
         self.node_wrapper(node.index, pos, |ui, world_to_ui| {
-            draw_explicit(ui, world_to_ui, node)
+            draw_explicit(ui, world_to_ui, node, highlights)
         })
     }
 

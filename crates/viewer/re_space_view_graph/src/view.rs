@@ -178,16 +178,31 @@ Display a graph of nodes and edges.
             scene_builder.show_debug();
         }
 
+
+
         let (new_world_bounds, response) = scene_builder.add(ui, |mut scene| {
             for (entity, graph) in &graphs {
                 // We use the following to keep track of the bounding box over nodes in an entity.
                 let mut entity_rect = egui::Rect::NOTHING;
 
+                let ent_highlights = query.highlights.entity_highlight(entity.hash());
+
                 // Draw explicit nodes.
                 for node in graph.nodes_explicit() {
                     let pos = layout.get(&node.index).unwrap_or(egui::Rect::ZERO);
 
-                    let response = scene.explicit_node(pos.min, node);
+
+                    let response = scene.explicit_node(pos.min, node, ent_highlights.index_highlight(node.instance));
+
+                    if response.clicked() {
+                        let instance_path = InstancePath::instance((*entity).clone(), node.instance);
+                        ctx.select_hovered_on_click(
+                            &response,
+                            vec![(Item::DataResult(query.space_view_id, instance_path), None)]
+                                .into_iter(),
+                        );
+                    }
+
                     entity_rect = entity_rect.union(response.rect);
                     layout.update(&node.index, response.rect);
                 }

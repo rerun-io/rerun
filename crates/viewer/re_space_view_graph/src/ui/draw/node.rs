@@ -1,9 +1,10 @@
 use egui::{Frame, Label, Response, RichText, Sense, Stroke, TextWrapMode, Ui, Vec2};
+use re_viewer_context::{InteractionHighlight, SelectionHighlight};
 
 use crate::{graph::NodeInstanceImplicit, ui::scene::SceneContext, visualizers::NodeInstance};
 
 /// The `world_to_ui_scale` parameter is used to convert between world and ui coordinates.
-pub fn draw_explicit(ui: &mut Ui, ctx: &SceneContext, node: &NodeInstance) -> Response {
+pub fn draw_explicit(ui: &mut Ui, ctx: &SceneContext, node: &NodeInstance, highlight: InteractionHighlight) -> Response {
     let visuals = &ui.style().visuals;
 
     let fg = node.color.unwrap_or_else(|| visuals.text_color());
@@ -12,14 +13,18 @@ pub fn draw_explicit(ui: &mut Ui, ctx: &SceneContext, node: &NodeInstance) -> Re
         // Draw a text node.
 
         let bg = visuals.widgets.noninteractive.bg_fill;
-        let border = visuals.text_color();
+        let stroke = match highlight.selection {
+            SelectionHighlight::Selection => visuals.selection.stroke,
+            _ => Stroke::new(1.0, visuals.text_color()),
+        };
+
 
         let text = RichText::new(label.as_str()).color(fg);
         let label = Label::new(text).wrap_mode(TextWrapMode::Extend);
 
         Frame::default()
             .rounding(4.0)
-            .stroke(Stroke::new(1.0, border))
+            .stroke(stroke)
             .inner_margin(Vec2::new(6.0, 4.0))
             .fill(bg)
             .show(ui, |ui| ui.add(label))

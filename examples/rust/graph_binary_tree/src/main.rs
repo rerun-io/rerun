@@ -6,7 +6,7 @@
 //!  cargo run -p graph_binary_tree -- --connect
 //! ```
 
-use rerun::{external::re_log, Color, GraphEdges, GraphNodes};
+use rerun::{external::re_log, GraphEdges, GraphNodes};
 use std::collections::HashMap;
 
 #[derive(Debug, clap::Parser)]
