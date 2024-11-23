@@ -22,8 +22,6 @@ pub fn quote_arrow_serializer(
 ) -> TokenStream {
     let datatype = &arrow_registry.get(&obj.fqname);
 
-    let quoted_datatype = quote! { Self::arrow_datatype() };
-
     let is_enum = obj.is_enum();
     let is_arrow_transparent = obj.datatype.is_none();
     let is_tuple_struct = is_tuple_struct_from_obj(obj);
@@ -64,7 +62,6 @@ pub fn quote_arrow_serializer(
         let quoted_serializer = quote_arrow_field_serializer(
             objects,
             datatype.to_logical_type(),
-            &quoted_datatype,
             &validity_dst,
             elements_are_nullable,
             &quoted_data_dst,
@@ -119,7 +116,6 @@ pub fn quote_arrow_serializer(
         let quoted_serializer = quote_arrow_field_serializer(
             objects,
             datatype,
-            &quoted_datatype,
             &validity_dst,
             elements_are_nullable,
             &quoted_data_dst,
@@ -167,14 +163,11 @@ pub fn quote_arrow_serializer(
                     let validity_dst = format_ident!("{data_dst}_validity");
 
                     let inner_datatype = &arrow_registry.get(&obj_field.fqname);
-                    let quoted_inner_datatype =
-                        super::arrow::ArrowDataTypeTokenizer(inner_datatype, false);
                     let elements_are_nullable = true;
 
                     let quoted_serializer = quote_arrow_field_serializer(
                         objects,
                         inner_datatype,
-                        &quoted_inner_datatype,
                         &validity_dst,
                         elements_are_nullable,
                         &data_dst,
@@ -331,13 +324,10 @@ pub fn quote_arrow_serializer(
                     let validity_dst = format_ident!("{}_validity", data_dst);
 
                     let inner_datatype = &arrow_registry.get(&obj_field.fqname);
-                    let quoted_inner_datatype =
-                        super::arrow::ArrowDataTypeTokenizer(inner_datatype, false);
 
                     let quoted_serializer = quote_arrow_field_serializer(
                         objects,
                         inner_datatype,
-                        &quoted_inner_datatype,
                         &validity_dst,
                         elements_are_nullable,
                         &data_dst,
@@ -493,7 +483,6 @@ enum InnerRepr {
 fn quote_arrow_field_serializer(
     objects: &Objects,
     datatype: &DataType,
-    quoted_datatype: &dyn quote::ToTokens,
     validity_src: &proc_macro2::Ident,
     elements_are_nullable: bool,
     data_src: &proc_macro2::Ident,
@@ -688,7 +677,6 @@ fn quote_arrow_field_serializer(
 
         DataType::List(inner_field) | DataType::FixedSizeList(inner_field, _) => {
             let inner_datatype = inner_field.data_type();
-            let quoted_inner_datatype = super::arrow::ArrowDataTypeTokenizer(inner_datatype, false);
 
             // Note: We only use the ArrowBuffer optimization for `Lists` but not `FixedSizeList`.
             // This is because the `ArrowBuffer` has a dynamic length, which would add more overhead
@@ -711,7 +699,6 @@ fn quote_arrow_field_serializer(
             let quoted_inner = quote_arrow_field_serializer(
                 objects,
                 inner_datatype,
-                &quoted_inner_datatype,
                 &inner_validity_ident,
                 inner_elements_are_nullable,
                 &quoted_inner_data,
