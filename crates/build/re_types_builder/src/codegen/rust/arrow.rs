@@ -76,6 +76,8 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
 
             DataType::Extension(fqname, datatype, _metadata) => {
                 if *recursive {
+                    // TODO(emilk): if the logical datatype is a primitive, then we can just use it directly
+                    // so we get shorter generated code.
                     let fqname_use = quote_fqname_as_type_path(fqname);
                     quote!(<#fqname_use>::arrow_datatype())
                 } else {
