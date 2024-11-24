@@ -1,5 +1,6 @@
 use crate::{
-    datatypes::{ImageFormat, TensorData},
+    components::{ImageBuffer, ImageFormat},
+    datatypes::{ChannelDatatype, ColorModel, TensorData},
     image::{blob_and_datatype_from_tensor, find_non_empty_dim_indices, ImageConstructionError},
 };
 
@@ -37,12 +38,45 @@ impl DepthImage {
 
         Ok(Self {
             buffer: blob.into(),
-            format: image_format.into(),
+            format: image_format,
             draw_order: None,
             meter: None,
             colormap: None,
             point_fill_ratio: None,
             depth_range: None,
         })
+    }
+
+    /// Construct an image from a byte buffer given its resolution, color model, and data type.
+    pub fn from_data_type_and_bytes(
+        bytes: impl Into<ImageBuffer>,
+        [width, height]: [u32; 2],
+        datatype: ChannelDatatype,
+    ) -> Self {
+        let buffer = bytes.into();
+
+        let image_format = ImageFormat::depth([width, height], ChannelDatatype::U16);
+
+        let num_expected_bytes = image_format.num_bytes();
+        if buffer.len() != num_expected_bytes {
+            re_log::warn_once!(
+                "Expected {width}x{height} {} {datatype:?} image to be {num_expected_bytes} B, but got {} B", ColorModel::L, buffer.len()
+            );
+        }
+
+        Self {
+            buffer,
+            format: image_format,
+            meter: None,
+            colormap: None,
+            depth_range: None,
+            point_fill_ratio: None,
+            draw_order: None,
+        }
+    }
+
+    /// From an 16-bit grayscale image.
+    pub fn from_gray16(bytes: impl Into<ImageBuffer>, resolution: [u32; 2]) -> Self {
+        Self::from_data_type_and_bytes(bytes, resolution, ChannelDatatype::U16)
     }
 }
