@@ -55,7 +55,7 @@ impl DepthImage {
     ) -> Self {
         let buffer = bytes.into();
 
-        let image_format = ImageFormat::depth([width, height], ChannelDatatype::U16);
+        let image_format = ImageFormat::depth([width, height], datatype);
 
         let num_expected_bytes = image_format.num_bytes();
         if buffer.len() != num_expected_bytes {
