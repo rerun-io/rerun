@@ -8,6 +8,7 @@ table GraphView (
     "attr.docs.unreleased"
 ) {
     /// Everything within these bounds is guaranteed to be visible.
+    ///
     /// Somethings outside of these bounds may also be visible due to letterboxing.
     visual_bounds: rerun.blueprint.archetypes.VisualBounds2D (order: 1000);
 }
