@@ -18,7 +18,7 @@ pub enum VideoPlayerError {
     #[error("The decoder is lagging behind")]
     EmptyBuffer,
 
-    #[error("Video seems to be empty, no segments have been found.")]
+    #[error("Video is empty.")]
     EmptyVideo,
 
     /// e.g. unsupported codec
