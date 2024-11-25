@@ -222,6 +222,14 @@ SECTION_TABLE: Final[list[Section]] = [
         gen_page=False,
     ),
     Section(
+        title="Graphs",
+        class_list=[
+            "archetypes.GraphNodes",
+            "archetypes.GraphEdges",
+        ],
+        gen_page=False,
+    ),
+    Section(
         title="Tensors",
         class_list=["archetypes.Tensor"],
         gen_page=False,

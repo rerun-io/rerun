@@ -63,6 +63,7 @@ arrow2.workspace = true
 crossbeam.workspace = true
 document-features.workspace = true
 itertools.workspace = true
+nohash-hasher.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
 thiserror.workspace = true

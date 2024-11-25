@@ -38,9 +38,9 @@ use re_types::{
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
-        FillRatio, GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize, Name,
-        Opacity, Range1D, Scale3D, ShowLabels, StrokeWidth, Text, TransformRelation, Translation3D,
-        ValueRange,
+        FillRatio, GammaCorrection, GraphType, ImagePlaneDistance, MagnificationFilter, MarkerSize,
+        Name, Opacity, Range1D, Scale3D, ShowLabels, StrokeWidth, Text, TransformRelation,
+        Translation3D, ValueRange,
     },
     Component as _,
 };
@@ -104,6 +104,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<BackgroundKind>(edit_view_enum);
     registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
     registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<GraphType>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MagnificationFilter>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MapProvider>(
         edit_view_enum_with_variant_available::<

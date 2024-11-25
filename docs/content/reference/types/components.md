@@ -30,6 +30,9 @@ on [Entities and Components](../../concepts/entity-component.md).
 * [`FillRatio`](components/fill_ratio.md): How much a primitive fills out the available space.
 * [`GammaCorrection`](components/gamma_correction.md): A gamma correction value to be used with a scalar value or color.
 * [`GeoLineString`](components/geo_line_string.md): A geospatial line string expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
+* [`GraphEdge`](components/graph_edge.md): An edge in a graph connecting two nodes.
+* [`GraphNode`](components/graph_node.md): A string-based ID representing a node in a graph.
+* [`GraphType`](components/graph_type.md): Specifies if a graph has directed or undirected edges.
 * [`HalfSize2D`](components/half_size2d.md): Half-size (radius) of a 2D box.
 * [`HalfSize3D`](components/half_size3d.md): Half-size (radius) of a 3D box.
 * [`ImageBuffer`](components/image_buffer.md): A buffer that is known to store image data.

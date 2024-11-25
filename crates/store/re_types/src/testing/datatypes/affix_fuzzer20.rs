@@ -41,34 +41,51 @@ impl ::re_types_core::SizeBytes for AffixFuzzer20 {
 
 impl ::re_types_core::Loggable for AffixFuzzer20 {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![
             Field::new(
                 "p",
-                <crate::testing::datatypes::PrimitiveComponent>::arrow2_datatype(),
+                <crate::testing::datatypes::PrimitiveComponent>::arrow_datatype(),
                 false,
             ),
             Field::new(
                 "s",
-                <crate::testing::datatypes::StringComponent>::arrow2_datatype(),
+                <crate::testing::datatypes::StringComponent>::arrow_datatype(),
                 false,
             ),
         ]))
     }
 
-    fn to_arrow2_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
+            let fields = Fields::from(vec![
+                Field::new(
+                    "p",
+                    <crate::testing::datatypes::PrimitiveComponent>::arrow_datatype(),
+                    false,
+                ),
+                Field::new(
+                    "s",
+                    <crate::testing::datatypes::StringComponent>::arrow_datatype(),
+                    false,
+                ),
+            ]);
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
@@ -76,12 +93,12 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let validity: Option<arrow::buffer::NullBuffer> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            StructArray::new(
-                Self::arrow2_datatype(),
+            as_array_ref(StructArray::new(
+                fields,
                 vec![
                     {
                         let (somes, p): (Vec<_>, Vec<_>) = data
@@ -91,18 +108,18 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let p_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let p_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
-                        PrimitiveArray::new(
-                            DataType::UInt32,
-                            p.into_iter()
-                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
-                                .collect(),
-                            p_bitmap,
-                        )
-                        .boxed()
+                        as_array_ref(PrimitiveArray::<UInt32Type>::new(
+                            ScalarBuffer::from(
+                                p.into_iter()
+                                    .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
+                                    .collect::<Vec<_>>(),
+                            ),
+                            p_validity,
+                        ))
                     },
                     {
                         let (somes, s): (Vec<_>, Vec<_>) = data
@@ -112,39 +129,30 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let s_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let s_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                                 s.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
-                            )?
-                            .into();
-                            let inner_data: arrow2::buffer::Buffer<u8> = s
+                            );
+                            let inner_data: arrow::buffer::Buffer = s
                                 .into_iter()
                                 .flatten()
                                 .flat_map(|datum| datum.0 .0)
                                 .collect();
-
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            unsafe {
-                                Utf8Array::<i32>::new_unchecked(
-                                    DataType::Utf8,
-                                    offsets,
-                                    inner_data,
-                                    s_bitmap,
-                                )
-                            }
-                            .boxed()
+                            as_array_ref(unsafe {
+                                StringArray::new_unchecked(offsets, inner_data, s_validity)
+                            })
                         }
                     },
                 ],
-                bitmap,
-            )
-            .boxed()
+                validity,
+            ))
         })
     }
 
@@ -156,13 +164,14 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -180,7 +189,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                 let p = {
                     if !arrays_by_name.contains_key("p") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "p",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer20");
@@ -204,7 +213,7 @@ impl ::re_types_core::Loggable for AffixFuzzer20 {
                 let s = {
                     if !arrays_by_name.contains_key("s") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "s",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer20");

@@ -77,6 +77,8 @@ from .archetypes import (
     EncodedImage as EncodedImage,
     GeoLineStrings as GeoLineStrings,
     GeoPoints as GeoPoints,
+    GraphEdges as GraphEdges,
+    GraphNodes as GraphNodes,
     Image as Image,
     InstancePoses3D as InstancePoses3D,
     LineStrips2D as LineStrips2D,
@@ -104,6 +106,8 @@ from .blueprint.api import (
 )
 from .components import (
     AlbedoFactor as AlbedoFactor,
+    GraphEdge as GraphEdge,
+    GraphType as GraphType,
     MediaType as MediaType,
     Radius as Radius,
     Scale3D as Scale3D,

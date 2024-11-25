@@ -143,7 +143,10 @@ pub use self::{
     },
     arrow_buffer::ArrowBuffer,
     arrow_string::ArrowString,
-    loggable::{Component, ComponentName, ComponentNameSet, DatatypeName, Loggable},
+    loggable::{
+        Component, ComponentName, ComponentNameSet, DatatypeName, Loggable,
+        UnorderedComponentNameSet,
+    },
     loggable_batch::{ComponentBatch, LoggableBatch, MaybeOwnedComponentBatch},
     result::{
         DeserializationError, DeserializationResult, ResultExt, SerializationError,

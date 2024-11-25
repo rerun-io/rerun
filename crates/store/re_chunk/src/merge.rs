@@ -1,10 +1,9 @@
-use std::collections::BTreeMap;
-
 use arrow2::array::{
     Array as Arrow2Array, ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
     StructArray as Arrow2StructArray,
 };
 use itertools::{izip, Itertools};
+use nohash_hasher::IntMap;
 
 use crate::{Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn};
 
@@ -73,7 +72,7 @@ impl Chunk {
         };
 
         // First pass: concat right onto left.
-        let mut components: BTreeMap<_, _> = {
+        let mut components: IntMap<_, _> = {
             re_tracing::profile_scope!("components (r2l)");
             self.components
                 .iter()

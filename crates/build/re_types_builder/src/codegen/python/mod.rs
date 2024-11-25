@@ -2550,7 +2550,8 @@ fn quote_arrow_field(field: &Field) -> String {
     } = field;
 
     let datatype = quote_arrow_datatype(data_type);
-    let is_nullable = if *is_nullable { "True" } else { "False" };
+    let is_nullable = *is_nullable || matches!(data_type.to_logical_type(), DataType::Union { .. }); // Rerun unions always has a `_null_marker: null` variant, so they are always nullable
+    let is_nullable = if is_nullable { "True" } else { "False" };
     let metadata = quote_metadata_map(metadata);
 
     format!(r#"pa.field("{name}", {datatype}, nullable={is_nullable}, metadata={metadata})"#)

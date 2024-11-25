@@ -52,27 +52,37 @@ impl ::re_types_core::SizeBytes for AnnotationInfo {
 
 impl ::re_types_core::Loggable for AnnotationInfo {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![
             Field::new("id", DataType::UInt16, false),
-            Field::new("label", <crate::datatypes::Utf8>::arrow2_datatype(), true),
-            Field::new("color", <crate::datatypes::Rgba32>::arrow2_datatype(), true),
+            Field::new("label", <crate::datatypes::Utf8>::arrow_datatype(), true),
+            Field::new("color", <crate::datatypes::Rgba32>::arrow_datatype(), true),
         ]))
     }
 
-    fn to_arrow2_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
+            let fields = Fields::from(vec![
+                Field::new("id", DataType::UInt16, false),
+                Field::new("label", <crate::datatypes::Utf8>::arrow_datatype(), true),
+                Field::new("color", <crate::datatypes::Rgba32>::arrow_datatype(), true),
+            ]);
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
@@ -80,12 +90,12 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let validity: Option<arrow::buffer::NullBuffer> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            StructArray::new(
-                Self::arrow2_datatype(),
+            as_array_ref(StructArray::new(
+                fields,
                 vec![
                     {
                         let (somes, id): (Vec<_>, Vec<_>) = data
@@ -95,16 +105,18 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let id_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let id_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
-                        PrimitiveArray::new(
-                            DataType::UInt16,
-                            id.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                            id_bitmap,
-                        )
-                        .boxed()
+                        as_array_ref(PrimitiveArray::<UInt16Type>::new(
+                            ScalarBuffer::from(
+                                id.into_iter()
+                                    .map(|v| v.unwrap_or_default())
+                                    .collect::<Vec<_>>(),
+                            ),
+                            id_validity,
+                        ))
                     },
                     {
                         let (somes, label): (Vec<_>, Vec<_>) = data
@@ -115,33 +127,25 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let label_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let label_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                                 label.iter().map(|opt| {
                                     opt.as_ref().map(|datum| datum.0.len()).unwrap_or_default()
                                 }),
-                            )?
-                            .into();
-                            let inner_data: arrow2::buffer::Buffer<u8> = label
+                            );
+                            let inner_data: arrow::buffer::Buffer = label
                                 .into_iter()
                                 .flatten()
                                 .flat_map(|datum| datum.0 .0)
                                 .collect();
-
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            unsafe {
-                                Utf8Array::<i32>::new_unchecked(
-                                    DataType::Utf8,
-                                    offsets,
-                                    inner_data,
-                                    label_bitmap,
-                                )
-                            }
-                            .boxed()
+                            as_array_ref(unsafe {
+                                StringArray::new_unchecked(offsets, inner_data, label_validity)
+                            })
                         }
                     },
                     {
@@ -153,24 +157,23 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let color_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let color_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
-                        PrimitiveArray::new(
-                            DataType::UInt32,
-                            color
-                                .into_iter()
-                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
-                                .collect(),
-                            color_bitmap,
-                        )
-                        .boxed()
+                        as_array_ref(PrimitiveArray::<UInt32Type>::new(
+                            ScalarBuffer::from(
+                                color
+                                    .into_iter()
+                                    .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
+                                    .collect::<Vec<_>>(),
+                            ),
+                            color_validity,
+                        ))
                     },
                 ],
-                bitmap,
-            )
-            .boxed()
+                validity,
+            ))
         })
     }
 
@@ -182,13 +185,14 @@ impl ::re_types_core::Loggable for AnnotationInfo {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -206,7 +210,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                 let id = {
                     if !arrays_by_name.contains_key("id") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "id",
                         ))
                         .with_context("rerun.datatypes.AnnotationInfo");
@@ -227,7 +231,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                 let label = {
                     if !arrays_by_name.contains_key("label") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "label",
                         ))
                         .with_context("rerun.datatypes.AnnotationInfo");
@@ -282,7 +286,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                 let color = {
                     if !arrays_by_name.contains_key("color") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "color",
                         ))
                         .with_context("rerun.datatypes.AnnotationInfo");

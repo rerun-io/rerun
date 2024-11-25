@@ -98,7 +98,7 @@ class AffixFuzzer17Batch(BaseBatch[AffixFuzzer17ArrayLike], ComponentBatchMixin)
                 ),
                 pa.field("empty_variant", pa.null(), nullable=True, metadata={}),
             ]),
-            nullable=False,
+            nullable=True,
             metadata={},
         )
     )
