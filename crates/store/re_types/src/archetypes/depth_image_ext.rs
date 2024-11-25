@@ -47,7 +47,7 @@ impl DepthImage {
         })
     }
 
-    /// Construct an image from a byte buffer given its resolution, and data type.
+    /// Construct a depth image from a byte buffer given its resolution, and data type.
     pub fn from_data_type_and_bytes(
         bytes: impl Into<ImageBuffer>,
         [width, height]: [u32; 2],
