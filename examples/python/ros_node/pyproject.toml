@@ -1,0 +1,25 @@
+[project]
+name = "ros_node"
+version = "0.1.0"
+readme = "README.md"
+dependencies = [
+  "numpy",
+  "opencv-python",
+  "pycollada",
+  "rerun-sdk",
+  "scipy",
+  "yourdfpy",
+  # install ROS dependencies:
+  "ros-humble-desktop",
+  "gazebo",
+  "ros-humble-navigation2",
+  "ros-humble-turtlebot3",
+  "ros-humble-turtlebot3-gazebo",
+]
+
+[project.scripts]
+ros_node = "ros_node:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

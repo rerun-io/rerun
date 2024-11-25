@@ -1,6 +1,0 @@
-numpy
-opencv-python
-pycollada
-rerun-sdk
-scipy
-yourdfpy

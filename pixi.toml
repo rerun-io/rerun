@@ -639,6 +639,7 @@ openstreetmap_data = { path = "examples/python/openstreetmap_data", editable = t
 plots = { path = "examples/python/plots", editable = true }
 raw_mesh = { path = "examples/python/raw_mesh", editable = true }
 rgbd = { path = "examples/python/rgbd", editable = true }
+ros_node = { path = "examples/python/ros_node", editable = true }
 rrt_star = { path = "examples/python/rrt_star", editable = true }
 segment_anything_model = { path = "examples/python/segment_anything_model", editable = true }
 shared_recording = { path = "examples/python/shared_recording", editable = true }
