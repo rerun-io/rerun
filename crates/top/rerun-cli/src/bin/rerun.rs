@@ -28,6 +28,9 @@ fn main() -> std::process::ExitCode {
 }
 
 fn main_impl() -> std::process::ExitCode {
+    #[cfg(feature = "tracy")]
+    let _tracy_client = tracy_client::Client::start();
+
     re_log::setup_logging();
 
     let build_info = re_build_info::build_info!();

@@ -66,6 +66,9 @@ grpc = ["rerun/grpc", "dep:tokio"]
 # TODO(#4295): web_viewer shouldn't require rerun/sdk
 web_viewer = ["rerun/web_viewer", "rerun/sdk"]
 
+## Support Tracy for profiling.
+tracy = ["dep:tracy-client", "rerun/tracy"]
+
 [dependencies]
 re_build_info.workspace = true
 re_error.workspace = true
@@ -86,7 +89,7 @@ tokio = { workspace = true, optional = true, features = [
   "macros",
   "rt-multi-thread",
 ] }
-
+tracy-client = { version = "0.17.0", optional = true }
 
 [build-dependencies]
 re_build_tools.workspace = true

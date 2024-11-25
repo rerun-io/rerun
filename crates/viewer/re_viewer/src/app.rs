@@ -1678,6 +1678,14 @@ impl eframe::App for App {
     }
 
     fn update(&mut self, egui_ctx: &egui::Context, frame: &mut eframe::Frame) {
+        #[cfg(feature = "tracy")]
+        let _tracy_span = if let Some(client) = tracy_client::Client::running() {
+            client.frame_mark();
+            Some(client.span(tracy_client::span_location!(), 0))
+        } else {
+            None
+        };
+
         if let Some(seconds) = frame.info().cpu_usage {
             self.frame_time_history
                 .add(egui_ctx.input(|i| i.time), seconds);

@@ -121,6 +121,9 @@ sdk = ["dep:re_sdk", "dep:re_types"]
 ## to the compile time since it requires compiling and bundling the viewer as wasm.
 web_viewer = ["server", "dep:re_web_viewer_server", "re_sdk?/web_viewer"]
 
+## Support Tracy for profiling.
+tracy = ["re_viewer?/tracy"]
+
 [dependencies]
 re_build_info.workspace = true
 re_chunk.workspace = true

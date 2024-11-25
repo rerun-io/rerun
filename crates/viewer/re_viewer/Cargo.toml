@@ -43,6 +43,8 @@ map_view = ["dep:re_space_view_map"]
 ## Enable the gRPC Rerun Data Platform data source.
 grpc = ["re_data_source/grpc", "dep:re_grpc_client"]
 
+## Support Tracy for profiling.
+tracy = ["dep:tracy-client"]
 
 [dependencies]
 # Internal:
@@ -121,6 +123,7 @@ serde = { workspace = true, features = ["derive"] }
 serde_json.workspace = true
 serde-wasm-bindgen.workspace = true
 thiserror.workspace = true
+tracy-client = { workspace = true, optional = true }
 uuid.workspace = true
 web-time.workspace = true
 wgpu.workspace = true

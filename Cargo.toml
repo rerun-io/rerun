@@ -285,6 +285,7 @@ tonic = { version = "0.12.3", default-features = false }
 tonic-build = { version = "0.12.3", default-features = false }
 tonic-web-wasm-client = "0.6"
 tracing = { version = "0.1", default-features = false }
+tracy-client = "0.17.0"
 tungstenite = { version = "0.24", default-features = false }
 type-map = "0.5"
 typenum = "1.15"
@@ -353,7 +354,7 @@ opt-level = 2
 
 
 [profile.release]
-# debug = true # good for profilers
+debug = true    # good for profilers
 panic = "abort" # This leads to better optimizations and smaller binaries (and is the default in Wasm anyways).
 
 
