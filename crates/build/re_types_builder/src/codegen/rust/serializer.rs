@@ -462,8 +462,8 @@ enum InnerRepr {
 /// * unions: nullability is encoded as a separate variant
 /// * lists inside of fields that are lists: we don't support intra-list nullability
 ///
-/// TODO(#2993): However, we still emit a validity validity for lists inside lists
-/// to `validity_validity_ident`since Python and Rust do so.
+/// TODO(#2993): However, we still emit a validity/null bitmaps for lists inside lists
+/// since Python and Rust do so.
 #[allow(clippy::too_many_arguments)]
 fn quote_arrow_field_serializer(
     objects: &Objects,
