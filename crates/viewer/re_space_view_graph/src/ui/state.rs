@@ -22,7 +22,7 @@ pub struct GraphSpaceViewState {
 }
 
 impl GraphSpaceViewState {
-    pub fn layout_ui(&mut self, ui: &mut egui::Ui) {
+    pub fn layout_ui(&self, ui: &mut egui::Ui) {
         let Some(rect) = self.layout_state.bounding_rect() else {
             return;
         };

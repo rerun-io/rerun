@@ -256,7 +256,7 @@ impl<'a> Scene<'a> {
     }
 
     pub fn edge(
-        &mut self,
+        &self,
         from: Rect,
         to: Rect,
         edge: &EdgeInstance,
