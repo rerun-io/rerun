@@ -25,7 +25,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// ⚠️ **This type is experimental and may be removed in future versions**
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct GraphEdges {
-    /// A list of node IDs.
+    /// A list of node tuples.
     pub edges: Vec<crate::components::GraphEdge>,
 
     /// Specifies if the graph is directed or undirected.

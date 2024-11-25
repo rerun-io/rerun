@@ -35,7 +35,7 @@ class GraphEdges(Archetype):
         Parameters
         ----------
         edges:
-            A list of node IDs.
+            A list of node tuples.
         graph_type:
             Specifies if the graph is directed or undirected.
 
@@ -67,7 +67,7 @@ class GraphEdges(Archetype):
         metadata={"component": "required"},
         converter=components.GraphEdgeBatch._required,  # type: ignore[misc]
     )
-    # A list of node IDs.
+    # A list of node tuples.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

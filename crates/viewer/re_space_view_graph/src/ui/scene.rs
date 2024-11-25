@@ -255,13 +255,7 @@ impl<'a> Scene<'a> {
         response
     }
 
-    pub fn edge(
-        &self,
-        from: Rect,
-        to: Rect,
-        edge: &EdgeInstance,
-        show_arrow: bool,
-    ) -> Response {
+    pub fn edge(&self, from: Rect, to: Rect, edge: &EdgeInstance, show_arrow: bool) -> Response {
         let response = Area::new(self.id.with(((edge.source_index, edge.target_index),)))
             .order(Order::Middle)
             .constrain(false)

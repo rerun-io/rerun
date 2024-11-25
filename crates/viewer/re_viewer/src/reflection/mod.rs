@@ -1338,7 +1338,7 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name :
                     "rerun.components.GraphEdge".into(), display_name : "Edges",
                     docstring_md :
-                    "A list of node IDs.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    "A list of node tuples.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
                     is_required : true, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.GraphType".into(), display_name : "Graph type",
                     docstring_md :
