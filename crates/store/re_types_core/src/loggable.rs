@@ -53,7 +53,10 @@ pub trait Loggable: 'static + Send + Sync + Clone + Sized + SizeBytes {
         data: impl IntoIterator<Item = Option<impl Into<std::borrow::Cow<'a, Self>>>>,
     ) -> SerializationResult<Box<dyn arrow2::array::Array>>
     where
-        Self: 'a;
+        Self: 'a,
+    {
+        Self::to_arrow_opt(data).map(|array| array.into())
+    }
 
     // --- Optional serialization methods ---
 

@@ -16,12 +16,12 @@ namespace rerun {
             arrow::field(
                 "start",
                 Loggable<rerun::datatypes::TimeRangeBoundary>::arrow_datatype(),
-                false
+                true
             ),
             arrow::field(
                 "end",
                 Loggable<rerun::datatypes::TimeRangeBoundary>::arrow_datatype(),
-                false
+                true
             ),
         });
         return datatype;

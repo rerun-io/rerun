@@ -1729,12 +1729,12 @@ fn quote_fill_arrow_array_builder(
             // C-style enum, encoded as a sparse arrow union
             ObjectClass::Enum => {
                 quote! {
-                #parameter_check
-                ARROW_RETURN_NOT_OK(#builder->Reserve(static_cast<int64_t>(num_elements)));
-                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    const auto variant = elements[elem_idx];
-                    ARROW_RETURN_NOT_OK(#builder->Append(static_cast<uint8_t>(variant)));
-                }
+                    #parameter_check
+                    ARROW_RETURN_NOT_OK(#builder->Reserve(static_cast<int64_t>(num_elements)));
+                    for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                        const auto variant = elements[elem_idx];
+                        ARROW_RETURN_NOT_OK(#builder->Append(static_cast<uint8_t>(variant)));
+                    }
                 }
             }
 
@@ -2482,6 +2482,7 @@ fn quote_arrow_field_type(
     let name = &field.name;
     let datatype = quote_arrow_datatype(&field.typ, objects, includes, false);
     let is_nullable = field.is_nullable || field.typ == Type::Unit; // null type is always nullable
+    let is_nullable = is_nullable || field.typ.is_union(objects); // Rerun unions always has a `_null_marker: null` variant, so they are always nullable
 
     quote! {
         arrow::field(#name, #datatype, #is_nullable)
@@ -2496,6 +2497,7 @@ fn quote_arrow_elem_type(
     let typ: Type = elem_type.clone().into();
     let datatype = quote_arrow_datatype(&typ, objects, includes, false);
     let is_nullable = typ == Type::Unit; // null type must be nullable
+    let is_nullable = is_nullable || elem_type.is_union(objects); // Rerun unions always has a `_null_marker: null` variant, so they are always nullable
     quote! {
         arrow::field("item", #datatype, #is_nullable)
     }

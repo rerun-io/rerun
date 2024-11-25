@@ -70,18 +70,42 @@ impl ::re_types_core::Loggable for SelectedColumns {
         ]))
     }
 
-    fn to_arrow2_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow::datatypes::*;
-        use arrow2::array::*;
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
+            let fields = Fields::from(vec![
+                Field::new(
+                    "time_columns",
+                    DataType::List(std::sync::Arc::new(Field::new(
+                        "item",
+                        <crate::datatypes::Utf8>::arrow_datatype(),
+                        false,
+                    ))),
+                    false,
+                ),
+                Field::new(
+                    "component_columns",
+                    DataType::List(std::sync::Arc::new(Field::new(
+                        "item",
+                        <crate::blueprint::datatypes::ComponentColumnSelector>::arrow_datatype(),
+                        false,
+                    ))),
+                    false,
+                ),
+            ]);
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
@@ -89,63 +113,98 @@ impl ::re_types_core::Loggable for SelectedColumns {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let validity: Option<arrow::buffer::NullBuffer> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            StructArray::new(
-                    Self::arrow_datatype().into(),
-                    vec![
-                        { let (somes, time_columns) : (Vec < _ >, Vec < _ >) = data
-                        .iter().map(| datum | { let datum = datum.as_ref().map(| datum |
-                        { datum.time_columns.clone() }); (datum.is_some(), datum) })
-                        .unzip(); let time_columns_bitmap : Option <
-                        arrow2::bitmap::Bitmap > = { let any_nones = somes.iter().any(|
-                        some | ! * some); any_nones.then(|| somes.into()) }; { use
-                        arrow2:: { buffer::Buffer, offset::OffsetsBuffer }; let offsets =
-                        arrow2::offset::Offsets:: < i32 > ::try_from_lengths(time_columns
-                        .iter().map(| opt | opt.as_ref().map_or(0, | datum | datum
-                        .len()))) ? .into(); let time_columns_inner_data : Vec < _ > =
-                        time_columns.into_iter().flatten().flatten().collect(); let
-                        time_columns_inner_bitmap : Option < arrow2::bitmap::Bitmap > =
-                        None;
-                        ListArray::try_new(DataType::List(std::sync::Arc::new(Field::new("item",
-                        < crate ::datatypes::Utf8 > ::arrow_datatype(), false))).into(),
-                        offsets, { let offsets = arrow2::offset::Offsets:: < i32 >
-                        ::try_from_lengths(time_columns_inner_data.iter().map(| datum | {
-                        datum.0.len() })) ? .into(); let inner_data :
-                        arrow2::buffer::Buffer < u8 > = time_columns_inner_data
-                        .into_iter().flat_map(| datum | { datum.0.0 }).collect();
-
-                        #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)] unsafe
-                        { Utf8Array:: < i32 > ::new_unchecked(DataType::Utf8.into(),
-                        offsets, inner_data, time_columns_inner_bitmap) } .boxed() },
-                        time_columns_bitmap,) ? .boxed() } }, { let (somes,
-                        component_columns) : (Vec < _ >, Vec < _ >) = data.iter().map(|
-                        datum | { let datum = datum.as_ref().map(| datum | { datum
-                        .component_columns.clone() }); (datum.is_some(), datum) })
-                        .unzip(); let component_columns_bitmap : Option <
-                        arrow2::bitmap::Bitmap > = { let any_nones = somes.iter().any(|
-                        some | ! * some); any_nones.then(|| somes.into()) }; { use
-                        arrow2:: { buffer::Buffer, offset::OffsetsBuffer }; let offsets =
-                        arrow2::offset::Offsets:: < i32 >
-                        ::try_from_lengths(component_columns.iter().map(| opt | opt
-                        .as_ref().map_or(0, | datum | datum.len()))) ? .into(); let
-                        component_columns_inner_data : Vec < _ > = component_columns
-                        .into_iter().flatten().flatten().collect(); let
-                        component_columns_inner_bitmap : Option < arrow2::bitmap::Bitmap
-                        > = None;
-                        ListArray::try_new(DataType::List(std::sync::Arc::new(Field::new("item",
+            as_array_ref(StructArray::new(
+                fields,
+                vec![
+                    {
+                        let (somes, time_columns): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum = datum.as_ref().map(|datum| datum.time_columns.clone());
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let time_columns_validity: Option<arrow::buffer::NullBuffer> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                                time_columns
+                                    .iter()
+                                    .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
+                            );
+                            let time_columns_inner_data: Vec<_> =
+                                time_columns.into_iter().flatten().flatten().collect();
+                            let time_columns_inner_validity: Option<arrow::buffer::NullBuffer> =
+                                None;
+                            as_array_ref(ListArray::try_new(
+                                std::sync::Arc::new(Field::new(
+                                    "item",
+                                    <crate::datatypes::Utf8>::arrow_datatype(),
+                                    false,
+                                )),
+                                offsets,
+                                {
+                                    let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                                        time_columns_inner_data.iter().map(|datum| datum.0.len()),
+                                    );
+                                    let inner_data: arrow::buffer::Buffer = time_columns_inner_data
+                                        .into_iter()
+                                        .flat_map(|datum| datum.0 .0)
+                                        .collect();
+                                    #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
+                                    as_array_ref(unsafe {
+                                        StringArray::new_unchecked(
+                                            offsets,
+                                            inner_data,
+                                            time_columns_inner_validity,
+                                        )
+                                    })
+                                },
+                                time_columns_validity,
+                            )?)
+                        }
+                    },
+                    {
+                        let (somes, component_columns): (Vec<_>, Vec<_>) = data
+                            .iter()
+                            .map(|datum| {
+                                let datum =
+                                    datum.as_ref().map(|datum| datum.component_columns.clone());
+                                (datum.is_some(), datum)
+                            })
+                            .unzip();
+                        let component_columns_validity: Option<arrow::buffer::NullBuffer> = {
+                            let any_nones = somes.iter().any(|some| !*some);
+                            any_nones.then(|| somes.into())
+                        };
+                        {
+                            let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                                component_columns
+                                    .iter()
+                                    .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
+                            );
+                            let component_columns_inner_data: Vec<_> =
+                                component_columns.into_iter().flatten().flatten().collect();
+                            let component_columns_inner_validity: Option<
+                                arrow::buffer::NullBuffer,
+                            > = None;
+                            as_array_ref(ListArray::try_new(std::sync::Arc::new(Field::new("item",
                         < crate ::blueprint::datatypes::ComponentColumnSelector >
-                        ::arrow_datatype(), false))).into(), offsets, { _ =
-                        component_columns_inner_bitmap; crate
-                        ::blueprint::datatypes::ComponentColumnSelector::to_arrow2_opt(component_columns_inner_data
-                        .into_iter().map(Some)) ? }, component_columns_bitmap,) ?
-                        .boxed() } },
-                    ],
-                    bitmap,
-                )
-                .boxed()
+                        ::arrow_datatype(), false)), offsets, { _ =
+                        component_columns_inner_validity; crate
+                        ::blueprint::datatypes::ComponentColumnSelector::to_arrow_opt(component_columns_inner_data
+                        .into_iter().map(Some)) ? }, component_columns_validity,) ?)
+                        }
+                    },
+                ],
+                validity,
+            ))
         })
     }
 

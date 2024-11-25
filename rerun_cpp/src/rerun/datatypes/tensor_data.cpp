@@ -26,7 +26,7 @@ namespace rerun {
             arrow::field(
                 "buffer",
                 Loggable<rerun::datatypes::TensorBuffer>::arrow_datatype(),
-                false
+                true
             ),
         });
         return datatype;

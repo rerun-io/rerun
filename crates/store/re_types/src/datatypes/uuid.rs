@@ -65,17 +65,21 @@ impl ::re_types_core::Loggable for Uuid {
         )
     }
 
-    fn to_arrow2_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow::datatypes::*;
-        use arrow2::array::*;
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
             let (somes, bytes): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -85,12 +89,11 @@ impl ::re_types_core::Loggable for Uuid {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bytes_bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let bytes_validity: Option<arrow::buffer::NullBuffer> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
-                use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let bytes_inner_data: Vec<_> = bytes
                     .into_iter()
                     .flat_map(|v| match v {
@@ -100,26 +103,24 @@ impl ::re_types_core::Loggable for Uuid {
                         ),
                     })
                     .collect();
-                let bytes_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                    bytes_bitmap.as_ref().map(|bitmap| {
-                        bitmap
+                let bytes_inner_validity: Option<arrow::buffer::NullBuffer> =
+                    bytes_validity.as_ref().map(|validity| {
+                        validity
                             .iter()
                             .map(|b| std::iter::repeat(b).take(16usize))
                             .flatten()
                             .collect::<Vec<_>>()
                             .into()
                     });
-                FixedSizeListArray::new(
-                    Self::arrow_datatype().into(),
-                    PrimitiveArray::new(
-                        DataType::UInt8.into(),
-                        bytes_inner_data.into_iter().collect(),
-                        bytes_inner_bitmap,
-                    )
-                    .boxed(),
-                    bytes_bitmap,
-                )
-                .boxed()
+                as_array_ref(FixedSizeListArray::new(
+                    std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
+                    16,
+                    as_array_ref(PrimitiveArray::<UInt8Type>::new(
+                        ScalarBuffer::from(bytes_inner_data.into_iter().collect::<Vec<_>>()),
+                        bytes_inner_validity,
+                    )),
+                    bytes_validity,
+                ))
             }
         })
     }

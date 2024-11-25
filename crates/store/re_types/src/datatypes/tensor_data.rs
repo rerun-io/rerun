@@ -68,23 +68,43 @@ impl ::re_types_core::Loggable for TensorData {
             Field::new(
                 "buffer",
                 <crate::datatypes::TensorBuffer>::arrow_datatype(),
-                false,
+                true,
             ),
         ]))
     }
 
-    fn to_arrow2_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow::datatypes::*;
-        use arrow2::array::*;
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
+            let fields = Fields::from(vec![
+                Field::new(
+                    "shape",
+                    DataType::List(std::sync::Arc::new(Field::new(
+                        "item",
+                        <crate::datatypes::TensorDimension>::arrow_datatype(),
+                        false,
+                    ))),
+                    false,
+                ),
+                Field::new(
+                    "buffer",
+                    <crate::datatypes::TensorBuffer>::arrow_datatype(),
+                    true,
+                ),
+            ]);
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
@@ -92,12 +112,12 @@ impl ::re_types_core::Loggable for TensorData {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let validity: Option<arrow::buffer::NullBuffer> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            StructArray::new(
-                Self::arrow_datatype().into(),
+            as_array_ref(StructArray::new(
+                fields,
                 vec![
                     {
                         let (somes, shape): (Vec<_>, Vec<_>) = data
@@ -107,38 +127,34 @@ impl ::re_types_core::Loggable for TensorData {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let shape_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let shape_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                                 shape
                                     .iter()
                                     .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
-                            )?
-                            .into();
+                            );
                             let shape_inner_data: Vec<_> =
                                 shape.into_iter().flatten().flatten().collect();
-                            let shape_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                            ListArray::try_new(
-                                DataType::List(std::sync::Arc::new(Field::new(
+                            let shape_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                            as_array_ref(ListArray::try_new(
+                                std::sync::Arc::new(Field::new(
                                     "item",
                                     <crate::datatypes::TensorDimension>::arrow_datatype(),
                                     false,
-                                )))
-                                .into(),
+                                )),
                                 offsets,
                                 {
-                                    _ = shape_inner_bitmap;
-                                    crate::datatypes::TensorDimension::to_arrow2_opt(
+                                    _ = shape_inner_validity;
+                                    crate::datatypes::TensorDimension::to_arrow_opt(
                                         shape_inner_data.into_iter().map(Some),
                                     )?
                                 },
-                                shape_bitmap,
-                            )?
-                            .boxed()
+                                shape_validity,
+                            )?)
                         }
                     },
                     {
@@ -149,19 +165,18 @@ impl ::re_types_core::Loggable for TensorData {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let buffer_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let buffer_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = buffer_bitmap;
-                            crate::datatypes::TensorBuffer::to_arrow2_opt(buffer)?
+                            _ = buffer_validity;
+                            crate::datatypes::TensorBuffer::to_arrow_opt(buffer)?
                         }
                     },
                 ],
-                bitmap,
-            )
-            .boxed()
+                validity,
+            ))
         })
     }
 
