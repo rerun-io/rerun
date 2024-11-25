@@ -35,18 +35,18 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
             DataType::LargeUtf8 => quote!(DataType::LargeUtf8),
 
             DataType::List(field) => {
-                let field = ArrowFieldTokenizer(field);
+                let field = ArrowFieldTokenizer::new(field);
                 quote!(DataType::List(std::sync::Arc::new(#field)))
             }
 
             DataType::FixedSizeList(field, length) => {
-                let field = ArrowFieldTokenizer(field);
+                let field = ArrowFieldTokenizer::new(field);
                 let length = Literal::usize_unsuffixed(*length);
                 quote!(DataType::FixedSizeList(std::sync::Arc::new(#field), #length))
             }
 
             DataType::Union(fields, types, mode) => {
-                let fields = fields.iter().map(ArrowFieldTokenizer);
+                let fields = fields.iter().map(ArrowFieldTokenizer::new);
                 let mode = match mode {
                     UnionMode::Dense => quote!(UnionMode::Dense),
                     UnionMode::Sparse => quote!(UnionMode::Sparse),
@@ -70,7 +70,7 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
             }
 
             DataType::Struct(fields) => {
-                let fields = fields.iter().map(ArrowFieldTokenizer);
+                let fields = fields.iter().map(ArrowFieldTokenizer::new);
                 quote!(DataType::Struct(Fields::from(vec![ #(#fields,)* ])))
             }
 
@@ -96,16 +96,40 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
     }
 }
 
-pub struct ArrowFieldTokenizer<'a>(pub &'a ::arrow2::datatypes::Field);
+pub struct ArrowFieldTokenizer<'a> {
+    field: &'a ::arrow2::datatypes::Field,
+    nullable_override: Option<bool>,
+}
+
+impl<'a> ArrowFieldTokenizer<'a> {
+    pub fn new(field: &'a ::arrow2::datatypes::Field) -> Self {
+        Self {
+            field,
+            nullable_override: None,
+        }
+    }
+
+    /// Override the `is_nullable` field of the underlying [`arrow2::datatypes::Field`].
+    pub fn with_nullable(mut self, is_nullable: bool) -> Self {
+        self.nullable_override = Some(is_nullable);
+        self
+    }
+}
 
 impl quote::ToTokens for ArrowFieldTokenizer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
+        let Self {
+            field,
+            nullable_override,
+        } = self;
         let arrow2::datatypes::Field {
             name,
             data_type,
             is_nullable,
             metadata,
-        } = &self.0;
+        } = field;
+
+        let is_nullable = nullable_override.unwrap_or(*is_nullable);
 
         let datatype = ArrowDataTypeTokenizer(data_type, true);
 

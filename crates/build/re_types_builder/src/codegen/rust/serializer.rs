@@ -821,7 +821,16 @@ fn quote_arrow_field_serializer(
                 quote! {}
             };
 
-            let field = ArrowFieldTokenizer(inner_field);
+            let mut field = ArrowFieldTokenizer::new(inner_field);
+            if matches!(
+                inner_field.data_type.to_logical_type(),
+                DataType::Union { .. }
+            ) {
+                // Unions in Rerun have a special `_null_markers`, making them all nullable.
+                // Therefore we must communicate this to `arrow-rs`.
+                // As of writing this in 2024-11-25, this only affects our "fuzzer" tests; not real code.
+                field = field.with_nullable(true);
+            }
             let quoted_field = quote!(std::sync::Arc::new(#field));
 
             let quoted_create = match datatype.to_logical_type() {

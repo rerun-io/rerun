@@ -95,7 +95,7 @@ impl ::re_types_core::Loggable for AffixFuzzer16 {
                     std::sync::Arc::new(Field::new(
                         "item",
                         <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
-                        false,
+                        true,
                     )),
                     offsets,
                     {
