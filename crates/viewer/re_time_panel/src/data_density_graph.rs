@@ -180,12 +180,11 @@ impl DensityGraph {
         }
 
         // full buckets:
-        for i in (min_bucket.ceil() as i64)..=(max_bucket.floor() as i64) {
-            if let Ok(i) = usize::try_from(i) {
-                if let Some(bucket) = self.buckets.get_mut(i) {
-                    *bucket += count_per_bucket;
-                }
-            }
+        let min_full_bucket_idx = (min_bucket.ceil() as i64).at_least(0) as usize;
+        let max_full_bucket_idx =
+            (max_bucket.floor() as i64).at_most(self.buckets.len() as i64 - 1) as usize;
+        for bucket in &mut self.buckets[min_full_bucket_idx..=max_full_bucket_idx] {
+            *bucket += count_per_bucket;
         }
 
         // last bucket, partially filled:
