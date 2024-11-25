@@ -2,7 +2,7 @@
 title = "Binary tree"
 tags = ["Graph", "Layout"]
 thumbnail = "https://static.rerun.io/graph_binary_tree/d1b2dc49b55f22c52038c19ec431620025c7bcde/480w.png"
-thumbnail_dimensions = [480, 359]
+thumbnail_dimensions = [480, 269]
 channel = "main"
 -->
 

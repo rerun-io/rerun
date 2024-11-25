@@ -2,7 +2,7 @@
 title = "Graph lattice"
 tags = ["Graph", "Layout"]
 thumbnail = "https://static.rerun.io/graph_lattice/f9169da9c3f35b7260c9d74cd5be5fe710aec6a8/480w.png"
-thumbnail_dimensions = [480, 359]
+thumbnail_dimensions = [480, 269]
 channel = "main"
 -->
 
