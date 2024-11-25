@@ -1,5 +1,5 @@
 use arrow2::datatypes::DataType;
-use proc_macro2::TokenStream;
+use proc_macro2::{Literal, TokenStream};
 use quote::quote;
 
 // ---
@@ -37,6 +37,7 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
 
             DataType::FixedSizeList(field, length) => {
                 let field = ArrowFieldTokenizer(field);
+                let length = Literal::usize_unsuffixed(*length);
                 quote!(DataType::FixedSizeList(std::sync::Arc::new(#field), #length))
             }
 
@@ -47,25 +48,32 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
                     UnionMode::Sparse => quote!(UnionMode::Sparse),
                 };
                 if let Some(types) = types {
+                    let types = types.iter().map(|&t| {
+                        Literal::i8_unsuffixed(i8::try_from(t).unwrap_or_else(|_| {
+                            panic!("Expect union type tag to be in 0-127; got {t}")
+                        }))
+                    });
                     quote!(DataType::Union(
-                        std::sync::Arc::new(vec![ #(#fields,)* ]),
-                        Some(std::sync::Arc::new(vec![ #(#types,)* ])),
+                        UnionFields::new(
+                            vec![ #(#types,)* ],
+                            vec![ #(#fields,)* ],
+                        ),
                         #mode,
                     ))
                 } else {
-                    quote!(DataType::Union(std::sync::Arc::new(vec![ #(#fields,)* ]), None, #mode))
+                    quote!(DataType::Union(UnionFields::from(vec![ #(#fields,)* ]), #mode))
                 }
             }
 
             DataType::Struct(fields) => {
                 let fields = fields.iter().map(ArrowFieldTokenizer);
-                quote!(DataType::Struct(std::sync::Arc::new(vec![ #(#fields,)* ])))
+                quote!(DataType::Struct(Fields::from(vec![ #(#fields,)* ])))
             }
 
             DataType::Extension(fqname, datatype, _metadata) => {
                 if *recursive {
                     let fqname_use = quote_fqname_as_type_path(fqname);
-                    quote!(<#fqname_use>::arrow2_datatype())
+                    quote!(<#fqname_use>::arrow_datatype())
                 } else {
                     let datatype = ArrowDataTypeTokenizer(datatype.to_logical_type(), false);
                     quote!(#datatype)

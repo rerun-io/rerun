@@ -96,115 +96,115 @@ impl ::re_types_core::SizeBytes for TensorBuffer {
 
 impl ::re_types_core::Loggable for TensorBuffer {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
+        use arrow::datatypes::*;
         DataType::Union(
-            std::sync::Arc::new(vec![
-                Field::new("_null_markers", DataType::Null, true),
-                Field::new(
-                    "U8",
-                    DataType::List(std::sync::Arc::new(Field::new(
-                        "item",
-                        DataType::UInt8,
+            UnionFields::new(
+                vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+                vec![
+                    Field::new("_null_markers", DataType::Null, true),
+                    Field::new(
+                        "U8",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::UInt8,
+                            false,
+                        ))),
                         false,
-                    ))),
-                    false,
-                ),
-                Field::new(
-                    "U16",
-                    DataType::List(std::sync::Arc::new(Field::new(
-                        "item",
-                        DataType::UInt16,
+                    ),
+                    Field::new(
+                        "U16",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::UInt16,
+                            false,
+                        ))),
                         false,
-                    ))),
-                    false,
-                ),
-                Field::new(
-                    "U32",
-                    DataType::List(std::sync::Arc::new(Field::new(
-                        "item",
-                        DataType::UInt32,
+                    ),
+                    Field::new(
+                        "U32",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::UInt32,
+                            false,
+                        ))),
                         false,
-                    ))),
-                    false,
-                ),
-                Field::new(
-                    "U64",
-                    DataType::List(std::sync::Arc::new(Field::new(
-                        "item",
-                        DataType::UInt64,
+                    ),
+                    Field::new(
+                        "U64",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::UInt64,
+                            false,
+                        ))),
                         false,
-                    ))),
-                    false,
-                ),
-                Field::new(
-                    "I8",
-                    DataType::List(std::sync::Arc::new(Field::new(
-                        "item",
-                        DataType::Int8,
+                    ),
+                    Field::new(
+                        "I8",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::Int8,
+                            false,
+                        ))),
                         false,
-                    ))),
-                    false,
-                ),
-                Field::new(
-                    "I16",
-                    DataType::List(std::sync::Arc::new(Field::new(
-                        "item",
-                        DataType::Int16,
+                    ),
+                    Field::new(
+                        "I16",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::Int16,
+                            false,
+                        ))),
                         false,
-                    ))),
-                    false,
-                ),
-                Field::new(
-                    "I32",
-                    DataType::List(std::sync::Arc::new(Field::new(
-                        "item",
-                        DataType::Int32,
+                    ),
+                    Field::new(
+                        "I32",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::Int32,
+                            false,
+                        ))),
                         false,
-                    ))),
-                    false,
-                ),
-                Field::new(
-                    "I64",
-                    DataType::List(std::sync::Arc::new(Field::new(
-                        "item",
-                        DataType::Int64,
+                    ),
+                    Field::new(
+                        "I64",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::Int64,
+                            false,
+                        ))),
                         false,
-                    ))),
-                    false,
-                ),
-                Field::new(
-                    "F16",
-                    DataType::List(std::sync::Arc::new(Field::new(
-                        "item",
-                        DataType::Float16,
+                    ),
+                    Field::new(
+                        "F16",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::Float16,
+                            false,
+                        ))),
                         false,
-                    ))),
-                    false,
-                ),
-                Field::new(
-                    "F32",
-                    DataType::List(std::sync::Arc::new(Field::new(
-                        "item",
-                        DataType::Float32,
+                    ),
+                    Field::new(
+                        "F32",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::Float32,
+                            false,
+                        ))),
                         false,
-                    ))),
-                    false,
-                ),
-                Field::new(
-                    "F64",
-                    DataType::List(std::sync::Arc::new(Field::new(
-                        "item",
-                        DataType::Float64,
+                    ),
+                    Field::new(
+                        "F64",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::Float64,
+                            false,
+                        ))),
                         false,
-                    ))),
-                    false,
-                ),
-            ]),
-            Some(std::sync::Arc::new(vec![
-                0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32, 10i32, 11i32,
-            ])),
+                    ),
+                ],
+            ),
             UnionMode::Dense,
         )
     }
@@ -218,7 +218,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             // Dense Arrow union
             let data: Vec<_> = data
@@ -246,7 +247,11 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 })
                 .collect();
             let fields = vec![
-                NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count()).boxed(),
+                NullArray::new(
+                    arrow2::datatypes::DataType::Null,
+                    data.iter().filter(|v| v.is_none()).count(),
+                )
+                .boxed(),
                 {
                     let u8: Vec<_> = data
                         .iter()
@@ -274,10 +279,15 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 "item",
                                 DataType::UInt8,
                                 false,
-                            ))),
+                            )))
+                            .into(),
                             offsets,
-                            PrimitiveArray::new(DataType::UInt8, u8_inner_data, u8_inner_bitmap)
-                                .boxed(),
+                            PrimitiveArray::new(
+                                DataType::UInt8.into(),
+                                u8_inner_data,
+                                u8_inner_bitmap,
+                            )
+                            .boxed(),
                             u8_bitmap,
                         )?
                         .boxed()
@@ -310,10 +320,15 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 "item",
                                 DataType::UInt16,
                                 false,
-                            ))),
+                            )))
+                            .into(),
                             offsets,
-                            PrimitiveArray::new(DataType::UInt16, u16_inner_data, u16_inner_bitmap)
-                                .boxed(),
+                            PrimitiveArray::new(
+                                DataType::UInt16.into(),
+                                u16_inner_data,
+                                u16_inner_bitmap,
+                            )
+                            .boxed(),
                             u16_bitmap,
                         )?
                         .boxed()
@@ -346,10 +361,15 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 "item",
                                 DataType::UInt32,
                                 false,
-                            ))),
+                            )))
+                            .into(),
                             offsets,
-                            PrimitiveArray::new(DataType::UInt32, u32_inner_data, u32_inner_bitmap)
-                                .boxed(),
+                            PrimitiveArray::new(
+                                DataType::UInt32.into(),
+                                u32_inner_data,
+                                u32_inner_bitmap,
+                            )
+                            .boxed(),
                             u32_bitmap,
                         )?
                         .boxed()
@@ -382,10 +402,15 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 "item",
                                 DataType::UInt64,
                                 false,
-                            ))),
+                            )))
+                            .into(),
                             offsets,
-                            PrimitiveArray::new(DataType::UInt64, u64_inner_data, u64_inner_bitmap)
-                                .boxed(),
+                            PrimitiveArray::new(
+                                DataType::UInt64.into(),
+                                u64_inner_data,
+                                u64_inner_bitmap,
+                            )
+                            .boxed(),
                             u64_bitmap,
                         )?
                         .boxed()
@@ -418,10 +443,15 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 "item",
                                 DataType::Int8,
                                 false,
-                            ))),
+                            )))
+                            .into(),
                             offsets,
-                            PrimitiveArray::new(DataType::Int8, i8_inner_data, i8_inner_bitmap)
-                                .boxed(),
+                            PrimitiveArray::new(
+                                DataType::Int8.into(),
+                                i8_inner_data,
+                                i8_inner_bitmap,
+                            )
+                            .boxed(),
                             i8_bitmap,
                         )?
                         .boxed()
@@ -454,10 +484,15 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 "item",
                                 DataType::Int16,
                                 false,
-                            ))),
+                            )))
+                            .into(),
                             offsets,
-                            PrimitiveArray::new(DataType::Int16, i16_inner_data, i16_inner_bitmap)
-                                .boxed(),
+                            PrimitiveArray::new(
+                                DataType::Int16.into(),
+                                i16_inner_data,
+                                i16_inner_bitmap,
+                            )
+                            .boxed(),
                             i16_bitmap,
                         )?
                         .boxed()
@@ -490,10 +525,15 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 "item",
                                 DataType::Int32,
                                 false,
-                            ))),
+                            )))
+                            .into(),
                             offsets,
-                            PrimitiveArray::new(DataType::Int32, i32_inner_data, i32_inner_bitmap)
-                                .boxed(),
+                            PrimitiveArray::new(
+                                DataType::Int32.into(),
+                                i32_inner_data,
+                                i32_inner_bitmap,
+                            )
+                            .boxed(),
                             i32_bitmap,
                         )?
                         .boxed()
@@ -526,10 +566,15 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 "item",
                                 DataType::Int64,
                                 false,
-                            ))),
+                            )))
+                            .into(),
                             offsets,
-                            PrimitiveArray::new(DataType::Int64, i64_inner_data, i64_inner_bitmap)
-                                .boxed(),
+                            PrimitiveArray::new(
+                                DataType::Int64.into(),
+                                i64_inner_data,
+                                i64_inner_bitmap,
+                            )
+                            .boxed(),
                             i64_bitmap,
                         )?
                         .boxed()
@@ -562,10 +607,11 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 "item",
                                 DataType::Float16,
                                 false,
-                            ))),
+                            )))
+                            .into(),
                             offsets,
                             PrimitiveArray::new(
-                                DataType::Float16,
+                                DataType::Float16.into(),
                                 f16_inner_data,
                                 f16_inner_bitmap,
                             )
@@ -602,10 +648,11 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 "item",
                                 DataType::Float32,
                                 false,
-                            ))),
+                            )))
+                            .into(),
                             offsets,
                             PrimitiveArray::new(
-                                DataType::Float32,
+                                DataType::Float32.into(),
                                 f32_inner_data,
                                 f32_inner_bitmap,
                             )
@@ -642,10 +689,11 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 "item",
                                 DataType::Float64,
                                 false,
-                            ))),
+                            )))
+                            .into(),
                             offsets,
                             PrimitiveArray::new(
-                                DataType::Float64,
+                                DataType::Float64.into(),
                                 f64_inner_data,
                                 f64_inner_bitmap,
                             )
@@ -734,7 +782,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     })
                     .collect()
             });
-            UnionArray::new(Self::arrow2_datatype(), types, fields, offsets).boxed()
+            UnionArray::new(Self::arrow_datatype().into(), types, fields, offsets).boxed()
         })
     }
 
@@ -746,13 +794,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -765,7 +814,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        let expected = Self::arrow2_datatype();
+                        let expected = Self::arrow_datatype();
                         let actual = arrow_data.data_type().clone();
                         DeserializationError::datatype_mismatch(expected, actual)
                     })
@@ -1701,7 +1750,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 }),
                                 _ => {
                                     return Err(DeserializationError::missing_union_arm(
-                                        Self::arrow2_datatype(),
+                                        Self::arrow_datatype(),
                                         "<invalid>",
                                         *typ as _,
                                     ));

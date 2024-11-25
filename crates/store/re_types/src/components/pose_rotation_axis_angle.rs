@@ -68,8 +68,8 @@ impl std::ops::DerefMut for PoseRotationAxisAngle {
 
 impl ::re_types_core::Loggable for PoseRotationAxisAngle {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
-        crate::datatypes::RotationAxisAngle::arrow2_datatype()
+    fn arrow_datatype() -> arrow::datatypes::DataType {
+        crate::datatypes::RotationAxisAngle::arrow_datatype()
     }
 
     fn to_arrow2_opt<'a>(

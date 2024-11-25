@@ -66,8 +66,8 @@ impl std::ops::DerefMut for AffixFuzzer21 {
 
 impl ::re_types_core::Loggable for AffixFuzzer21 {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
-        crate::testing::datatypes::AffixFuzzer21::arrow2_datatype()
+    fn arrow_datatype() -> arrow::datatypes::DataType {
+        crate::testing::datatypes::AffixFuzzer21::arrow_datatype()
     }
 
     fn to_arrow2_opt<'a>(

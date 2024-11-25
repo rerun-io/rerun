@@ -70,8 +70,8 @@ impl std::ops::DerefMut for ZoomLevel {
 
 impl ::re_types_core::Loggable for ZoomLevel {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
-        crate::datatypes::Float64::arrow2_datatype()
+    fn arrow_datatype() -> arrow::datatypes::DataType {
+        crate::datatypes::Float64::arrow_datatype()
     }
 
     fn to_arrow2_opt<'a>(

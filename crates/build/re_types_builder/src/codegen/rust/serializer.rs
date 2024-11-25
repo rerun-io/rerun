@@ -19,7 +19,7 @@ pub fn quote_arrow_serializer(
 ) -> TokenStream {
     let datatype = &arrow_registry.get(&obj.fqname);
 
-    let quoted_datatype = quote! { Self::arrow2_datatype() };
+    let quoted_datatype = quote! { Self::arrow_datatype() };
 
     let is_enum = obj.is_enum();
     let is_arrow_transparent = obj.datatype.is_none();
@@ -211,7 +211,7 @@ pub fn quote_arrow_serializer(
                     #quoted_bitmap;
 
                     StructArray::new(
-                        #quoted_datatype,
+                        #quoted_datatype.into(),
                         vec![#(#quoted_field_serializers,)*],
                         bitmap,
                     ).boxed()
@@ -257,14 +257,14 @@ pub fn quote_arrow_serializer(
 
                     let fields: Vec<_> = std::iter::repeat(
                             NullArray::new(
-                                DataType::Null,
+                                arrow2::datatypes::DataType::Null,
                                 #data_src.len(),
                             ).boxed()
                         ).take(1 + num_variants) // +1 for the virtual `nulls` arm
                         .collect();
 
                     UnionArray::new(
-                        #quoted_datatype,
+                        #quoted_datatype.into(),
                         types,
                         fields,
                         None,
@@ -290,7 +290,7 @@ pub fn quote_arrow_serializer(
                     if obj_field.typ == crate::Type::Unit {
                         return quote! {
                             NullArray::new(
-                                DataType::Null,
+                                arrow2::datatypes::DataType::Null,
                                 #data_src
                                     .iter()
                                     .filter(|datum| matches!(datum.as_deref(), Some(Self::#quoted_obj_field_name)))
@@ -336,7 +336,7 @@ pub fn quote_arrow_serializer(
                 let quoted_fields = quote! {
                     vec![
                         NullArray::new(
-                            DataType::Null,
+                            arrow2::datatypes::DataType::Null,
                             #data_src.iter().filter(|v| v.is_none()).count(),
                         ).boxed(),
                         #(#quoted_field_serializers,)*
@@ -426,7 +426,7 @@ pub fn quote_arrow_serializer(
                     let offsets = Some(#quoted_offsets);
 
                     UnionArray::new(
-                        #quoted_datatype,
+                        #quoted_datatype.into(),
                         types,
                         fields,
                         offsets,
@@ -547,7 +547,7 @@ fn quote_arrow_field_serializer(
             if datatype.to_logical_type() == &DataType::Boolean {
                 quote! {
                     BooleanArray::new(
-                        #quoted_datatype,
+                        #quoted_datatype.into(),
                         #data_src.into_iter() #quoted_transparent_mapping .collect(),
                         #bitmap_src,
                     ).boxed()
@@ -558,14 +558,14 @@ fn quote_arrow_field_serializer(
                     // to a buffer type.
                     InnerRepr::ArrowBuffer => quote! {
                         PrimitiveArray::new(
-                            #quoted_datatype,
+                            #quoted_datatype.into(),
                             #data_src,
                             #bitmap_src,
                         ).boxed()
                     },
                     InnerRepr::NativeIterable => quote! {
                         PrimitiveArray::new(
-                            #quoted_datatype,
+                            #quoted_datatype.into(),
                             #data_src.into_iter() #quoted_transparent_mapping .collect(),
                             #bitmap_src,
                         ).boxed()
@@ -654,7 +654,7 @@ fn quote_arrow_field_serializer(
                 // It would be nice to use quote_comment here and put this safety notice in the generated code,
                 // but that seems to push us over some complexity limit causing rustfmt to fail.
                 #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                unsafe { Utf8Array::<i32>::new_unchecked(#quoted_datatype, offsets, inner_data, #bitmap_src) }.boxed()
+                unsafe { Utf8Array::<i32>::new_unchecked(#quoted_datatype.into(), offsets, inner_data, #bitmap_src) }.boxed()
             }}
         }
 
@@ -809,7 +809,7 @@ fn quote_arrow_field_serializer(
             let quoted_create = if let DataType::List(_) = datatype {
                 quote! {
                     ListArray::try_new(
-                        #quoted_datatype,
+                        #quoted_datatype.into(),
                         offsets,
                         #quoted_inner,
                         #bitmap_src,
@@ -818,7 +818,7 @@ fn quote_arrow_field_serializer(
             } else {
                 quote! {
                     FixedSizeListArray::new(
-                        #quoted_datatype,
+                        #quoted_datatype.into(),
                         #quoted_inner,
                         #bitmap_src,
                     ).boxed()

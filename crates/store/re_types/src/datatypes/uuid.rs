@@ -56,12 +56,12 @@ impl From<Uuid> for [u8; 16usize] {
 
 impl ::re_types_core::Loggable for Uuid {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
+        use arrow::datatypes::*;
         DataType::FixedSizeList(
             std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
-            16usize,
+            16,
         )
     }
 
@@ -74,7 +74,8 @@ impl ::re_types_core::Loggable for Uuid {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             let (somes, bytes): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -109,9 +110,9 @@ impl ::re_types_core::Loggable for Uuid {
                             .into()
                     });
                 FixedSizeListArray::new(
-                    Self::arrow2_datatype(),
+                    Self::arrow_datatype().into(),
                     PrimitiveArray::new(
-                        DataType::UInt8,
+                        DataType::UInt8.into(),
                         bytes_inner_data.into_iter().collect(),
                         bytes_inner_bitmap,
                     )
@@ -131,13 +132,14 @@ impl ::re_types_core::Loggable for Uuid {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::FixedSizeListArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -205,7 +207,8 @@ impl ::re_types_core::Loggable for Uuid {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         if let Some(validity) = arrow_data.validity() {
             if validity.unset_bits() != 0 {
                 return Err(DeserializationError::missing_data());
@@ -219,7 +222,7 @@ impl ::re_types_core::Loggable for Uuid {
                     .ok_or_else(|| {
                         let expected = DataType::FixedSizeList(
                             std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
-                            16usize,
+                            16,
                         );
                         let actual = arrow_data.data_type().clone();
                         DeserializationError::datatype_mismatch(expected, actual)

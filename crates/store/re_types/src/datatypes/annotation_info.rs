@@ -52,13 +52,13 @@ impl ::re_types_core::SizeBytes for AnnotationInfo {
 
 impl ::re_types_core::Loggable for AnnotationInfo {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![
             Field::new("id", DataType::UInt16, false),
-            Field::new("label", <crate::datatypes::Utf8>::arrow2_datatype(), true),
-            Field::new("color", <crate::datatypes::Rgba32>::arrow2_datatype(), true),
+            Field::new("label", <crate::datatypes::Utf8>::arrow_datatype(), true),
+            Field::new("color", <crate::datatypes::Rgba32>::arrow_datatype(), true),
         ]))
     }
 
@@ -71,7 +71,8 @@ impl ::re_types_core::Loggable for AnnotationInfo {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -85,7 +86,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                Self::arrow2_datatype(),
+                Self::arrow_datatype().into(),
                 vec![
                     {
                         let (somes, id): (Vec<_>, Vec<_>) = data
@@ -100,7 +101,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                             any_nones.then(|| somes.into())
                         };
                         PrimitiveArray::new(
-                            DataType::UInt16,
+                            DataType::UInt16.into(),
                             id.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             id_bitmap,
                         )
@@ -135,7 +136,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                             unsafe {
                                 Utf8Array::<i32>::new_unchecked(
-                                    DataType::Utf8,
+                                    DataType::Utf8.into(),
                                     offsets,
                                     inner_data,
                                     label_bitmap,
@@ -158,7 +159,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                             any_nones.then(|| somes.into())
                         };
                         PrimitiveArray::new(
-                            DataType::UInt32,
+                            DataType::UInt32.into(),
                             color
                                 .into_iter()
                                 .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
@@ -182,13 +183,14 @@ impl ::re_types_core::Loggable for AnnotationInfo {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -206,7 +208,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                 let id = {
                     if !arrays_by_name.contains_key("id") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "id",
                         ))
                         .with_context("rerun.datatypes.AnnotationInfo");
@@ -227,7 +229,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                 let label = {
                     if !arrays_by_name.contains_key("label") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "label",
                         ))
                         .with_context("rerun.datatypes.AnnotationInfo");
@@ -282,7 +284,7 @@ impl ::re_types_core::Loggable for AnnotationInfo {
                 let color = {
                     if !arrays_by_name.contains_key("color") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "color",
                         ))
                         .with_context("rerun.datatypes.AnnotationInfo");

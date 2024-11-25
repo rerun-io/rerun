@@ -45,18 +45,18 @@ crate::macros::impl_into_cow!(TimeRange);
 
 impl crate::Loggable for TimeRange {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![
             Field::new(
                 "start",
-                <crate::datatypes::TimeRangeBoundary>::arrow2_datatype(),
+                <crate::datatypes::TimeRangeBoundary>::arrow_datatype(),
                 false,
             ),
             Field::new(
                 "end",
-                <crate::datatypes::TimeRangeBoundary>::arrow2_datatype(),
+                <crate::datatypes::TimeRangeBoundary>::arrow_datatype(),
                 false,
             ),
         ]))
@@ -71,7 +71,8 @@ impl crate::Loggable for TimeRange {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use crate::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -85,7 +86,7 @@ impl crate::Loggable for TimeRange {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                Self::arrow2_datatype(),
+                Self::arrow_datatype().into(),
                 vec![
                     {
                         let (somes, start): (Vec<_>, Vec<_>) = data
@@ -136,13 +137,14 @@ impl crate::Loggable for TimeRange {
     {
         #![allow(clippy::wildcard_imports)]
         use crate::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -160,7 +162,7 @@ impl crate::Loggable for TimeRange {
                 let start = {
                     if !arrays_by_name.contains_key("start") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "start",
                         ))
                         .with_context("rerun.datatypes.TimeRange");
@@ -173,7 +175,7 @@ impl crate::Loggable for TimeRange {
                 let end = {
                     if !arrays_by_name.contains_key("end") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "end",
                         ))
                         .with_context("rerun.datatypes.TimeRange");
