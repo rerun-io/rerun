@@ -19,7 +19,7 @@ table GraphEdges (
 ) {
   // --- Required ---
 
-  /// A list of node IDs.
+  /// A list of node tuples.
   edges: [rerun.components.GraphEdge] ("attr.rerun.component_required", order: 1000);
 
 
