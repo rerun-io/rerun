@@ -4,7 +4,7 @@
 #include "graph_node.hpp"
 
 namespace rerun {
-    namespace archetypes {
+    namespace components {
 
         // <CODEGEN_COPY_TO_HEADER>
 
@@ -13,7 +13,7 @@ namespace rerun {
 
         // </CODEGEN_COPY_TO_HEADER>
 
-    } // namespace archetypes
+    } // namespace components
 } // namespace rerun
 
 #endif
