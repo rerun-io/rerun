@@ -17,7 +17,7 @@
 [project]
 name = "rerun"
 authors = ["rerun.io <opensource@rerun.io>"]
-channels = ["conda-forge"]
+channels = ["robostack-staging", "conda-forge"]
 description = "Log images, point clouds, etc, and visualize them effortlessly"
 homepage = "https://rerun.io"
 license = "MIT OR Apache-2.0"
@@ -110,6 +110,8 @@ examples = ["examples-common", "python-dev", "wheel-build", "examples-tasks"]
 # This environment uses the pypi-published version of the python package. This avoids the need to
 # build the package from source if you just want to try running the examples locally.
 examples-pypi = ["examples-common", "python-pypi"]
+
+examples-ros = ["examples-ros", "python-dev"]
 
 
 ################################################################################
@@ -609,6 +611,7 @@ jupyter = ">=1.0"
 segment-anything = { git = "https://github.com/facebookresearch/segment-anything.git" }
 mesh-to-sdf = { git = "https://github.com/marian42/mesh_to_sdf.git" }
 
+
 # Rerun libs
 
 arkit_scenes = { path = "examples/python/arkit_scenes", editable = true }
@@ -666,6 +669,43 @@ human_pose_tracking = { path = "examples/python/human_pose_tracking", editable =
 face_tracking = { path = "examples/python/face_tracking", editable = true }
 gesture_detection = { path = "examples/python/gesture_detection", editable = true }
 human_pose_tracking = { path = "examples/python/human_pose_tracking", editable = true }
+
+[feature.examples-ros.dependencies]
+scipy = "*"
+pycollada = "*"
+opencv = "4.9"  # Required by humble
+yourdfpy = "*"
+
+[feature.examples-ros.tasks]
+launch-turtlebot = "ros2 launch nav2_bringup tb3_simulation_launch.py headless:=False"
+
+[feature.examples-ros.activation.env]
+TURTLEBOT3_MODEL = "waffle"
+GAZEBO_MODEL_PATH = "${GAZEBO_MODEL_PATH}:${PIXI_PROJECT_ROOT}/.pixi/envs/examples-ros/share/turtlebot3_gazebo/models"
+
+# We need to split these per target because robostack doesn't support aarch
+# See: https://github.com/prefix-dev/pixi/issues/1051
+[feature.examples-ros.target.linux-64.dependencies]
+ros-humble-desktop = "*"
+ros-humble-gazebo-ros = "*"
+ros-humble-navigation2 = "*"
+ros-humble-turtlebot3 = "*"
+ros-humble-turtlebot3-gazebo = "*"
+
+[feature.examples-ros.target.osx-64.dependencies]
+ros-humble-desktop = "*"
+ros-humble-gazebo-ros = "*"
+ros-humble-navigation2 = "*"
+ros-humble-turtlebot3 = "*"
+ros-humble-turtlebot3-gazebo = "*"
+
+[feature.examples-ros.target.osx-arm64.dependencies]
+ros-humble-desktop = "*"
+ros-humble-gazebo-ros = "*"
+ros-humble-navigation2 = "*"
+ros-humble-turtlebot3 = "*"
+ros-humble-turtlebot3-gazebo = "*"
+
 
 # # OCR Needs an isolated environment because it depends on opencv-4.6 by way of the `paddleclas` package
 # [feature.examples-ocr]
