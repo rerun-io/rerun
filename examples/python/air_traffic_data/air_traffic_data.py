@@ -322,8 +322,7 @@ class MeasurementBatchLogger:
             [
                 positions,
                 lat_lon,
-                # TODO: uncomment when #8163 is merged
-                # *raw_coordinates.as_component_batches(),
+                *raw_coordinates.as_component_batches(),
             ],
         )
 
@@ -340,9 +339,7 @@ class MeasurementBatchLogger:
         timestamps = rr.TimeSecondsColumn("unix_time", df["timestamp"].to_numpy())
         batches = rr.AnyValues(ground_status=df["ground_status"].to_numpy())
 
-        # TODO: uncomment when #8163 is merged
-
-        # rr.send_columns(entity_path, [timestamps], batches.as_component_batches())
+        rr.send_columns(entity_path, [timestamps], batches.as_component_batches())
 
     def log_metadata(self, df: polars.DataFrame, icao_id: str) -> None:
         entity_path = f"aircraft/{icao_id}"
@@ -354,12 +351,11 @@ class MeasurementBatchLogger:
             vertical_speed=df["vertical_speed"].to_numpy(),
         )
 
-        # TODO: uncomment when #8163 is merged
-        # rr.send_columns(
-        #     entity_path,
-        #     [rr.TimeSecondsColumn("unix_time", df["timestamp"].to_numpy())],
-        #     metadata.component_batches,
-        # )
+        rr.send_columns(
+            entity_path,
+            [rr.TimeSecondsColumn("unix_time", df["timestamp"].to_numpy())],
+            metadata.component_batches,
+        )
 
 
 # ================================================================================================
