@@ -6,10 +6,11 @@ use arrow2::{
     array::ListArray as ArrowListArray,
     datatypes::{DataType as Arrow2Datatype, Field as Arrow2Field},
 };
+use itertools::Itertools;
 
 use re_chunk::TimelineName;
 use re_log_types::{ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, Timeline};
-use re_types_core::{ArchetypeName, ComponentName};
+use re_types_core::{ArchetypeName, ComponentName, ComponentNameSet};
 
 use crate::{ChunkStore, ColumnMetadata};
 
@@ -471,7 +472,7 @@ impl std::fmt::Display for SparseFillStrategy {
 ///
 // TODO(cmc): we need to be able to build that easily in a command-line context, otherwise it's just
 // very annoying. E.g. `--with /world/points:[rr.Position3D, rr.Radius] --with /cam:[rr.Pinhole]`.
-pub type ViewContentsSelector = BTreeMap<EntityPath, Option<BTreeSet<ComponentName>>>;
+pub type ViewContentsSelector = BTreeMap<EntityPath, Option<ComponentNameSet>>;
 
 // TODO(cmc): Ultimately, this shouldn't be hardcoded to `Timeline`, but to a generic `I: Index`.
 //            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).
@@ -637,14 +638,14 @@ impl ChunkStore {
     pub fn schema(&self) -> Vec<ColumnDescriptor> {
         re_tracing::profile_function!();
 
-        let timelines = self.all_timelines().into_iter().map(|timeline| {
+        let timelines = self.all_timelines_sorted().into_iter().map(|timeline| {
             ColumnDescriptor::Time(TimeColumnDescriptor {
                 timeline,
                 datatype: timeline.datatype(),
             })
         });
 
-        let components = self
+        let mut components = self
             .per_column_metadata
             .iter()
             .flat_map(|(entity_path, per_component)| {
@@ -668,7 +669,7 @@ impl ChunkStore {
 
                 // TODO(#6889): Fill `archetype_name`/`archetype_field_name` (or whatever their
                 // final name ends up being) once we generate tags.
-                ColumnDescriptor::Component(ComponentColumnDescriptor {
+                ComponentColumnDescriptor {
                     entity_path: entity_path.clone(),
                     archetype_name: None,
                     archetype_field_name: None,
@@ -681,10 +682,26 @@ impl ChunkStore {
                     is_indicator,
                     is_tombstone,
                     is_semantically_empty,
-                })
-            });
+                }
+            })
+            .collect_vec();
 
-        timelines.chain(components).collect()
+        components.sort_by(|descr1, descr2| {
+            descr1
+                .entity_path
+                .cmp(&descr2.entity_path)
+                .then(descr1.archetype_name.cmp(&descr2.archetype_name))
+                .then(
+                    descr1
+                        .archetype_field_name
+                        .cmp(&descr2.archetype_field_name),
+                )
+                .then(descr1.component_name.cmp(&descr2.component_name))
+        });
+
+        timelines
+            .chain(components.into_iter().map(ColumnDescriptor::Component))
+            .collect()
     }
 
     /// Given a [`TimeColumnSelector`], returns the corresponding [`TimeColumnDescriptor`].

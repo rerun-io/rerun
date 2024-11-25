@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use arrow2::{
     array::{
         Array as Arrow2Array, ListArray, PrimitiveArray as Arrow2PrimitiveArray,
@@ -12,6 +10,8 @@ use arrow2::{
     },
 };
 
+use itertools::Itertools;
+use nohash_hasher::IntMap;
 use re_log_types::{EntityPath, Timeline};
 use re_types_core::{Component as _, Loggable as _, SizeBytes};
 
@@ -396,29 +396,40 @@ impl Chunk {
         {
             re_tracing::profile_scope!("timelines");
 
-            for (timeline, info) in timelines {
-                let TimeColumn {
-                    timeline: _,
-                    times,
-                    is_sorted,
-                    time_range: _,
-                } = info;
+            let mut timelines = timelines
+                .iter()
+                .map(|(timeline, info)| {
+                    let TimeColumn {
+                        timeline: _,
+                        times,
+                        is_sorted,
+                        time_range: _,
+                    } = info;
 
-                let field = ArrowField::new(
-                    timeline.name().to_string(),
-                    times.data_type().clone(),
-                    false, // timelines within a single chunk are always dense
-                )
-                .with_metadata({
-                    let mut metadata = TransportChunk::field_metadata_time_column();
-                    if *is_sorted {
-                        metadata.extend(TransportChunk::field_metadata_is_sorted());
-                    }
-                    metadata
-                });
+                    let field = ArrowField::new(
+                        timeline.name().to_string(),
+                        times.data_type().clone(),
+                        false, // timelines within a single chunk are always dense
+                    )
+                    .with_metadata({
+                        let mut metadata = TransportChunk::field_metadata_time_column();
+                        if *is_sorted {
+                            metadata.extend(TransportChunk::field_metadata_is_sorted());
+                        }
+                        metadata
+                    });
 
+                    let times = times.clone().boxed() /* cheap */;
+
+                    (field, times)
+                })
+                .collect_vec();
+
+            timelines.sort_by(|(field1, _times1), (field2, _times2)| field1.name.cmp(&field2.name));
+
+            for (field, times) in timelines {
                 schema.fields.push(field);
-                columns.push(times.clone().boxed() /* cheap */);
+                columns.push(times);
             }
         }
 
@@ -426,12 +437,24 @@ impl Chunk {
         {
             re_tracing::profile_scope!("components");
 
-            for (component_name, data) in components {
-                schema.fields.push(
-                    ArrowField::new(component_name.to_string(), data.data_type().clone(), true)
-                        .with_metadata(TransportChunk::field_metadata_data_column()),
-                );
-                columns.push(data.clone().boxed());
+            let mut components = components
+                .iter()
+                .map(|(component_name, data)| {
+                    let field =
+                        ArrowField::new(component_name.to_string(), data.data_type().clone(), true)
+                            .with_metadata(TransportChunk::field_metadata_data_column());
+
+                    let data = data.clone().boxed();
+
+                    (field, data)
+                })
+                .collect_vec();
+
+            components.sort_by(|(field1, _data1), (field2, _data2)| field1.name.cmp(&field2.name));
+
+            for (field, data) in components {
+                schema.fields.push(field);
+                columns.push(data);
             }
         }
 
@@ -487,7 +510,7 @@ impl Chunk {
         let timelines = {
             re_tracing::profile_scope!("timelines");
 
-            let mut timelines = BTreeMap::default();
+            let mut timelines = IntMap::default();
 
             for (field, column) in transport.timelines() {
                 // See also [`Timeline::datatype`]
@@ -552,7 +575,7 @@ impl Chunk {
 
         // Components
         let components = {
-            let mut components = BTreeMap::default();
+            let mut components = IntMap::default();
 
             for (field, column) in transport.components() {
                 let column = column
@@ -636,6 +659,7 @@ impl Chunk {
 
 #[cfg(test)]
 mod tests {
+    use nohash_hasher::IntMap;
     use re_log_types::{
         example_components::{MyColor, MyPoint},
         Timeline,
@@ -658,7 +682,7 @@ mod tests {
         ))
         .collect();
 
-        let timelines2 = BTreeMap::default(); // static
+        let timelines2 = IntMap::default(); // static
 
         let points1 = MyPoint::to_arrow2([
             MyPoint::new(1.0, 2.0),

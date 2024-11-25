@@ -5908,6 +5908,7 @@ dependencies = [
  "libc",
  "ndarray",
  "ndarray-rand",
+ "nohash-hasher",
  "once_cell",
  "parking_lot",
  "rand",

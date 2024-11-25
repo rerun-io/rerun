@@ -12,6 +12,8 @@ use arrow2::{
 };
 
 use itertools::{izip, Itertools};
+use nohash_hasher::IntMap;
+
 use re_log_types::{EntityPath, ResolvedTimeRange, Time, TimeInt, TimePoint, Timeline};
 use re_types_core::{
     ComponentName, DeserializationError, Loggable, LoggableBatch, SerializationError, SizeBytes,
@@ -81,7 +83,7 @@ pub struct Chunk {
     /// Each column must be the same length as `row_ids`.
     ///
     /// Empty if this is a static chunk.
-    pub(crate) timelines: BTreeMap<Timeline, TimeColumn>,
+    pub(crate) timelines: IntMap<Timeline, TimeColumn>,
 
     /// A sparse `ListArray` for each component.
     ///
@@ -90,7 +92,7 @@ pub struct Chunk {
     /// Sparse so that we can e.g. log a `Position` at one timestamp but not a `Color`.
     //
     // TODO(#6576): support non-list based columns?
-    pub(crate) components: BTreeMap<ComponentName, Arrow2ListArray<i32>>,
+    pub(crate) components: IntMap<ComponentName, Arrow2ListArray<i32>>,
 }
 
 impl PartialEq for Chunk {
@@ -147,15 +149,17 @@ impl Chunk {
         *entity_path == rhs.entity_path
             && timelines.keys().collect_vec() == rhs.timelines.keys().collect_vec()
             && {
-                let timelines: BTreeMap<_, _> = timelines
+                let timelines: IntMap<_, _> = timelines
                     .iter()
+                    .map(|(timeline, time_chunk)| (*timeline, time_chunk))
                     .filter(|(timeline, _time_chunk)| {
                         timeline.typ() != re_log_types::TimeType::Time
                     })
                     .collect();
-                let rhs_timelines: BTreeMap<_, _> = rhs
+                let rhs_timelines: IntMap<_, _> = rhs
                     .timelines
                     .iter()
+                    .map(|(timeline, time_chunk)| (*timeline, time_chunk))
                     .filter(|(timeline, _time_chunk)| {
                         timeline.typ() != re_log_types::TimeType::Time
                     })
@@ -189,7 +193,7 @@ impl Chunk {
             row_ids.validity().cloned(),
         );
 
-        let components_no_extension: BTreeMap<_, _> = components
+        let components_no_extension: IntMap<_, _> = components
             .iter()
             .map(|(name, arr)| {
                 let arr = arrow2::array::ListArray::new(
@@ -198,11 +202,11 @@ impl Chunk {
                     arr.values().clone(),
                     arr.validity().cloned(),
                 );
-                (name, arr)
+                (*name, arr)
             })
             .collect();
 
-        let other_components_no_extension: BTreeMap<_, _> = other
+        let other_components_no_extension: IntMap<_, _> = other
             .components
             .iter()
             .map(|(name, arr)| {
@@ -212,7 +216,7 @@ impl Chunk {
                     arr.values().clone(),
                     arr.validity().cloned(),
                 );
-                (name, arr)
+                (*name, arr)
             })
             .collect();
 
@@ -318,7 +322,7 @@ impl Chunk {
     #[inline]
     pub fn time_range_per_component(
         &self,
-    ) -> BTreeMap<Timeline, BTreeMap<ComponentName, ResolvedTimeRange>> {
+    ) -> IntMap<Timeline, IntMap<ComponentName, ResolvedTimeRange>> {
         re_tracing::profile_function!();
 
         self.timelines
@@ -492,7 +496,7 @@ impl Chunk {
     /// This is crucial for indexing and queries to work properly.
     //
     // TODO(cmc): This needs to be stored in chunk metadata and transported across IPC.
-    pub fn row_id_range_per_component(&self) -> BTreeMap<ComponentName, (RowId, RowId)> {
+    pub fn row_id_range_per_component(&self) -> IntMap<ComponentName, (RowId, RowId)> {
         re_tracing::profile_function!();
 
         let row_ids = self.row_ids().collect_vec();
@@ -584,8 +588,8 @@ impl Chunk {
         entity_path: EntityPath,
         is_sorted: Option<bool>,
         row_ids: Arrow2StructArray,
-        timelines: BTreeMap<Timeline, TimeColumn>,
-        components: BTreeMap<ComponentName, Arrow2ListArray<i32>>,
+        timelines: IntMap<Timeline, TimeColumn>,
+        components: IntMap<ComponentName, Arrow2ListArray<i32>>,
     ) -> ChunkResult<Self> {
         let mut chunk = Self {
             id,
@@ -618,8 +622,8 @@ impl Chunk {
         entity_path: EntityPath,
         is_sorted: Option<bool>,
         row_ids: &[RowId],
-        timelines: BTreeMap<Timeline, TimeColumn>,
-        components: BTreeMap<ComponentName, Arrow2ListArray<i32>>,
+        timelines: IntMap<Timeline, TimeColumn>,
+        components: IntMap<ComponentName, Arrow2ListArray<i32>>,
     ) -> ChunkResult<Self> {
         re_tracing::profile_function!();
         let row_ids = row_ids
@@ -649,8 +653,8 @@ impl Chunk {
     pub fn from_auto_row_ids(
         id: ChunkId,
         entity_path: EntityPath,
-        timelines: BTreeMap<Timeline, TimeColumn>,
-        components: BTreeMap<ComponentName, Arrow2ListArray<i32>>,
+        timelines: IntMap<Timeline, TimeColumn>,
+        components: IntMap<ComponentName, Arrow2ListArray<i32>>,
     ) -> ChunkResult<Self> {
         let count = components
             .iter()
@@ -681,7 +685,7 @@ impl Chunk {
         entity_path: EntityPath,
         is_sorted: Option<bool>,
         row_ids: Arrow2StructArray,
-        components: BTreeMap<ComponentName, Arrow2ListArray<i32>>,
+        components: IntMap<ComponentName, Arrow2ListArray<i32>>,
     ) -> ChunkResult<Self> {
         Self::new(
             id,
@@ -1045,7 +1049,7 @@ impl Chunk {
     }
 
     #[inline]
-    pub fn timelines(&self) -> &BTreeMap<Timeline, TimeColumn> {
+    pub fn timelines(&self) -> &IntMap<Timeline, TimeColumn> {
         &self.timelines
     }
 
@@ -1055,7 +1059,7 @@ impl Chunk {
     }
 
     #[inline]
-    pub fn components(&self) -> &BTreeMap<ComponentName, Arrow2ListArray<i32>> {
+    pub fn components(&self) -> &IntMap<ComponentName, Arrow2ListArray<i32>> {
         &self.components
     }
 
@@ -1137,8 +1141,8 @@ impl TimeColumn {
     // TODO(cmc): This needs to be stored in chunk metadata and transported across IPC.
     pub fn time_range_per_component(
         &self,
-        components: &BTreeMap<ComponentName, Arrow2ListArray<i32>>,
-    ) -> BTreeMap<ComponentName, ResolvedTimeRange> {
+        components: &IntMap<ComponentName, Arrow2ListArray<i32>>,
+    ) -> IntMap<ComponentName, ResolvedTimeRange> {
         let times = self.times_raw();
         components
             .iter()

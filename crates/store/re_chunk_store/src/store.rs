@@ -258,21 +258,20 @@ pub struct ChunkIdSetPerTime {
     pub(crate) per_end_time: BTreeMap<TimeInt, ChunkIdSet>,
 }
 
-pub type ChunkIdSetPerTimePerComponent = BTreeMap<ComponentName, ChunkIdSetPerTime>;
+pub type ChunkIdSetPerTimePerComponent = IntMap<ComponentName, ChunkIdSetPerTime>;
 
-pub type ChunkIdSetPerTimePerComponentPerTimeline =
-    BTreeMap<Timeline, ChunkIdSetPerTimePerComponent>;
+pub type ChunkIdSetPerTimePerComponentPerTimeline = IntMap<Timeline, ChunkIdSetPerTimePerComponent>;
 
 pub type ChunkIdSetPerTimePerComponentPerTimelinePerEntity =
-    BTreeMap<EntityPath, ChunkIdSetPerTimePerComponentPerTimeline>;
+    IntMap<EntityPath, ChunkIdSetPerTimePerComponentPerTimeline>;
 
-pub type ChunkIdPerComponent = BTreeMap<ComponentName, ChunkId>;
+pub type ChunkIdPerComponent = IntMap<ComponentName, ChunkId>;
 
-pub type ChunkIdPerComponentPerEntity = BTreeMap<EntityPath, ChunkIdPerComponent>;
+pub type ChunkIdPerComponentPerEntity = IntMap<EntityPath, ChunkIdPerComponent>;
 
-pub type ChunkIdSetPerTimePerTimeline = BTreeMap<Timeline, ChunkIdSetPerTime>;
+pub type ChunkIdSetPerTimePerTimeline = IntMap<Timeline, ChunkIdSetPerTime>;
 
-pub type ChunkIdSetPerTimePerTimelinePerEntity = BTreeMap<EntityPath, ChunkIdSetPerTimePerTimeline>;
+pub type ChunkIdSetPerTimePerTimelinePerEntity = IntMap<EntityPath, ChunkIdSetPerTimePerTimeline>;
 
 // ---
 
@@ -409,8 +408,7 @@ pub struct ChunkStore {
     // different datatype for a given component.
     pub(crate) type_registry: IntMap<ComponentName, Arrow2DataType>,
 
-    pub(crate) per_column_metadata:
-        BTreeMap<EntityPath, BTreeMap<ComponentName, ColumnMetadataState>>,
+    pub(crate) per_column_metadata: IntMap<EntityPath, IntMap<ComponentName, ColumnMetadataState>>,
 
     pub(crate) chunks_per_chunk_id: BTreeMap<ChunkId, Arc<Chunk>>,
 
@@ -454,7 +452,6 @@ pub struct ChunkStore {
     /// This is too costly to be computed from scratch every frame, and is required by e.g. the GC.
     pub(crate) static_chunks_stats: ChunkStoreChunkStats,
 
-    // pub(crate) static_tables: BTreeMap<EntityPathHash, StaticTable>,
     /// Monotonically increasing ID for insertions.
     pub(crate) insert_id: u64,
 

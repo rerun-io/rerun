@@ -1,5 +1,3 @@
-use std::collections::BTreeMap;
-
 use arrow2::{
     array::{Array as Arrow2Array, PrimitiveArray as Arrow2PrimitiveArray},
     datatypes::DataType as Arrow2Datatype,
@@ -22,8 +20,8 @@ pub struct ChunkBuilder {
     entity_path: EntityPath,
 
     row_ids: Vec<RowId>,
-    timelines: BTreeMap<Timeline, TimeColumnBuilder>,
-    components: BTreeMap<ComponentName, Vec<Option<Box<dyn Arrow2Array>>>>,
+    timelines: IntMap<Timeline, TimeColumnBuilder>,
+    components: IntMap<ComponentName, Vec<Option<Box<dyn Arrow2Array>>>>,
 }
 
 impl Chunk {
@@ -53,8 +51,8 @@ impl ChunkBuilder {
             entity_path,
 
             row_ids: Vec::new(),
-            timelines: BTreeMap::new(),
-            components: BTreeMap::new(),
+            timelines: IntMap::default(),
+            components: IntMap::default(),
         }
     }
 

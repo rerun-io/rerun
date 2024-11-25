@@ -1,3 +1,5 @@
+use nohash_hasher::IntSet;
+
 use crate::{result::_Backtrace, DeserializationResult, SerializationResult, SizeBytes};
 
 #[allow(unused_imports)] // used in docstrings
@@ -147,6 +149,8 @@ pub trait Component: Loggable {
 }
 
 // ---
+
+pub type UnorderedComponentNameSet = IntSet<ComponentName>;
 
 pub type ComponentNameSet = std::collections::BTreeSet<ComponentName>;
 
