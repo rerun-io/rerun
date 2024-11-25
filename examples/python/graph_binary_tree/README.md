@@ -17,8 +17,8 @@ This example shows a binary tree that uses `GraphNodes` and `GraphEdges` togethe
 </picture>
 
 ## Used Rerun types
-[`GraphNodes`](https://www.rerun.io/docs/reference/types/archetypes/graph_nodes),
-[`GraphEdges`](https://www.rerun.io/docs/reference/types/archetypes/graph_edges)
+[`GraphNodes`](https://www.rerun.io/docs/reference/types/archetypes/graph_nodes?speculative-link),
+[`GraphEdges`](https://www.rerun.io/docs/reference/types/archetypes/graph_edges?speculative-link)
 
 ## Run the code
 
