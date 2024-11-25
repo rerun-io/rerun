@@ -12,7 +12,7 @@ DESCRIPTION = """
 This is a minimal example that logs a time-varying binary tree to Rerun.
 
 The full source code for this example is available
-[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/graph_binary_tree).
+[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/graph_binary_tree?speculative-link).
 """.strip()
 
 s = 3  # scaling factor for the positions
