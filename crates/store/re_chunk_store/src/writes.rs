@@ -314,7 +314,7 @@ impl ChunkStore {
             );
             if let Some(elected_chunk) = &elected_chunk {
                 // NOTE: The chunk that we've just added has been compacted already!
-                let srcs = std::iter::once((non_compacted_chunk.id(), non_compacted_chunk))
+                let replacements = std::iter::once((non_compacted_chunk.id(), non_compacted_chunk))
                     .chain(
                         self.remove_chunk(elected_chunk.id())
                             .into_iter()
@@ -322,9 +322,11 @@ impl ChunkStore {
                             .map(|diff| (diff.chunk.id(), diff.chunk)),
                     )
                     .collect();
-                let dst = chunk_or_compacted.id();
 
-                diff.compacted = Some((srcs, dst));
+                diff.compacted = Some(crate::ChunkCompactionReport {
+                    compacted_chunks: replacements,
+                    new_chunk: chunk_or_compacted.clone(),
+                });
             }
 
             (chunk_or_compacted, vec![diff])
