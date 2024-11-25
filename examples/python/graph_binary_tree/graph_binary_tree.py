@@ -3,7 +3,17 @@
 
 from __future__ import annotations
 
+import argparse
+
 import rerun as rr
+
+DESCRIPTION = """
+# Binary tree
+This is a minimal example that logs a time-varying binary tree to Rerun.
+
+The full source code for this example is available
+[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/graph_binary_tree).
+""".strip()
 
 s = 3  # scaling factor for the positions
 
@@ -61,8 +71,8 @@ levels: list[Level] = [
 ]
 
 
-def main() -> None:
-    rr.init("rerun_example_py_graph_binary_tree", spawn=True)
+def log_data() -> None:
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
 
     t = 0
     for level in levels:
@@ -82,6 +92,16 @@ def main() -> None:
             t = t + 1
             rr.set_time_seconds("stable_time", t)
             rr.log("binary_tree", rr.GraphEdges(level.edges))
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Logs a binary tree with associated positions using the Rerun SDK.")
+    rr.script_add_args(parser)
+    args = parser.parse_args()
+
+    rr.script_setup(args, "rerun_example_graph_binary_tree")
+    log_data()
+    rr.script_teardown(args)
 
 
 if __name__ == "__main__":

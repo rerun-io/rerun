@@ -3,15 +3,26 @@
 
 from __future__ import annotations
 
+import argparse
 import itertools
 
 import rerun as rr
 
 NUM_NODES = 10
 
+DESCRIPTION = """
+# Graph Lattice
+This is a minimal example that logs a graph (node-link diagram) that represents a lattice.
 
-def main() -> None:
-    rr.init("rerun_example_py_graph_lattice", spawn=True)
+In this example, the node position—and therefore the graph layout—are computed by Rerun internally.
+
+The full source code for this example is available
+[on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/graph_binary_tree).
+""".strip()
+
+
+def log_data() -> None:
+    rr.log("description", rr.TextDocument(DESCRIPTION, media_type=rr.MediaType.MARKDOWN), static=True)
 
     coordinates = itertools.product(range(NUM_NODES), range(NUM_NODES))
 
@@ -45,6 +56,16 @@ def main() -> None:
             edges.append((str(source), str(target)))
 
     rr.log("/lattice", rr.GraphEdges(edges, graph_type="directed"), static=True)
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Logs a graph lattice using the Rerun SDK.")
+    rr.script_add_args(parser)
+    args = parser.parse_args()
+
+    rr.script_setup(args, "rerun_example_graph_lattice")
+    log_data()
+    rr.script_teardown(args)
 
 
 if __name__ == "__main__":
