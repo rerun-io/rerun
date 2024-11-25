@@ -78,7 +78,7 @@ impl std::cmp::PartialEq for InternedString {
 impl std::hash::Hash for InternedString {
     #[inline]
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        self.hash.hash(state);
+        state.write_u64(self.hash);
     }
 }
 

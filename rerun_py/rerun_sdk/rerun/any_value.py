@@ -3,8 +3,10 @@ from __future__ import annotations
 from typing import Any, Iterable
 
 import numpy as np
+import numpy.typing as npt
 import pyarrow as pa
 
+from . import ComponentColumn
 from ._log import AsComponents, ComponentBatchLike
 from .error_utils import catch_and_log_exceptions
 
@@ -91,6 +93,25 @@ class AnyBatchValue(ComponentBatchLike):
 
     def as_arrow_array(self) -> pa.Array | None:
         return self.pa_array
+
+    def partition(self, lengths: npt.ArrayLike) -> ComponentColumn:
+        """
+        Partitions the component into multiple sub-batches. This wraps the inner arrow
+        array in a `pyarrow.ListArray` where the different lists have the lengths specified.
+
+        Lengths must sum to the total length of the component batch.
+
+        Parameters
+        ----------
+        lengths : npt.ArrayLike
+            The offsets to partition the component at.
+
+        Returns
+        -------
+        The partitioned component.
+
+        """  # noqa: D205
+        return ComponentColumn(self, lengths)
 
 
 class AnyValues(AsComponents):
