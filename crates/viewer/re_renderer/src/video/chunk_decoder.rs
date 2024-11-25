@@ -189,7 +189,7 @@ fn copy_web_video_frame_to_texture(
         // Careful: `web_sys::VideoFrame` has a custom `clone` method:
         // https://developer.mozilla.org/en-US/docs/Web/API/VideoFrame/clone
         // We instead just want to clone the js value!
-        source: wgpu::ExternalImageSource::VideoFrame(Clone::clone(frame)),
+        source: wgpu::ExternalImageSource::VideoFrame(JsValue::clone(frame)),
         origin: wgpu::Origin2d { x: 0, y: 0 },
         flip_y: false,
     };
