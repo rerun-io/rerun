@@ -14,7 +14,7 @@ DESCRIPTION = """
 # Graph Lattice
 This is a minimal example that logs a graph (node-link diagram) that represents a lattice.
 
-In this example, the node position—and therefore the graph layout—are computed by Rerun internally.
+In this example, the node positions—and therefore the graph layout—are computed by Rerun internally.
 
 The full source code for this example is available
 [on GitHub](https://github.com/rerun-io/rerun/blob/latest/examples/python/graph_binary_tree).
