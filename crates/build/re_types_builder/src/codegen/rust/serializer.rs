@@ -2,7 +2,7 @@ use arrow2::datatypes::DataType;
 use proc_macro2::{Literal, TokenStream};
 use quote::{format_ident, quote};
 
-use crate::{codegen::rust::arrow::ArrowDataTypeTokenizer, ArrowRegistry, Object, Objects};
+use crate::{ArrowRegistry, Object, Objects};
 
 use super::{
     arrow::{
@@ -151,12 +151,7 @@ pub fn quote_arrow_serializer(
         // NOTE: This can only be struct or union/enum at this point.
         match datatype.to_logical_type() {
             DataType::Struct(fields) => {
-                let quoted_fields = fields.iter().map(|field| {
-                    let field_name = &field.name;
-                    let data_type = ArrowDataTypeTokenizer(&field.data_type, true);
-                    let is_nullable = &field.is_nullable;
-                    quote! { Field::new(#field_name, #data_type, #is_nullable) }
-                });
+                let quoted_fields = fields.iter().map(ArrowFieldTokenizer::new);
 
                 let quoted_field_serializers = obj.fields.iter().map(|obj_field| {
                     let data_dst = format_ident!("{}", obj_field.name);
@@ -226,12 +221,7 @@ pub fn quote_arrow_serializer(
             DataType::Union(fields, _, arrow2::datatypes::UnionMode::Sparse) => {
                 // We use sparse unions for enums, which means only 8 bits is required for each field,
                 // and nulls are encoded with a special 0-index `_null_markers` variant.
-                let quoted_fields = fields.iter().map(|field| {
-                    let field_name = &field.name;
-                    let data_type = ArrowDataTypeTokenizer(&field.data_type, true);
-                    let is_nullable = &field.is_nullable;
-                    quote! { Field::new(#field_name, #data_type, #is_nullable) }
-                });
+                let quoted_fields = fields.iter().map(ArrowFieldTokenizer::new);
                 let quoted_data_collect = quote! {
                     let #data_src: Vec<_> = #data_src
                         .into_iter()
@@ -286,12 +276,7 @@ pub fn quote_arrow_serializer(
 
             DataType::Union(fields, _, arrow2::datatypes::UnionMode::Dense) => {
                 let quoted_field_type_ids = (0..fields.len()).map(Literal::usize_unsuffixed);
-                let quoted_fields = fields.iter().map(|field| {
-                    let field_name = &field.name;
-                    let data_type = ArrowDataTypeTokenizer(&field.data_type, true);
-                    let is_nullable = &field.is_nullable;
-                    quote! { Field::new(#field_name, #data_type, #is_nullable) }
-                });
+                let quoted_fields = fields.iter().map(ArrowFieldTokenizer::new);
                 let quoted_data_collect = quote! {
                     let #data_src: Vec<_> = #data_src
                         .into_iter()
@@ -821,16 +806,7 @@ fn quote_arrow_field_serializer(
                 quote! {}
             };
 
-            let mut field = ArrowFieldTokenizer::new(inner_field);
-            if matches!(
-                inner_field.data_type.to_logical_type(),
-                DataType::Union { .. }
-            ) {
-                // Unions in Rerun have a special `_null_markers`, making them all nullable.
-                // Therefore we must communicate this to `arrow-rs`.
-                // As of writing this in 2024-11-25, this only affects our "fuzzer" tests; not real code.
-                field = field.with_nullable(true);
-            }
+            let field = ArrowFieldTokenizer::new(inner_field);
             let quoted_field = quote!(std::sync::Arc::new(#field));
 
             let quoted_create = match datatype.to_logical_type() {

@@ -98,30 +98,17 @@ impl quote::ToTokens for ArrowDataTypeTokenizer<'_> {
 
 pub struct ArrowFieldTokenizer<'a> {
     field: &'a ::arrow2::datatypes::Field,
-    nullable_override: Option<bool>,
 }
 
 impl<'a> ArrowFieldTokenizer<'a> {
     pub fn new(field: &'a ::arrow2::datatypes::Field) -> Self {
-        Self {
-            field,
-            nullable_override: None,
-        }
-    }
-
-    /// Override the `is_nullable` field of the underlying [`arrow2::datatypes::Field`].
-    pub fn with_nullable(mut self, is_nullable: bool) -> Self {
-        self.nullable_override = Some(is_nullable);
-        self
+        Self { field }
     }
 }
 
 impl quote::ToTokens for ArrowFieldTokenizer<'_> {
     fn to_tokens(&self, tokens: &mut TokenStream) {
-        let Self {
-            field,
-            nullable_override,
-        } = self;
+        let Self { field } = self;
         let arrow2::datatypes::Field {
             name,
             data_type,
@@ -129,7 +116,10 @@ impl quote::ToTokens for ArrowFieldTokenizer<'_> {
             metadata,
         } = field;
 
-        let is_nullable = nullable_override.unwrap_or(*is_nullable);
+        // Unions in Rerun always has a `_null_markers` arm, so all unions are nullable,
+        // whether they are specified as such or not.
+        let is_nullable =
+            *is_nullable || matches!(field.data_type.to_logical_type(), DataType::Union { .. });
 
         let datatype = ArrowDataTypeTokenizer(data_type, true);
 

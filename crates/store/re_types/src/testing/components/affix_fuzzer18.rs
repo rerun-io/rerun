@@ -51,7 +51,7 @@ impl ::re_types_core::Loggable for AffixFuzzer18 {
         DataType::List(std::sync::Arc::new(Field::new(
             "item",
             <crate::testing::datatypes::AffixFuzzer4>::arrow_datatype(),
-            false,
+            true,
         )))
     }
 

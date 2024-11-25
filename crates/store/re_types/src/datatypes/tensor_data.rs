@@ -68,7 +68,7 @@ impl ::re_types_core::Loggable for TensorData {
             Field::new(
                 "buffer",
                 <crate::datatypes::TensorBuffer>::arrow_datatype(),
-                false,
+                true,
             ),
         ]))
     }
@@ -102,7 +102,7 @@ impl ::re_types_core::Loggable for TensorData {
                 Field::new(
                     "buffer",
                     <crate::datatypes::TensorBuffer>::arrow_datatype(),
-                    false,
+                    true,
                 ),
             ]);
             let (somes, data): (Vec<_>, Vec<_>) = data

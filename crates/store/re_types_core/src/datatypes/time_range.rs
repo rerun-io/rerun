@@ -52,12 +52,12 @@ impl crate::Loggable for TimeRange {
             Field::new(
                 "start",
                 <crate::datatypes::TimeRangeBoundary>::arrow_datatype(),
-                false,
+                true,
             ),
             Field::new(
                 "end",
                 <crate::datatypes::TimeRangeBoundary>::arrow_datatype(),
-                false,
+                true,
             ),
         ]))
     }
@@ -82,12 +82,12 @@ impl crate::Loggable for TimeRange {
                 Field::new(
                     "start",
                     <crate::datatypes::TimeRangeBoundary>::arrow_datatype(),
-                    false,
+                    true,
                 ),
                 Field::new(
                     "end",
                     <crate::datatypes::TimeRangeBoundary>::arrow_datatype(),
-                    false,
+                    true,
                 ),
             ]);
             let (somes, data): (Vec<_>, Vec<_>) = data

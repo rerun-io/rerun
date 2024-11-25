@@ -56,14 +56,14 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                     Field::new(
                         "single_required",
                         <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
-                        false,
+                        true,
                     ),
                     Field::new(
                         "many_required",
                         DataType::List(std::sync::Arc::new(Field::new(
                             "item",
                             <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
-                            false,
+                            true,
                         ))),
                         false,
                     ),
@@ -103,14 +103,14 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                 Field::new(
                     "single_required",
                     <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
-                    false,
+                    true,
                 ),
                 Field::new(
                     "many_required",
                     DataType::List(std::sync::Arc::new(Field::new(
                         "item",
                         <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
-                        false,
+                        true,
                     ))),
                     false,
                 ),
@@ -273,7 +273,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                                 let expected = DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
                                     <crate::testing::datatypes::AffixFuzzer3>::arrow_datatype(),
-                                    false,
+                                    true,
                                 )));
                                 let actual = arrow_data.data_type().clone();
                                 DeserializationError::datatype_mismatch(expected, actual)
