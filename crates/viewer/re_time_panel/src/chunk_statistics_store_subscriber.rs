@@ -5,16 +5,27 @@ use once_cell::sync::OnceCell;
 use re_chunk_store::{
     Chunk, ChunkId, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriber, ChunkStoreSubscriberHandle,
 };
-use re_log_types::{EntityPath, EntityPathHash, StoreId, Timeline};
+use re_log_types::{EntityPath, EntityPathHash, ResolvedTimeRange, StoreId, Timeline};
 use re_viewer_context::external::nohash_hasher::IntMap; // TODO:
 
 // TODO: not done. unclear if I want this.
+
+/// Cached information about a chunk in the context of a given timeline.
+#[derive(Clone)]
+pub struct ChunkTimelineInfo {
+    pub chunk: Arc<Chunk>,
+    pub num_events: u64,
+    pub resolved_time_range: ResolvedTimeRange,
+}
 
 /// Recursive statistics for a given timeline & entity.
 #[derive(Default)]
 pub struct EntityTimelineChunks {
     // TODO: this should be a BTreeMap sorted by lowest time on the given timeline for fast range lookups.
-    pub recursive_chunks: HashMap<ChunkId, Arc<Chunk>>,
+    pub recursive_chunks_info: HashMap<ChunkId, ChunkTimelineInfo>,
+
+    /// Total number of events in all of the chunks.
+    pub total_num_events: u64,
 }
 
 // TODO: build up a data-structure that we can retain.
@@ -50,7 +61,7 @@ impl PathRecursiveChunksPerTimeline {
         .flatten()
     }
 
-    pub fn entity_timeline_stats(
+    pub fn path_recursive_chunks_for_entity_and_timeline(
         &self,
         entity_path: &EntityPath,
         timeline: Timeline,
@@ -107,7 +118,7 @@ impl ChunkStoreSubscriber for PathRecursiveChunksPerTimelineStoreSubscriber {
                 for removed_chunk in compacted_chunks.values() {
                     remove_chunk(path_recursive_chunks, removed_chunk);
                 }
-                add_chunk(path_recursive_chunks, &new_chunk);
+                add_chunk(path_recursive_chunks, new_chunk);
             } else {
                 match event.diff.kind {
                     re_chunk_store::ChunkStoreDiffKind::Addition => {
@@ -125,19 +136,27 @@ impl ChunkStoreSubscriber for PathRecursiveChunksPerTimelineStoreSubscriber {
 fn add_chunk(path_recursive_chunks: &mut PathRecursiveChunksPerTimeline, chunk: &Arc<Chunk>) {
     re_tracing::profile_function!();
 
-    for timeline in chunk.timelines().keys() {
+    for (timeline, time_column) in chunk.timelines() {
         let chunks_per_entities = path_recursive_chunks
             .timeline_chunk_stats
-            .entry(timeline.clone())
+            .entry(*timeline)
             .or_default();
+
+        let chunk_info = ChunkTimelineInfo {
+            chunk: chunk.clone(),
+            num_events: chunk.num_events_cumulative(), // TODO(andreas): Would `num_events_cumulative_per_unique_time` be more appropriate?
+            resolved_time_range: time_column.time_range(),
+        };
 
         // Recursively add chunks.
         let mut next_path = Some(chunk.entity_path().clone());
         while let Some(path) = next_path {
             let chunks_per_entity = chunks_per_entities.entry(path.hash()).or_default();
+
             chunks_per_entity
-                .recursive_chunks
-                .insert(chunk.id(), chunk.clone());
+                .recursive_chunks_info
+                .insert(chunk.id(), chunk_info.clone());
+            chunks_per_entity.total_num_events += chunk_info.num_events;
             next_path = path.parent();
         }
     }
@@ -157,7 +176,13 @@ fn remove_chunk(path_recursive_chunks: &mut PathRecursiveChunksPerTimeline, chun
         let mut next_path = Some(chunk.entity_path().clone());
         while let Some(path) = next_path {
             if let Some(chunks_per_entity) = chunks_per_entities.get_mut(&path.hash()) {
-                chunks_per_entity.recursive_chunks.remove(&chunk.id());
+                if chunks_per_entity
+                    .recursive_chunks_info
+                    .remove(&chunk.id())
+                    .is_some()
+                {
+                    chunks_per_entity.total_num_events -= chunk.num_events_cumulative();
+                }
             }
             next_path = path.parent();
         }
