@@ -1,8 +1,6 @@
-use std::{
-    collections::BTreeMap,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use std::sync::atomic::{AtomicU64, Ordering};
 
+use ahash::HashMap;
 use arrow2::{
     array::{
         Array as Arrow2Array, ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
@@ -452,24 +450,24 @@ impl Chunk {
 
         debug_assert!(!time_column.is_sorted());
 
-        self.components
-            .values()
-            .flat_map(move |list_array| {
-                izip!(
-                    time_column.times(),
-                    // Reminder: component columns are sparse, we must take a look at the validity bitmaps.
-                    list_array.validity().map_or_else(
-                        || arrow2::Either::Left(std::iter::repeat(1).take(self.num_rows())),
-                        |validity| arrow2::Either::Right(validity.iter().map(|b| b as u64)),
-                    )
-                )
-            })
-            .fold(BTreeMap::default(), |mut acc, (time, is_valid)| {
-                *acc.entry(time).or_default() += is_valid;
-                acc
-            })
-            .into_iter()
-            .collect()
+        // NOTE: This is used on some very hot paths (time panel rendering).
+
+        let mut result_unordered = HashMap::default();
+        for list_array in self.components.values() {
+            if let Some(validity) = list_array.validity() {
+                for (time, is_valid) in time_column.times().zip(validity.iter()) {
+                    *result_unordered.entry(time).or_default() += is_valid as u64;
+                }
+            } else {
+                for time in time_column.times() {
+                    *result_unordered.entry(time).or_default() += 1;
+                }
+            }
+        }
+
+        let mut result = result_unordered.into_iter().collect_vec();
+        result.sort_by_key(|val| val.0);
+        result
     }
 
     /// The number of events in this chunk for the specified component.
