@@ -1,0 +1,12 @@
+namespace rerun.components;
+
+// ---
+
+/// An edge in a graph connecting two nodes.
+table GraphEdge (
+  "attr.docs.unreleased",
+  "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord",
+  "attr.rust.repr": "transparent"
+) {
+  edge: rerun.datatypes.Utf8Pair (order: 100);
+}

@@ -127,6 +127,15 @@ ALL_COMPONENTS: dict[str, TestCase] = {
             ((3, 3), (4, 4), (5, 5)),
         ]
     ),
+    "GraphEdgeBatch": TestCase(
+        batch=[
+            rr.components.GraphEdge("a", "b"),
+            rr.components.GraphEdge("b", "c"),
+            rr.components.GraphEdge("c", "a"),
+        ]
+    ),
+    "GraphNodeBatch": TestCase(batch=["a", "b", "c"]),
+    "GraphTypeBatch": TestCase(rr.components.GraphType.Directed),
     "HalfSize2DBatch": TestCase(batch=[(5.0, 10.0), (50, 30), (23, 45)]),
     "HalfSize3DBatch": TestCase(batch=[(5.0, 10.0, 20.0), (50, 30, 40), (23, 45, 67)]),
     "ImageBufferBatch": TestCase(

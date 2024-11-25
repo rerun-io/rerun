@@ -2,6 +2,7 @@
 
 mod bar_chart_view;
 mod dataframe_view;
+mod graph_view;
 mod map_view;
 mod spatial2d_view;
 mod spatial3d_view;
@@ -12,6 +13,7 @@ mod time_series_view;
 
 pub use self::bar_chart_view::BarChartView;
 pub use self::dataframe_view::DataframeView;
+pub use self::graph_view::GraphView;
 pub use self::map_view::MapView;
 pub use self::spatial2d_view::Spatial2DView;
 pub use self::spatial3d_view::Spatial3DView;

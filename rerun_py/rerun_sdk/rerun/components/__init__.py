@@ -29,6 +29,9 @@ from .fill_mode import FillMode, FillModeArrayLike, FillModeBatch, FillModeLike
 from .fill_ratio import FillRatio, FillRatioBatch
 from .gamma_correction import GammaCorrection, GammaCorrectionBatch
 from .geo_line_string import GeoLineString, GeoLineStringArrayLike, GeoLineStringBatch, GeoLineStringLike
+from .graph_edge import GraphEdge, GraphEdgeBatch
+from .graph_node import GraphNode, GraphNodeBatch
+from .graph_type import GraphType, GraphTypeArrayLike, GraphTypeBatch, GraphTypeLike
 from .half_size2d import HalfSize2D, HalfSize2DBatch
 from .half_size3d import HalfSize3D, HalfSize3DBatch
 from .image_buffer import ImageBuffer, ImageBufferBatch
@@ -134,6 +137,14 @@ __all__ = [
     "GeoLineStringArrayLike",
     "GeoLineStringBatch",
     "GeoLineStringLike",
+    "GraphEdge",
+    "GraphEdgeBatch",
+    "GraphNode",
+    "GraphNodeBatch",
+    "GraphType",
+    "GraphTypeArrayLike",
+    "GraphTypeBatch",
+    "GraphTypeLike",
     "HalfSize2D",
     "HalfSize2DBatch",
     "HalfSize3D",

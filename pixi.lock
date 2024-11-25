@@ -2542,6 +2542,8 @@ environments:
       - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_binary_tree
+      - pypi: examples/python/graph_lattice
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -2937,6 +2939,8 @@ environments:
       - pypi: examples/python/dicom_mri
       - pypi: examples/python/dna
       - pypi: examples/python/drone_lidar
+      - pypi: examples/python/graph_binary_tree
+      - pypi: examples/python/graph_lattice
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
       - pypi: examples/python/live_camera_edge_detection
@@ -3313,6 +3317,8 @@ environments:
       - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_binary_tree
+      - pypi: examples/python/graph_lattice
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -3691,6 +3697,8 @@ environments:
       - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_binary_tree
+      - pypi: examples/python/graph_lattice
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -4068,6 +4076,8 @@ environments:
       - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_binary_tree
+      - pypi: examples/python/graph_lattice
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -4489,6 +4499,8 @@ environments:
       - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_binary_tree
+      - pypi: examples/python/graph_lattice
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -4836,6 +4848,8 @@ environments:
       - pypi: examples/python/dicom_mri
       - pypi: examples/python/dna
       - pypi: examples/python/drone_lidar
+      - pypi: examples/python/graph_binary_tree
+      - pypi: examples/python/graph_lattice
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
       - pypi: examples/python/live_camera_edge_detection
@@ -5165,6 +5179,8 @@ environments:
       - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_binary_tree
+      - pypi: examples/python/graph_lattice
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -5496,6 +5512,8 @@ environments:
       - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_binary_tree
+      - pypi: examples/python/graph_lattice
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -5827,6 +5845,8 @@ environments:
       - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_binary_tree
+      - pypi: examples/python/graph_lattice
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -9061,6 +9081,8 @@ environments:
       - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_binary_tree
+      - pypi: examples/python/graph_lattice
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -9550,6 +9572,8 @@ environments:
       - pypi: examples/python/dicom_mri
       - pypi: examples/python/dna
       - pypi: examples/python/drone_lidar
+      - pypi: examples/python/graph_binary_tree
+      - pypi: examples/python/graph_lattice
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
       - pypi: examples/python/live_camera_edge_detection
@@ -10019,6 +10043,8 @@ environments:
       - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_binary_tree
+      - pypi: examples/python/graph_lattice
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -10490,6 +10516,8 @@ environments:
       - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_binary_tree
+      - pypi: examples/python/graph_lattice
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -10940,6 +10968,8 @@ environments:
       - pypi: examples/python/drone_lidar
       - pypi: examples/python/face_tracking
       - pypi: examples/python/gesture_detection
+      - pypi: examples/python/graph_binary_tree
+      - pypi: examples/python/graph_lattice
       - pypi: examples/python/human_pose_tracking
       - pypi: examples/python/incremental_logging
       - pypi: examples/python/lidar
@@ -13082,21 +13112,6 @@ packages:
   - trimesh
   editable: true
 - kind: pypi
-  name: arkit-scenes
-  version: 0.1.0
-  path: examples/python/arkit_scenes
-  sha256: 1ea1defa403966ebbc7e54ff7b92f65fdb6c98ee3e242d8af0be46023ed87961
-  requires_dist:
-  - matplotlib
-  - numpy
-  - opencv-python
-  - pandas
-  - rerun-sdk
-  - scipy
-  - tqdm
-  - trimesh
-  editable: true
-- kind: pypi
   name: arrow
   version: 1.3.0
   url: https://files.pythonhosted.org/packages/f8/ed/e97229a566617f2ae958a6b13e7cc0f585470eac730a73e9e82c32a3cdd2/arrow-1.3.0-py3-none-any.whl
@@ -14937,20 +14952,6 @@ packages:
   - jinja2 ; extra == 'compiler'
   - protobuf ; extra == 'compiler'
   requires_python: '>=3.6'
-- kind: pypi
-  name: betterproto
-  version: 1.2.5
-  url: https://files.pythonhosted.org/packages/ff/2e/abfed7a721928e14aeb900182ff695be474c4ee5f07ef0874cc5ecd5b0b1/betterproto-1.2.5.tar.gz
-  sha256: 74a3ab34646054f674d236d1229ba8182dc2eae86feb249b8590ef496ce9803d
-  requires_dist:
-  - grpclib
-  - stringcase
-  - dataclasses ; python_full_version < '3.7'
-  - backports-datetime-fromisoformat ; python_full_version < '3.7'
-  - black ; extra == 'compiler'
-  - jinja2 ; extra == 'compiler'
-  - protobuf ; extra == 'compiler'
-  requires_python: '>=3.6'
 - kind: conda
   name: binaryen
   version: '117'
@@ -15241,26 +15242,6 @@ packages:
   requires_dist:
   - numpy
   - rerun-sdk
-  editable: true
-- kind: pypi
-  name: blueprint
-  version: 0.1.0
-  path: examples/python/blueprint
-  sha256: d9a358e5994ec1e9144942903e46148b16825344cddc19e7188b285f59bc61c1
-  requires_dist:
-  - numpy
-  - rerun-sdk
-  editable: true
-- kind: pypi
-  name: blueprint-stocks
-  version: 0.1.0
-  path: examples/python/blueprint_stocks
-  sha256: 7c8b6805f08610837014175d9d0212815a91c3197756cdbbce836a2f15e40eea
-  requires_dist:
-  - humanize
-  - rerun-sdk
-  - yfinance
-  requires_python: '>=3.8'
   editable: true
 - kind: pypi
   name: blueprint-stocks
@@ -16571,15 +16552,6 @@ packages:
   - numpy
   - rerun-sdk
   editable: true
-- kind: pypi
-  name: clock
-  version: 0.1.0
-  path: examples/python/clock
-  sha256: 1ae48a7222b2fc2bd9942a31bb48fefb34225a946859ad95c25ad00bfb754cd7
-  requires_dist:
-  - numpy
-  - rerun-sdk
-  editable: true
 - kind: conda
   name: cmake
   version: 3.27.6
@@ -16941,29 +16913,13 @@ packages:
   sha256: 8ae055c0b8b0dd7757e4e666f6163172859044d4090830aecbec3460cdb318ee
   requires_dist:
   - accelerate
-  - opencv-python
-  - pillow
   - diffusers==0.27.2
   - numpy
-  - torch==2.2.2
-  - transformers
-  - rerun-sdk
-  requires_python: '>=3.10'
-  editable: true
-- kind: pypi
-  name: controlnet
-  version: 0.1.0
-  path: examples/python/controlnet
-  sha256: 8ae055c0b8b0dd7757e4e666f6163172859044d4090830aecbec3460cdb318ee
-  requires_dist:
-  - accelerate
   - opencv-python
   - pillow
-  - diffusers==0.27.2
-  - numpy
+  - rerun-sdk
   - torch==2.2.2
   - transformers
-  - rerun-sdk
   requires_python: '>=3.10'
   editable: true
 - kind: pypi
@@ -17219,14 +17175,6 @@ packages:
   requires_dist:
   - rerun-sdk
   editable: true
-- kind: pypi
-  name: dataframe-query
-  version: 0.1.0
-  path: examples/python/dataframe_query
-  sha256: cfd25d2d2872eef690801817f4a3bf4660d4b232cc594d0bcc3ee70a783dfd46
-  requires_dist:
-  - rerun-sdk
-  editable: true
 - kind: conda
   name: dav1d
   version: 1.2.1
@@ -17377,22 +17325,7 @@ packages:
   - numpy
   - opencv-contrib-python>4.6
   - pillow
-  - requests>=2.31,<3
-  - rerun-sdk
-  - timm==0.9.11
-  - torch==2.2.2
-  - transformers
-  editable: true
-- kind: pypi
-  name: detect-and-track-objects
-  version: 0.1.0
-  path: examples/python/detect_and_track_objects
-  sha256: 2c2d3d8b61d6a0bf44051fd7052e3087fd4762b9c434586078ea3d179940cba1
-  requires_dist:
-  - numpy
-  - opencv-contrib-python>4.6
-  - pillow
-  - requests>=2.31,<3
+  - requests<3,>=2.31
   - rerun-sdk
   - timm==0.9.11
   - torch==2.2.2
@@ -17407,22 +17340,9 @@ packages:
   - dicom-numpy==0.6.2
   - numpy
   - pydicom==2.3.0
-  - requests>=2.31,<3
+  - requests<3,>=2.31
   - rerun-sdk
-  - types-requests>=2.31,<3
-  editable: true
-- kind: pypi
-  name: dicom-mri
-  version: 0.1.0
-  path: examples/python/dicom_mri
-  sha256: 98cb91dc5758ae59e3cd0fb797f86f40fcf627f63e659365806f59feed4618d8
-  requires_dist:
-  - dicom-numpy==0.6.2
-  - numpy
-  - pydicom==2.3.0
-  - requests>=2.31,<3
-  - rerun-sdk
-  - types-requests>=2.31,<3
+  - types-requests<3,>=2.31
   editable: true
 - kind: pypi
   name: dicom-numpy
@@ -17520,16 +17440,6 @@ packages:
   version: 0.3.9
   url: https://files.pythonhosted.org/packages/91/a1/cf2472db20f7ce4a6be1253a81cfdf85ad9c7885ffbed7047fb72c24cf87/distlib-0.3.9-py2.py3-none-any.whl
   sha256: 47f8c22fd27c27e25a65601af709b38e4f0a45ea4fc2e710f65755fa8caaaf87
-- kind: pypi
-  name: dna
-  version: 0.1.0
-  path: examples/python/dna
-  sha256: 15dd8b0ce0ee55262916ea9bc8fb93c72c2012cb01a78e6d24a526d92537eab4
-  requires_dist:
-  - numpy
-  - rerun-sdk
-  - scipy
-  editable: true
 - kind: pypi
   name: dna
   version: 0.1.0
@@ -17674,18 +17584,6 @@ packages:
   - rerun-sdk
   - tqdm
   editable: true
-- kind: pypi
-  name: drone-lidar
-  version: 0.1.0
-  path: examples/python/drone_lidar
-  sha256: 4de8d4135d07f9b0389eeb8a3616a5a9941a868b4d876cc91d8b5351c3b8984d
-  requires_dist:
-  - laspy
-  - numpy
-  - requests
-  - rerun-sdk
-  - tqdm
-  editable: true
 - kind: conda
   name: exceptiongroup
   version: 1.2.2
@@ -17799,21 +17697,6 @@ packages:
   purls: []
   size: 125005
   timestamp: 1725568799108
-- kind: pypi
-  name: face-tracking
-  version: 0.1.0
-  path: examples/python/face_tracking
-  sha256: b8725fe4d36c11aad2c6c936ba2b57c7f65a856aa179badca5d041db63119d55
-  requires_dist:
-  - mediapipe==0.10.11 ; sys_platform != 'darwin'
-  - mediapipe==0.10.9 ; sys_platform == 'darwin'
-  - numpy
-  - opencv-python>4.6
-  - requests
-  - rerun-sdk
-  - tqdm
-  requires_python: <3.12
-  editable: true
 - kind: pypi
   name: face-tracking
   version: 0.1.0
@@ -18190,13 +18073,6 @@ packages:
   - virtualenv>=20.26.4 ; extra == 'testing'
   - typing-extensions>=4.12.2 ; python_full_version < '3.11' and extra == 'typing'
   requires_python: '>=3.8'
-- kind: pypi
-  name: fire
-  version: 0.7.0
-  url: https://files.pythonhosted.org/packages/6b/b6/82c7e601d6d3c3278c40b7bd35e17e82aa227f050aa9f66cb7b7fce29471/fire-0.7.0.tar.gz
-  sha256: 961550f07936eaf65ad1dc8360f2b2bf8408fad46abbfa4d2a3794f8d2a95cdf
-  requires_dist:
-  - termcolor
 - kind: pypi
   name: fire
   version: 0.7.0
@@ -19228,22 +19104,7 @@ packages:
   - mediapipe==0.10.9 ; sys_platform == 'darwin'
   - numpy
   - opencv-python>4.9
-  - requests>=2.31,<3
-  - rerun-sdk
-  - tqdm
-  requires_python: <3.12
-  editable: true
-- kind: pypi
-  name: gesture-detection
-  version: 0.1.0
-  path: examples/python/gesture_detection
-  sha256: 36dfc4cc822ee47f7aa29ba951bab8a94e96b9fd737daa324a441e6962a620bd
-  requires_dist:
-  - mediapipe==0.10.11 ; sys_platform != 'darwin'
-  - mediapipe==0.10.9 ; sys_platform == 'darwin'
-  - numpy
-  - opencv-python>4.9
-  - requests>=2.31,<3
+  - requests<3,>=2.31
   - rerun-sdk
   - tqdm
   requires_python: <3.12
@@ -19624,15 +19485,6 @@ packages:
 - kind: pypi
   name: google-crc32c
   version: 1.6.0
-  url: https://files.pythonhosted.org/packages/67/72/c3298da1a3773102359c5a78f20dae8925f5ea876e37354415f68594a6fb/google_crc32c-1.6.0.tar.gz
-  sha256: 6eceb6ad197656a1ff49ebfbbfa870678c75be4344feb35ac1edf694309413dc
-  requires_dist:
-  - importlib-resources>=1.3 ; python_full_version < '3.9' and os_name == 'nt'
-  - pytest ; extra == 'testing'
-  requires_python: '>=3.9'
-- kind: pypi
-  name: google-crc32c
-  version: 1.6.0
   url: https://files.pythonhosted.org/packages/7d/14/ab47972ac79b6e7b03c8be3a7ef44b530a60e69555668dbbf08fc5692a98/google_crc32c-1.6.0-cp311-cp311-macosx_12_0_arm64.whl
   sha256: f7a1fc29803712f80879b0806cb83ab24ce62fc8daf0569f2204a0cfd7f68ed4
   requires_dist:
@@ -19659,6 +19511,22 @@ packages:
   - protobuf!=3.20.0,!=3.20.1,!=4.21.1,!=4.21.2,!=4.21.3,!=4.21.4,!=4.21.5,<6.0.0.dev0,>=3.20.2
   - grpcio<2.0.0.dev0,>=1.44.0 ; extra == 'grpc'
   requires_python: '>=3.7'
+- kind: pypi
+  name: graph-binary-tree
+  version: 0.1.0
+  path: examples/python/graph_binary_tree
+  sha256: 8ceb8c2d1102f2f2476eb5fb9c79e717e520f92220709449f48138a3c84c6609
+  requires_dist:
+  - rerun-sdk
+  editable: true
+- kind: pypi
+  name: graph-lattice
+  version: 0.1.0
+  path: examples/python/graph_lattice
+  sha256: f92a889e55062d414fbf9847d0b2b216b8e4bcaf8ee2965476de877102ee52f8
+  requires_dist:
+  - rerun-sdk
+  editable: true
 - kind: conda
   name: graphite2
   version: 1.3.13
@@ -19752,16 +19620,6 @@ packages:
   - astunparse>=1.6 ; python_full_version < '3.9'
   - colorama>=0.4
   requires_python: '>=3.9'
-- kind: pypi
-  name: grpclib
-  version: 0.4.7
-  url: https://files.pythonhosted.org/packages/79/b9/55936e462a5925190d7427e880b3033601d1effd13809b483d13a926061a/grpclib-0.4.7.tar.gz
-  sha256: 2988ef57c02b22b7a2e8e961792c41ccf97efc2ace91ae7a5b0de03c363823c3
-  requires_dist:
-  - h2<5,>=3.1.0
-  - multidict
-  - protobuf>=3.20.0 ; extra == 'protobuf'
-  requires_python: '>=3.7'
 - kind: pypi
   name: grpclib
   version: 0.4.7
@@ -20337,21 +20195,7 @@ packages:
   - mediapipe==0.10.9 ; sys_platform == 'darwin'
   - numpy
   - opencv-python>4.6
-  - requests>=2.31,<3
-  - rerun-sdk
-  requires_python: <3.12
-  editable: true
-- kind: pypi
-  name: human-pose-tracking
-  version: 0.1.0
-  path: examples/python/human_pose_tracking
-  sha256: 8a80b67528d3f6d0c82671dc5c36cf551faa4b879f4434f0d386d8ef85666e86
-  requires_dist:
-  - mediapipe==0.10.11 ; sys_platform != 'darwin'
-  - mediapipe==0.10.9 ; sys_platform == 'darwin'
-  - numpy
-  - opencv-python>4.6
-  - requests>=2.31,<3
+  - requests<3,>=2.31
   - rerun-sdk
   requires_python: <3.12
   editable: true
@@ -20668,15 +20512,6 @@ packages:
   - importlib-resources>=1.3 ; python_full_version < '3.9' and extra == 'test'
   - pytest-mypy ; extra == 'type'
   requires_python: '>=3.8'
-- kind: pypi
-  name: incremental-logging
-  version: 0.1.0
-  path: examples/python/incremental_logging
-  sha256: c1efe33868c31fe5a07ab5f6e60d28f856735a9e0b221ff96abd2e711d60e894
-  requires_dist:
-  - numpy
-  - rerun-sdk
-  editable: true
 - kind: pypi
   name: incremental-logging
   version: 0.1.0
@@ -29037,27 +28872,6 @@ packages:
   - rerun-sdk
   editable: true
 - kind: pypi
-  name: lidar
-  version: 0.1.0
-  path: examples/python/lidar
-  sha256: 10fe6d7b3a80959f913aada12c01bfecd6cd9854beaf6a8843a7ecd2215cd4bd
-  requires_dist:
-  - matplotlib
-  - numpy
-  - nuscenes-devkit
-  - requests
-  - rerun-sdk
-  editable: true
-- kind: pypi
-  name: live-camera-edge-detection
-  version: 0.1.0
-  path: examples/python/live_camera_edge_detection
-  sha256: f1edef43efce87f55726e3b5d6a2f813667968f8e8185873a74b9dc61c0f040f
-  requires_dist:
-  - opencv-python
-  - rerun-sdk
-  editable: true
-- kind: pypi
   name: live-camera-edge-detection
   version: 0.1.0
   path: examples/python/live_camera_edge_detection
@@ -29074,27 +28888,6 @@ packages:
   requires_dist:
   - numpy
   - rerun-sdk
-  editable: true
-- kind: pypi
-  name: live-scrolling-plot
-  version: 0.1.0
-  path: examples/python/live_scrolling_plot
-  sha256: 1debab1814169399bb2ed23af2cd97a4693e7a4d4ee55e74bcb8804bf421e8fc
-  requires_dist:
-  - numpy
-  - rerun-sdk
-  editable: true
-- kind: pypi
-  name: llm-embedding-ner
-  version: 0.1.0
-  path: examples/python/llm_embedding_ner
-  sha256: 6f5925cbe333d529421ef9a5114f85317bdd8b4200c1e9ff6798dff5e3a7f16f
-  requires_dist:
-  - rerun-sdk
-  - torch
-  - transformers
-  - umap-learn
-  requires_python: <3.12
   editable: true
 - kind: pypi
   name: llm-embedding-ner
@@ -29220,14 +29013,6 @@ packages:
   url: https://files.pythonhosted.org/packages/ee/e1/38deed89ced4cf378c61e232265cfe933ccde56ae83c901aa68b477d14b1/llvmlite-0.43.0-cp311-cp311-macosx_11_0_arm64.whl
   sha256: e0a9a1a39d4bf3517f2af9d23d479b4175ead205c592ceeb8b89af48a327ea57
   requires_python: '>=3.9'
-- kind: pypi
-  name: log-file
-  version: 0.1.0
-  path: examples/python/log_file
-  sha256: fb6af8faeaac3e8d16da4ab40e26a73dd0e63483f34aa36298c32f7e39324fd3
-  requires_dist:
-  - rerun-sdk
-  editable: true
 - kind: pypi
   name: log-file
   version: 0.1.0
@@ -29995,16 +29780,6 @@ packages:
   - scikit-learn
   requires_python: '>=3.5'
 - kind: pypi
-  name: mesh-to-sdf
-  version: 0.0.15
-  url: git+https://github.com/marian42/mesh_to_sdf.git@c9f26e6399f7fd8deb40c7fba02c7e74aca6c657
-  requires_dist:
-  - pyopengl
-  - pyrender
-  - scikit-image
-  - scikit-learn
-  requires_python: '>=3.5'
-- kind: pypi
   name: mike
   version: 1.1.2
   url: https://files.pythonhosted.org/packages/66/8a/f226f8c512a4e3ee36438613fde32d371262e985643d308850cf4bdaed15/mike-1.1.2-py3-none-any.whl
@@ -30025,24 +29800,6 @@ packages:
   version: 0.1.0
   path: examples/python/minimal
   sha256: 871c1ec39ceb3af42679653369402d66672d4bb9850a727b27db05c16653c8dd
-  requires_dist:
-  - numpy
-  - rerun-sdk
-  editable: true
-- kind: pypi
-  name: minimal
-  version: 0.1.0
-  path: examples/python/minimal
-  sha256: 871c1ec39ceb3af42679653369402d66672d4bb9850a727b27db05c16653c8dd
-  requires_dist:
-  - numpy
-  - rerun-sdk
-  editable: true
-- kind: pypi
-  name: minimal-options
-  version: 0.1.0
-  path: examples/python/minimal_options
-  sha256: 84d5a8787772da382454f2f3b44d54027a606bff043872dab559cc4604ac82f0
   requires_dist:
   - numpy
   - rerun-sdk
@@ -30446,27 +30203,10 @@ packages:
   - rerun-sdk
   editable: true
 - kind: pypi
-  name: multiprocess-logging
-  version: 0.1.0
-  path: examples/python/multiprocess_logging
-  sha256: 90ae836d45110662ac53e73a092a5298ab67d89873eed81d1773dba601a62eb2
-  requires_dist:
-  - rerun-sdk
-  editable: true
-- kind: pypi
   name: multitasking
   version: 0.0.11
   url: https://files.pythonhosted.org/packages/3e/8a/bb3160e76e844db9e69a413f055818969c8acade64e1a9ac5ce9dfdcf6c1/multitasking-0.0.11-py3-none-any.whl
   sha256: 1e5b37a5f8fc1e6cfaafd1a82b6b1cc6d2ed20037d3b89c25a84f499bd7b3dd4
-- kind: pypi
-  name: multithreading
-  version: 0.1.0
-  path: examples/python/multithreading
-  sha256: 85b43cb06183386edd0a8820c0c9eb50398c197fd0da8ba5050f2cf2b24bc23e
-  requires_dist:
-  - numpy
-  - rerun-sdk
-  editable: true
 - kind: pypi
   name: multithreading
   version: 0.1.0
@@ -31431,18 +31171,6 @@ packages:
   - rerun-sdk
   editable: true
 - kind: pypi
-  name: nuscenes-dataset
-  version: 0.1.0
-  path: examples/python/nuscenes_dataset
-  sha256: 78903b7670fac2b4c27637efc9aa6f63b7b70502ce3d5f88e4353aef5607cf40
-  requires_dist:
-  - matplotlib
-  - numpy
-  - nuscenes-devkit
-  - requests
-  - rerun-sdk
-  editable: true
-- kind: pypi
   name: nuscenes-devkit
   version: 1.1.9
   url: https://files.pythonhosted.org/packages/c6/53/460bf754677b3b247fb99a447e3575490dbc5f42ec94d528bc0137176f6a/nuscenes_devkit-1.1.9-py3-none-any.whl
@@ -31469,19 +31197,9 @@ packages:
   path: examples/python/nv12
   sha256: c8ca97c5d8c04037cd5eb9a65be7b1e7d667c11d4dba3ee9aad5956ccf926dc4
   requires_dist:
-  - rerun-sdk>=0.10
-  - opencv-python
   - numpy
-  editable: true
-- kind: pypi
-  name: nv12
-  version: 0.1.0
-  path: examples/python/nv12
-  sha256: c8ca97c5d8c04037cd5eb9a65be7b1e7d667c11d4dba3ee9aad5956ccf926dc4
-  requires_dist:
-  - rerun-sdk>=0.10
   - opencv-python
-  - numpy
+  - rerun-sdk>=0.10
   editable: true
 - kind: pypi
   name: nvidia-cublas-cu12
@@ -31572,20 +31290,7 @@ packages:
   - betterproto[compiler]
   - numpy
   - opencv-python>4.6
-  - requests>=2.31,<3
-  - rerun-sdk
-  - scipy
-  editable: true
-- kind: pypi
-  name: objectron
-  version: 0.1.0
-  path: examples/python/objectron
-  sha256: b2be2b675353b4238e7778b1cef8351950832c32b5e5c34415601c030a421a27
-  requires_dist:
-  - betterproto[compiler]
-  - numpy
-  - opencv-python>4.6
-  - requests>=2.31,<3
+  - requests<3,>=2.31
   - rerun-sdk
   - scipy
   editable: true
@@ -31605,20 +31310,6 @@ packages:
   purls: []
   size: 135681
   timestamp: 1710946531879
-- kind: pypi
-  name: open-photogrammetry-format
-  version: 0.1.0
-  path: examples/python/open_photogrammetry_format
-  sha256: 1bf1ac24e064bb75c7f5672b761e519b8b941354a6d9c44d824643ff64f15e80
-  requires_dist:
-  - numpy
-  - pillow
-  - pyopf
-  - requests
-  - rerun-sdk
-  - tqdm
-  requires_python: '>=3.10'
-  editable: true
 - kind: pypi
   name: open-photogrammetry-format
   version: 0.1.0
@@ -32096,15 +31787,6 @@ packages:
   purls: []
   size: 2544654
   timestamp: 1725410973572
-- kind: pypi
-  name: openstreetmap-data
-  version: 0.1.0
-  path: examples/python/openstreetmap_data
-  sha256: 3b19fd64cb7d102a75ac934cd188cdd110fddca78c72701f10596f0ed8a0dff5
-  requires_dist:
-  - requests
-  - rerun-sdk
-  editable: true
 - kind: pypi
   name: openstreetmap-data
   version: 0.1.0
@@ -33253,15 +32935,6 @@ packages:
   - pytest>=8.3.2 ; extra == 'test'
   - mypy>=1.11.2 ; extra == 'type'
   requires_python: '>=3.8'
-- kind: pypi
-  name: plots
-  version: 0.1.0
-  path: examples/python/plots
-  sha256: 398c85932db816f766e2d703568060efe4520a6e734f91d69387bbdd143b3f97
-  requires_dist:
-  - numpy
-  - rerun-sdk
-  editable: true
 - kind: pypi
   name: plots
   version: 0.1.0
@@ -34437,16 +34110,6 @@ packages:
   - dataclasses ; python_full_version == '3.6.*'
   requires_python: '>=3.6'
 - kind: pypi
-  name: pygltflib
-  version: 1.16.2
-  url: https://files.pythonhosted.org/packages/38/d7/0b8e35cb3ff69dd981e358e72e0a5632f847d4bd61876be04518cb4e075a/pygltflib-1.16.2.tar.gz
-  sha256: 4f9481f5841b0b8fb7b271b0414b394b503405260a6ee0cf2c330a5420d19b64
-  requires_dist:
-  - dataclasses-json>=0.0.25
-  - deprecated
-  - dataclasses ; python_full_version == '3.6.*'
-  requires_python: '>=3.6'
-- kind: pypi
   name: pygments
   version: 2.18.0
   url: https://files.pythonhosted.org/packages/f7/3f/01c8b82017c199075f8f788d0d906b9ffbbc5a47dc9918a945e13d5a2bda/pygments-2.18.0-py3-none-any.whl
@@ -35107,18 +34770,7 @@ packages:
   sha256: 9006b1b7ca8bd9c90ba0bf0d7a00641b7dd13a6de76a2828f79ec5b853a4ef98
   requires_dist:
   - numpy
-  - requests>=2.31,<3
-  - rerun-sdk
-  - trimesh==3.15.2
-  editable: true
-- kind: pypi
-  name: raw-mesh
-  version: 0.1.0
-  path: examples/python/raw_mesh
-  sha256: 9006b1b7ca8bd9c90ba0bf0d7a00641b7dd13a6de76a2828f79ec5b853a4ef98
-  requires_dist:
-  - numpy
-  - requests>=2.31,<3
+  - requests<3,>=2.31
   - rerun-sdk
   - trimesh==3.15.2
   editable: true
@@ -35344,6 +34996,18 @@ packages:
   - hatch ; extra == 'dev'
   editable: true
 - kind: pypi
+  name: rerun-notebook
+  version: 0.21.0a1+dev
+  path: rerun_notebook
+  sha256: 047bf251505a9b46f02e7f700fe4073247fa2c95f8dd36f6f2f628e0ade8c055
+  requires_dist:
+  - anywidget
+  - jupyter-ui-poll
+  - watchfiles ; extra == 'dev'
+  - jupyterlab ; extra == 'dev'
+  - hatch ; extra == 'dev'
+  editable: true
+- kind: pypi
   name: rerun-sdk
   version: 0.17.0
   url: https://files.pythonhosted.org/packages/30/5f/ce02381b9d7e1e14f60c421c76dce12b7d823690181784780b30266017b1/rerun_sdk-0.17.0-cp38-abi3-macosx_10_12_x86_64.whl
@@ -35450,19 +35114,7 @@ packages:
   requires_dist:
   - numpy
   - opencv-python>4.6
-  - requests>=2.31,<3
-  - rerun-sdk
-  - tqdm
-  editable: true
-- kind: pypi
-  name: rgbd
-  version: 0.1.0
-  path: examples/python/rgbd
-  sha256: b2ef153b0bedd672c3e0ce89b7be1f64f4344b2b75d71748899faea270383fa2
-  requires_dist:
-  - numpy
-  - opencv-python>4.6
-  - requests>=2.31,<3
+  - requests<3,>=2.31
   - rerun-sdk
   - tqdm
   editable: true
@@ -35568,15 +35220,6 @@ packages:
   url: https://files.pythonhosted.org/packages/d2/b2/725487d29633f64ef8f9cbf4729111a0b61702c8f8e94db1653930f52cce/rpds_py-0.20.0-cp311-cp311-manylinux_2_17_aarch64.manylinux2014_aarch64.whl
   sha256: 8d7919548df3f25374a1f5d01fbcd38dacab338ef5f33e044744b5c36729c8db
   requires_python: '>=3.8'
-- kind: pypi
-  name: rrt-star
-  version: 0.1.0
-  path: examples/python/rrt_star
-  sha256: 41993fc9e48ad077ad59ee5918ccc59c86628fd3d8ea4d36bd0706e9880ce6df
-  requires_dist:
-  - numpy
-  - rerun-sdk
-  editable: true
 - kind: pypi
   name: rrt-star
   version: 0.1.0
@@ -36806,45 +36449,16 @@ packages:
   - black ; extra == 'dev'
   - mypy ; extra == 'dev'
 - kind: pypi
-  name: segment-anything
-  version: '1.0'
-  url: git+https://github.com/facebookresearch/segment-anything.git@dca509fe793f601edb92606367a655c15ac00fdf
-  requires_dist:
-  - matplotlib ; extra == 'all'
-  - pycocotools ; extra == 'all'
-  - opencv-python ; extra == 'all'
-  - onnx ; extra == 'all'
-  - onnxruntime ; extra == 'all'
-  - flake8 ; extra == 'dev'
-  - isort ; extra == 'dev'
-  - black ; extra == 'dev'
-  - mypy ; extra == 'dev'
-- kind: pypi
   name: segment-anything-model
   version: 0.1.0
   path: examples/python/segment_anything_model
   sha256: 85bc241bedf212c63a39d0251a9dcc0fb3a435087a024d4eafd7f49342a75926
   requires_dist:
-  - segment-anything @ git+https://github.com/facebookresearch/segment-anything.git
   - numpy
   - opencv-python
-  - requests>=2.31,<3
+  - requests<3,>=2.31
   - rerun-sdk
-  - torch==2.2.2
-  - torchvision
-  - tqdm
-  editable: true
-- kind: pypi
-  name: segment-anything-model
-  version: 0.1.0
-  path: examples/python/segment_anything_model
-  sha256: 85bc241bedf212c63a39d0251a9dcc0fb3a435087a024d4eafd7f49342a75926
-  requires_dist:
   - segment-anything @ git+https://github.com/facebookresearch/segment-anything.git
-  - numpy
-  - opencv-python
-  - requests>=2.31,<3
-  - rerun-sdk
   - torch==2.2.2
   - torchvision
   - tqdm
@@ -37039,14 +36653,6 @@ packages:
   - rerun-sdk
   editable: true
 - kind: pypi
-  name: shared-recording
-  version: 0.1.0
-  path: examples/python/shared_recording
-  sha256: 6f605379e813578a2304663522ed82ab2fd6486cee725b969abd533b5ac8072f
-  requires_dist:
-  - rerun-sdk
-  editable: true
-- kind: pypi
   name: shellingham
   version: 1.5.4
   url: https://files.pythonhosted.org/packages/e0/f9/0595336914c5619e5f28a1fb793285925a8cd4b432c9da0a987836c7f822/shellingham-1.5.4-py2.py3-none-any.whl
@@ -37060,20 +36666,7 @@ packages:
   requires_dist:
   - mesh-to-sdf @ git+https://github.com/marian42/mesh_to_sdf.git
   - numpy
-  - requests>=2.31,<3
-  - rerun-sdk
-  - scikit-learn>=1.1.3
-  - trimesh==3.15.2
-  editable: true
-- kind: pypi
-  name: signed-distance-fields
-  version: 0.1.0
-  path: examples/python/signed_distance_fields
-  sha256: 32880a8a3883c6aa03c709fe9138ba6b939633562ff98ca27fc22afc3d69f08a
-  requires_dist:
-  - mesh-to-sdf @ git+https://github.com/marian42/mesh_to_sdf.git
-  - numpy
-  - requests>=2.31,<3
+  - requests<3,>=2.31
   - rerun-sdk
   - scikit-learn>=1.1.3
   - trimesh==3.15.2
@@ -37314,14 +36907,6 @@ packages:
   - rerun-sdk
   editable: true
 - kind: pypi
-  name: stdio
-  version: 0.1.0
-  path: examples/python/stdio
-  sha256: 15fb60d3e1c8b7b2d1a4dfcc223bddb267451e8ef7534d42f663d116166d92e2
-  requires_dist:
-  - rerun-sdk
-  editable: true
-- kind: pypi
   name: stringcase
   version: 1.2.0
   url: https://files.pythonhosted.org/packages/f3/1f/1241aa3d66e8dc1612427b17885f5fcd9c9ee3079fc0d28e9a3aeeb36fa3/stringcase-1.2.0.tar.gz
@@ -37332,21 +36917,9 @@ packages:
   path: examples/python/structure_from_motion
   sha256: b20b79aa7bb2b4225b37d3cb28872a70dc7e9ab2ca9ab138b90d60fc8d7b4c15
   requires_dist:
-  - opencv-python>4.6
   - numpy
-  - requests>=2.31,<3
-  - rerun-sdk
-  - tqdm
-  editable: true
-- kind: pypi
-  name: structure-from-motion
-  version: 0.1.0
-  path: examples/python/structure_from_motion
-  sha256: b20b79aa7bb2b4225b37d3cb28872a70dc7e9ab2ca9ab138b90d60fc8d7b4c15
-  requires_dist:
   - opencv-python>4.6
-  - numpy
-  - requests>=2.31,<3
+  - requests<3,>=2.31
   - rerun-sdk
   - tqdm
   editable: true
