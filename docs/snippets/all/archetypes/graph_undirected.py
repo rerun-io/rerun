@@ -9,5 +9,8 @@ rr.log(
     rr.GraphNodes(
         node_ids=["a", "b", "c"], positions=[(0.0, 100.0), (-100.0, 0.0), (100.0, 0.0)], labels=["A", "B", "C"]
     ),
+)
+rr.log(
+    "simple",
     rr.GraphEdges(edges=[("a", "b"), ("b", "c"), ("c", "a")], graph_type="undirected"),
 )
