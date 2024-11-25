@@ -17,14 +17,14 @@ namespace rerun {
             arrow::field(
                 "single_required",
                 Loggable<rerun::datatypes::AffixFuzzer3>::arrow_datatype(),
-                false
+                true
             ),
             arrow::field(
                 "many_required",
                 arrow::list(arrow::field(
                     "item",
                     Loggable<rerun::datatypes::AffixFuzzer3>::arrow_datatype(),
-                    false
+                    true
                 )),
                 false
             ),

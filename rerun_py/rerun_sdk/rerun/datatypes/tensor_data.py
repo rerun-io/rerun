@@ -154,7 +154,7 @@ class TensorDataBatch(BaseBatch[TensorDataArrayLike]):
                     metadata={},
                 ),
             ]),
-            nullable=False,
+            nullable=True,
             metadata={},
         ),
     ])
