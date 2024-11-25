@@ -16,6 +16,12 @@ namespace rerun::components {
     struct GraphNode {
         rerun::datatypes::Utf8 id;
 
+      public: // START of extensions from graph_node_ext.cpp:
+        /// Create a new graph edge from a c string.
+        GraphNode(const char* value_) : id(value_) {}
+
+        // END of extensions from graph_node_ext.cpp, start of generated code:
+
       public:
         GraphNode() = default;
 

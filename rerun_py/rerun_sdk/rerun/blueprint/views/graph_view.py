@@ -16,7 +16,49 @@ from ..api import SpaceView, SpaceViewContentsLike
 
 
 class GraphView(SpaceView):
-    """**View**: A graph view to display time-variying, directed or undirected graph visualization."""
+    """
+    **View**: A graph view to display time-variying, directed or undirected graph visualization.
+
+    Example
+    -------
+    ### Use a blueprint to create a graph view.:
+    ```python
+    import rerun as rr
+    import rerun.blueprint as rrb
+
+    rr.init("rerun_example_graph_view", spawn=True)
+
+    rr.log(
+        "simple",
+        rr.GraphNodes(
+            node_ids=["a", "b", "c"], positions=[(0.0, 100.0), (-100.0, 0.0), (100.0, 0.0)], labels=["A", "B", "C"]
+        ),
+    )
+
+    # Create a Spatial2D view to display the points.
+    blueprint = rrb.Blueprint(
+        rrb.GraphView(
+            origin="/",
+            name="Graph",
+            # Note that this translates the viewbox.
+            visual_bounds=rrb.VisualBounds2D(x_range=[-150, 150], y_range=[-50, 150]),
+        ),
+        collapse_panels=True,
+    )
+
+    rr.send_blueprint(blueprint)
+    ```
+    <center>
+    <picture>
+      <source media="(max-width: 480px)" srcset="https://static.rerun.io/graph_lattice/f9169da9c3f35b7260c9d74cd5be5fe710aec6a8/480w.png">
+      <source media="(max-width: 768px)" srcset="https://static.rerun.io/graph_lattice/f9169da9c3f35b7260c9d74cd5be5fe710aec6a8/768w.png">
+      <source media="(max-width: 1024px)" srcset="https://static.rerun.io/graph_lattice/f9169da9c3f35b7260c9d74cd5be5fe710aec6a8/1024w.png">
+      <source media="(max-width: 1200px)" srcset="https://static.rerun.io/graph_lattice/f9169da9c3f35b7260c9d74cd5be5fe710aec6a8/1200w.png">
+      <img src="https://static.rerun.io/graph_lattice/f9169da9c3f35b7260c9d74cd5be5fe710aec6a8/full.png" width="640">
+    </picture>
+    </center>
+
+    """
 
     def __init__(
         self,
@@ -60,6 +102,7 @@ class GraphView(SpaceView):
             This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.
         visual_bounds:
             Everything within these bounds is guaranteed to be visible.
+
             Somethings outside of these bounds may also be visible due to letterboxing.
 
         """

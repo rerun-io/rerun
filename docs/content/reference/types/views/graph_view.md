@@ -9,6 +9,7 @@ A graph view to display time-variying, directed or undirected graph visualizatio
 
 ### `visual_bounds`
 Everything within these bounds is guaranteed to be visible.
+
 Somethings outside of these bounds may also be visible due to letterboxing.
 
 ## API reference links

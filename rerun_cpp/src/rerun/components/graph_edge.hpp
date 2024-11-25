@@ -15,6 +15,13 @@ namespace rerun::components {
     struct GraphEdge {
         rerun::datatypes::Utf8Pair edge;
 
+      public: // START of extensions from graph_edge_ext.cpp:
+        /// Create a new graph edge from a pair of strings.
+        GraphEdge(rerun::datatypes::Utf8 first_, rerun::datatypes::Utf8 second_)
+            : edge(std::move(first_), std::move(second_)) {}
+
+        // END of extensions from graph_edge_ext.cpp, start of generated code:
+
       public:
         GraphEdge() = default;
 
