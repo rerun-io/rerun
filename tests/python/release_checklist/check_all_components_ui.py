@@ -132,7 +132,7 @@ ALL_COMPONENTS: dict[str, TestCase] = {
             # TODO(ab): for some reason writing these as tuples does not work.
             rr.components.GraphEdge("a", "b"),
             rr.components.GraphEdge("b", "c"),
-            rr.components.GraphEdge("c", "a")
+            rr.components.GraphEdge("c", "a"),
         ]
     ),
     "GraphNodeBatch": TestCase(batch=["a", "b", "c"]),
