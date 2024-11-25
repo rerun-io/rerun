@@ -185,38 +185,13 @@ fn copy_web_video_frame_to_texture(
         depth_or_array_layers: 1,
     };
     let frame: &web_sys::VideoFrame = frame;
-
-    let source = {
-        // TODO(jan): The wgpu version we're using doesn't support `VideoFrame` yet.
-        // This got fixed in https://github.com/gfx-rs/wgpu/pull/6170 but hasn't shipped yet.
-        // So instead, we just pretend this is a `HtmlVideoElement` instead.
-        // SAFETY: Depends on the fact that `wgpu` passes the object through as-is,
-        // and doesn't actually inspect it in any way. The browser then does its own
-        // typecheck that doesn't care what kind of image source wgpu gave it.
-        #[allow(unsafe_code)]
-        let frame = unsafe {
-            std::mem::transmute::<web_sys::VideoFrame, web_sys::HtmlVideoElement>(
-                frame.clone().expect("Failed to clone the video frame"),
-            )
-        };
-        // Fake width & height to work around wgpu validating this as if it was a `HtmlVideoElement`.
-        // Since it thinks this is a `HtmlVideoElement`, it will want to call `videoWidth` and `videoHeight`
-        // on it to validate the size.
-        // We simply redirect `displayWidth`/`displayHeight` to `videoWidth`/`videoHeight` to make it work!
-        let display_width = js_sys::Reflect::get(&frame, &"displayWidth".into())
-            .expect("Failed to get displayWidth property from VideoFrame.");
-        js_sys::Reflect::set(&frame, &"videoWidth".into(), &display_width)
-            .expect("Failed to set videoWidth property.");
-        let display_height = js_sys::Reflect::get(&frame, &"displayHeight".into())
-            .expect("Failed to get displayHeight property from VideoFrame.");
-        js_sys::Reflect::set(&frame, &"videoHeight".into(), &display_height)
-            .expect("Failed to set videoHeight property.");
-
-        wgpu_types::ImageCopyExternalImage {
-            source: wgpu_types::ExternalImageSource::HTMLVideoElement(frame),
-            origin: wgpu_types::Origin2d { x: 0, y: 0 },
-            flip_y: false,
-        }
+    let source = wgpu::ImageCopyExternalImage {
+        // Careful: `web_sys::VideoFrame` has a custom `clone` method:
+        // https://developer.mozilla.org/en-US/docs/Web/API/VideoFrame/clone
+        // We instead just want to clone the js value!
+        source: wgpu::ExternalImageSource::VideoFrame(Clone::clone(frame)),
+        origin: wgpu::Origin2d { x: 0, y: 0 },
+        flip_y: false,
     };
     let dest = wgpu::ImageCopyTextureTagged {
         texture: &target_texture.texture,

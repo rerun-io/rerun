@@ -5870,7 +5870,6 @@ dependencies = [
  "web-time",
  "wgpu",
  "wgpu-core",
- "wgpu-types",
 ]
 
 [[package]]
