@@ -56,9 +56,9 @@ impl From<Angle> for f32 {
 
 impl ::re_types_core::Loggable for Angle {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
+        use arrow::datatypes::*;
         DataType::Float32
     }
 
@@ -71,7 +71,8 @@ impl ::re_types_core::Loggable for Angle {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             let (somes, radians): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -86,7 +87,7 @@ impl ::re_types_core::Loggable for Angle {
                 any_nones.then(|| somes.into())
             };
             PrimitiveArray::new(
-                Self::arrow2_datatype(),
+                Self::arrow_datatype().into(),
                 radians.into_iter().map(|v| v.unwrap_or_default()).collect(),
                 radians_bitmap,
             )
@@ -102,12 +103,13 @@ impl ::re_types_core::Loggable for Angle {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok(arrow_data
             .as_any()
             .downcast_ref::<Float32Array>()
             .ok_or_else(|| {
-                let expected = Self::arrow2_datatype();
+                let expected = Self::arrow_datatype();
                 let actual = arrow_data.data_type().clone();
                 DeserializationError::datatype_mismatch(expected, actual)
             })
@@ -128,7 +130,8 @@ impl ::re_types_core::Loggable for Angle {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         if let Some(validity) = arrow_data.validity() {
             if validity.unset_bits() != 0 {
                 return Err(DeserializationError::missing_data());

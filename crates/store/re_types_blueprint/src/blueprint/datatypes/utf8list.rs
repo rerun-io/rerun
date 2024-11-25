@@ -53,9 +53,9 @@ impl From<Utf8List> for Vec<::re_types_core::ArrowString> {
 
 impl ::re_types_core::Loggable for Utf8List {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
+        use arrow::datatypes::*;
         DataType::List(std::sync::Arc::new(Field::new(
             "item",
             DataType::Utf8,
@@ -72,7 +72,8 @@ impl ::re_types_core::Loggable for Utf8List {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -97,7 +98,7 @@ impl ::re_types_core::Loggable for Utf8List {
                 let data0_inner_data: Vec<_> = data0.into_iter().flatten().flatten().collect();
                 let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
                 ListArray::try_new(
-                    Self::arrow2_datatype(),
+                    Self::arrow_datatype().into(),
                     offsets,
                     {
                         let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
@@ -110,7 +111,7 @@ impl ::re_types_core::Loggable for Utf8List {
                         #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
                         unsafe {
                             Utf8Array::<i32>::new_unchecked(
-                                DataType::Utf8,
+                                DataType::Utf8.into(),
                                 offsets,
                                 inner_data,
                                 data0_inner_bitmap,
@@ -133,13 +134,14 @@ impl ::re_types_core::Loggable for Utf8List {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::ListArray<i32>>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })

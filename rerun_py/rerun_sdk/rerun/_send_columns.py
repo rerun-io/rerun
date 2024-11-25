@@ -258,5 +258,5 @@ def send_columns(
         entity_path,
         timelines={t.timeline_name(): t.as_arrow_array() for t in times},
         components=components_args,
-        recording=recording,
+        recording=recording.to_native() if recording is not None else None,
     )

@@ -44,18 +44,18 @@ impl ::re_types_core::SizeBytes for MultiEnum {
 
 impl ::re_types_core::Loggable for MultiEnum {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![
             Field::new(
                 "value1",
-                <crate::testing::datatypes::EnumTest>::arrow2_datatype(),
+                <crate::testing::datatypes::EnumTest>::arrow_datatype(),
                 false,
             ),
             Field::new(
                 "value2",
-                <crate::testing::datatypes::ValuedEnum>::arrow2_datatype(),
+                <crate::testing::datatypes::ValuedEnum>::arrow_datatype(),
                 true,
             ),
         ]))
@@ -70,7 +70,8 @@ impl ::re_types_core::Loggable for MultiEnum {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -84,7 +85,7 @@ impl ::re_types_core::Loggable for MultiEnum {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                Self::arrow2_datatype(),
+                Self::arrow_datatype().into(),
                 vec![
                     {
                         let (somes, value1): (Vec<_>, Vec<_>) = data
@@ -136,13 +137,14 @@ impl ::re_types_core::Loggable for MultiEnum {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -160,7 +162,7 @@ impl ::re_types_core::Loggable for MultiEnum {
                 let value1 = {
                     if !arrays_by_name.contains_key("value1") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "value1",
                         ))
                         .with_context("rerun.testing.datatypes.MultiEnum");
@@ -173,7 +175,7 @@ impl ::re_types_core::Loggable for MultiEnum {
                 let value2 = {
                     if !arrays_by_name.contains_key("value2") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "value2",
                         ))
                         .with_context("rerun.testing.datatypes.MultiEnum");

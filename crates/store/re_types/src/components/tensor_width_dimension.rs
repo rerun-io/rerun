@@ -68,8 +68,8 @@ impl std::ops::DerefMut for TensorWidthDimension {
 
 impl ::re_types_core::Loggable for TensorWidthDimension {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
-        crate::datatypes::TensorDimensionSelection::arrow2_datatype()
+    fn arrow_datatype() -> arrow::datatypes::DataType {
+        crate::datatypes::TensorDimensionSelection::arrow_datatype()
     }
 
     fn to_arrow2_opt<'a>(

@@ -1164,7 +1164,8 @@ impl<E: StorageEngineLike> QueryHandle<E> {
 
                             s.chunk
                                 .components()
-                                .first_key_value()
+                                .iter()
+                                .next()
                                 .map(|(_, list_array)| list_array.sliced(s.cursor as usize, 1))
 
                         }

@@ -53,14 +53,14 @@ impl From<AffixFuzzer22> for [u8; 4usize] {
 
 impl ::re_types_core::Loggable for AffixFuzzer22 {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![Field::new(
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![Field::new(
             "fixed_sized_native",
             DataType::FixedSizeList(
                 std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
-                4usize,
+                4,
             ),
             false,
         )]))
@@ -75,7 +75,8 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -89,7 +90,7 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                Self::arrow2_datatype(),
+                Self::arrow_datatype().into(),
                 vec![{
                     let (somes, fixed_sized_native): (Vec<_>, Vec<_>) = data
                         .iter()
@@ -126,10 +127,11 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                         FixedSizeListArray::new(
                             DataType::FixedSizeList(
                                 std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
-                                4usize,
-                            ),
+                                4,
+                            )
+                            .into(),
                             PrimitiveArray::new(
-                                DataType::UInt8,
+                                DataType::UInt8.into(),
                                 fixed_sized_native_inner_data.into_iter().collect(),
                                 fixed_sized_native_inner_bitmap,
                             )
@@ -153,13 +155,14 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -177,7 +180,7 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                 let fixed_sized_native = {
                     if !arrays_by_name.contains_key("fixed_sized_native") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "fixed_sized_native",
                         ))
                         .with_context("rerun.testing.datatypes.AffixFuzzer22");
@@ -190,7 +193,7 @@ impl ::re_types_core::Loggable for AffixFuzzer22 {
                             .ok_or_else(|| {
                                 let expected = DataType::FixedSizeList(
                                     std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
-                                    4usize,
+                                    4,
                                 );
                                 let actual = arrow_data.data_type().clone();
                                 DeserializationError::datatype_mismatch(expected, actual)

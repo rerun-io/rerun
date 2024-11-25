@@ -109,6 +109,7 @@ pub mod external {
     pub use re_log_types;
     pub use re_sdk_comms;
 
+    pub use re_chunk::external::*;
     pub use re_log::external::*;
     pub use re_log_types::external::*;
 

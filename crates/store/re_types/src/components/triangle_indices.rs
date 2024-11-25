@@ -68,8 +68,8 @@ impl std::ops::DerefMut for TriangleIndices {
 
 impl ::re_types_core::Loggable for TriangleIndices {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
-        crate::datatypes::UVec3D::arrow2_datatype()
+    fn arrow_datatype() -> arrow::datatypes::DataType {
+        crate::datatypes::UVec3D::arrow_datatype()
     }
 
     fn to_arrow2_opt<'a>(

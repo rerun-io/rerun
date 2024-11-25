@@ -68,8 +68,8 @@ impl std::ops::DerefMut for FilterByRange {
 
 impl ::re_types_core::Loggable for FilterByRange {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
-        crate::blueprint::datatypes::FilterByRange::arrow2_datatype()
+    fn arrow_datatype() -> arrow::datatypes::DataType {
+        crate::blueprint::datatypes::FilterByRange::arrow_datatype()
     }
 
     fn to_arrow2_opt<'a>(

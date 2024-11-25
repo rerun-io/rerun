@@ -44,10 +44,10 @@ impl ::re_types_core::SizeBytes for TensorDimensionSelection {
 
 impl ::re_types_core::Loggable for TensorDimensionSelection {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![
             Field::new("dimension", DataType::UInt32, false),
             Field::new("invert", DataType::Boolean, false),
         ]))
@@ -62,7 +62,8 @@ impl ::re_types_core::Loggable for TensorDimensionSelection {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -76,7 +77,7 @@ impl ::re_types_core::Loggable for TensorDimensionSelection {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                Self::arrow2_datatype(),
+                Self::arrow_datatype().into(),
                 vec![
                     {
                         let (somes, dimension): (Vec<_>, Vec<_>) = data
@@ -91,7 +92,7 @@ impl ::re_types_core::Loggable for TensorDimensionSelection {
                             any_nones.then(|| somes.into())
                         };
                         PrimitiveArray::new(
-                            DataType::UInt32,
+                            DataType::UInt32.into(),
                             dimension
                                 .into_iter()
                                 .map(|v| v.unwrap_or_default())
@@ -113,7 +114,7 @@ impl ::re_types_core::Loggable for TensorDimensionSelection {
                             any_nones.then(|| somes.into())
                         };
                         BooleanArray::new(
-                            DataType::Boolean,
+                            DataType::Boolean.into(),
                             invert.into_iter().map(|v| v.unwrap_or_default()).collect(),
                             invert_bitmap,
                         )
@@ -134,13 +135,14 @@ impl ::re_types_core::Loggable for TensorDimensionSelection {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -158,7 +160,7 @@ impl ::re_types_core::Loggable for TensorDimensionSelection {
                 let dimension = {
                     if !arrays_by_name.contains_key("dimension") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "dimension",
                         ))
                         .with_context("rerun.datatypes.TensorDimensionSelection");
@@ -179,7 +181,7 @@ impl ::re_types_core::Loggable for TensorDimensionSelection {
                 let invert = {
                     if !arrays_by_name.contains_key("invert") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "invert",
                         ))
                         .with_context("rerun.datatypes.TensorDimensionSelection");

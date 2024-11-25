@@ -72,8 +72,8 @@ impl std::ops::DerefMut for Scale3D {
 
 impl ::re_types_core::Loggable for Scale3D {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
-        crate::datatypes::Vec3D::arrow2_datatype()
+    fn arrow_datatype() -> arrow::datatypes::DataType {
+        crate::datatypes::Vec3D::arrow_datatype()
     }
 
     fn to_arrow2_opt<'a>(

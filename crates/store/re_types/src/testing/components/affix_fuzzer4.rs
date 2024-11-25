@@ -66,10 +66,10 @@ impl std::ops::DerefMut for AffixFuzzer4 {
 
 impl ::re_types_core::Loggable for AffixFuzzer4 {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![
             Field::new("single_float_optional", DataType::Float32, true),
             Field::new("single_string_required", DataType::Utf8, false),
             Field::new("single_string_optional", DataType::Utf8, true),
@@ -103,7 +103,7 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
             Field::new("flattened_scalar", DataType::Float32, false),
             Field::new(
                 "almost_flattened_scalar",
-                <crate::testing::datatypes::FlattenedScalar>::arrow2_datatype(),
+                <crate::testing::datatypes::FlattenedScalar>::arrow_datatype(),
                 false,
             ),
             Field::new("from_parent", DataType::Boolean, true),
@@ -119,7 +119,8 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -148,7 +149,8 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok(
             crate::testing::datatypes::AffixFuzzer1::from_arrow2_opt(arrow_data)
                 .with_context("rerun.testing.components.AffixFuzzer4#single_optional")?

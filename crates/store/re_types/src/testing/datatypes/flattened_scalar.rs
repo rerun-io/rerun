@@ -53,10 +53,10 @@ impl From<FlattenedScalar> for f32 {
 
 impl ::re_types_core::Loggable for FlattenedScalar {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![Field::new(
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![Field::new(
             "value",
             DataType::Float32,
             false,
@@ -72,7 +72,8 @@ impl ::re_types_core::Loggable for FlattenedScalar {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::array::*;
         Ok({
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -86,7 +87,7 @@ impl ::re_types_core::Loggable for FlattenedScalar {
                 any_nones.then(|| somes.into())
             };
             StructArray::new(
-                Self::arrow2_datatype(),
+                Self::arrow_datatype().into(),
                 vec![{
                     let (somes, value): (Vec<_>, Vec<_>) = data
                         .iter()
@@ -100,7 +101,7 @@ impl ::re_types_core::Loggable for FlattenedScalar {
                         any_nones.then(|| somes.into())
                     };
                     PrimitiveArray::new(
-                        DataType::Float32,
+                        DataType::Float32.into(),
                         value.into_iter().map(|v| v.unwrap_or_default()).collect(),
                         value_bitmap,
                     )
@@ -120,13 +121,14 @@ impl ::re_types_core::Loggable for FlattenedScalar {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -144,7 +146,7 @@ impl ::re_types_core::Loggable for FlattenedScalar {
                 let value = {
                     if !arrays_by_name.contains_key("value") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "value",
                         ))
                         .with_context("rerun.testing.datatypes.FlattenedScalar");

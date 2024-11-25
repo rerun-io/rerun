@@ -1167,7 +1167,7 @@ impl PyRecording {
                 })?;
 
             let contents = engine
-                .iter_entity_paths(&path_filter)
+                .iter_entity_paths_sorted(&path_filter)
                 .map(|p| (p, None))
                 .collect();
 
@@ -1204,7 +1204,7 @@ impl PyRecording {
 
                 contents.append(
                     &mut engine
-                        .iter_entity_paths(&path_filter)
+                        .iter_entity_paths_sorted(&path_filter)
                         .map(|entity_path| {
                             let components = component_strs
                                 .iter()

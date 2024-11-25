@@ -103,8 +103,8 @@ impl std::ops::DerefMut for VisualizerOverrides {
 
 impl ::re_types_core::Loggable for VisualizerOverrides {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
-        crate::blueprint::datatypes::Utf8List::arrow2_datatype()
+    fn arrow_datatype() -> arrow::datatypes::DataType {
+        crate::blueprint::datatypes::Utf8List::arrow_datatype()
     }
 
     fn to_arrow2_opt<'a>(
