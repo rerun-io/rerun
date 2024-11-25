@@ -227,7 +227,7 @@ pub fn iter_string<'a>(
 ///
 /// See [`Chunk::iter_buffer`] for more information.
 #[allow(unused)]
-pub fn iter_buffer<'a, T: arrow2::types::NativeType>(
+pub fn iter_buffer<'a, T: arrow::datatypes::ArrowNativeType + arrow2::types::NativeType>(
     chunks: &'a std::borrow::Cow<'a, [Chunk]>,
     timeline: Timeline,
     component_name: ComponentName,

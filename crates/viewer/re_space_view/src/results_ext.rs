@@ -500,7 +500,7 @@ impl<'a> HybridResultsChunkIter<'a> {
     /// Iterate as indexed buffers.
     ///
     /// See [`Chunk::iter_buffer`] for more information.
-    pub fn buffer<T: arrow2::types::NativeType>(
+    pub fn buffer<T: arrow::datatypes::ArrowNativeType + arrow2::types::NativeType>(
         &'a self,
     ) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types_core::ArrowBuffer<T>>)> + 'a {
         self.chunks.iter().flat_map(|chunk| {
