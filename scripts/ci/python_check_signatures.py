@@ -67,7 +67,7 @@ class APIDef:
             return self.name == other.name and self.signature == other.signature and self.doc == other.doc
 
 
-TotalSignature = dict[str, APIDef | dict[str, APIDef]]
+TotalSignature = dict[str, APIDef | dict[str, APIDef | str]]
 
 
 def parse_function_signature(node: Any) -> APIDef:
@@ -129,8 +129,19 @@ def load_stub_signatures(pyi_file: Path) -> TotalSignature:
 
         elif node.type == "classdef":
             class_name = node.name.value
-            # Extract methods within the class
+
             class_def = {}
+
+            doc = None
+            for child in node.children:
+                if child.type == "suite":
+                    first_child = child.children[1]
+                    if first_child.type == "simple_stmt" and first_child.children[0].type == "string":
+                        doc = first_child.children[0].value.strip('"""')
+            if doc is not None:
+                class_def["__doc__"] = doc
+
+            # Extract methods within the class
             for class_node in node.iter_funcdefs():
                 method_name = class_node.name.value
 
@@ -203,6 +214,8 @@ def compare_signatures(stub_signatures: TotalSignature, runtime_signatures: Tota
                     print("Stub expected class, but runtime provided function.")
                     continue
                 for method_name, stub_method_signature in stub_signature.items():
+                    if isinstance(stub_method_signature, str):
+                        continue
                     if stub_method_signature.doc is None:
                         print()
                         print(f"{name}.{method_name} missing docstring")
@@ -215,8 +228,12 @@ def compare_signatures(stub_signatures: TotalSignature, runtime_signatures: Tota
                         result += 1
 
             else:
-                print(f"Class {name} not found in runtime")
-                result += 1
+                docstr = stub_signature.get("__doc__", "")
+                if isinstance(docstr, str) and "Required-feature:" in docstr:
+                    print(f"Skipping class {name} since it requires features not enabled in default runtime")
+                else:
+                    print(f"Class {name} not found in runtime")
+                    result += 1
         else:
             if stub_signature.doc is None:
                 print()
@@ -232,8 +249,11 @@ def compare_signatures(stub_signatures: TotalSignature, runtime_signatures: Tota
                     result += 1
             else:
                 print()
-                print(f"Function {name} not found in runtime")
-                result += 1
+                if stub_signature.doc is not None and "Required-feature:" in stub_signature.doc:
+                    print(f"Skipping Function {name} since it requires features not enabled in default runtime")
+                else:
+                    print(f"Function {name} not found in runtime")
+                    result += 1
 
     if result == 0:
         print("All stub signatures match!")

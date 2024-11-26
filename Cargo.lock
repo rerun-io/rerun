@@ -6970,6 +6970,7 @@ dependencies = [
  "re_web_viewer_server",
  "re_ws_comms",
  "tokio",
+ "tokio-stream",
  "tonic",
  "url",
  "uuid",
