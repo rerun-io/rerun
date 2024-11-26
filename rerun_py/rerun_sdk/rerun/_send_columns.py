@@ -5,7 +5,7 @@ from typing import Iterable, Protocol, TypeVar, Union
 import pyarrow as pa
 import rerun_bindings as bindings
 
-from ._baseclasses import Archetype, ComponentBatchMixin, ComponentColumn
+from ._baseclasses import Archetype, ComponentBatchMixin, ComponentColumn, ComponentBatchLike
 from ._log import IndicatorComponentBatch
 from .any_value import AnyBatchValue
 from .error_utils import catch_and_log_exceptions
@@ -119,11 +119,11 @@ TArchetype = TypeVar("TArchetype", bound=Archetype)
 
 @catch_and_log_exceptions()
 def send_columns(
-    entity_path: str,
-    times: Iterable[TimeColumnLike],
-    components: Iterable[Union[ComponentBatchMixin, ComponentColumn, AnyBatchValue]],
-    recording: RecordingStream | None = None,
-    strict: bool | None = None,
+        entity_path: str,
+        times: Iterable[TimeColumnLike],
+        components: Iterable[Union[ComponentBatchLike]],
+        recording: RecordingStream | None = None,
+        strict: bool | None = None,
 ) -> None:
     r"""
     Send columnar data to Rerun.

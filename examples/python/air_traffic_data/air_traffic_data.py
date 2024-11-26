@@ -5,6 +5,7 @@ import io
 import itertools
 import json
 import re
+import typing
 import zipfile
 from argparse import ArgumentParser
 from pathlib import Path
@@ -41,11 +42,11 @@ def download_with_progress(url: str, what: str) -> io.BytesIO:
     resp = requests.get(url, stream=True)
     total_size = int(resp.headers.get("content-length", 0))
     with tqdm(
-        desc=f"Downloading {what}…",
-        total=total_size,
-        unit="iB",
-        unit_scale=True,
-        unit_divisor=1024,
+            desc=f"Downloading {what}…",
+            total=total_size,
+            unit="iB",
+            unit_scale=True,
+            unit_divisor=1024,
     ) as progress:
         download_file = io.BytesIO()
         for data in resp.iter_content(chunk_size):
@@ -72,7 +73,7 @@ def shapely_geom_to_numpy(geom: shapely.Geometry) -> list[npt.NDArray[np.float64
 
 
 def log_region_boundaries_for_country(
-    country_code: str, level: int, color: tuple[float, float, float], crs: CRS
+        country_code: str, level: int, color: tuple[float, float, float], crs: CRS
 ) -> None:
     """Log some boundaries for the given country and level."""
 
@@ -202,6 +203,14 @@ def get_paths_for_directory(directory: Path) -> list[Path]:
     return sorted(directory.rglob("*.json"), key=natural_keys)
 
 
+class Logger(typing.Protocol):
+    def process_measurement(self, measurement: Measurement) -> None:
+        pass
+
+    def flush(self) -> None:
+        pass
+
+
 # ================================================================================================
 # Simple logger
 
@@ -232,9 +241,9 @@ class MeasurementLogger:
         entity_path = f"aircraft/{measurement.icao_id}"
 
         if (
-            measurement.latitude is not None
-            and measurement.longitude is not None
-            and measurement.barometric_altitude is not None
+                measurement.latitude is not None
+                and measurement.longitude is not None
+                and measurement.barometric_altitude is not None
         ):
             rr.log(
                 entity_path,
@@ -280,7 +289,7 @@ class MeasurementBatchLogger:
         if len(self._measurements) >= 8192:
             self.flush()
 
-    def flush(self):
+    def flush(self) -> None:
         # !!! the raw data is not sorted by timestamp, so we sort it here
         df = polars.DataFrame(self._measurements).sort("timestamp")
         self._measurements = []
@@ -368,14 +377,14 @@ def log_everything(paths: list[Path], raw: bool, batch: bool, batch_size: int) -
     proj = Transformer.from_crs("EPSG:4326", utm_crs, always_xy=True)
 
     rr.set_time_seconds("unix_time", 0)
-    for country_code, (level, color) in itertools.product(["DE", "FR", "CH"], [(0, (1, 0.5, 0.5))]):
+    for country_code, (level, color) in itertools.product(["DE", "CH"], [(0, (1, 0.5, 0.5))]):
         log_region_boundaries_for_country(country_code, level, color, utm_crs)
 
     # Exaggerate altitudes
     rr.log("aircraft", rr.Transform3D(scale=[1, 1, 10]), static=True)
 
     if batch:
-        logger = MeasurementBatchLogger(proj, batch_size)
+        logger: Logger = MeasurementBatchLogger(proj, batch_size)
     else:
         logger = MeasurementLogger(proj, raw)
 
@@ -431,7 +440,12 @@ def main() -> None:
             with zipfile.ZipFile(zip_data) as zip_ref:
                 zip_ref.extractall(dataset_directory)
 
-    blueprint = rrb.Horizontal(rrb.Spatial3DView(origin="/"), rrb.TimeSeriesView(origin="/aircraft"))
+    # TODO(ab): this blueprint would be massively improved by setting the 3D view's orbit point to FRA's coordinates.
+    blueprint = rrb.Vertical(
+        rrb.Horizontal(rrb.Spatial3DView(origin="/"), rrb.MapView(origin="/")),
+        rrb.TimeSeriesView(origin="/aircraft"),
+        row_shares=[3, 1],
+    )
     rr.script_setup(args, "rerun_example_air_traffic_data", default_blueprint=blueprint)
 
     paths = get_paths_for_directory(dataset_directory)
