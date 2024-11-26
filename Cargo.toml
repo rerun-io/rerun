@@ -327,7 +327,6 @@ wgpu = { version = "23.0", default-features = false, features = [
   "fragile-send-sync-non-atomic-wasm",
 ] }
 wgpu-core = "23.0"
-wgpu-types = "23.0"
 xshell = "0.2"
 zip = { version = "0.6", default-features = false } # We're stuck on 0.6 because https://crates.io/crates/protoc-prebuilt is still using 0.6
 
