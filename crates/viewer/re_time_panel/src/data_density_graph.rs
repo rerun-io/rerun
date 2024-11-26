@@ -474,7 +474,7 @@ pub fn build_density_graph<'a>(
         } else {
             PathRecursiveChunksPerTimeline::access(&store.id(), |chunks_per_timeline| {
                 let Some(info) = chunks_per_timeline
-                    .path_recursive_chunks_for_entity_and_timeline(&item.entity_path, timeline)
+                    .path_recursive_chunks_for_entity_and_timeline(&item.entity_path, &timeline)
                 else {
                     return Default::default();
                 };
