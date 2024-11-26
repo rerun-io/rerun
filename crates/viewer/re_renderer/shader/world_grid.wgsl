@@ -105,20 +105,35 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     cardinal_line_intensity *= cardinal_grid_closeness_fade;
 
     // Fade on accute viewing angles.
-    // TODO:
+    var view_direction_up_component: f32;
+    switch (config.orientation) {
+        case ORIENTATION_XZ: {
+            view_direction_up_component = frame.camera_forward.y;
+        }
+        case ORIENTATION_YZ: {
+            view_direction_up_component = frame.camera_forward.x;
+        }
+        case ORIENTATION_XY: {
+            view_direction_up_component = frame.camera_forward.z;
+        }
+        default: {
+            view_direction_up_component = 0.0;
+        }
+    }
+    let view_angle_fade = smoothstep(0.0, 0.25, abs(view_direction_up_component)); // Empirical values.
 
     // Combine all lines.
     //
     // Lerp for cardinal & regular.
     // This way we don't break anti-aliasing (as addition would!), mute the regular lines, and make cardinals weaker when there's no regular to support them.
-    let cardinal_and_regular = mix(intensity_regular, cardinal_line_intensity, 0.6);
+    let cardinal_and_regular = mix(intensity_regular, cardinal_line_intensity, 0.6) * view_angle_fade;
     // X and Y are combined like akin to premultiplied alpha operations.
     let intensity_combined = saturate(cardinal_and_regular.x * (1.0 - cardinal_and_regular.y) + cardinal_and_regular.y);
-
 
     return config.color * intensity_combined;
 
     // Debugging visualizations:
+    //return vec4f(view_angle_fade);
     //return vec4f(intensity_combined);
     //return vec4f(grid_closeness_fade, cardinal_grid_closeness_fade, 0.0, 1.0);
 }
