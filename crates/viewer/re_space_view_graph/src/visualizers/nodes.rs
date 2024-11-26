@@ -22,15 +22,38 @@ pub struct NodeVisualizer {
     pub data: ahash::HashMap<EntityPath, NodeData>,
 }
 
+pub enum Label {
+    Circle {
+        radius: f32,
+        color: Option<egui::Color32>,
+    },
+    Text {
+        text: ArrowString,
+        color: Option<egui::Color32>,
+    },
+}
+
+impl std::hash::Hash for Label {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            Label::Circle { radius, color } => {
+                bytemuck::bytes_of(radius).hash(state);
+                color.hash(state);
+            }
+            Label::Text { text, color } => {
+                text.hash(state);
+                color.hash(state);
+            }
+        }
+    }
+}
+
 pub struct NodeInstance {
     pub node: components::GraphNode,
     pub instance: Instance,
     pub index: NodeIndex,
-    pub label: Option<ArrowString>,
-    pub show_label: bool,
-    pub color: Option<egui::Color32>,
     pub position: Option<egui::Pos2>,
-    pub radius: Option<components::Radius>,
+    pub label: Label,
 }
 
 impl std::hash::Hash for NodeInstance {
@@ -45,19 +68,13 @@ impl std::hash::Hash for NodeInstance {
             instance,
             index,
             label,
-            show_label,
-            color,
             position,
-            radius,
         } = self;
         instance.hash(state);
         index.hash(state);
         label.hash(state);
-        show_label.hash(state);
-        color.hash(state);
         // The following fields don't implement `Hash`.
         position.as_ref().map(bytemuck::bytes_of).hash(state);
-        radius.as_ref().map(bytemuck::bytes_of).hash(state);
     }
 }
 
@@ -107,7 +124,7 @@ impl VisualizerSystem for NodeVisualizer {
                 all_colors.component::<components::Color>(),
                 all_positions.primitive_array::<2, f32>(),
                 all_labels.string(),
-                all_radii.component::<components::Radius>(),
+                all_radii.primitive::<f32>(),
             );
 
             for (_index, nodes, colors, positions, labels, radii) in data {
@@ -122,23 +139,33 @@ impl VisualizerSystem for NodeVisualizer {
                         .copied()
                         .map(Option::Some),
                     Option::<[f32; 2]>::default,
-                    labels.unwrap_or_default().iter().map(Option::Some),
-                    Option::<&ArrowString>::default,
-                    radii.unwrap_or_default().iter().map(Option::Some),
-                    Option::<&components::Radius>::default,
+                    labels.unwrap_or_default().iter().cloned().map(Option::Some),
+                    Option::<ArrowString>::default,
+                    radii.unwrap_or_default().iter().copied().map(Option::Some),
+                    Option::<f32>::default,
                 )
-                .map(
-                    |(node, instance, color, position, label, radius)| NodeInstance {
+                .map(|(node, instance, color, position, label, radius)| {
+
+                    let color = color.map(|&c| egui::Color32::from(c));
+                    let label = match (label, show_label) {
+                        (Some(label), true) => Label::Text {
+                            text: label.clone(),
+                            color,
+                        },
+                        _ => Label::Circle {
+                            radius: radius.unwrap_or(4.0),
+                            color,
+                        },
+                    };
+
+                    NodeInstance {
                         node: node.clone(),
                         instance,
                         index: NodeIndex::from_entity_node(&data_result.entity_path, node),
-                        color: color.map(|&Color(color)| color.into()),
                         position: position.map(|[x, y]| egui::Pos2::new(x, y)),
-                        label: label.cloned(),
-                        show_label,
-                        radius: radius.copied(),
-                    },
-                )
+                        label,
+                    }
+                })
                 .collect::<Vec<_>>();
 
                 self.data
