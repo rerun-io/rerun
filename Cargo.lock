@@ -5779,7 +5779,6 @@ dependencies = [
  "prost",
  "re_arrow2",
  "re_dataframe",
- "re_log",
  "re_log_types",
  "thiserror",
  "tonic",
