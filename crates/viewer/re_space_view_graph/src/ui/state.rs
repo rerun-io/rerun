@@ -1,3 +1,4 @@
+use egui::emath::TSTransform;
 use egui::Rect;
 use re_format::format_f32;
 use re_types::blueprint::components::VisualBounds2D;
@@ -19,6 +20,8 @@ pub struct GraphSpaceViewState {
     pub show_debug: bool,
 
     pub world_bounds: Option<VisualBounds2D>,
+
+    pub transform: TSTransform,
 }
 
 impl GraphSpaceViewState {

@@ -14,7 +14,7 @@ use crate::{
 
 use super::draw::{draw_edge, draw_entity, draw_explicit, draw_implicit};
 
-fn fit_to_world_rect(clip_rect_window: Rect, world_rect: Rect) -> TSTransform {
+pub(crate) fn fit_to_world_rect(clip_rect_window: Rect, world_rect: Rect) -> TSTransform {
     let available_size = clip_rect_window.size();
 
     // Compute the scale factor to fit the bounding rectangle into the available screen size.
