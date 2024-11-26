@@ -54,8 +54,8 @@ mod gpu_data {
         /// How far apart the closest sets of lines are.
         pub spacing: f32,
 
-        /// How thick the lines are in UI units.
-        pub thickness_ui: f32,
+        /// Radius of the lines in UI units.
+        pub radius_ui: f32,
 
         pub _padding: u32,
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 2],
@@ -93,7 +93,7 @@ impl WorldGridDrawData {
                 color: config.color.into(),
                 orientation: config.orientation as u32,
                 spacing: config.spacing,
-                thickness_ui: config.thickness_ui,
+                radius_ui: config.thickness_ui * 0.5,
                 _padding: 0,
                 end_padding: Default::default(),
             },

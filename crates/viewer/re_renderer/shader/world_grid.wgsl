@@ -10,7 +10,7 @@ struct WorldGridUniformBuffer {
     spacing: f32,
 
     /// How thick the lines are in UI units.
-    thickness_ui: f32,
+    radius_ui: f32,
 }
 
 @group(1) @binding(0)
@@ -29,7 +29,7 @@ struct VertexOutput {
     scaled_world_plane_position: vec2f,
 };
 
-const PLANE_SCALE: f32 = 100000.0;
+const PLANE_SCALE: f32 = 10000.0;
 
 // Spans a large quad where centered around the camera.
 //
@@ -61,14 +61,20 @@ fn main_vs(@builtin(vertex_index) v_idx: u32) -> VertexOutput {
     }
 
     out.position = frame.projection_from_world * vec4f(world_position, 1.0);
-    out.scaled_world_plane_position = plane_position * config.spacing * 0.1; // TODO: artificial scaling factor.
+    out.scaled_world_plane_position = plane_position / config.spacing; // TODO: artificial scaling factor.
 
     return out;
 }
 
+// Like smoothstep, but linear.
+// Used for anti-aliasing. Smoothstep works as well, but is very subtly worse.
+fn linearstep(edge0: vec2f, edge1: vec2f, x: vec2f) -> vec2f {
+    return clamp((x - edge0) / (edge1 - edge0), vec2f(0.0), vec2f(1.0));
+}
+
 @fragment
 fn main_fs(in: VertexOutput) -> @location(0) vec4f {
-    // Takes inspiration from https://bgolus.medium.com/the-best-darn-grid-shader-yet-727f9278b9d8
+    // The basics are very well explained by Ben Golus here: https://bgolus.medium.com/the-best-darn-grid-shader-yet-727f9278b9d8
     // We're not actually implementing the "pristine grid shader" which is a world space grid,
     // but rather the pixel space grid, which is a lot simpler, but happens to be also described very well in this article.
 
@@ -77,19 +83,24 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
 
     // Figure out the how wide the lines are in this "draw space".
     let plane_unit_pixel_derivative = fwidthFine(in.scaled_world_plane_position);
-    let width_in_pixels = config.thickness_ui * frame.pixels_from_point;
+    let width_in_pixels = 1.0;//config.radius_ui * frame.pixels_from_point;
     let width_in_grid_units = width_in_pixels * plane_unit_pixel_derivative;
 
-    let line_anti_alias = plane_unit_pixel_derivative * 1.5;
-    let intensity = smoothstep(width_in_grid_units + line_anti_alias, width_in_grid_units - line_anti_alias, distance_to_grid_line);
+    let line_anti_alias = plane_unit_pixel_derivative;
+    var intensity = linearstep(width_in_grid_units + line_anti_alias, width_in_grid_units - line_anti_alias, distance_to_grid_line);
+
+    // Fade lines that get too close to each other.
+    // If the plane unit derivative is high it must mean that this is happening!
+    // TODO: this value is tuned empirically for thin lines, for thicker lines this needs to be adjusted.
+    intensity *= saturate(smoothstep(0.35, 0.0, max(width_in_grid_units.x, width_in_grid_units.y)));
+
+    // Fade on accute viewing angles.
+    // TODO:
 
     // Combine both lines.
     // This is like a premultiplied alpha operation combination.
     let intensity_combined = intensity.x * (1.0 - intensity.y) + intensity.y;
 
-    // Fade in the distance.
-
-    // Fade lines that get too close.
 
     return config.color * intensity_combined;
 }

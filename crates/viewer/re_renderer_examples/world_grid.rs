@@ -47,8 +47,11 @@ impl framework::Example for Outlines {
             self.seconds_since_startup += time.last_frame_duration.as_secs_f32();
         }
         let seconds_since_startup = self.seconds_since_startup;
-        // TODO(#1426): unify camera logic between examples.
-        let camera_position = glam::vec3(1.0, 3.5, 7.0);
+        let camera_position = glam::vec3(
+            seconds_since_startup.sin(),
+            seconds_since_startup.sin() * 0.5,
+            seconds_since_startup.cos(),
+        ) * 7.0;
 
         let mut view_builder = ViewBuilder::new(
             re_ctx,
@@ -80,8 +83,8 @@ impl framework::Example for Outlines {
             re_ctx,
             &re_renderer::renderer::WorldGridConfiguration {
                 color: re_renderer::Rgba::from_rgb(0.5, 0.5, 0.5),
-                spacing: 10.0,
-                thickness_ui: 1.5,
+                spacing: 1.0,
+                thickness_ui: 1.0,
                 orientation: re_renderer::renderer::GridPlane::XZ,
             },
         ));
