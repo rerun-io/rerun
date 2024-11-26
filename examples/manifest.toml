@@ -157,6 +157,7 @@ examples = [
 [ignored]
 examples = [
   "_empty_rerun_sdk",
+  "air_traffic_data",
   "all_examples",
   "custom_collection_adapter",
   "custom_data_loader",
