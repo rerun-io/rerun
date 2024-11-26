@@ -33,6 +33,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
+use recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimeline;
 use time_axis::TimelineAxis;
 use time_control_ui::TimeControlUi;
 use time_ranges_ui::TimeRangesUi;
@@ -127,6 +128,8 @@ pub struct TimePanel {
 
 impl Default for TimePanel {
     fn default() -> Self {
+        PathRecursiveChunksPerTimeline::ensure_registered();
+
         Self {
             data_density_graph_painter: Default::default(),
             prev_col_width: 400.0,

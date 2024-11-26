@@ -45,6 +45,10 @@ pub struct PathRecursiveChunksPerTimeline {
 }
 
 impl PathRecursiveChunksPerTimeline {
+    pub fn ensure_registered() {
+        PathRecursiveChunksPerTimelineStoreSubscriber::subscription_handle();
+    }
+
     /// Accesses the chunk
     #[inline]
     pub fn access<T>(store_id: &StoreId, f: impl FnOnce(&Self) -> T) -> Option<T> {
