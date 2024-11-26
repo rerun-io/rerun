@@ -55,7 +55,7 @@ mod gpu_data {
         pub spacing: f32,
 
         /// Radius of the lines in UI units.
-        pub radius_ui: f32,
+        pub thickness_ui: f32,
 
         pub _padding: u32,
         pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 2],
@@ -93,7 +93,7 @@ impl WorldGridDrawData {
                 color: config.color.into(),
                 orientation: config.orientation as u32,
                 spacing: config.spacing,
-                radius_ui: config.thickness_ui * 0.5,
+                thickness_ui: config.thickness_ui,
                 _padding: 0,
                 end_padding: Default::default(),
             },

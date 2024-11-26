@@ -10,7 +10,7 @@ struct WorldGridUniformBuffer {
     spacing: f32,
 
     /// How thick the lines are in UI units.
-    radius_ui: f32,
+    thickness_ui: f32,
 }
 
 @group(1) @binding(0)
@@ -80,19 +80,22 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
 
     // Distance to a grid line in x and y ranging from 0 to 1.
     let distance_to_grid_line = 1.0 - abs(fract(in.scaled_world_plane_position) * 2.0 - 1.0);
+    let distance_to_cardinal_grid_line = 1.0 - abs(fract(in.scaled_world_plane_position * 0.1) * 2.0 - 1.0);
 
     // Figure out the how wide the lines are in this "draw space".
     let plane_unit_pixel_derivative = fwidthFine(in.scaled_world_plane_position);
-    let width_in_pixels = 1.0;//config.radius_ui * frame.pixels_from_point;
+    let width_in_pixels = config.thickness_ui * frame.pixels_from_point;
     let width_in_grid_units = width_in_pixels * plane_unit_pixel_derivative;
 
     let line_anti_alias = plane_unit_pixel_derivative;
     var intensity = linearstep(width_in_grid_units + line_anti_alias, width_in_grid_units - line_anti_alias, distance_to_grid_line);
 
     // Fade lines that get too close to each other.
-    // If the plane unit derivative is high it must mean that this is happening!
-    // TODO: this value is tuned empirically for thin lines, for thicker lines this needs to be adjusted.
-    intensity *= saturate(smoothstep(0.35, 0.0, max(width_in_grid_units.x, width_in_grid_units.y)));
+    // Once the number of pixels per unit (== from one line to the next) is below 2 line widths in any axis,
+    // don't show them, fade until we reach 10 line widths.
+    let pixel_per_plane_unit = 1.0 / max(plane_unit_pixel_derivative.x, plane_unit_pixel_derivative.y);
+    let grid_closeness_fade = saturate(smoothstep(width_in_pixels * 2.0, width_in_pixels * 10.0, pixel_per_plane_unit));
+    intensity *= grid_closeness_fade;
 
     // Fade on accute viewing angles.
     // TODO:
@@ -101,6 +104,8 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     // This is like a premultiplied alpha operation combination.
     let intensity_combined = intensity.x * (1.0 - intensity.y) + intensity.y;
 
-
     return config.color * intensity_combined;
+
+    // Debugging visualizations:
+    //return vec4f(grid_closeness_fade, grid_closeness_fade, grid_closeness_fade, 1.0);
 }
