@@ -20,8 +20,6 @@ pub struct GraphSpaceViewState {
     pub show_debug: bool,
 
     pub world_bounds: Option<VisualBounds2D>,
-
-    pub transform: TSTransform,
 }
 
 impl GraphSpaceViewState {

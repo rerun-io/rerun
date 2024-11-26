@@ -80,7 +80,7 @@ impl DrawableNode {
                         ui.add(
                             egui::Label::new(galley)
                                 .selectable(false)
-                                .sense(Sense::drag()),
+                                .sense(sense),
                         )
                     })
                     .inner

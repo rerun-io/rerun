@@ -25,6 +25,55 @@ use crate::{
     visualizers::{merge, EdgesVisualizer, NodeVisualizer},
 };
 
+fn register_pan_and_zoom(
+    ui: &egui::Ui,
+    resp: egui::Response,
+    transform: &mut TSTransform,
+) -> egui::Response {
+    if resp.dragged() {
+        transform.translation += resp.drag_delta();
+    }
+
+    if let Some(mouse_pos) = resp.hover_pos() {
+        let pointer_in_world = transform.inverse() * mouse_pos;
+        let zoom_delta = ui.ctx().input(|i| i.zoom_delta());
+        let pan_delta = ui.ctx().input(|i| i.smooth_scroll_delta);
+
+        // Zoom in on pointer, but only if we are not zoomed out too far.
+        if zoom_delta < 1.0 || transform.scaling < 1.0 {
+            *transform = *transform
+                * TSTransform::from_translation(pointer_in_world.to_vec2())
+                * TSTransform::from_scaling(zoom_delta)
+                * TSTransform::from_translation(-pointer_in_world.to_vec2());
+        }
+
+        // Pan:
+        *transform = TSTransform::from_translation(pan_delta) * *transform;
+    }
+
+    resp
+}
+
+fn fit_to_world_rect(clip_rect_window: egui::Rect, world_rect: egui::Rect) -> TSTransform {
+    let available_size = clip_rect_window.size();
+
+    // Compute the scale factor to fit the bounding rectangle into the available screen size.
+    let scale_x = available_size.x / world_rect.width();
+    let scale_y = available_size.y / world_rect.height();
+
+    // Use the smaller of the two scales to ensure the whole rectangle fits on the screen.
+    let scale = scale_x.min(scale_y).min(1.0);
+
+    // Compute the translation to center the bounding rect in the screen.
+    let center_screen = egui::Pos2::new(available_size.x / 2.0, available_size.y / 2.0);
+    let center_world = world_rect.center().to_vec2();
+
+    // Set the transformation to scale and then translate to center.
+
+    TSTransform::from_translation(center_screen.to_vec2() - center_world * scale)
+        * TSTransform::from_scaling(scale)
+}
+
 #[derive(Default)]
 pub struct GraphSpaceView;
 
@@ -145,17 +194,17 @@ Display a graph of nodes and edges.
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
-        // let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
-        //     ctx.blueprint_db(),
-        //     ctx.blueprint_query,
-        //     query.space_view_id,
-        // );
-        // let bounds: blueprint::components::VisualBounds2D =
-        //     bounds_property.component_or_fallback(ctx, self, state)?;
-        //
-        // let world_bounds = bounds.into();
+        let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
+            ctx.blueprint_db(),
+            ctx.blueprint_query,
+            query.space_view_id,
+        );
+        let bounds: blueprint::components::VisualBounds2D =
+            bounds_property.component_or_fallback(ctx, self, state)?;
 
-        //let mut world_to_view = crate::ui::scene::fit_to_world_rect(ui.max_rect(), world_bounds);
+        let world_bounds = bounds.into();
+
+        let mut world_to_view = fit_to_world_rect(ui.max_rect(), world_bounds);
 
         //let view_rect = ui.max_rect();
 
@@ -189,9 +238,9 @@ Display a graph of nodes and edges.
         let circle_node = DrawableNode::circle(ui, None, None);
 
         let view_rect = ui.max_rect();
-        //ui.set_clip_rect(view_rect);
+        let clip_rect_world = world_to_view.inverse() * view_rect;
 
-        let inverse_transform = state.transform.inverse();
+        let mut new_world_bounds = egui::Rect::NOTHING;
 
         let base_id = egui::Id::new(query.space_view_id);
         let inner_resp = egui::Area::new(base_id.with("view"))
@@ -205,7 +254,7 @@ Display a graph of nodes and edges.
                 //ui.allocate_space(view_rect.size());
                 //ui.allocate_rect(view_rect, egui::Sense::hover());
 
-                ui.set_clip_rect(inverse_transform * view_rect);
+                ui.set_clip_rect(clip_rect_world);
 
                 //for node in nodes {}
                 //for edge in edges {}
@@ -217,10 +266,8 @@ Display a graph of nodes and edges.
 
                     node.draw(&mut node_ui)
                 };
-
-                if resp.dragged() {
-                    state.transform.translation += resp.drag_delta();
-                }
+                new_world_bounds = new_world_bounds.union(resp.rect);
+                register_pan_and_zoom(ui, resp, &mut world_to_view);
 
                 let resp = {
                     let mut node_ui = ui.new_child(egui::UiBuilder::new().max_rect(
@@ -229,40 +276,48 @@ Display a graph of nodes and edges.
 
                     circle_node.draw(&mut node_ui)
                 };
+                new_world_bounds = new_world_bounds.union(resp.rect);
+                register_pan_and_zoom(ui, resp, &mut world_to_view);
 
-                if resp.dragged() {
-                    state.transform.translation += resp.drag_delta();
-                }
+                // // We need to draw the debug information after the rest to ensure that we have the correct bounding box.
+                // if state.show_debug {
+                //     // Paint the coordinate system.
+                //     let painter = egui::Painter::new(ui.ctx().clone(), "___graph_view_debug"), clip_rect_world);
 
+                //     // paint coordinate system at the world origin
+                //     let origin = Pos2::new(0.0, 0.0);
+                //     let x_axis = Pos2::new(100.0, 0.0);
+                //     let y_axis = Pos2::new(0.0, 100.0);
+
+                //     painter.line_segment([origin, x_axis], Stroke::new(1.0, Color32::RED));
+                //     painter.line_segment([origin, y_axis], Stroke::new(1.0, Color32::GREEN));
+
+                //     if self.bounding_rect.is_positive() {
+                //         painter.rect(
+                //             self.bounding_rect,
+                //             0.0,
+                //             Color32::from_rgba_unmultiplied(255, 0, 255, 8),
+                //             Stroke::new(1.0, Color32::from_rgb(255, 0, 255)),
+                //         );
+                //     }
+                // }
             });
 
-        ui.ctx()
-            .set_transform_layer(inner_resp.response.layer_id, state.transform);
-
         let resp = ui.allocate_rect(view_rect, egui::Sense::drag());
-        if resp.dragged() {
-            state.transform.translation += resp.drag_delta();
+        let resp = register_pan_and_zoom(ui, resp, &mut world_to_view);
+
+        ui.ctx()
+            .set_transform_layer(inner_resp.response.layer_id, world_to_view);
+
+        // Update blueprint if changed
+        let updated_bounds: blueprint::components::VisualBounds2D = new_world_bounds.into();
+        if resp.double_clicked() {
+            bounds_property.reset_blueprint_component::<blueprint::components::VisualBounds2D>(ctx);
+        } else if bounds != updated_bounds {
+            bounds_property.save_blueprint_component(ctx, &updated_bounds);
         }
-
-
-        if let Some(mouse_pos) = resp.hover_pos() {
-            let pointer_in_world = inverse_transform * mouse_pos;
-            let zoom_delta = ui.ctx().input(|i| i.zoom_delta());
-            let pan_delta = ui.ctx().input(|i| i.smooth_scroll_delta);
-
-            // Zoom in on pointer, but only if we are not zoomed out too far.
-            if zoom_delta < 1.0 || state.transform.scaling < 1.0 {
-                state.transform = state.transform
-                    * TSTransform::from_translation(pointer_in_world.to_vec2())
-                    * TSTransform::from_scaling(zoom_delta)
-                    * TSTransform::from_translation(-pointer_in_world.to_vec2());
-            }
-
-            // Pan:
-            state.transform = TSTransform::from_translation(pan_delta) * state.transform;
-        }
-
-        // let updated_bounds: blueprint::components::VisualBounds2D = new_world_bounds.into();
+        // Update stored bounds on the state, so visualizers see an up-to-date value.
+        state.world_bounds = Some(bounds);
 
         return Ok(());
 
@@ -372,15 +427,7 @@ Display a graph of nodes and edges.
         //     }
         // });
         //
-        // // Update blueprint if changed
-        // let updated_bounds: blueprint::components::VisualBounds2D = new_world_bounds.into();
-        // if response.double_clicked() || layout_was_empty {
-        //     bounds_property.reset_blueprint_component::<blueprint::components::VisualBounds2D>(ctx);
-        // } else if bounds != updated_bounds {
-        //     bounds_property.save_blueprint_component(ctx, &updated_bounds);
-        // }
-        // // Update stored bounds on the state, so visualizers see an up-to-date value.
-        // state.world_bounds = Some(bounds);
+
         //
         // if needs_remeasure {
         //     ui.ctx().request_discard("layout needed a remeasure");
