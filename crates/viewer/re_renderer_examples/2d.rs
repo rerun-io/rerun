@@ -63,7 +63,7 @@ impl framework::Example for Render2D {
         resolution: [u32; 2],
         time: &framework::Time,
         pixels_per_point: f32,
-    ) -> Vec<framework::ViewDrawResult> {
+    ) -> anyhow::Result<Vec<framework::ViewDrawResult>> {
         let splits = framework::split_resolution(resolution, 1, 2).collect::<Vec<_>>();
 
         let screen_size = glam::vec2(
@@ -246,8 +246,8 @@ impl framework::Example for Render2D {
                 .add_points_2d(&positions, &sizes, &colors, &picking_ids);
         }
 
-        let line_strip_draw_data = line_strip_builder.into_draw_data().unwrap();
-        let point_draw_data = point_cloud_builder.into_draw_data().unwrap();
+        let line_strip_draw_data = line_strip_builder.into_draw_data()?;
+        let point_draw_data = point_cloud_builder.into_draw_data()?;
 
         let image_scale = 4.0;
         let rectangle_draw_data = RectangleDrawData::new(
@@ -286,10 +286,9 @@ impl framework::Example for Render2D {
                     },
                 },
             ],
-        )
-        .unwrap();
+        )?;
 
-        vec![
+        Ok(vec![
             // 2D view to the left
             {
                 let mut view_builder = ViewBuilder::new(
@@ -362,7 +361,7 @@ impl framework::Example for Render2D {
                     target_location: splits[1].target_location,
                 }
             },
-        ]
+        ])
     }
 
     fn on_key_event(&mut self, _input: winit::event::KeyEvent) {}

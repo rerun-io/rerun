@@ -37,7 +37,7 @@ pub trait Example {
         resolution: [u32; 2],
         time: &Time,
         pixels_per_point: f32,
-    ) -> Vec<ViewDrawResult>;
+    ) -> anyhow::Result<Vec<ViewDrawResult>>;
 
     fn on_key_event(&mut self, _event: winit::event::KeyEvent) {}
 
@@ -161,7 +161,7 @@ impl<E: Example + 'static> Application<E> {
 
         let example = E::new(&re_ctx);
 
-        Ok(Self {
+        let app = Self {
             window,
             adapter,
             surface,
@@ -173,7 +173,10 @@ impl<E: Example + 'static> Application<E> {
             },
 
             example,
-        })
+        };
+
+        app.configure_surface(app.window.inner_size());
+        Ok(app)
     }
 
     fn configure_surface(&self, size: winit::dpi::PhysicalSize<u32>) {
@@ -240,12 +243,15 @@ impl<E: Example + 'static> Application<E> {
                     .texture
                     .create_view(&wgpu::TextureViewDescriptor::default());
 
-                let draw_results = self.example.draw(
-                    &self.re_ctx,
-                    [frame.texture.width(), frame.texture.height()],
-                    &self.time,
-                    self.window.scale_factor() as f32,
-                );
+                let draw_results = self
+                    .example
+                    .draw(
+                        &self.re_ctx,
+                        [frame.texture.width(), frame.texture.height()],
+                        &self.time,
+                        self.window.scale_factor() as f32,
+                    )
+                    .expect("Failed to draw example");
 
                 let mut composite_cmd_encoder =
                     self.re_ctx
