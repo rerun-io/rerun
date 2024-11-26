@@ -198,4 +198,10 @@ pub fn init() {
         let content = include_str!("../shader/utils/srgb.wgsl").into();
         fs.create_file(virtpath, content).unwrap();
     }
+
+    {
+        let virtpath = Path::new("shader/world_grid.wgsl");
+        let content = include_str!("../shader/world_grid.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
 }
