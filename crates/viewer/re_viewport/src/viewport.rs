@@ -45,11 +45,11 @@ pub struct Viewport<'a> {
     /// The [`egui_tiles::Tree`] tree that actually manages blueprint layout. This tree needs
     /// to be mutable for things like drag-and-drop and is ultimately saved back to the store.
     /// at the end of the frame if edited.
-    pub tree: egui_tiles::Tree<SpaceViewId>,
+    tree: egui_tiles::Tree<SpaceViewId>,
 
     /// Should be set to `true` whenever a tree modification should be back-ported to the blueprint
     /// store. That should _only_ happen as a result of a user action.
-    pub tree_edited: bool,
+    tree_edited: bool,
 }
 
 impl<'a> Viewport<'a> {
@@ -128,7 +128,7 @@ impl<'a> Viewport<'a> {
 
             re_tracing::profile_scope!("tree.ui");
 
-            let mut tab_viewer = TabViewer {
+            let mut egui_tiles_delegate = TilesDelegate {
                 view_states,
                 ctx,
                 viewport_blueprint: blueprint,
@@ -140,12 +140,12 @@ impl<'a> Viewport<'a> {
                 root_container_id: self.blueprint.root_container,
             };
 
-            tree.ui(&mut tab_viewer, ui);
+            tree.ui(&mut egui_tiles_delegate, ui);
 
             // Detect if the user has moved a tab or similar.
             // If so we can no longer automatically change the layout without discarding user edits.
             let is_dragging_a_tile = tree.dragged_id(ui.ctx()).is_some();
-            if tab_viewer.edited || is_dragging_a_tile {
+            if egui_tiles_delegate.edited || is_dragging_a_tile {
                 if blueprint.auto_layout() {
                     re_log::trace!(
                         "The user is manipulating the egui_tiles tree - will no longer auto-layout"
@@ -156,7 +156,7 @@ impl<'a> Viewport<'a> {
             }
 
             // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
-            self.tree_edited |= tab_viewer.edited;
+            self.tree_edited |= egui_tiles_delegate.edited;
 
             // Outline hovered & selected tiles:
             for contents in blueprint.contents_iter() {
@@ -446,7 +446,7 @@ impl<'a> Viewport<'a> {
 ///
 /// In our case, each pane is a space view,
 /// while containers are just groups of things.
-struct TabViewer<'a, 'b> {
+struct TilesDelegate<'a, 'b> {
     view_states: &'a mut ViewStates,
     ctx: &'a ViewerContext<'b>,
     viewport_blueprint: &'a ViewportBlueprint,
@@ -464,7 +464,7 @@ struct TabViewer<'a, 'b> {
     edited: bool,
 }
 
-impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
+impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, 'b> {
     fn pane_ui(
         &mut self,
         ui: &mut egui::Ui,
@@ -809,7 +809,7 @@ struct TabWidget {
 
 impl TabWidget {
     fn new<'a>(
-        tab_viewer: &'a mut TabViewer<'_, '_>,
+        tab_viewer: &'a mut TilesDelegate<'_, '_>,
         ui: &'a mut egui::Ui,
         tiles: &'a egui_tiles::Tiles<SpaceViewId>,
         tile_id: egui_tiles::TileId,
