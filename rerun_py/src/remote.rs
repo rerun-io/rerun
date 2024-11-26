@@ -24,6 +24,8 @@ use crate::dataframe::PyRecording;
 
 /// Register the `rerun.remote` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_class::<PyStorageNodeClient>()?;
+
     m.add_function(wrap_pyfunction!(connect, m)?)?;
 
     Ok(())
@@ -40,20 +42,33 @@ async fn connect_async(addr: String) -> PyResult<StorageNodeClient<tonic::transp
     Ok(StorageNodeClient::new(tonic_client))
 }
 
+/// Load a rerun archive from an RRD file.
+///
+/// Required-feature: `remote`
+///
+/// Parameters
+/// ----------
+/// addr : str
+///     The address of the storage node to connect to.
+///
+/// Returns
+/// -------
+/// StorageNodeClient
+///     The connected client.
 #[pyfunction]
-pub fn connect(addr: String) -> PyResult<PyConnection> {
+pub fn connect(addr: String) -> PyResult<PyStorageNodeClient> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
 
     let client = runtime.block_on(connect_async(addr))?;
 
-    Ok(PyConnection { runtime, client })
+    Ok(PyStorageNodeClient { runtime, client })
 }
 
 /// A connection to a remote storage node.
-#[pyclass(name = "Connection")]
-pub struct PyConnection {
+#[pyclass(name = "StorageNodeClient")]
+pub struct PyStorageNodeClient {
     /// A tokio runtime for async operations. This connection will currently
     /// block the Python interpreter while waiting for responses.
     /// This runtime must be persisted for the lifetime of the connection.
@@ -64,8 +79,8 @@ pub struct PyConnection {
 }
 
 #[pymethods]
-impl PyConnection {
-    /// List all recordings registered with the node.
+impl PyStorageNodeClient {
+    /// Get the metadata for all recordings in the storage node.
     fn list_recordings(&mut self) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
         let reader = self.runtime.block_on(async {
             // TODO(jleibs): Support column projection
@@ -108,7 +123,14 @@ impl PyConnection {
         Ok(PyArrowType(Box::new(reader)))
     }
 
-    /// Register a recording along with some metadata
+    /// Register a recording along with some metadata.
+    ///
+    /// Parameters
+    /// ----------
+    /// storage_url : str
+    ///     The URL to the storage location.
+    /// metadata : dict[str, MetadataLike]
+    ///     A dictionary where the keys are the metadata columns and the values are pyarrow arrays.
     #[pyo3(signature = (
         storage_url,
         metadata = None
@@ -182,7 +204,14 @@ impl PyConnection {
         })
     }
 
-    /// Updates the metadata for a recording.
+    /// Update the metadata for the recording with the given id.
+    ///
+    /// Parameters
+    /// ----------
+    /// id : str
+    ///     The id of the recording to update.
+    /// metadata : dict[str, MetadataLike]
+    ///     A dictionary where the keys are the metadata columns and the values are pyarrow arrays.
     #[pyo3(signature = (
         id,
         metadata
@@ -232,7 +261,19 @@ impl PyConnection {
         })
     }
 
-    /// Opens a recording for query and analysis.
+    /// Open a [`Recording`][rerun.dataframe.Recording] by id to use with the dataframe APIs.
+    ///
+    /// This currently downloads the full recording to the local machine.
+    ///
+    /// Parameters
+    /// ----------
+    /// id : str
+    ///     The id of the recording to open.
+    ///
+    /// Returns
+    /// -------
+    /// Recording
+    ///     The opened recording.
     #[pyo3(signature = (
         id,
     ))]
@@ -333,24 +374,5 @@ impl MetadataLike {
                 }
             }
         }
-    }
-}
-
-/// The info for a recording stored in the archive.
-#[pyclass(name = "RecordingMetadata")]
-pub struct PyRecordingMetadata {
-    info: re_protos::v0::RecordingMetadata,
-}
-
-#[pymethods]
-impl PyRecordingMetadata {
-    fn __repr__(&self) -> String {
-        format!(
-            "Recording(id={})",
-            self.info
-                .id()
-                .map(|id| id.to_string())
-                .unwrap_or("Unknown".to_owned())
-        )
     }
 }
