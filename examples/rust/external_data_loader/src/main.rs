@@ -33,9 +33,19 @@ struct Args {
     #[argh(option)]
     application_id: Option<String>,
 
+    /// currently opened application ID in the viewer, if any
+    #[argh(option)]
+    #[allow(unused)]
+    opened_application_id: Option<String>,
+
     /// optional recommended ID for the recording
     #[argh(option)]
     recording_id: Option<String>,
+
+    /// currently opened recording ID in the viewer, if any
+    #[argh(option)]
+    #[allow(unused)]
+    opened_recording_id: Option<String>,
 
     /// optional prefix for all entity paths
     #[argh(option)]
