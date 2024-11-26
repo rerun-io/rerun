@@ -177,7 +177,7 @@ jobs:
             --locked \
             -p rerun-cli \
             --no-default-features \
-            --features release \
+            --features release,grpc \
             --release \
             --target ${{ needs.set-config.outputs.TARGET }}
 
