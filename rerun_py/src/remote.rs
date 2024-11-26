@@ -6,11 +6,21 @@ use arrow::{
 };
 // False positive due to #[pyfunction] macro
 use pyo3::{exceptions::PyRuntimeError, prelude::*, types::PyDict, Bound, PyResult};
-use re_chunk::TransportChunk;
-use re_protos::v0::{
-    storage_node_client::StorageNodeClient, EncoderVersion, ListRecordingsRequest, RecordingId,
-    RecordingMetadata, RecordingType, RegisterRecordingRequest, UpdateRecordingMetadataRequest,
+use re_chunk::{Chunk, TransportChunk};
+use re_chunk_store::ChunkStore;
+use re_dataframe::ChunkStoreHandle;
+use re_log_types::{StoreInfo, StoreSource};
+use re_protos::{
+    codec::decode,
+    v0::{
+        storage_node_client::StorageNodeClient, EncoderVersion, FetchRecordingRequest,
+        ListRecordingsRequest, RecordingId, RecordingMetadata, RecordingType,
+        RegisterRecordingRequest, UpdateRecordingMetadataRequest,
+    },
 };
+use re_sdk::{ApplicationId, StoreId, StoreKind, Time};
+
+use crate::dataframe::PyRecording;
 
 /// Register the `rerun.remote` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
@@ -219,6 +229,69 @@ impl PyConnection {
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             Ok(())
+        })
+    }
+
+    /// Opens a recording for query and analysis.
+    #[pyo3(signature = (
+        id,
+    ))]
+    fn open_recording(&mut self, id: &str) -> PyResult<PyRecording> {
+        use tokio_stream::StreamExt as _;
+        let store = self.runtime.block_on(async {
+            let mut resp = self
+                .client
+                .fetch_recording(FetchRecordingRequest {
+                    recording_id: Some(RecordingId { id: id.to_owned() }),
+                })
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                .into_inner();
+
+            // TODO(jleibs): Does this come from RDP?
+            let store_id = StoreId::from_string(StoreKind::Recording, id.to_owned());
+
+            let store_info = StoreInfo {
+                application_id: ApplicationId::from("rerun_data_platform"),
+                store_id: store_id.clone(),
+                cloned_from: None,
+                is_official_example: false,
+                started: Time::now(),
+                store_source: StoreSource::Unknown,
+                store_version: None,
+            };
+
+            let mut store = ChunkStore::new(store_id, Default::default());
+            store.set_info(store_info);
+
+            while let Some(result) = resp.next().await {
+                let response = result.map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+                let tc = decode(EncoderVersion::V0, &response.payload)
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+                let Some(tc) = tc else {
+                    return Err(PyRuntimeError::new_err("Stream error"));
+                };
+
+                let chunk = Chunk::from_transport(&tc)
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+                store
+                    .insert_chunk(&std::sync::Arc::new(chunk))
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+            }
+
+            Ok(store)
+        })?;
+
+        let handle = ChunkStoreHandle::new(store);
+
+        let cache =
+            re_dataframe::QueryCacheHandle::new(re_dataframe::QueryCache::new(handle.clone()));
+
+        Ok(PyRecording {
+            store: handle,
+            cache,
         })
     }
 }

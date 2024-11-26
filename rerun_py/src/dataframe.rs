@@ -565,8 +565,8 @@ impl PySchema {
 /// to retrieve the data.
 #[pyclass(name = "Recording")]
 pub struct PyRecording {
-    store: ChunkStoreHandle,
-    cache: re_dataframe::QueryCacheHandle,
+    pub(crate) store: ChunkStoreHandle,
+    pub(crate) cache: re_dataframe::QueryCacheHandle,
 }
 
 /// A view of a recording restricted to a given index, containing a specific set of entities and components.
