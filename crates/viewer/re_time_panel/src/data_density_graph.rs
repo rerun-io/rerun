@@ -14,7 +14,7 @@ use re_chunk_store::RangeQuery;
 use re_log_types::{ComponentPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
-use crate::chunk_statistics_store_subscriber::PathRecursiveChunksPerTimeline;
+use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimeline;
 use crate::TimePanelItem;
 
 use super::time_ranges_ui::TimeRangesUi;

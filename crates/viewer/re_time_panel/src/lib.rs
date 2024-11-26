@@ -6,9 +6,9 @@
 // TODO(#6330): remove unwrap()
 #![allow(clippy::unwrap_used)]
 
-mod chunk_statistics_store_subscriber;
 mod data_density_graph;
 mod paint_ticks;
+mod recursive_chunks_per_timeline_subscriber;
 mod time_axis;
 mod time_control_ui;
 mod time_ranges_ui;

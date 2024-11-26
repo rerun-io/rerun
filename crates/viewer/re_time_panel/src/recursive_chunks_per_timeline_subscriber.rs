@@ -1,14 +1,13 @@
 use std::sync::Arc;
 
 use egui::ahash::HashMap;
+use nohash_hasher::IntMap;
 use once_cell::sync::OnceCell;
+
 use re_chunk_store::{
     Chunk, ChunkId, ChunkStore, ChunkStoreEvent, ChunkStoreSubscriber, ChunkStoreSubscriberHandle,
 };
 use re_log_types::{EntityPath, EntityPathHash, ResolvedTimeRange, StoreId, Timeline};
-use re_viewer_context::external::nohash_hasher::IntMap; // TODO:
-
-// TODO: not done. unclear if I want this.
 
 /// Cached information about a chunk in the context of a given timeline.
 #[derive(Clone)]
@@ -18,34 +17,21 @@ pub struct ChunkTimelineInfo {
     pub resolved_time_range: ResolvedTimeRange,
 }
 
-/// Recursive statistics for a given timeline & entity.
+/// Recursive chunk timeline infos for a given timeline & entity.
 #[derive(Default)]
 pub struct EntityTimelineChunks {
-    // TODO: this should be a BTreeMap sorted by lowest time on the given timeline for fast range lookups.
+    /// All chunks used by the entity & timeline, recursive for all children of the entity.
+    // TODO(andreas): Sorting this by time range would be great as it would allow us to slice ranges.
     pub recursive_chunks_info: HashMap<ChunkId, ChunkTimelineInfo>,
 
-    /// Total number of events in all of the chunks.
+    /// Total number of events in all [`Self::recursive_chunks_info`] chunks.
     pub total_num_events: u64,
 }
 
-// TODO: build up a data-structure that we can retain.
-// pub struct ChunkTimelineStats {
-//     pub chunk_id: ChunkId,
-
-//     /// How many events there are for the given component for the chunk on the timeline this struct is for.
-//     pub num_events_per_component: IntMap<ComponentName, u64>,
-
-//     /// Sum of all items in `Self::num_events_per_component` plus event count of all children
-//     pub num_events_recursive: u64,
-// }
-
-/// Keeps track of various statistics about chunks that are used to draw the data density graph.
-///
-/// The store subscription is only used for invalidating existing data rather than building up
-/// all statistics continuously.
+/// For each entity & timeline, keeps track of all its chunks and chunks of its children.
 #[derive(Default)]
 pub struct PathRecursiveChunksPerTimeline {
-    timeline_chunk_stats: IntMap<Timeline, IntMap<EntityPathHash, EntityTimelineChunks>>,
+    chunks_per_timeline_per_entity: IntMap<Timeline, IntMap<EntityPathHash, EntityTimelineChunks>>,
 }
 
 impl PathRecursiveChunksPerTimeline {
@@ -66,7 +52,7 @@ impl PathRecursiveChunksPerTimeline {
         entity_path: &EntityPath,
         timeline: Timeline,
     ) -> Option<&EntityTimelineChunks> {
-        self.timeline_chunk_stats
+        self.chunks_per_timeline_per_entity
             .get(&timeline)?
             .get(&entity_path.hash())
     }
@@ -90,7 +76,7 @@ impl PathRecursiveChunksPerTimelineStoreSubscriber {
 impl ChunkStoreSubscriber for PathRecursiveChunksPerTimelineStoreSubscriber {
     #[inline]
     fn name(&self) -> String {
-        "rerun.store_subscriber.ChunkStatistics".into()
+        "rerun.store_subscriber.PathRecursiveChunksPerTimeline".into()
     }
 
     #[inline]
@@ -138,7 +124,7 @@ fn add_chunk(path_recursive_chunks: &mut PathRecursiveChunksPerTimeline, chunk: 
 
     for (timeline, time_column) in chunk.timelines() {
         let chunks_per_entities = path_recursive_chunks
-            .timeline_chunk_stats
+            .chunks_per_timeline_per_entity
             .entry(*timeline)
             .or_default();
 
@@ -166,8 +152,9 @@ fn remove_chunk(path_recursive_chunks: &mut PathRecursiveChunksPerTimeline, chun
     re_tracing::profile_function!();
 
     for timeline in chunk.timelines().keys() {
-        let Some(chunks_per_entities) =
-            path_recursive_chunks.timeline_chunk_stats.get_mut(timeline)
+        let Some(chunks_per_entities) = path_recursive_chunks
+            .chunks_per_timeline_per_entity
+            .get_mut(timeline)
         else {
             continue;
         };
