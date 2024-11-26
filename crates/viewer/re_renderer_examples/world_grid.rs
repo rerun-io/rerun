@@ -1,35 +1,39 @@
 //! Demonstrates world grid rendering.
+//!
+//! Controls:
+//! - Space: Pause
+//! - G: Toggle camera mode
 
-use itertools::Itertools;
 use re_renderer::{
     renderer::GpuMeshInstance,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    Color32, OutlineConfig, OutlineMaskPreference,
+    OutlineMaskPreference,
 };
 use winit::event::ElementState;
 
 mod framework;
 
+enum CameraMode {
+    ZoomInAndOut,
+    Wobble,
+}
+
 struct Outlines {
     is_paused: bool,
+    camera_mode: CameraMode,
     seconds_since_startup: f32,
     model_mesh_instances: Vec<GpuMeshInstance>,
 }
 
-struct MeshProperties {
-    outline_mask_ids: OutlineMaskPreference,
-    position: glam::Vec3,
-    rotation: glam::Quat,
-}
-
 impl framework::Example for Outlines {
     fn title() -> &'static str {
-        "Outlines"
+        "world_grid"
     }
 
     fn new(re_ctx: &re_renderer::RenderContext) -> Self {
         Self {
             is_paused: false,
+            camera_mode: CameraMode::Wobble,
             seconds_since_startup: 0.0,
             model_mesh_instances: crate::framework::load_rerun_mesh(re_ctx)
                 .expect("Failed to load rerun mesh"),
@@ -47,11 +51,19 @@ impl framework::Example for Outlines {
             self.seconds_since_startup += time.last_frame_duration.as_secs_f32();
         }
         let seconds_since_startup = self.seconds_since_startup;
-        let camera_position = glam::vec3(
-            seconds_since_startup.sin(),
-            seconds_since_startup.sin() * 0.5,
-            seconds_since_startup.cos(),
-        ) * 7.0;
+
+        let camera_position = match self.camera_mode {
+            CameraMode::ZoomInAndOut => {
+                glam::vec3(1.0, 3.5, 7.0) * (seconds_since_startup.sin() + 1.4)
+            }
+            CameraMode::Wobble => {
+                glam::vec3(
+                    seconds_since_startup.sin(),
+                    seconds_since_startup.sin() * 0.5,
+                    seconds_since_startup.cos(),
+                ) * 7.0
+            }
+        };
 
         let mut view_builder = ViewBuilder::new(
             re_ctx,
@@ -83,7 +95,7 @@ impl framework::Example for Outlines {
             re_ctx,
             &re_renderer::renderer::WorldGridConfiguration {
                 color: re_renderer::Rgba::from_rgb(0.5, 0.5, 0.5),
-                spacing: 1.0,
+                spacing: 0.1,
                 thickness_ui: 1.0,
                 orientation: re_renderer::renderer::GridPlane::XZ,
             },
@@ -103,10 +115,17 @@ impl framework::Example for Outlines {
     }
 
     fn on_key_event(&mut self, input: winit::event::KeyEvent) {
-        if input.state == ElementState::Pressed
-            && input.logical_key == winit::keyboard::Key::Named(winit::keyboard::NamedKey::Space)
-        {
-            self.is_paused ^= true;
+        if input.state == ElementState::Pressed {
+            if input.logical_key == winit::keyboard::Key::Named(winit::keyboard::NamedKey::Space) {
+                self.is_paused ^= true;
+            } else if input.physical_key
+                == winit::keyboard::PhysicalKey::Code(winit::keyboard::KeyCode::KeyG)
+            {
+                self.camera_mode = match self.camera_mode {
+                    CameraMode::ZoomInAndOut => CameraMode::Wobble,
+                    CameraMode::Wobble => CameraMode::ZoomInAndOut,
+                };
+            }
         }
     }
 }

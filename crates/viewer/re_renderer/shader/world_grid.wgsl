@@ -61,15 +61,18 @@ fn main_vs(@builtin(vertex_index) v_idx: u32) -> VertexOutput {
     }
 
     out.position = frame.projection_from_world * vec4f(world_position, 1.0);
-    out.scaled_world_plane_position = plane_position / config.spacing; // TODO: artificial scaling factor.
+    out.scaled_world_plane_position = plane_position / config.spacing;
 
     return out;
 }
 
 // Like smoothstep, but linear.
-// Used for anti-aliasing. Smoothstep works as well, but is very subtly worse.
-fn linearstep(edge0: vec2f, edge1: vec2f, x: vec2f) -> vec2f {
-    return clamp((x - edge0) / (edge1 - edge0), vec2f(0.0), vec2f(1.0));
+// Used for antialiasing: smoothstep works as well but is subtly worse.
+fn linearstep(edge0: f32, edge1: f32, x: f32) -> f32 {
+    return saturate((x - edge0) / (edge1 - edge0));
+}
+fn linearstep2(edge0: vec2f, edge1: vec2f, x: vec2f) -> vec2f {
+    return saturate((x - edge0) / (edge1 - edge0));
 }
 
 @fragment
@@ -80,32 +83,42 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
 
     // Distance to a grid line in x and y ranging from 0 to 1.
     let distance_to_grid_line = 1.0 - abs(fract(in.scaled_world_plane_position) * 2.0 - 1.0);
-    let distance_to_cardinal_grid_line = 1.0 - abs(fract(in.scaled_world_plane_position * 0.1) * 2.0 - 1.0);
 
     // Figure out the how wide the lines are in this "draw space".
     let plane_unit_pixel_derivative = fwidthFine(in.scaled_world_plane_position);
+    let line_anti_alias = plane_unit_pixel_derivative;
     let width_in_pixels = config.thickness_ui * frame.pixels_from_point;
     let width_in_grid_units = width_in_pixels * plane_unit_pixel_derivative;
-
-    let line_anti_alias = plane_unit_pixel_derivative;
-    var intensity = linearstep(width_in_grid_units + line_anti_alias, width_in_grid_units - line_anti_alias, distance_to_grid_line);
+    var intensity_regular = linearstep2(width_in_grid_units + line_anti_alias, width_in_grid_units - line_anti_alias, distance_to_grid_line);
 
     // Fade lines that get too close to each other.
-    // Once the number of pixels per unit (== from one line to the next) is below 2 line widths in any axis,
-    // don't show them, fade until we reach 10 line widths.
-    let pixel_per_plane_unit = 1.0 / max(plane_unit_pixel_derivative.x, plane_unit_pixel_derivative.y);
-    let grid_closeness_fade = saturate(smoothstep(width_in_pixels * 2.0, width_in_pixels * 10.0, pixel_per_plane_unit));
-    intensity *= grid_closeness_fade;
+    // Once the number of pixels per unit (== from one line to the next) is below a threshold fade them out.
+    // Tried smoothstep here, but didn't feel right even with lots of range tweaking.
+    let pixel_per_plane_unit = 1.0 / max(width_in_grid_units.x, width_in_grid_units.y);
+    let grid_closeness_fade = linearstep(1.0, 10.0, pixel_per_plane_unit);
+    intensity_regular *= grid_closeness_fade;
+
+    // Every tenth line is a more intense.
+    let distance_to_grid_line_cardinal = 1.0 - abs(fract(in.scaled_world_plane_position * 0.1) * 2.0 - 1.0);
+    var cardinal_line_intensity = linearstep2(width_in_grid_units + line_anti_alias, width_in_grid_units - line_anti_alias, distance_to_grid_line_cardinal * 10.0);
+    let cardinal_grid_closeness_fade = linearstep(2.0, 10.0, pixel_per_plane_unit * 10.0);
+    cardinal_line_intensity *= cardinal_grid_closeness_fade;
 
     // Fade on accute viewing angles.
     // TODO:
 
-    // Combine both lines.
-    // This is like a premultiplied alpha operation combination.
-    let intensity_combined = intensity.x * (1.0 - intensity.y) + intensity.y;
+    // Combine all lines.
+    //
+    // Lerp for cardinal & regular.
+    // This way we don't break anti-aliasing (as addition would!), mute the regular lines, and make cardinals weaker when there's no regular to support them.
+    let cardinal_and_regular = mix(intensity_regular, cardinal_line_intensity, 0.6);
+    // X and Y are combined like akin to premultiplied alpha operations.
+    let intensity_combined = saturate(cardinal_and_regular.x * (1.0 - cardinal_and_regular.y) + cardinal_and_regular.y);
+
 
     return config.color * intensity_combined;
 
     // Debugging visualizations:
-    //return vec4f(grid_closeness_fade, grid_closeness_fade, grid_closeness_fade, 1.0);
+    //return vec4f(intensity_combined);
+    //return vec4f(grid_closeness_fade, cardinal_grid_closeness_fade, 0.0, 1.0);
 }
