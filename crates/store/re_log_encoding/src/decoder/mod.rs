@@ -8,6 +8,7 @@ use std::io::Read;
 use re_build_info::CrateVersion;
 use re_log_types::LogMsg;
 
+use crate::codec;
 use crate::FileHeader;
 use crate::MessageHeader;
 use crate::OLD_RRD_HEADERS;
@@ -89,6 +90,9 @@ pub enum DecodeError {
 
     #[error("MsgPack error: {0}")]
     MsgPack(#[from] rmp_serde::decode::Error),
+
+    #[error("Codec error: {0}")]
+    Codec(#[from] codec::CodecError),
 }
 
 // ----------------------------------------------------------------------------
@@ -117,7 +121,7 @@ pub fn read_options(
     let FileHeader {
         magic,
         version,
-        options,
+        mut options,
     } = FileHeader::decode(&mut read)?;
 
     if OLD_RRD_HEADERS.contains(&magic) {
@@ -130,6 +134,9 @@ pub fn read_options(
 
     match options.serializer {
         Serializer::MsgPack => {}
+        Serializer::Protobuf => {
+            options.compression = Compression::Off;
+        }
     }
 
     Ok((CrateVersion::from_bytes(version), options))
@@ -152,7 +159,7 @@ impl<R: std::io::Read> std::io::Read for Reader<R> {
 
 pub struct Decoder<R: std::io::Read> {
     version: CrateVersion,
-    compression: Compression,
+    options: EncodingOptions,
     read: Reader<R>,
     uncompressed: Vec<u8>, // scratch space
     compressed: Vec<u8>,   // scratch space
@@ -179,11 +186,10 @@ impl<R: std::io::Read> Decoder<R> {
         read.read_exact(&mut data).map_err(DecodeError::Read)?;
 
         let (version, options) = read_options(version_policy, &data)?;
-        let compression = options.compression;
 
         Ok(Self {
             version,
-            compression,
+            options,
             read: Reader::Raw(read),
             uncompressed: vec![],
             compressed: vec![],
@@ -217,11 +223,10 @@ impl<R: std::io::Read> Decoder<R> {
         read.read_exact(&mut data).map_err(DecodeError::Read)?;
 
         let (version, options) = read_options(version_policy, &data)?;
-        let compression = options.compression;
 
         Ok(Self {
             version,
-            compression,
+            options,
             read: Reader::Buffered(read),
             uncompressed: vec![],
             compressed: vec![],
@@ -284,10 +289,9 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                 Ok(opts) => opts,
                 Err(err) => return Some(Err(err)),
             };
-            let compression = options.compression;
 
             self.version = CrateVersion::max(self.version, version);
-            self.compression = compression;
+            self.options = options;
             self.size_bytes += FileHeader::SIZE as u64;
         }
 
@@ -322,7 +326,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
         self.uncompressed
             .resize(self.uncompressed.len().max(uncompressed_len), 0);
 
-        match self.compression {
+        match self.options.compression {
             Compression::Off => {
                 re_tracing::profile_scope!("read uncompressed");
                 if let Err(err) = self
@@ -357,8 +361,19 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
             }
         }
 
-        re_tracing::profile_scope!("MsgPack deser");
-        match rmp_serde::from_slice(&self.uncompressed[..uncompressed_len]) {
+        let data = &self.uncompressed[..uncompressed_len];
+        let result = match self.options.serializer {
+            Serializer::MsgPack => {
+                re_tracing::profile_scope!("MsgPack deser");
+                rmp_serde::from_slice(data).map_err(|e| e.into())
+            }
+            Serializer::Protobuf => {
+                re_tracing::profile_scope!("Protobuf deser");
+                codec::decode_log_msg(data).map_err(|e| e.into())
+            }
+        };
+
+        match result {
             Ok(re_log_types::LogMsg::SetStoreInfo(mut msg)) => {
                 // Propagate the protocol version from the header into the `StoreInfo` so that all
                 // parts of the app can easily access it.
@@ -366,7 +381,7 @@ impl<R: std::io::Read> Iterator for Decoder<R> {
                 Some(Ok(re_log_types::LogMsg::SetStoreInfo(msg)))
             }
             Ok(msg) => Some(Ok(msg)),
-            Err(err) => Some(Err(err.into())),
+            Err(err) => Some(Err(err)),
         }
     }
 }

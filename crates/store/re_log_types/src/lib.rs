@@ -32,6 +32,8 @@ mod time;
 mod time_real;
 mod vec_deque_ext;
 
+mod protobuf_conversions;
+
 use std::sync::Arc;
 
 use re_build_info::CrateVersion;
@@ -402,6 +404,74 @@ impl std::fmt::Display for PythonVersion {
             suffix,
         } = self;
         write!(f, "{major}.{minor}.{patch}{suffix}")
+    }
+}
+
+impl std::str::FromStr for PythonVersion {
+    type Err = PythonVersionParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let (major, rest) = s
+            .split_once('.')
+            .ok_or(PythonVersionParseError::MissingMajor)?;
+        if major.is_empty() {
+            return Err(PythonVersionParseError::MissingMajor);
+        }
+        let (minor, rest) = rest
+            .split_once('.')
+            .ok_or(PythonVersionParseError::MissingMinor)?;
+        if minor.is_empty() {
+            return Err(PythonVersionParseError::MissingMinor);
+        }
+        let pos = rest.bytes().position(|v| !v.is_ascii_digit());
+        let (patch, suffix) = match pos {
+            Some(pos) => rest.split_at(pos),
+            None => (rest, ""),
+        };
+        if patch.is_empty() {
+            return Err(PythonVersionParseError::MissingPatch);
+        }
+        Ok(Self {
+            major: major
+                .parse()
+                .map_err(|_| PythonVersionParseError::InvalidMajor)?,
+            minor: minor
+                .parse()
+                .map_err(|_| PythonVersionParseError::InvalidMinor)?,
+            patch: patch
+                .parse()
+                .map_err(|_| PythonVersionParseError::InvalidPatch)?,
+            suffix: suffix.into(),
+        })
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum PythonVersionParseError {
+    #[error("missing major version")]
+    MissingMajor,
+    #[error("missing minor version")]
+    MissingMinor,
+    #[error("missing patch version")]
+    MissingPatch,
+    #[error("invalid major version")]
+    InvalidMajor,
+    #[error("invalid minor version")]
+    InvalidMinor,
+    #[error("invalid patch version")]
+    InvalidPatch,
+}
+
+impl PythonVersionParseError {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::MissingMajor => "missing major version",
+            Self::MissingMinor => "missing minor version",
+            Self::MissingPatch => "missing patch version",
+            Self::InvalidMajor => "invalid major version",
+            Self::InvalidMinor => "invalid minor version",
+            Self::InvalidPatch => "invalid patch version",
+        }
     }
 }
 

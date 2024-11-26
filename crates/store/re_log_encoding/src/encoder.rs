@@ -4,8 +4,10 @@ use re_build_info::CrateVersion;
 use re_chunk::{ChunkError, ChunkResult};
 use re_log_types::LogMsg;
 
+use crate::codec;
 use crate::FileHeader;
 use crate::MessageHeader;
+use crate::Serializer;
 use crate::{Compression, EncodingOptions};
 
 // ----------------------------------------------------------------------------
@@ -21,6 +23,9 @@ pub enum EncodeError {
 
     #[error("MsgPack error: {0}")]
     MsgPack(#[from] rmp_serde::encode::Error),
+
+    #[error("{0}")]
+    Codec(#[from] codec::CodecError),
 
     #[error("Chunk error: {0}")]
     Chunk(#[from] ChunkError),
@@ -109,6 +114,7 @@ impl<W: std::io::Write> std::ops::Drop for DroppableEncoder<W> {
 /// Prefer [`DroppableEncoder`] if possible, make sure to call [`Encoder::finish`] when appropriate
 /// otherwise.
 pub struct Encoder<W: std::io::Write> {
+    serializer: Serializer,
     compression: Compression,
     write: W,
     uncompressed: Vec<u8>,
@@ -128,15 +134,18 @@ impl<W: std::io::Write> Encoder<W> {
         }
         .encode(&mut write)?;
 
-        match options.serializer {
-            crate::Serializer::MsgPack => {}
-        }
+        let serializer = options.serializer;
+        let compression = match serializer {
+            Serializer::MsgPack => options.compression,
+            Serializer::Protobuf => Compression::Off,
+        };
 
         Ok(Self {
-            compression: options.compression,
+            serializer,
+            compression,
             write,
-            uncompressed: vec![],
-            compressed: vec![],
+            uncompressed: Vec::new(),
+            compressed: Vec::new(),
         })
     }
 
@@ -145,7 +154,14 @@ impl<W: std::io::Write> Encoder<W> {
         re_tracing::profile_function!();
 
         self.uncompressed.clear();
-        rmp_serde::encode::write_named(&mut self.uncompressed, message)?;
+        match self.serializer {
+            Serializer::MsgPack => {
+                rmp_serde::encode::write_named(&mut self.uncompressed, message)?;
+            }
+            Serializer::Protobuf => {
+                crate::codec::encode_log_msg(message, &mut self.uncompressed)?;
+            }
+        }
 
         match self.compression {
             Compression::Off => {

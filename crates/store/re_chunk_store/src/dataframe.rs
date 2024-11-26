@@ -1,6 +1,8 @@
 //! All the APIs used specifically for `re_dataframe`.
 
 use std::collections::{BTreeMap, BTreeSet};
+use std::ops::Deref;
+use std::ops::DerefMut;
 
 use arrow2::{
     array::ListArray as ArrowListArray,
@@ -472,7 +474,22 @@ impl std::fmt::Display for SparseFillStrategy {
 ///
 // TODO(cmc): we need to be able to build that easily in a command-line context, otherwise it's just
 // very annoying. E.g. `--with /world/points:[rr.Position3D, rr.Radius] --with /cam:[rr.Pinhole]`.
-pub type ViewContentsSelector = BTreeMap<EntityPath, Option<ComponentNameSet>>;
+#[derive(Default, Debug, Clone, PartialEq, Eq, Hash)]
+pub struct ViewContentsSelector(pub BTreeMap<EntityPath, Option<BTreeSet<ComponentName>>>);
+
+impl Deref for ViewContentsSelector {
+    type Target = BTreeMap<EntityPath, Option<BTreeSet<ComponentName>>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for ViewContentsSelector {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 // TODO(cmc): Ultimately, this shouldn't be hardcoded to `Timeline`, but to a generic `I: Index`.
 //            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).

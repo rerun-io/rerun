@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package rerun.remote_store.v0;
+package rerun.common.v0;
 
 // unique recording identifier. At this point in time it is the same id as the ChunkStore's StoreId
 message RecordingId {
@@ -160,4 +160,39 @@ message ComponentColumnSelector {
 enum SparseFillStrategy {
     NONE = 0;
     LATEST_AT_GLOBAL = 1;
+}
+
+// Error codes for application level errors
+enum ErrorCode {
+    // unused
+    _UNUSED = 0;
+
+    // object store access error
+    OBJECT_STORE_ERROR = 1;
+
+    // metadata database access error
+    METADATA_DB_ERROR = 2;
+}
+
+message ApplicationId {
+    string id = 1;
+}
+
+enum StoreKind {
+    RECORDING = 0;
+    BLUEPRINT = 1;
+}
+
+message StoreId {
+    StoreKind kind = 1;
+    string id = 2;
+}
+
+// A date-time represented as nanoseconds since unix epoch
+message Time {
+    int64 nanos_since_epoch = 1;
+}
+
+enum EncoderVersion {
+    V0 = 0;
 }
