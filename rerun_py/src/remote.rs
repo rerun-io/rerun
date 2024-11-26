@@ -209,7 +209,6 @@ impl PyConnection {
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
             let request = UpdateRecordingMetadataRequest {
-                // TODO(jleibs): Description should really just be in the metadata
                 recording_id: Some(RecordingId { id: id.to_owned() }),
                 metadata: Some(metadata),
             };
