@@ -6613,6 +6613,7 @@ dependencies = [
  "image",
  "itertools 0.13.0",
  "nohash-hasher",
+ "parking_lot",
  "rayon",
  "re_context_menu",
  "re_entity_db",

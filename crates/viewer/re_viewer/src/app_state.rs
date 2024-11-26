@@ -174,18 +174,9 @@ impl AppState {
         // and must be applied by `Viewport` at the end of the frame. We use a temporary channel for
         // this, which gives us interior mutability (only a shared reference of `ViewportBlueprint`
         // is available to the UI code) and, if needed in the future, concurrency.
-        let (sender, receiver) = std::sync::mpsc::channel();
-        let viewport_blueprint = ViewportBlueprint::try_from_db(
-            store_context.blueprint,
-            &blueprint_query,
-            sender.clone(),
-        );
-        let mut viewport = Viewport::new(
-            &viewport_blueprint,
-            space_view_class_registry,
-            receiver,
-            sender,
-        );
+        let viewport_blueprint =
+            ViewportBlueprint::try_from_db(store_context.blueprint, &blueprint_query);
+        let mut viewport = Viewport::new(&viewport_blueprint, space_view_class_registry);
 
         // If the blueprint is invalid, reset it.
         if viewport.blueprint.is_invalid() {

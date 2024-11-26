@@ -1,9 +1,10 @@
-use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::{collections::BTreeMap, sync::Arc};
 
 use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use nohash_hasher::IntSet;
+use parking_lot::Mutex;
 use re_types::{Archetype as _, SpaceViewClassIdentifier};
 use smallvec::SmallVec;
 
@@ -55,17 +56,13 @@ pub struct ViewportBlueprint {
     /// Hashes of all recommended space views the viewer has already added and that should not be added again.
     past_viewer_recommendations: IntSet<ViewerRecommendationHash>,
 
-    /// Channel to pass Blueprint mutation messages back to the Viewport.
-    tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
+    /// Blueprint mutation events that will be processed at the end of the frame.
+    pub deferred_tree_actions: Arc<Mutex<Vec<TreeAction>>>,
 }
 
 impl ViewportBlueprint {
     /// Attempt to load a [`SpaceViewBlueprint`] from the blueprint store.
-    pub fn try_from_db(
-        blueprint_db: &re_entity_db::EntityDb,
-        query: &LatestAtQuery,
-        tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
-    ) -> Self {
+    pub fn try_from_db(blueprint_db: &re_entity_db::EntityDb, query: &LatestAtQuery) -> Self {
         re_tracing::profile_function!();
 
         let blueprint_engine = blueprint_db.storage_engine();
@@ -169,7 +166,7 @@ impl ViewportBlueprint {
             auto_layout,
             auto_space_views,
             past_viewer_recommendations,
-            tree_action_sender,
+            deferred_tree_actions: Default::default(),
         }
     }
 
@@ -301,9 +298,7 @@ impl ViewportBlueprint {
     }
 
     fn send_tree_action(&self, action: TreeAction) {
-        if self.tree_action_sender.send(action).is_err() {
-            re_log::warn_once!("Channel between ViewportBlueprint and Viewport is broken");
-        }
+        self.deferred_tree_actions.lock().push(action);
     }
 
     pub fn mark_user_interaction(&self, ctx: &ViewerContext<'_>) {

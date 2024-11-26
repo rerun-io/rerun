@@ -2,8 +2,11 @@
 //!
 //! Contains all space views.
 
+use std::sync::Arc;
+
 use ahash::HashMap;
 use egui_tiles::{Behavior as _, EditAction};
+use parking_lot::Mutex;
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_renderer::ScreenshotProcessor;
@@ -47,25 +50,12 @@ pub struct Viewport<'a> {
     /// Should be set to `true` whenever a tree modification should be back-ported to the blueprint
     /// store. That should _only_ happen as a result of a user action.
     pub tree_edited: bool,
-
-    /// Actions to perform at the end of the frame.
-    ///
-    /// We delay any modifications to the tree until the end of the frame,
-    /// so that we don't mutate something while inspecting it.
-    tree_action_receiver: std::sync::mpsc::Receiver<TreeAction>,
-
-    /// Tree action sender
-    ///
-    /// Used to pass along `TabViewer`.
-    tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
 }
 
 impl<'a> Viewport<'a> {
     pub fn new(
         blueprint: &'a ViewportBlueprint,
         space_view_class_registry: &SpaceViewClassRegistry,
-        tree_action_receiver: std::sync::mpsc::Receiver<TreeAction>,
-        tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
     ) -> Self {
         re_tracing::profile_function!();
 
@@ -86,8 +76,6 @@ impl<'a> Viewport<'a> {
             blueprint,
             tree,
             tree_edited: edited,
-            tree_action_receiver,
-            tree_action_sender,
         }
     }
 
@@ -148,7 +136,7 @@ impl<'a> Viewport<'a> {
                 edited: false,
                 executed_systems_per_space_view,
                 contents_per_tile_id,
-                tree_action_sender: self.tree_action_sender.clone(),
+                deferred_tree_actions: self.blueprint.deferred_tree_actions.clone(),
                 root_container_id: self.blueprint.root_container,
             };
 
@@ -233,7 +221,13 @@ impl<'a> Viewport<'a> {
         let mut reset = false;
 
         // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
-        for tree_action in self.tree_action_receiver.try_iter() {
+        let tree_actions: Vec<TreeAction> = self
+            .blueprint
+            .deferred_tree_actions
+            .lock()
+            .drain(..)
+            .collect();
+        for tree_action in tree_actions {
             re_log::trace!("Processing tree action: {tree_action:?}");
             match tree_action {
                 TreeAction::AddSpaceView(space_view_id, parent_container, position_in_parent) => {
@@ -458,7 +452,7 @@ struct TabViewer<'a, 'b> {
     viewport_blueprint: &'a ViewportBlueprint,
     maximized: &'a mut Option<SpaceViewId>,
     root_container_id: ContainerId,
-    tree_action_sender: std::sync::mpsc::Sender<TreeAction>,
+    deferred_tree_actions: Arc<Mutex<Vec<TreeAction>>>,
 
     /// List of query & system execution results for each space view.
     executed_systems_per_space_view: HashMap<SpaceViewId, (ViewQuery<'a>, SystemExecutionOutput)>,
@@ -769,9 +763,9 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
                 // drag and drop operation often lead to many spurious empty containers. To work
                 // around this, we run a simplification pass when a drop occurs.
 
-                if self
-                    .tree_action_sender
-                    .send(TreeAction::SimplifyContainer(
+                self.deferred_tree_actions
+                    .lock()
+                    .push(TreeAction::SimplifyContainer(
                         self.root_container_id,
                         egui_tiles::SimplificationOptions {
                             prune_empty_tabs: true,
@@ -781,11 +775,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
                             all_panes_must_have_tabs: true,
                             join_nested_linear_containers: false,
                         },
-                    ))
-                    .is_err()
-                {
-                    re_log::warn_once!("Channel between ViewportBlueprint and Viewport is broken");
-                }
+                    ));
 
                 self.edited = true;
             }
