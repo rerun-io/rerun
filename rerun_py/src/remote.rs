@@ -1,11 +1,15 @@
 #![allow(unsafe_op_in_unsafe_fn)]
-use arrow::{array::ArrayData, pyarrow::PyArrowType};
+use arrow::{
+    array::{ArrayData, RecordBatch, RecordBatchIterator, RecordBatchReader},
+    datatypes::Schema,
+    pyarrow::PyArrowType,
+};
 // False positive due to #[pyfunction] macro
 use pyo3::{exceptions::PyRuntimeError, prelude::*, types::PyDict, Bound, PyResult};
 use re_chunk::TransportChunk;
 use re_protos::v0::{
-    storage_node_client::StorageNodeClient, EncoderVersion, ListRecordingsRequest,
-    RecordingMetadata, RecordingType, RegisterRecordingRequest,
+    storage_node_client::StorageNodeClient, EncoderVersion, ListRecordingsRequest, RecordingId,
+    RecordingMetadata, RecordingType, RegisterRecordingRequest, UpdateRecordingMetadataRequest,
 };
 
 /// Register the `rerun.remote` module.
@@ -52,8 +56,9 @@ pub struct PyConnection {
 #[pymethods]
 impl PyConnection {
     /// List all recordings registered with the node.
-    fn list_recordings(&mut self) -> PyResult<Vec<PyRecordingMetadata>> {
-        self.runtime.block_on(async {
+    fn list_recordings(&mut self) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+        let reader = self.runtime.block_on(async {
+            // TODO(jleibs): Support column projection
             let request = ListRecordingsRequest {
                 column_projection: None,
             };
@@ -64,13 +69,33 @@ impl PyConnection {
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-            Ok(resp
+            let transport_chunks = resp
                 .into_inner()
                 .recordings
                 .into_iter()
-                .map(|recording| PyRecordingMetadata { info: recording })
-                .collect())
-        })
+                .map(|recording| recording.data())
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            let record_batches: Vec<Result<RecordBatch, arrow::error::ArrowError>> =
+                transport_chunks
+                    .into_iter()
+                    .map(|tc| tc.try_to_arrow_record_batch())
+                    .collect();
+
+            // TODO(jleibs): surfacing this schema is awkward. This should be more explicit in
+            // the gRPC APIs somehow.
+            let schema = record_batches
+                .first()
+                .and_then(|batch| batch.as_ref().ok().map(|batch| batch.schema()))
+                .unwrap_or(std::sync::Arc::new(Schema::empty()));
+
+            let reader = RecordBatchIterator::new(record_batches, schema);
+
+            Ok::<_, PyErr>(reader)
+        })?;
+
+        Ok(PyArrowType(Box::new(reader)))
     }
 
     /// Register a recording along with some metadata
@@ -144,6 +169,57 @@ impl PyConnection {
             let recording_id: String = resp.id.map_or("Unknown".to_owned(), |id| id.id);
 
             Ok(recording_id)
+        })
+    }
+
+    /// Updates the metadata for a recording.
+    #[pyo3(signature = (
+        id,
+        metadata
+    ))]
+    fn update_metadata(&mut self, id: &str, metadata: &Bound<'_, PyDict>) -> PyResult<()> {
+        self.runtime.block_on(async {
+            let (schema, data): (
+                Vec<arrow2::datatypes::Field>,
+                Vec<Box<dyn arrow2::array::Array>>,
+            ) = metadata
+                .iter()
+                .map(|(key, value)| {
+                    let key = key.to_string();
+                    let value = value.extract::<MetadataLike>()?;
+                    let value_array = value.to_arrow2()?;
+                    let field =
+                        arrow2::datatypes::Field::new(key, value_array.data_type().clone(), true);
+                    Ok((field, value_array))
+                })
+                .collect::<PyResult<Vec<_>>>()?
+                .into_iter()
+                .unzip();
+
+            let schema = arrow2::datatypes::Schema::from(schema);
+
+            let data = arrow2::chunk::Chunk::new(data);
+
+            let metadata_tc = TransportChunk {
+                schema: schema.clone(),
+                data,
+            };
+
+            let metadata = RecordingMetadata::try_from(EncoderVersion::V0, &metadata_tc)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            let request = UpdateRecordingMetadataRequest {
+                // TODO(jleibs): Description should really just be in the metadata
+                recording_id: Some(RecordingId { id: id.to_owned() }),
+                metadata: Some(metadata),
+            };
+
+            self.client
+                .update_recording_metadata(request)
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            Ok(())
         })
     }
 }
