@@ -679,6 +679,7 @@ yourdfpy = "*"
 
 [feature.examples-ros.tasks]
 launch-turtlebot = "ros2 launch nav2_bringup tb3_simulation_launch.py headless:=False"
+rqt-graph = "dot -c && rqt_graph"
 
 [feature.examples-ros.activation.env]
 TURTLEBOT3_MODEL = "waffle"
