@@ -672,6 +672,7 @@ human_pose_tracking = { path = "examples/python/human_pose_tracking", editable =
 
 [feature.examples-ros.dependencies]
 scipy = "*"
+pyarrow = "*"
 pycollada = "*"
 opencv = "4.9"  # Required by humble
 yourdfpy = "*"
