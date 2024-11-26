@@ -1,3 +1,4 @@
+use egui::Color32;
 use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, Instance};
 use re_query::{clamped_zip_2x4, range_zip_1x4};
@@ -25,11 +26,11 @@ pub struct NodeVisualizer {
 pub enum Label {
     Circle {
         radius: f32,
-        color: Option<egui::Color32>,
+        color: Option<Color32>,
     },
     Text {
         text: ArrowString,
-        color: Option<egui::Color32>,
+        color: Option<Color32>,
     },
 }
 
@@ -145,7 +146,6 @@ impl VisualizerSystem for NodeVisualizer {
                     Option::<f32>::default,
                 )
                 .map(|(node, instance, color, position, label, radius)| {
-
                     let color = color.map(|&c| egui::Color32::from(c));
                     let label = match (label, show_label) {
                         (Some(label), true) => Label::Text {

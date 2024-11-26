@@ -1,4 +1,4 @@
-mod draw;
+pub mod draw;
 mod state;
 
 pub mod scene;

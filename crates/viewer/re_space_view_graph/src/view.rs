@@ -21,7 +21,7 @@ use std::hash::{Hash as _, Hasher as _};
 
 use crate::{
     graph::Graph,
-    ui::{scene::SceneBuilder, Discriminator, GraphSpaceViewState},
+    ui::{draw::DrawableNode, Discriminator, GraphSpaceViewState},
     visualizers::{merge, EdgesVisualizer, NodeVisualizer},
 };
 
@@ -185,41 +185,19 @@ Display a graph of nodes and edges.
 
         let text = "hello world";
 
-        let galley =
-            egui::WidgetText::from(egui::RichText::new(text).color(egui::Color32::LIGHT_RED))
-                .into_galley(
-                    ui,
-                    Some(egui::TextWrapMode::Extend),
-                    f32::INFINITY,
-                    egui::FontSelection::Default,
-                );
-
-        let galley_size = galley.size();
-
-        let frame = egui::Frame {
-            inner_margin: egui::Margin::symmetric(6., 3.),
-            stroke: egui::Stroke::new(2.0, egui::Color32::LIGHT_RED),
-            ..Default::default()
-        };
-
-        let node_size =
-            galley_size + frame.total_margin().sum() + egui::Vec2::splat(2.0 * frame.stroke.width);
+        let node = DrawableNode::text(ui, text, None, Default::default());
+        let circle_node = DrawableNode::circle(ui, None, None);
 
         let view_rect = ui.max_rect();
         //ui.set_clip_rect(view_rect);
 
         let inverse_transform = state.transform.inverse();
 
-        dbg!(&state.transform);
-
-        let process_resp = |resp: egui::Response| todo!();
-
         let base_id = egui::Id::new(query.space_view_id);
         let inner_resp = egui::Area::new(base_id.with("view"))
             .constrain_to(view_rect)
             .order(egui::Order::Middle)
             .kind(egui::UiKind::GenericArea)
-            .fade_in(false)
             .show(ui.ctx(), |ui| {
                 // let resp =
                 //     ui.interact(ui.max_rect(), base_id.with("sub_view"), egui::Sense::drag());
@@ -234,37 +212,38 @@ Display a graph of nodes and edges.
 
                 let resp = {
                     let mut node_ui = ui.new_child(egui::UiBuilder::new().max_rect(
-                        egui::Rect::from_center_size(egui::pos2(400., 400.), node_size),
+                        egui::Rect::from_center_size(egui::pos2(400., 400.), node.size()),
                     ));
 
-                    frame
-                        .show(&mut node_ui, |ui| {
-                            ui.add(
-                                egui::Label::new(galley)
-                                    .selectable(false)
-                                    .sense(egui::Sense::drag()),
-                            )
-                            .on_hover_text("hello tooltip")
-                        })
-                        .inner
+                    node.draw(&mut node_ui)
                 };
 
-                resp
+                if resp.dragged() {
+                    state.transform.translation += resp.drag_delta();
+                }
+
+                let resp = {
+                    let mut node_ui = ui.new_child(egui::UiBuilder::new().max_rect(
+                        egui::Rect::from_center_size(egui::pos2(600., 400.), circle_node.size()),
+                    ));
+
+                    circle_node.draw(&mut node_ui)
+                };
+
+                if resp.dragged() {
+                    state.transform.translation += resp.drag_delta();
+                }
+
             });
 
         ui.ctx()
             .set_transform_layer(inner_resp.response.layer_id, state.transform);
 
         let resp = ui.allocate_rect(view_rect, egui::Sense::drag());
-
-        dbg!(&resp);
         if resp.dragged() {
             state.transform.translation += resp.drag_delta();
         }
 
-        if inner_resp.inner.dragged() {
-            state.transform.translation += inner_resp.inner.drag_delta();
-        }
 
         if let Some(mouse_pos) = resp.hover_pos() {
             let pointer_in_world = inverse_transform * mouse_pos;
