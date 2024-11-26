@@ -23,6 +23,7 @@ utf8
 * [`GraphNode`](../components/graph_node.md?speculative-link)
 * [`MediaType`](../components/media_type.md)
 * [`Name`](../components/name.md)
+* [`RecordingUri`](../components/recording_uri.md?speculative-link)
 * [`TextLogLevel`](../components/text_log_level.md)
 * [`Text`](../components/text.md)
 * [`Utf8Pair`](../datatypes/utf8pair.md?speculative-link)
