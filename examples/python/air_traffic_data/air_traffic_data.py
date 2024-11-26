@@ -42,11 +42,11 @@ def download_with_progress(url: str, what: str) -> io.BytesIO:
     resp = requests.get(url, stream=True)
     total_size = int(resp.headers.get("content-length", 0))
     with tqdm(
-            desc=f"Downloading {what}…",
-            total=total_size,
-            unit="iB",
-            unit_scale=True,
-            unit_divisor=1024,
+        desc=f"Downloading {what}…",
+        total=total_size,
+        unit="iB",
+        unit_scale=True,
+        unit_divisor=1024,
     ) as progress:
         download_file = io.BytesIO()
         for data in resp.iter_content(chunk_size):
@@ -73,7 +73,7 @@ def shapely_geom_to_numpy(geom: shapely.Geometry) -> list[npt.NDArray[np.float64
 
 
 def log_region_boundaries_for_country(
-        country_code: str, level: int, color: tuple[float, float, float], crs: CRS
+    country_code: str, level: int, color: tuple[float, float, float], crs: CRS
 ) -> None:
     """Log some boundaries for the given country and level."""
 
@@ -241,9 +241,9 @@ class MeasurementLogger:
         entity_path = f"aircraft/{measurement.icao_id}"
 
         if (
-                measurement.latitude is not None
-                and measurement.longitude is not None
-                and measurement.barometric_altitude is not None
+            measurement.latitude is not None
+            and measurement.longitude is not None
+            and measurement.barometric_altitude is not None
         ):
             rr.log(
                 entity_path,

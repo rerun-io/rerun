@@ -1,6 +1,6 @@
 <!--[metadata]
-title = "Air Traffic Data"
-tags = ["2d", "3d", "map", "crs"]
+title = "Air traffic data"
+tags = ["2D", "3D", "map", "crs"]
 description = "Display aircraft traffic data"
 -->
 
