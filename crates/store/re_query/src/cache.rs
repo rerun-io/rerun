@@ -319,7 +319,7 @@ impl ChunkStoreSubscriber for QueryCache {
                         // If a compaction was triggered, make sure to drop the original chunks too.
                         compacted_events.extend(compacted.iter().flat_map(
                             |ChunkCompactionReport {
-                                 compacted_chunks,
+                                 srcs: compacted_chunks,
                                  new_chunk: _,
                              }| compacted_chunks.keys().copied(),
                         ));
@@ -340,7 +340,7 @@ impl ChunkStoreSubscriber for QueryCache {
 
                             // If a compaction was triggered, make sure to drop the original chunks too.
                             if let Some(ChunkCompactionReport {
-                                compacted_chunks,
+                                srcs: compacted_chunks,
                                 new_chunk: _,
                             }) = compacted
                             {
@@ -374,7 +374,7 @@ impl ChunkStoreSubscriber for QueryCache {
                             // If a compaction was triggered, make sure to drop the original chunks too.
                             compacted_events.extend(compacted.iter().flat_map(
                                 |ChunkCompactionReport {
-                                     compacted_chunks,
+                                     srcs: compacted_chunks,
                                      new_chunk: _,
                                  }| {
                                     compacted_chunks.keys().copied()

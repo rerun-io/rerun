@@ -111,7 +111,7 @@ impl ChunkStoreSubscriber for PathRecursiveChunksPerTimelineStoreSubscriber {
             let path_recursive_chunks = self.per_store.entry(event.store_id.clone()).or_default();
 
             if let Some(re_chunk_store::ChunkCompactionReport {
-                compacted_chunks,
+                srcs: compacted_chunks,
                 new_chunk,
             }) = &event.diff.compacted
             {

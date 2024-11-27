@@ -85,7 +85,7 @@ impl ChunkStoreDiffKind {
 #[derive(Debug, Clone)]
 pub struct ChunkCompactionReport {
     /// The chunks that were merged into a new chunk.
-    pub compacted_chunks: BTreeMap<ChunkId, Arc<Chunk>>,
+    pub srcs: BTreeMap<ChunkId, Arc<Chunk>>,
 
     /// The new chunk that was created as the result of the compaction.
     pub new_chunk: Arc<Chunk>,
@@ -94,8 +94,7 @@ pub struct ChunkCompactionReport {
 impl PartialEq for ChunkCompactionReport {
     #[inline]
     fn eq(&self, rhs: &Self) -> bool {
-        self.compacted_chunks.keys().eq(rhs.compacted_chunks.keys())
-            && self.new_chunk.id() == rhs.new_chunk.id()
+        self.srcs.keys().eq(rhs.srcs.keys()) && self.new_chunk.id() == rhs.new_chunk.id()
     }
 }
 
