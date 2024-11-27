@@ -335,10 +335,6 @@ impl ListItem {
             style_response.hovered = true;
         }
 
-        if egui::DragAndDrop::has_any_payload(ui.ctx()) {
-            //style_response.hovered = false;
-        }
-
         let mut collapse_response = None;
 
         let visuals = ui.style().interact_selectable(&style_response, selected);
