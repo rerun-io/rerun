@@ -4,7 +4,7 @@ use re_types::components;
 use super::GraphNodeHash;
 
 // TODO(grtlr): Rename this to `NodeId`.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct NodeIndex {
     pub entity_hash: EntityPathHash,
     pub node_hash: GraphNodeHash,

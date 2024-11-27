@@ -1,7 +1,7 @@
 mod hash;
 use std::hash::{Hash as _, Hasher as _};
 
-use egui::Pos2;
+use egui::{Pos2, Vec2};
 pub(crate) use hash::GraphNodeHash;
 mod index;
 pub(crate) use index::NodeIndex;
@@ -33,15 +33,26 @@ pub enum Node {
 impl Node {
     pub fn id(&self) -> NodeIndex {
         match self {
-            Node::Explicit { id, .. } => *id,
-            Node::Implicit { id, .. } => *id,
+            Self::Explicit { id, .. } | Self::Implicit { id, .. } => *id,
         }
     }
 
     pub fn label(&self) -> &DrawableLabel {
         match self {
-            Node::Explicit { label, .. } => label,
-            Node::Implicit { label, .. } => label,
+            Self::Explicit { label, .. } | Self::Implicit { label, .. } => label,
+        }
+    }
+
+    pub fn size(&self) -> Vec2 {
+        match self {
+            Self::Explicit { label, .. } | Self::Implicit { label, .. } => label.size(),
+        }
+    }
+
+    pub fn position(&self) -> Option<Pos2> {
+        match self {
+            Self::Explicit { position, .. } => *position,
+            Self::Implicit { .. } => None,
         }
     }
 }
@@ -136,6 +147,11 @@ impl Graph {
         self.kind
     }
 
+    pub fn entity(&self) -> &EntityPath {
+        &self.entity
+    }
+
+    #[deprecated]
     pub fn size_hash(&self) -> u64 {
         let mut hasher = ahash::AHasher::default();
         for node in &self.nodes {

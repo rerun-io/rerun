@@ -1,4 +1,4 @@
-use egui::{emath::TSTransform, Color32, Pos2, Stroke};
+use egui::{emath::TSTransform, Color32, Layout, Pos2, Stroke};
 use re_log_types::EntityPath;
 use re_space_view::{
     controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER},
@@ -20,10 +20,7 @@ use re_viewport_blueprint::ViewProperty;
 use std::hash::{Hash as _, Hasher as _};
 
 use crate::{
-    canvas::{draw_debug, draw_node, zoom_pan_area},
-    graph::Graph,
-    ui::{draw::DrawableLabel, Discriminator, GraphSpaceViewState},
-    visualizers::{merge, EdgesVisualizer, NodeVisualizer},
+    canvas::{draw_debug, draw_node, zoom_pan_area}, graph::Graph, layout::LayoutRequest, ui::{draw::DrawableLabel, Discriminator, GraphSpaceViewState}, visualizers::{merge, EdgesVisualizer, NodeVisualizer}
 };
 
 #[derive(Default)]
@@ -163,6 +160,8 @@ Display a graph of nodes and edges.
 
         let view_rect = ui.max_rect();
 
+        let request = LayoutRequest::from_graphs(graphs.iter());
+
         // The descriminator is used to determine if the layout needs to be recomputed.
         let discriminator = {
             let mut hasher = ahash::AHasher::default();
@@ -172,7 +171,6 @@ Display a graph of nodes and edges.
             hasher.finish()
         };
 
-        let layout_was_empty = state.layout_state.is_none();
         let layout = state.layout_state.get(discriminator, &graphs);
 
         let (resp, new_bounds) = zoom_pan_area(
@@ -185,7 +183,8 @@ Display a graph of nodes and edges.
 
                 for graph in graphs {
                     for node in graph.nodes() {
-                        let center = layout.get(&node.id()).unwrap_or(egui::Rect::ZERO).center();
+                        // TODO(grtlr): provide debug assertions here.
+                        let center = layout.get_node(&node.id()).unwrap_or(egui::Rect::ZERO).center();
 
                         // TODO(grtlr): Add proper highlights here:
                         let resp = draw_node(

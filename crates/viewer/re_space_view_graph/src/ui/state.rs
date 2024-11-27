@@ -6,7 +6,7 @@ use re_viewer_context::SpaceViewState;
 
 use crate::{
     graph::Graph,
-    layout::{ForceLayout, Layout},
+    layout::{ForceLayoutProvider, Layout},
 };
 
 /// Space view state for the custom space view.
@@ -72,12 +72,12 @@ pub enum LayoutState {
     InProgress {
         discriminator: Discriminator,
         layout: Layout,
-        provider: ForceLayout,
+        provider: ForceLayoutProvider,
     },
     Finished {
         discriminator: Discriminator,
         layout: Layout,
-        _provider: ForceLayout,
+        _provider: ForceLayoutProvider,
     },
 }
 
@@ -118,7 +118,7 @@ impl LayoutState {
             }
             // We need to recompute the layout.
             Self::None | Self::Finished { .. } => {
-                let provider = ForceLayout::new(graphs);
+                let provider = ForceLayoutProvider::new(graphs);
                 let layout = provider.init();
 
                 Self::InProgress {
@@ -130,7 +130,7 @@ impl LayoutState {
             Self::InProgress {
                 ref discriminator, ..
             } if discriminator != &requested => {
-                let provider = ForceLayout::new(graphs);
+                let provider = ForceLayoutProvider::new(graphs);
                 let layout = provider.init();
 
                 Self::InProgress {
