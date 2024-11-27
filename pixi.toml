@@ -602,6 +602,9 @@ macos = "12.0" # needed for scipy
 [feature.examples-common.dependencies]
 python = "=3.11"
 
+# TODO(ab): otherwise pixi will try to build from source and fail, not sure why (used by air_traffic_data)
+pyproj = ">=3.7.0"
+
 [feature.examples-common.pypi-dependencies]
 # External deps
 jupyter = ">=1.0"
@@ -612,6 +615,7 @@ mesh-to-sdf = { git = "https://github.com/marian42/mesh_to_sdf.git" }
 
 # Rerun libs
 
+air_traffic_data = { path = "examples/python/air_traffic_data", editable = true }
 arkit_scenes = { path = "examples/python/arkit_scenes", editable = true }
 blueprint = { path = "examples/python/blueprint", editable = true }
 blueprint_stocks = { path = "examples/python/blueprint_stocks", editable = true }
