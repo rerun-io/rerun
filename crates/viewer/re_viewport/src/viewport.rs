@@ -37,26 +37,24 @@ fn tree_simplification_options() -> egui_tiles::SimplificationOptions {
 // ----------------------------------------------------------------------------
 
 /// Defines the layout of the Viewport
-pub struct Viewport<'a> {
+pub struct Viewport {
     /// The blueprint that drives this viewport. This is the source of truth from the store
     /// for this frame.
-    pub blueprint: &'a ViewportBlueprint,
+    pub blueprint: ViewportBlueprint,
 }
 
-impl<'a> Viewport<'a> {
-    pub fn new(blueprint: &'a ViewportBlueprint) -> Self {
-        re_tracing::profile_function!();
-
+impl Viewport {
+    pub fn new(blueprint: ViewportBlueprint) -> Self {
         Self { blueprint }
     }
 
     pub fn viewport_ui(
         &self,
         ui: &mut egui::Ui,
-        ctx: &'a ViewerContext<'_>,
+        ctx: &ViewerContext<'_>,
         view_states: &mut ViewStates,
     ) {
-        let Viewport { blueprint } = self;
+        let Self { blueprint } = self;
 
         let is_zero_sized_viewport = ui.available_size().min_elem() <= 0.0;
         if is_zero_sized_viewport || !ui.is_visible() {
@@ -189,12 +187,14 @@ impl<'a> Viewport<'a> {
     /// Process any deferred `TreeActions` and then sync to blueprint
     // TODO: move to ViewportBlueprint
     pub fn update_and_sync_tile_tree_to_blueprint(
+        self,
         ctx: &ViewerContext<'_>,
         space_view_class_registry: &SpaceViewClassRegistry,
-        mut bp: ViewportBlueprint,
     ) {
         re_tracing::profile_function!();
         // At the end of the Tree-UI, we can safely apply deferred actions.
+
+        let Self { blueprint: mut bp } = self;
 
         let mut run_auto_layout = false;
 

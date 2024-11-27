@@ -24,6 +24,13 @@ use crate::{container::ContainerBlueprint, SpaceViewBlueprint, TreeAction, VIEWP
 // ----------------------------------------------------------------------------
 
 /// Describes the layout and contents of the Viewport Panel.
+///
+/// The is loaded from the blueprint store at the start of each frame.
+///
+/// It remain immutable during the frame.
+///
+/// Any change is queued up into [`Self::deferred_tree_actions`] and applied at the end of the frame,
+/// right before saving to the blueprint store.
 pub struct ViewportBlueprint {
     /// Where the space views are stored.
     ///

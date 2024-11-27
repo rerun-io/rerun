@@ -176,7 +176,7 @@ impl AppState {
         // is available to the UI code) and, if needed in the future, concurrency.
         let viewport_blueprint =
             ViewportBlueprint::try_from_db(store_context.blueprint, &blueprint_query);
-        let viewport = Viewport::new(&viewport_blueprint);
+        let viewport = Viewport::new(viewport_blueprint);
 
         // If the blueprint is invalid, reset it.
         if viewport.blueprint.is_invalid() {
@@ -349,7 +349,7 @@ impl AppState {
             if app_options.inspect_blueprint_timeline {
                 blueprint_panel.show_panel(
                     &ctx,
-                    &viewport_blueprint,
+                    &viewport.blueprint,
                     ctx.store_context.blueprint,
                     blueprint_cfg,
                     ui,
@@ -363,7 +363,7 @@ impl AppState {
 
             time_panel.show_panel(
                 &ctx,
-                &viewport_blueprint,
+                &viewport.blueprint,
                 ctx.recording(),
                 ctx.rec_cfg,
                 ui,
@@ -376,7 +376,7 @@ impl AppState {
 
             selection_panel.show_panel(
                 &ctx,
-                &viewport_blueprint,
+                &viewport.blueprint,
                 view_states,
                 ui,
                 app_blueprint.selection_panel_state().is_expanded(),
@@ -431,7 +431,7 @@ impl AppState {
                     ui.add_space(4.0);
 
                     if !show_welcome {
-                        blueprint_tree.show(&ctx, &viewport_blueprint, ui);
+                        blueprint_tree.show(&ctx, &viewport.blueprint, ui);
                     }
                 },
             );
@@ -465,14 +465,10 @@ impl AppState {
         // Other UI things
         //
 
-        add_space_view_or_container_modal_ui(&ctx, &viewport_blueprint, ui);
+        add_space_view_or_container_modal_ui(&ctx, &viewport.blueprint, ui);
 
         // Process deferred layout operations and apply updates back to blueprint:
-        Viewport::update_and_sync_tile_tree_to_blueprint(
-            &ctx,
-            space_view_class_registry,
-            viewport_blueprint,
-        );
+        viewport.update_and_sync_tile_tree_to_blueprint(&ctx, space_view_class_registry);
 
         if WATERMARK {
             ui.ctx().paint_watermark();
