@@ -17,7 +17,7 @@ pub enum CollapseScope {
     /// The stream tree from the blueprint debug time panel
     BlueprintStreamsTree,
 
-    /// Blueprint tree from the blueprint panel
+    /// Blueprint tree from the blueprint panel (left panel)
     BlueprintTree,
 }
 
