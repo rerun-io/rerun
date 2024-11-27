@@ -9,11 +9,15 @@ use crate::{ContainerId, SpaceViewId};
 
 /// The various scopes for which we want to track collapsed state.
 #[derive(Debug, Clone, Copy, Hash)]
+#[allow(clippy::enum_variant_names)]
 pub enum CollapseScope {
     /// Stream tree from the time panel
     StreamsTree,
 
-    /// Blueprint tree from the blueprint panel
+    /// The stream tree from the blueprint debug time panel
+    BlueprintStreamsTree,
+
+    /// Blueprint tree from the blueprint panel (left panel)
     BlueprintTree,
 }
 
