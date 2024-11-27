@@ -21,7 +21,7 @@ boolean
 ## API reference links
  * 🌊 [C++ API docs for `ShowLabels`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1ShowLabels.html)
  * 🐍 [Python API docs for `ShowLabels`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.ShowLabels)
- * 🦀 [Rust API docs for `ShowLabels`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.ShowLabels.html)
+ * 🦀 [Rust API docs for `ShowLabels`](https://docs.rs/rerun/latest/rerun/components/struct.ShowLabels.html)
 
 
 ## Used by
@@ -32,6 +32,7 @@ boolean
 * [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
+* [`GraphNodes`](../archetypes/graph_nodes.md?speculative-link)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
 * [`LineStrips3D`](../archetypes/line_strips3d.md)
 * [`Points2D`](../archetypes/points2d.md)

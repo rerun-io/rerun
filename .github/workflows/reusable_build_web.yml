@@ -42,8 +42,9 @@ defaults:
     shell: bash
 
 permissions:
-  contents: "read"
+  contents: "write"
   id-token: "write"
+  pull-requests: "write"
 
 jobs:
   rs-build-web-viewer:
@@ -53,6 +54,28 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || '' }}
+
+      - name: Get sha
+        id: get-sha
+        run: |
+          full_commit="${{ (github.event_name == 'pull_request' && github.event.pull_request.head.sha) || github.sha }}"
+          echo "sha=$(echo $full_commit | cut -c1-7)" >> "$GITHUB_OUTPUT"
+
+      - name: Status comment
+        if: github.event_name == 'pull_request'
+        # https://github.com/mshick/add-pr-comment
+        uses: mshick/add-pr-comment@v2.8.2
+        with:
+          message-id: "web-viewer-build-status"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            Web viewer is being built.
+
+            | Result | Commit  | Link  |
+            | ------ | ------- | ----- |
+            | ⏳ | ${{ steps.get-sha.outputs.sha }} | https://rerun.io/viewer/pr/${{ github.event.pull_request.number }} |
+
+            <sup>Note: This comment is updated whenever you push a commit.</sup>
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
@@ -91,3 +114,19 @@ jobs:
         with:
           name: web_viewer
           path: web_viewer
+
+      - name: Status comment
+        if: failure() && github.event_name == 'pull_request'
+        # https://github.com/mshick/add-pr-comment
+        uses: mshick/add-pr-comment@v2.8.2
+        with:
+          message-id: "web-viewer-build-status"
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          message: |
+            Web viewer failed to build.
+
+            | Result | Commit  | Link  |
+            | ------ | ------- | ----- |
+            | ❌ | ${{ steps.get-sha.outputs.sha }} | https://rerun.io/viewer/pr/${{ github.event.pull_request.number }} |
+
+            <sup>Note: This comment is updated whenever you push a commit.</sup>

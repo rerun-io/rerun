@@ -84,7 +84,7 @@ class TimeRangeBatch(BaseBatch[TimeRangeArrayLike]):
                 pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
                 pa.field("Infinite", pa.null(), nullable=True, metadata={}),
             ]),
-            nullable=False,
+            nullable=True,
             metadata={},
         ),
         pa.field(
@@ -95,7 +95,7 @@ class TimeRangeBatch(BaseBatch[TimeRangeArrayLike]):
                 pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
                 pa.field("Infinite", pa.null(), nullable=True, metadata={}),
             ]),
-            nullable=False,
+            nullable=True,
             metadata={},
         ),
     ])

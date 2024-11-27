@@ -379,6 +379,7 @@ impl App {
         self.screenshotter.is_screenshotting()
     }
 
+    #[allow(clippy::needless_pass_by_ref_mut)]
     pub fn add_receiver(&mut self, rx: re_smart_channel::Receiver<LogMsg>) {
         // Make sure we wake up when a message is sent.
         #[cfg(not(target_arch = "wasm32"))]
@@ -959,7 +960,7 @@ impl App {
     }
 
     fn memory_panel_ui(
-        &mut self,
+        &self,
         ui: &mut egui::Ui,
         gpu_resource_stats: &WgpuResourcePoolStatistics,
         store_stats: Option<&StoreHubStats>,
@@ -983,7 +984,7 @@ impl App {
             });
     }
 
-    fn egui_debug_panel_ui(&mut self, ui: &mut egui::Ui) {
+    fn egui_debug_panel_ui(&self, ui: &mut egui::Ui) {
         let egui_ctx = ui.ctx().clone();
 
         egui::SidePanel::left("style_panel")
@@ -1123,7 +1124,7 @@ impl App {
         }
     }
 
-    fn receive_messages(&mut self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
+    fn receive_messages(&self, store_hub: &mut StoreHub, egui_ctx: &egui::Context) {
         re_tracing::profile_function!();
 
         let start = web_time::Instant::now();
@@ -1890,6 +1891,8 @@ fn populate_space_view_class_registry_with_builtin(
 ) -> Result<(), SpaceViewClassRegistryError> {
     re_tracing::profile_function!();
     space_view_class_registry.add_class::<re_space_view_bar_chart::BarChartSpaceView>()?;
+    space_view_class_registry.add_class::<re_space_view_dataframe::DataframeSpaceView>()?;
+    space_view_class_registry.add_class::<re_space_view_graph::GraphSpaceView>()?;
     #[cfg(feature = "map_view")]
     space_view_class_registry.add_class::<re_space_view_map::MapSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_spatial::SpatialSpaceView2D>()?;
@@ -1898,7 +1901,6 @@ fn populate_space_view_class_registry_with_builtin(
     space_view_class_registry.add_class::<re_space_view_text_document::TextDocumentSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_text_log::TextSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_time_series::TimeSeriesSpaceView>()?;
-    space_view_class_registry.add_class::<re_space_view_dataframe::DataframeSpaceView>()?;
 
     Ok(())
 }

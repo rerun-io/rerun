@@ -146,13 +146,13 @@ impl RenderPipelineDesc {
                 layout: Some(pipeline_layout),
                 vertex: wgpu::VertexState {
                     module: vertex_shader_module,
-                    entry_point: &self.vertex_entrypoint,
+                    entry_point: Some(&self.vertex_entrypoint),
                     buffers: &buffers,
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
                 },
                 fragment: wgpu::FragmentState {
                     module: fragment_shader_module,
-                    entry_point: &self.fragment_entrypoint,
+                    entry_point: Some(&self.fragment_entrypoint),
                     targets: &self.render_targets,
                     compilation_options: wgpu::PipelineCompilationOptions::default(),
                 }

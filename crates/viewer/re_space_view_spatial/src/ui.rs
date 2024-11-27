@@ -98,7 +98,7 @@ impl SpatialSpaceViewState {
             .sum();
     }
 
-    pub fn bounding_box_ui(&mut self, ui: &mut egui::Ui, spatial_kind: SpatialSpaceViewKind) {
+    pub fn bounding_box_ui(&self, ui: &mut egui::Ui, spatial_kind: SpatialSpaceViewKind) {
         ui.grid_left_hand_label("Bounding box")
             .on_hover_text("The bounding box encompassing all Entities in the view right now");
         ui.vertical(|ui| {

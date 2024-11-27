@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use arrow2::array::Array as ArrowArray;
+use arrow2::array::Array as Arrow2Array;
 
 use itertools::Itertools;
 use re_chunk::{Chunk, ChunkId, RowId, TimePoint};
@@ -23,7 +23,7 @@ fn query_latest_array(
     entity_path: &EntityPath,
     component_name: ComponentName,
     query: &LatestAtQuery,
-) -> Option<(TimeInt, RowId, Box<dyn ArrowArray>)> {
+) -> Option<(TimeInt, RowId, Box<dyn Arrow2Array>)> {
     re_tracing::profile_function!();
 
     let ((data_time, row_id), unit) = store
@@ -56,7 +56,7 @@ fn all_components() -> anyhow::Result<()> {
         |store: &ChunkStore, entity_path: &EntityPath, expected: Option<&[ComponentName]>| {
             let timeline = Timeline::new("frame_nr", TimeType::Sequence);
 
-            let component_names = store.all_components_on_timeline(&timeline, entity_path);
+            let component_names = store.all_components_on_timeline_sorted(&timeline, entity_path);
 
             let expected_component_names = expected.map(|expected| {
                 let expected: ComponentNameSet = expected.iter().copied().collect();

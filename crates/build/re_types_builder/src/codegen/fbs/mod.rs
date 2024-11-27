@@ -18,7 +18,7 @@ impl FbsCodeGenerator {
     }
 
     fn add_include_for(
-        &mut self,
+        &self,
         reporter: &crate::Reporter,
         files_to_write: &mut std::collections::BTreeMap<Utf8PathBuf, String>,
         directory: &str,

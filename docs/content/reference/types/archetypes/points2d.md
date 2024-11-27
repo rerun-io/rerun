@@ -21,7 +21,7 @@ A 2D point cloud with positions and optional colors, radii, labels, etc.
 ## API reference links
  * 🌊 [C++ API docs for `Points2D`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1archetypes_1_1Points2D.html)
  * 🐍 [Python API docs for `Points2D`](https://ref.rerun.io/docs/python/stable/common/archetypes#rerun.archetypes.Points2D)
- * 🦀 [Rust API docs for `Points2D`](https://ref.rerun.io/docs/rust/stable/rerun/archetypes/struct.Points2D.html)
+ * 🦀 [Rust API docs for `Points2D`](https://docs.rs/rerun/latest/rerun/archetypes/struct.Points2D.html)
 
 ## Examples
 

@@ -1,0 +1,22 @@
+name: First time contributors
+
+on:
+  pull_request_target:
+
+permissions:
+  contents: "write"
+  id-token: "write"
+  pull-requests: "write"
+
+jobs:
+  comment:
+    name: Comment on PRs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/first-interaction@v1.3.0
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          pr-message: |
+            Hi! Thanks for opening this pull request.
+
+            Because this is your first time contributing to this repository, make sure you've read our [Contributor Guide](https://github.com/rerun-io/rerun/blob/main/CONTRIBUTING.md) and [Code of Conduct](https://github.com/rerun-io/rerun/blob/main/CODE_OF_CONDUCT.md).

@@ -1,7 +1,5 @@
 //! Methods for handling Arrow datamodel log ingest
 
-use std::collections::BTreeMap;
-
 use arrow::{
     array::{make_array, ArrayData},
     pyarrow::PyArrowType,
@@ -19,7 +17,7 @@ use pyo3::{
 
 use re_chunk::{Chunk, ChunkError, ChunkId, PendingRow, RowId, TimeColumn};
 use re_log_types::TimePoint;
-use re_sdk::{ComponentName, EntityPath, Timeline};
+use re_sdk::{external::nohash_hasher::IntMap, ComponentName, EntityPath, Timeline};
 
 /// Perform conversion between a pyarrow array to arrow2 types.
 ///
@@ -116,7 +114,7 @@ pub fn build_chunk_from_components(
         })
         .collect();
 
-    let timelines: BTreeMap<Timeline, TimeColumn> = timelines
+    let timelines: IntMap<Timeline, TimeColumn> = timelines
         .map_err(|err| PyRuntimeError::new_err(format!("Error converting temporal data: {err}")))?
         .into_iter()
         .map(|(timeline, value)| (timeline, TimeColumn::new(None, timeline, value)))
@@ -155,7 +153,7 @@ pub fn build_chunk_from_components(
         })
         .collect();
 
-    let components: BTreeMap<ComponentName, ListArray<i32>> = components
+    let components: IntMap<ComponentName, ListArray<i32>> = components
         .map_err(|err| PyRuntimeError::new_err(format!("Error converting component data: {err}")))?
         .into_iter()
         .collect();

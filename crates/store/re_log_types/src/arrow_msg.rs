@@ -1,17 +1,17 @@
 //! [`ArrowMsg`] is the [`crate::LogMsg`] sub-type containing an Arrow payload.
 //!
 //! We have custom implementations of [`serde::Serialize`] and [`serde::Deserialize`] that wraps
-//! the inner Arrow serialization of [`ArrowSchema`] and [`ArrowChunk`].
+//! the inner Arrow serialization of [`Arrow2Schema`] and [`Arrow2Chunk`].
 
 use std::sync::Arc;
 
 use crate::TimePoint;
 use arrow2::{
-    array::Array as ArrowArray, chunk::Chunk as ArrowChunk, datatypes::Schema as ArrowSchema,
+    array::Array as Arrow2Array, chunk::Chunk as Arrow2Chunk, datatypes::Schema as Arrow2Schema,
 };
 
 /// An arbitrary callback to be run when an [`ArrowMsg`], and more specifically the
-/// [`ArrowChunk`] within it, goes out of scope.
+/// [`Arrow2Chunk`] within it, goes out of scope.
 ///
 /// If the [`ArrowMsg`] has been cloned in a bunch of places, the callback will run for each and
 /// every instance.
@@ -20,10 +20,10 @@ use arrow2::{
 // TODO(#6412): probably don't need this anymore.
 #[allow(clippy::type_complexity)]
 #[derive(Clone)]
-pub struct ArrowChunkReleaseCallback(Arc<dyn Fn(ArrowChunk<Box<dyn ArrowArray>>) + Send + Sync>);
+pub struct ArrowChunkReleaseCallback(Arc<dyn Fn(Arrow2Chunk<Box<dyn Arrow2Array>>) + Send + Sync>);
 
 impl std::ops::Deref for ArrowChunkReleaseCallback {
-    type Target = dyn Fn(ArrowChunk<Box<dyn ArrowArray>>) + Send + Sync;
+    type Target = dyn Fn(Arrow2Chunk<Box<dyn Arrow2Array>>) + Send + Sync;
 
     #[inline]
     fn deref(&self) -> &Self::Target {
@@ -33,7 +33,7 @@ impl std::ops::Deref for ArrowChunkReleaseCallback {
 
 impl<F> From<F> for ArrowChunkReleaseCallback
 where
-    F: Fn(ArrowChunk<Box<dyn ArrowArray>>) + Send + Sync + 'static,
+    F: Fn(Arrow2Chunk<Box<dyn Arrow2Array>>) + Send + Sync + 'static,
 {
     #[inline]
     fn from(f: F) -> Self {
@@ -80,10 +80,10 @@ pub struct ArrowMsg {
     pub timepoint_max: TimePoint,
 
     /// Schema for all control & data columns.
-    pub schema: ArrowSchema,
+    pub schema: Arrow2Schema,
 
     /// Data for all control & data columns.
-    pub chunk: ArrowChunk<Box<dyn ArrowArray>>,
+    pub chunk: Arrow2Chunk<Box<dyn Arrow2Array>>,
 
     // pub on_release: Option<Arc<dyn FnOnce() + Send + Sync>>,
     pub on_release: Option<ArrowChunkReleaseCallback>,
@@ -183,7 +183,7 @@ impl<'de> serde::Deserialize<'de> for ArrowMsg {
                         .map_err(|err| serde::de::Error::custom(format!("Arrow error: {err}")))?;
 
                     if chunks.is_empty() {
-                        return Err(serde::de::Error::custom("No ArrowChunk found in stream"));
+                        return Err(serde::de::Error::custom("No Arrow2Chunk found in stream"));
                     }
                     if chunks.len() > 1 {
                         return Err(serde::de::Error::custom(format!(

@@ -4,7 +4,7 @@ use std::sync::Arc;
 use itertools::Itertools as _;
 
 use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery, UnitChunkShared};
-use re_log_types::external::arrow2::array::Array as ArrowArray;
+use re_log_types::external::arrow2::array::Array as Arrow2Array;
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
 use re_types_core::ComponentName;
@@ -50,7 +50,7 @@ impl<'a> HybridLatestAtResults<'a> {
             .or_else(|| self.defaults.get(&component_name))
     }
 
-    pub fn fallback_raw(&self, component_name: ComponentName) -> Box<dyn ArrowArray> {
+    pub fn fallback_raw(&self, component_name: ComponentName) -> Box<dyn Arrow2Array> {
         let query_context = QueryContext {
             viewer_ctx: self.ctx.viewer_ctx,
             target_entity_path: &self.data_result.entity_path,
@@ -118,7 +118,7 @@ impl<'a> HybridLatestAtResults<'a> {
             .or_else(|| {
                 // No override, no store, no default -> try fallback instead
                 let raw_fallback = self.fallback_raw(C::name());
-                C::from_arrow(raw_fallback.as_ref())
+                C::from_arrow2(raw_fallback.as_ref())
                     .ok()
                     .and_then(|r| r.first().cloned())
             })
@@ -500,7 +500,7 @@ impl<'a> HybridResultsChunkIter<'a> {
     /// Iterate as indexed buffers.
     ///
     /// See [`Chunk::iter_buffer`] for more information.
-    pub fn buffer<T: arrow2::types::NativeType>(
+    pub fn buffer<T: arrow::datatypes::ArrowNativeType + arrow2::types::NativeType>(
         &'a self,
     ) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types_core::ArrowBuffer<T>>)> + 'a {
         self.chunks.iter().flat_map(|chunk| {

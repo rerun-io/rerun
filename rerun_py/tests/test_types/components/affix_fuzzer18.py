@@ -102,7 +102,7 @@ class AffixFuzzer18Batch(BaseBatch[AffixFuzzer18ArrayLike], ComponentBatchMixin)
                         ),
                         pa.field("empty_variant", pa.null(), nullable=True, metadata={}),
                     ]),
-                    nullable=False,
+                    nullable=True,
                     metadata={},
                 ),
                 pa.field(
@@ -174,7 +174,7 @@ class AffixFuzzer18Batch(BaseBatch[AffixFuzzer18ArrayLike], ComponentBatchMixin)
                                 ),
                                 pa.field("empty_variant", pa.null(), nullable=True, metadata={}),
                             ]),
-                            nullable=False,
+                            nullable=True,
                             metadata={},
                         )
                     ),
@@ -182,7 +182,7 @@ class AffixFuzzer18Batch(BaseBatch[AffixFuzzer18ArrayLike], ComponentBatchMixin)
                     metadata={},
                 ),
             ]),
-            nullable=False,
+            nullable=True,
             metadata={},
         )
     )

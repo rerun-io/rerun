@@ -10,7 +10,7 @@ readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
-include = ["../../LICENSE-APACHE", "../../LICENSE-MIT", "**/*.rs", "Cargo.toml"]
+include.workspace = true
 
 [lints]
 workspace = true
@@ -20,7 +20,10 @@ all-features = true
 
 [dependencies]
 re_data_ui.workspace = true # Needed for `item_ui`.
+re_data_source.workspace = true
 re_format.workspace = true
+re_log.workspace = true
+re_log_types.workspace = true
 re_tracing.workspace = true
 re_types = { workspace = true, features = [
   "egui_plot", # Needed to draw marker shapes.

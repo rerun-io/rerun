@@ -1,10 +1,9 @@
-use std::collections::BTreeMap;
-
 use arrow2::array::{
-    Array as ArrowArray, ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray,
-    StructArray as ArrowStructArray,
+    Array as Arrow2Array, ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
+    StructArray as Arrow2StructArray,
 };
 use itertools::{izip, Itertools};
+use nohash_hasher::IntMap;
 
 use crate::{Chunk, ChunkError, ChunkId, ChunkResult, TimeColumn};
 
@@ -52,7 +51,7 @@ impl Chunk {
             // concatenating 2 RowId arrays must yield another RowId array
             row_ids
                 .as_any()
-                .downcast_ref::<ArrowStructArray>()
+                .downcast_ref::<Arrow2StructArray>()
                 .unwrap()
                 .clone()
         };
@@ -73,7 +72,7 @@ impl Chunk {
         };
 
         // First pass: concat right onto left.
-        let mut components: BTreeMap<_, _> = {
+        let mut components: IntMap<_, _> = {
             re_tracing::profile_scope!("components (r2l)");
             self.components
                 .iter()
@@ -90,7 +89,7 @@ impl Chunk {
                             crate::util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
                         let list_array = list_array
                             .as_any()
-                            .downcast_ref::<ArrowListArray<i32>>()?
+                            .downcast_ref::<Arrow2ListArray<i32>>()?
                             .clone();
 
                         Some((*component_name, list_array))
@@ -132,7 +131,7 @@ impl Chunk {
                             crate::util::concat_arrays(&[lhs_list_array, rhs_list_array]).ok()?;
                         let list_array = list_array
                             .as_any()
-                            .downcast_ref::<ArrowListArray<i32>>()?
+                            .downcast_ref::<Arrow2ListArray<i32>>()?
                             .clone();
 
                         Some((*component_name, list_array))
@@ -257,7 +256,7 @@ impl TimeColumn {
         let times = crate::util::concat_arrays(&[&self.times, &rhs.times]).ok()?;
         let times = times
             .as_any()
-            .downcast_ref::<ArrowPrimitiveArray<i64>>()?
+            .downcast_ref::<Arrow2PrimitiveArray<i64>>()?
             .clone();
 
         Some(Self {
@@ -768,9 +767,9 @@ mod tests {
             let timepoint2 = [(Timeline::new_sequence("frame"), 2)];
 
             let points32bit =
-                <MyPoint as re_types_core::LoggableBatch>::to_arrow(&MyPoint::new(1.0, 1.0))?;
+                <MyPoint as re_types_core::LoggableBatch>::to_arrow2(&MyPoint::new(1.0, 1.0))?;
             let points64bit =
-                <MyPoint64 as re_types_core::LoggableBatch>::to_arrow(&MyPoint64::new(1.0, 1.0))?;
+                <MyPoint64 as re_types_core::LoggableBatch>::to_arrow2(&MyPoint64::new(1.0, 1.0))?;
 
             let chunk1 = Chunk::builder(entity_path.into())
                 .with_row(

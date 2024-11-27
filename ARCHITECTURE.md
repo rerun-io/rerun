@@ -134,6 +134,7 @@ Update instructions:
 | re_space_view               | Types & utilities for defining Space View classes and communicating with the Viewport.                     |
 | re_space_view_bar_chart     | A Space View that shows a single bar chart.                                                                |
 | re_space_view_dataframe     | A Space View that shows the data contained in entities in a table.                                         |
+| re_space_view_graph         | A Space View that shows a graph (node-link diagram).                                                       |
 | re_space_view_map           | A Space View that shows geospatial data on a map.                                                          |
 | re_space_view_spatial       | Space Views that show entities in a 2D or 3D spatial relationship.                                         |
 | re_space_view_tensor        | A Space View dedicated to visualizing tensors with arbitrary dimensionality.                               |

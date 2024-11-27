@@ -38,200 +38,202 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <ActiveTab as Component>::name(),
             ComponentReflection {
                 docstring_md: "The active tab in a tabbed container.",
-                custom_placeholder: Some(ActiveTab::default().to_arrow()?),
-                datatype: ActiveTab::arrow_datatype(),
+                custom_placeholder: Some(ActiveTab::default().to_arrow2()?),
+                datatype: ActiveTab::arrow2_datatype(),
             },
         ),
         (
             <ApplyLatestAt as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether empty cells in a dataframe should be filled with a latest-at query.",
-                custom_placeholder: Some(ApplyLatestAt::default().to_arrow()?),
-                datatype: ApplyLatestAt::arrow_datatype(),
+                custom_placeholder: Some(ApplyLatestAt::default().to_arrow2()?),
+                datatype: ApplyLatestAt::arrow2_datatype(),
             },
         ),
         (
             <AutoLayout as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether the viewport layout is determined automatically.",
-                custom_placeholder: Some(AutoLayout::default().to_arrow()?),
-                datatype: AutoLayout::arrow_datatype(),
+                custom_placeholder: Some(AutoLayout::default().to_arrow2()?),
+                datatype: AutoLayout::arrow2_datatype(),
             },
         ),
         (
             <AutoSpaceViews as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether or not space views should be created automatically.",
-                custom_placeholder: Some(AutoSpaceViews::default().to_arrow()?),
-                datatype: AutoSpaceViews::arrow_datatype(),
+                custom_placeholder: Some(AutoSpaceViews::default().to_arrow2()?),
+                datatype: AutoSpaceViews::arrow2_datatype(),
             },
         ),
         (
             <BackgroundKind as Component>::name(),
             ComponentReflection {
                 docstring_md: "The type of the background in a view.",
-                custom_placeholder: Some(BackgroundKind::default().to_arrow()?),
-                datatype: BackgroundKind::arrow_datatype(),
+                custom_placeholder: Some(BackgroundKind::default().to_arrow2()?),
+                datatype: BackgroundKind::arrow2_datatype(),
             },
         ),
         (
             <ColumnShare as Component>::name(),
             ComponentReflection {
                 docstring_md: "The layout share of a column in the container.",
-                custom_placeholder: Some(ColumnShare::default().to_arrow()?),
-                datatype: ColumnShare::arrow_datatype(),
+                custom_placeholder: Some(ColumnShare::default().to_arrow2()?),
+                datatype: ColumnShare::arrow2_datatype(),
             },
         ),
         (
             <ComponentColumnSelector as Component>::name(),
             ComponentReflection {
                 docstring_md: "Describe a component column to be selected in the dataframe view.",
-                custom_placeholder: Some(ComponentColumnSelector::default().to_arrow()?),
-                datatype: ComponentColumnSelector::arrow_datatype(),
+                custom_placeholder: Some(
+                    ComponentColumnSelector::default().to_arrow2()?,
+                ),
+                datatype: ComponentColumnSelector::arrow2_datatype(),
             },
         ),
         (
             <ContainerKind as Component>::name(),
             ComponentReflection {
                 docstring_md: "The kind of a blueprint container (tabs, grid, …).",
-                custom_placeholder: Some(ContainerKind::default().to_arrow()?),
-                datatype: ContainerKind::arrow_datatype(),
+                custom_placeholder: Some(ContainerKind::default().to_arrow2()?),
+                datatype: ContainerKind::arrow2_datatype(),
             },
         ),
         (
             <Corner2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "One of four 2D corners, typically used to align objects.",
-                custom_placeholder: Some(Corner2D::default().to_arrow()?),
-                datatype: Corner2D::arrow_datatype(),
+                custom_placeholder: Some(Corner2D::default().to_arrow2()?),
+                datatype: Corner2D::arrow2_datatype(),
             },
         ),
         (
             <FilterByRange as Component>::name(),
             ComponentReflection {
                 docstring_md: "Configuration for a filter-by-range feature of the dataframe view.",
-                custom_placeholder: Some(FilterByRange::default().to_arrow()?),
-                datatype: FilterByRange::arrow_datatype(),
+                custom_placeholder: Some(FilterByRange::default().to_arrow2()?),
+                datatype: FilterByRange::arrow2_datatype(),
             },
         ),
         (
             <FilterIsNotNull as Component>::name(),
             ComponentReflection {
                 docstring_md: "Configuration for the filter is not null feature of the dataframe view.",
-                custom_placeholder: Some(FilterIsNotNull::default().to_arrow()?),
-                datatype: FilterIsNotNull::arrow_datatype(),
+                custom_placeholder: Some(FilterIsNotNull::default().to_arrow2()?),
+                datatype: FilterIsNotNull::arrow2_datatype(),
             },
         ),
         (
             <GridColumns as Component>::name(),
             ComponentReflection {
                 docstring_md: "How many columns a grid container should have.",
-                custom_placeholder: Some(GridColumns::default().to_arrow()?),
-                datatype: GridColumns::arrow_datatype(),
+                custom_placeholder: Some(GridColumns::default().to_arrow2()?),
+                datatype: GridColumns::arrow2_datatype(),
             },
         ),
         (
             <IncludedContent as Component>::name(),
             ComponentReflection {
                 docstring_md: "All the contents in the container.",
-                custom_placeholder: Some(IncludedContent::default().to_arrow()?),
-                datatype: IncludedContent::arrow_datatype(),
+                custom_placeholder: Some(IncludedContent::default().to_arrow2()?),
+                datatype: IncludedContent::arrow2_datatype(),
             },
         ),
         (
             <IncludedSpaceView as Component>::name(),
             ComponentReflection {
                 docstring_md: "The unique id of a space view, used to refer to views in containers.",
-                custom_placeholder: Some(IncludedSpaceView::default().to_arrow()?),
-                datatype: IncludedSpaceView::arrow_datatype(),
+                custom_placeholder: Some(IncludedSpaceView::default().to_arrow2()?),
+                datatype: IncludedSpaceView::arrow2_datatype(),
             },
         ),
         (
             <Interactive as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether the entity can be interacted with.\n\nNon interactive components are still visible, but mouse interactions in the view are disabled.",
-                custom_placeholder: Some(Interactive::default().to_arrow()?),
-                datatype: Interactive::arrow_datatype(),
+                custom_placeholder: Some(Interactive::default().to_arrow2()?),
+                datatype: Interactive::arrow2_datatype(),
             },
         ),
         (
             <LockRangeDuringZoom as Component>::name(),
             ComponentReflection {
                 docstring_md: "Indicate whether the range should be locked when zooming in on the data.\n\nDefault is `false`, i.e. zoom will change the visualized range.",
-                custom_placeholder: Some(LockRangeDuringZoom::default().to_arrow()?),
-                datatype: LockRangeDuringZoom::arrow_datatype(),
+                custom_placeholder: Some(LockRangeDuringZoom::default().to_arrow2()?),
+                datatype: LockRangeDuringZoom::arrow2_datatype(),
             },
         ),
         (
             <MapProvider as Component>::name(),
             ComponentReflection {
                 docstring_md: "Name of the map provider to be used in Map views.",
-                custom_placeholder: Some(MapProvider::default().to_arrow()?),
-                datatype: MapProvider::arrow_datatype(),
+                custom_placeholder: Some(MapProvider::default().to_arrow2()?),
+                datatype: MapProvider::arrow2_datatype(),
             },
         ),
         (
             <PanelState as Component>::name(),
             ComponentReflection {
                 docstring_md: "Tri-state for panel controls.",
-                custom_placeholder: Some(PanelState::default().to_arrow()?),
-                datatype: PanelState::arrow_datatype(),
+                custom_placeholder: Some(PanelState::default().to_arrow2()?),
+                datatype: PanelState::arrow2_datatype(),
             },
         ),
         (
             <QueryExpression as Component>::name(),
             ComponentReflection {
                 docstring_md: "An individual query expression used to filter a set of [`datatypes.EntityPath`](https://rerun.io/docs/reference/types/datatypes/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of `SpaceViewContents`.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.",
-                custom_placeholder: Some(QueryExpression::default().to_arrow()?),
-                datatype: QueryExpression::arrow_datatype(),
+                custom_placeholder: Some(QueryExpression::default().to_arrow2()?),
+                datatype: QueryExpression::arrow2_datatype(),
             },
         ),
         (
             <RootContainer as Component>::name(),
             ComponentReflection {
                 docstring_md: "The container that sits at the root of a viewport.",
-                custom_placeholder: Some(RootContainer::default().to_arrow()?),
-                datatype: RootContainer::arrow_datatype(),
+                custom_placeholder: Some(RootContainer::default().to_arrow2()?),
+                datatype: RootContainer::arrow2_datatype(),
             },
         ),
         (
             <RowShare as Component>::name(),
             ComponentReflection {
                 docstring_md: "The layout share of a row in the container.",
-                custom_placeholder: Some(RowShare::default().to_arrow()?),
-                datatype: RowShare::arrow_datatype(),
+                custom_placeholder: Some(RowShare::default().to_arrow2()?),
+                datatype: RowShare::arrow2_datatype(),
             },
         ),
         (
             <SelectedColumns as Component>::name(),
             ComponentReflection {
                 docstring_md: "Describe a component column to be selected in the dataframe view.",
-                custom_placeholder: Some(SelectedColumns::default().to_arrow()?),
-                datatype: SelectedColumns::arrow_datatype(),
+                custom_placeholder: Some(SelectedColumns::default().to_arrow2()?),
+                datatype: SelectedColumns::arrow2_datatype(),
             },
         ),
         (
             <SpaceViewClass as Component>::name(),
             ComponentReflection {
                 docstring_md: "The class identifier of view, e.g. `\"2D\"`, `\"TextLog\"`, ….",
-                custom_placeholder: Some(SpaceViewClass::default().to_arrow()?),
-                datatype: SpaceViewClass::arrow_datatype(),
+                custom_placeholder: Some(SpaceViewClass::default().to_arrow2()?),
+                datatype: SpaceViewClass::arrow2_datatype(),
             },
         ),
         (
             <SpaceViewMaximized as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether a space view is maximized.",
-                custom_placeholder: Some(SpaceViewMaximized::default().to_arrow()?),
-                datatype: SpaceViewMaximized::arrow_datatype(),
+                custom_placeholder: Some(SpaceViewMaximized::default().to_arrow2()?),
+                datatype: SpaceViewMaximized::arrow2_datatype(),
             },
         ),
         (
             <SpaceViewOrigin as Component>::name(),
             ComponentReflection {
                 docstring_md: "The origin of a `SpaceView`.",
-                custom_placeholder: Some(SpaceViewOrigin::default().to_arrow()?),
-                datatype: SpaceViewOrigin::arrow_datatype(),
+                custom_placeholder: Some(SpaceViewOrigin::default().to_arrow2()?),
+                datatype: SpaceViewOrigin::arrow2_datatype(),
             },
         ),
         (
@@ -239,25 +241,25 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Show a slider for the index of some dimension of a slider.",
                 custom_placeholder: Some(
-                    TensorDimensionIndexSlider::default().to_arrow()?,
+                    TensorDimensionIndexSlider::default().to_arrow2()?,
                 ),
-                datatype: TensorDimensionIndexSlider::arrow_datatype(),
+                datatype: TensorDimensionIndexSlider::arrow2_datatype(),
             },
         ),
         (
             <TimelineName as Component>::name(),
             ComponentReflection {
                 docstring_md: "A timeline identified by its name.",
-                custom_placeholder: Some(TimelineName::default().to_arrow()?),
-                datatype: TimelineName::arrow_datatype(),
+                custom_placeholder: Some(TimelineName::default().to_arrow2()?),
+                datatype: TimelineName::arrow2_datatype(),
             },
         ),
         (
             <ViewFit as Component>::name(),
             ComponentReflection {
                 docstring_md: "Determines whether an image or texture should be scaled to fit the viewport.",
-                custom_placeholder: Some(ViewFit::default().to_arrow()?),
-                datatype: ViewFit::arrow_datatype(),
+                custom_placeholder: Some(ViewFit::default().to_arrow2()?),
+                datatype: ViewFit::arrow2_datatype(),
             },
         ),
         (
@@ -265,81 +267,81 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Hash of a viewer recommendation.\n\nThe formation of this hash is considered an internal implementation detail of the viewer.",
                 custom_placeholder: Some(
-                    ViewerRecommendationHash::default().to_arrow()?,
+                    ViewerRecommendationHash::default().to_arrow2()?,
                 ),
-                datatype: ViewerRecommendationHash::arrow_datatype(),
+                datatype: ViewerRecommendationHash::arrow2_datatype(),
             },
         ),
         (
             <Visible as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether the container, view, entity or instance is currently visible.",
-                custom_placeholder: Some(Visible::default().to_arrow()?),
-                datatype: Visible::arrow_datatype(),
+                custom_placeholder: Some(Visible::default().to_arrow2()?),
+                datatype: Visible::arrow2_datatype(),
             },
         ),
         (
             <VisibleTimeRange as Component>::name(),
             ComponentReflection {
                 docstring_md: "The range of values on a given timeline that will be included in a view's query.\n\nRefer to `VisibleTimeRanges` archetype for more information.",
-                custom_placeholder: Some(VisibleTimeRange::default().to_arrow()?),
-                datatype: VisibleTimeRange::arrow_datatype(),
+                custom_placeholder: Some(VisibleTimeRange::default().to_arrow2()?),
+                datatype: VisibleTimeRange::arrow2_datatype(),
             },
         ),
         (
             <VisualBounds2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "Visual bounds in 2D space used for `Spatial2DView`.",
-                custom_placeholder: Some(VisualBounds2D::default().to_arrow()?),
-                datatype: VisualBounds2D::arrow_datatype(),
+                custom_placeholder: Some(VisualBounds2D::default().to_arrow2()?),
+                datatype: VisualBounds2D::arrow2_datatype(),
             },
         ),
         (
             <VisualizerOverrides as Component>::name(),
             ComponentReflection {
                 docstring_md: "Override the visualizers for an entity.\n\nThis component is a stop-gap mechanism based on the current implementation details\nof the visualizer system. It is not intended to be a long-term solution, but provides\nenough utility to be useful in the short term.\n\nThe long-term solution is likely to be based off: <https://github.com/rerun-io/rerun/issues/6626>\n\nThis can only be used as part of blueprints. It will have no effect if used\nin a regular entity.",
-                custom_placeholder: Some(VisualizerOverrides::default().to_arrow()?),
-                datatype: VisualizerOverrides::arrow_datatype(),
+                custom_placeholder: Some(VisualizerOverrides::default().to_arrow2()?),
+                datatype: VisualizerOverrides::arrow2_datatype(),
             },
         ),
         (
             <ZoomLevel as Component>::name(),
             ComponentReflection {
                 docstring_md: "A zoom level determines how much of the world is visible on a map.",
-                custom_placeholder: Some(ZoomLevel::default().to_arrow()?),
-                datatype: ZoomLevel::arrow_datatype(),
+                custom_placeholder: Some(ZoomLevel::default().to_arrow2()?),
+                datatype: ZoomLevel::arrow2_datatype(),
             },
         ),
         (
             <AggregationPolicy as Component>::name(),
             ComponentReflection {
                 docstring_md: "Policy for aggregation of multiple scalar plot values.\n\nThis is used for lines in plots when the X axis distance of individual points goes below a single pixel,\ni.e. a single pixel covers more than one tick worth of data. It can greatly improve performance\n(and readability) in such situations as it prevents overdraw.",
-                custom_placeholder: Some(AggregationPolicy::default().to_arrow()?),
-                datatype: AggregationPolicy::arrow_datatype(),
+                custom_placeholder: Some(AggregationPolicy::default().to_arrow2()?),
+                datatype: AggregationPolicy::arrow2_datatype(),
             },
         ),
         (
             <AlbedoFactor as Component>::name(),
             ComponentReflection {
                 docstring_md: "A color multiplier, usually applied to a whole entity, e.g. a mesh.",
-                custom_placeholder: Some(AlbedoFactor::default().to_arrow()?),
-                datatype: AlbedoFactor::arrow_datatype(),
+                custom_placeholder: Some(AlbedoFactor::default().to_arrow2()?),
+                datatype: AlbedoFactor::arrow2_datatype(),
             },
         ),
         (
             <AnnotationContext as Component>::name(),
             ComponentReflection {
                 docstring_md: "The annotation context provides additional information on how to display entities.\n\nEntities can use [`datatypes.ClassId`](https://rerun.io/docs/reference/types/datatypes/class_id)s and [`datatypes.KeypointId`](https://rerun.io/docs/reference/types/datatypes/keypoint_id)s to provide annotations, and\nthe labels and colors will be looked up in the appropriate\nannotation context. We use the *first* annotation context we find in the\npath-hierarchy when searching up through the ancestors of a given entity\npath.",
-                custom_placeholder: Some(AnnotationContext::default().to_arrow()?),
-                datatype: AnnotationContext::arrow_datatype(),
+                custom_placeholder: Some(AnnotationContext::default().to_arrow2()?),
+                datatype: AnnotationContext::arrow2_datatype(),
             },
         ),
         (
             <AxisLength as Component>::name(),
             ComponentReflection {
                 docstring_md: "The length of an axis in local units of the space.",
-                custom_placeholder: Some(AxisLength::default().to_arrow()?),
-                datatype: AxisLength::arrow_datatype(),
+                custom_placeholder: Some(AxisLength::default().to_arrow2()?),
+                datatype: AxisLength::arrow2_datatype(),
             },
         ),
         (
@@ -347,119 +349,143 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "A binary blob of data.",
                 custom_placeholder: None,
-                datatype: Blob::arrow_datatype(),
+                datatype: Blob::arrow2_datatype(),
             },
         ),
         (
             <ClassId as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 16-bit ID representing a type of semantic class.",
-                custom_placeholder: Some(ClassId::default().to_arrow()?),
-                datatype: ClassId::arrow_datatype(),
+                custom_placeholder: Some(ClassId::default().to_arrow2()?),
+                datatype: ClassId::arrow2_datatype(),
             },
         ),
         (
             <ClearIsRecursive as Component>::name(),
             ComponentReflection {
                 docstring_md: "Configures how a clear operation should behave - recursive or not.",
-                custom_placeholder: Some(ClearIsRecursive::default().to_arrow()?),
-                datatype: ClearIsRecursive::arrow_datatype(),
+                custom_placeholder: Some(ClearIsRecursive::default().to_arrow2()?),
+                datatype: ClearIsRecursive::arrow2_datatype(),
             },
         ),
         (
             <Color as Component>::name(),
             ComponentReflection {
                 docstring_md: "An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.\n\nThe color is stored as a 32-bit integer, where the most significant\nbyte is `R` and the least significant byte is `A`.",
-                custom_placeholder: Some(Color::default().to_arrow()?),
-                datatype: Color::arrow_datatype(),
+                custom_placeholder: Some(Color::default().to_arrow2()?),
+                datatype: Color::arrow2_datatype(),
             },
         ),
         (
             <Colormap as Component>::name(),
             ComponentReflection {
                 docstring_md: "Colormap for mapping scalar values within a given range to a color.\n\nThis provides a number of popular pre-defined colormaps.\nIn the future, the Rerun Viewer will allow users to define their own colormaps,\nbut currently the Viewer is limited to the types defined here.",
-                custom_placeholder: Some(Colormap::default().to_arrow()?),
-                datatype: Colormap::arrow_datatype(),
+                custom_placeholder: Some(Colormap::default().to_arrow2()?),
+                datatype: Colormap::arrow2_datatype(),
             },
         ),
         (
             <DepthMeter as Component>::name(),
             ComponentReflection {
                 docstring_md: "The world->depth map scaling factor.\n\nThis measures how many depth map units are in a world unit.\nFor instance, if a depth map uses millimeters and the world uses meters,\nthis value would be `1000`.\n\nNote that the only effect on 2D views is the physical depth values shown when hovering the image.\nIn 3D views on the other hand, this affects where the points of the point cloud are placed.",
-                custom_placeholder: Some(DepthMeter::default().to_arrow()?),
-                datatype: DepthMeter::arrow_datatype(),
+                custom_placeholder: Some(DepthMeter::default().to_arrow2()?),
+                datatype: DepthMeter::arrow2_datatype(),
             },
         ),
         (
             <DisconnectedSpace as Component>::name(),
             ComponentReflection {
                 docstring_md: "Spatially disconnect this entity from its parent.\n\nSpecifies that the entity path at which this is logged is spatially disconnected from its parent,\nmaking it impossible to transform the entity path into its parent's space and vice versa.\nIt *only* applies to space views that work with spatial transformations, i.e. 2D & 3D space views.\nThis is useful for specifying that a subgraph is independent of the rest of the scene.",
-                custom_placeholder: Some(DisconnectedSpace::default().to_arrow()?),
-                datatype: DisconnectedSpace::arrow_datatype(),
+                custom_placeholder: Some(DisconnectedSpace::default().to_arrow2()?),
+                datatype: DisconnectedSpace::arrow2_datatype(),
             },
         ),
         (
             <DrawOrder as Component>::name(),
             ComponentReflection {
                 docstring_md: "Draw order of 2D elements. Higher values are drawn on top of lower values.\n\nAn entity can have only a single draw order component.\nWithin an entity draw order is governed by the order of the components.\n\nDraw order for entities with the same draw order is generally undefined.",
-                custom_placeholder: Some(DrawOrder::default().to_arrow()?),
-                datatype: DrawOrder::arrow_datatype(),
+                custom_placeholder: Some(DrawOrder::default().to_arrow2()?),
+                datatype: DrawOrder::arrow2_datatype(),
             },
         ),
         (
             <EntityPath as Component>::name(),
             ComponentReflection {
                 docstring_md: "A path to an entity, usually to reference some data that is part of the target entity.",
-                custom_placeholder: Some(EntityPath::default().to_arrow()?),
-                datatype: EntityPath::arrow_datatype(),
+                custom_placeholder: Some(EntityPath::default().to_arrow2()?),
+                datatype: EntityPath::arrow2_datatype(),
             },
         ),
         (
             <FillMode as Component>::name(),
             ComponentReflection {
                 docstring_md: "How a geometric shape is drawn and colored.",
-                custom_placeholder: Some(FillMode::default().to_arrow()?),
-                datatype: FillMode::arrow_datatype(),
+                custom_placeholder: Some(FillMode::default().to_arrow2()?),
+                datatype: FillMode::arrow2_datatype(),
             },
         ),
         (
             <FillRatio as Component>::name(),
             ComponentReflection {
                 docstring_md: "How much a primitive fills out the available space.\n\nUsed for instance to scale the points of the point cloud created from [`archetypes.DepthImage`](https://rerun.io/docs/reference/types/archetypes/depth_image) projection in 3D views.\nValid range is from 0 to max float although typically values above 1.0 are not useful.\n\nDefaults to 1.0.",
-                custom_placeholder: Some(FillRatio::default().to_arrow()?),
-                datatype: FillRatio::arrow_datatype(),
+                custom_placeholder: Some(FillRatio::default().to_arrow2()?),
+                datatype: FillRatio::arrow2_datatype(),
             },
         ),
         (
             <GammaCorrection as Component>::name(),
             ComponentReflection {
                 docstring_md: "A gamma correction value to be used with a scalar value or color.\n\nUsed to adjust the gamma of a color or scalar value between 0 and 1 before rendering.\n`new_value = old_value ^ gamma`\n\nValid range is from 0 (excluding) to max float.\nDefaults to 1.0 unless otherwise specified.",
-                custom_placeholder: Some(GammaCorrection::default().to_arrow()?),
-                datatype: GammaCorrection::arrow_datatype(),
+                custom_placeholder: Some(GammaCorrection::default().to_arrow2()?),
+                datatype: GammaCorrection::arrow2_datatype(),
             },
         ),
         (
             <GeoLineString as Component>::name(),
             ComponentReflection {
                 docstring_md: "A geospatial line string expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).",
-                custom_placeholder: Some(GeoLineString::default().to_arrow()?),
-                datatype: GeoLineString::arrow_datatype(),
+                custom_placeholder: Some(GeoLineString::default().to_arrow2()?),
+                datatype: GeoLineString::arrow2_datatype(),
+            },
+        ),
+        (
+            <GraphEdge as Component>::name(),
+            ComponentReflection {
+                docstring_md: "An edge in a graph connecting two nodes.",
+                custom_placeholder: Some(GraphEdge::default().to_arrow2()?),
+                datatype: GraphEdge::arrow2_datatype(),
+            },
+        ),
+        (
+            <GraphNode as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A string-based ID representing a node in a graph.",
+                custom_placeholder: Some(GraphNode::default().to_arrow2()?),
+                datatype: GraphNode::arrow2_datatype(),
+            },
+        ),
+        (
+            <GraphType as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Specifies if a graph has directed or undirected edges.",
+                custom_placeholder: Some(GraphType::default().to_arrow2()?),
+                datatype: GraphType::arrow2_datatype(),
             },
         ),
         (
             <HalfSize2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "Half-size (radius) of a 2D box.\n\nMeasured in its local coordinate system.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
-                custom_placeholder: Some(HalfSize2D::default().to_arrow()?),
-                datatype: HalfSize2D::arrow_datatype(),
+                custom_placeholder: Some(HalfSize2D::default().to_arrow2()?),
+                datatype: HalfSize2D::arrow2_datatype(),
             },
         ),
         (
             <HalfSize3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "Half-size (radius) of a 3D box.\n\nMeasured in its local coordinate system.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
-                custom_placeholder: Some(HalfSize3D::default().to_arrow()?),
-                datatype: HalfSize3D::arrow_datatype(),
+                custom_placeholder: Some(HalfSize3D::default().to_arrow2()?),
+                datatype: HalfSize3D::arrow2_datatype(),
             },
         ),
         (
@@ -467,231 +493,239 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "A buffer that is known to store image data.\n\nTo interpret the contents of this buffer, see, [`components.ImageFormat`](https://rerun.io/docs/reference/types/components/image_format).",
                 custom_placeholder: None,
-                datatype: ImageBuffer::arrow_datatype(),
+                datatype: ImageBuffer::arrow2_datatype(),
             },
         ),
         (
             <ImageFormat as Component>::name(),
             ComponentReflection {
                 docstring_md: "The metadata describing the contents of a [`components.ImageBuffer`](https://rerun.io/docs/reference/types/components/image_buffer).",
-                custom_placeholder: Some(ImageFormat::default().to_arrow()?),
-                datatype: ImageFormat::arrow_datatype(),
+                custom_placeholder: Some(ImageFormat::default().to_arrow2()?),
+                datatype: ImageFormat::arrow2_datatype(),
             },
         ),
         (
             <ImagePlaneDistance as Component>::name(),
             ComponentReflection {
                 docstring_md: "The distance from the camera origin to the image plane when the projection is shown in a 3D viewer.\n\nThis is only used for visualization purposes, and does not affect the projection itself.",
-                custom_placeholder: Some(ImagePlaneDistance::default().to_arrow()?),
-                datatype: ImagePlaneDistance::arrow_datatype(),
+                custom_placeholder: Some(ImagePlaneDistance::default().to_arrow2()?),
+                datatype: ImagePlaneDistance::arrow2_datatype(),
             },
         ),
         (
             <KeypointId as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 16-bit ID representing a type of semantic keypoint within a class.",
-                custom_placeholder: Some(KeypointId::default().to_arrow()?),
-                datatype: KeypointId::arrow_datatype(),
+                custom_placeholder: Some(KeypointId::default().to_arrow2()?),
+                datatype: KeypointId::arrow2_datatype(),
             },
         ),
         (
             <LatLon as Component>::name(),
             ComponentReflection {
                 docstring_md: "A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).",
-                custom_placeholder: Some(LatLon::default().to_arrow()?),
-                datatype: LatLon::arrow_datatype(),
+                custom_placeholder: Some(LatLon::default().to_arrow2()?),
+                datatype: LatLon::arrow2_datatype(),
             },
         ),
         (
             <Length as Component>::name(),
             ComponentReflection {
                 docstring_md: "Length, or one-dimensional size.\n\nMeasured in its local coordinate system; consult the archetype in use to determine which\naxis or part of the entity this is the length of.",
-                custom_placeholder: Some(Length::default().to_arrow()?),
-                datatype: Length::arrow_datatype(),
+                custom_placeholder: Some(Length::default().to_arrow2()?),
+                datatype: Length::arrow2_datatype(),
             },
         ),
         (
             <LineStrip2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A line strip in 2D space.\n\nA line strip is a list of points connected by line segments. It can be used to draw\napproximations of smooth curves.\n\nThe points will be connected in order, like so:\n```text\n       2------3     5\n      /        \\   /\n0----1          \\ /\n                 4\n```",
-                custom_placeholder: Some(LineStrip2D::default().to_arrow()?),
-                datatype: LineStrip2D::arrow_datatype(),
+                custom_placeholder: Some(LineStrip2D::default().to_arrow2()?),
+                datatype: LineStrip2D::arrow2_datatype(),
             },
         ),
         (
             <LineStrip3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A line strip in 3D space.\n\nA line strip is a list of points connected by line segments. It can be used to draw\napproximations of smooth curves.\n\nThe points will be connected in order, like so:\n```text\n       2------3     5\n      /        \\   /\n0----1          \\ /\n                 4\n```",
-                custom_placeholder: Some(LineStrip3D::default().to_arrow()?),
-                datatype: LineStrip3D::arrow_datatype(),
+                custom_placeholder: Some(LineStrip3D::default().to_arrow2()?),
+                datatype: LineStrip3D::arrow2_datatype(),
             },
         ),
         (
             <MagnificationFilter as Component>::name(),
             ComponentReflection {
                 docstring_md: "Filter used when magnifying an image/texture such that a single pixel/texel is displayed as multiple pixels on screen.",
-                custom_placeholder: Some(MagnificationFilter::default().to_arrow()?),
-                datatype: MagnificationFilter::arrow_datatype(),
+                custom_placeholder: Some(MagnificationFilter::default().to_arrow2()?),
+                datatype: MagnificationFilter::arrow2_datatype(),
             },
         ),
         (
             <MarkerShape as Component>::name(),
             ComponentReflection {
                 docstring_md: "The visual appearance of a point in e.g. a 2D plot.",
-                custom_placeholder: Some(MarkerShape::default().to_arrow()?),
-                datatype: MarkerShape::arrow_datatype(),
+                custom_placeholder: Some(MarkerShape::default().to_arrow2()?),
+                datatype: MarkerShape::arrow2_datatype(),
             },
         ),
         (
             <MarkerSize as Component>::name(),
             ComponentReflection {
                 docstring_md: "Radius of a marker of a point in e.g. a 2D plot, measured in UI points.",
-                custom_placeholder: Some(MarkerSize::default().to_arrow()?),
-                datatype: MarkerSize::arrow_datatype(),
+                custom_placeholder: Some(MarkerSize::default().to_arrow2()?),
+                datatype: MarkerSize::arrow2_datatype(),
             },
         ),
         (
             <MediaType as Component>::name(),
             ComponentReflection {
                 docstring_md: "A standardized media type (RFC2046, formerly known as MIME types), encoded as a string.\n\nThe complete reference of officially registered media types is maintained by the IANA and can be\nconsulted at <https://www.iana.org/assignments/media-types/media-types.xhtml>.",
-                custom_placeholder: Some(MediaType::default().to_arrow()?),
-                datatype: MediaType::arrow_datatype(),
+                custom_placeholder: Some(MediaType::default().to_arrow2()?),
+                datatype: MediaType::arrow2_datatype(),
             },
         ),
         (
             <Name as Component>::name(),
             ComponentReflection {
                 docstring_md: "A display name, typically for an entity or a item like a plot series.",
-                custom_placeholder: Some(Name::default().to_arrow()?),
-                datatype: Name::arrow_datatype(),
+                custom_placeholder: Some(Name::default().to_arrow2()?),
+                datatype: Name::arrow2_datatype(),
             },
         ),
         (
             <Opacity as Component>::name(),
             ComponentReflection {
                 docstring_md: "Degree of transparency ranging from 0.0 (fully transparent) to 1.0 (fully opaque).\n\nThe final opacity value may be a result of multiplication with alpha values as specified by other color sources.\nUnless otherwise specified, the default value is 1.",
-                custom_placeholder: Some(Opacity::default().to_arrow()?),
-                datatype: Opacity::arrow_datatype(),
+                custom_placeholder: Some(Opacity::default().to_arrow2()?),
+                datatype: Opacity::arrow2_datatype(),
             },
         ),
         (
             <PinholeProjection as Component>::name(),
             ComponentReflection {
                 docstring_md: "Camera projection, from image coordinates to view coordinates.\n\nChild from parent.\nImage coordinates from camera view coordinates.\n\nExample:\n```text\n1496.1     0.0  980.5\n   0.0  1496.1  744.5\n   0.0     0.0    1.0\n```",
-                custom_placeholder: Some(PinholeProjection::default().to_arrow()?),
-                datatype: PinholeProjection::arrow_datatype(),
+                custom_placeholder: Some(PinholeProjection::default().to_arrow2()?),
+                datatype: PinholeProjection::arrow2_datatype(),
             },
         ),
         (
             <PoseRotationAxisAngle as Component>::name(),
             ComponentReflection {
                 docstring_md: "3D rotation represented by a rotation around a given axis that doesn't propagate in the transform hierarchy.",
-                custom_placeholder: Some(PoseRotationAxisAngle::default().to_arrow()?),
-                datatype: PoseRotationAxisAngle::arrow_datatype(),
+                custom_placeholder: Some(PoseRotationAxisAngle::default().to_arrow2()?),
+                datatype: PoseRotationAxisAngle::arrow2_datatype(),
             },
         ),
         (
             <PoseRotationQuat as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 3D rotation expressed as a quaternion that doesn't propagate in the transform hierarchy.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer, quaternions will always be normalized.",
-                custom_placeholder: Some(PoseRotationQuat::default().to_arrow()?),
-                datatype: PoseRotationQuat::arrow_datatype(),
+                custom_placeholder: Some(PoseRotationQuat::default().to_arrow2()?),
+                datatype: PoseRotationQuat::arrow2_datatype(),
             },
         ),
         (
             <PoseScale3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 3D scale factor that doesn't propagate in the transform hierarchy.\n\nA scale of 1.0 means no scaling.\nA scale of 2.0 means doubling the size.\nEach component scales along the corresponding axis.",
-                custom_placeholder: Some(PoseScale3D::default().to_arrow()?),
-                datatype: PoseScale3D::arrow_datatype(),
+                custom_placeholder: Some(PoseScale3D::default().to_arrow2()?),
+                datatype: PoseScale3D::arrow2_datatype(),
             },
         ),
         (
             <PoseTransformMat3x3 as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 3x3 transformation matrix Matrix that doesn't propagate in the transform hierarchy.\n\n3x3 matrixes are able to represent any affine transformation in 3D space,\ni.e. rotation, scaling, shearing, reflection etc.\n\nMatrices in Rerun are stored as flat list of coefficients in column-major order:\n```text\n            column 0       column 1       column 2\n       -------------------------------------------------\nrow 0 | flat_columns[0] flat_columns[3] flat_columns[6]\nrow 1 | flat_columns[1] flat_columns[4] flat_columns[7]\nrow 2 | flat_columns[2] flat_columns[5] flat_columns[8]\n```",
-                custom_placeholder: Some(PoseTransformMat3x3::default().to_arrow()?),
-                datatype: PoseTransformMat3x3::arrow_datatype(),
+                custom_placeholder: Some(PoseTransformMat3x3::default().to_arrow2()?),
+                datatype: PoseTransformMat3x3::arrow2_datatype(),
             },
         ),
         (
             <PoseTranslation3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A translation vector in 3D space that doesn't propagate in the transform hierarchy.",
-                custom_placeholder: Some(PoseTranslation3D::default().to_arrow()?),
-                datatype: PoseTranslation3D::arrow_datatype(),
+                custom_placeholder: Some(PoseTranslation3D::default().to_arrow2()?),
+                datatype: PoseTranslation3D::arrow2_datatype(),
             },
         ),
         (
             <Position2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A position in 2D space.",
-                custom_placeholder: Some(Position2D::default().to_arrow()?),
-                datatype: Position2D::arrow_datatype(),
+                custom_placeholder: Some(Position2D::default().to_arrow2()?),
+                datatype: Position2D::arrow2_datatype(),
             },
         ),
         (
             <Position3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A position in 3D space.",
-                custom_placeholder: Some(Position3D::default().to_arrow()?),
-                datatype: Position3D::arrow_datatype(),
+                custom_placeholder: Some(Position3D::default().to_arrow2()?),
+                datatype: Position3D::arrow2_datatype(),
             },
         ),
         (
             <Radius as Component>::name(),
             ComponentReflection {
                 docstring_md: "The radius of something, e.g. a point.\n\nInternally, positive values indicate scene units, whereas negative values\nare interpreted as UI points.\n\nUI points are independent of zooming in Views, but are sensitive to the application UI scaling.\nat 100% UI scaling, UI points are equal to pixels\nThe Viewer's UI scaling defaults to the OS scaling which typically is 100% for full HD screens and 200% for 4k screens.",
-                custom_placeholder: Some(Radius::default().to_arrow()?),
-                datatype: Radius::arrow_datatype(),
+                custom_placeholder: Some(Radius::default().to_arrow2()?),
+                datatype: Radius::arrow2_datatype(),
             },
         ),
         (
             <Range1D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 1D range, specifying a lower and upper bound.",
-                custom_placeholder: Some(Range1D::default().to_arrow()?),
-                datatype: Range1D::arrow_datatype(),
+                custom_placeholder: Some(Range1D::default().to_arrow2()?),
+                datatype: Range1D::arrow2_datatype(),
+            },
+        ),
+        (
+            <RecordingUri as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A recording URI (Uniform Resource Identifier).",
+                custom_placeholder: None,
+                datatype: RecordingUri::arrow2_datatype(),
             },
         ),
         (
             <Resolution as Component>::name(),
             ComponentReflection {
                 docstring_md: "Pixel resolution width & height, e.g. of a camera sensor.\n\nTypically in integer units, but for some use cases floating point may be used.",
-                custom_placeholder: Some(Resolution::default().to_arrow()?),
-                datatype: Resolution::arrow_datatype(),
+                custom_placeholder: Some(Resolution::default().to_arrow2()?),
+                datatype: Resolution::arrow2_datatype(),
             },
         ),
         (
             <RotationAxisAngle as Component>::name(),
             ComponentReflection {
                 docstring_md: "3D rotation represented by a rotation around a given axis.",
-                custom_placeholder: Some(RotationAxisAngle::default().to_arrow()?),
-                datatype: RotationAxisAngle::arrow_datatype(),
+                custom_placeholder: Some(RotationAxisAngle::default().to_arrow2()?),
+                datatype: RotationAxisAngle::arrow2_datatype(),
             },
         ),
         (
             <RotationQuat as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 3D rotation expressed as a quaternion.\n\nNote: although the x,y,z,w components of the quaternion will be passed through to the\ndatastore as provided, when used in the Viewer, quaternions will always be normalized.",
-                custom_placeholder: Some(RotationQuat::default().to_arrow()?),
-                datatype: RotationQuat::arrow_datatype(),
+                custom_placeholder: Some(RotationQuat::default().to_arrow2()?),
+                datatype: RotationQuat::arrow2_datatype(),
             },
         ),
         (
             <Scalar as Component>::name(),
             ComponentReflection {
                 docstring_md: "A scalar value, encoded as a 64-bit floating point.\n\nUsed for time series plots.",
-                custom_placeholder: Some(Scalar::default().to_arrow()?),
-                datatype: Scalar::arrow_datatype(),
+                custom_placeholder: Some(Scalar::default().to_arrow2()?),
+                datatype: Scalar::arrow2_datatype(),
             },
         ),
         (
             <Scale3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 3D scale factor.\n\nA scale of 1.0 means no scaling.\nA scale of 2.0 means doubling the size.\nEach component scales along the corresponding axis.",
-                custom_placeholder: Some(Scale3D::default().to_arrow()?),
-                datatype: Scale3D::arrow_datatype(),
+                custom_placeholder: Some(Scale3D::default().to_arrow2()?),
+                datatype: Scale3D::arrow2_datatype(),
             },
         ),
         (
@@ -699,23 +733,23 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Whether the entity's [`components.Text`](https://rerun.io/docs/reference/types/components/text) label is shown.\n\nThe main purpose of this component existing separately from the labels themselves\nis to be overridden when desired, to allow hiding and showing from the viewer and\nblueprints.",
                 custom_placeholder: None,
-                datatype: ShowLabels::arrow_datatype(),
+                datatype: ShowLabels::arrow2_datatype(),
             },
         ),
         (
             <StrokeWidth as Component>::name(),
             ComponentReflection {
                 docstring_md: "The width of a stroke specified in UI points.",
-                custom_placeholder: Some(StrokeWidth::default().to_arrow()?),
-                datatype: StrokeWidth::arrow_datatype(),
+                custom_placeholder: Some(StrokeWidth::default().to_arrow2()?),
+                datatype: StrokeWidth::arrow2_datatype(),
             },
         ),
         (
             <TensorData as Component>::name(),
             ComponentReflection {
                 docstring_md: "An N-dimensional array of numbers.\n\nThe number of dimensions and their respective lengths is specified by the `shape` field.\nThe dimensions are ordered from outermost to innermost. For example, in the common case of\na 2D RGB Image, the shape would be `[height, width, channel]`.\n\nThese dimensions are combined with an index to look up values from the `buffer` field,\nwhich stores a contiguous array of typed values.",
-                custom_placeholder: Some(TensorData::default().to_arrow()?),
-                datatype: TensorData::arrow_datatype(),
+                custom_placeholder: Some(TensorData::default().to_arrow2()?),
+                datatype: TensorData::arrow2_datatype(),
             },
         ),
         (
@@ -723,121 +757,121 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             ComponentReflection {
                 docstring_md: "Specifies a concrete index on a tensor dimension.",
                 custom_placeholder: Some(
-                    TensorDimensionIndexSelection::default().to_arrow()?,
+                    TensorDimensionIndexSelection::default().to_arrow2()?,
                 ),
-                datatype: TensorDimensionIndexSelection::arrow_datatype(),
+                datatype: TensorDimensionIndexSelection::arrow2_datatype(),
             },
         ),
         (
             <TensorHeightDimension as Component>::name(),
             ComponentReflection {
                 docstring_md: "Specifies which dimension to use for height.",
-                custom_placeholder: Some(TensorHeightDimension::default().to_arrow()?),
-                datatype: TensorHeightDimension::arrow_datatype(),
+                custom_placeholder: Some(TensorHeightDimension::default().to_arrow2()?),
+                datatype: TensorHeightDimension::arrow2_datatype(),
             },
         ),
         (
             <TensorWidthDimension as Component>::name(),
             ComponentReflection {
                 docstring_md: "Specifies which dimension to use for width.",
-                custom_placeholder: Some(TensorWidthDimension::default().to_arrow()?),
-                datatype: TensorWidthDimension::arrow_datatype(),
+                custom_placeholder: Some(TensorWidthDimension::default().to_arrow2()?),
+                datatype: TensorWidthDimension::arrow2_datatype(),
             },
         ),
         (
             <Texcoord2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 2D texture UV coordinate.\n\nTexture coordinates specify a position on a 2D texture.\nA range from 0-1 covers the entire texture in the respective dimension.\nUnless configured otherwise, the texture repeats outside of this range.\nRerun uses top-left as the origin for UV coordinates.\n\n  0     U     1\n0 + --------- →\n  |           .\nV |           .\n  |           .\n1 ↓ . . . . . .\n\nThis is the same convention as in Vulkan/Metal/DX12/WebGPU, but (!) unlike OpenGL,\nwhich places the origin at the bottom-left.",
-                custom_placeholder: Some(Texcoord2D::default().to_arrow()?),
-                datatype: Texcoord2D::arrow_datatype(),
+                custom_placeholder: Some(Texcoord2D::default().to_arrow2()?),
+                datatype: Texcoord2D::arrow2_datatype(),
             },
         ),
         (
             <Text as Component>::name(),
             ComponentReflection {
                 docstring_md: "A string of text, e.g. for labels and text documents.",
-                custom_placeholder: Some(Text::default().to_arrow()?),
-                datatype: Text::arrow_datatype(),
+                custom_placeholder: Some(Text::default().to_arrow2()?),
+                datatype: Text::arrow2_datatype(),
             },
         ),
         (
             <TextLogLevel as Component>::name(),
             ComponentReflection {
                 docstring_md: "The severity level of a text log message.\n\nRecommended to be one of:\n* `\"CRITICAL\"`\n* `\"ERROR\"`\n* `\"WARN\"`\n* `\"INFO\"`\n* `\"DEBUG\"`\n* `\"TRACE\"`",
-                custom_placeholder: Some(TextLogLevel::default().to_arrow()?),
-                datatype: TextLogLevel::arrow_datatype(),
+                custom_placeholder: Some(TextLogLevel::default().to_arrow2()?),
+                datatype: TextLogLevel::arrow2_datatype(),
             },
         ),
         (
             <TransformMat3x3 as Component>::name(),
             ComponentReflection {
                 docstring_md: "A 3x3 transformation matrix Matrix.\n\n3x3 matrixes are able to represent any affine transformation in 3D space,\ni.e. rotation, scaling, shearing, reflection etc.\n\nMatrices in Rerun are stored as flat list of coefficients in column-major order:\n```text\n            column 0       column 1       column 2\n       -------------------------------------------------\nrow 0 | flat_columns[0] flat_columns[3] flat_columns[6]\nrow 1 | flat_columns[1] flat_columns[4] flat_columns[7]\nrow 2 | flat_columns[2] flat_columns[5] flat_columns[8]\n```",
-                custom_placeholder: Some(TransformMat3x3::default().to_arrow()?),
-                datatype: TransformMat3x3::arrow_datatype(),
+                custom_placeholder: Some(TransformMat3x3::default().to_arrow2()?),
+                datatype: TransformMat3x3::arrow2_datatype(),
             },
         ),
         (
             <TransformRelation as Component>::name(),
             ComponentReflection {
                 docstring_md: "Specifies relation a spatial transform describes.",
-                custom_placeholder: Some(TransformRelation::default().to_arrow()?),
-                datatype: TransformRelation::arrow_datatype(),
+                custom_placeholder: Some(TransformRelation::default().to_arrow2()?),
+                datatype: TransformRelation::arrow2_datatype(),
             },
         ),
         (
             <Translation3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A translation vector in 3D space.",
-                custom_placeholder: Some(Translation3D::default().to_arrow()?),
-                datatype: Translation3D::arrow_datatype(),
+                custom_placeholder: Some(Translation3D::default().to_arrow2()?),
+                datatype: Translation3D::arrow2_datatype(),
             },
         ),
         (
             <TriangleIndices as Component>::name(),
             ComponentReflection {
                 docstring_md: "The three indices of a triangle in a triangle mesh.",
-                custom_placeholder: Some(TriangleIndices::default().to_arrow()?),
-                datatype: TriangleIndices::arrow_datatype(),
+                custom_placeholder: Some(TriangleIndices::default().to_arrow2()?),
+                datatype: TriangleIndices::arrow2_datatype(),
             },
         ),
         (
             <ValueRange as Component>::name(),
             ComponentReflection {
                 docstring_md: "Range of expected or valid values, specifying a lower and upper bound.",
-                custom_placeholder: Some(ValueRange::default().to_arrow()?),
-                datatype: ValueRange::arrow_datatype(),
+                custom_placeholder: Some(ValueRange::default().to_arrow2()?),
+                datatype: ValueRange::arrow2_datatype(),
             },
         ),
         (
             <Vector2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A vector in 2D space.",
-                custom_placeholder: Some(Vector2D::default().to_arrow()?),
-                datatype: Vector2D::arrow_datatype(),
+                custom_placeholder: Some(Vector2D::default().to_arrow2()?),
+                datatype: Vector2D::arrow2_datatype(),
             },
         ),
         (
             <Vector3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "A vector in 3D space.",
-                custom_placeholder: Some(Vector3D::default().to_arrow()?),
-                datatype: Vector3D::arrow_datatype(),
+                custom_placeholder: Some(Vector3D::default().to_arrow2()?),
+                datatype: Vector3D::arrow2_datatype(),
             },
         ),
         (
             <VideoTimestamp as Component>::name(),
             ComponentReflection {
                 docstring_md: "Timestamp inside a [`archetypes.AssetVideo`](https://rerun.io/docs/reference/types/archetypes/asset_video).",
-                custom_placeholder: Some(VideoTimestamp::default().to_arrow()?),
-                datatype: VideoTimestamp::arrow_datatype(),
+                custom_placeholder: Some(VideoTimestamp::default().to_arrow2()?),
+                datatype: VideoTimestamp::arrow2_datatype(),
             },
         ),
         (
             <ViewCoordinates as Component>::name(),
             ComponentReflection {
                 docstring_md: "How we interpret the coordinate system of an entity/space.\n\nFor instance: What is \"up\"? What does the Z axis mean?\n\nThe three coordinates are always ordered as [x, y, z].\n\nFor example [Right, Down, Forward] means that the X axis points to the right, the Y axis points\ndown, and the Z axis points forward.\n\n⚠ [Rerun does not yet support left-handed coordinate systems](https://github.com/rerun-io/rerun/issues/5032).\n\nThe following constants are used to represent the different directions:\n * Up = 1\n * Down = 2\n * Right = 3\n * Left = 4\n * Forward = 5\n * Back = 6",
-                custom_placeholder: Some(ViewCoordinates::default().to_arrow()?),
-                datatype: ViewCoordinates::arrow_datatype(),
+                custom_placeholder: Some(ViewCoordinates::default().to_arrow2()?),
+                datatype: ViewCoordinates::arrow2_datatype(),
             },
         ),
     ];
@@ -1299,6 +1333,58 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.ClassId".into(), display_name : "Class ids",
                     docstring_md :
                     "Optional class Ids for the points.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors if not specified explicitly.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.GraphEdges"),
+            ArchetypeReflection {
+                display_name: "Graph edges",
+                view_types: &["GraphView"],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.GraphEdge".into(), display_name : "Edges",
+                    docstring_md :
+                    "A list of node tuples.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.GraphType".into(), display_name : "Graph type",
+                    docstring_md :
+                    "Specifies if the graph is directed or undirected.\n\nIf no `GraphType` is provided, the graph is assumed to be undirected.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.GraphNodes"),
+            ArchetypeReflection {
+                display_name: "Graph nodes",
+                view_types: &["GraphView"],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.GraphNode".into(), display_name : "Node ids",
+                    docstring_md :
+                    "A list of node IDs.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Position2D".into(), display_name : "Positions",
+                    docstring_md :
+                    "Optional center positions of the nodes.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Colors",
+                    docstring_md :
+                    "Optional colors for the boxes.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Text".into(), display_name : "Labels", docstring_md
+                    :
+                    "Optional text labels for the node.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ShowLabels".into(), display_name : "Show labels",
+                    docstring_md :
+                    "Optional choice of whether the text labels should be shown by default.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Radius".into(), display_name : "Radii",
+                    docstring_md :
+                    "Optional radii for nodes.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
                     is_required : false, },
                 ],
             },

@@ -17,7 +17,7 @@ utf8
 ## API reference links
  * 🌊 [C++ API docs for `Text`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Text.html)
  * 🐍 [Python API docs for `Text`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Text)
- * 🦀 [Rust API docs for `Text`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.Text.html)
+ * 🦀 [Rust API docs for `Text`](https://docs.rs/rerun/latest/rerun/components/struct.Text.html)
 
 
 ## Used by
@@ -28,6 +28,7 @@ utf8
 * [`Boxes3D`](../archetypes/boxes3d.md)
 * [`Capsules3D`](../archetypes/capsules3d.md)
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
+* [`GraphNodes`](../archetypes/graph_nodes.md?speculative-link)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
 * [`LineStrips3D`](../archetypes/line_strips3d.md)
 * [`Points2D`](../archetypes/points2d.md)

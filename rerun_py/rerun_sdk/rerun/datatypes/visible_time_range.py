@@ -64,7 +64,7 @@ class VisibleTimeRangeBatch(BaseBatch[VisibleTimeRangeArrayLike]):
                         pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
                         pa.field("Infinite", pa.null(), nullable=True, metadata={}),
                     ]),
-                    nullable=False,
+                    nullable=True,
                     metadata={},
                 ),
                 pa.field(
@@ -75,7 +75,7 @@ class VisibleTimeRangeBatch(BaseBatch[VisibleTimeRangeArrayLike]):
                         pa.field("Absolute", pa.int64(), nullable=False, metadata={}),
                         pa.field("Infinite", pa.null(), nullable=True, metadata={}),
                     ]),
-                    nullable=False,
+                    nullable=True,
                     metadata={},
                 ),
             ]),

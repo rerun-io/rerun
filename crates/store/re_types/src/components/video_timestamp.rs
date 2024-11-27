@@ -68,13 +68,13 @@ impl std::ops::DerefMut for VideoTimestamp {
 
 impl ::re_types_core::Loggable for VideoTimestamp {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         crate::datatypes::VideoTimestamp::arrow_datatype()
     }
 
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
@@ -86,22 +86,22 @@ impl ::re_types_core::Loggable for VideoTimestamp {
         }))
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
         Self: Sized,
     {
-        crate::datatypes::VideoTimestamp::from_arrow_opt(arrow_data)
+        crate::datatypes::VideoTimestamp::from_arrow2_opt(arrow_data)
             .map(|v| v.into_iter().map(|v| v.map(Self)).collect())
     }
 
     #[inline]
-    fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
+    fn from_arrow2(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
     where
         Self: Sized,
     {
-        crate::datatypes::VideoTimestamp::from_arrow(arrow_data)
+        crate::datatypes::VideoTimestamp::from_arrow2(arrow_data)
             .map(|v| v.into_iter().map(Self).collect())
     }
 }

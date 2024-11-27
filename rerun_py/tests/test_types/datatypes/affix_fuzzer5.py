@@ -111,7 +111,7 @@ class AffixFuzzer5Batch(BaseBatch[AffixFuzzer5ArrayLike]):
                         ),
                         pa.field("empty_variant", pa.null(), nullable=True, metadata={}),
                     ]),
-                    nullable=False,
+                    nullable=True,
                     metadata={},
                 ),
                 pa.field(
@@ -183,7 +183,7 @@ class AffixFuzzer5Batch(BaseBatch[AffixFuzzer5ArrayLike]):
                                 ),
                                 pa.field("empty_variant", pa.null(), nullable=True, metadata={}),
                             ]),
-                            nullable=False,
+                            nullable=True,
                             metadata={},
                         )
                     ),

@@ -145,7 +145,10 @@ SECTION_TABLE: Final[list[Section]] = [
     ),
     Section(
         title="Custom Data",
-        class_list=["AnyValues"],
+        class_list=[
+            "AnyValues",
+            "AnyBatchValue",
+        ],
     ),
     ################################################################################
     # These are tables but don't need their own pages since they refer to types that
@@ -215,6 +218,14 @@ SECTION_TABLE: Final[list[Section]] = [
         class_list=[
             "archetypes.GeoLineStrings",
             "archetypes.GeoPoints",
+        ],
+        gen_page=False,
+    ),
+    Section(
+        title="Graphs",
+        class_list=[
+            "archetypes.GraphNodes",
+            "archetypes.GraphEdges",
         ],
         gen_page=False,
     ),

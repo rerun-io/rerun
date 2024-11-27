@@ -1,15 +1,31 @@
 #![allow(unsafe_op_in_unsafe_fn)]
-use arrow::{array::ArrayData, pyarrow::PyArrowType};
+use arrow::{
+    array::{ArrayData, RecordBatch, RecordBatchIterator, RecordBatchReader},
+    datatypes::Schema,
+    pyarrow::PyArrowType,
+};
 // False positive due to #[pyfunction] macro
 use pyo3::{exceptions::PyRuntimeError, prelude::*, types::PyDict, Bound, PyResult};
-use re_chunk::TransportChunk;
-use re_protos::v0::{
-    storage_node_client::StorageNodeClient, EncoderVersion, ListRecordingsRequest,
-    RecordingMetadata, RecordingType, RegisterRecordingRequest,
+use re_chunk::{Chunk, TransportChunk};
+use re_chunk_store::ChunkStore;
+use re_dataframe::ChunkStoreHandle;
+use re_log_types::{StoreInfo, StoreSource};
+use re_protos::{
+    codec::decode,
+    v0::{
+        storage_node_client::StorageNodeClient, EncoderVersion, FetchRecordingRequest,
+        ListRecordingsRequest, RecordingId, RecordingMetadata, RecordingType,
+        RegisterRecordingRequest, UpdateRecordingMetadataRequest,
+    },
 };
+use re_sdk::{ApplicationId, StoreId, StoreKind, Time};
+
+use crate::dataframe::PyRecording;
 
 /// Register the `rerun.remote` module.
 pub(crate) fn register(m: &Bound<'_, PyModule>) -> PyResult<()> {
+    m.add_class::<PyStorageNodeClient>()?;
+
     m.add_function(wrap_pyfunction!(connect, m)?)?;
 
     Ok(())
@@ -26,20 +42,33 @@ async fn connect_async(addr: String) -> PyResult<StorageNodeClient<tonic::transp
     Ok(StorageNodeClient::new(tonic_client))
 }
 
+/// Load a rerun archive from an RRD file.
+///
+/// Required-feature: `remote`
+///
+/// Parameters
+/// ----------
+/// addr : str
+///     The address of the storage node to connect to.
+///
+/// Returns
+/// -------
+/// StorageNodeClient
+///     The connected client.
 #[pyfunction]
-pub fn connect(addr: String) -> PyResult<PyConnection> {
+pub fn connect(addr: String) -> PyResult<PyStorageNodeClient> {
     let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()?;
 
     let client = runtime.block_on(connect_async(addr))?;
 
-    Ok(PyConnection { runtime, client })
+    Ok(PyStorageNodeClient { runtime, client })
 }
 
 /// A connection to a remote storage node.
-#[pyclass(name = "Connection")]
-pub struct PyConnection {
+#[pyclass(name = "StorageNodeClient")]
+pub struct PyStorageNodeClient {
     /// A tokio runtime for async operations. This connection will currently
     /// block the Python interpreter while waiting for responses.
     /// This runtime must be persisted for the lifetime of the connection.
@@ -50,10 +79,11 @@ pub struct PyConnection {
 }
 
 #[pymethods]
-impl PyConnection {
-    /// List all recordings registered with the node.
-    fn list_recordings(&mut self) -> PyResult<Vec<PyRecordingMetadata>> {
-        self.runtime.block_on(async {
+impl PyStorageNodeClient {
+    /// Get the metadata for all recordings in the storage node.
+    fn list_recordings(&mut self) -> PyResult<PyArrowType<Box<dyn RecordBatchReader + Send>>> {
+        let reader = self.runtime.block_on(async {
+            // TODO(jleibs): Support column projection
             let request = ListRecordingsRequest {
                 column_projection: None,
             };
@@ -64,16 +94,43 @@ impl PyConnection {
                 .await
                 .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
 
-            Ok(resp
+            let transport_chunks = resp
                 .into_inner()
                 .recordings
                 .into_iter()
-                .map(|recording| PyRecordingMetadata { info: recording })
-                .collect())
-        })
+                .map(|recording| recording.data())
+                .collect::<Result<Vec<_>, _>>()
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            let record_batches: Vec<Result<RecordBatch, arrow::error::ArrowError>> =
+                transport_chunks
+                    .into_iter()
+                    .map(|tc| tc.try_to_arrow_record_batch())
+                    .collect();
+
+            // TODO(jleibs): surfacing this schema is awkward. This should be more explicit in
+            // the gRPC APIs somehow.
+            let schema = record_batches
+                .first()
+                .and_then(|batch| batch.as_ref().ok().map(|batch| batch.schema()))
+                .unwrap_or(std::sync::Arc::new(Schema::empty()));
+
+            let reader = RecordBatchIterator::new(record_batches, schema);
+
+            Ok::<_, PyErr>(reader)
+        })?;
+
+        Ok(PyArrowType(Box::new(reader)))
     }
 
-    /// Register a recording along with some metadata
+    /// Register a recording along with some metadata.
+    ///
+    /// Parameters
+    /// ----------
+    /// storage_url : str
+    ///     The URL to the storage location.
+    /// metadata : dict[str, MetadataLike]
+    ///     A dictionary where the keys are the metadata columns and the values are pyarrow arrays.
     #[pyo3(signature = (
         storage_url,
         metadata = None
@@ -146,6 +203,138 @@ impl PyConnection {
             Ok(recording_id)
         })
     }
+
+    /// Update the metadata for the recording with the given id.
+    ///
+    /// Parameters
+    /// ----------
+    /// id : str
+    ///     The id of the recording to update.
+    /// metadata : dict[str, MetadataLike]
+    ///     A dictionary where the keys are the metadata columns and the values are pyarrow arrays.
+    #[pyo3(signature = (
+        id,
+        metadata
+    ))]
+    fn update_metadata(&mut self, id: &str, metadata: &Bound<'_, PyDict>) -> PyResult<()> {
+        self.runtime.block_on(async {
+            let (schema, data): (
+                Vec<arrow2::datatypes::Field>,
+                Vec<Box<dyn arrow2::array::Array>>,
+            ) = metadata
+                .iter()
+                .map(|(key, value)| {
+                    let key = key.to_string();
+                    let value = value.extract::<MetadataLike>()?;
+                    let value_array = value.to_arrow2()?;
+                    let field =
+                        arrow2::datatypes::Field::new(key, value_array.data_type().clone(), true);
+                    Ok((field, value_array))
+                })
+                .collect::<PyResult<Vec<_>>>()?
+                .into_iter()
+                .unzip();
+
+            let schema = arrow2::datatypes::Schema::from(schema);
+
+            let data = arrow2::chunk::Chunk::new(data);
+
+            let metadata_tc = TransportChunk {
+                schema: schema.clone(),
+                data,
+            };
+
+            let metadata = RecordingMetadata::try_from(EncoderVersion::V0, &metadata_tc)
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            let request = UpdateRecordingMetadataRequest {
+                recording_id: Some(RecordingId { id: id.to_owned() }),
+                metadata: Some(metadata),
+            };
+
+            self.client
+                .update_recording_metadata(request)
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+            Ok(())
+        })
+    }
+
+    /// Open a [`Recording`][rerun.dataframe.Recording] by id to use with the dataframe APIs.
+    ///
+    /// This currently downloads the full recording to the local machine.
+    ///
+    /// Parameters
+    /// ----------
+    /// id : str
+    ///     The id of the recording to open.
+    ///
+    /// Returns
+    /// -------
+    /// Recording
+    ///     The opened recording.
+    #[pyo3(signature = (
+        id,
+    ))]
+    fn open_recording(&mut self, id: &str) -> PyResult<PyRecording> {
+        use tokio_stream::StreamExt as _;
+        let store = self.runtime.block_on(async {
+            let mut resp = self
+                .client
+                .fetch_recording(FetchRecordingRequest {
+                    recording_id: Some(RecordingId { id: id.to_owned() }),
+                })
+                .await
+                .map_err(|err| PyRuntimeError::new_err(err.to_string()))?
+                .into_inner();
+
+            // TODO(jleibs): Does this come from RDP?
+            let store_id = StoreId::from_string(StoreKind::Recording, id.to_owned());
+
+            let store_info = StoreInfo {
+                application_id: ApplicationId::from("rerun_data_platform"),
+                store_id: store_id.clone(),
+                cloned_from: None,
+                is_official_example: false,
+                started: Time::now(),
+                store_source: StoreSource::Unknown,
+                store_version: None,
+            };
+
+            let mut store = ChunkStore::new(store_id, Default::default());
+            store.set_info(store_info);
+
+            while let Some(result) = resp.next().await {
+                let response = result.map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+                let tc = decode(EncoderVersion::V0, &response.payload)
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+                let Some(tc) = tc else {
+                    return Err(PyRuntimeError::new_err("Stream error"));
+                };
+
+                let chunk = Chunk::from_transport(&tc)
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+
+                store
+                    .insert_chunk(&std::sync::Arc::new(chunk))
+                    .map_err(|err| PyRuntimeError::new_err(err.to_string()))?;
+            }
+
+            Ok(store)
+        })?;
+
+        let handle = ChunkStoreHandle::new(store);
+
+        let cache =
+            re_dataframe::QueryCacheHandle::new(re_dataframe::QueryCache::new(handle.clone()));
+
+        Ok(PyRecording {
+            store: handle,
+            cache,
+        })
+    }
 }
 
 /// A type alias for metadata.
@@ -156,7 +345,7 @@ enum MetadataLike {
 }
 
 impl MetadataLike {
-    fn to_arrow2(&self) -> PyResult<Box<dyn re_chunk::ArrowArray>> {
+    fn to_arrow2(&self) -> PyResult<Box<dyn re_chunk::Arrow2Array>> {
         match self {
             Self::PyArrow(array) => {
                 let array = arrow2::array::from_data(&array.0);
@@ -185,24 +374,5 @@ impl MetadataLike {
                 }
             }
         }
-    }
-}
-
-/// The info for a recording stored in the archive.
-#[pyclass(name = "RecordingMetadata")]
-pub struct PyRecordingMetadata {
-    info: re_protos::v0::RecordingMetadata,
-}
-
-#[pymethods]
-impl PyRecordingMetadata {
-    fn __repr__(&self) -> String {
-        format!(
-            "Recording(id={})",
-            self.info
-                .id()
-                .map(|id| id.to_string())
-                .unwrap_or("Unknown".to_owned())
-        )
     }
 }

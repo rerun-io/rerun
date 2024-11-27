@@ -173,7 +173,7 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -187,7 +187,7 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
                 .get("rerun.blueprint.components.ContainerKind")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.ContainerBlueprint#container_kind")?;
-            <crate::blueprint::components::ContainerKind>::from_arrow_opt(&**array)
+            <crate::blueprint::components::ContainerKind>::from_arrow2_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.ContainerBlueprint#container_kind")?
                 .into_iter()
                 .next()
@@ -196,7 +196,7 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
                 .with_context("rerun.blueprint.archetypes.ContainerBlueprint#container_kind")?
         };
         let display_name = if let Some(array) = arrays_by_name.get("rerun.components.Name") {
-            <crate::components::Name>::from_arrow_opt(&**array)
+            <crate::components::Name>::from_arrow2_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.ContainerBlueprint#display_name")?
                 .into_iter()
                 .next()
@@ -207,7 +207,7 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
         let contents =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.IncludedContent") {
                 Some({
-                    <crate::blueprint::components::IncludedContent>::from_arrow_opt(&**array)
+                    <crate::blueprint::components::IncludedContent>::from_arrow2_opt(&**array)
                         .with_context("rerun.blueprint.archetypes.ContainerBlueprint#contents")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -220,7 +220,7 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
         let col_shares =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ColumnShare") {
                 Some({
-                    <crate::blueprint::components::ColumnShare>::from_arrow_opt(&**array)
+                    <crate::blueprint::components::ColumnShare>::from_arrow2_opt(&**array)
                         .with_context("rerun.blueprint.archetypes.ContainerBlueprint#col_shares")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -233,7 +233,7 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
         let row_shares =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.RowShare") {
                 Some({
-                    <crate::blueprint::components::RowShare>::from_arrow_opt(&**array)
+                    <crate::blueprint::components::RowShare>::from_arrow2_opt(&**array)
                         .with_context("rerun.blueprint.archetypes.ContainerBlueprint#row_shares")?
                         .into_iter()
                         .map(|v| v.ok_or_else(DeserializationError::missing_data))
@@ -245,7 +245,7 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
             };
         let active_tab =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ActiveTab") {
-                <crate::blueprint::components::ActiveTab>::from_arrow_opt(&**array)
+                <crate::blueprint::components::ActiveTab>::from_arrow2_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.ContainerBlueprint#active_tab")?
                     .into_iter()
                     .next()
@@ -255,7 +255,7 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
             };
         let visible = if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Visible")
         {
-            <crate::blueprint::components::Visible>::from_arrow_opt(&**array)
+            <crate::blueprint::components::Visible>::from_arrow2_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.ContainerBlueprint#visible")?
                 .into_iter()
                 .next()
@@ -265,7 +265,7 @@ impl ::re_types_core::Archetype for ContainerBlueprint {
         };
         let grid_columns =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.GridColumns") {
-                <crate::blueprint::components::GridColumns>::from_arrow_opt(&**array)
+                <crate::blueprint::components::GridColumns>::from_arrow2_opt(&**array)
                     .with_context("rerun.blueprint.archetypes.ContainerBlueprint#grid_columns")?
                     .into_iter()
                     .next()

@@ -10,7 +10,7 @@ readme = "README.md"
 repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
-include = ["../../LICENSE-APACHE", "../../LICENSE-MIT", "**/*.rs", "Cargo.toml"]
+include.workspace = true
 
 [lints]
 workspace = true
@@ -36,6 +36,7 @@ re_viewer_context.workspace = true
 re_viewport_blueprint.workspace = true
 
 ahash.workspace = true
+arrow.workspace = true
 bytemuck.workspace = true
 egui.workspace = true
 glam.workspace = true

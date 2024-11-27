@@ -5,7 +5,7 @@ use anyhow::Context;
 use egui::NumExt as _;
 use itertools::Itertools;
 
-use re_chunk_store::external::re_chunk::ArrowArray;
+use re_chunk_store::external::re_chunk::Arrow2Array;
 use re_chunk_store::{ColumnDescriptor, LatestAtQuery};
 use re_dataframe::external::re_query::StorageEngineArcReadGuard;
 use re_dataframe::QueryHandle;
@@ -142,7 +142,7 @@ struct RowsDisplayData {
 impl RowsDisplayData {
     fn try_new(
         row_indices: &Range<u64>,
-        row_data: Vec<Vec<Box<dyn ArrowArray>>>,
+        row_data: Vec<Vec<Box<dyn Arrow2Array>>>,
         selected_columns: &[ColumnDescriptor],
         query_timeline: &Timeline,
     ) -> Result<Self, DisplayRecordBatchError> {

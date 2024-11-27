@@ -1,6 +1,6 @@
 use arrow2::{
     array::{
-        Array as ArrowArray, ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray,
+        Array as Arrow2Array, ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
         StructArray,
     },
     offset::Offsets as ArrowOffsets,
@@ -212,8 +212,8 @@ impl Chunk {
                 sorted_counters[to] = counters[from];
             }
 
-            let times = ArrowPrimitiveArray::<u64>::from_vec(sorted_times).boxed();
-            let counters = ArrowPrimitiveArray::<u64>::from_vec(sorted_counters).boxed();
+            let times = Arrow2PrimitiveArray::<u64>::from_vec(sorted_times).boxed();
+            let counters = Arrow2PrimitiveArray::<u64>::from_vec(sorted_counters).boxed();
 
             self.row_ids = StructArray::new(
                 self.row_ids.data_type().clone(),
@@ -250,7 +250,7 @@ impl Chunk {
                 }
 
                 *is_sorted = sorted.windows(2).all(|times| times[0] <= times[1]);
-                *times = ArrowPrimitiveArray::<i64>::from_vec(sorted).to(timeline.datatype());
+                *times = Arrow2PrimitiveArray::<i64>::from_vec(sorted).to(timeline.datatype());
             }
         }
 
@@ -267,7 +267,7 @@ impl Chunk {
                     .collect_vec();
                 let sorted_arrays = sorted_arrays
                     .iter()
-                    .map(|array| &**array as &dyn ArrowArray)
+                    .map(|array| &**array as &dyn Arrow2Array)
                     .collect_vec();
 
                 let datatype = original.data_type().clone();
@@ -281,7 +281,7 @@ impl Chunk {
                     .validity()
                     .map(|validity| swaps.iter().map(|&from| validity.get_bit(from)).collect());
 
-                *original = ArrowListArray::<i32>::new(datatype, offsets.into(), values, validity);
+                *original = Arrow2ListArray::<i32>::new(datatype, offsets.into(), values, validity);
             }
         }
 

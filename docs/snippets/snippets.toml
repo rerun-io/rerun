@@ -5,6 +5,10 @@
 # You should only ever use this if the test isn't implemented and cannot yet be implemented
 # for one or more specific SDKs.
 [opt_out.run]
+"concepts/explicit_recording" = [ # python-specific check
+  "cpp",
+  "rust",
+]
 "concepts/static/log_static" = [ # pseudo-code
   "py",
   "cpp",
@@ -61,6 +65,14 @@ views = [
 ]
 "archetypes/points3d_send_columns" = [
   "rust", # Doesn't support partitioned component batches yet.
+]
+"howto/any_batch_value_send_columns" = [
+  "cpp",  # Not implemented
+  "rust", # Not implemented
+]
+"howto/any_values_send_columns" = [
+  "cpp",  # Not implemented
+  "rust", # Not implemented
 ]
 "migration/log_line" = [ # Not a complete example -- just a single log line
   "cpp",

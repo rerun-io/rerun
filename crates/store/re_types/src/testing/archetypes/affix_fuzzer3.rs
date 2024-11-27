@@ -189,7 +189,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -200,7 +200,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
             .collect();
         let fuzz2001 =
             if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer1") {
-                <crate::testing::components::AffixFuzzer1>::from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer1>::from_arrow2_opt(&**array)
                     .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2001")?
                     .into_iter()
                     .next()
@@ -210,7 +210,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
             };
         let fuzz2002 =
             if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer2") {
-                <crate::testing::components::AffixFuzzer2>::from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer2>::from_arrow2_opt(&**array)
                     .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2002")?
                     .into_iter()
                     .next()
@@ -220,7 +220,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
             };
         let fuzz2003 =
             if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer3") {
-                <crate::testing::components::AffixFuzzer3>::from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer3>::from_arrow2_opt(&**array)
                     .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2003")?
                     .into_iter()
                     .next()
@@ -230,7 +230,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
             };
         let fuzz2004 =
             if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer4") {
-                <crate::testing::components::AffixFuzzer4>::from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer4>::from_arrow2_opt(&**array)
                     .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2004")?
                     .into_iter()
                     .next()
@@ -240,7 +240,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
             };
         let fuzz2005 =
             if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer5") {
-                <crate::testing::components::AffixFuzzer5>::from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer5>::from_arrow2_opt(&**array)
                     .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2005")?
                     .into_iter()
                     .next()
@@ -250,7 +250,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
             };
         let fuzz2006 =
             if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer6") {
-                <crate::testing::components::AffixFuzzer6>::from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer6>::from_arrow2_opt(&**array)
                     .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2006")?
                     .into_iter()
                     .next()
@@ -260,7 +260,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
             };
         let fuzz2007 =
             if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer7") {
-                <crate::testing::components::AffixFuzzer7>::from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer7>::from_arrow2_opt(&**array)
                     .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2007")?
                     .into_iter()
                     .next()
@@ -270,7 +270,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
             };
         let fuzz2008 =
             if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer8") {
-                <crate::testing::components::AffixFuzzer8>::from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer8>::from_arrow2_opt(&**array)
                     .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2008")?
                     .into_iter()
                     .next()
@@ -280,7 +280,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
             };
         let fuzz2009 =
             if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer9") {
-                <crate::testing::components::AffixFuzzer9>::from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer9>::from_arrow2_opt(&**array)
                     .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2009")?
                     .into_iter()
                     .next()
@@ -290,7 +290,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
             };
         let fuzz2010 =
             if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer10") {
-                <crate::testing::components::AffixFuzzer10>::from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer10>::from_arrow2_opt(&**array)
                     .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2010")?
                     .into_iter()
                     .next()
@@ -300,7 +300,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
             };
         let fuzz2011 =
             if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer11") {
-                <crate::testing::components::AffixFuzzer11>::from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer11>::from_arrow2_opt(&**array)
                     .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2011")?
                     .into_iter()
                     .next()
@@ -310,7 +310,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
             };
         let fuzz2012 =
             if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer12") {
-                <crate::testing::components::AffixFuzzer12>::from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer12>::from_arrow2_opt(&**array)
                     .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2012")?
                     .into_iter()
                     .next()
@@ -320,7 +320,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
             };
         let fuzz2013 =
             if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer13") {
-                <crate::testing::components::AffixFuzzer13>::from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer13>::from_arrow2_opt(&**array)
                     .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2013")?
                     .into_iter()
                     .next()
@@ -330,7 +330,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
             };
         let fuzz2014 =
             if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer14") {
-                <crate::testing::components::AffixFuzzer14>::from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer14>::from_arrow2_opt(&**array)
                     .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2014")?
                     .into_iter()
                     .next()
@@ -340,7 +340,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
             };
         let fuzz2015 =
             if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer15") {
-                <crate::testing::components::AffixFuzzer15>::from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer15>::from_arrow2_opt(&**array)
                     .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2015")?
                     .into_iter()
                     .next()
@@ -350,7 +350,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
             };
         let fuzz2016 =
             if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer16") {
-                <crate::testing::components::AffixFuzzer16>::from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer16>::from_arrow2_opt(&**array)
                     .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2016")?
                     .into_iter()
                     .next()
@@ -360,7 +360,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
             };
         let fuzz2017 =
             if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer17") {
-                <crate::testing::components::AffixFuzzer17>::from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer17>::from_arrow2_opt(&**array)
                     .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2017")?
                     .into_iter()
                     .next()
@@ -370,7 +370,7 @@ impl ::re_types_core::Archetype for AffixFuzzer3 {
             };
         let fuzz2018 =
             if let Some(array) = arrays_by_name.get("rerun.testing.components.AffixFuzzer18") {
-                <crate::testing::components::AffixFuzzer18>::from_arrow_opt(&**array)
+                <crate::testing::components::AffixFuzzer18>::from_arrow2_opt(&**array)
                     .with_context("rerun.testing.archetypes.AffixFuzzer3#fuzz2018")?
                     .into_iter()
                     .next()

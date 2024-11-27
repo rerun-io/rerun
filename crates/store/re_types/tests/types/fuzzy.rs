@@ -2,7 +2,6 @@
 
 use std::collections::HashMap;
 
-use arrow2::types::f16;
 use re_types::{
     testing::{
         archetypes::{AffixFuzzer1, AffixFuzzer2, AffixFuzzer3, AffixFuzzer4},
@@ -10,6 +9,8 @@ use re_types::{
     },
     Archetype as _, AsComponents as _,
 };
+
+use half::f16;
 
 use crate::util;
 
@@ -211,7 +212,7 @@ fn roundtrip() {
 
     {
         let arch = AffixFuzzer1::new(
-            fuzzy1.clone(), //
+            fuzzy1.clone(),
             fuzzy2.clone(),
             fuzzy3.clone(),
             fuzzy4.clone(),
@@ -236,31 +237,31 @@ fn roundtrip() {
         );
 
         #[rustfmt::skip]
-    let expected_extensions: HashMap<_, _> = [
-        ("fuzz1001", vec!["rerun.testing.components.AffixFuzzer1", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ("fuzz1002", vec!["rerun.testing.components.AffixFuzzer2", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ("fuzz1003", vec!["rerun.testing.components.AffixFuzzer3", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ("fuzz1004", vec!["rerun.testing.components.AffixFuzzer4", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ("fuzz1005", vec!["rerun.testing.components.AffixFuzzer5", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ("fuzz1006", vec!["rerun.testing.components.AffixFuzzer6", "rerun.testing.datatypes.AffixFuzzer1"]),
-    ]
-    .into();
+        let expected_extensions: HashMap<_, _> = [
+            ("fuzz1001", vec!["rerun.testing.components.AffixFuzzer1", "rerun.testing.datatypes.AffixFuzzer1"]),
+            ("fuzz1002", vec!["rerun.testing.components.AffixFuzzer2", "rerun.testing.datatypes.AffixFuzzer1"]),
+            ("fuzz1003", vec!["rerun.testing.components.AffixFuzzer3", "rerun.testing.datatypes.AffixFuzzer1"]),
+            ("fuzz1004", vec!["rerun.testing.components.AffixFuzzer4", "rerun.testing.datatypes.AffixFuzzer1"]),
+            ("fuzz1005", vec!["rerun.testing.components.AffixFuzzer5", "rerun.testing.datatypes.AffixFuzzer1"]),
+            ("fuzz1006", vec!["rerun.testing.components.AffixFuzzer6", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ]
+        .into();
 
         eprintln!("arch = {arch:#?}");
-        let serialized = arch.to_arrow().unwrap();
+        let serialized = arch.to_arrow2().unwrap();
         for (field, array) in &serialized {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
             // eprintln!("array = {array:#?}");
             if field.name == "rerun.testing.components.AffixFuzzer21" {
-                // TODO(jleibs): Fields that contain Float16 apparently don't supported fmt
+                // TODO(#3741): Fields that contain Float16 apparently don't supported fmt
                 // https://github.com/rerun-io/re_arrow2/blob/33a32000001df800e4840d92c33b03e7007311e1/src/array/primitive/fmt.rs#L39
                 eprintln!("{} = Can't be printed (float16 not supported)", field.name);
             } else {
                 eprintln!("{} = {array:#?}", field.name);
             }
 
-            // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
+            // TODO(#3741): Re-enable extensions and these assertions once `arrow2-convert`
             // has been fully replaced.
             if false {
                 util::assert_extensions(
@@ -270,7 +271,7 @@ fn roundtrip() {
             }
         }
 
-        let deserialized = AffixFuzzer1::from_arrow(serialized).unwrap();
+        let deserialized = AffixFuzzer1::from_arrow2(serialized).unwrap();
         similar_asserts::assert_eq!(arch, deserialized);
     }
 
@@ -298,31 +299,31 @@ fn roundtrip() {
         );
 
         #[rustfmt::skip]
-    let expected_extensions: HashMap<_, _> = [
-        ("fuzz1101", vec!["rerun.testing.components.AffixFuzzer1", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ("fuzz1102", vec!["rerun.testing.components.AffixFuzzer2", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ("fuzz1103", vec!["rerun.testing.components.AffixFuzzer3", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ("fuzz1104", vec!["rerun.testing.components.AffixFuzzer4", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ("fuzz1105", vec!["rerun.testing.components.AffixFuzzer5", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ("fuzz1106", vec!["rerun.testing.components.AffixFuzzer6", "rerun.testing.datatypes.AffixFuzzer1"]),
-    ]
-    .into();
+        let expected_extensions: HashMap<_, _> = [
+            ("fuzz1101", vec!["rerun.testing.components.AffixFuzzer1", "rerun.testing.datatypes.AffixFuzzer1"]),
+            ("fuzz1102", vec!["rerun.testing.components.AffixFuzzer2", "rerun.testing.datatypes.AffixFuzzer1"]),
+            ("fuzz1103", vec!["rerun.testing.components.AffixFuzzer3", "rerun.testing.datatypes.AffixFuzzer1"]),
+            ("fuzz1104", vec!["rerun.testing.components.AffixFuzzer4", "rerun.testing.datatypes.AffixFuzzer1"]),
+            ("fuzz1105", vec!["rerun.testing.components.AffixFuzzer5", "rerun.testing.datatypes.AffixFuzzer1"]),
+            ("fuzz1106", vec!["rerun.testing.components.AffixFuzzer6", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ]
+        .into();
 
         eprintln!("arch = {arch:#?}");
-        let serialized = arch.to_arrow().unwrap();
+        let serialized = arch.to_arrow2().unwrap();
         for (field, array) in &serialized {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
             // eprintln!("array = {array:#?}");
             if field.name == "rerun.testing.components.AffixFuzzer21" {
-                // TODO(jleibs): Fields that contain Float16 apparently don't supported fmt
+                // TODO(#3741): Fields that contain Float16 apparently don't supported fmt
                 // https://github.com/rerun-io/re_arrow2/blob/33a32000001df800e4840d92c33b03e7007311e1/src/array/primitive/fmt.rs#L39
                 eprintln!("{} = Can't be printed (float16 not supported)", field.name);
             } else {
                 eprintln!("{} = {array:#?}", field.name);
             }
 
-            // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
+            // TODO(#3741): Re-enable extensions and these assertions once `arrow2-convert`
             // has been fully replaced.
             if false {
                 util::assert_extensions(
@@ -332,7 +333,7 @@ fn roundtrip() {
             }
         }
 
-        let deserialized = AffixFuzzer2::from_arrow(serialized).unwrap();
+        let deserialized = AffixFuzzer2::from_arrow2(serialized).unwrap();
         similar_asserts::assert_eq!(arch, deserialized);
     }
 
@@ -351,31 +352,31 @@ fn roundtrip() {
             .with_fuzz2018(fuzzy18_1.clone());
 
         #[rustfmt::skip]
-    let expected_extensions: HashMap<_, _> = [
-        ("fuzz2001", vec!["rerun.testing.components.AffixFuzzer1", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ("fuzz2002", vec!["rerun.testing.components.AffixFuzzer2", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ("fuzz2003", vec!["rerun.testing.components.AffixFuzzer3", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ("fuzz2004", vec!["rerun.testing.components.AffixFuzzer4", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ("fuzz2005", vec!["rerun.testing.components.AffixFuzzer5", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ("fuzz2006", vec!["rerun.testing.components.AffixFuzzer6", "rerun.testing.datatypes.AffixFuzzer1"]),
-    ]
-    .into();
+        let expected_extensions: HashMap<_, _> = [
+            ("fuzz2001", vec!["rerun.testing.components.AffixFuzzer1", "rerun.testing.datatypes.AffixFuzzer1"]),
+            ("fuzz2002", vec!["rerun.testing.components.AffixFuzzer2", "rerun.testing.datatypes.AffixFuzzer1"]),
+            ("fuzz2003", vec!["rerun.testing.components.AffixFuzzer3", "rerun.testing.datatypes.AffixFuzzer1"]),
+            ("fuzz2004", vec!["rerun.testing.components.AffixFuzzer4", "rerun.testing.datatypes.AffixFuzzer1"]),
+            ("fuzz2005", vec!["rerun.testing.components.AffixFuzzer5", "rerun.testing.datatypes.AffixFuzzer1"]),
+            ("fuzz2006", vec!["rerun.testing.components.AffixFuzzer6", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ]
+        .into();
 
         eprintln!("arch = {arch:#?}");
-        let serialized = arch.to_arrow().unwrap();
+        let serialized = arch.to_arrow2().unwrap();
         for (field, array) in &serialized {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
             // eprintln!("array = {array:#?}");
             if field.name == "rerun.testing.components.AffixFuzzer21" {
-                // TODO(jleibs): Fields that contain Float16 apparently don't supported fmt
+                // TODO(#3741): Fields that contain Float16 apparently don't supported fmt
                 // https://github.com/rerun-io/re_arrow2/blob/33a32000001df800e4840d92c33b03e7007311e1/src/array/primitive/fmt.rs#L39
                 eprintln!("{} = Can't be printed (float16 not supported)", field.name);
             } else {
                 eprintln!("{} = {array:#?}", field.name);
             }
 
-            // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
+            // TODO(#3741): Re-enable extensions and these assertions once `arrow2-convert`
             // has been fully replaced.
             if false {
                 util::assert_extensions(
@@ -385,7 +386,7 @@ fn roundtrip() {
             }
         }
 
-        let deserialized = AffixFuzzer3::from_arrow(serialized).unwrap();
+        let deserialized = AffixFuzzer3::from_arrow2(serialized).unwrap();
         similar_asserts::assert_eq!(arch, deserialized);
     }
 
@@ -404,31 +405,31 @@ fn roundtrip() {
             .with_fuzz2118([fuzzy18_1.clone(), fuzzy18_2.clone(), fuzzy18_3.clone()]);
 
         #[rustfmt::skip]
-    let expected_extensions: HashMap<_, _> = [
-        ("fuzz2101", vec!["rerun.testing.components.AffixFuzzer1", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ("fuzz2102", vec!["rerun.testing.components.AffixFuzzer2", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ("fuzz2103", vec!["rerun.testing.components.AffixFuzzer3", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ("fuzz2104", vec!["rerun.testing.components.AffixFuzzer4", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ("fuzz2105", vec!["rerun.testing.components.AffixFuzzer5", "rerun.testing.datatypes.AffixFuzzer1"]),
-        ("fuzz2106", vec!["rerun.testing.components.AffixFuzzer6", "rerun.testing.datatypes.AffixFuzzer1"]),
-    ]
-    .into();
+        let expected_extensions: HashMap<_, _> = [
+            ("fuzz2101", vec!["rerun.testing.components.AffixFuzzer1", "rerun.testing.datatypes.AffixFuzzer1"]),
+            ("fuzz2102", vec!["rerun.testing.components.AffixFuzzer2", "rerun.testing.datatypes.AffixFuzzer1"]),
+            ("fuzz2103", vec!["rerun.testing.components.AffixFuzzer3", "rerun.testing.datatypes.AffixFuzzer1"]),
+            ("fuzz2104", vec!["rerun.testing.components.AffixFuzzer4", "rerun.testing.datatypes.AffixFuzzer1"]),
+            ("fuzz2105", vec!["rerun.testing.components.AffixFuzzer5", "rerun.testing.datatypes.AffixFuzzer1"]),
+            ("fuzz2106", vec!["rerun.testing.components.AffixFuzzer6", "rerun.testing.datatypes.AffixFuzzer1"]),
+        ]
+        .into();
 
         eprintln!("arch = {arch:#?}");
-        let serialized = arch.to_arrow().unwrap();
+        let serialized = arch.to_arrow2().unwrap();
         for (field, array) in &serialized {
             // NOTE: Keep those around please, very useful when debugging.
             // eprintln!("field = {field:#?}");
             // eprintln!("array = {array:#?}");
             if field.name == "rerun.testing.components.AffixFuzzer21" {
-                // TODO(jleibs): Fields that contain Float16 apparently don't supported fmt
+                // TODO(#3741): Fields that contain Float16 apparently don't supported fmt
                 // https://github.com/rerun-io/re_arrow2/blob/33a32000001df800e4840d92c33b03e7007311e1/src/array/primitive/fmt.rs#L39
                 eprintln!("{} = Can't be printed (float16 not supported)", field.name);
             } else {
                 eprintln!("{} = {array:#?}", field.name);
             }
 
-            // TODO(cmc): Re-enable extensions and these assertions once `arrow2-convert`
+            // TODO(#3741): Re-enable extensions and these assertions once `arrow2-convert`
             // has been fully replaced.
             if false {
                 util::assert_extensions(
@@ -438,7 +439,7 @@ fn roundtrip() {
             }
         }
 
-        let deserialized = AffixFuzzer4::from_arrow(serialized).unwrap();
+        let deserialized = AffixFuzzer4::from_arrow2(serialized).unwrap();
         similar_asserts::assert_eq!(arch, deserialized);
     }
 }

@@ -1136,7 +1136,7 @@ fn log_arrow_msg(
 /// ------
 /// entity_path: `str`
 ///     The entity path to log the chunk to.
-/// timelines: `Dict[str, ArrowPrimitiveArray<i64>]`
+/// timelines: `Dict[str, Arrow2PrimitiveArray<i64>]`
 ///     A dictionary mapping timeline names to their values.
 /// components: `Dict[str, ArrowListArray<i32>]`
 ///     A dictionary mapping component names to their values.

@@ -292,7 +292,7 @@ pub enum TensorElement {
     ///
     /// Uses the standard IEEE 754-2008 binary16 format.
     /// Set <https://en.wikipedia.org/wiki/Half-precision_floating-point_format>.
-    F16(arrow2::types::f16),
+    F16(half::f16),
 
     /// 32-bit floating point number.
     F32(f32),

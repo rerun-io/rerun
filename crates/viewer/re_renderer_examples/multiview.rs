@@ -218,7 +218,7 @@ fn handle_incoming_screenshots(re_ctx: &RenderContext) {
 
 impl Multiview {
     fn draw_view<D: 'static + re_renderer::renderer::DrawData + Sync + Send + Clone>(
-        &mut self,
+        &self,
         re_ctx: &RenderContext,
         target_cfg: TargetConfiguration,
         skybox: GenericSkyboxDrawData,

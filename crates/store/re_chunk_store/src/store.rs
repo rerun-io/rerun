@@ -2,7 +2,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::sync::atomic::AtomicU64;
 use std::sync::Arc;
 
-use arrow2::datatypes::DataType as ArrowDataType;
+use arrow2::datatypes::DataType as Arrow2DataType;
 use nohash_hasher::IntMap;
 
 use re_chunk::{Chunk, ChunkId, RowId, TransportChunk};
@@ -258,21 +258,20 @@ pub struct ChunkIdSetPerTime {
     pub(crate) per_end_time: BTreeMap<TimeInt, ChunkIdSet>,
 }
 
-pub type ChunkIdSetPerTimePerComponent = BTreeMap<ComponentName, ChunkIdSetPerTime>;
+pub type ChunkIdSetPerTimePerComponent = IntMap<ComponentName, ChunkIdSetPerTime>;
 
-pub type ChunkIdSetPerTimePerComponentPerTimeline =
-    BTreeMap<Timeline, ChunkIdSetPerTimePerComponent>;
+pub type ChunkIdSetPerTimePerComponentPerTimeline = IntMap<Timeline, ChunkIdSetPerTimePerComponent>;
 
 pub type ChunkIdSetPerTimePerComponentPerTimelinePerEntity =
-    BTreeMap<EntityPath, ChunkIdSetPerTimePerComponentPerTimeline>;
+    IntMap<EntityPath, ChunkIdSetPerTimePerComponentPerTimeline>;
 
-pub type ChunkIdPerComponent = BTreeMap<ComponentName, ChunkId>;
+pub type ChunkIdPerComponent = IntMap<ComponentName, ChunkId>;
 
-pub type ChunkIdPerComponentPerEntity = BTreeMap<EntityPath, ChunkIdPerComponent>;
+pub type ChunkIdPerComponentPerEntity = IntMap<EntityPath, ChunkIdPerComponent>;
 
-pub type ChunkIdSetPerTimePerTimeline = BTreeMap<Timeline, ChunkIdSetPerTime>;
+pub type ChunkIdSetPerTimePerTimeline = IntMap<Timeline, ChunkIdSetPerTime>;
 
-pub type ChunkIdSetPerTimePerTimelinePerEntity = BTreeMap<EntityPath, ChunkIdSetPerTimePerTimeline>;
+pub type ChunkIdSetPerTimePerTimelinePerEntity = IntMap<EntityPath, ChunkIdSetPerTimePerTimeline>;
 
 // ---
 
@@ -407,10 +406,9 @@ pub struct ChunkStore {
     //
     // TODO(cmc): this would become fairly problematic in a world where each chunk can use a
     // different datatype for a given component.
-    pub(crate) type_registry: IntMap<ComponentName, ArrowDataType>,
+    pub(crate) type_registry: IntMap<ComponentName, Arrow2DataType>,
 
-    pub(crate) per_column_metadata:
-        BTreeMap<EntityPath, BTreeMap<ComponentName, ColumnMetadataState>>,
+    pub(crate) per_column_metadata: IntMap<EntityPath, IntMap<ComponentName, ColumnMetadataState>>,
 
     pub(crate) chunks_per_chunk_id: BTreeMap<ChunkId, Arc<Chunk>>,
 
@@ -454,7 +452,6 @@ pub struct ChunkStore {
     /// This is too costly to be computed from scratch every frame, and is required by e.g. the GC.
     pub(crate) static_chunks_stats: ChunkStoreChunkStats,
 
-    // pub(crate) static_tables: BTreeMap<EntityPathHash, StaticTable>,
     /// Monotonically increasing ID for insertions.
     pub(crate) insert_id: u64,
 
@@ -633,9 +630,9 @@ impl ChunkStore {
         self.chunks_per_chunk_id.len()
     }
 
-    /// Lookup the _latest_ arrow [`ArrowDataType`] used by a specific [`re_types_core::Component`].
+    /// Lookup the _latest_ arrow [`Arrow2DataType`] used by a specific [`re_types_core::Component`].
     #[inline]
-    pub fn lookup_datatype(&self, component_name: &ComponentName) -> Option<&ArrowDataType> {
+    pub fn lookup_datatype(&self, component_name: &ComponentName) -> Option<&Arrow2DataType> {
         self.type_registry.get(component_name)
     }
 

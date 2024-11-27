@@ -178,7 +178,7 @@ pub fn show_zoomed_image_region(
         interaction_id,
         center_texel,
     ) {
-        ui.error_with_details_on_hover(&err.to_string());
+        ui.error_with_details_on_hover(err.to_string());
     }
 }
 
@@ -294,6 +294,7 @@ enum PixelValueSource<'a> {
     /// * the texture is known to be able to read back
     /// * the texture format is `Rgba8UnormSrgb`
     /// * you don't care about alpha (since there's no 24bit textures, we assume we can just ignore it)
+    ///
     /// Note that these restrictions are not final,
     /// but merely what covers the usecases right now with the least amount of effort.
     GpuTexture(&'a GpuTexture2D),
