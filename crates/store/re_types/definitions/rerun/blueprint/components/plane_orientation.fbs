@@ -9,8 +9,10 @@ enum PlaneOrientation: ubyte (
 
     /// Plane spanned by X and Z axis.
     Xz,
+    
     /// Plane spanned by Y and Z axis.
     Yz,
+    
     /// Plane spanned by X and Y axis.
     Xy (default), // we default to RFU cameras in the view.
 }
