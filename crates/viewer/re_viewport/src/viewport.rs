@@ -202,7 +202,9 @@ impl Viewport {
         // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
         let commands: Vec<ViewportCommand> = bp.deferred_commands.lock().drain(..).collect();
 
-        let mut tree_edited = false; // TODO: can we diff the tree instead?
+        // If set, we will save the tree to the blueprint store at the end of the frame.
+        // This includes saving all the containers in the tree (but not the space views!).
+        let mut tree_edited = false;
 
         for command in commands {
             re_log::trace!("Processing viewport command: {command:?}");
@@ -252,16 +254,19 @@ impl Viewport {
 
                 ViewportCommand::AddContainer(container_kind, parent_container) => {
                     let parent_id = parent_container.unwrap_or(bp.root_container);
+
                     let tile_id = bp
                         .tree
                         .tiles
                         .insert_container(egui_tiles::Container::new(container_kind, vec![]));
+
                     re_log::trace!("Adding container {container_kind:?} to parent {parent_id}");
-                    if let Some(egui_tiles::Tile::Container(container)) =
+
+                    if let Some(egui_tiles::Tile::Container(parent_container)) =
                         bp.tree.tiles.get_mut(blueprint_id_to_tile_id(&parent_id))
                     {
                         re_log::trace!("Inserting new space view into container {parent_id:?}");
-                        container.add_child(tile_id);
+                        parent_container.add_child(tile_id);
                     } else {
                         re_log::trace!(
                             "Parent or root was not a container - will re-run auto-layout"
@@ -305,33 +310,37 @@ impl Viewport {
 
                     for tile in bp.tree.remove_recursively(tile_id) {
                         re_log::trace!("Removing tile {tile_id:?}");
-                        if let egui_tiles::Tile::Pane(space_view_id) = tile {
-                            re_log::trace!("Removing space view {space_view_id}");
+                        match tile {
+                            egui_tiles::Tile::Pane(space_view_id) => {
+                                re_log::trace!("Removing space view {space_view_id}");
 
-                            bp.tree.tiles.remove(tile_id);
+                                // Remove the space view from the store
+                                if let Some(space_view) = bp.space_views.get(&space_view_id) {
+                                    space_view.clear(ctx);
+                                }
 
-                            bp.mark_user_interaction(ctx);
+                                // If the space-view was maximized, clean it up
+                                if bp.maximized == Some(space_view_id) {
+                                    bp.set_maximized(None, ctx);
+                                }
 
-                            // Remove the space view from the store
-                            if let Some(space_view) = bp.space_views.get(&space_view_id) {
-                                space_view.clear(ctx);
+                                bp.space_views.remove(&space_view_id);
+
+                                let components: Vec<IncludedSpaceView> = bp
+                                    .space_views
+                                    .keys()
+                                    .map(|id| IncludedSpaceView((*id).into()))
+                                    .collect();
+                                ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &components);
                             }
-
-                            // If the space-view was maximized, clean it up
-                            if bp.maximized == Some(space_view_id) {
-                                bp.set_maximized(None, ctx);
+                            egui_tiles::Tile::Container(_) => {
+                                // Empty containers (like this one) will be auto-removed by the tree simplification algorithm,
+                                // that will run later because of this tree edit.
                             }
-
-                            // Filter the space-view from the included space-views
-                            let components = bp
-                                .space_views
-                                .keys()
-                                .filter(|&id| id != &space_view_id)
-                                .map(|id| IncludedSpaceView((*id).into()))
-                                .collect::<Vec<_>>();
-                            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &components);
                         }
                     }
+
+                    bp.mark_user_interaction(ctx);
 
                     if Some(tile_id) == bp.tree.root {
                         bp.tree.root = None;
@@ -421,7 +430,6 @@ impl Viewport {
         }
 
         if run_auto_layout {
-            // TODO: we need to get the space views from somewhere
             bp.tree = super::auto_layout::tree_from_space_views(
                 space_view_class_registry,
                 &bp.space_views,
@@ -435,11 +443,10 @@ impl Viewport {
         if tree_edited {
             // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
 
-            // Simplify before we save the tree. Normally additional simplification will
-            // happen on the next render loop, but that's too late -- unsimplified
-            // changes will be baked into the tree.
-            let options = tree_simplification_options();
-            bp.tree.simplify(&options);
+            // Simplify before we save the tree.
+            // `egui_tiles` also runs a simplifying pass when calling `tree.ui`, but that is too late.
+            // We want the simpified changes saved to the store:
+            bp.tree.simplify(&tree_simplification_options());
 
             bp.save_tree_as_containers(ctx);
         }
