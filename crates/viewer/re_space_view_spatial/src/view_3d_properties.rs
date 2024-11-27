@@ -16,7 +16,7 @@ impl TypedComponentFallbackProvider<Color> for SpatialSpaceView3D {
         if ctx.archetype_name == Some(Background::name()) {
             Color::WHITE
         } else if ctx.archetype_name == Some(LineGrid3D::name()) {
-            Color::from_unmultiplied_rgba(200, 200, 200, 200)
+            Color::from_unmultiplied_rgba(128, 128, 128, 128)
         } else {
             Color::default()
         }

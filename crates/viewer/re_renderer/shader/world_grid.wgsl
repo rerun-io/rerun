@@ -18,7 +18,7 @@ struct WorldGridUniformBuffer {
 var<uniform> config: WorldGridUniformBuffer;
 
 struct VertexOutput {
-    @builtin(position)W
+    @builtin(position)
     position: vec4f,
 
     @location(0)

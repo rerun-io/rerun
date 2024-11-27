@@ -24,13 +24,13 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(u8)]
 pub enum PlaneOrientation {
     /// Plane spanned by X and Z axis.
-    #[default]
     Xz = 1,
 
     /// Plane spanned by Y and Z axis.
     Yz = 2,
 
     /// Plane spanned by X and Y axis.
+    #[default]
     Xy = 3,
 }
 
