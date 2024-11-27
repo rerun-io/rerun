@@ -75,34 +75,57 @@ fn linearstep2(edge0: vec2f, edge1: vec2f, x: vec2f) -> vec2f {
     return saturate((x - edge0) / (edge1 - edge0));
 }
 
+// Distance to a grid line in x and y ranging from 0 to 1.
+fn distance_to_grid_line(scaled_world_plane_position: vec2f) -> vec2f {
+    return 1.0 - abs(fract(scaled_world_plane_position) * 2.0 - 1.0);
+}
+
 @fragment
 fn main_fs(in: VertexOutput) -> @location(0) vec4f {
-    // The basics are very well explained by Ben Golus here: https://bgolus.medium.com/the-best-darn-grid-shader-yet-727f9278b9d8
-    // We're not actually implementing the "pristine grid shader" which is a world space grid,
+    // Most basics are very well explained by Ben Golus here: https://bgolus.medium.com/the-best-darn-grid-shader-yet-727f9278b9d8
+    // We're not actually implementing the "pristine grid shader" which is a grid with world space thickness,
     // but rather the pixel space grid, which is a lot simpler, but happens to be also described very well in this article.
 
     // Distance to a grid line in x and y ranging from 0 to 1.
-    let distance_to_grid_line = 1.0 - abs(fract(in.scaled_world_plane_position) * 2.0 - 1.0);
+    let distance_to_grid_line = distance_to_grid_line(in.scaled_world_plane_position);
 
     // Figure out the how wide the lines are in this "draw space".
     let plane_unit_pixel_derivative = fwidthFine(in.scaled_world_plane_position);
     let line_anti_alias = plane_unit_pixel_derivative;
-    let width_in_pixels = config.thickness_ui * frame.pixels_from_point;
+    let width_in_pixels = 1.0;//config.thickness_ui * frame.pixels_from_point;
     let width_in_grid_units = width_in_pixels * plane_unit_pixel_derivative;
     var intensity_regular = linearstep2(width_in_grid_units + line_anti_alias, width_in_grid_units - line_anti_alias, distance_to_grid_line);
 
     // Fade lines that get too close to each other.
-    // Once the number of pixels per unit (== from one line to the next) is below a threshold fade them out.
+    // Once the number of pixels per line (== from one line to the next) is below a threshold fade them out.
+    //
+    // Note that `1/plane_unit_pixel_derivative` would give us more literal pixels per line,
+    // but we actually want to know how dense the lines get here so we use `1/width_in_grid_units` instead,
+    // such that a line density of 1.0 means roughtly "100% lines" and 10.0 means "Every 10 pixels there is a lines".
+    // Empirically (== making the fade a hard cut and taking screenshot), this works out pretty accurately!
+    //
     // Tried smoothstep here, but didn't feel right even with lots of range tweaking.
-    let pixel_per_plane_unit = 1.0 / max(width_in_grid_units.x, width_in_grid_units.y);
-    let grid_closeness_fade = linearstep(1.0, 10.0, pixel_per_plane_unit);
+    let line_density = 1.0 / max(width_in_grid_units.x, width_in_grid_units.y);
+    let grid_closeness_fade = linearstep(1.0, 10.0, line_density);
     intensity_regular *= grid_closeness_fade;
 
-    // Every tenth line is a more intense.
-    let distance_to_grid_line_cardinal = 1.0 - abs(fract(in.scaled_world_plane_position * 0.1) * 2.0 - 1.0);
-    var cardinal_line_intensity = linearstep2(width_in_grid_units + line_anti_alias, width_in_grid_units - line_anti_alias, distance_to_grid_line_cardinal * 10.0);
-    let cardinal_grid_closeness_fade = linearstep(2.0, 10.0, pixel_per_plane_unit * 10.0);
+    // Every tenth line is a more intense, we call those "cardinal" lines.
+    // Experimented previously with more levels of cardinal lines, but it gets too busy:
+    // It seems that if we want to go down this path, we should ensure that there's only two levels of lines on screen at a time.
+    const CARDINAL_LINE_FACTOR: f32 = 10.0;
+    let distance_to_grid_line_cardinal = distance_to_grid_line(in.scaled_world_plane_position * (1.0 / CARDINAL_LINE_FACTOR));
+    var cardinal_line_intensity = linearstep2(width_in_grid_units + line_anti_alias, width_in_grid_units - line_anti_alias,
+                                              distance_to_grid_line_cardinal * CARDINAL_LINE_FACTOR);
+    let cardinal_grid_closeness_fade = linearstep(2.0, 10.0, line_density * CARDINAL_LINE_FACTOR); // Fade cardinal lines a little bit earlier (because it looks nicer)
     cardinal_line_intensity *= cardinal_grid_closeness_fade;
+
+    // Combine all lines.
+    //
+    // Lerp for cardinal & regular.
+    // This way we don't break anti-aliasing (as addition would!), mute the regular lines, and make cardinals weaker when there's no regular to support them.
+    let cardinal_and_regular = mix(intensity_regular, cardinal_line_intensity, 0.4);
+    // X and Y are combined like akin to premultiplied alpha operations.
+    let intensity_combined = saturate(cardinal_and_regular.x * (1.0 - cardinal_and_regular.y) + cardinal_and_regular.y);
 
     // Fade on accute viewing angles.
     var view_direction_up_component: f32;
@@ -122,17 +145,9 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     }
     let view_angle_fade = smoothstep(0.0, 0.25, abs(view_direction_up_component)); // Empirical values.
 
-    // Combine all lines.
-    //
-    // Lerp for cardinal & regular.
-    // This way we don't break anti-aliasing (as addition would!), mute the regular lines, and make cardinals weaker when there's no regular to support them.
-    let cardinal_and_regular = mix(intensity_regular, cardinal_line_intensity, 0.6) * view_angle_fade;
-    // X and Y are combined like akin to premultiplied alpha operations.
-    let intensity_combined = saturate(cardinal_and_regular.x * (1.0 - cardinal_and_regular.y) + cardinal_and_regular.y);
+    return config.color * (intensity_combined * view_angle_fade);
 
-    return config.color * intensity_combined;
-
-    // Debugging visualizations:
+    // Useful debugging visualizations:
     //return vec4f(view_angle_fade);
     //return vec4f(intensity_combined);
     //return vec4f(grid_closeness_fade, cardinal_grid_closeness_fade, 0.0, 1.0);

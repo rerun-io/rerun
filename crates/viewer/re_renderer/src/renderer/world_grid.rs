@@ -13,7 +13,6 @@ use crate::{
 use super::{DrawData, DrawError, RenderContext, Renderer};
 use crate::Rgba;
 
-use gltf::buffer::View;
 use smallvec::smallvec;
 
 /// Determines in which plane the grid is drawn.

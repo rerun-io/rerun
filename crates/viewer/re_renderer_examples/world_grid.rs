@@ -7,7 +7,6 @@
 use re_renderer::{
     renderer::GpuMeshInstance,
     view_builder::{Projection, TargetConfiguration, ViewBuilder},
-    OutlineMaskPreference,
 };
 use winit::event::ElementState;
 
