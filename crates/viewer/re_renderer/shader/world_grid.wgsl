@@ -76,7 +76,7 @@ fn linearstep2(edge0: vec2f, edge1: vec2f, x: vec2f) -> vec2f {
 }
 
 // Distance to a grid line in x and y ranging from 0 to 1.
-fn distance_to_grid_line(scaled_world_plane_position: vec2f) -> vec2f {
+fn calc_distance_to_grid_line(scaled_world_plane_position: vec2f) -> vec2f {
     return 1.0 - abs(fract(scaled_world_plane_position) * 2.0 - 1.0);
 }
 
@@ -87,7 +87,7 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     // but rather the pixel space grid, which is a lot simpler, but happens to be also described very well in this article.
 
     // Distance to a grid line in x and y ranging from 0 to 1.
-    let distance_to_grid_line = distance_to_grid_line(in.scaled_world_plane_position);
+    let distance_to_grid_line = calc_distance_to_grid_line(in.scaled_world_plane_position);
 
     // Figure out the how wide the lines are in this "draw space".
     let plane_unit_pixel_derivative = fwidthFine(in.scaled_world_plane_position);
@@ -113,7 +113,7 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     // Experimented previously with more levels of cardinal lines, but it gets too busy:
     // It seems that if we want to go down this path, we should ensure that there's only two levels of lines on screen at a time.
     const CARDINAL_LINE_FACTOR: f32 = 10.0;
-    let distance_to_grid_line_cardinal = distance_to_grid_line(in.scaled_world_plane_position * (1.0 / CARDINAL_LINE_FACTOR));
+    let distance_to_grid_line_cardinal = calc_distance_to_grid_line(in.scaled_world_plane_position * (1.0 / CARDINAL_LINE_FACTOR));
     var cardinal_line_intensity = linearstep2(width_in_grid_units + line_anti_alias, width_in_grid_units - line_anti_alias,
                                               distance_to_grid_line_cardinal * CARDINAL_LINE_FACTOR);
     let cardinal_grid_closeness_fade = linearstep(2.0, 10.0, line_density * CARDINAL_LINE_FACTOR); // Fade cardinal lines a little bit earlier (because it looks nicer)
