@@ -548,7 +548,7 @@ impl TimePanel {
                 }
 
                 // Show "/" on top?
-                let show_root = true;
+                let show_root = self.source == TimePanelSource::Recording;
 
                 if show_root {
                     self.show_tree(
@@ -632,7 +632,12 @@ impl TimePanel {
 
         // Globally unique id - should only be one of these in view at one time.
         // We do this so that we can support "collapse/expand all" command.
-        let id = egui::Id::new(CollapseScope::StreamsTree.entity(tree.path.clone()));
+        let id = egui::Id::new(match self.source {
+            TimePanelSource::Recording => CollapseScope::StreamsTree.entity(tree.path.clone()),
+            TimePanelSource::Blueprint => {
+                CollapseScope::BlueprintStreamsTree.entity(tree.path.clone())
+            }
+        });
 
         let list_item::ShowCollapsingResponse {
             item_response: response,
