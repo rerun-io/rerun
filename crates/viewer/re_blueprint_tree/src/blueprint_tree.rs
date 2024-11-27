@@ -186,7 +186,7 @@ impl BlueprintTree {
     ) {
         let container_id = viewport.root_container;
 
-        let Some(container_blueprint) = viewport.containers.get(&container_id) else {
+        let Some(container_blueprint) = viewport.container(&container_id) else {
             // This happens after a blueprint reset (or there was no blueprint).
             // TODO(#8056): refactor all of this
             re_log::debug!("Cannot find root {container_id} in BlueprintTree (b/c recent reset?)");
@@ -241,7 +241,7 @@ impl BlueprintTree {
         let item = Item::Container(*container_id);
         let content = Contents::Container(*container_id);
 
-        let Some(container_blueprint) = viewport.containers.get(container_id) else {
+        let Some(container_blueprint) = viewport.container(container_id) else {
             re_log::warn_once!("Ignoring unknown container {container_id}");
             return;
         };
@@ -323,7 +323,7 @@ impl BlueprintTree {
         space_view_id: &SpaceViewId,
         container_visible: bool,
     ) {
-        let Some(space_view) = viewport.space_views.get(space_view_id) else {
+        let Some(space_view) = viewport.view(space_view_id) else {
             re_log::warn_once!("Bug: asked to show a UI for a space view that doesn't exist");
             return;
         };

@@ -459,7 +459,7 @@ fn entity_selection_ui(
         .lookup_result_by_path(entity_path)
         .cloned();
 
-    if let Some(view) = viewport.space_views.get(view_id) {
+    if let Some(view) = viewport.view(view_id) {
         let view_ctx = view.bundle_context_with_states(ctx, view_states);
         visualizer_ui(&view_ctx, view, entity_path, ui);
     }

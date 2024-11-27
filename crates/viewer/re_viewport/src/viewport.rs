@@ -472,7 +472,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, 'b> {
     ) -> egui_tiles::UiResponse {
         re_tracing::profile_function!();
 
-        let Some(space_view_blueprint) = self.viewport_blueprint.space_views.get(view_id) else {
+        let Some(space_view_blueprint) = self.viewport_blueprint.view(view_id) else {
             return Default::default();
         };
 
@@ -547,7 +547,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, 'b> {
     }
 
     fn tab_title_for_pane(&mut self, space_view_id: &SpaceViewId) -> egui::WidgetText {
-        if let Some(space_view) = self.viewport_blueprint.space_views.get(space_view_id) {
+        if let Some(space_view) = self.viewport_blueprint.view(space_view_id) {
             // Note: the formatting for unnamed space views is handled by `TabWidget::new()`
             space_view.display_name_or_default().as_ref().into()
         } else {
@@ -660,8 +660,7 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, 'b> {
         };
         let space_view_id = *space_view_id;
 
-        let Some(space_view_blueprint) = self.viewport_blueprint.space_views.get(&space_view_id)
-        else {
+        let Some(space_view_blueprint) = self.viewport_blueprint.view(&space_view_id) else {
             return;
         };
         let num_space_views = tiles.tiles().filter(|tile| tile.is_pane()).count();
@@ -824,9 +823,7 @@ impl TabWidget {
 
         let tab_desc = match tiles.get(tile_id) {
             Some(egui_tiles::Tile::Pane(space_view_id)) => {
-                if let Some(space_view) =
-                    tab_viewer.viewport_blueprint.space_views.get(space_view_id)
-                {
+                if let Some(space_view) = tab_viewer.viewport_blueprint.view(space_view_id) {
                     TabDesc {
                         label: tab_viewer.tab_title_for_pane(space_view_id),
                         user_named: space_view.display_name.is_some(),
