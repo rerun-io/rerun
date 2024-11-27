@@ -11,7 +11,7 @@
 
 /// Records a crash caused by a panic.
 ///
-/// Used in `re_crash_handler`.
+/// Used in `re_crash_handler`.gi
 pub struct CrashPanic {
     pub build_info: BuildInfo,
     pub callstack: String,

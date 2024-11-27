@@ -14,9 +14,7 @@ mod time_ranges_ui;
 mod time_selection_ui;
 
 use egui::emath::Rangef;
-use egui::{
-    pos2, Color32, CursorIcon, Margin, NumExt, Painter, PointerButton, Rect, Shape, Ui, Vec2,
-};
+use egui::{pos2, Color32, CursorIcon, NumExt, Painter, PointerButton, Rect, Shape, Ui, Vec2};
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_data_ui::DataUi as _;
@@ -171,7 +169,6 @@ impl TimePanel {
         // etc.)
         let screen_header_height = ui.cursor().top();
 
-        let margin = DesignTokens::bottom_panel_margin();
         let mut panel_frame = DesignTokens::bottom_panel_frame();
 
         if state.is_expanded() {
@@ -240,10 +237,10 @@ impl TimePanel {
 
     pub fn show_expanded_with_header(
         &mut self,
-        ctx: &ViewerContext,
+        ctx: &ViewerContext<'_>,
         viewport_blueprint: &ViewportBlueprint,
         entity_db: &EntityDb,
-        mut time_ctrl_after: &mut TimeControl,
+        time_ctrl_after: &mut TimeControl,
         ui: &mut Ui,
     ) {
         ui.vertical(|ui| {
@@ -258,7 +255,7 @@ impl TimePanel {
                         ui.spacing_mut().interact_size =
                             Vec2::splat(re_ui::DesignTokens::top_bar_height());
                         ui.visuals_mut().button_frame = true;
-                        self.top_row_ui(ctx, entity_db, ui, &mut time_ctrl_after);
+                        self.top_row_ui(ctx, entity_db, ui, time_ctrl_after);
                     });
                 })
                 .response
@@ -277,7 +274,7 @@ impl TimePanel {
             let mut streams_frame = egui::Frame::default();
             streams_frame.inner_margin.left = margin.left;
             streams_frame.show(ui, |ui| {
-                self.expanded_ui(ctx, viewport_blueprint, entity_db, ui, &mut time_ctrl_after);
+                self.expanded_ui(ctx, viewport_blueprint, entity_db, ui, time_ctrl_after);
             });
         });
     }

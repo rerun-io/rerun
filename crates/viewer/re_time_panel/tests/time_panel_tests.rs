@@ -17,7 +17,7 @@ pub fn time_panel_should_match_snapshot() {
     let points1 = MyPoint::from_iter(0..1);
 
     for i in 0..2 {
-        let entity_path = EntityPath::from(format!("/entity/{}", i));
+        let entity_path = EntityPath::from(format!("/entity/{i}"));
         let mut builder = Chunk::builder(entity_path.clone());
         for frame in [10, 11, 12, 15, 18, 100, 102, 104].map(|frame| frame + i) {
             builder = builder.with_sparse_component_batches(
@@ -53,7 +53,7 @@ pub fn time_panel_should_match_snapshot() {
                         viewer_ctx.recording(),
                         &mut time_ctrl_after,
                         ui,
-                    )
+                    );
                 });
             });
 

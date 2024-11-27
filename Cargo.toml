@@ -558,12 +558,14 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "83a30064f4812d0029532675a5f2bf38c257ad0e" }      # egui master 2024-11-19
-eframe = { git = "https://github.com/emilk/egui.git", rev = "83a30064f4812d0029532675a5f2bf38c257ad0e" }      # egui master 2024-11-19
-egui = { git = "https://github.com/emilk/egui.git", rev = "83a30064f4812d0029532675a5f2bf38c257ad0e" }        # egui master 2024-11-19
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "83a30064f4812d0029532675a5f2bf38c257ad0e" } # egui master 2024-11-19
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "83a30064f4812d0029532675a5f2bf38c257ad0e" }   # egui master 2024-11-19
-emath = { git = "https://github.com/emilk/egui.git", rev = "83a30064f4812d0029532675a5f2bf38c257ad0e" }       # egui master 2024-11-19
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "84cc1572b175d49a64f1b323a6d7e56b1f1fba66" }      # egui master 2024-11-27
+eframe = { git = "https://github.com/emilk/egui.git", rev = "84cc1572b175d49a64f1b323a6d7e56b1f1fba66" }      # egui master 2024-11-27
+egui = { git = "https://github.com/emilk/egui.git", rev = "84cc1572b175d49a64f1b323a6d7e56b1f1fba66" }        # egui master 2024-11-27
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "84cc1572b175d49a64f1b323a6d7e56b1f1fba66" } # egui master 2024-11-27
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "84cc1572b175d49a64f1b323a6d7e56b1f1fba66" }   # egui master 2024-11-27
+emath = { git = "https://github.com/emilk/egui.git", rev = "84cc1572b175d49a64f1b323a6d7e56b1f1fba66" }       # egui master 2024-11-27
+
+egui_kittest = { git = "https://github.com/emilk/egui.git", rev = "84cc1572b175d49a64f1b323a6d7e56b1f1fba66" } # egui master 2024-11-27
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }

@@ -2,9 +2,13 @@ use std::sync::Arc;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log_types::{StoreId, StoreKind, Timeline};
+use re_log_types::{StoreId, StoreKind};
 
-use crate::{blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender, ComponentUiRegistry, ComponentUiTypes, RecordingConfig, SpaceViewClassRegistry, StoreContext, SystemCommand, ViewerContext};
+use crate::{
+    blueprint_timeline, command_channel, ApplicationSelectionState, CommandReceiver, CommandSender,
+    ComponentUiRegistry, RecordingConfig, SpaceViewClassRegistry, StoreContext, SystemCommand,
+    ViewerContext,
+};
 
 /// Harness to execute code that rely on [`crate::ViewerContext`].
 ///
@@ -41,13 +45,11 @@ impl Default for TestContext {
 
         let recording_config = RecordingConfig::default();
 
-
         let blueprint_query = LatestAtQuery::latest(blueprint_timeline());
 
         let component_ui_registry = ComponentUiRegistry::new(Box::new(
             |_ctx, _ui, _ui_layout, _query, _db, _entity_path, _row_id, _component| {},
         ));
-
 
         Self {
             recording_store,
@@ -81,13 +83,13 @@ impl TestContext {
                 let egui_ctx = ui.ctx().clone();
 
                 self.run_simple(&egui_ctx, |ctx| {
-                    func(&ctx, ui);
+                    func(ctx, ui);
                 });
             });
         });
     }
 
-    pub fn run_simple(&self, egui_ctx: &egui::Context, mut func: impl FnOnce(&ViewerContext<'_>)) {
+    pub fn run_simple(&self, egui_ctx: &egui::Context, func: impl FnOnce(&ViewerContext<'_>)) {
         re_ui::apply_style_and_install_loaders(egui_ctx);
 
         let store_context = StoreContext {
@@ -161,7 +163,10 @@ impl TestContext {
 
                 SystemCommand::SetActiveTimeline { rec_id, timeline } => {
                     assert_eq!(rec_id, self.recording_store.store_id());
-                    self.recording_config.time_ctrl.write().set_timeline(timeline);
+                    self.recording_config
+                        .time_ctrl
+                        .write()
+                        .set_timeline(timeline);
                 }
 
                 // not implemented
