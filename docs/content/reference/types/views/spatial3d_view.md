@@ -12,6 +12,14 @@ Configuration for the background of the view.
 
 * `kind`: The type of the background.
 * `color`: Color used for the `SolidColor` background type.
+### `line_grid`
+Configuration for the 3D line grid.
+
+* `visible`: Whether the grid is visible.
+* `spacing`: Space between grid lines spacing of one line to the next in scene units.
+* `line_radius`: How thick the lines should be in ui units.
+* `color`: Color used for the grid.
+* `orientation`: How the grid is oriented.
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
