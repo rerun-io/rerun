@@ -182,7 +182,17 @@ fn remove_chunk(path_recursive_chunks: &mut PathRecursiveChunksPerTimeline, chun
                     .remove(&chunk.id())
                     .is_some()
                 {
-                    chunks_per_entity.total_num_events -= chunk.num_events_cumulative();
+                    if let Some(new_total_num_events) = chunks_per_entity
+                        .total_num_events
+                        .checked_sub(chunk.num_events_cumulative())
+                    {
+                        chunks_per_entity.total_num_events = new_total_num_events;
+                    } else {
+                        re_log::error_once!(
+                            "Total number of recursive events for {:?} for went negative",
+                            path
+                        );
+                    }
                 }
             }
             next_path = path.parent();

@@ -6280,6 +6280,7 @@ dependencies = [
  "re_entity_db",
  "re_format",
  "re_int_histogram",
+ "re_log",
  "re_log_types",
  "re_tracing",
  "re_types",
