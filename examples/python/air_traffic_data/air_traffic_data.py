@@ -401,7 +401,7 @@ def main() -> None:
     parser.add_argument(
         "--dataset",
         choices=INVOLI_DATASETS.keys(),
-        default="10min",
+        default="2h",
         help="Which dataset to automatically download and visualize",
     )
     parser.add_argument(
@@ -412,6 +412,7 @@ def main() -> None:
     parser.add_argument(
         "--batch",
         action="store_true",
+        default=True,
         help="If true, use the batch logger function (rerun 0.18 required)",
     )
     parser.add_argument(
