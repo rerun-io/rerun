@@ -20,9 +20,10 @@ use re_viewport_blueprint::ViewProperty;
 use std::hash::{Hash as _, Hasher as _};
 
 use crate::{
+    canvas::{draw_debug, draw_node, zoom_pan_area},
     graph::Graph,
-    ui::{draw::DrawableNode, Discriminator, GraphSpaceViewState},
-    visualizers::{merge, EdgesVisualizer, NodeVisualizer}, canvas::{draw_debug, draw_node, zoom_pan_area},
+    ui::{draw::DrawableLabel, Discriminator, GraphSpaceViewState},
+    visualizers::{merge, EdgesVisualizer, NodeVisualizer},
 };
 
 #[derive(Default)]
@@ -141,8 +142,15 @@ Display a graph of nodes and edges.
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         query: &ViewQuery<'_>,
-        _system_output: SystemExecutionOutput,
+        system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
+        let node_data = &system_output.view_systems.get::<NodeVisualizer>()?.data;
+        let edge_data = &system_output.view_systems.get::<EdgesVisualizer>()?.data;
+
+        let graphs = merge(node_data, edge_data)
+            .map(|(ent, nodes, edges)| (ent, Graph::new(ui, nodes, edges)))
+            .collect::<Vec<_>>();
+
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
         let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
@@ -155,10 +163,10 @@ Display a graph of nodes and edges.
 
         let view_rect = ui.max_rect();
 
-        let text = "hello world";
+        // let text = "hello world";
 
-        let node = DrawableNode::text(ui, text, None, Default::default());
-        let circle_node = DrawableNode::circle(ui, None, None);
+        // let node = DrawableLabel::text(ui, text, None, Default::default());
+        // let circle_node = DrawableLabel::circle(ui, None, None);
 
         let (resp, new_bounds) = zoom_pan_area(
             ui,
@@ -168,11 +176,13 @@ Display a graph of nodes and edges.
             |ui, world_to_view| {
                 let mut world_bounding_rect = egui::Rect::NOTHING;
 
-                let resp = draw_node(ui, Pos2::new(400., 400.), world_to_view, node);
-                world_bounding_rect = world_bounding_rect.union(resp.rect);
-
-                let resp = draw_node(ui, Pos2::new(400., 600.), world_to_view, circle_node);
-                world_bounding_rect = world_bounding_rect.union(resp.rect);
+                for (entity, graph) in graphs {
+                    for node in graph.nodes() {
+                        // TODO(grtlr): Add proper highlights here:
+                        let resp = draw_node(ui, Pos2::new(400., 400.), world_to_view, node.label(), Default::default());
+                        world_bounding_rect = world_bounding_rect.union(resp.rect);
+                    }
+                }
 
                 // We need to draw the debug information after the rest to ensure that we have the correct bounding box.
                 if state.show_debug {
@@ -193,12 +203,6 @@ Display a graph of nodes and edges.
 
         Ok(())
 
-        // let node_data = &system_output.view_systems.get::<NodeVisualizer>()?.data;
-        // let edge_data = &system_output.view_systems.get::<EdgesVisualizer>()?.data;
-        //
-        // let graphs = merge(node_data, edge_data)
-        //     .map(|(ent, nodes, edges)| (ent, Graph::new(nodes, edges)))
-        //     .collect::<Vec<_>>();
         //
         // // We could move this computation to the visualizers to improve
         // // performance if needed.

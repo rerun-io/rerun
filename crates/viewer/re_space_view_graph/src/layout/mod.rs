@@ -2,9 +2,8 @@ use egui::{Pos2, Rect, Vec2};
 use fjadra as fj;
 
 use crate::{
-    graph::{Graph, NodeIndex},
+    graph::{Graph, Node, NodeIndex},
     ui::bounding_rect_from_iter,
-    visualizers::NodeInstance,
 };
 
 #[derive(Debug, PartialEq, Eq)]
@@ -38,13 +37,15 @@ impl Layout {
     }
 }
 
-impl<'a> From<&'a NodeInstance> for fj::Node {
-    fn from(instance: &'a NodeInstance) -> Self {
-        let mut node = Self::default();
-        if let Some(pos) = instance.position {
-            node = node.fixed_position(pos.x as f64, pos.y as f64);
+impl<'a> From<&'a Node> for fj::Node {
+    fn from(node: &'a Node) -> Self {
+        match node {
+            Node::Explicit {
+                position: Some(pos),
+                ..
+            } => Self::default().fixed_position(pos.x as f64, pos.y as f64),
+            _ => Self::default(),
         }
-        node
     }
 }
 
@@ -54,17 +55,13 @@ pub struct ForceLayout {
 }
 
 impl ForceLayout {
-    pub fn new<'a>(graphs: impl Iterator<Item = &'a Graph<'a>> + Clone) -> Self {
-        let explicit = graphs
-            .clone()
-            .flat_map(|g| g.nodes_explicit().map(|n| (n.index, fj::Node::from(n))));
-        let implicit = graphs
-            .clone()
-            .flat_map(|g| g.nodes_implicit().map(|n| (n.index, fj::Node::default())));
+    pub fn new(graphs: &[Graph]) -> Self {
+        let nodes = graphs
+            .iter()
+            .flat_map(|g| g.nodes().iter().map(|n| (n.id(), fj::Node::from(n))));
 
         let mut node_index = ahash::HashMap::default();
-        let all_nodes: Vec<fj::Node> = explicit
-            .chain(implicit)
+        let all_nodes: Vec<fj::Node> = nodes
             .enumerate()
             .map(|(i, n)| {
                 node_index.insert(n.0, i);
@@ -72,9 +69,10 @@ impl ForceLayout {
             })
             .collect();
 
-        let all_edges = graphs.flat_map(|g| {
+        let all_edges = graphs.iter().flat_map(|g| {
             g.edges()
-                .map(|e| (node_index[&e.source_index], node_index[&e.target_index]))
+                .iter()
+                .map(|e| (node_index[&e.from], node_index[&e.to]))
         });
 
         // TODO(grtlr): Currently we guesstimate good forces. Eventually these should be exposed as blueprints.

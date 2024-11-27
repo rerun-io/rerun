@@ -4,7 +4,7 @@ mod nodes;
 use std::collections::BTreeSet;
 
 pub use edges::{EdgeData, EdgeInstance, EdgesVisualizer};
-pub use nodes::{NodeData, NodeInstance, NodeVisualizer};
+pub use nodes::{NodeData, NodeInstance, NodeVisualizer, Label};
 
 use re_chunk::EntityPath;
 

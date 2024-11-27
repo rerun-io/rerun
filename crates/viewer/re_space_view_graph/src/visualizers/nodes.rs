@@ -34,21 +34,6 @@ pub enum Label {
     },
 }
 
-impl std::hash::Hash for Label {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        match self {
-            Label::Circle { radius, color } => {
-                bytemuck::bytes_of(radius).hash(state);
-                color.hash(state);
-            }
-            Label::Text { text, color } => {
-                text.hash(state);
-                color.hash(state);
-            }
-        }
-    }
-}
-
 pub struct NodeInstance {
     pub node: components::GraphNode,
     pub instance: Instance,
@@ -57,29 +42,6 @@ pub struct NodeInstance {
     pub label: Label,
 }
 
-impl std::hash::Hash for NodeInstance {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        // We use the more verbose destructring here, to make sure that we
-        // exhaustively consider all fields when hashing (we get a compiler
-        // warning when we forget a field).
-        let Self {
-            // The index already uniquely identifies a node, so we don't need to
-            // hash the node itself.
-            node: _,
-            instance,
-            index,
-            label,
-            position,
-        } = self;
-        instance.hash(state);
-        index.hash(state);
-        label.hash(state);
-        // The following fields don't implement `Hash`.
-        position.as_ref().map(bytemuck::bytes_of).hash(state);
-    }
-}
-
-#[derive(Hash)]
 pub struct NodeData {
     pub nodes: Vec<NodeInstance>,
 }

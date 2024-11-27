@@ -115,10 +115,10 @@ impl LayoutState {
     }
 
     /// A simple state machine that keeps track of the different stages and if the layout needs to be recomputed.
-    fn update<'a>(
+    fn update(
         self,
         requested: Discriminator,
-        graphs: impl Iterator<Item = &'a Graph<'a>> + Clone,
+        graphs: &[Graph],
     ) -> Self {
         match self {
             // Layout is up to date, nothing to do here.
@@ -174,7 +174,7 @@ impl LayoutState {
     pub fn get<'a>(
         &'a mut self,
         hash: Discriminator,
-        graphs: impl Iterator<Item = &'a Graph<'a>> + Clone,
+        graphs: &[Graph],
     ) -> &'a mut Layout {
         *self = std::mem::take(self).update(hash, graphs);
 

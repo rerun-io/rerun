@@ -3,6 +3,7 @@ use re_types::components;
 
 use super::GraphNodeHash;
 
+// TODO(grtlr): Rename this to `NodeId`.
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub struct NodeIndex {
     pub entity_hash: EntityPathHash,

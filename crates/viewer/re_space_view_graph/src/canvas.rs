@@ -1,8 +1,9 @@
 use egui::{
-    emath::TSTransform, Area, Color32, Id, Order, Pos2, Rect, Response, Sense, Stroke, Ui, UiBuilder, UiKind, Vec2
+    emath::TSTransform, style::Interaction, Area, Color32, Id, Order, Pos2, Rect, Response, Sense, Stroke, Ui, UiBuilder, UiKind, Vec2
 };
+use re_viewer_context::InteractionHighlight;
 
-use crate::ui::draw::DrawableNode;
+use crate::ui::draw::DrawableLabel;
 
 fn register_pan_and_zoom(ui: &Ui, resp: Response, transform: &mut TSTransform) -> Response {
     if resp.dragged() {
@@ -51,12 +52,13 @@ pub fn draw_node(
     ui: &mut Ui,
     center: Pos2,
     world_to_view: &mut TSTransform,
-    node: DrawableNode,
+    node: &DrawableLabel,
+    highlight: InteractionHighlight,
 ) -> Response {
     let resp = {
         let builder = UiBuilder::new().max_rect(Rect::from_center_size(center, node.size()));
         let mut node_ui = ui.new_child(builder);
-        node.draw(&mut node_ui)
+        node.draw(&mut node_ui, highlight)
     };
     register_pan_and_zoom(ui, resp, world_to_view)
 }

@@ -4,4 +4,4 @@ mod node;
 
 pub use edge::draw_edge;
 pub use entity::draw_entity;
-pub use node::{DrawableNode};
+pub use node::{DrawableLabel};
