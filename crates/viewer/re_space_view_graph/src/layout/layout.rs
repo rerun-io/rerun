@@ -11,33 +11,27 @@ pub struct Layout {
 }
 
 impl Layout {
+    #[deprecated]
     pub fn bounding_rect(&self) -> Rect {
+        // TODO(grtlr): We mostly use this for debugging, but we should probably
+        // take all elements of the layout into account.
         bounding_rect_from_iter(self.nodes.values().copied())
     }
 
     /// Gets the final position and size of a node in the layout.
-    pub fn get_node(&self, node: &NodeIndex) -> Option<Rect> {
-        self.nodes.get(node).copied()
+    ///
+    /// Returns `Rect::ZERO` if the node is not present in the layout.
+    pub fn get_node(&self, node: &NodeIndex) -> Rect {
+        self.nodes.get(node).copied().unwrap_or(Rect::ZERO)
     }
 
     /// Gets the shape of an edge in the final layout.
-    pub fn get_edge(&self, from: NodeIndex, to: NodeIndex) -> Option<LineSegment> {
-        self.edges.get(&(from, to)).copied()
-    }
-
-    /// Updates the size and position of a node, for example after size changes.
-    /// Returns `true` if the node changed its size.
-    #[deprecated(note = "We should not need to update sizes anymore.")]
-    pub fn update(&mut self, node: &NodeIndex, rect: Rect) -> bool {
-        debug_assert!(
-            self.nodes.contains_key(node),
-            "node should exist in the layout"
-        );
-        if let Some(extent) = self.nodes.get_mut(node) {
-            let size_changed = (extent.size() - rect.size()).length_sq() > 0.01;
-            *extent = rect;
-            return size_changed;
-        }
-        false
+    ///
+    /// Returns `[Pos2::ZERO, Pos2::ZERO]` if the edge is not present in the layout.
+    pub fn get_edge(&self, from: NodeIndex, to: NodeIndex) -> LineSegment {
+        self.edges
+            .get(&(from, to))
+            .copied()
+            .unwrap_or([Pos2::ZERO, Pos2::ZERO])
     }
 }

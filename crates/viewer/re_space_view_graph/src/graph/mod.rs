@@ -60,7 +60,7 @@ impl Node {
 pub struct Edge {
     pub from: NodeIndex,
     pub to: NodeIndex,
-    marker: bool,
+    pub arrow: bool,
 }
 
 pub struct Graph {
@@ -119,7 +119,7 @@ impl Graph {
             let es = data.edges.iter().map(|e| Edge {
                 from: e.source_index,
                 to: e.target_index,
-                marker: data.graph_type == GraphType::Directed,
+                arrow: data.graph_type == GraphType::Directed,
             });
 
             (es.collect(), data.graph_type)

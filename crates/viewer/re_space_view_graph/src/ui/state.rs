@@ -4,10 +4,7 @@ use re_types::blueprint::components::VisualBounds2D;
 use re_ui::UiExt;
 use re_viewer_context::SpaceViewState;
 
-use crate::{
-    graph::Graph,
-    layout::{ForceLayoutProvider, Layout},
-};
+use crate::layout::{ForceLayoutProvider, Layout, LayoutRequest};
 
 /// Space view state for the custom space view.
 ///
@@ -60,8 +57,6 @@ impl SpaceViewState for GraphSpaceViewState {
     }
 }
 
-pub type Discriminator = u64;
-
 /// The following is a simple state machine that keeps track of the different
 /// layouts and if they need to be recomputed. It also holds the state of the
 /// force-based simulation.
@@ -70,12 +65,12 @@ pub enum LayoutState {
     #[default]
     None,
     InProgress {
-        discriminator: Discriminator,
+        request: LayoutRequest,
         layout: Layout,
         provider: ForceLayoutProvider,
     },
     Finished {
-        discriminator: Discriminator,
+        request: LayoutRequest,
         layout: Layout,
         _provider: ForceLayoutProvider,
     },
@@ -104,54 +99,46 @@ impl LayoutState {
     }
 
     /// A simple state machine that keeps track of the different stages and if the layout needs to be recomputed.
-    fn update(
-        self,
-        requested: Discriminator,
-        graphs: &[Graph],
-    ) -> Self {
+    fn update(self, new_request: LayoutRequest) -> Self {
         match self {
             // Layout is up to date, nothing to do here.
-            Self::Finished {
-                ref discriminator, ..
-            } if discriminator == &requested => {
+            Self::Finished { ref request, .. } if request == &new_request => {
                 self // no op
             }
             // We need to recompute the layout.
             Self::None | Self::Finished { .. } => {
-                let provider = ForceLayoutProvider::new(graphs);
-                let layout = provider.init();
+                let provider = ForceLayoutProvider::new(&new_request);
+                let layout = provider.init(&new_request);
 
                 Self::InProgress {
-                    discriminator: requested,
+                    request: new_request,
                     layout,
                     provider,
                 }
             }
-            Self::InProgress {
-                ref discriminator, ..
-            } if discriminator != &requested => {
-                let provider = ForceLayoutProvider::new(graphs);
-                let layout = provider.init();
+            Self::InProgress { request, .. } if request != new_request => {
+                let provider = ForceLayoutProvider::new(&new_request);
+                let layout = provider.init(&new_request);
 
                 Self::InProgress {
-                    discriminator: requested,
+                    request: new_request,
                     layout,
                     provider,
                 }
             }
             // We keep iterating on the layout until it is stable.
             Self::InProgress {
-                discriminator,
+                request,
                 mut layout,
                 mut provider,
             } => match provider.tick(&mut layout) {
                 true => Self::Finished {
-                    discriminator,
+                    request,
                     layout,
                     _provider: provider,
                 },
                 false => Self::InProgress {
-                    discriminator,
+                    request,
                     layout,
                     provider,
                 },
@@ -160,12 +147,8 @@ impl LayoutState {
     }
 
     /// This method is lazy. A new layout is only computed if the current timestamp requires it.
-    pub fn get<'a>(
-        &'a mut self,
-        hash: Discriminator,
-        graphs: &[Graph],
-    ) -> &'a mut Layout {
-        *self = std::mem::take(self).update(hash, graphs);
+    pub fn get(&mut self, request: LayoutRequest) -> &mut Layout {
+        *self = std::mem::take(self).update(request);
 
         match self {
             Self::Finished { layout, .. } | Self::InProgress { layout, .. } => layout,

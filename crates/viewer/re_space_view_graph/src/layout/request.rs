@@ -6,20 +6,20 @@ use re_chunk::EntityPath;
 use crate::graph::{Graph, NodeIndex};
 
 #[derive(PartialEq)]
-struct NodeTemplate {
-    size: Vec2,
-    fixed_position: Option<Pos2>,
+pub(super) struct NodeTemplate {
+    pub(super) size: Vec2,
+    pub(super) fixed_position: Option<Pos2>,
 }
 
 #[derive(Default, PartialEq)]
-struct GraphTemplate {
-    nodes: BTreeMap<NodeIndex, NodeTemplate>,
-    edges: BTreeSet<(NodeIndex, NodeIndex)>,
+pub(super) struct GraphTemplate {
+    pub(super) nodes: BTreeMap<NodeIndex, NodeTemplate>,
+    pub(super) edges: BTreeSet<(NodeIndex, NodeIndex)>,
 }
 
 #[derive(PartialEq)]
 pub struct LayoutRequest {
-    graphs: BTreeMap<EntityPath, GraphTemplate>,
+    pub(super) graphs: BTreeMap<EntityPath, GraphTemplate>,
 }
 
 impl LayoutRequest {

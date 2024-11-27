@@ -1,4 +1,3 @@
-use egui::{emath::TSTransform, Color32, Layout, Pos2, Stroke};
 use re_log_types::EntityPath;
 use re_space_view::{
     controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER},
@@ -6,21 +5,25 @@ use re_space_view::{
 };
 use re_types::{
     blueprint::{self, archetypes::VisualBounds2D},
-    components, SpaceViewClassIdentifier,
+    SpaceViewClassIdentifier,
 };
-use re_ui::{self, ModifiersMarkdown, MouseButtonMarkdown, UiExt as _};
+use re_ui::{
+    self, zoom_pan_area::zoom_pan_area, ModifiersMarkdown, MouseButtonMarkdown, UiExt as _,
+};
 use re_viewer_context::{
-    external::re_entity_db::InstancePath, IdentifiedViewSystem as _, Item, RecommendedSpaceView,
-    SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
-    ViewerContext,
+    IdentifiedViewSystem as _, RecommendedSpaceView, SpaceViewClass, SpaceViewClassLayoutPriority,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
+    SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
+    SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
-use std::hash::{Hash as _, Hasher as _};
 
 use crate::{
-    canvas::{draw_debug, draw_node, zoom_pan_area}, graph::Graph, layout::LayoutRequest, ui::{draw::DrawableLabel, Discriminator, GraphSpaceViewState}, visualizers::{merge, EdgesVisualizer, NodeVisualizer}
+    draw::{draw_debug, draw_edge, draw_node},
+    graph::Graph,
+    layout::LayoutRequest,
+    ui::GraphSpaceViewState,
+    visualizers::{merge, EdgesVisualizer, NodeVisualizer},
 };
 
 #[derive(Default)]
@@ -161,39 +164,29 @@ Display a graph of nodes and edges.
         let view_rect = ui.max_rect();
 
         let request = LayoutRequest::from_graphs(graphs.iter());
-
-        // The descriminator is used to determine if the layout needs to be recomputed.
-        let discriminator = {
-            let mut hasher = ahash::AHasher::default();
-            for graph in &graphs {
-                graph.size_hash().hash(&mut hasher);
-            }
-            hasher.finish()
-        };
-
-        let layout = state.layout_state.get(discriminator, &graphs);
+        let layout = state.layout_state.get(request);
 
         let (resp, new_bounds) = zoom_pan_area(
             ui,
             view_rect,
             bounds.into(),
             egui::Id::new(query.space_view_id),
-            |ui, world_to_view| {
+            |ui| {
                 let mut world_bounding_rect = egui::Rect::NOTHING;
 
                 for graph in graphs {
                     for node in graph.nodes() {
-                        // TODO(grtlr): provide debug assertions here.
-                        let center = layout.get_node(&node.id()).unwrap_or(egui::Rect::ZERO).center();
+                        let center = layout.get_node(&node.id()).center();
 
                         // TODO(grtlr): Add proper highlights here:
-                        let resp = draw_node(
-                            ui,
-                            center,
-                            world_to_view,
-                            node.label(),
-                            Default::default(),
-                        );
+                        let resp =
+                            draw_node(ui, center, node.label(), Default::default());
+                        world_bounding_rect = world_bounding_rect.union(resp.rect);
+                    }
+
+                    for edge in graph.edges() {
+                        let points = layout.get_edge(edge.from, edge.to);
+                        let resp = draw_edge(ui,  points, edge.arrow);
                         world_bounding_rect = world_bounding_rect.union(resp.rect);
                     }
                 }

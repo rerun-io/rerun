@@ -94,7 +94,11 @@ impl DrawableLabel {
             Self::Text(TextLabel { galley, frame }) => {
                 frame
                     .show(ui, |ui| {
-                        ui.add(egui::Label::new(galley.clone()).selectable(false).sense(sense))
+                        ui.add(
+                            egui::Label::new(galley.clone())
+                                .selectable(false)
+                                .sense(sense),
+                        )
                     })
                     .response
             }

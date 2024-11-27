@@ -7,6 +7,7 @@ mod syntax_highlighting;
 
 mod context_ext;
 pub mod drag_and_drop;
+pub mod zoom_pan_area;
 pub mod icons;
 pub mod list_item;
 mod markdown_utils;
