@@ -547,7 +547,10 @@ impl TimePanel {
                     ui.scroll_with_delta(Vec2::Y * time_area_response.drag_delta().y);
                 }
 
-                // Show "/" on top?
+                // Show "/" on top only for recording streams, because the `/` entity in blueprint
+                // is always empty, so it's just lost space. This works around an issue where the
+                // selection/hover state of the `/` entity is wrongly synchronized between both
+                // stores, due to `Item::*` not tracking stores for entity paths.
                 let show_root = self.source == TimePanelSource::Recording;
 
                 if show_root {
