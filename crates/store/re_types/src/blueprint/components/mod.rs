@@ -13,6 +13,7 @@ mod filter_by_range_ext;
 mod filter_is_not_null;
 mod filter_is_not_null_ext;
 mod grid_spacing;
+mod grid_spacing_ext;
 mod included_content;
 mod interactive;
 mod interactive_ext;

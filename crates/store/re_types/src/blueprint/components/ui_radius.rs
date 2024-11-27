@@ -19,7 +19,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Like `Radius`, but in always in ui units.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct UiRadius(
     /// Radius in ui units.
     pub crate::datatypes::Float32,

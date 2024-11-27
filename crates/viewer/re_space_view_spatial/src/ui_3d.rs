@@ -54,7 +54,7 @@ pub struct View3DState {
 
     /// Last known view coordinates.
     /// Used to detect changes in view coordinates, in which case we reset the camera eye.
-    scene_view_coordinates: Option<ViewCoordinates>,
+    pub scene_view_coordinates: Option<ViewCoordinates>,
 
     // options:
     spin: bool,

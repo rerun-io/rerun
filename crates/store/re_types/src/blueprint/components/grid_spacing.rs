@@ -19,7 +19,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Space between grid lines of one line to the next in scene units.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct GridSpacing(
     /// Space between grid lines of one line to the next in scene units.
     pub crate::datatypes::Float32,

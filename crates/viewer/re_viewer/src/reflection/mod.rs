@@ -266,7 +266,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <UiRadius as Component>::name(),
             ComponentReflection {
                 docstring_md: "Like `Radius`, but in always in ui units.",
-                custom_placeholder: Some(UiRadius::default().to_arrow2()?),
+                custom_placeholder: None,
                 datatype: UiRadius::arrow2_datatype(),
             },
         ),
