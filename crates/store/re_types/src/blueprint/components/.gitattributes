@@ -16,6 +16,7 @@ lock_range_during_zoom.rs linguist-generated=true
 map_provider.rs linguist-generated=true
 mod.rs linguist-generated=true
 panel_state.rs linguist-generated=true
+plane_offset.rs linguist-generated=true
 plane_orientation.rs linguist-generated=true
 query_expression.rs linguist-generated=true
 row_share.rs linguist-generated=true

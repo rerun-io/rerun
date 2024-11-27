@@ -4,6 +4,7 @@
 #pragma once
 
 #include "../../blueprint/components/grid_spacing.hpp"
+#include "../../blueprint/components/plane_offset.hpp"
 #include "../../blueprint/components/plane_orientation.hpp"
 #include "../../blueprint/components/ui_radius.hpp"
 #include "../../blueprint/components/visible.hpp"
@@ -30,6 +31,14 @@ namespace rerun::blueprint::archetypes {
         /// Space between grid lines spacing of one line to the next in scene units.
         std::optional<rerun::blueprint::components::GridSpacing> spacing;
 
+        /// How the grid is oriented.
+        ///
+        /// Defaults to whatever plane is determined as the down plane by view coordinates if present.
+        std::optional<rerun::blueprint::components::PlaneOrientation> orientation;
+
+        /// Offset of the grid along its normal.
+        std::optional<rerun::blueprint::components::PlaneOffset> offset;
+
         /// How thick the lines should be in ui units.
         ///
         /// Default is 0.5 ui unit.
@@ -40,11 +49,6 @@ namespace rerun::blueprint::archetypes {
         /// Transparency via alpha channel is supported.
         /// Defaults to a slightly transparent light gray.
         std::optional<rerun::components::Color> color;
-
-        /// How the grid is oriented.
-        ///
-        /// Defaults to whatever plane is determined as the down plane by view coordinates if present.
-        std::optional<rerun::blueprint::components::PlaneOrientation> orientation;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -73,6 +77,23 @@ namespace rerun::blueprint::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
+        /// How the grid is oriented.
+        ///
+        /// Defaults to whatever plane is determined as the down plane by view coordinates if present.
+        LineGrid3D with_orientation(rerun::blueprint::components::PlaneOrientation _orientation
+        ) && {
+            orientation = std::move(_orientation);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// Offset of the grid along its normal.
+        LineGrid3D with_offset(rerun::blueprint::components::PlaneOffset _offset) && {
+            offset = std::move(_offset);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
         /// How thick the lines should be in ui units.
         ///
         /// Default is 0.5 ui unit.
@@ -88,16 +109,6 @@ namespace rerun::blueprint::archetypes {
         /// Defaults to a slightly transparent light gray.
         LineGrid3D with_color(rerun::components::Color _color) && {
             color = std::move(_color);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// How the grid is oriented.
-        ///
-        /// Defaults to whatever plane is determined as the down plane by view coordinates if present.
-        LineGrid3D with_orientation(rerun::blueprint::components::PlaneOrientation _orientation
-        ) && {
-            orientation = std::move(_orientation);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

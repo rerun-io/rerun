@@ -29,6 +29,14 @@ pub struct LineGrid3D {
     /// Space between grid lines spacing of one line to the next in scene units.
     pub spacing: Option<crate::blueprint::components::GridSpacing>,
 
+    /// How the grid is oriented.
+    ///
+    /// Defaults to whatever plane is determined as the down plane by view coordinates if present.
+    pub orientation: Option<crate::blueprint::components::PlaneOrientation>,
+
+    /// Offset of the grid along its normal.
+    pub offset: Option<crate::blueprint::components::PlaneOffset>,
+
     /// How thick the lines should be in ui units.
     ///
     /// Default is 0.5 ui unit.
@@ -39,11 +47,6 @@ pub struct LineGrid3D {
     /// Transparency via alpha channel is supported.
     /// Defaults to a slightly transparent light gray.
     pub color: Option<crate::components::Color>,
-
-    /// How the grid is oriented.
-    ///
-    /// Defaults to whatever plane is determined as the down plane by view coordinates if present.
-    pub orientation: Option<crate::blueprint::components::PlaneOrientation>,
 }
 
 impl ::re_types_core::SizeBytes for LineGrid3D {
@@ -51,18 +54,20 @@ impl ::re_types_core::SizeBytes for LineGrid3D {
     fn heap_size_bytes(&self) -> u64 {
         self.visible.heap_size_bytes()
             + self.spacing.heap_size_bytes()
+            + self.orientation.heap_size_bytes()
+            + self.offset.heap_size_bytes()
             + self.line_radius.heap_size_bytes()
             + self.color.heap_size_bytes()
-            + self.orientation.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <Option<crate::blueprint::components::Visible>>::is_pod()
             && <Option<crate::blueprint::components::GridSpacing>>::is_pod()
+            && <Option<crate::blueprint::components::PlaneOrientation>>::is_pod()
+            && <Option<crate::blueprint::components::PlaneOffset>>::is_pod()
             && <Option<crate::blueprint::components::UiRadius>>::is_pod()
             && <Option<crate::components::Color>>::is_pod()
-            && <Option<crate::blueprint::components::PlaneOrientation>>::is_pod()
     }
 }
 
@@ -72,32 +77,34 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.LineGrid3DIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.Visible".into(),
             "rerun.blueprint.components.GridSpacing".into(),
+            "rerun.blueprint.components.PlaneOrientation".into(),
+            "rerun.blueprint.components.PlaneOffset".into(),
             "rerun.blueprint.components.UiRadius".into(),
             "rerun.components.Color".into(),
-            "rerun.blueprint.components.PlaneOrientation".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.LineGrid3DIndicator".into(),
             "rerun.blueprint.components.Visible".into(),
             "rerun.blueprint.components.GridSpacing".into(),
+            "rerun.blueprint.components.PlaneOrientation".into(),
+            "rerun.blueprint.components.PlaneOffset".into(),
             "rerun.blueprint.components.UiRadius".into(),
             "rerun.components.Color".into(),
-            "rerun.blueprint.components.PlaneOrientation".into(),
         ]
     });
 
 impl LineGrid3D {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 5 optional
-    pub const NUM_COMPONENTS: usize = 6usize;
+    /// The total number of components in the archetype: 0 required, 1 recommended, 6 optional
+    pub const NUM_COMPONENTS: usize = 7usize;
 }
 
 /// Indicator component for the [`LineGrid3D`] [`::re_types_core::Archetype`]
@@ -172,6 +179,27 @@ impl ::re_types_core::Archetype for LineGrid3D {
             } else {
                 None
             };
+        let orientation = if let Some(array) =
+            arrays_by_name.get("rerun.blueprint.components.PlaneOrientation")
+        {
+            <crate::blueprint::components::PlaneOrientation>::from_arrow2_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.LineGrid3D#orientation")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
+        let offset =
+            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.PlaneOffset") {
+                <crate::blueprint::components::PlaneOffset>::from_arrow2_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.LineGrid3D#offset")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+            } else {
+                None
+            };
         let line_radius =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.UiRadius") {
                 <crate::blueprint::components::UiRadius>::from_arrow2_opt(&**array)
@@ -191,23 +219,13 @@ impl ::re_types_core::Archetype for LineGrid3D {
         } else {
             None
         };
-        let orientation = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.PlaneOrientation")
-        {
-            <crate::blueprint::components::PlaneOrientation>::from_arrow2_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.LineGrid3D#orientation")?
-                .into_iter()
-                .next()
-                .flatten()
-        } else {
-            None
-        };
         Ok(Self {
             visible,
             spacing,
+            orientation,
+            offset,
             line_radius,
             color,
-            orientation,
         })
     }
 }
@@ -224,13 +242,16 @@ impl ::re_types_core::AsComponents for LineGrid3D {
             self.spacing
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.orientation
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.offset
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.line_radius
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.color
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.orientation
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
@@ -249,9 +270,10 @@ impl LineGrid3D {
         Self {
             visible: None,
             spacing: None,
+            orientation: None,
+            offset: None,
             line_radius: None,
             color: None,
-            orientation: None,
         }
     }
 
@@ -277,6 +299,28 @@ impl LineGrid3D {
         self
     }
 
+    /// How the grid is oriented.
+    ///
+    /// Defaults to whatever plane is determined as the down plane by view coordinates if present.
+    #[inline]
+    pub fn with_orientation(
+        mut self,
+        orientation: impl Into<crate::blueprint::components::PlaneOrientation>,
+    ) -> Self {
+        self.orientation = Some(orientation.into());
+        self
+    }
+
+    /// Offset of the grid along its normal.
+    #[inline]
+    pub fn with_offset(
+        mut self,
+        offset: impl Into<crate::blueprint::components::PlaneOffset>,
+    ) -> Self {
+        self.offset = Some(offset.into());
+        self
+    }
+
     /// How thick the lines should be in ui units.
     ///
     /// Default is 0.5 ui unit.
@@ -296,18 +340,6 @@ impl LineGrid3D {
     #[inline]
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = Some(color.into());
-        self
-    }
-
-    /// How the grid is oriented.
-    ///
-    /// Defaults to whatever plane is determined as the down plane by view coordinates if present.
-    #[inline]
-    pub fn with_orientation(
-        mut self,
-        orientation: impl Into<crate::blueprint::components::PlaneOrientation>,
-    ) -> Self {
-        self.orientation = Some(orientation.into());
         self
     }
 }

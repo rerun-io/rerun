@@ -20,6 +20,7 @@ from .interactive import Interactive, InteractiveBatch
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch
 from .map_provider import MapProvider, MapProviderArrayLike, MapProviderBatch, MapProviderLike
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike
+from .plane_offset import PlaneOffset, PlaneOffsetBatch
 from .plane_orientation import PlaneOrientation, PlaneOrientationArrayLike, PlaneOrientationBatch, PlaneOrientationLike
 from .query_expression import QueryExpression, QueryExpressionBatch
 from .root_container import RootContainer, RootContainerBatch
@@ -86,6 +87,8 @@ __all__ = [
     "PanelStateArrayLike",
     "PanelStateBatch",
     "PanelStateLike",
+    "PlaneOffset",
+    "PlaneOffsetBatch",
     "PlaneOrientation",
     "PlaneOrientationArrayLike",
     "PlaneOrientationBatch",

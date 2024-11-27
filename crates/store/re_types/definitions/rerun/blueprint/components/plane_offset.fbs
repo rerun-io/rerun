@@ -1,0 +1,12 @@
+namespace rerun.blueprint.components;
+
+/// Offset of a plane along its normal in scene units.
+table PlaneOffset (
+    "attr.python.aliases": "float",
+    "attr.python.array_aliases": "npt.ArrayLike",
+    "attr.rust.derive": "Default",
+    "attr.rerun.scope": "blueprint"
+) {
+    /// Offset of a plane along its normal in scene units.
+    distance: rerun.datatypes.Float32 (order: 100);
+}

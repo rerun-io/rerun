@@ -181,6 +181,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <PlaneOffset as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Offset of a plane along its normal in scene units.",
+                custom_placeholder: Some(PlaneOffset::default().to_arrow2()?),
+                datatype: PlaneOffset::arrow2_datatype(),
+            },
+        ),
+        (
             <PlaneOrientation as Component>::name(),
             ComponentReflection {
                 docstring_md: "Orientation of a 3D axis aligned plane.",
@@ -1969,6 +1977,13 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Spacing", docstring_md :
                     "Space between grid lines spacing of one line to the next in scene units.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.PlaneOrientation".into(), display_name :
+                    "Orientation", docstring_md :
+                    "How the grid is oriented.\n\nDefaults to whatever plane is determined as the down plane by view coordinates if present.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.PlaneOffset".into(), display_name :
+                    "Offset", docstring_md : "Offset of the grid along its normal.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.UiRadius".into(), display_name :
                     "Line radius", docstring_md :
                     "How thick the lines should be in ui units.\n\nDefault is 0.5 ui unit.",
@@ -1976,10 +1991,6 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.Color".into(), display_name : "Color", docstring_md
                     :
                     "Color used for the grid.\n\nTransparency via alpha channel is supported.\nDefaults to a slightly transparent light gray.",
-                    is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.PlaneOrientation".into(), display_name :
-                    "Orientation", docstring_md :
-                    "How the grid is oriented.\n\nDefaults to whatever plane is determined as the down plane by view coordinates if present.",
                     is_required : false, },
                 ],
             },

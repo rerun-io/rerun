@@ -12,19 +12,22 @@ table LineGrid3D (
     /// Space between grid lines spacing of one line to the next in scene units.
     spacing: rerun.blueprint.components.GridSpacing ("attr.rerun.component_optional", nullable, order: 2000);
 
+    /// How the grid is oriented.
+    ///
+    /// Defaults to whatever plane is determined as the down plane by view coordinates if present.
+    orientation: rerun.blueprint.components.PlaneOrientation ("attr.rerun.component_optional", nullable, order: 3000);
+
+    /// Offset of the grid along its normal.
+    offset: rerun.blueprint.components.PlaneOffset ("attr.rerun.component_optional", nullable, order: 4000);
+
     /// How thick the lines should be in ui units.
     ///
     /// Default is 0.5 ui unit.
-    line_radius: rerun.blueprint.components.UiRadius ("attr.rerun.component_optional", nullable, order: 3000);
+    line_radius: rerun.blueprint.components.UiRadius ("attr.rerun.component_optional", nullable, order: 5000);
 
     /// Color used for the grid.
     ///
     /// Transparency via alpha channel is supported.
     /// Defaults to a slightly transparent light gray.
-    color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 4000);
-
-    /// How the grid is oriented.
-    ///
-    /// Defaults to whatever plane is determined as the down plane by view coordinates if present.
-    orientation: rerun.blueprint.components.PlaneOrientation ("attr.rerun.component_optional", nullable, order: 5000);
+    color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 6000);
 }

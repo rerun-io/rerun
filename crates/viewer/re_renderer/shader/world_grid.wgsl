@@ -12,6 +12,9 @@ struct WorldGridUniformBuffer {
 
     /// How thick the lines are in UI units.
     thickness_ui: f32,
+
+    /// Offset of the grid along its normal.
+    normal_offset: f32,
 }
 
 @group(1) @binding(0)
