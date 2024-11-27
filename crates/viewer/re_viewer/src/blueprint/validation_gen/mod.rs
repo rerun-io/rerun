@@ -9,11 +9,13 @@ pub use re_types::blueprint::components::ComponentColumnSelector;
 pub use re_types::blueprint::components::Corner2D;
 pub use re_types::blueprint::components::FilterByRange;
 pub use re_types::blueprint::components::FilterIsNotNull;
+pub use re_types::blueprint::components::GridSpacing;
 pub use re_types::blueprint::components::IncludedContent;
 pub use re_types::blueprint::components::Interactive;
 pub use re_types::blueprint::components::LockRangeDuringZoom;
 pub use re_types::blueprint::components::MapProvider;
 pub use re_types::blueprint::components::PanelState;
+pub use re_types::blueprint::components::PlaneOrientation;
 pub use re_types::blueprint::components::QueryExpression;
 pub use re_types::blueprint::components::RowShare;
 pub use re_types::blueprint::components::SelectedColumns;
@@ -21,6 +23,7 @@ pub use re_types::blueprint::components::SpaceViewClass;
 pub use re_types::blueprint::components::SpaceViewOrigin;
 pub use re_types::blueprint::components::TensorDimensionIndexSlider;
 pub use re_types::blueprint::components::TimelineName;
+pub use re_types::blueprint::components::UiRadius;
 pub use re_types::blueprint::components::ViewFit;
 pub use re_types::blueprint::components::ViewerRecommendationHash;
 pub use re_types::blueprint::components::Visible;
@@ -51,11 +54,13 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<FilterByRange>(blueprint)
         && validate_component::<FilterIsNotNull>(blueprint)
         && validate_component::<GridColumns>(blueprint)
+        && validate_component::<GridSpacing>(blueprint)
         && validate_component::<IncludedContent>(blueprint)
         && validate_component::<Interactive>(blueprint)
         && validate_component::<LockRangeDuringZoom>(blueprint)
         && validate_component::<MapProvider>(blueprint)
         && validate_component::<PanelState>(blueprint)
+        && validate_component::<PlaneOrientation>(blueprint)
         && validate_component::<QueryExpression>(blueprint)
         && validate_component::<RootContainer>(blueprint)
         && validate_component::<RowShare>(blueprint)
@@ -65,6 +70,7 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<SpaceViewOrigin>(blueprint)
         && validate_component::<TensorDimensionIndexSlider>(blueprint)
         && validate_component::<TimelineName>(blueprint)
+        && validate_component::<UiRadius>(blueprint)
         && validate_component::<ViewFit>(blueprint)
         && validate_component::<ViewerRecommendationHash>(blueprint)
         && validate_component::<Visible>(blueprint)

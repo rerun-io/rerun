@@ -1,0 +1,16 @@
+namespace rerun.blueprint.components;
+
+/// Orientation of a 3D axis aligned plane.
+enum PlaneOrientation: ubyte (
+    "attr.rerun.scope": "blueprint"
+) {
+    /// Invalid value. Won't show up in generated types.
+    Invalid = 0,
+
+    /// Plane spanned by X and Z axis.
+    Xz (default),
+    /// Plane spanned by Y and Z axis.
+    Yz,
+    /// Plane spanned by X and Y axis.
+    Xy,
+}

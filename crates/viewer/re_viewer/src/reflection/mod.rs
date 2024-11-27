@@ -133,6 +133,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <GridSpacing as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Space between grid lines of one line to the next in scene units.",
+                custom_placeholder: Some(GridSpacing::default().to_arrow2()?),
+                datatype: GridSpacing::arrow2_datatype(),
+            },
+        ),
+        (
             <IncludedContent as Component>::name(),
             ComponentReflection {
                 docstring_md: "All the contents in the container.",
@@ -170,6 +178,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 docstring_md: "Tri-state for panel controls.",
                 custom_placeholder: Some(PanelState::default().to_arrow2()?),
                 datatype: PanelState::arrow2_datatype(),
+            },
+        ),
+        (
+            <PlaneOrientation as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Orientation of a 3D axis aligned plane.",
+                custom_placeholder: Some(PlaneOrientation::default().to_arrow2()?),
+                datatype: PlaneOrientation::arrow2_datatype(),
             },
         ),
         (
@@ -244,6 +260,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 docstring_md: "A timeline identified by its name.",
                 custom_placeholder: Some(TimelineName::default().to_arrow2()?),
                 datatype: TimelineName::arrow2_datatype(),
+            },
+        ),
+        (
+            <UiRadius as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Like `Radius`, but in always in ui units.",
+                custom_placeholder: Some(UiRadius::default().to_arrow2()?),
+                datatype: UiRadius::arrow2_datatype(),
             },
         ),
         (
@@ -1927,6 +1951,36 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Select", docstring_md :
                     "Selected columns. If unset, all columns are selected.", is_required
                     : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.LineGrid3D"),
+            ArchetypeReflection {
+                display_name: "Line grid 3D",
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.Visible".into(), display_name :
+                    "Visible", docstring_md :
+                    "Whether the grid is visible.\n\nDefaults to true.", is_required :
+                    false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.GridSpacing".into(), display_name :
+                    "Spacing", docstring_md :
+                    "Space between grid lines spacing of one line to the next in scene units.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.UiRadius".into(), display_name :
+                    "Line radius", docstring_md :
+                    "How thick the lines should be in ui units.\n\nDefault is 0.5 ui unit.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Color", docstring_md
+                    :
+                    "Color used for the grid.\n\nTransparency via alpha channel is supported.\nDefaults to a slightly transparent light gray.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.PlaneOrientation".into(), display_name :
+                    "Orientation", docstring_md :
+                    "How the grid is oriented.\n\nDefaults to whatever plane is determined as the down plane by view coordinates if present.",
+                    is_required : false, },
                 ],
             },
         ),

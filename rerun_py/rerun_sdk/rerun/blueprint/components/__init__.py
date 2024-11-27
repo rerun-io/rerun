@@ -14,11 +14,13 @@ from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike
 from .filter_by_range import FilterByRange, FilterByRangeBatch
 from .filter_is_not_null import FilterIsNotNull, FilterIsNotNullBatch
 from .grid_columns import GridColumns, GridColumnsBatch
+from .grid_spacing import GridSpacing, GridSpacingBatch
 from .included_content import IncludedContent, IncludedContentBatch
 from .interactive import Interactive, InteractiveBatch
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch
 from .map_provider import MapProvider, MapProviderArrayLike, MapProviderBatch, MapProviderLike
 from .panel_state import PanelState, PanelStateArrayLike, PanelStateBatch, PanelStateLike
+from .plane_orientation import PlaneOrientation, PlaneOrientationArrayLike, PlaneOrientationBatch, PlaneOrientationLike
 from .query_expression import QueryExpression, QueryExpressionBatch
 from .root_container import RootContainer, RootContainerBatch
 from .row_share import RowShare, RowShareBatch
@@ -28,6 +30,7 @@ from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch
 from .space_view_origin import SpaceViewOrigin, SpaceViewOriginBatch
 from .tensor_dimension_index_slider import TensorDimensionIndexSlider, TensorDimensionIndexSliderBatch
 from .timeline_name import TimelineName, TimelineNameBatch
+from .ui_radius import UiRadius, UiRadiusBatch
 from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike
 from .viewer_recommendation_hash import ViewerRecommendationHash, ViewerRecommendationHashBatch
 from .visible import Visible, VisibleBatch
@@ -67,6 +70,8 @@ __all__ = [
     "FilterIsNotNullBatch",
     "GridColumns",
     "GridColumnsBatch",
+    "GridSpacing",
+    "GridSpacingBatch",
     "IncludedContent",
     "IncludedContentBatch",
     "Interactive",
@@ -81,6 +86,10 @@ __all__ = [
     "PanelStateArrayLike",
     "PanelStateBatch",
     "PanelStateLike",
+    "PlaneOrientation",
+    "PlaneOrientationArrayLike",
+    "PlaneOrientationBatch",
+    "PlaneOrientationLike",
     "QueryExpression",
     "QueryExpressionBatch",
     "RootContainer",
@@ -99,6 +108,8 @@ __all__ = [
     "TensorDimensionIndexSliderBatch",
     "TimelineName",
     "TimelineNameBatch",
+    "UiRadius",
+    "UiRadiusBatch",
     "ViewFit",
     "ViewFitArrayLike",
     "ViewFitBatch",
