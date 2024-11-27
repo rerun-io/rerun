@@ -31,7 +31,7 @@ If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `h
 rustup set default-host aarch64-apple-darwin && rustup install 1.80.0
 ```
 
-## git-lfs
+## Git-lfs
 
 We use [git-lfs](https://git-lfs.com/) to store big files in the repository, such as UI test snapshots.
 We aim to keep this project buildable without the need of git-lfs (for example, icons and similar assets are checked in to the repo as regular files).
