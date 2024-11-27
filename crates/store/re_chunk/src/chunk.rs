@@ -452,18 +452,25 @@ impl Chunk {
 
         // NOTE: This is used on some very hot paths (time panel rendering).
 
-        let mut result_unordered = HashMap::default();
-        for list_array in self.components.values() {
-            if let Some(validity) = list_array.validity() {
-                for (time, is_valid) in time_column.times().zip(validity.iter()) {
-                    *result_unordered.entry(time).or_default() += is_valid as u64;
-                }
-            } else {
-                for time in time_column.times() {
-                    *result_unordered.entry(time).or_default() += 1;
-                }
-            }
-        }
+        let result_unordered =
+            self.components
+                .values()
+                .fold(HashMap::default(), |acc, list_array| {
+                    if let Some(validity) = list_array.validity() {
+                        time_column.times().zip(validity.iter()).fold(
+                            acc,
+                            |mut acc, (time, is_valid)| {
+                                *acc.entry(time).or_default() += is_valid as u64;
+                                acc
+                            },
+                        )
+                    } else {
+                        time_column.times().fold(acc, |mut acc, time| {
+                            *acc.entry(time).or_default() += 1;
+                            acc
+                        })
+                    }
+                });
 
         let mut result = result_unordered.into_iter().collect_vec();
         result.sort_by_key(|val| val.0);
