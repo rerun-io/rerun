@@ -8,5 +8,6 @@ mod properties;
 mod ui;
 mod view;
 mod visualizers;
+mod canvas;
 
 pub use view::GraphSpaceView;

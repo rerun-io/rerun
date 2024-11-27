@@ -22,57 +22,8 @@ use std::hash::{Hash as _, Hasher as _};
 use crate::{
     graph::Graph,
     ui::{draw::DrawableNode, Discriminator, GraphSpaceViewState},
-    visualizers::{merge, EdgesVisualizer, NodeVisualizer},
+    visualizers::{merge, EdgesVisualizer, NodeVisualizer}, canvas::{draw_debug, draw_node, zoom_pan_area},
 };
-
-fn register_pan_and_zoom(
-    ui: &egui::Ui,
-    resp: egui::Response,
-    transform: &mut TSTransform,
-) -> egui::Response {
-    if resp.dragged() {
-        transform.translation += resp.drag_delta();
-    }
-
-    if let Some(mouse_pos) = resp.hover_pos() {
-        let pointer_in_world = transform.inverse() * mouse_pos;
-        let zoom_delta = ui.ctx().input(|i| i.zoom_delta());
-        let pan_delta = ui.ctx().input(|i| i.smooth_scroll_delta);
-
-        // Zoom in on pointer, but only if we are not zoomed out too far.
-        if zoom_delta < 1.0 || transform.scaling < 1.0 {
-            *transform = *transform
-                * TSTransform::from_translation(pointer_in_world.to_vec2())
-                * TSTransform::from_scaling(zoom_delta)
-                * TSTransform::from_translation(-pointer_in_world.to_vec2());
-        }
-
-        // Pan:
-        *transform = TSTransform::from_translation(pan_delta) * *transform;
-    }
-
-    resp
-}
-
-fn fit_to_world_rect(clip_rect_window: egui::Rect, world_rect: egui::Rect) -> TSTransform {
-    let available_size = clip_rect_window.size();
-
-    // Compute the scale factor to fit the bounding rectangle into the available screen size.
-    let scale_x = available_size.x / world_rect.width();
-    let scale_y = available_size.y / world_rect.height();
-
-    // Use the smaller of the two scales to ensure the whole rectangle fits on the screen.
-    let scale = scale_x.min(scale_y).min(1.0);
-
-    // Compute the translation to center the bounding rect in the screen.
-    let center_screen = egui::Pos2::new(available_size.x / 2.0, available_size.y / 2.0);
-    let center_world = world_rect.center().to_vec2();
-
-    // Set the transformation to scale and then translate to center.
-
-    TSTransform::from_translation(center_screen.to_vec2() - center_world * scale)
-        * TSTransform::from_scaling(scale)
-}
 
 #[derive(Default)]
 pub struct GraphSpaceView;
@@ -190,7 +141,7 @@ Display a graph of nodes and edges.
         ui: &mut egui::Ui,
         state: &mut dyn SpaceViewState,
         query: &ViewQuery<'_>,
-        system_output: SystemExecutionOutput,
+        _system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
@@ -202,123 +153,36 @@ Display a graph of nodes and edges.
         let bounds: blueprint::components::VisualBounds2D =
             bounds_property.component_or_fallback(ctx, self, state)?;
 
-        let world_bounds = bounds.into();
-
-        let mut world_to_view = fit_to_world_rect(ui.max_rect(), world_bounds);
-
-        //let view_rect = ui.max_rect();
-
-        //
-        // A: closure
-        //
-
-        // draggable_and_zoomable_area(
-        //     ui,
-        //     view_rect,
-        //     &mut state.transform,
-        //     |ui, apply_pan_and_zoom| {
-        //         for node in nodes {
-        //             let resp = node_ui(ui, node);
-        //             apply_pan_and_zoom(resp);
-        //         }
-        //     },
-        // );
-        //
-        // draggable_and_zoomable_area(ui, view_rect, &mut state.transform, |scene: Scene| {
-        //     for node in nodes {
-        //         scene.draw_something(|ui| {
-        //             node_ui(ui, node) // must return a resposne
-        //         });
-        //     }
-        // });
+        let view_rect = ui.max_rect();
 
         let text = "hello world";
 
         let node = DrawableNode::text(ui, text, None, Default::default());
         let circle_node = DrawableNode::circle(ui, None, None);
 
-        let view_rect = ui.max_rect();
-        let clip_rect_world = world_to_view.inverse() * view_rect;
+        let (resp, new_bounds) = zoom_pan_area(
+            ui,
+            view_rect,
+            bounds.into(),
+            egui::Id::new(query.space_view_id),
+            |ui, world_to_view| {
+                let mut world_bounding_rect = egui::Rect::NOTHING;
 
-        let mut world_bounding_rect = egui::Rect::NOTHING;
-
-        let base_id = egui::Id::new(query.space_view_id);
-        let inner_resp = egui::Area::new(base_id.with("view"))
-            .constrain_to(view_rect)
-            .order(egui::Order::Middle)
-            .kind(egui::UiKind::GenericArea)
-            .show(ui.ctx(), |ui| {
-                // let resp =
-                //     ui.interact(ui.max_rect(), base_id.with("sub_view"), egui::Sense::drag());
-
-                //ui.allocate_space(view_rect.size());
-                //ui.allocate_rect(view_rect, egui::Sense::hover());
-
-                ui.set_clip_rect(clip_rect_world);
-
-                //for node in nodes {}
-                //for edge in edges {}
-
-                let resp = {
-                    let mut node_ui = ui.new_child(egui::UiBuilder::new().max_rect(
-                        egui::Rect::from_center_size(egui::pos2(400., 400.), node.size()),
-                    ));
-
-                    node.draw(&mut node_ui)
-                };
+                let resp = draw_node(ui, Pos2::new(400., 400.), world_to_view, node);
                 world_bounding_rect = world_bounding_rect.union(resp.rect);
-                register_pan_and_zoom(ui, resp, &mut world_to_view);
 
-                let resp = {
-                    let mut node_ui = ui.new_child(egui::UiBuilder::new().max_rect(
-                        egui::Rect::from_center_size(egui::pos2(600., 400.), circle_node.size()),
-                    ));
-
-                    circle_node.draw(&mut node_ui)
-                };
+                let resp = draw_node(ui, Pos2::new(400., 600.), world_to_view, circle_node);
                 world_bounding_rect = world_bounding_rect.union(resp.rect);
-                register_pan_and_zoom(ui, resp, &mut world_to_view);
-            });
 
-        // TODO(grtlr): Do we even need an `Area`, or could we just spawn a new `child_ui`?
-        let resp = ui.allocate_rect(view_rect, egui::Sense::drag());
-        let resp = register_pan_and_zoom(ui, resp, &mut world_to_view);
-
-        ui.ctx()
-            .set_transform_layer(inner_resp.response.layer_id, world_to_view);
-
-        // We need to draw the debug information after the rest to ensure that we have the correct bounding box.
-        if state.show_debug {
-            // Paint the coordinate system.
-            let painter = egui::Painter::new(
-                ui.ctx().clone(),
-                inner_resp.response.layer_id,
-                clip_rect_world,
-            );
-
-            // paint coordinate system at the world origin
-            let origin = Pos2::new(0.0, 0.0);
-            let x_axis = Pos2::new(100.0, 0.0);
-            let y_axis = Pos2::new(0.0, 100.0);
-
-            painter.line_segment([origin, x_axis], Stroke::new(1.0, Color32::RED));
-            painter.line_segment([origin, y_axis], Stroke::new(1.0, Color32::GREEN));
-
-            if world_bounding_rect.is_positive() {
-                painter.rect(
-                    world_bounding_rect,
-                    0.0,
-                    Color32::from_rgba_unmultiplied(255, 0, 255, 8),
-                    Stroke::new(1.0, Color32::from_rgb(255, 0, 255)),
-                );
-            }
-        }
-
-        let view_size = egui::Rect::from_min_size(egui::Pos2::ZERO, view_rect.size());
+                // We need to draw the debug information after the rest to ensure that we have the correct bounding box.
+                if state.show_debug {
+                    draw_debug(ui, world_bounding_rect);
+                }
+            },
+        );
 
         // Update blueprint if changed
-        let updated_bounds: blueprint::components::VisualBounds2D =
-            (world_to_view.inverse() * view_size).into();
+        let updated_bounds: blueprint::components::VisualBounds2D = new_bounds.into();
         if resp.double_clicked() {
             bounds_property.reset_blueprint_component::<blueprint::components::VisualBounds2D>(ctx);
         } else if bounds != updated_bounds {
@@ -327,7 +191,7 @@ Display a graph of nodes and edges.
         // Update stored bounds on the state, so visualizers see an up-to-date value.
         state.world_bounds = Some(bounds);
 
-        return Ok(());
+        Ok(())
 
         // let node_data = &system_output.view_systems.get::<NodeVisualizer>()?.data;
         // let edge_data = &system_output.view_systems.get::<EdgesVisualizer>()?.data;
