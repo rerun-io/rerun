@@ -1,6 +1,5 @@
 use std::{collections::BTreeMap, sync::Arc};
 
-use itertools::Itertools;
 use re_chunk::Chunk;
 use re_log_types::StoreId;
 
