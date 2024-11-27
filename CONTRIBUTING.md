@@ -17,13 +17,6 @@ This is written for anyone who wants to contribute to the Rerun repository.
 
 You can also look at our [`good first issue` tag](https://github.com/rerun-io/rerun/labels/good%20first%20issue).
 
-## Git LFS
-
-We use [git-lfs](https://git-lfs.com/) to store big files in the repository.
-Make sure you have it installed (running `git lfs ls-files` from the repository root should list some files).
-Don't forget to run `git lfs install` after installing the git-lfs binary.
-If the CI complains about this, make sure you run `git add --renormalize .`.
-
 ## Pull requests
 We use [Trunk Based Development](https://trunkbaseddevelopment.com/), which means we encourage small, short-lived branches.
 
