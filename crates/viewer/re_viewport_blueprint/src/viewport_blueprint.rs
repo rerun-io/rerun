@@ -56,12 +56,12 @@ pub struct ViewportBlueprint {
     /// Whether the viewport layout is determined automatically.
     ///
     /// Set to `false` the first time the user messes around with the viewport blueprint.
-    /// Note: we use a mutex here because writes needs to be effective immediately during the frame.
+    /// Note: we use an atomic here because writes needs to be effective immediately during the frame.
     auto_layout: AtomicBool,
 
     /// Whether space views should be created automatically.
     ///
-    /// Note: we use a mutex here because writes needs to be effective immediately during the frame.
+    /// Note: we use an atomic here because writes needs to be effective immediately during the frame.
     auto_space_views: AtomicBool,
 
     /// Hashes of all recommended space views the viewer has already added and that should not be added again.
