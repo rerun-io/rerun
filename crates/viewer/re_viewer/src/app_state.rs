@@ -170,10 +170,6 @@ impl AppState {
         // check state early, before the UI has a chance to close these popups
         let is_any_popup_open = ui.memory(|m| m.any_popup_open());
 
-        // Some of the mutations APIs of `ViewportBlueprints` are recorded as `Viewport::TreeAction`
-        // and must be applied by `Viewport` at the end of the frame. We use a temporary channel for
-        // this, which gives us interior mutability (only a shared reference of `ViewportBlueprint`
-        // is available to the UI code) and, if needed in the future, concurrency.
         let viewport_blueprint =
             ViewportBlueprint::try_from_db(store_context.blueprint, &blueprint_query);
         let viewport = Viewport::new(viewport_blueprint);
@@ -199,7 +195,7 @@ impl AppState {
                     }
                 }
 
-                viewport.is_item_valid(store_context, item)
+                viewport.blueprint.is_item_valid(store_context, item)
             },
             Some(re_viewer_context::Item::StoreId(
                 store_context.recording.store_id().clone(),
