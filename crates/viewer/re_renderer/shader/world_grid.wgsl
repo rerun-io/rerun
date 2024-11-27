@@ -101,7 +101,7 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     //
     // Note that `1/plane_unit_pixel_derivative` would give us more literal pixels per line,
     // but we actually want to know how dense the lines get here so we use `1/width_in_grid_units` instead,
-    // such that a line density of 1.0 means roughtly "100% lines" and 10.0 means "Every 10 pixels there is a lines".
+    // such that a line density of 1.0 means roughly "100% lines" and 10.0 means "Every 10 pixels there is a lines".
     // Empirically (== making the fade a hard cut and taking screenshot), this works out pretty accurately!
     //
     // Tried smoothstep here, but didn't feel right even with lots of range tweaking.
@@ -127,7 +127,7 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     // X and Y are combined like akin to premultiplied alpha operations.
     let intensity_combined = saturate(cardinal_and_regular.x * (1.0 - cardinal_and_regular.y) + cardinal_and_regular.y);
 
-    // Fade on accute viewing angles.
+    // Fade on acute viewing angles.
     var view_direction_up_component: f32;
     switch (config.orientation) {
         case ORIENTATION_XZ: {
