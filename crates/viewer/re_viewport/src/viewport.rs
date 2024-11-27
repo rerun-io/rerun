@@ -218,26 +218,33 @@ impl Viewport {
                     space_view.save_to_blueprint_store(ctx);
                     bp.space_views.insert(space_view_id, space_view);
 
-                    let parent_id = parent_container.unwrap_or(bp.root_container);
-                    re_log::trace!("Adding space-view {space_view_id} to parent {parent_id}");
-                    let tile_id = bp.tree.tiles.insert_pane(space_view_id);
-                    let container_tile_id = blueprint_id_to_tile_id(&parent_id);
-                    if let Some(egui_tiles::Tile::Container(container)) =
-                        bp.tree.tiles.get_mut(container_tile_id)
-                    {
-                        re_log::trace!("Inserting new space view into root container");
-                        container.add_child(tile_id);
-                        if let Some(position_in_parent) = position_in_parent {
-                            bp.tree.move_tile_to_container(
-                                tile_id,
-                                container_tile_id,
-                                position_in_parent,
-                                true,
-                            );
-                        }
-                    } else {
-                        re_log::trace!("Parent was not a container - will re-run auto-layout");
+                    if bp.auto_layout() {
+                        // No need to add to the tree - we'll create a new tree from scratch instead.
+                        re_log::trace!("Running auto-layout after adding a space-view because auto_layout is turned on");
                         run_auto_layout = true;
+                    } else {
+                        // Add the view to the tree:
+                        let parent_id = parent_container.unwrap_or(bp.root_container);
+                        re_log::trace!("Adding space-view {space_view_id} to parent {parent_id}");
+                        let tile_id = bp.tree.tiles.insert_pane(space_view_id);
+                        let container_tile_id = blueprint_id_to_tile_id(&parent_id);
+                        if let Some(egui_tiles::Tile::Container(container)) =
+                            bp.tree.tiles.get_mut(container_tile_id)
+                        {
+                            re_log::trace!("Inserting new space view into root container");
+                            container.add_child(tile_id);
+                            if let Some(position_in_parent) = position_in_parent {
+                                bp.tree.move_tile_to_container(
+                                    tile_id,
+                                    container_tile_id,
+                                    position_in_parent,
+                                    true,
+                                );
+                            }
+                        } else {
+                            re_log::trace!("Parent was not a container (or not found) - will re-run auto-layout");
+                            run_auto_layout = true;
+                        }
                     }
 
                     tree_edited = true;

@@ -55,11 +55,13 @@ pub struct ViewportBlueprint {
 
     /// Whether the viewport layout is determined automatically.
     ///
+    /// If `true`, we auto-layout all space-views whenever a new space-view is added.
+    ///
     /// Set to `false` the first time the user messes around with the viewport blueprint.
     /// Note: we use an atomic here because writes needs to be effective immediately during the frame.
     auto_layout: AtomicBool,
 
-    /// Whether space views should be created automatically.
+    /// Whether space views should be created automatically for entities that are not already in a space.
     ///
     /// Note: we use an atomic here because writes needs to be effective immediately during the frame.
     auto_space_views: AtomicBool,
@@ -725,6 +727,21 @@ impl ViewportBlueprint {
             .collect()
     }
 
+    /// Whether the viewport layout is determined automatically.
+    ///
+    /// If `true`, we auto-layout all space-views whenever a new space-view is added.
+    ///
+    /// Set to `false` the first time the user messes around with the viewport blueprint.
+    #[inline]
+    pub fn auto_layout(&self) -> bool {
+        self.auto_layout.load(Ordering::SeqCst)
+    }
+
+    /// Whether the viewport layout is determined automatically.
+    ///
+    /// If `true`, we auto-layout all space-views whenever a new space-view is added.
+    ///
+    /// Set to `false` the first time the user messes around with the viewport blueprint.
     #[inline]
     pub fn set_auto_layout(&self, value: bool, ctx: &ViewerContext<'_>) {
         let old_value = self.auto_layout.swap(value, Ordering::SeqCst);
@@ -735,11 +752,13 @@ impl ViewportBlueprint {
         }
     }
 
+    /// Whether space views should be created automatically for entities that are not already in a space.
     #[inline]
-    pub fn auto_layout(&self) -> bool {
-        self.auto_layout.load(Ordering::SeqCst)
+    pub fn auto_space_views(&self) -> bool {
+        self.auto_space_views.load(Ordering::SeqCst)
     }
 
+    /// Whether space views should be created automatically for entities that are not already in a space.
     #[inline]
     pub fn set_auto_space_views(&self, value: bool, ctx: &ViewerContext<'_>) {
         let old_value = self.auto_space_views.swap(value, Ordering::SeqCst);
@@ -748,11 +767,6 @@ impl ViewportBlueprint {
             let component = AutoSpaceViews::from(value);
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &component);
         }
-    }
-
-    #[inline]
-    pub fn auto_space_views(&self) -> bool {
-        self.auto_space_views.load(Ordering::SeqCst)
     }
 
     #[inline]
