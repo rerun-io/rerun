@@ -307,7 +307,7 @@ mod tests {
         assert_eq!(child_t1.recursive_chunks_info.len(), 1);
         assert_eq!(child_t1.total_num_events, 2);
 
-        test_paths_without_chunks(subs, &child_t0, &child_t1, t0, t1)?;
+        test_paths_without_chunks(subs, child_t0, child_t1, t0, t1)?;
 
         Some(())
     }
@@ -334,7 +334,7 @@ mod tests {
         assert_eq!(child_t1.recursive_chunks_info.len(), 1);
         assert_eq!(child_t1.total_num_events, 2);
 
-        test_paths_without_chunks(subs, &child_t0, &child_t1, t0, t1)?;
+        test_paths_without_chunks(subs, child_t0, child_t1, t0, t1)?;
 
         Some(())
     }
