@@ -22,7 +22,7 @@ use re_viewer_context::{
 ///
 /// The main reason this exists is to handle type conversions that aren't yet
 /// well handled by the code-generated archetypes.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ContainerBlueprint {
     pub id: ContainerId,
     pub container_kind: egui_tiles::ContainerKind,

@@ -34,6 +34,7 @@ use crate::{SpaceViewBlueprint, ViewProperty};
 ///
 /// If you want a new space view otherwise identical to an existing one, use
 /// [`SpaceViewBlueprint::duplicate`].
+#[derive(Clone, Debug)]
 pub struct SpaceViewContents {
     pub blueprint_entity_path: EntityPath,
 

@@ -176,7 +176,7 @@ impl AppState {
         // is available to the UI code) and, if needed in the future, concurrency.
         let viewport_blueprint =
             ViewportBlueprint::try_from_db(store_context.blueprint, &blueprint_query);
-        let mut viewport = Viewport::new(&viewport_blueprint, space_view_class_registry);
+        let viewport = Viewport::new(&viewport_blueprint);
 
         // If the blueprint is invalid, reset it.
         if viewport.blueprint.is_invalid() {
@@ -467,8 +467,12 @@ impl AppState {
 
         add_space_view_or_container_modal_ui(&ctx, &viewport_blueprint, ui);
 
-        // Process deferred layout operations and apply updates back to blueprint
-        viewport.update_and_sync_tile_tree_to_blueprint(&ctx);
+        // Process deferred layout operations and apply updates back to blueprint:
+        Viewport::update_and_sync_tile_tree_to_blueprint(
+            &ctx,
+            space_view_class_registry,
+            viewport_blueprint,
+        );
 
         if WATERMARK {
             ui.ctx().paint_watermark();

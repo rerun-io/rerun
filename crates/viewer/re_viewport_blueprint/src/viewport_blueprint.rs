@@ -37,9 +37,13 @@ pub struct ViewportBlueprint {
     pub root_container: ContainerId,
 
     /// The layouts of all the space views.
+    ///
+    /// If [`Self::maximized`] is set, this tree is ignored.
     pub tree: egui_tiles::Tree<SpaceViewId>,
 
-    /// Show one tab as maximized?
+    /// Show only one space-view as maximized?
+    ///
+    /// If set, [`Self::tree`] is ignored.
     pub maximized: Option<SpaceViewId>,
 
     /// Whether the viewport layout is determined automatically.
@@ -57,7 +61,7 @@ pub struct ViewportBlueprint {
     past_viewer_recommendations: IntSet<ViewerRecommendationHash>,
 
     /// Blueprint mutation events that will be processed at the end of the frame.
-    pub deferred_tree_actions: Arc<Mutex<Vec<TreeAction>>>,
+    pub deferred_tree_actions: Arc<Mutex<Vec<TreeAction>>>, // TODO: maybe move this to `Viewport`?
 }
 
 impl ViewportBlueprint {
@@ -245,7 +249,6 @@ impl ViewportBlueprint {
 
         self.add_space_views(
             std::iter::once(new_space_view),
-            ctx,
             parent_and_pos.map(|(parent, _)| parent),
             parent_and_pos.map(|(_, pos)| pos),
         );
@@ -395,7 +398,6 @@ impl ViewportBlueprint {
                 final_recommendations.map(|recommendation| {
                     SpaceViewBlueprint::new(class_id, recommendation.clone())
                 }),
-                ctx,
                 None,
                 None,
             );
@@ -412,33 +414,16 @@ impl ViewportBlueprint {
     pub fn add_space_views(
         &self,
         space_views: impl Iterator<Item = SpaceViewBlueprint>,
-        ctx: &ViewerContext<'_>,
         parent_container: Option<ContainerId>,
         position_in_parent: Option<usize>,
-    ) -> Vec<SpaceViewId> {
-        let mut new_ids: Vec<_> = vec![];
-
+    ) {
         for space_view in space_views {
-            let space_view_id = space_view.id;
-
-            // Save the space view to the store
-            space_view.save_to_blueprint_store(ctx);
-
-            // Update the space-view ids:
-            new_ids.push(space_view_id);
+            self.send_tree_action(TreeAction::AddSpaceView(
+                space_view,
+                parent_container,
+                position_in_parent,
+            ));
         }
-
-        if !new_ids.is_empty() {
-            for id in &new_ids {
-                self.send_tree_action(TreeAction::AddSpaceView(
-                    *id,
-                    parent_container,
-                    position_in_parent,
-                ));
-            }
-        }
-
-        new_ids
     }
 
     /// Returns an iterator over all the contents (space views and containers) in the viewport.
@@ -803,13 +788,10 @@ impl ViewportBlueprint {
 
     /// Save the current state of the viewport to the blueprint store.
     /// This should only be called if the tree was edited.
-    pub fn save_tree_as_containers(
-        &self,
-        tree: &egui_tiles::Tree<SpaceViewId>,
-        ctx: &ViewerContext<'_>,
-    ) {
+    pub fn save_tree_as_containers(&self, ctx: &ViewerContext<'_>) {
         re_tracing::profile_function!();
-        re_log::trace!("Saving tree: {tree:#?}");
+
+        re_log::trace!("Saving tree: {:#?}", self.tree);
 
         // First, update the mapping for all the previously known containers.
         // These were inserted with their ids, so we want to keep these
@@ -821,7 +803,7 @@ impl ViewportBlueprint {
             .collect();
 
         // Now, update the content mapping for all the new tiles in the tree.
-        for (tile_id, tile) in tree.tiles.iter() {
+        for (tile_id, tile) in self.tree.tiles.iter() {
             // If we already know about this tile, then we don't need
             // to do anything.
             if contents_from_tile_id.contains_key(tile_id) {
@@ -834,7 +816,7 @@ impl ViewportBlueprint {
                     contents_from_tile_id.insert(*tile_id, Contents::SpaceView(*space_view_id));
                 }
                 egui_tiles::Tile::Container(container) => {
-                    if tree.root != Some(*tile_id)
+                    if self.tree.root != Some(*tile_id)
                         && container.kind() == egui_tiles::ContainerKind::Tabs
                         && container.num_children() == 1
                     {
@@ -844,7 +826,7 @@ impl ViewportBlueprint {
                         if let Some(egui_tiles::Tile::Pane(space_view_id)) = container
                             .children()
                             .next()
-                            .and_then(|child| tree.tiles.get(*child))
+                            .and_then(|child| self.tree.tiles.get(*child))
                         {
                             // This is a trivial tab -- this tile can point directly to
                             // the SpaceView and not to a Container.
@@ -866,7 +848,7 @@ impl ViewportBlueprint {
         // by any tiles.
         for (container_id, container) in &self.containers {
             let tile_id = blueprint_id_to_tile_id(container_id);
-            if tree.tiles.get(tile_id).is_none() {
+            if self.tree.tiles.get(tile_id).is_none() {
                 container.clear(ctx);
             }
         }
@@ -874,8 +856,9 @@ impl ViewportBlueprint {
         // Now save any contents that are a container back to the blueprint
         for (tile_id, contents) in &contents_from_tile_id {
             if let Contents::Container(container_id) = contents {
-                if let Some(egui_tiles::Tile::Container(container)) = tree.tiles.get(*tile_id) {
-                    let visible = tree.is_visible(*tile_id);
+                if let Some(egui_tiles::Tile::Container(container)) = self.tree.tiles.get(*tile_id)
+                {
+                    let visible = self.tree.is_visible(*tile_id);
 
                     // TODO(jleibs): Make this only update the changed fields.
                     let blueprint = ContainerBlueprint::from_egui_tiles_container(
@@ -891,7 +874,8 @@ impl ViewportBlueprint {
         }
 
         // Finally update the root
-        if let Some(root_container) = tree
+        if let Some(root_container) = self
+            .tree
             .root()
             .and_then(|root| contents_from_tile_id.get(&root))
             .and_then(|contents| contents.as_container_id())
