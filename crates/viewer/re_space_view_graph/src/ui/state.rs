@@ -1,4 +1,3 @@
-use egui::emath::TSTransform;
 use egui::Rect;
 use re_format::format_f32;
 use re_types::blueprint::components::VisualBounds2D;
@@ -61,17 +60,7 @@ impl SpaceViewState for GraphSpaceViewState {
     }
 }
 
-/// Used to determine if a layout is up-to-date or outdated. For now we use a
-/// hash of the data the comes from the visualizers.
-#[derive(Debug, PartialEq, Eq)]
-#[repr(transparent)]
-pub struct Discriminator(u64);
-
-impl Discriminator {
-    pub fn new(hash: u64) -> Self {
-        Self(hash)
-    }
-}
+pub type Discriminator = u64;
 
 /// The following is a simple state machine that keeps track of the different
 /// layouts and if they need to be recomputed. It also holds the state of the

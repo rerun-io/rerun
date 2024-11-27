@@ -1,15 +1,18 @@
 mod hash;
+use std::hash::{Hash as _, Hasher as _};
+
 use egui::Pos2;
 pub(crate) use hash::GraphNodeHash;
 mod index;
 pub(crate) use index::NodeIndex;
 
+use re_chunk::EntityPath;
 use re_log_types::Instance;
-use re_types::{blueprint::components, components::GraphType, ArrowString};
+use re_types::{components::GraphType, ArrowString};
 
 use crate::{
     ui::draw::DrawableLabel,
-    visualizers::{EdgeData, EdgeInstance, NodeData, NodeInstance},
+    visualizers::{EdgeData, NodeData},
 };
 
 pub enum Node {
@@ -50,6 +53,7 @@ pub struct Edge {
 }
 
 pub struct Graph {
+    entity: EntityPath,
     nodes: Vec<Node>,
     edges: Vec<Edge>,
     kind: GraphType,
@@ -58,6 +62,7 @@ pub struct Graph {
 impl Graph {
     pub fn new<'a>(
         ui: &egui::Ui,
+        entity: EntityPath,
         node_data: Option<&'a NodeData>,
         edge_data: Option<&'a EdgeData>,
     ) -> Self {
@@ -111,7 +116,12 @@ impl Graph {
             (Vec::new(), GraphType::default())
         };
 
-        Self { nodes, edges, kind }
+        Self {
+            entity,
+            nodes,
+            edges,
+            kind,
+        }
     }
 
     pub fn nodes(&self) -> &[Node] {
@@ -124,5 +134,36 @@ impl Graph {
 
     pub fn kind(&self) -> GraphType {
         self.kind
+    }
+
+    pub fn size_hash(&self) -> u64 {
+        let mut hasher = ahash::AHasher::default();
+        for node in &self.nodes {
+            match node {
+                Node::Explicit {
+                    id,
+                    position,
+                    label,
+                    // The following fields can be ignored:
+                    instance: _instance,
+                    node: _node,
+                } => {
+                    id.hash(&mut hasher);
+
+                    position.as_ref().map(bytemuck::bytes_of).hash(&mut hasher);
+                    bytemuck::bytes_of(&label.size()).hash(&mut hasher);
+                }
+                Node::Implicit {
+                    id,
+                    label,
+                    // The following fields can be ignored:
+                    node: _node,
+                } => {
+                    id.hash(&mut hasher);
+                    bytemuck::bytes_of(&label.size()).hash(&mut hasher);
+                }
+            }
+        }
+        hasher.finish()
     }
 }

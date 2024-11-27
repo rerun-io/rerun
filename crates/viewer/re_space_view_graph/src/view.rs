@@ -148,7 +148,7 @@ Display a graph of nodes and edges.
         let edge_data = &system_output.view_systems.get::<EdgesVisualizer>()?.data;
 
         let graphs = merge(node_data, edge_data)
-            .map(|(ent, nodes, edges)| (ent, Graph::new(ui, nodes, edges)))
+            .map(|(ent, nodes, edges)| Graph::new(ui, ent.clone(), nodes, edges))
             .collect::<Vec<_>>();
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
@@ -163,10 +163,17 @@ Display a graph of nodes and edges.
 
         let view_rect = ui.max_rect();
 
-        // let text = "hello world";
+        // The descriminator is used to determine if the layout needs to be recomputed.
+        let discriminator = {
+            let mut hasher = ahash::AHasher::default();
+            for graph in &graphs {
+                graph.size_hash().hash(&mut hasher);
+            }
+            hasher.finish()
+        };
 
-        // let node = DrawableLabel::text(ui, text, None, Default::default());
-        // let circle_node = DrawableLabel::circle(ui, None, None);
+        let layout_was_empty = state.layout_state.is_none();
+        let layout = state.layout_state.get(discriminator, &graphs);
 
         let (resp, new_bounds) = zoom_pan_area(
             ui,
@@ -176,10 +183,18 @@ Display a graph of nodes and edges.
             |ui, world_to_view| {
                 let mut world_bounding_rect = egui::Rect::NOTHING;
 
-                for (entity, graph) in graphs {
+                for graph in graphs {
                     for node in graph.nodes() {
+                        let center = layout.get(&node.id()).unwrap_or(egui::Rect::ZERO).center();
+
                         // TODO(grtlr): Add proper highlights here:
-                        let resp = draw_node(ui, Pos2::new(400., 400.), world_to_view, node.label(), Default::default());
+                        let resp = draw_node(
+                            ui,
+                            center,
+                            world_to_view,
+                            node.label(),
+                            Default::default(),
+                        );
                         world_bounding_rect = world_bounding_rect.union(resp.rect);
                     }
                 }
@@ -201,16 +216,14 @@ Display a graph of nodes and edges.
         // Update stored bounds on the state, so visualizers see an up-to-date value.
         state.world_bounds = Some(bounds);
 
+        if state.layout_state.is_in_progress() {
+            ui.ctx().request_repaint();
+        }
+
         Ok(())
 
         //
-        // // We could move this computation to the visualizers to improve
-        // // performance if needed.
-        // let discriminator = {
-        //     let mut hasher = ahash::AHasher::default();
-        //     graphs.hash(&mut hasher);
-        //     Discriminator::new(hasher.finish())
-        // };
+
         //
         // let state = state.downcast_mut::<GraphSpaceViewState>()?;
         //
@@ -309,9 +322,7 @@ Display a graph of nodes and edges.
         //     ui.ctx().request_discard("layout needed a remeasure");
         // }
         //
-        // if state.layout_state.is_in_progress() {
-        //     ui.ctx().request_repaint();
-        // }
+
         //
         // Ok(())
     }
