@@ -19,7 +19,7 @@ use re_viewer_context::{
     blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewId, ViewerContext,
 };
 
-use crate::{container::ContainerBlueprint, SpaceViewBlueprint, TreeAction, VIEWPORT_PATH};
+use crate::{container::ContainerBlueprint, SpaceViewBlueprint, ViewportCommand, VIEWPORT_PATH};
 
 // ----------------------------------------------------------------------------
 
@@ -29,7 +29,7 @@ use crate::{container::ContainerBlueprint, SpaceViewBlueprint, TreeAction, VIEWP
 ///
 /// It remain immutable during the frame.
 ///
-/// Any change is queued up into [`Self::deferred_tree_actions`] and applied at the end of the frame,
+/// Any change is queued up into [`Self::deferred_commands`] and applied at the end of the frame,
 /// right before saving to the blueprint store.
 pub struct ViewportBlueprint {
     /// Where the space views are stored.
@@ -68,7 +68,7 @@ pub struct ViewportBlueprint {
     past_viewer_recommendations: IntSet<ViewerRecommendationHash>,
 
     /// Blueprint mutation events that will be processed at the end of the frame.
-    pub deferred_tree_actions: Arc<Mutex<Vec<TreeAction>>>, // TODO: maybe move this to `Viewport`?
+    pub deferred_commands: Arc<Mutex<Vec<ViewportCommand>>>, // TODO: maybe move this to `Viewport`?
 }
 
 impl ViewportBlueprint {
@@ -177,7 +177,7 @@ impl ViewportBlueprint {
             auto_layout,
             auto_space_views,
             past_viewer_recommendations,
-            deferred_tree_actions: Default::default(),
+            deferred_commands: Default::default(),
         }
     }
 
@@ -277,8 +277,8 @@ impl ViewportBlueprint {
         }
     }
 
-    fn send_tree_action(&self, action: TreeAction) {
-        self.deferred_tree_actions.lock().push(action);
+    fn enqueue_command(&self, action: ViewportCommand) {
+        self.deferred_commands.lock().push(action);
     }
 
     pub fn mark_user_interaction(&self, ctx: &ViewerContext<'_>) {
@@ -395,7 +395,7 @@ impl ViewportBlueprint {
         position_in_parent: Option<usize>,
     ) {
         for space_view in space_views {
-            self.send_tree_action(TreeAction::AddSpaceView(
+            self.enqueue_command(ViewportCommand::AddSpaceView(
                 space_view,
                 parent_container,
                 position_in_parent,
@@ -555,12 +555,12 @@ impl ViewportBlueprint {
         kind: egui_tiles::ContainerKind,
         parent_container: Option<ContainerId>,
     ) {
-        self.send_tree_action(TreeAction::AddContainer(kind, parent_container));
+        self.enqueue_command(ViewportCommand::AddContainer(kind, parent_container));
     }
 
     /// Recursively remove a container or a space view.
     pub fn remove_contents(&self, contents: Contents) {
-        self.send_tree_action(TreeAction::RemoveContents(contents));
+        self.enqueue_command(ViewportCommand::RemoveContents(contents));
     }
 
     /// Move the `contents` container or space view to the specified target container and position.
@@ -570,7 +570,7 @@ impl ViewportBlueprint {
         target_container: ContainerId,
         target_position_in_container: usize,
     ) {
-        self.send_tree_action(TreeAction::MoveContents {
+        self.enqueue_command(ViewportCommand::MoveContents {
             contents_to_move: contents,
             target_container,
             target_position_in_container,
@@ -585,7 +585,7 @@ impl ViewportBlueprint {
         target_container: ContainerId,
         target_position_in_container: usize,
     ) {
-        self.send_tree_action(TreeAction::MoveContentsToNewContainer {
+        self.enqueue_command(ViewportCommand::MoveContentsToNewContainer {
             contents_to_move: contents,
             new_container_kind,
             target_container,
@@ -595,7 +595,7 @@ impl ViewportBlueprint {
 
     /// Make sure the tab corresponding to this space view is focused.
     pub fn focus_tab(&self, space_view_id: SpaceViewId) {
-        self.send_tree_action(TreeAction::FocusTab(space_view_id));
+        self.enqueue_command(ViewportCommand::FocusTab(space_view_id));
     }
 
     /// Set the kind of the provided container.
@@ -607,7 +607,7 @@ impl ViewportBlueprint {
             }
         }
 
-        self.send_tree_action(TreeAction::SetContainerKind(container_id, kind));
+        self.enqueue_command(ViewportCommand::SetContainerKind(container_id, kind));
     }
 
     /// Simplify the container tree with the provided options.
@@ -616,7 +616,7 @@ impl ViewportBlueprint {
         container_id: &ContainerId,
         simplification_options: SimplificationOptions,
     ) {
-        self.send_tree_action(TreeAction::SimplifyContainer(
+        self.enqueue_command(ViewportCommand::SimplifyContainer(
             *container_id,
             simplification_options,
         ));
@@ -624,7 +624,7 @@ impl ViewportBlueprint {
 
     /// Make all children of the given container the same size.
     pub fn make_all_children_same_size(&self, container_id: &ContainerId) {
-        self.send_tree_action(TreeAction::MakeAllChildrenSameSize(*container_id));
+        self.enqueue_command(ViewportCommand::MakeAllChildrenSameSize(*container_id));
     }
 
     /// Check the visibility of the provided content.

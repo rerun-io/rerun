@@ -17,7 +17,7 @@ use re_viewer_context::{
     SpaceViewClassRegistry, SpaceViewId, SystemExecutionOutput, ViewQuery, ViewStates,
     ViewerContext,
 };
-use re_viewport_blueprint::{TreeAction, ViewportBlueprint, VIEWPORT_PATH};
+use re_viewport_blueprint::{ViewportBlueprint, ViewportCommand, VIEWPORT_PATH};
 
 use crate::{
     screenshot::handle_pending_space_view_screenshots,
@@ -103,7 +103,7 @@ impl Viewport {
                 edited: false,
                 executed_systems_per_space_view,
                 contents_per_tile_id,
-                deferred_tree_actions: self.blueprint.deferred_tree_actions.clone(),
+                deferred_commands: self.blueprint.deferred_commands.clone(),
                 root_container_id: self.blueprint.root_container,
             };
 
@@ -155,7 +155,7 @@ impl Viewport {
 
                 if egui_tiles_delegate.edited {
                     // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
-                    self.blueprint.deferred_tree_actions.lock().push(TreeAction::SetTree(tree));
+                    self.blueprint.deferred_commands.lock().push(ViewportCommand::SetTree(tree));
                 }
             }
         });
@@ -200,19 +200,19 @@ impl Viewport {
         let mut run_auto_layout = false;
 
         // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
-        let tree_actions: Vec<TreeAction> = bp.deferred_tree_actions.lock().drain(..).collect();
+        let commands: Vec<ViewportCommand> = bp.deferred_commands.lock().drain(..).collect();
 
         let mut tree_edited = false; // TODO: can we diff the tree instead?
 
-        for tree_action in tree_actions {
-            re_log::trace!("Processing tree action: {tree_action:?}");
-            match tree_action {
-                TreeAction::SetTree(new_tree) => {
+        for command in commands {
+            re_log::trace!("Processing viewport command: {command:?}");
+            match command {
+                ViewportCommand::SetTree(new_tree) => {
                     bp.tree = new_tree;
                     tree_edited = true;
                 }
 
-                TreeAction::AddSpaceView(space_view, parent_container, position_in_parent) => {
+                ViewportCommand::AddSpaceView(space_view, parent_container, position_in_parent) => {
                     let space_view_id = space_view.id;
 
                     space_view.save_to_blueprint_store(ctx);
@@ -243,7 +243,7 @@ impl Viewport {
                     tree_edited = true;
                 }
 
-                TreeAction::AddContainer(container_kind, parent_container) => {
+                ViewportCommand::AddContainer(container_kind, parent_container) => {
                     let parent_id = parent_container.unwrap_or(bp.root_container);
                     let tile_id = bp
                         .tree
@@ -265,7 +265,7 @@ impl Viewport {
                     tree_edited = true;
                 }
 
-                TreeAction::SetContainerKind(container_id, container_kind) => {
+                ViewportCommand::SetContainerKind(container_id, container_kind) => {
                     if let Some(egui_tiles::Tile::Container(container)) = bp
                         .tree
                         .tiles
@@ -280,7 +280,7 @@ impl Viewport {
                     tree_edited = true;
                 }
 
-                TreeAction::FocusTab(space_view_id) => {
+                ViewportCommand::FocusTab(space_view_id) => {
                     let found = bp.tree.make_active(|_, tile| match tile {
                         egui_tiles::Tile::Pane(this_space_view_id) => {
                             *this_space_view_id == space_view_id
@@ -293,7 +293,7 @@ impl Viewport {
                     tree_edited = true;
                 }
 
-                TreeAction::RemoveContents(contents) => {
+                ViewportCommand::RemoveContents(contents) => {
                     let tile_id = contents.as_tile_id();
 
                     for tile in bp.tree.remove_recursively(tile_id) {
@@ -332,14 +332,14 @@ impl Viewport {
                     tree_edited = true;
                 }
 
-                TreeAction::SimplifyContainer(container_id, options) => {
+                ViewportCommand::SimplifyContainer(container_id, options) => {
                     re_log::trace!("Simplifying tree with options: {options:?}");
                     let tile_id = blueprint_id_to_tile_id(&container_id);
                     bp.tree.simplify_children_of_tile(tile_id, &options);
                     tree_edited = true;
                 }
 
-                TreeAction::MakeAllChildrenSameSize(container_id) => {
+                ViewportCommand::MakeAllChildrenSameSize(container_id) => {
                     let tile_id = blueprint_id_to_tile_id(&container_id);
                     if let Some(egui_tiles::Tile::Container(container)) =
                         bp.tree.tiles.get_mut(tile_id)
@@ -358,7 +358,7 @@ impl Viewport {
                     tree_edited = true;
                 }
 
-                TreeAction::MoveContents {
+                ViewportCommand::MoveContents {
                     contents_to_move,
                     target_container,
                     target_position_in_container,
@@ -380,7 +380,7 @@ impl Viewport {
                     tree_edited = true;
                 }
 
-                TreeAction::MoveContentsToNewContainer {
+                ViewportCommand::MoveContentsToNewContainer {
                     contents_to_move,
                     new_container_kind,
                     target_container,
@@ -451,7 +451,7 @@ struct TilesDelegate<'a, 'b> {
     viewport_blueprint: &'a ViewportBlueprint,
     maximized: &'a mut Option<SpaceViewId>,
     root_container_id: ContainerId,
-    deferred_tree_actions: Arc<Mutex<Vec<TreeAction>>>,
+    deferred_commands: Arc<Mutex<Vec<ViewportCommand>>>,
 
     /// List of query & system execution results for each space view.
     executed_systems_per_space_view: HashMap<SpaceViewId, (ViewQuery<'a>, SystemExecutionOutput)>,
@@ -762,9 +762,9 @@ impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, 'b> {
                 // drag and drop operation often lead to many spurious empty containers. To work
                 // around this, we run a simplification pass when a drop occurs.
 
-                self.deferred_tree_actions
+                self.deferred_commands
                     .lock()
-                    .push(TreeAction::SimplifyContainer(
+                    .push(ViewportCommand::SimplifyContainer(
                         self.root_container_id,
                         egui_tiles::SimplificationOptions {
                             prune_empty_tabs: true,
