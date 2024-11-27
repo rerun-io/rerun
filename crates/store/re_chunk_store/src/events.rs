@@ -1,5 +1,6 @@
 use std::{collections::BTreeMap, sync::Arc};
 
+use itertools::Itertools;
 use re_chunk::Chunk;
 use re_log_types::StoreId;
 
@@ -93,7 +94,8 @@ pub struct ChunkCompactionReport {
 impl PartialEq for ChunkCompactionReport {
     #[inline]
     fn eq(&self, rhs: &Self) -> bool {
-        self.compacted_chunks == rhs.compacted_chunks && self.new_chunk.id() == rhs.new_chunk.id()
+        self.compacted_chunks.keys().eq(rhs.compacted_chunks.keys())
+            && self.new_chunk.id() == rhs.new_chunk.id()
     }
 }
 
