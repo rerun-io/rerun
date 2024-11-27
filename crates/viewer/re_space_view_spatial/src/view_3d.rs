@@ -5,6 +5,7 @@ use nohash_hasher::IntSet;
 use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
+use re_types::blueprint::archetypes::LineGrid3D;
 use re_types::View;
 use re_types::{
     blueprint::archetypes::Background, components::ViewCoordinates, Component,
@@ -421,6 +422,7 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
         re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {
             view_property_ui::<Background>(ctx, ui, view_id, self, state);
+            view_property_ui::<LineGrid3D>(ctx, ui, view_id, self, state);
         });
 
         Ok(())

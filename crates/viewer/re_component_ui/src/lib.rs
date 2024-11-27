@@ -34,7 +34,8 @@ use datatype_uis::{
 
 use re_types::{
     blueprint::components::{
-        BackgroundKind, Corner2D, LockRangeDuringZoom, MapProvider, ViewFit, Visible, ZoomLevel,
+        BackgroundKind, Corner2D, GridSpacing, LockRangeDuringZoom, MapProvider, PlaneOrientation,
+        UiRadius, ViewFit, Visible,
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
@@ -71,10 +72,11 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<DepthMeter>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<FillRatio>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<GammaCorrection>(edit_f32_zero_to_max);
+    registry.add_singleline_edit_or_view::<GridSpacing>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<ImagePlaneDistance>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<MarkerSize>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<StrokeWidth>(edit_f32_zero_to_max);
-    registry.add_singleline_edit_or_view::<ZoomLevel>(zoom_level::edit_zoom_level);
+    registry.add_singleline_edit_or_view::<UiRadius>(edit_f32_zero_to_max);
 
     // float min-max components:
     registry.add_singleline_edit_or_view::<DrawOrder>(edit_f32_min_to_max_float);
@@ -103,13 +105,14 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
     registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<GraphType>(edit_view_enum);
-    registry.add_singleline_edit_or_view::<MagnificationFilter>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<PlaneOrientation>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MapProvider>(
         edit_view_enum_with_variant_available::<
             MapProvider,
             crate::map_provider::MapProviderVariantAvailable,
         >,
     );
+    registry.add_singleline_edit_or_view::<MagnificationFilter>(edit_view_enum);
     registry.add_singleline_edit_or_view::<TransformRelation>(edit_view_enum);
     registry.add_singleline_edit_or_view::<ViewFit>(edit_view_enum);
 
@@ -166,6 +169,8 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view(video_timestamp::edit_or_view_timestamp);
 
     registry.add_singleline_edit_or_view(lat_lon::singleline_view_lat_lon);
+
+    registry.add_singleline_edit_or_view(zoom_level::edit_zoom_level);
 
     registry
 }
