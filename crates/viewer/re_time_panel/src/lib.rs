@@ -547,8 +547,11 @@ impl TimePanel {
                     ui.scroll_with_delta(Vec2::Y * time_area_response.drag_delta().y);
                 }
 
-                // Show "/" on top?
-                let show_root = true;
+                // Show "/" on top only for recording streams, because the `/` entity in blueprint
+                // is always empty, so it's just lost space. This works around an issue where the
+                // selection/hover state of the `/` entity is wrongly synchronized between both
+                // stores, due to `Item::*` not tracking stores for entity paths.
+                let show_root = self.source == TimePanelSource::Recording;
 
                 if show_root {
                     self.show_tree(
@@ -632,7 +635,12 @@ impl TimePanel {
 
         // Globally unique id - should only be one of these in view at one time.
         // We do this so that we can support "collapse/expand all" command.
-        let id = egui::Id::new(CollapseScope::StreamsTree.entity(tree.path.clone()));
+        let id = egui::Id::new(match self.source {
+            TimePanelSource::Recording => CollapseScope::StreamsTree.entity(tree.path.clone()),
+            TimePanelSource::Blueprint => {
+                CollapseScope::BlueprintStreamsTree.entity(tree.path.clone())
+            }
+        });
 
         let list_item::ShowCollapsingResponse {
             item_response: response,
