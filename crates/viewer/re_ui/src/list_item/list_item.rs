@@ -2,10 +2,7 @@
 
 use egui::{NumExt, Response, Shape, Ui};
 
-use crate::{
-    list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent},
-    ContextExt as _,
-};
+use crate::list_item::{ContentContext, DesiredWidth, LayoutInfoStack, ListItemContent};
 use crate::{DesignTokens, UiExt as _};
 
 struct ListItemResponse {
@@ -338,6 +335,10 @@ impl ListItem {
             style_response.hovered = true;
         }
 
+        if egui::DragAndDrop::has_any_payload(ui.ctx()) {
+            //style_response.hovered = false;
+        }
+
         let mut collapse_response = None;
 
         let visuals = ui.style().interact_selectable(&style_response, selected);
@@ -389,13 +390,20 @@ impl ListItem {
             if drag_target {
                 ui.painter().set(
                     background_frame,
-                    Shape::rect_stroke(bg_rect_to_paint, 0.0, ui.ctx().hover_stroke()),
+                    Shape::rect_stroke(
+                        bg_rect_to_paint.expand(-1.0),
+                        0.0,
+                        egui::Stroke::new(1.0, ui.visuals().selection.bg_fill),
+                    ),
                 );
             }
 
             let bg_fill = force_background.or_else(|| {
                 if !drag_target && interactive {
-                    if !response.hovered() && ui.rect_contains_pointer(bg_rect) {
+                    if !response.hovered()
+                        && ui.rect_contains_pointer(bg_rect)
+                        && !egui::DragAndDrop::has_any_payload(ui.ctx())
+                    {
                         // if some part of the content is active and hovered, our background should
                         // become dimmer
                         Some(visuals.bg_fill)
