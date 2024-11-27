@@ -50,7 +50,7 @@ impl SelectionPanel {
     pub fn show_panel(
         &mut self,
         ctx: &ViewerContext<'_>,
-        blueprint: &ViewportBlueprint,
+        viewport: &ViewportBlueprint,
         view_states: &mut ViewStates,
         ui: &mut egui::Ui,
         expanded: bool,
@@ -78,7 +78,7 @@ impl SelectionPanel {
                     let mut history = ctx.selection_state().history.lock();
                     if let Some(selection) =
                         self.selection_state_ui
-                            .selection_ui(ui, blueprint, &mut history)
+                            .selection_ui(ui, viewport, &mut history)
                     {
                         ctx.selection_state().set_selection(selection);
                     }
@@ -94,20 +94,20 @@ impl SelectionPanel {
                 .show(ui, |ui| {
                     ui.add_space(ui.spacing().item_spacing.y);
                     ui.panel_content(|ui| {
-                        self.contents(ctx, blueprint, view_states, ui);
+                        self.contents(ctx, viewport, view_states, ui);
                     });
                 });
         });
 
         // run modals (these are noop if the modals are not active)
-        self.space_view_entity_modal.ui(ui.ctx(), ctx, blueprint);
+        self.space_view_entity_modal.ui(ui.ctx(), ctx, viewport);
     }
 
     #[allow(clippy::unused_self)]
     fn contents(
         &mut self,
         ctx: &ViewerContext<'_>,
-        blueprint: &ViewportBlueprint,
+        viewport: &ViewportBlueprint,
         view_states: &mut ViewStates,
         ui: &mut egui::Ui,
     ) {
@@ -128,7 +128,7 @@ impl SelectionPanel {
         };
         for (i, item) in selection.iter_items().enumerate() {
             list_item::list_item_scope(ui, item, |ui| {
-                self.item_ui(ctx, blueprint, view_states, ui, item, ui_layout);
+                self.item_ui(ctx, viewport, view_states, ui, item, ui_layout);
             });
 
             if i < selection.len() - 1 {
@@ -141,13 +141,13 @@ impl SelectionPanel {
     fn item_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
-        blueprint: &ViewportBlueprint,
+        viewport: &ViewportBlueprint,
         view_states: &mut ViewStates,
         ui: &mut egui::Ui,
         item: &Item,
         ui_layout: UiLayout,
     ) {
-        if let Some(item_title) = item_tile(ctx, blueprint, ui.style(), item) {
+        if let Some(item_title) = item_tile(ctx, viewport, ui.style(), item) {
             item_title.show(ctx, ui, item);
         } else {
             return; // WEIRD
@@ -178,7 +178,7 @@ impl SelectionPanel {
                     },
                 ));
 
-                list_existing_data_blueprints(ctx, blueprint, ui, &entity_path.clone().into());
+                list_existing_data_blueprints(ctx, viewport, ui, &entity_path.clone().into());
             }
 
             Item::InstancePath(instance_path) => {
@@ -203,22 +203,22 @@ impl SelectionPanel {
                     }
                 }
 
-                list_existing_data_blueprints(ctx, blueprint, ui, instance_path);
+                list_existing_data_blueprints(ctx, viewport, ui, instance_path);
             }
 
             Item::Container(container_id) => {
-                container_top_level_properties(ctx, blueprint, ui, container_id);
-                container_children(ctx, blueprint, ui, container_id);
+                container_top_level_properties(ctx, viewport, ui, container_id);
+                container_children(ctx, viewport, ui, container_id);
             }
 
             Item::SpaceView(view_id) => {
-                if let Some(view) = blueprint.view(view_id) {
+                if let Some(view) = viewport.view(view_id) {
                     view_top_level_properties(ctx, ui, view);
                 }
             }
 
             Item::DataResult(view_id, instance_path) => {
-                if let Some(view) = blueprint.view(view_id) {
+                if let Some(view) = viewport.view(view_id) {
                     let is_instance = !instance_path.instance.is_all();
                     let parent = if is_instance {
                         Some(instance_path.entity_path.clone())
@@ -281,7 +281,7 @@ impl SelectionPanel {
                         .cloned();
 
                     if let Some(data_result) = &data_result {
-                        if let Some(view) = blueprint.view(view_id) {
+                        if let Some(view) = viewport.view(view_id) {
                             visible_interactive_toggle_ui(
                                 &view.bundle_context_with_states(ctx, view_states),
                                 ui,
@@ -312,7 +312,7 @@ impl SelectionPanel {
 
         match item {
             Item::SpaceView(view_id) => {
-                self.view_selection_ui(ctx, ui, blueprint, view_id, view_states);
+                self.view_selection_ui(ctx, ui, viewport, view_id, view_states);
             }
 
             Item::DataResult(view_id, instance_path) => {
@@ -321,7 +321,7 @@ impl SelectionPanel {
                         ctx,
                         ui,
                         &instance_path.entity_path,
-                        blueprint,
+                        viewport,
                         view_id,
                         view_states,
                     );
@@ -337,7 +337,7 @@ impl SelectionPanel {
         &mut self,
         ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
-        blueprint: &ViewportBlueprint,
+        viewport: &ViewportBlueprint,
         view_id: &SpaceViewId,
         view_states: &mut ViewStates,
     ) {
@@ -378,9 +378,9 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
     "#
         .trim();
 
-        clone_space_view_button_ui(ctx, ui, blueprint, *view_id);
+        clone_space_view_button_ui(ctx, ui, viewport, *view_id);
 
-        if let Some(view) = blueprint.view(view_id) {
+        if let Some(view) = viewport.view(view_id) {
             ui.section_collapsing_header("Entity path filter")
                 .button(
                     list_item::ItemActionButton::new(&re_ui::icons::EDIT, || {
@@ -411,7 +411,7 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
                 );
         }
 
-        if let Some(view) = blueprint.view(view_id) {
+        if let Some(view) = viewport.view(view_id) {
             let view_class = view.class(ctx.space_view_class_registry);
             let view_state = view_states.get_mut_or_create(view.id, view_class);
 
@@ -449,7 +449,7 @@ fn entity_selection_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
     entity_path: &EntityPath,
-    blueprint: &ViewportBlueprint,
+    viewport: &ViewportBlueprint,
     view_id: &SpaceViewId,
     view_states: &mut ViewStates,
 ) {
@@ -459,7 +459,7 @@ fn entity_selection_ui(
         .lookup_result_by_path(entity_path)
         .cloned();
 
-    if let Some(view) = blueprint.space_views.get(view_id) {
+    if let Some(view) = viewport.space_views.get(view_id) {
         let view_ctx = view.bundle_context_with_states(ctx, view_states);
         visualizer_ui(&view_ctx, view, entity_path, ui);
     }
@@ -472,16 +472,16 @@ fn entity_selection_ui(
 fn clone_space_view_button_ui(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
-    blueprint: &ViewportBlueprint,
+    viewport: &ViewportBlueprint,
     view_id: SpaceViewId,
 ) {
     ui.list_item_flat_noninteractive(
         list_item::ButtonContent::new("Clone this view")
             .on_click(|| {
-                if let Some(new_space_view_id) = blueprint.duplicate_space_view(&view_id, ctx) {
+                if let Some(new_space_view_id) = viewport.duplicate_space_view(&view_id, ctx) {
                     ctx.selection_state()
                         .set_selection(Item::SpaceView(new_space_view_id));
-                    blueprint.mark_user_interaction(ctx);
+                    viewport.mark_user_interaction(ctx);
                 }
             })
             .hover_text("Create an exact duplicate of this view including all blueprint settings"),
@@ -584,18 +584,18 @@ fn entity_path_filter_ui(
 
 fn container_children(
     ctx: &ViewerContext<'_>,
-    blueprint: &ViewportBlueprint,
+    viewport: &ViewportBlueprint,
     ui: &mut egui::Ui,
     container_id: &ContainerId,
 ) {
-    let Some(container) = blueprint.container(container_id) else {
+    let Some(container) = viewport.container(container_id) else {
         return;
     };
 
     let show_content = |ui: &mut egui::Ui| {
         let mut has_child = false;
         for child_contents in &container.contents {
-            has_child |= show_list_item_for_container_child(ctx, blueprint, ui, child_contents);
+            has_child |= show_list_item_for_container_child(ctx, viewport, ui, child_contents);
         }
 
         if !has_child {
@@ -654,7 +654,7 @@ fn space_view_button(
 
 fn item_tile(
     ctx: &ViewerContext<'_>,
-    blueprint: &ViewportBlueprint,
+    viewport: &ViewportBlueprint,
     style: &egui::Style,
     item: &Item,
 ) -> Option<ItemTitle> {
@@ -696,7 +696,7 @@ fn item_tile(
         }
 
         Item::Container(container_id) => {
-            if let Some(container_blueprint) = blueprint.container(container_id) {
+            if let Some(container_blueprint) = viewport.container(container_id) {
                 let hover_text =
                     if let Some(display_name) = container_blueprint.display_name.as_ref() {
                         format!(
@@ -748,7 +748,7 @@ fn item_tile(
         }
 
         Item::SpaceView(view_id) => {
-            if let Some(view) = blueprint.view(view_id) {
+            if let Some(view) = viewport.view(view_id) {
                 let view_class = view.class(ctx.space_view_class_registry);
 
                 let hover_text = if let Some(display_name) = view.display_name.as_ref() {
@@ -788,7 +788,7 @@ fn item_tile(
         Item::DataResult(view_id, instance_path) => {
             let name = instance_path.syntax_highlighted(style);
 
-            if let Some(view) = blueprint.view(view_id) {
+            if let Some(view) = viewport.view(view_id) {
                 let typ = item.kind();
                 Some(
                     ItemTitle::new(name)
@@ -881,12 +881,12 @@ impl ItemTitle {
 /// Display a list of all the views an entity appears in.
 fn list_existing_data_blueprints(
     ctx: &ViewerContext<'_>,
-    blueprint: &ViewportBlueprint,
+    viewport: &ViewportBlueprint,
     ui: &mut egui::Ui,
     instance_path: &InstancePath,
 ) {
     let space_views_with_path =
-        blueprint.space_views_containing_entity_path(ctx, &instance_path.entity_path);
+        viewport.space_views_containing_entity_path(ctx, &instance_path.entity_path);
 
     let (query, db) = guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
 
@@ -894,7 +894,7 @@ fn list_existing_data_blueprints(
         ui.weak("(Not shown in any view)");
     } else {
         for &view_id in &space_views_with_path {
-            if let Some(view) = blueprint.view(&view_id) {
+            if let Some(view) = viewport.view(&view_id) {
                 let response = ui.list_item().show_flat(
                     ui,
                     PropertyContent::new("Shown in").value_fn(|ui, _| {
@@ -967,11 +967,11 @@ fn view_top_level_properties(
 
 fn container_top_level_properties(
     ctx: &ViewerContext<'_>,
-    blueprint: &ViewportBlueprint,
+    viewport: &ViewportBlueprint,
     ui: &mut egui::Ui,
     container_id: &ContainerId,
 ) {
-    let Some(container) = blueprint.container(container_id) else {
+    let Some(container) = viewport.container(container_id) else {
         return;
     };
 
@@ -989,7 +989,7 @@ fn container_top_level_properties(
     ui.list_item_flat_noninteractive(PropertyContent::new("Kind").value_fn(|ui, _| {
         let mut container_kind = container.container_kind;
         container_kind_selection_ui(ui, &mut container_kind);
-        blueprint.set_container_kind(*container_id, container_kind);
+        viewport.set_container_kind(*container_id, container_kind);
     }));
 
     if container.container_kind == ContainerKind::Grid {
@@ -1026,7 +1026,7 @@ fn container_top_level_properties(
     ui.list_item_flat_noninteractive(
         list_item::ButtonContent::new("Simplify hierarchy")
             .on_click(|| {
-                blueprint.simplify_container(
+                viewport.simplify_container(
                     container_id,
                     egui_tiles::SimplificationOptions {
                         prune_empty_tabs: true,
@@ -1057,7 +1057,7 @@ fn container_top_level_properties(
         ui.list_item_flat_noninteractive(
             list_item::ButtonContent::new("Distribute content equally")
                 .on_click(|| {
-                    blueprint.make_all_children_same_size(container_id);
+                    viewport.make_all_children_same_size(container_id);
                 })
                 .enabled(!all_shares_are_equal)
                 .hover_text("Make all children the same size"),
@@ -1094,14 +1094,14 @@ fn container_kind_selection_ui(ui: &mut egui::Ui, in_out_kind: &mut ContainerKin
 /// Return true if successful.
 fn show_list_item_for_container_child(
     ctx: &ViewerContext<'_>,
-    blueprint: &ViewportBlueprint,
+    viewport: &ViewportBlueprint,
     ui: &mut egui::Ui,
     child_contents: &Contents,
 ) -> bool {
     let mut remove_contents = false;
     let (item, list_item_content) = match child_contents {
         Contents::SpaceView(view_id) => {
-            let Some(view) = blueprint.view(view_id) else {
+            let Some(view) = viewport.view(view_id) else {
                 re_log::warn_once!("Could not find view with ID {view_id:?}",);
                 return false;
             };
@@ -1126,7 +1126,7 @@ fn show_list_item_for_container_child(
             )
         }
         Contents::Container(container_id) => {
-            let Some(container) = blueprint.container(container_id) else {
+            let Some(container) = viewport.container(container_id) else {
                 re_log::warn_once!("Could not find container with ID {container_id:?}",);
                 return false;
             };
@@ -1163,7 +1163,7 @@ fn show_list_item_for_container_child(
 
     context_menu_ui_for_item(
         ctx,
-        blueprint,
+        viewport,
         &item,
         &response,
         SelectionUpdateBehavior::Ignore,
@@ -1171,8 +1171,8 @@ fn show_list_item_for_container_child(
     ctx.select_hovered_on_click(&response, item);
 
     if remove_contents {
-        blueprint.mark_user_interaction(ctx);
-        blueprint.remove_contents(*child_contents);
+        viewport.mark_user_interaction(ctx);
+        viewport.remove_contents(*child_contents);
     }
 
     true

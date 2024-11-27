@@ -13,7 +13,7 @@ use re_entity_db::EntityPath;
 use re_types::blueprint::components::ViewerRecommendationHash;
 use re_types_blueprint::blueprint::archetypes as blueprint_archetypes;
 use re_types_blueprint::blueprint::components::{
-    AutoLayout, AutoSpaceViews, IncludedSpaceView, RootContainer, SpaceViewMaximized,
+    AutoLayout, AutoSpaceViews, RootContainer, SpaceViewMaximized,
 };
 use re_viewer_context::{
     blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewId, ViewerContext,
