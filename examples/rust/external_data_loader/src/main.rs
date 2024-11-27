@@ -35,7 +35,6 @@ struct Args {
 
     /// currently opened application ID in the viewer, if any
     #[argh(option)]
-    #[allow(unused)]
     opened_application_id: Option<String>,
 
     /// optional recommended ID for the recording
@@ -44,7 +43,6 @@ struct Args {
 
     /// currently opened recording ID in the viewer, if any
     #[argh(option)]
-    #[allow(unused)]
     opened_recording_id: Option<String>,
 
     /// optional prefix for all entity paths
@@ -53,10 +51,12 @@ struct Args {
 
     /// deprecated: alias for `--static`
     #[argh(switch)]
+    #[allow(unused)]
     timeless: bool,
 
     /// optionally mark data to be logged statically
     #[argh(arg_name = "static", switch)]
+    #[allow(unused)]
     statically: bool,
 
     /// optional timestamps to log at (e.g. `--time sim_time=1709203426`) (repeatable)
@@ -93,17 +93,34 @@ fn main() -> anyhow::Result<()> {
 
     let rec = {
         let mut rec = rerun::RecordingStreamBuilder::new(
-            args.application_id
+            args.opened_application_id
                 .as_deref()
+                .or(args.application_id.as_deref())
                 .unwrap_or("rerun_example_external_data_loader"),
         );
-        if let Some(recording_id) = args.recording_id.as_ref() {
+        if let Some(recording_id) = args
+            .opened_recording_id
+            .as_ref()
+            .or(args.recording_id.as_ref())
+        {
             rec = rec.recording_id(recording_id);
         };
 
         // The most important part of this: log to standard output so the Rerun Viewer can ingest it!
         rec.stdout()?
     };
+
+    dbg!(&args);
+    dbg!((
+        args.opened_application_id
+            .as_deref()
+            .or(args.application_id.as_deref())
+            .unwrap_or("rerun_example_external_data_loader"),
+        args.opened_recording_id
+            .as_ref()
+            .or(args.recording_id.as_ref())
+    ));
+    // panic!("wat");
 
     // TODO(#3841): In the future, we will introduce so-called stateless APIs that allow logging
     // data at a specific timepoint without having to modify the global stateful clock.
@@ -113,9 +130,10 @@ fn main() -> anyhow::Result<()> {
         .entity_path_prefix
         .map_or_else(|| rerun::EntityPath::new(vec![]), rerun::EntityPath::from);
 
-    rec.log_with_static(
+    // Although we demonstrate how to create a timepoint from the CLI arguments, this example
+    // always logs data statically, as this is a much better fit for a fixed text document.
+    rec.log_static(
         entity_path_prefix.join(&rerun::EntityPath::from_file_path(&args.filepath)),
-        args.statically || args.timeless,
         &rerun::TextDocument::from_markdown(text),
     )?;
 

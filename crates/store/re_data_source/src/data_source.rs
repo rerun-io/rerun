@@ -181,6 +181,7 @@ impl DataSource {
                     force_store_info: file_source.force_store_info(),
                     ..re_data_loader::DataLoaderSettings::recommended(shared_store_id)
                 };
+                dbg!((&file_source, &settings));
                 re_data_loader::load_from_path(&settings, file_source, &path, &tx)
                     .with_context(|| format!("{path:?}"))?;
 

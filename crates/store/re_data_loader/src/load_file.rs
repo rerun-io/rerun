@@ -4,7 +4,7 @@ use ahash::{HashMap, HashMapExt};
 use re_log_types::{FileSource, LogMsg};
 use re_smart_channel::Sender;
 
-use crate::{DataLoader, DataLoaderError, LoadedData, RrdLoader};
+use crate::{DataLoader, DataLoaderError, ExternalLoader, LoadedData, RrdLoader};
 
 // ---
 
@@ -301,7 +301,10 @@ pub(crate) fn send(
                             let tracked = store_info_tracker.entry(store_id).or_default();
                             tracked.is_rrd_or_rbl =
                                 *data_loader_name == RrdLoader::name(&RrdLoader);
+                            tracked.already_has_store_info |=
+                                *data_loader_name == ExternalLoader::name(&ExternalLoader);
                             tracked.already_has_store_info |= store_info_created;
+                            dbg!(&tracked);
                         }
 
                         msg

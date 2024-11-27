@@ -65,7 +65,16 @@ def main() -> None:
     app_id = "rerun_example_external_data_loader"
     if args.application_id is not None:
         app_id = args.application_id
-    rr.init(app_id, recording_id=args.recording_id)
+    if args.opened_application_id is not None:
+        app_id = args.opened_application_id
+
+    rec_id = None
+    if args.recording_id is not None:
+        rec_id = args.recording_id
+    if args.opened_recording_id is not None:
+        rec_id = args.opened_recording_id
+
+    rr.init(app_id, recording_id=rec_id)
     # The most important part of this: log to standard output so the Rerun Viewer can ingest it!
     rr.stdout()
 
@@ -80,7 +89,11 @@ def main() -> None:
         body = file.read()
         text = f"""## Some Python code\n```python\n{body}\n```\n"""
         rr.log(
-            entity_path, rr.TextDocument(text, media_type=rr.MediaType.MARKDOWN), static=args.static or args.timeless
+            entity_path,
+            rr.TextDocument(text, media_type=rr.MediaType.MARKDOWN),
+            # Although we demonstrate how to create a timepoint from the CLI arguments, this example
+            # always logs data statically, as this is a much better fit for a fixed text document.
+            static=True,
         )
 
 

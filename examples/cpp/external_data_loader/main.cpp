@@ -107,9 +107,15 @@ file with Rerun (`rerun file.cpp`).
     if (args.count("application-id")) {
         application_id = args["application-id"].as<std::string>();
     }
+    if (args.count("opened-application-id")) {
+        application_id = args["opened-application-id"].as<std::string>();
+    }
     auto recording_id = std::string_view();
     if (args.count("recording-id")) {
         recording_id = args["recording-id"].as<std::string>();
+    }
+    if (args.count("opened-recording-id")) {
+        recording_id = args["opened-recording-id"].as<std::string>();
     }
     const auto rec = rerun::RecordingStream(application_id, recording_id);
     // The most important part of this: log to standard output so the Rerun Viewer can ingest it!
@@ -121,9 +127,11 @@ file with Rerun (`rerun file.cpp`).
     if (args.count("entity-path-prefix")) {
         entity_path = args["entity-path-prefix"].as<std::string>() + "/" + filepath;
     }
-    rec.log_with_static(
+
+    // Although we demonstrate how to create a timepoint from the CLI arguments, this example
+    // always logs data statically, as this is a much better fit for a fixed text document.
+    rec.log_static(
         entity_path,
-        args["static"].as<bool>() || args["timeless"].as<bool>(),
         rerun::TextDocument(text).with_media_type(rerun::MediaType::markdown())
     );
 }
