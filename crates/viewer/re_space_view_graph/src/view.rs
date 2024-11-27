@@ -1,4 +1,4 @@
-use egui::emath::TSTransform;
+use egui::{emath::TSTransform, Color32, Pos2, Stroke};
 use re_log_types::EntityPath;
 use re_space_view::{
     controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER},
@@ -240,7 +240,7 @@ Display a graph of nodes and edges.
         let view_rect = ui.max_rect();
         let clip_rect_world = world_to_view.inverse() * view_rect;
 
-        let mut new_world_bounds = egui::Rect::NOTHING;
+        let mut world_bounding_rect = egui::Rect::NOTHING;
 
         let base_id = egui::Id::new(query.space_view_id);
         let inner_resp = egui::Area::new(base_id.with("view"))
@@ -266,7 +266,7 @@ Display a graph of nodes and edges.
 
                     node.draw(&mut node_ui)
                 };
-                new_world_bounds = new_world_bounds.union(resp.rect);
+                world_bounding_rect = world_bounding_rect.union(resp.rect);
                 register_pan_and_zoom(ui, resp, &mut world_to_view);
 
                 let resp = {
@@ -276,41 +276,49 @@ Display a graph of nodes and edges.
 
                     circle_node.draw(&mut node_ui)
                 };
-                new_world_bounds = new_world_bounds.union(resp.rect);
+                world_bounding_rect = world_bounding_rect.union(resp.rect);
                 register_pan_and_zoom(ui, resp, &mut world_to_view);
-
-                // // We need to draw the debug information after the rest to ensure that we have the correct bounding box.
-                // if state.show_debug {
-                //     // Paint the coordinate system.
-                //     let painter = egui::Painter::new(ui.ctx().clone(), "___graph_view_debug"), clip_rect_world);
-
-                //     // paint coordinate system at the world origin
-                //     let origin = Pos2::new(0.0, 0.0);
-                //     let x_axis = Pos2::new(100.0, 0.0);
-                //     let y_axis = Pos2::new(0.0, 100.0);
-
-                //     painter.line_segment([origin, x_axis], Stroke::new(1.0, Color32::RED));
-                //     painter.line_segment([origin, y_axis], Stroke::new(1.0, Color32::GREEN));
-
-                //     if self.bounding_rect.is_positive() {
-                //         painter.rect(
-                //             self.bounding_rect,
-                //             0.0,
-                //             Color32::from_rgba_unmultiplied(255, 0, 255, 8),
-                //             Stroke::new(1.0, Color32::from_rgb(255, 0, 255)),
-                //         );
-                //     }
-                // }
             });
 
+        // TODO(grtlr): Do we even need an `Area`, or could we just spawn a new `child_ui`?
         let resp = ui.allocate_rect(view_rect, egui::Sense::drag());
         let resp = register_pan_and_zoom(ui, resp, &mut world_to_view);
 
         ui.ctx()
             .set_transform_layer(inner_resp.response.layer_id, world_to_view);
 
+        // We need to draw the debug information after the rest to ensure that we have the correct bounding box.
+        if state.show_debug {
+            // Paint the coordinate system.
+            let painter = egui::Painter::new(
+                ui.ctx().clone(),
+                inner_resp.response.layer_id,
+                clip_rect_world,
+            );
+
+            // paint coordinate system at the world origin
+            let origin = Pos2::new(0.0, 0.0);
+            let x_axis = Pos2::new(100.0, 0.0);
+            let y_axis = Pos2::new(0.0, 100.0);
+
+            painter.line_segment([origin, x_axis], Stroke::new(1.0, Color32::RED));
+            painter.line_segment([origin, y_axis], Stroke::new(1.0, Color32::GREEN));
+
+            if world_bounding_rect.is_positive() {
+                painter.rect(
+                    world_bounding_rect,
+                    0.0,
+                    Color32::from_rgba_unmultiplied(255, 0, 255, 8),
+                    Stroke::new(1.0, Color32::from_rgb(255, 0, 255)),
+                );
+            }
+        }
+
+        let view_size = egui::Rect::from_min_size(egui::Pos2::ZERO, view_rect.size());
+
         // Update blueprint if changed
-        let updated_bounds: blueprint::components::VisualBounds2D = new_world_bounds.into();
+        let updated_bounds: blueprint::components::VisualBounds2D =
+            (world_to_view.inverse() * view_size).into();
         if resp.double_clicked() {
             bounds_property.reset_blueprint_component::<blueprint::components::VisualBounds2D>(ctx);
         } else if bounds != updated_bounds {
