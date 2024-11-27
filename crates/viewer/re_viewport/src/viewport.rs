@@ -10,13 +10,14 @@ use parking_lot::Mutex;
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_renderer::ScreenshotProcessor;
+use re_types_blueprint::blueprint::components::IncludedSpaceView;
 use re_ui::{ContextExt as _, DesignTokens, Icon, UiExt as _};
 use re_viewer_context::{
     blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, Contents, Item,
     SpaceViewClassRegistry, SpaceViewId, SystemExecutionOutput, ViewQuery, ViewStates,
     ViewerContext,
 };
-use re_viewport_blueprint::{TreeAction, ViewportBlueprint};
+use re_viewport_blueprint::{TreeAction, ViewportBlueprint, VIEWPORT_PATH};
 
 use crate::{
     screenshot::handle_pending_space_view_screenshots,
@@ -241,6 +242,7 @@ impl Viewport {
 
                     tree_edited = true;
                 }
+
                 TreeAction::AddContainer(container_kind, parent_container) => {
                     let parent_id = parent_container.unwrap_or(bp.root_container);
                     let tile_id = bp
@@ -262,6 +264,7 @@ impl Viewport {
 
                     tree_edited = true;
                 }
+
                 TreeAction::SetContainerKind(container_id, container_kind) => {
                     if let Some(egui_tiles::Tile::Container(container)) = bp
                         .tree
@@ -276,6 +279,7 @@ impl Viewport {
 
                     tree_edited = true;
                 }
+
                 TreeAction::FocusTab(space_view_id) => {
                     let found = bp.tree.make_active(|_, tile| match tile {
                         egui_tiles::Tile::Pane(this_space_view_id) => {
@@ -288,6 +292,7 @@ impl Viewport {
                     );
                     tree_edited = true;
                 }
+
                 TreeAction::RemoveContents(contents) => {
                     let tile_id = contents.as_tile_id();
 
@@ -295,8 +300,29 @@ impl Viewport {
                         re_log::trace!("Removing tile {tile_id:?}");
                         if let egui_tiles::Tile::Pane(space_view_id) = tile {
                             re_log::trace!("Removing space view {space_view_id}");
+
                             bp.tree.tiles.remove(tile_id);
-                            bp.remove_space_view(&space_view_id, ctx);
+
+                            bp.mark_user_interaction(ctx);
+
+                            // Remove the space view from the store
+                            if let Some(space_view) = bp.space_views.get(&space_view_id) {
+                                space_view.clear(ctx);
+                            }
+
+                            // If the space-view was maximized, clean it up
+                            if bp.maximized == Some(space_view_id) {
+                                bp.set_maximized(None, ctx);
+                            }
+
+                            // Filter the space-view from the included space-views
+                            let components = bp
+                                .space_views
+                                .keys()
+                                .filter(|&id| id != &space_view_id)
+                                .map(|id| IncludedSpaceView((*id).into()))
+                                .collect::<Vec<_>>();
+                            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &components);
                         }
                     }
 
@@ -305,12 +331,14 @@ impl Viewport {
                     }
                     tree_edited = true;
                 }
+
                 TreeAction::SimplifyContainer(container_id, options) => {
                     re_log::trace!("Simplifying tree with options: {options:?}");
                     let tile_id = blueprint_id_to_tile_id(&container_id);
                     bp.tree.simplify_children_of_tile(tile_id, &options);
                     tree_edited = true;
                 }
+
                 TreeAction::MakeAllChildrenSameSize(container_id) => {
                     let tile_id = blueprint_id_to_tile_id(&container_id);
                     if let Some(egui_tiles::Tile::Container(container)) =
@@ -329,6 +357,7 @@ impl Viewport {
                     }
                     tree_edited = true;
                 }
+
                 TreeAction::MoveContents {
                     contents_to_move,
                     target_container,
@@ -350,6 +379,7 @@ impl Viewport {
                     );
                     tree_edited = true;
                 }
+
                 TreeAction::MoveContentsToNewContainer {
                     contents_to_move,
                     new_container_kind,

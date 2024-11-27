@@ -210,36 +210,6 @@ impl ViewportBlueprint {
         self.containers.get(container_id)
     }
 
-    pub fn space_view_mut(
-        &mut self,
-        space_view_id: &SpaceViewId,
-    ) -> Option<&mut SpaceViewBlueprint> {
-        self.space_views.get_mut(space_view_id)
-    }
-
-    pub fn remove_space_view(&self, space_view_id: &SpaceViewId, ctx: &ViewerContext<'_>) {
-        self.mark_user_interaction(ctx);
-
-        // Remove the space view from the store
-        if let Some(space_view) = self.space_views.get(space_view_id) {
-            space_view.clear(ctx);
-        }
-
-        // If the space-view was maximized, clean it up
-        if self.maximized == Some(*space_view_id) {
-            self.set_maximized(None, ctx);
-        }
-
-        // Filter the space-view from the included space-views
-        let components = self
-            .space_views
-            .keys()
-            .filter(|id| id != &space_view_id)
-            .map(|id| IncludedSpaceView((*id).into()))
-            .collect::<Vec<_>>();
-        ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &components);
-    }
-
     /// Duplicates a space view and its entity property overrides.
     pub fn duplicate_space_view(
         &self,
