@@ -31,6 +31,7 @@ default = [
   "glam",
   "image",
   "log",
+  "map_view",
   "sdk",
   "server",
 ]
@@ -85,7 +86,6 @@ native_viewer = ["dep:re_viewer"]
 
 ## Support the map view.
 ## This adds a lot of extra dependencies.
-#TODO(#7876): remove this feature when we have fewer dependencies
 map_view = ["re_viewer?/map_view"]
 
 ## Enable the gRPC Rerun Data Platform data source.
