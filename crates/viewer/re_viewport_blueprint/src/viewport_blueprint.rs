@@ -322,7 +322,7 @@ impl ViewportBlueprint {
             // If now the user edits the space view at `/**` to be `/points/**`, that does *not*
             // mean we should suddenly add `/camera/**` to the viewport.
             if !recommended_space_views.is_empty() {
-                let new_viewer_recommendation_hashes = self
+                let new_viewer_recommendation_hashes: Vec<ViewerRecommendationHash> = self
                     .past_viewer_recommendations
                     .iter()
                     .cloned()
@@ -331,7 +331,7 @@ impl ViewportBlueprint {
                             .iter()
                             .map(|recommendation| recommendation.recommendation_hash(class_id)),
                     )
-                    .collect::<Vec<_>>();
+                    .collect();
 
                 ctx.save_blueprint_component(
                     &VIEWPORT_PATH.into(),
@@ -744,8 +744,8 @@ impl ViewportBlueprint {
         let old_value = self.auto_layout.swap(value, Ordering::SeqCst);
 
         if old_value != value {
-            let component = AutoLayout::from(value);
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &component);
+            let auto_layout = AutoLayout::from(value);
+            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &auto_layout);
         }
     }
 
@@ -761,16 +761,16 @@ impl ViewportBlueprint {
         let old_value = self.auto_space_views.swap(value, Ordering::SeqCst);
 
         if old_value != value {
-            let component = AutoSpaceViews::from(value);
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &component);
+            let auto_space_views = AutoSpaceViews::from(value);
+            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &auto_space_views);
         }
     }
 
     #[inline]
     pub fn set_maximized(&self, space_view_id: Option<SpaceViewId>, ctx: &ViewerContext<'_>) {
         if self.maximized != space_view_id {
-            let component_batch = space_view_id.map(|id| SpaceViewMaximized(id.into()));
-            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &component_batch);
+            let space_view_maximized = space_view_id.map(|id| SpaceViewMaximized(id.into()));
+            ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &space_view_maximized);
         }
     }
 
