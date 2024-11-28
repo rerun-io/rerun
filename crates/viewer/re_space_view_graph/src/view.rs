@@ -170,84 +170,74 @@ Display a graph of nodes and edges.
         let layout_was_empty = state.layout_state.is_none();
         let layout = state.layout_state.get(request);
 
-        let (resp, new_bounds) = zoom_pan_area(
-            ui,
-            view_rect,
-            bounds.into(),
-            egui::Id::new(query.space_view_id),
-            |ui| {
-                let mut world_bounding_rect = egui::Rect::NOTHING;
+        let (resp, new_bounds) = zoom_pan_area(ui, view_rect, bounds.into(), |ui| {
+            let mut world_bounding_rect = egui::Rect::NOTHING;
 
-                for graph in &graphs {
-                    let entity_path = graph.entity();
-                    let entity_highlights = query.highlights.entity_highlight(entity_path.hash());
+            for graph in &graphs {
+                let entity_path = graph.entity();
+                let entity_highlights = query.highlights.entity_highlight(entity_path.hash());
 
-                    // For now we compute the entity rectangles on the fly.
-                    let mut current_rect = egui::Rect::NOTHING;
+                // For now we compute the entity rectangles on the fly.
+                let mut current_rect = egui::Rect::NOTHING;
 
-                    for node in graph.nodes() {
-                        let center = layout.get_node(&node.id()).unwrap_or(Rect::ZERO).center();
+                for node in graph.nodes() {
+                    let center = layout.get_node(&node.id()).unwrap_or(Rect::ZERO).center();
 
-                        let response = match node {
-                            Node::Explicit { instance, .. } => {
-                                let highlight =
-                                    entity_highlights.index_highlight(instance.instance_index);
-                                let response = draw_node(ui, center, node.label(), highlight);
+                    let response = match node {
+                        Node::Explicit { instance, .. } => {
+                            let highlight =
+                                entity_highlights.index_highlight(instance.instance_index);
+                            let response = draw_node(ui, center, node.label(), highlight);
 
-                                let instance_path = InstancePath::instance(
-                                    entity_path.clone(),
-                                    instance.instance_index,
-                                );
-                                ctx.select_hovered_on_click(
-                                    &response,
-                                    vec![(
-                                        Item::DataResult(query.space_view_id, instance_path),
-                                        None,
-                                    )]
+                            let instance_path = InstancePath::instance(
+                                entity_path.clone(),
+                                instance.instance_index,
+                            );
+                            ctx.select_hovered_on_click(
+                                &response,
+                                vec![(Item::DataResult(query.space_view_id, instance_path), None)]
                                     .into_iter(),
-                                );
-                                response
-                            }
-                            Node::Implicit { .. } => {
-                                draw_node(ui, center, node.label(), Default::default())
-                            }
-                        };
+                            );
+                            response
+                        }
+                        Node::Implicit { .. } => {
+                            draw_node(ui, center, node.label(), Default::default())
+                        }
+                    };
 
-                        // TODO(grtlr): handle tooltips
-                        current_rect = current_rect.union(response.rect);
-                    }
-
-                    for edge in graph.edges() {
-                        let points = layout
-                            .get_edge(edge.from, edge.to)
-                            .unwrap_or([Pos2::ZERO, Pos2::ZERO]);
-                        let resp = draw_edge(ui, points, edge.arrow);
-                        current_rect = current_rect.union(resp.rect);
-                    }
-
-                    // We only show entity rects if there are multiple entities.
-                    if graphs.len() > 1 {
-                        let resp =
-                            draw_entity_rect(ui, current_rect, entity_path, &query.highlights);
-
-                        let instance_path = InstancePath::entity_all(entity_path.clone());
-                        ctx.select_hovered_on_click(
-                            &resp,
-                            vec![(Item::DataResult(query.space_view_id, instance_path), None)]
-                                .into_iter(),
-                        );
-                        current_rect = current_rect.union(resp.rect);
-                    }
-
-                    world_bounding_rect = world_bounding_rect.union(current_rect);
+                    // TODO(grtlr): handle tooltips
+                    current_rect = current_rect.union(response.rect);
                 }
 
-                // We need to draw the debug information after the rest to ensure that we have the correct bounding box.
-                if state.show_debug {
-                    draw_debug(ui, world_bounding_rect);
+                for edge in graph.edges() {
+                    let points = layout
+                        .get_edge(edge.from, edge.to)
+                        .unwrap_or([Pos2::ZERO, Pos2::ZERO]);
+                    let resp = draw_edge(ui, points, edge.arrow);
+                    current_rect = current_rect.union(resp.rect);
                 }
-            },
-        );
+
+                // We only show entity rects if there are multiple entities.
+                if graphs.len() > 1 {
+                    let resp = draw_entity_rect(ui, current_rect, entity_path, &query.highlights);
+
+                    let instance_path = InstancePath::entity_all(entity_path.clone());
+                    ctx.select_hovered_on_click(
+                        &resp,
+                        vec![(Item::DataResult(query.space_view_id, instance_path), None)]
+                            .into_iter(),
+                    );
+                    current_rect = current_rect.union(resp.rect);
+                }
+
+                world_bounding_rect = world_bounding_rect.union(current_rect);
+            }
+
+            // We need to draw the debug information after the rest to ensure that we have the correct bounding box.
+            if state.show_debug {
+                draw_debug(ui, world_bounding_rect);
+            }
+        });
 
         // Update blueprint if changed
         let updated_bounds: blueprint::components::VisualBounds2D = new_bounds.into();
