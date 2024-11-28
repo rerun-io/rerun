@@ -29,7 +29,12 @@ struct VertexOutput {
     scaled_world_plane_position: vec2f,
 };
 
-const PLANE_SCALE: f32 = 10000.0;
+// We have to make up some world space geometry which then necessarily gets a limited size.
+// Putting a too high number here makes things break down because of floating point inaccuracies.
+// But arguably at that point we're potentially doomed either way since precision will break down in other parts of the rendering as well.
+//
+// This is the main drawback of the plane approach over the screen space filling one.
+const PLANE_GEOMETRY_SIZE: f32 = 100000.0;
 
 // Spans a large quad where centered around the camera.
 //
@@ -40,7 +45,7 @@ const PLANE_SCALE: f32 = 10000.0;
 fn main_vs(@builtin(vertex_index) v_idx: u32) -> VertexOutput {
     var out: VertexOutput;
 
-    var plane_position = (vec2f(f32(v_idx / 2u), f32(v_idx % 2u)) * 2.0 - 1.0) * PLANE_SCALE;
+    var plane_position = (vec2f(f32(v_idx / 2u), f32(v_idx % 2u)) * 2.0 - 1.0) * PLANE_GEOMETRY_SIZE;
     var world_position: vec3f;
     switch (config.orientation) {
         case ORIENTATION_XZ: {
