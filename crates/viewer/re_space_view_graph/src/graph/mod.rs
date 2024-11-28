@@ -6,12 +6,11 @@ mod index;
 pub(crate) use index::NodeId;
 
 use re_chunk::EntityPath;
-use re_log_types::Instance;
 use re_types::{components::GraphType, ArrowString};
 
 use crate::{
     ui::DrawableLabel,
-    visualizers::{EdgeData, NodeData},
+    visualizers::{EdgeData, NodeData, NodeInstance},
 };
 
 /// Describes the differen kind of nodes that we can have in a graph.
@@ -20,10 +19,7 @@ pub enum Node {
     ///
     /// It therefore has an instance, as well as all properties that can be added via that archetype.
     Explicit {
-        id: NodeId,
-        instance: Instance,
-        node: ArrowString,
-        position: Option<Pos2>,
+        instance: NodeInstance,
         label: DrawableLabel,
     },
     /// An implicit node is a node that was provided via [`re_types::archetypes::GraphEdges`], but does not have a corresponding [`re_types::components::GraphNode`] in an [`re_types::archetypes::GraphNodes`] archetype.
@@ -39,7 +35,8 @@ pub enum Node {
 impl Node {
     pub fn id(&self) -> NodeId {
         match self {
-            Self::Explicit { id, .. } | Self::Implicit { id, .. } => *id,
+            Self::Explicit { instance, .. } => instance.id,
+            Self::Implicit { id, .. } => *id,
         }
     }
 
@@ -55,7 +52,10 @@ impl Node {
 
     pub fn position(&self) -> Option<Pos2> {
         match self {
-            Self::Explicit { position, .. } => *position,
+            Self::Explicit {
+                instance: NodeInstance { position, .. },
+                ..
+            } => *position,
             Self::Implicit { .. } => None,
         }
     }
@@ -85,14 +85,12 @@ impl Graph {
         let mut seen = ahash::HashSet::default();
 
         let mut nodes: Vec<Node> = if let Some(data) = node_data {
-            seen.extend(data.nodes.iter().map(|n| n.index));
+            seen.extend(data.nodes.iter().map(|n| n.id));
+            // TODO(grtlr): We should see if we can get rid of some of the cloning here.
             data.nodes
                 .iter()
                 .map(|n| Node::Explicit {
-                    id: n.index,
-                    instance: n.instance,
-                    node: n.node.0 .0.clone(),
-                    position: n.position,
+                    instance: n.clone(),
                     label: DrawableLabel::from_label(ui, &n.label),
                 })
                 .collect()

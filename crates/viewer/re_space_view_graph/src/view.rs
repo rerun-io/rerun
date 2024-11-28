@@ -190,11 +190,14 @@ Display a graph of nodes and edges.
 
                         let response = match node {
                             Node::Explicit { instance, .. } => {
-                                let highlight = entity_highlights.index_highlight(*instance);
+                                let highlight =
+                                    entity_highlights.index_highlight(instance.instance_index);
                                 let response = draw_node(ui, center, node.label(), highlight);
 
-                                let instance_path =
-                                    InstancePath::instance(entity_path.clone(), *instance);
+                                let instance_path = InstancePath::instance(
+                                    entity_path.clone(),
+                                    instance.instance_index,
+                                );
                                 ctx.select_hovered_on_click(
                                     &response,
                                     vec![(
@@ -215,7 +218,9 @@ Display a graph of nodes and edges.
                     }
 
                     for edge in graph.edges() {
-                        let points = layout.get_edge(edge.from, edge.to).unwrap_or([Pos2::ZERO, Pos2::ZERO]);
+                        let points = layout
+                            .get_edge(edge.from, edge.to)
+                            .unwrap_or([Pos2::ZERO, Pos2::ZERO]);
                         let resp = draw_edge(ui, points, edge.arrow);
                         current_rect = current_rect.union(resp.rect);
                     }

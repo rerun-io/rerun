@@ -23,8 +23,11 @@ pub struct NodeVisualizer {
     pub data: ahash::HashMap<EntityPath, NodeData>,
 }
 
+/// The label information of a [`re_types::archetypes::GraphNodes`].
+#[derive(Clone)]
 pub enum Label {
     Circle {
+        /// Radius of the circle in world coordinates.
         radius: f32,
         color: Option<Color32>,
     },
@@ -34,10 +37,12 @@ pub enum Label {
     },
 }
 
+/// A [`NodeInstance`] is the output of the [`NodeVisualizer`] and represents a single node in the graph.
+#[derive(Clone)]
 pub struct NodeInstance {
-    pub node: components::GraphNode,
-    pub instance: Instance,
-    pub index: NodeId,
+    pub graph_node: components::GraphNode,
+    pub instance_index: Instance,
+    pub id: NodeId,
     pub position: Option<egui::Pos2>,
     pub label: Label,
 }
@@ -121,9 +126,9 @@ impl VisualizerSystem for NodeVisualizer {
                     };
 
                     NodeInstance {
-                        node: node.clone(),
-                        instance,
-                        index: NodeId::from_entity_node(&data_result.entity_path, node),
+                        graph_node: node.clone(),
+                        instance_index: instance,
+                        id: NodeId::from_entity_node(&data_result.entity_path, node),
                         position: position.map(|[x, y]| egui::Pos2::new(x, y)),
                         label,
                     }
