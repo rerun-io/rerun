@@ -70,7 +70,7 @@ pub struct ViewportBlueprint {
     past_viewer_recommendations: IntSet<ViewerRecommendationHash>,
 
     /// Blueprint mutation events that will be processed at the end of the frame.
-    pub deferred_commands: Arc<Mutex<Vec<ViewportCommand>>>, // TODO: maybe move this to `Viewport`?
+    pub deferred_commands: Arc<Mutex<Vec<ViewportCommand>>>,
 }
 
 impl ViewportBlueprint {

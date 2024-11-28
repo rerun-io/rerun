@@ -185,7 +185,7 @@ impl ViewportUi {
     }
 
     /// Process any deferred [`ViewportCommand`] and then save to blueprint store (if needed).
-    pub fn save_to_blueprint(
+    pub fn save_to_blueprint_store(
         self,
         ctx: &ViewerContext<'_>,
         space_view_class_registry: &SpaceViewClassRegistry,
@@ -213,13 +213,13 @@ impl ViewportUi {
             );
         }
 
-        // TODO(emilk): consider diffing the tree against the state it was in at the start of the frame,
-        // so that we only save it if it actually changed.
-
         // Simplify before we save the tree.
         // `egui_tiles` also runs a simplifying pass when calling `tree.ui`, but that is too late.
         // We want the simplified changes saved to the store:
         blueprint.tree.simplify(&tree_simplification_options());
+
+        // TODO(emilk): consider diffing the tree against the state it was in at the start of the frame,
+        // so that we only save it if it actually changed.
 
         blueprint.save_tree_as_containers(ctx);
     }
