@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use egui::{
-    Color32, FontSelection, Frame, Galley, Pos2, Rect, Response, RichText, Sense, Stroke,
+    Color32, FontSelection, Frame, Galley, RichText, Stroke,
     TextWrapMode, Ui, Vec2, WidgetText,
 };
 use re_types::ArrowString;
@@ -21,26 +21,26 @@ impl DrawableLabel {
     pub fn from_label(ui: &Ui, label: &Label) -> Self {
         match label {
             &Label::Circle { radius, color } => Self::circle(radius, color),
-            Label::Text { text, color } => Self::text(ui, text.clone(), *color),
+            Label::Text { text, color } => Self::text(ui, text, *color),
         }
     }
 }
 
 pub struct TextLabel {
-    frame: Frame,
-    galley: Arc<Galley>,
+    pub frame: Frame,
+    pub galley: Arc<Galley>,
 }
 
 pub struct CircleLabel {
-    radius: f32,
-    color: Option<Color32>,
+    pub radius: f32,
+    pub color: Option<Color32>,
 }
 
 impl DrawableLabel {
     pub fn size(&self) -> Vec2 {
         match self {
-            DrawableLabel::Circle(CircleLabel { radius, .. }) => Vec2::splat(radius * 2.0),
-            DrawableLabel::Text(TextLabel { galley, frame }) => {
+            Self::Circle(CircleLabel { radius, .. }) => Vec2::splat(radius * 2.0),
+            Self::Text(TextLabel { galley, frame }) => {
                 frame.inner_margin.sum() + galley.size() + Vec2::splat(frame.stroke.width * 2.0)
             }
         }
@@ -57,7 +57,7 @@ impl DrawableLabel {
         })
     }
 
-    pub fn text(ui: &Ui, text: ArrowString, color: Option<Color32>) -> Self {
+    pub fn text(ui: &Ui, text: &ArrowString, color: Option<Color32>) -> Self {
         let galley = WidgetText::from(
             RichText::new(text.to_string())
                 .color(color.unwrap_or_else(|| ui.style().visuals.text_color())),
@@ -75,34 +75,6 @@ impl DrawableLabel {
             .stroke(Stroke::new(1.0, ui.style().visuals.text_color()));
 
         Self::Text(TextLabel { frame, galley })
-    }
-
-    pub fn draw(&self, ui: &mut Ui, highlight: InteractionHighlight) -> Response {
-        // TODO(grtlr): handle highlights
-        let sense = Sense::drag();
-        match self {
-            Self::Circle(CircleLabel { radius, color }) => {
-                let (resp, painter) = ui.allocate_painter(Vec2::splat(radius * 2.0), sense);
-                painter.circle(
-                    resp.rect.center(),
-                    *radius,
-                    color.unwrap_or_else(|| ui.style().visuals.text_color()),
-                    Stroke::NONE,
-                );
-                resp
-            }
-            Self::Text(TextLabel { galley, frame }) => {
-                frame
-                    .show(ui, |ui| {
-                        ui.add(
-                            egui::Label::new(galley.clone())
-                                .selectable(false)
-                                .sense(sense),
-                        )
-                    })
-                    .response
-            }
-        }
     }
 }
 

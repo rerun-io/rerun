@@ -1,11 +1,13 @@
 use egui::{
-    Align2, Color32, FontId, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, Ui, UiBuilder,
-    Vec2,
+    Align2, Color32, FontId, Label, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, Ui,
+    UiBuilder, Vec2,
 };
 use re_chunk::EntityPath;
-use re_viewer_context::{InteractionHighlight, SpaceViewHighlights};
+use re_viewer_context::{
+    HoverHighlight, InteractionHighlight, SelectionHighlight, SpaceViewHighlights,
+};
 
-use crate::ui::draw::DrawableLabel;
+use crate::ui::draw::{CircleLabel, DrawableLabel, TextLabel};
 
 // Sorry for the pun, could not resist 😎.
 // On a serious note, is there no other way to create a `Sense` that does nothing?
@@ -14,6 +16,49 @@ const NON_SENSE: Sense = Sense {
     drag: false,
     focusable: false,
 };
+
+fn draw_circle_label(
+    ui: &mut Ui,
+    label: &CircleLabel,
+    _highlight: InteractionHighlight,
+) -> Response {
+    let &CircleLabel { radius, color } = label;
+    let (resp, painter) = ui.allocate_painter(Vec2::splat(radius * 2.0), Sense::click());
+    painter.circle(
+        resp.rect.center(),
+        radius,
+        color.unwrap_or_else(|| ui.style().visuals.text_color()),
+        Stroke::NONE,
+    );
+    resp
+}
+
+fn draw_text_label(ui: &mut Ui, label: &TextLabel, highlight: InteractionHighlight) -> Response {
+    let TextLabel { galley, frame } = label;
+    let visuals = &ui.style().visuals;
+
+    let bg = match highlight.hover {
+        HoverHighlight::None => visuals.widgets.noninteractive.bg_fill,
+        HoverHighlight::Hovered => visuals.widgets.hovered.bg_fill,
+    };
+
+    let stroke = match highlight.selection {
+        SelectionHighlight::Selection => visuals.selection.stroke,
+        _ => Stroke::new(1.0, visuals.text_color()),
+    };
+
+    frame
+        .stroke(stroke)
+        .fill(bg)
+        .show(ui, |ui| {
+            ui.add(
+                Label::new(galley.clone())
+                    .selectable(false)
+                    .sense(Sense::click()),
+            )
+        })
+        .inner
+}
 
 /// Draws a node at the given position.
 pub fn draw_node(
@@ -24,7 +69,13 @@ pub fn draw_node(
 ) -> Response {
     let builder = UiBuilder::new().max_rect(Rect::from_center_size(center, node.size()));
     let mut node_ui = ui.new_child(builder);
-    node.draw(&mut node_ui, highlight)
+
+    // TODO(grtlr): handle highlights
+
+    match node {
+        DrawableLabel::Circle(label) => draw_circle_label(&mut node_ui, label, highlight),
+        DrawableLabel::Text(label) => draw_text_label(&mut node_ui, label, highlight),
+    }
 }
 
 /// Draws a bounding box, as well as a basic coordinate system.

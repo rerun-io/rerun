@@ -21,7 +21,7 @@ use re_viewport_blueprint::ViewProperty;
 
 use crate::{
     draw::{draw_debug, draw_edge, draw_entity_rect, draw_node},
-    graph::Graph,
+    graph::{Graph, Node},
     layout::LayoutRequest,
     ui::GraphSpaceViewState,
     visualizers::{merge, EdgesVisualizer, NodeVisualizer},
@@ -176,15 +176,40 @@ Display a graph of nodes and edges.
                 let mut world_bounding_rect = egui::Rect::NOTHING;
 
                 for graph in &graphs {
+                    let entity_path = graph.entity();
+                    let entity_highlights = query.highlights.entity_highlight(entity_path.hash());
+
                     // For now we compute the entity rectangles on the fly.
                     let mut current_rect = egui::Rect::NOTHING;
 
                     for node in graph.nodes() {
                         let center = layout.get_node(&node.id()).center();
 
-                        // TODO(grtlr): Add proper highlights here:
-                        let resp = draw_node(ui, center, node.label(), Default::default());
-                        current_rect = current_rect.union(resp.rect);
+                        let response = match node {
+                            Node::Explicit { instance, .. } => {
+                                let highlight = entity_highlights.index_highlight(*instance);
+                                let response =
+                                    draw_node(ui, center, node.label(), highlight);
+
+                                let instance_path =
+                                    InstancePath::instance(entity_path.clone(), *instance);
+                                ctx.select_hovered_on_click(
+                                    &response,
+                                    vec![(
+                                        Item::DataResult(query.space_view_id, instance_path),
+                                        None,
+                                    )]
+                                    .into_iter(),
+                                );
+                                response
+                            }
+                            Node::Implicit { .. } => {
+                                draw_node(ui, center, node.label(), Default::default())
+                            }
+                        };
+
+                        // TODO(grtlr): handle tooltips
+                        current_rect = current_rect.union(response.rect);
                     }
 
                     for edge in graph.edges() {
@@ -195,7 +220,6 @@ Display a graph of nodes and edges.
 
                     // We only show entity rects if there are multiple entities.
                     if graphs.len() > 1 {
-                        let entity_path = graph.entity();
                         let resp =
                             draw_entity_rect(ui, current_rect, entity_path, &query.highlights);
 

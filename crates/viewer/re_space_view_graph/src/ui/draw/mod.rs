@@ -1,3 +1,3 @@
 mod node;
 
-pub use node::DrawableLabel;
+pub use node::{CircleLabel, TextLabel, DrawableLabel};
