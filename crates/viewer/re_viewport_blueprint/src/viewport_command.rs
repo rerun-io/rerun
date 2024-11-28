@@ -11,10 +11,17 @@ pub enum ViewportCommand {
     SetTree(egui_tiles::Tree<SpaceViewId>),
 
     /// Add a new space view to the provided container (or the root if `None`).
-    AddSpaceView(SpaceViewBlueprint, Option<ContainerId>, Option<usize>),
+    AddSpaceView {
+        space_view: SpaceViewBlueprint,
+        parent_container: Option<ContainerId>,
+        position_in_parent: Option<usize>,
+    },
 
     /// Add a new container of the provided kind to the provided container (or the root if `None`).
-    AddContainer(egui_tiles::ContainerKind, Option<ContainerId>),
+    AddContainer {
+        container_kind: egui_tiles::ContainerKind,
+        parent_container: Option<ContainerId>,
+    },
 
     /// Change the kind of a container.
     SetContainerKind(ContainerId, egui_tiles::ContainerKind),

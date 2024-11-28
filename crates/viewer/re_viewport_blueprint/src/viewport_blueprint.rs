@@ -391,11 +391,11 @@ impl ViewportBlueprint {
         position_in_parent: Option<usize>,
     ) {
         for space_view in space_views {
-            self.enqueue_command(ViewportCommand::AddSpaceView(
+            self.enqueue_command(ViewportCommand::AddSpaceView {
                 space_view,
                 parent_container,
                 position_in_parent,
-            ));
+            });
         }
     }
 
@@ -551,7 +551,10 @@ impl ViewportBlueprint {
         kind: egui_tiles::ContainerKind,
         parent_container: Option<ContainerId>,
     ) {
-        self.enqueue_command(ViewportCommand::AddContainer(kind, parent_container));
+        self.enqueue_command(ViewportCommand::AddContainer {
+            container_kind: kind,
+            parent_container,
+        });
     }
 
     /// Recursively remove a container or a space view.

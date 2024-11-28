@@ -214,7 +214,11 @@ impl Viewport {
                     tree_edited = true;
                 }
 
-                ViewportCommand::AddSpaceView(space_view, parent_container, position_in_parent) => {
+                ViewportCommand::AddSpaceView {
+                    space_view,
+                    parent_container,
+                    position_in_parent,
+                } => {
                     let space_view_id = space_view.id;
 
                     space_view.save_to_blueprint_store(ctx);
@@ -252,7 +256,10 @@ impl Viewport {
                     tree_edited = true;
                 }
 
-                ViewportCommand::AddContainer(container_kind, parent_container) => {
+                ViewportCommand::AddContainer {
+                    container_kind,
+                    parent_container,
+                } => {
                     let parent_id = parent_container.unwrap_or(bp.root_container);
 
                     let tile_id = bp
