@@ -40,8 +40,7 @@ pub enum Label {
 /// A [`NodeInstance`] is the output of the [`NodeVisualizer`] and represents a single node in the graph.
 #[derive(Clone)]
 pub struct NodeInstance {
-    // TODO(grtlr): We will use this information later, when we add tooltips back.
-    pub _graph_node: components::GraphNode,
+    pub graph_node: components::GraphNode,
     pub instance_index: Instance,
     pub id: NodeId,
     pub position: Option<egui::Pos2>,
@@ -127,7 +126,7 @@ impl VisualizerSystem for NodeVisualizer {
                     };
 
                     NodeInstance {
-                        _graph_node: node.clone(),
+                        graph_node: node.clone(),
                         instance_index: instance,
                         id: NodeId::from_entity_node(&data_result.entity_path, node),
                         position: position.map(|[x, y]| egui::Pos2::new(x, y)),

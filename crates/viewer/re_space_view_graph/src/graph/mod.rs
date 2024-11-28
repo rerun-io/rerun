@@ -6,7 +6,7 @@ mod index;
 pub(crate) use index::NodeId;
 
 use re_chunk::EntityPath;
-use re_types::{components::GraphType, ArrowString};
+use re_types::components::{self, GraphType};
 
 use crate::{
     ui::DrawableLabel,
@@ -27,7 +27,8 @@ pub enum Node {
     /// Because it was never specified directly, it also does not have many of the properties that an [`Node::Explicit`] has.
     Implicit {
         id: NodeId,
-        node: ArrowString,
+        /// The string that was used to refer to that node in the list of edges.
+        graph_node: components::GraphNode,
         label: DrawableLabel,
     },
 }
@@ -37,6 +38,14 @@ impl Node {
         match self {
             Self::Explicit { instance, .. } => instance.id,
             Self::Implicit { id, .. } => *id,
+        }
+    }
+
+    /// The original [`components::GraphNode`] id that was logged by the user.
+    pub fn graph_node(&self) -> &components::GraphNode {
+        match self {
+            Self::Explicit { instance, .. } => &instance.graph_node,
+            Self::Implicit { graph_node, .. } => graph_node,
         }
     }
 
@@ -103,7 +112,7 @@ impl Graph {
                 if !seen.contains(&edge.source_index) {
                     nodes.push(Node::Implicit {
                         id: edge.source_index,
-                        node: edge.source.0 .0.clone(),
+                        graph_node: edge.source.clone(),
                         label: DrawableLabel::implicit_circle(),
                     });
                     seen.insert(edge.source_index);
@@ -111,7 +120,7 @@ impl Graph {
                 if !seen.contains(&edge.target_index) {
                     nodes.push(Node::Implicit {
                         id: edge.target_index,
-                        node: edge.target.0 .0.clone(),
+                        graph_node: edge.target.clone(),
                         label: DrawableLabel::implicit_circle(),
                     });
                     seen.insert(edge.target_index);

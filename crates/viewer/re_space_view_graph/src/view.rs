@@ -26,7 +26,7 @@ use crate::{
     graph::{Graph, Node},
     layout::LayoutRequest,
     ui::{draw_debug, draw_edge, draw_entity_rect, draw_node, GraphSpaceViewState},
-    visualizers::{merge, EdgesVisualizer, NodeVisualizer},
+    visualizers::{merge, EdgesVisualizer, Label, NodeVisualizer},
 };
 
 #[derive(Default)]
@@ -193,6 +193,18 @@ Display a graph of nodes and edges.
                                 entity_highlights.index_highlight(instance.instance_index);
                             let response = draw_node(ui, center, node.label(), highlight);
 
+                            let response = if let Label::Text { text, .. } = &instance.label {
+                                response.on_hover_text(format!(
+                                    "Graph Node: {}\nLabel: {text}",
+                                    instance.graph_node.as_str(),
+                                ))
+                            } else {
+                                response.on_hover_text(format!(
+                                    "Graph Node: {}",
+                                    instance.graph_node.as_str(),
+                                ))
+                            };
+
                             let instance_path = InstancePath::instance(
                                 entity_path.clone(),
                                 instance.instance_index,
@@ -202,14 +214,16 @@ Display a graph of nodes and edges.
                                 vec![(Item::DataResult(query.space_view_id, instance_path), None)]
                                     .into_iter(),
                             );
+
                             response
                         }
-                        Node::Implicit { .. } => {
-                            draw_node(ui, center, node.label(), Default::default())
+                        Node::Implicit { graph_node, .. } => {
+                            draw_node(ui, center, node.label(), Default::default()).on_hover_text(
+                                format!("Implicit Graph Node: {}", graph_node.as_str(),),
+                            )
                         }
                     };
 
-                    // TODO(grtlr): handle tooltips
                     current_rect = current_rect.union(response.rect);
                 }
 
@@ -245,7 +259,7 @@ Display a graph of nodes and edges.
 
         // Update blueprint if changed
         let updated_rect_in_scene =
-            blueprint::components::VisualBounds2D::from(ui_from_world * rect_in_ui);
+            blueprint::components::VisualBounds2D::from(ui_from_world.inverse() * rect_in_ui);
         if resp.double_clicked() || layout_was_empty {
             bounds_property.reset_blueprint_component::<blueprint::components::VisualBounds2D>(ctx);
         } else if rect_in_scene != updated_rect_in_scene {

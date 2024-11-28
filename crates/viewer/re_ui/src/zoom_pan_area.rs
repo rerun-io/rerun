@@ -5,7 +5,7 @@
 //! * `view`-space: The space where the pan-and-zoom area is drawn.
 //! * `scene`-space: The space where the actual content is drawn.
 
-use egui::{emath::TSTransform, Area, Order, Pos2, Rect, Response, Ui, UiKind, Vec2};
+use egui::{emath::TSTransform, Area, Order, Rect, Response, Ui, UiKind};
 
 /// Helper function to handle pan and zoom interactions on a response.
 fn register_pan_and_zoom(ui: &Ui, resp: &Response, ui_from_scene: &mut TSTransform) {
@@ -97,7 +97,6 @@ pub fn zoom_pan_area(
 
     ui.ctx()
         .set_transform_layer(area_resp.response.layer_id, *ui_from_scene);
-
 
     area_resp.inner
 }
