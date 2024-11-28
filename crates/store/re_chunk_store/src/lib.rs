@@ -29,7 +29,9 @@ pub use self::dataframe::{
     IndexRange, IndexValue, QueryExpression, SparseFillStrategy, TimeColumnDescriptor,
     TimeColumnSelector, ViewContentsSelector,
 };
-pub use self::events::{ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent};
+pub use self::events::{
+    ChunkCompactionReport, ChunkStoreDiff, ChunkStoreDiffKind, ChunkStoreEvent,
+};
 pub use self::gc::{GarbageCollectionOptions, GarbageCollectionTarget};
 pub use self::stats::{ChunkStoreChunkStats, ChunkStoreStats};
 pub use self::store::{

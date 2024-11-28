@@ -8,7 +8,9 @@ use nohash_hasher::IntSet;
 use parking_lot::RwLock;
 
 use re_chunk::ChunkId;
-use re_chunk_store::{ChunkStoreDiff, ChunkStoreEvent, ChunkStoreHandle, ChunkStoreSubscriber};
+use re_chunk_store::{
+    ChunkCompactionReport, ChunkStoreDiff, ChunkStoreEvent, ChunkStoreHandle, ChunkStoreSubscriber,
+};
 use re_log_types::{EntityPath, ResolvedTimeRange, StoreId, TimeInt, Timeline};
 use re_types_core::{components::ClearIsRecursive, Component as _, ComponentName};
 
@@ -315,11 +317,12 @@ impl ChunkStoreSubscriber for QueryCache {
 
                         compacted_events.insert(chunk.id());
                         // If a compaction was triggered, make sure to drop the original chunks too.
-                        compacted_events.extend(
-                            compacted
-                                .iter()
-                                .flat_map(|(compacted_chunks, _)| compacted_chunks.keys().copied()),
-                        );
+                        compacted_events.extend(compacted.iter().flat_map(
+                            |ChunkCompactionReport {
+                                 srcs: compacted_chunks,
+                                 new_chunk: _,
+                             }| compacted_chunks.keys().copied(),
+                        ));
                     }
                 }
 
@@ -336,7 +339,11 @@ impl ChunkStoreSubscriber for QueryCache {
                             let mut data_time_min = time_range.min();
 
                             // If a compaction was triggered, make sure to drop the original chunks too.
-                            if let Some((compacted_chunks, _)) = compacted {
+                            if let Some(ChunkCompactionReport {
+                                srcs: compacted_chunks,
+                                new_chunk: _,
+                            }) = compacted
+                            {
                                 for chunk in compacted_chunks.values() {
                                     let data_time_compacted = chunk
                                         .time_range_per_component()
@@ -366,7 +373,12 @@ impl ChunkStoreSubscriber for QueryCache {
                             compacted_events.insert(chunk.id());
                             // If a compaction was triggered, make sure to drop the original chunks too.
                             compacted_events.extend(compacted.iter().flat_map(
-                                |(compacted_chunks, _)| compacted_chunks.keys().copied(),
+                                |ChunkCompactionReport {
+                                     srcs: compacted_chunks,
+                                     new_chunk: _,
+                                 }| {
+                                    compacted_chunks.keys().copied()
+                                },
                             ));
                         }
                     }
