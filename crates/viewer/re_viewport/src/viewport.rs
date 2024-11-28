@@ -445,7 +445,7 @@ impl Viewport {
 
             // Simplify before we save the tree.
             // `egui_tiles` also runs a simplifying pass when calling `tree.ui`, but that is too late.
-            // We want the simpified changes saved to the store:
+            // We want the simplified changes saved to the store:
             bp.tree.simplify(&tree_simplification_options());
 
             bp.save_tree_as_containers(ctx);
