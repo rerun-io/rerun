@@ -120,14 +120,14 @@ fn line_segment(source: Rect, target: Rect) -> [Pos2; 2] {
     let direction = (target_center - source_center).normalized();
 
     // Find the border points on both rectangles
-    let source_point = find_border_point(source, -direction); // Reverse direction for target
-    let target_point = find_border_point(target, direction);
+    let source_point = intersects_ray_from_center(source, -direction); // Reverse direction for target
+    let target_point = intersects_ray_from_center(target, direction);
 
     [source_point, target_point]
 }
 
 /// Helper function to find the point where the line intersects the border of a rectangle
-fn find_border_point(rect: Rect, direction: Vec2) -> Pos2 {
+fn intersects_ray_from_center(rect: Rect, direction: Vec2) -> Pos2 {
     let mut t_min = f32::NEG_INFINITY;
     let mut t_max = f32::INFINITY;
 
@@ -146,4 +146,45 @@ fn find_border_point(rect: Rect, direction: Vec2) -> Pos2 {
 
     let t = t_max.min(t_min); // Pick the first intersection
     rect.center() + t * direction
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use egui::pos2;
+
+    #[test]
+    fn test_ray_intersection() {
+        let rect = Rect::from_min_max(pos2(1.0, 1.0), pos2(3.0, 3.0));
+
+        assert_eq!(
+            intersects_ray_from_center(rect, Vec2::RIGHT),
+            pos2(1.0, 2.0),
+            "rightward ray"
+        );
+
+        assert_eq!(
+            intersects_ray_from_center(rect, Vec2::UP),
+            pos2(2.0, 3.0),
+            "upward ray"
+        );
+
+        assert_eq!(
+            intersects_ray_from_center(rect, Vec2::LEFT),
+            pos2(1.0, 2.0),
+            "leftward ray"
+        );
+
+        assert_eq!(
+            intersects_ray_from_center(rect, Vec2::DOWN),
+            pos2(2.0, 3.0),
+            "downward ray"
+        );
+
+        assert_eq!(
+            intersects_ray_from_center(rect, (Vec2::LEFT + Vec2::DOWN).normalized()),
+            pos2(1.0, 3.0),
+            "corner ray"
+        );
+    }
 }

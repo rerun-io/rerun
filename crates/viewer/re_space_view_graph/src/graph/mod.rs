@@ -1,5 +1,4 @@
 mod hash;
-use std::hash::{Hash as _, Hasher as _};
 
 use egui::{Pos2, Vec2};
 pub(crate) use hash::GraphNodeHash;
@@ -44,9 +43,7 @@ impl Node {
     }
 
     pub fn size(&self) -> Vec2 {
-        match self {
-            Self::Explicit { label, .. } | Self::Implicit { label, .. } => label.size(),
-        }
+        self.label().size()
     }
 
     pub fn position(&self) -> Option<Pos2> {
