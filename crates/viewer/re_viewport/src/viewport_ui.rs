@@ -10,14 +10,13 @@ use parking_lot::Mutex;
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_renderer::ScreenshotProcessor;
-use re_types_blueprint::blueprint::components::IncludedSpaceView;
 use re_ui::{ContextExt as _, DesignTokens, Icon, UiExt as _};
 use re_viewer_context::{
     blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, Contents, Item,
     SpaceViewClassRegistry, SpaceViewId, SystemExecutionOutput, ViewQuery, ViewStates,
     ViewerContext,
 };
-use re_viewport_blueprint::{ViewportBlueprint, ViewportCommand, VIEWPORT_PATH};
+use re_viewport_blueprint::{ViewportBlueprint, ViewportCommand};
 
 use crate::{
     screenshot::handle_pending_space_view_screenshots,
@@ -367,13 +366,6 @@ fn apply_viewport_command(
                         }
 
                         bp.space_views.remove(&space_view_id);
-
-                        let components: Vec<IncludedSpaceView> = bp
-                            .space_views
-                            .keys()
-                            .map(|id| IncludedSpaceView((*id).into()))
-                            .collect();
-                        ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &components);
                     }
                     egui_tiles::Tile::Container(_) => {
                         // Empty containers (like this one) will be auto-removed by the tree simplification algorithm,
