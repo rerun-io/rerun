@@ -147,6 +147,12 @@ impl ViewportBlueprint {
         let auto_space_views =
             AtomicBool::new(auto_space_views.map_or(is_app_default_blueprint, |auto| *auto.0));
 
+        let root_container = root_container.unwrap_or_else(|| {
+            let new_root_id = ContainerId::hashed_from_str("placeholder_root_container");
+            containers.insert(new_root_id, ContainerBlueprint::new(new_root_id));
+            new_root_id
+        });
+
         let tree = build_tree_from_space_views_and_containers(
             space_views.values(),
             containers.values(),
@@ -161,13 +167,10 @@ impl ViewportBlueprint {
             .cloned()
             .collect();
 
-        let root_container_or_placeholder = root_container
-            .unwrap_or_else(|| ContainerId::hashed_from_str("placeholder_root_container"));
-
         Self {
             space_views,
             containers,
-            root_container: root_container_or_placeholder,
+            root_container,
             tree,
             maximized: maximized.map(|id| id.0.into()),
             auto_layout,
@@ -879,7 +882,7 @@ impl ViewportBlueprint {
 fn build_tree_from_space_views_and_containers<'a>(
     space_views: impl Iterator<Item = &'a SpaceViewBlueprint>,
     containers: impl Iterator<Item = &'a ContainerBlueprint>,
-    root_container: Option<ContainerId>,
+    root_container: ContainerId,
 ) -> egui_tiles::Tree<SpaceViewId> {
     re_tracing::profile_function!();
     let mut tree = egui_tiles::Tree::empty("viewport_tree");
@@ -902,9 +905,7 @@ fn build_tree_from_space_views_and_containers<'a>(
 
     // And finally, set the root
 
-    if let Some(root_container) = root_container {
-        tree.root = Some(blueprint_id_to_tile_id(&root_container));
-    }
+    tree.root = Some(blueprint_id_to_tile_id(&root_container));
 
     tree
 }

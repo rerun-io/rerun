@@ -52,6 +52,13 @@ impl Default for ContainerBlueprint {
 }
 
 impl ContainerBlueprint {
+    pub fn new(id: ContainerId) -> Self {
+        Self {
+            id,
+            ..Default::default()
+        }
+    }
+
     /// Attempt to load a [`ContainerBlueprint`] from the blueprint store.
     pub fn try_from_db(
         blueprint_db: &EntityDb,
