@@ -1,4 +1,7 @@
+use std::sync::Arc;
+
 use egui::{CentralPanel, Vec2};
+
 use re_chunk_store::{Chunk, LatestAtQuery, RowId};
 use re_log_types::example_components::MyPoint;
 use re_log_types::external::re_types_core::Component;
@@ -7,12 +10,10 @@ use re_time_panel::TimePanel;
 use re_viewer_context::blueprint_timeline;
 use re_viewer_context::test_context::TestContext;
 use re_viewport_blueprint::ViewportBlueprint;
-use std::sync::Arc;
 
 #[test]
-pub fn time_panel_should_match_snapshot() {
+pub fn time_panel_two_sections_should_match_snapshot() {
     let mut test_context = TestContext::default();
-    let mut panel = TimePanel::default();
 
     let points1 = MyPoint::from_iter(0..1);
 
@@ -32,10 +33,51 @@ pub fn time_panel_should_match_snapshot() {
             .unwrap();
     }
 
+    run_time_panel_and_save_snapshot(test_context, "time_panel_two_sections");
+}
+
+#[test]
+pub fn time_panel_dense_data_should_match_snapshot() {
+    let mut test_context = TestContext::default();
+
+    let points1 = MyPoint::from_iter(0..1);
+
+    let mut rng_seed = 0b1010_1010_1010_1010_1010_1010_1010_1010u64;
+    let mut rng = || {
+        rng_seed ^= rng_seed >> 12;
+        rng_seed ^= rng_seed << 25;
+        rng_seed ^= rng_seed >> 27;
+        rng_seed.wrapping_mul(0x2545_f491_4f6c_dd1d)
+    };
+
+    let entity_path = EntityPath::from("/entity");
+    let mut builder = Chunk::builder(entity_path.clone());
+    for frame in 0..1_000 {
+        if rng() & 0b1 == 0 {
+            continue;
+        }
+
+        builder = builder.with_sparse_component_batches(
+            RowId::new(),
+            [build_frame_nr(frame)],
+            [(MyPoint::name(), Some(&points1 as _))],
+        );
+    }
+    test_context
+        .recording_store
+        .add_chunk(&Arc::new(builder.build().unwrap()))
+        .unwrap();
+
+    run_time_panel_and_save_snapshot(test_context, "time_panel_dense_data");
+}
+
+//TODO(ab): this contains a lot of boilerplate which should be provided by helpers
+fn run_time_panel_and_save_snapshot(mut test_context: TestContext, snapshot_name: &str) {
+    let mut panel = TimePanel::default();
     let mut harness = egui_kittest::Harness::builder()
         .with_size(Vec2::new(700.0, 300.0))
         .build(move |ctx| {
-            test_context.run_simple(ctx, |viewer_ctx| {
+            test_context.run(ctx, |viewer_ctx| {
                 let (sender, _) = std::sync::mpsc::channel();
                 let blueprint = ViewportBlueprint::try_from_db(
                     viewer_ctx.store_context.blueprint,
@@ -44,23 +86,22 @@ pub fn time_panel_should_match_snapshot() {
                 );
 
                 CentralPanel::default().show(ctx, |ui| {
-                    let time_ctrl_before = viewer_ctx.rec_cfg.time_ctrl.read().clone();
-                    let mut time_ctrl_after = time_ctrl_before.clone();
+                    let mut time_ctrl = viewer_ctx.rec_cfg.time_ctrl.read().clone();
 
                     panel.show_expanded_with_header(
                         viewer_ctx,
                         &blueprint,
                         viewer_ctx.recording(),
-                        &mut time_ctrl_after,
+                        &mut time_ctrl,
                         ui,
                     );
                 });
             });
 
-            test_context.handle_system_command();
+            test_context.handle_system_commands();
         });
 
     harness.run();
 
-    harness.wgpu_snapshot("time_panel");
+    harness.wgpu_snapshot(snapshot_name);
 }

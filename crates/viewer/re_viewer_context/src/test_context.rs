@@ -18,7 +18,7 @@ use crate::{
 /// use re_viewer_context::ViewerContext;
 ///
 /// let mut test_context = TestContext::default();
-/// test_context.run(|ctx: &ViewerContext, _| {
+/// test_context.run_in_egui_central_panel(|ctx: &ViewerContext, _| {
 ///     /* do something with ctx */
 /// });
 /// ```
@@ -73,23 +73,11 @@ impl TestContext {
         self.selection_state.on_frame_start(|_| true, None);
     }
 
-    /// Run the given function with a [`ViewerContext`] produced by the [`Self`].
+    /// Run the provided closure with a [`ViewerContext`] produced by the [`Self`].
     ///
-    /// Note: there is a possibility that the closure will be called more than once, see
-    /// [`egui::Context::run`].
-    pub fn run(&self, mut func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui)) {
-        egui::__run_test_ctx(|ctx| {
-            egui::CentralPanel::default().show(ctx, |ui| {
-                let egui_ctx = ui.ctx().clone();
-
-                self.run_simple(&egui_ctx, |ctx| {
-                    func(ctx, ui);
-                });
-            });
-        });
-    }
-
-    pub fn run_simple(&self, egui_ctx: &egui::Context, func: impl FnOnce(&ViewerContext<'_>)) {
+    /// IMPORTANT: call [`Self::handle_system_commands`] after calling this function if your test
+    /// relies on system commands.
+    pub fn run(&self, egui_ctx: &egui::Context, func: impl FnOnce(&ViewerContext<'_>)) {
         re_ui::apply_style_and_install_loaders(egui_ctx);
 
         let store_context = StoreContext {
@@ -125,18 +113,34 @@ impl TestContext {
         func(&ctx);
     }
 
-    /// Run the given function with a [`ViewerContext`] produced by the [`Self`] and handle any
-    /// system commands issued during execution (see [`Self::handle_system_command`]).
-    pub fn run_and_handle_system_commands(
-        &mut self,
-        func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui),
+    /// Run the given function with a [`ViewerContext`] produced by the [`Self`], in the context of
+    /// an [`egui::CentralPanel`].
+    ///
+    /// IMPORTANT: call [`Self::handle_system_commands`] after calling this function if your test
+    /// relies on system commands.
+    ///
+    /// Notes:
+    /// - Uses [`egui::__run_test_ctx`].
+    /// - There is a possibility that the closure will be called more than once, see
+    ///   [`egui::Context::run`].
+    //TODO(ab): replace this with a kittest-based helper.
+    pub fn run_in_egui_central_panel(
+        &self,
+        mut func: impl FnMut(&ViewerContext<'_>, &mut egui::Ui),
     ) {
-        self.run(func);
-        self.handle_system_command();
+        egui::__run_test_ctx(|ctx| {
+            egui::CentralPanel::default().show(ctx, |ui| {
+                let egui_ctx = ui.ctx().clone();
+
+                self.run(&egui_ctx, |ctx| {
+                    func(ctx, ui);
+                });
+            });
+        });
     }
 
     /// Best-effort attempt to meaningfully handle some of the system commands.
-    pub fn handle_system_command(&mut self) {
+    pub fn handle_system_commands(&mut self) {
         while let Some(command) = self.command_receiver.recv_system() {
             let mut handled = true;
             let command_name = format!("{command:?}");
@@ -216,7 +220,7 @@ mod test {
             selection_state.set_selection(item.clone());
         });
 
-        test_context.run(|ctx, _| {
+        test_context.run_in_egui_central_panel(|ctx, _| {
             assert_eq!(
                 ctx.selection_state.selected_items().single_item(),
                 Some(&item)

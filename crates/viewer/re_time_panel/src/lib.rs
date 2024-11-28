@@ -348,7 +348,7 @@ impl TimePanel {
         }
     }
 
-    pub fn expanded_ui(
+    fn expanded_ui(
         &mut self,
         ctx: &ViewerContext<'_>,
         viewport_blueprint: &ViewportBlueprint,
