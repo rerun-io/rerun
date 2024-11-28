@@ -32,7 +32,7 @@ mod debug_overlay;
 pub use debug_overlay::{DebugOverlayDrawData, DebugOverlayError, DebugOverlayRenderer};
 
 mod world_grid;
-pub use world_grid::{GridPlane, WorldGridConfiguration, WorldGridDrawData, WorldGridRenderer};
+pub use world_grid::{WorldGridConfiguration, WorldGridDrawData, WorldGridRenderer};
 
 pub mod gpu_data {
     pub use super::lines::gpu_data::{LineStripInfo, LineVertex};
