@@ -105,17 +105,29 @@ impl ViewportBlueprint {
         let root_container: Option<ContainerId> = root_container.map(|id| id.0.into());
         re_log::trace_once!("Loaded root_container: {root_container:?}");
 
-        let all_space_view_ids: Vec<SpaceViewId> = blueprint_db
-            .tree()
-            .children
-            .get(SpaceViewId::registry_part())
-            .map(|tree| {
-                tree.children
-                    .values()
-                    .map(|subtree| SpaceViewId::from_entity_path(&subtree.path))
-                    .collect()
-            })
-            .unwrap_or_default();
+        let mut containers: BTreeMap<ContainerId, ContainerBlueprint> = Default::default();
+        let mut all_space_view_ids: Vec<SpaceViewId> = Default::default();
+
+        if let Some(root_container) = root_container {
+            re_tracing::profile_scope!("visit_all_containers");
+            let mut container_ids_to_visit: Vec<ContainerId> = vec![root_container];
+            while let Some(id) = container_ids_to_visit.pop() {
+                if let Some(container) = ContainerBlueprint::try_from_db(blueprint_db, query, id) {
+                    re_log::trace_once!("Container {id} contents: {:?}", container.contents);
+                    for &content in &container.contents {
+                        match content {
+                            Contents::Container(id) => container_ids_to_visit.push(id),
+                            Contents::SpaceView(id) => {
+                                all_space_view_ids.push(id);
+                            }
+                        }
+                    }
+                    containers.insert(id, container);
+                } else {
+                    re_log::warn_once!("Failed to load container {id}");
+                }
+            }
+        }
 
         let space_views: BTreeMap<SpaceViewId, SpaceViewBlueprint> = all_space_view_ids
             .into_iter()
@@ -123,24 +135,6 @@ impl ViewportBlueprint {
                 SpaceViewBlueprint::try_from_db(space_view, blueprint_db, query)
             })
             .map(|sv| (sv.id, sv))
-            .collect();
-
-        let all_container_ids: Vec<ContainerId> = blueprint_db
-            .tree()
-            .children
-            .get(ContainerId::registry_part())
-            .map(|tree| {
-                tree.children
-                    .values()
-                    .map(|subtree| ContainerId::from_entity_path(&subtree.path))
-                    .collect()
-            })
-            .unwrap_or_default();
-
-        let containers: BTreeMap<ContainerId, ContainerBlueprint> = all_container_ids
-            .into_iter()
-            .filter_map(|id| ContainerBlueprint::try_from_db(blueprint_db, query, id))
-            .map(|c| (c.id, c))
             .collect();
 
         // Auto layouting and auto space view are only enabled if no blueprint has been provided by the user.
