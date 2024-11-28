@@ -1,7 +1,7 @@
 use egui::{Pos2, Rect, Vec2};
 use fjadra as fj;
 
-use crate::graph::NodeIndex;
+use crate::graph::NodeId;
 
 use super::{request::NodeTemplate, Layout, LayoutRequest};
 
@@ -16,8 +16,8 @@ impl<'a> From<&'a NodeTemplate> for fj::Node {
 
 pub struct ForceLayoutProvider {
     simulation: fj::Simulation,
-    node_index: ahash::HashMap<NodeIndex, usize>,
-    edges: Vec<(NodeIndex, NodeIndex)>,
+    node_index: ahash::HashMap<NodeId, usize>,
+    edges: Vec<(NodeId, NodeId)>,
 }
 
 impl ForceLayoutProvider {

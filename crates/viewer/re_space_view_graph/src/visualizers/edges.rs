@@ -11,7 +11,7 @@ use re_viewer_context::{
     ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::graph::NodeIndex;
+use crate::graph::NodeId;
 
 #[derive(Default)]
 pub struct EdgesVisualizer {
@@ -21,8 +21,8 @@ pub struct EdgesVisualizer {
 pub struct EdgeInstance {
     pub source: GraphNode,
     pub target: GraphNode,
-    pub source_index: NodeIndex,
-    pub target_index: NodeIndex,
+    pub source_index: NodeId,
+    pub target_index: NodeId,
 }
 
 impl std::hash::Hash for EdgeInstance {
@@ -86,8 +86,8 @@ impl VisualizerSystem for EdgesVisualizer {
                         let target = GraphNode::from(edge.second.clone());
 
                         let entity_path = &data_result.entity_path;
-                        let source_index = NodeIndex::from_entity_node(entity_path, &source);
-                        let target_index = NodeIndex::from_entity_node(entity_path, &target);
+                        let source_index = NodeId::from_entity_node(entity_path, &source);
+                        let target_index = NodeId::from_entity_node(entity_path, &target);
 
                         EdgeInstance {
                             source,

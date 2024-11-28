@@ -1,13 +1,13 @@
 use egui::{Pos2, Rect};
 
-use crate::graph::NodeIndex;
+use crate::graph::NodeId;
 
 pub type LineSegment = [Pos2; 2];
 
 #[derive(Debug, PartialEq, Eq)]
 pub struct Layout {
-    pub(super) nodes: ahash::HashMap<NodeIndex, Rect>,
-    pub(super) edges: ahash::HashMap<(NodeIndex, NodeIndex), LineSegment>,
+    pub(super) nodes: ahash::HashMap<NodeId, Rect>,
+    pub(super) edges: ahash::HashMap<(NodeId, NodeId), LineSegment>,
     // TODO(grtlr): Consider adding the entity rects here too.
 }
 
@@ -26,14 +26,14 @@ impl Layout {
     /// Gets the final position and size of a node in the layout.
     ///
     /// Returns `Rect::ZERO` if the node is not present in the layout.
-    pub fn get_node(&self, node: &NodeIndex) -> Rect {
+    pub fn get_node(&self, node: &NodeId) -> Rect {
         self.nodes.get(node).copied().unwrap_or(Rect::ZERO)
     }
 
     /// Gets the shape of an edge in the final layout.
     ///
     /// Returns `[Pos2::ZERO, Pos2::ZERO]` if the edge is not present in the layout.
-    pub fn get_edge(&self, from: NodeIndex, to: NodeIndex) -> LineSegment {
+    pub fn get_edge(&self, from: NodeId, to: NodeId) -> LineSegment {
         self.edges
             .get(&(from, to))
             .copied()

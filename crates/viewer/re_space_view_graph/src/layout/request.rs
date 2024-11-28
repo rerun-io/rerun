@@ -3,7 +3,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use egui::{Pos2, Vec2};
 use re_chunk::EntityPath;
 
-use crate::graph::{Graph, NodeIndex};
+use crate::graph::{Graph, NodeId};
 
 #[derive(PartialEq)]
 pub(super) struct NodeTemplate {
@@ -13,8 +13,8 @@ pub(super) struct NodeTemplate {
 
 #[derive(Default, PartialEq)]
 pub(super) struct GraphTemplate {
-    pub(super) nodes: BTreeMap<NodeIndex, NodeTemplate>,
-    pub(super) edges: BTreeSet<(NodeIndex, NodeIndex)>,
+    pub(super) nodes: BTreeMap<NodeId, NodeTemplate>,
+    pub(super) edges: BTreeSet<(NodeId, NodeId)>,
 }
 
 #[derive(PartialEq)]

@@ -4,7 +4,7 @@ use std::hash::{Hash as _, Hasher as _};
 use egui::{Pos2, Vec2};
 pub(crate) use hash::GraphNodeHash;
 mod index;
-pub(crate) use index::NodeIndex;
+pub(crate) use index::NodeId;
 
 use re_chunk::EntityPath;
 use re_log_types::Instance;
@@ -17,21 +17,21 @@ use crate::{
 
 pub enum Node {
     Explicit {
-        id: NodeIndex,
+        id: NodeId,
         instance: Instance,
         node: ArrowString,
         position: Option<Pos2>,
         label: DrawableLabel,
     },
     Implicit {
-        id: NodeIndex,
+        id: NodeId,
         node: ArrowString,
         label: DrawableLabel,
     },
 }
 
 impl Node {
-    pub fn id(&self) -> NodeIndex {
+    pub fn id(&self) -> NodeId {
         match self {
             Self::Explicit { id, .. } | Self::Implicit { id, .. } => *id,
         }
@@ -58,8 +58,8 @@ impl Node {
 }
 
 pub struct Edge {
-    pub from: NodeIndex,
-    pub to: NodeIndex,
+    pub from: NodeId,
+    pub to: NodeId,
     pub arrow: bool,
 }
 

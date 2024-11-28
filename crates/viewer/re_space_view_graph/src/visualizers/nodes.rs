@@ -16,7 +16,7 @@ use re_viewer_context::{
     ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::graph::NodeIndex;
+use crate::graph::NodeId;
 
 #[derive(Default)]
 pub struct NodeVisualizer {
@@ -37,7 +37,7 @@ pub enum Label {
 pub struct NodeInstance {
     pub node: components::GraphNode,
     pub instance: Instance,
-    pub index: NodeIndex,
+    pub index: NodeId,
     pub position: Option<egui::Pos2>,
     pub label: Label,
 }
@@ -123,7 +123,7 @@ impl VisualizerSystem for NodeVisualizer {
                     NodeInstance {
                         node: node.clone(),
                         instance,
-                        index: NodeIndex::from_entity_node(&data_result.entity_path, node),
+                        index: NodeId::from_entity_node(&data_result.entity_path, node),
                         position: position.map(|[x, y]| egui::Pos2::new(x, y)),
                         label,
                     }
