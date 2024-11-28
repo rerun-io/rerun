@@ -128,7 +128,7 @@ pub struct TimePanel {
 
 impl Default for TimePanel {
     fn default() -> Self {
-        PathRecursiveChunksPerTimeline::ensure_registered();
+        Self::ensure_registered_subscribers();
 
         Self {
             data_density_graph_painter: Default::default(),
@@ -142,6 +142,14 @@ impl Default for TimePanel {
 }
 
 impl TimePanel {
+    /// Ensures that all required store subscribers are correctly set up.
+    ///
+    /// This is implicitly called by [`Self::default`], but may need to be explicitly called in,
+    /// e.g., testing context.
+    pub fn ensure_registered_subscribers() {
+        PathRecursiveChunksPerTimeline::ensure_registered();
+    }
+
     pub fn new_blueprint_panel() -> Self {
         Self {
             source: TimePanelSource::Blueprint,
