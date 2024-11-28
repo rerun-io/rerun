@@ -17,8 +17,8 @@ struct WorldGridUniformBuffer {
 var<uniform> config: WorldGridUniformBuffer;
 
 // See world_grid::GridPlane
-const ORIENTATION_XZ: u32 = 0;
-const ORIENTATION_YZ: u32 = 1;
+const ORIENTATION_YZ: u32 = 0;
+const ORIENTATION_ZX: u32 = 1;
 const ORIENTATION_XY: u32 = 2;
 
 struct VertexOutput {

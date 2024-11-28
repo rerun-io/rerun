@@ -16,10 +16,11 @@ use crate::Rgba;
 use smallvec::smallvec;
 
 /// Determines in which plane the grid is drawn.
+// Order is by index of up-axis.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum GridPlane {
-    XZ = 0,
-    YZ = 1,
+    YZ = 0,
+    ZX = 1,
     XY = 2,
 }
 
