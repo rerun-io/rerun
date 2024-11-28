@@ -1,4 +1,4 @@
-use egui::{Pos2, Rect};
+use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_space_view::{
     controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER},
@@ -14,8 +14,8 @@ use re_ui::{
     ModifiersMarkdown, MouseButtonMarkdown, UiExt as _,
 };
 use re_viewer_context::{
-    external::re_entity_db::InstancePath, IdentifiedViewSystem as _, Item, RecommendedSpaceView,
-    SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
+    IdentifiedViewSystem as _, Item, RecommendedSpaceView, SpaceViewClass,
+    SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
     SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
     ViewerContext,
@@ -23,10 +23,10 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
-    graph::{Graph, Node},
+    graph::Graph,
     layout::LayoutRequest,
-    ui::{draw_debug, draw_edge, draw_entity_rect, draw_node, GraphSpaceViewState},
-    visualizers::{merge, EdgesVisualizer, Label, NodeVisualizer},
+    ui::{draw_debug, draw_entity_rect, draw_graph, GraphSpaceViewState},
+    visualizers::{merge, EdgesVisualizer, NodeVisualizer},
 };
 
 #[derive(Default)]
@@ -178,68 +178,15 @@ Display a graph of nodes and edges.
             let mut world_bounding_rect = egui::Rect::NOTHING;
 
             for graph in &graphs {
-                let entity_path = graph.entity();
-                let entity_highlights = query.highlights.entity_highlight(entity_path.hash());
-
-                // For now we compute the entity rectangles on the fly.
-                let mut current_rect = egui::Rect::NOTHING;
-
-                for node in graph.nodes() {
-                    let center = layout.get_node(&node.id()).unwrap_or(Rect::ZERO).center();
-
-                    let response = match node {
-                        Node::Explicit { instance, .. } => {
-                            let highlight =
-                                entity_highlights.index_highlight(instance.instance_index);
-                            let response = draw_node(ui, center, node.label(), highlight);
-
-                            let response = if let Label::Text { text, .. } = &instance.label {
-                                response.on_hover_text(format!(
-                                    "Graph Node: {}\nLabel: {text}",
-                                    instance.graph_node.as_str(),
-                                ))
-                            } else {
-                                response.on_hover_text(format!(
-                                    "Graph Node: {}",
-                                    instance.graph_node.as_str(),
-                                ))
-                            };
-
-                            let instance_path = InstancePath::instance(
-                                entity_path.clone(),
-                                instance.instance_index,
-                            );
-                            ctx.select_hovered_on_click(
-                                &response,
-                                vec![(Item::DataResult(query.space_view_id, instance_path), None)]
-                                    .into_iter(),
-                            );
-
-                            response
-                        }
-                        Node::Implicit { graph_node, .. } => {
-                            draw_node(ui, center, node.label(), Default::default()).on_hover_text(
-                                format!("Implicit Graph Node: {}", graph_node.as_str(),),
-                            )
-                        }
-                    };
-
-                    current_rect = current_rect.union(response.rect);
-                }
-
-                for edge in graph.edges() {
-                    let points = layout
-                        .get_edge(edge.from, edge.to)
-                        .unwrap_or([Pos2::ZERO, Pos2::ZERO]);
-                    let resp = draw_edge(ui, points, edge.arrow);
-                    current_rect = current_rect.union(resp.rect);
-                }
+                let mut current_rect = draw_graph(ui, ctx, graph, layout, query);
 
                 // We only show entity rects if there are multiple entities.
+                // For now, these entity rects are not part of the layout, but rather tracked on the fly.
                 if graphs.len() > 1 {
-                    let resp = draw_entity_rect(ui, current_rect, entity_path, &query.highlights);
+                    let resp =
+                        draw_entity_rect(ui, current_rect, graph.entity(), &query.highlights);
 
-                    let instance_path = InstancePath::entity_all(entity_path.clone());
+                    let instance_path = InstancePath::entity_all(graph.entity().clone());
                     ctx.select_hovered_on_click(
                         &resp,
                         vec![(Item::DataResult(query.space_view_id, instance_path), None)]

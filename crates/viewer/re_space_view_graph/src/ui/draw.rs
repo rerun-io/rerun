@@ -5,12 +5,18 @@ use egui::{
     Sense, Shape, Stroke, TextWrapMode, Ui, UiBuilder, Vec2, WidgetText,
 };
 use re_chunk::EntityPath;
+use re_entity_db::InstancePath;
 use re_types::ArrowString;
 use re_viewer_context::{
-    HoverHighlight, InteractionHighlight, SelectionHighlight, SpaceViewHighlights,
+    HoverHighlight, InteractionHighlight, Item, SelectionHighlight, SpaceViewHighlights, ViewQuery,
+    ViewerContext,
 };
 
-use crate::visualizers::Label;
+use crate::{
+    graph::{Graph, Node},
+    layout::Layout,
+    visualizers::Label,
+};
 
 // Sorry for the pun, could not resist 😎.
 // On a serious note, is there no other way to create a `Sense` that does nothing?
@@ -130,7 +136,7 @@ fn draw_text_label(ui: &mut Ui, label: &TextLabel, highlight: InteractionHighlig
 }
 
 /// Draws a node at the given position.
-pub fn draw_node(
+fn draw_node(
     ui: &mut Ui,
     center: Pos2,
     node: &DrawableLabel,
@@ -186,7 +192,7 @@ fn draw_arrow(painter: &Painter, tip: Pos2, direction: Vec2, color: Color32) {
 }
 
 /// Draws an edge between two points, optionally with an arrow at the target point.
-pub fn draw_edge(ui: &mut Ui, points: [Pos2; 2], show_arrow: bool) -> Response {
+fn draw_edge(ui: &mut Ui, points: [Pos2; 2], show_arrow: bool) -> Response {
     let fg = ui.style().visuals.text_color();
 
     let rect = Rect::from_points(&points);
@@ -242,4 +248,65 @@ pub fn draw_entity_rect(
     );
 
     ui.allocate_rect(rect, Sense::click())
+}
+
+/// Draws the graph using the layout.
+#[must_use]
+pub fn draw_graph(
+    ui: &mut Ui,
+    ctx: &ViewerContext<'_>,
+    graph: &Graph,
+    layout: &Layout,
+    query: &ViewQuery<'_>,
+) -> Rect {
+    let entity_path = graph.entity();
+    let entity_highlights = query.highlights.entity_highlight(entity_path.hash());
+
+    // For now we compute the entity rectangles on the fly.
+    let mut current_rect = egui::Rect::NOTHING;
+
+    for node in graph.nodes() {
+        let center = layout.get_node(&node.id()).unwrap_or(Rect::ZERO).center();
+
+        let response = match node {
+            Node::Explicit { instance, .. } => {
+                let highlight = entity_highlights.index_highlight(instance.instance_index);
+                let response = draw_node(ui, center, node.label(), highlight);
+
+                let response = if let Label::Text { text, .. } = &instance.label {
+                    response.on_hover_text(format!(
+                        "Graph Node: {}\nLabel: {text}",
+                        instance.graph_node.as_str(),
+                    ))
+                } else {
+                    response.on_hover_text(format!("Graph Node: {}", instance.graph_node.as_str(),))
+                };
+
+                let instance_path =
+                    InstancePath::instance(entity_path.clone(), instance.instance_index);
+                ctx.select_hovered_on_click(
+                    &response,
+                    vec![(Item::DataResult(query.space_view_id, instance_path), None)].into_iter(),
+                );
+
+                response
+            }
+            Node::Implicit { graph_node, .. } => {
+                draw_node(ui, center, node.label(), Default::default())
+                    .on_hover_text(format!("Implicit Graph Node: {}", graph_node.as_str(),))
+            }
+        };
+
+        current_rect = current_rect.union(response.rect);
+    }
+
+    for edge in graph.edges() {
+        let points = layout
+            .get_edge(edge.from, edge.to)
+            .unwrap_or([Pos2::ZERO, Pos2::ZERO]);
+        let resp = draw_edge(ui, points, edge.arrow);
+        current_rect = current_rect.union(resp.rect);
+    }
+
+    current_rect
 }

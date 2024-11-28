@@ -15,6 +15,7 @@ use crate::{
 
 /// Describes the differen kind of nodes that we can have in a graph.
 pub enum Node {
+
     /// An explicit node is a node that was provided via [`re_types::archetypes::GraphNodes`].
     ///
     /// It therefore has an instance, as well as all properties that can be added via that archetype.
@@ -22,12 +23,12 @@ pub enum Node {
         instance: NodeInstance,
         label: DrawableLabel,
     },
+
     /// An implicit node is a node that was provided via [`re_types::archetypes::GraphEdges`], but does not have a corresponding [`re_types::components::GraphNode`] in an [`re_types::archetypes::GraphNodes`] archetype.
     ///
     /// Because it was never specified directly, it also does not have many of the properties that an [`Node::Explicit`] has.
     Implicit {
         id: NodeId,
-        /// The string that was used to refer to that node in the list of edges.
         graph_node: components::GraphNode,
         label: DrawableLabel,
     },
