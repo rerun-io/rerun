@@ -8,6 +8,7 @@ pub type LineSegment = [Pos2; 2];
 pub struct Layout {
     pub(super) nodes: ahash::HashMap<NodeIndex, Rect>,
     pub(super) edges: ahash::HashMap<(NodeIndex, NodeIndex), LineSegment>,
+    // TODO(grtlr): Consider adding the entity rects here too.
 }
 
 impl Layout {

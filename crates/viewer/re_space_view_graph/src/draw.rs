@@ -1,5 +1,9 @@
-use egui::{Color32, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, Ui, UiBuilder, Vec2};
-use re_viewer_context::InteractionHighlight;
+use egui::{
+    Align2, Color32, FontId, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, Ui, UiBuilder,
+    Vec2,
+};
+use re_chunk::EntityPath;
+use re_viewer_context::{InteractionHighlight, SpaceViewHighlights};
 
 use crate::ui::draw::DrawableLabel;
 
@@ -80,4 +84,42 @@ pub fn draw_edge(ui: &mut Ui, points: [Pos2; 2], show_arrow: bool) -> Response {
     // We can add interactions in the future, for now we simply allocate the
     // rect, so that bounding boxes are computed correctly.
     ui.allocate_rect(rect, NON_SENSE)
+}
+
+pub fn draw_entity_rect(
+    ui: &mut Ui,
+    rect: Rect,
+    entity_path: &EntityPath,
+    highlights: &SpaceViewHighlights,
+) -> Response {
+    let color = if highlights
+        .entity_outline_mask(entity_path.hash())
+        .overall
+        .is_some()
+    {
+        ui.ctx().style().visuals.text_color()
+    } else {
+        ui.ctx()
+            .style()
+            .visuals
+            .gray_out(ui.ctx().style().visuals.text_color())
+    };
+
+    let padded = rect.expand(10.0);
+
+    ui.painter()
+        .rect(padded, 0.0, Color32::TRANSPARENT, Stroke::new(1.0, color));
+
+    ui.painter().text(
+        padded.left_top(),
+        Align2::LEFT_BOTTOM,
+        entity_path.to_string(),
+        FontId {
+            size: 12.0,
+            family: Default::default(),
+        },
+        color,
+    );
+
+    ui.allocate_rect(rect, Sense::click())
 }

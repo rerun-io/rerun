@@ -11,15 +11,16 @@ use re_ui::{
     self, zoom_pan_area::zoom_pan_area, ModifiersMarkdown, MouseButtonMarkdown, UiExt as _,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem as _, RecommendedSpaceView, SpaceViewClass, SpaceViewClassLayoutPriority,
-    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
-    SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
-    SystemExecutionOutput, ViewQuery, ViewerContext,
+    external::re_entity_db::InstancePath, IdentifiedViewSystem as _, Item, RecommendedSpaceView,
+    SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
+    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
+    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
+    ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
-    draw::{draw_debug, draw_edge, draw_node},
+    draw::{draw_debug, draw_edge, draw_entity_rect, draw_node},
     graph::Graph,
     layout::LayoutRequest,
     ui::GraphSpaceViewState,
@@ -174,21 +175,40 @@ Display a graph of nodes and edges.
             |ui| {
                 let mut world_bounding_rect = egui::Rect::NOTHING;
 
-                for graph in graphs {
+                for graph in &graphs {
+                    // For now we compute the entity rectangles on the fly.
+                    let mut current_rect = egui::Rect::NOTHING;
+
                     for node in graph.nodes() {
                         let center = layout.get_node(&node.id()).center();
 
                         // TODO(grtlr): Add proper highlights here:
-                        let resp =
-                            draw_node(ui, center, node.label(), Default::default());
-                        world_bounding_rect = world_bounding_rect.union(resp.rect);
+                        let resp = draw_node(ui, center, node.label(), Default::default());
+                        current_rect = current_rect.union(resp.rect);
                     }
 
                     for edge in graph.edges() {
                         let points = layout.get_edge(edge.from, edge.to);
-                        let resp = draw_edge(ui,  points, edge.arrow);
-                        world_bounding_rect = world_bounding_rect.union(resp.rect);
+                        let resp = draw_edge(ui, points, edge.arrow);
+                        current_rect = current_rect.union(resp.rect);
                     }
+
+                    // We only show entity rects if there are multiple entities.
+                    if graphs.len() > 1 {
+                        let entity_path = graph.entity();
+                        let resp =
+                            draw_entity_rect(ui, current_rect, entity_path, &query.highlights);
+
+                        let instance_path = InstancePath::entity_all(entity_path.clone());
+                        ctx.select_hovered_on_click(
+                            &resp,
+                            vec![(Item::DataResult(query.space_view_id, instance_path), None)]
+                                .into_iter(),
+                        );
+                        current_rect = current_rect.union(resp.rect);
+                    }
+
+                    world_bounding_rect = world_bounding_rect.union(current_rect);
                 }
 
                 // We need to draw the debug information after the rest to ensure that we have the correct bounding box.

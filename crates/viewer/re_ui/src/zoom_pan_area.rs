@@ -40,7 +40,6 @@ pub fn fit_to_world_rect(available_size: Vec2, world_rect: Rect) -> TSTransform 
     let center_world = world_rect.center().to_vec2();
 
     // Set the transformation to scale and then translate to center.
-
     TSTransform::from_translation(center_screen.to_vec2() - center_world * scale)
         * TSTransform::from_scaling(scale)
 }
