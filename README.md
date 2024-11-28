@@ -61,7 +61,7 @@ rr.log("path/to/points", rr.Points3D(positions, colors=colors))
 
 ### Installing the Rerun Viewer binary
 To stream log data over the network or load our `.rrd` data files you also need the `rerun` binary.
-It can be installed with `pip install rerun-sdk` or with `cargo install rerun-cli --locked --features nasm` (see note bellow).
+It can be installed with `pip install rerun-sdk` or with `cargo install rerun-cli --locked --features nasm` (see note below).
 Note that only the Python SDK comes bundled with the Viewer whereas C++ & Rust always rely on a separate install.
 
 **Note**: the `nasm` Cargo feature requires the [`nasm`](https://www.nasm.us) CLI to be installed and available in your path.
