@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use egui::{CentralPanel, Vec2};
+use egui::Vec2;
 
 use re_chunk_store::{Chunk, LatestAtQuery, RowId};
 use re_log_types::example_components::MyPoint;
@@ -73,13 +73,14 @@ pub fn time_panel_dense_data_should_match_snapshot() {
     run_time_panel_and_save_snapshot(test_context, "time_panel_dense_data");
 }
 
-//TODO(ab): this contains a lot of boilerplate which should be provided by helpers
 fn run_time_panel_and_save_snapshot(mut test_context: TestContext, snapshot_name: &str) {
     let mut panel = TimePanel::default();
+
+    //TODO(ab): this contains a lot of boilerplate which should be provided by helpers
     let mut harness = egui_kittest::Harness::builder()
         .with_size(Vec2::new(700.0, 300.0))
-        .build(move |ctx| {
-            test_context.run(ctx, |viewer_ctx| {
+        .build_ui(|ui| {
+            test_context.run(&ui.ctx().clone(), |viewer_ctx| {
                 let (sender, _) = std::sync::mpsc::channel();
                 let blueprint = ViewportBlueprint::try_from_db(
                     viewer_ctx.store_context.blueprint,
@@ -87,21 +88,46 @@ fn run_time_panel_and_save_snapshot(mut test_context: TestContext, snapshot_name
                     sender,
                 );
 
-                CentralPanel::default().show(ctx, |ui| {
-                    let mut time_ctrl = viewer_ctx.rec_cfg.time_ctrl.read().clone();
+                let mut time_ctrl = viewer_ctx.rec_cfg.time_ctrl.read().clone();
 
-                    panel.show_expanded_with_header(
-                        viewer_ctx,
-                        &blueprint,
-                        viewer_ctx.recording(),
-                        &mut time_ctrl,
-                        ui,
-                    );
-                });
+                panel.show_expanded_with_header(
+                    viewer_ctx,
+                    &blueprint,
+                    viewer_ctx.recording(),
+                    &mut time_ctrl,
+                    ui,
+                );
             });
 
             test_context.handle_system_commands();
         });
+
+    // let mut harness = egui_kittest::Harness::builder()
+    //     .with_size(Vec2::new(700.0, 300.0))
+    //     .build(move |ctx| {
+    //         test_context.run(ctx, |viewer_ctx| {
+    //             let (sender, _) = std::sync::mpsc::channel();
+    //             let blueprint = ViewportBlueprint::try_from_db(
+    //                 viewer_ctx.store_context.blueprint,
+    //                 &LatestAtQuery::latest(blueprint_timeline()),
+    //                 sender,
+    //             );
+    //
+    //             CentralPanel::default().show(ctx, |ui| {
+    //                 let mut time_ctrl = viewer_ctx.rec_cfg.time_ctrl.read().clone();
+    //
+    //                 panel.show_expanded_with_header(
+    //                     viewer_ctx,
+    //                     &blueprint,
+    //                     viewer_ctx.recording(),
+    //                     &mut time_ctrl,
+    //                     ui,
+    //                 );
+    //             });
+    //         });
+    //
+    //         test_context.handle_system_commands();
+    //     });
 
     harness.run();
 
