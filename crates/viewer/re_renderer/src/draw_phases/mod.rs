@@ -32,6 +32,9 @@ pub enum DrawPhase {
     /// Background, rendering where depth wasn't written.
     Background,
 
+    /// Transparent objects, performing reads of the depth buffer, but no writes.
+    Transparent,
+
     /// Everything that can be picked with GPU based picking.
     ///
     /// This should be everything in the `Opaque` phase.

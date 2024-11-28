@@ -634,7 +634,11 @@ impl ViewBuilder {
 
             pass.set_bind_group(0, &setup.bind_group_0, &[]);
 
-            for phase in [DrawPhase::Opaque, DrawPhase::Background] {
+            for phase in [
+                DrawPhase::Opaque,
+                DrawPhase::Background,
+                DrawPhase::Transparent,
+            ] {
                 self.draw_phase(&renderers, &pipelines, phase, &mut pass);
             }
         }

@@ -13,9 +13,6 @@
 //! cargo run-wasm --example depth_cloud
 //! ```
 
-// TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
-
 use std::f32::consts::TAU;
 
 use glam::Vec3;
@@ -69,7 +66,7 @@ impl RenderDepthClouds {
         target_location: glam::Vec2,
         frame_draw_data: FD,
         image_draw_data: ID,
-    ) -> framework::ViewDrawResult
+    ) -> anyhow::Result<framework::ViewDrawResult>
     where
         FD: DrawData + Sync + Send + Clone + 'static,
         ID: DrawData + Sync + Send + Clone + 'static,
@@ -106,7 +103,7 @@ impl RenderDepthClouds {
             builder
                 .batch("backprojected point cloud")
                 .add_points(&points, &radii, &colors, &[]);
-            builder.into_draw_data().unwrap()
+            builder.into_draw_data()?
         };
 
         let mut view_builder = ViewBuilder::new(
@@ -119,7 +116,7 @@ impl RenderDepthClouds {
                     Vec3::ZERO,
                     Vec3::Y,
                 )
-                .unwrap(),
+                .ok_or(anyhow::format_err!("invalid camera"))?,
                 projection_from_view: Projection::Perspective {
                     vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                     near_plane_distance: 0.01,
@@ -135,14 +132,13 @@ impl RenderDepthClouds {
             .queue_draw(point_cloud_draw_data)
             .queue_draw(frame_draw_data)
             .queue_draw(image_draw_data)
-            .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)
-            .unwrap();
+            .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)?;
 
-        framework::ViewDrawResult {
+        Ok(framework::ViewDrawResult {
             view_builder,
             command_buffer,
             target_location,
-        }
+        })
     }
 
     /// Pass the depth texture to our native depth cloud renderer.
@@ -154,7 +150,7 @@ impl RenderDepthClouds {
         target_location: glam::Vec2,
         frame_draw_data: FD,
         image_draw_data: ID,
-    ) -> framework::ViewDrawResult
+    ) -> anyhow::Result<framework::ViewDrawResult>
     where
         FD: DrawData + Sync + Send + Clone + 'static,
         ID: DrawData + Sync + Send + Clone + 'static,
@@ -186,8 +182,7 @@ impl RenderDepthClouds {
                 }],
                 radius_boost_in_ui_points_for_outlines: 2.5,
             },
-        )
-        .unwrap();
+        )?;
 
         let mut view_builder = ViewBuilder::new(
             re_ctx,
@@ -199,7 +194,7 @@ impl RenderDepthClouds {
                     Vec3::ZERO,
                     Vec3::Y,
                 )
-                .unwrap(),
+                .ok_or(anyhow::format_err!("invalid camera"))?,
                 projection_from_view: Projection::Perspective {
                     vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                     near_plane_distance: 0.01,
@@ -215,14 +210,13 @@ impl RenderDepthClouds {
             .queue_draw(depth_cloud_draw_data)
             .queue_draw(frame_draw_data)
             .queue_draw(image_draw_data)
-            .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)
-            .unwrap();
+            .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)?;
 
-        framework::ViewDrawResult {
+        Ok(framework::ViewDrawResult {
             view_builder,
             command_buffer,
             target_location,
-        }
+        })
     }
 }
 
@@ -269,7 +263,7 @@ impl framework::Example for RenderDepthClouds {
         resolution: [u32; 2],
         time: &framework::Time,
         pixels_per_point: f32,
-    ) -> Vec<framework::ViewDrawResult> {
+    ) -> anyhow::Result<Vec<framework::ViewDrawResult>> {
         let Self {
             albedo,
             camera_control,
@@ -307,7 +301,7 @@ impl framework::Example for RenderDepthClouds {
                     ),
                 );
             }
-            builder.into_draw_data().unwrap()
+            builder.into_draw_data()?
         };
 
         let image_draw_data = RectangleDrawData::new(
@@ -326,10 +320,9 @@ impl framework::Example for RenderDepthClouds {
                     ..Default::default()
                 },
             }],
-        )
-        .unwrap();
+        )?;
 
-        vec![
+        Ok(vec![
             self.draw_backprojected_point_cloud(
                 re_ctx,
                 pixels_per_point,
@@ -337,7 +330,7 @@ impl framework::Example for RenderDepthClouds {
                 splits[0].target_location,
                 frame_draw_data.clone(),
                 image_draw_data.clone(),
-            ),
+            )?,
             self.draw_depth_cloud(
                 re_ctx,
                 pixels_per_point,
@@ -345,8 +338,8 @@ impl framework::Example for RenderDepthClouds {
                 splits[1].target_location,
                 frame_draw_data,
                 image_draw_data,
-            ),
-        ]
+            )?,
+        ])
     }
 
     fn on_key_event(&mut self, input: winit::event::KeyEvent) {
