@@ -90,7 +90,7 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     // Figure out the how wide the lines are in this "draw space".
     let plane_unit_pixel_derivative = fwidthFine(in.scaled_world_plane_position);
     let line_anti_alias = plane_unit_pixel_derivative;
-    let width_in_pixels = 1.0;//config.thickness_ui * frame.pixels_from_point;
+    let width_in_pixels = config.thickness_ui * frame.pixels_from_point;
     let width_in_grid_units = width_in_pixels * plane_unit_pixel_derivative;
     var intensity_regular = linearstep2(width_in_grid_units + line_anti_alias, width_in_grid_units - line_anti_alias, distance_to_grid_line);
 
@@ -99,12 +99,12 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     //
     // Note that `1/plane_unit_pixel_derivative` would give us more literal pixels per line,
     // but we actually want to know how dense the lines get here so we use `1/width_in_grid_units` instead,
-    // such that a line density of 1.0 means roughly "100% lines" and 10.0 means "Every 10 pixels there is a lines".
+    // such that a value of 1.0 means roughly "100% lines" and 10.0 means "Every 10 pixels there is a lines".
     // Empirically (== making the fade a hard cut and taking screenshot), this works out pretty accurately!
     //
     // Tried smoothstep here, but didn't feel right even with lots of range tweaking.
-    let line_density = 1.0 / max(width_in_grid_units.x, width_in_grid_units.y);
-    let grid_closeness_fade = linearstep(1.0, 10.0, line_density);
+    let screen_space_line_spacing = 1.0 / max(width_in_grid_units.x, width_in_grid_units.y);
+    let grid_closeness_fade = linearstep(1.0, 10.0, screen_space_line_spacing);
     intensity_regular *= grid_closeness_fade;
 
     // Every tenth line is a more intense, we call those "cardinal" lines.
@@ -114,7 +114,7 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     let distance_to_grid_line_cardinal = calc_distance_to_grid_line(in.scaled_world_plane_position * (1.0 / CARDINAL_LINE_FACTOR));
     var cardinal_line_intensity = linearstep2(width_in_grid_units + line_anti_alias, width_in_grid_units - line_anti_alias,
                                               distance_to_grid_line_cardinal * CARDINAL_LINE_FACTOR);
-    let cardinal_grid_closeness_fade = linearstep(2.0, 10.0, line_density * CARDINAL_LINE_FACTOR); // Fade cardinal lines a little bit earlier (because it looks nicer)
+    let cardinal_grid_closeness_fade = linearstep(2.0, 10.0, screen_space_line_spacing * CARDINAL_LINE_FACTOR); // Fade cardinal lines a little bit earlier (because it looks nicer)
     cardinal_line_intensity *= cardinal_grid_closeness_fade;
 
     // Combine all lines.

@@ -3,6 +3,7 @@
 //! Controls:
 //! - Space: Pause
 //! - G: Toggle camera mode
+// TODO(#1426): unify camera logic between examples and add a free camera.
 
 use re_renderer::{
     renderer::GpuMeshInstance,
