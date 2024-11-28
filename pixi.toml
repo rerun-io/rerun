@@ -324,7 +324,7 @@ py-build-notebook = { cmd = "pip install -e rerun_notebook", depends_on = [
   "js-build-base",
 ] }
 
-# Build an installable SKD-only wheel. IMPORTANT: unlike the officially published wheels, the wheel produced by this command does NOT include the viewer.
+# Build an installable SDK-only wheel. IMPORTANT: unlike the officially published wheels, the wheel produced by this command does NOT include the viewer.
 # TODO(ab): add a command that produce a complete wheel, including the viewer.
 py-build-wheels-sdk-only = { cmd = "RERUN_ALLOW_MISSING_BIN=1 python scripts/ci/build_and_upload_wheels.py --mode pr --dir ''" }
 
