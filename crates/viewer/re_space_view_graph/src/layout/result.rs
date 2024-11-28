@@ -24,19 +24,12 @@ impl Layout {
     }
 
     /// Gets the final position and size of a node in the layout.
-    ///
-    /// Returns `Rect::ZERO` if the node is not present in the layout.
-    pub fn get_node(&self, node: &NodeId) -> Rect {
-        self.nodes.get(node).copied().unwrap_or(Rect::ZERO)
+    pub fn get_node(&self, node: &NodeId) -> Option<Rect> {
+        self.nodes.get(node).copied()
     }
 
     /// Gets the shape of an edge in the final layout.
-    ///
-    /// Returns `[Pos2::ZERO, Pos2::ZERO]` if the edge is not present in the layout.
-    pub fn get_edge(&self, from: NodeId, to: NodeId) -> LineSegment {
-        self.edges
-            .get(&(from, to))
-            .copied()
-            .unwrap_or([Pos2::ZERO, Pos2::ZERO])
+    pub fn get_edge(&self, from: NodeId, to: NodeId) -> Option<LineSegment> {
+        self.edges.get(&(from, to)).copied()
     }
 }

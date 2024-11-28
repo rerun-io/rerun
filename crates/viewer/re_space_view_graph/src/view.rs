@@ -1,3 +1,4 @@
+use egui::{Pos2, Rect};
 use re_log_types::EntityPath;
 use re_space_view::{
     controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER},
@@ -185,7 +186,7 @@ Display a graph of nodes and edges.
                     let mut current_rect = egui::Rect::NOTHING;
 
                     for node in graph.nodes() {
-                        let center = layout.get_node(&node.id()).center();
+                        let center = layout.get_node(&node.id()).unwrap_or(Rect::ZERO).center();
 
                         let response = match node {
                             Node::Explicit { instance, .. } => {
@@ -214,7 +215,7 @@ Display a graph of nodes and edges.
                     }
 
                     for edge in graph.edges() {
-                        let points = layout.get_edge(edge.from, edge.to);
+                        let points = layout.get_edge(edge.from, edge.to).unwrap_or([Pos2::ZERO, Pos2::ZERO]);
                         let resp = draw_edge(ui, points, edge.arrow);
                         current_rect = current_rect.union(resp.rect);
                     }
