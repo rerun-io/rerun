@@ -48,6 +48,13 @@ default = ["native_viewer", "web_viewer", "map_view"]
 # - This list is not exhaustive and will unexpectedly grow in the future.
 #
 # If you insist on adding a feature here, please make sure you address all the concerns above.
+#
+# `nasm`
+# ------
+#
+# This requires external build tools (the `nasm` cli) and would break any build on a system without it. Mitigation: a
+# warning with instructions is printed when building `rerun-cli` in release mode without the `nasm` feature (see
+# `build.rs`).
 
 ## The features we enable when we build the pre-built binaries during our releases.
 ## This may enable features that require extra build tools that not everyone has.
