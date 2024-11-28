@@ -79,15 +79,17 @@ jobs:
 
   # Run some basics tests on Mac and Windows
   mac-windows-tests:
-    name: Test on macOS and Windows
-    if: ${{ inputs.CHANNEL == 'nightly' }}
+    name: Test on ${{ matrix.os }}
     strategy:
       matrix:
         include:
           - os: macos-latest
             name: macos
+            channel: main
           - os: windows-latest-8-cores
             name: windows
+            channel: nightly
+    if: ${{ inputs.CHANNEL == matrix.channel }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
