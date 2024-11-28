@@ -79,7 +79,7 @@ jobs:
 
   # Run some basics tests on Mac and Windows
   mac-windows-tests:
-    name: Test on ${{ matrix.os }}
+    name: Test on ${{ matrix.name }}
     strategy:
       matrix:
         include:
@@ -87,11 +87,10 @@ jobs:
             name: macos
             # TODO(#8245): we also run mac tests on `main` because that's the only platform where UI snapshot tests are covered.
             # When the linux runners are able to run these tests (with a software renderer), we can move that back to nightly.
-            channel: main
+            if: ${{ inputs.CHANNEL == 'main' || inputs.CHANNEL == 'nightly' }}
           - os: windows-latest-8-cores
             name: windows
-            channel: nightly
-    if: ${{ inputs.CHANNEL == matrix.channel }}
+            if: ${{ inputs.CHANNEL == 'nightly' }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
