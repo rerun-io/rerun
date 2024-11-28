@@ -71,7 +71,7 @@ pub fn zoom_pan_area(
             // A Ui for sensing drag-to-pan, scroll-to-zoom, etc
             let mut drag_sense_ui = ui.new_child(
                 egui::UiBuilder::new()
-                    .sense(egui::Sense::drag())
+                    .sense(egui::Sense::click_and_drag())
                     .max_rect(visible_rect_in_world),
             );
             drag_sense_ui.set_min_size(visible_rect_in_world.size());

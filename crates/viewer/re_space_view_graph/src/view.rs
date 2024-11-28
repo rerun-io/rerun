@@ -164,6 +164,7 @@ Display a graph of nodes and edges.
         let view_rect = ui.max_rect();
 
         let request = LayoutRequest::from_graphs(graphs.iter());
+        let layout_was_empty = state.layout_state.is_none();
         let layout = state.layout_state.get(request);
 
         let (resp, new_bounds) = zoom_pan_area(
@@ -242,7 +243,7 @@ Display a graph of nodes and edges.
 
         // Update blueprint if changed
         let updated_bounds: blueprint::components::VisualBounds2D = new_bounds.into();
-        if resp.double_clicked() {
+        if resp.double_clicked() || layout_was_empty {
             bounds_property.reset_blueprint_component::<blueprint::components::VisualBounds2D>(ctx);
         } else if bounds != updated_bounds {
             bounds_property.save_blueprint_component(ctx, &updated_bounds);
