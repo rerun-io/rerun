@@ -120,19 +120,19 @@ fn line_segment(source: Rect, target: Rect) -> [Pos2; 2] {
     let direction = (target_center - source_center).normalized();
 
     // Find the border points on both rectangles
-    let source_point = intersects_ray_from_center(source, -direction); // Reverse direction for target
-    let target_point = intersects_ray_from_center(target, direction);
+    let source_point = intersects_ray_from_center(source, direction);
+    let target_point = intersects_ray_from_center(target, -direction); // Reverse direction for target
 
     [source_point, target_point]
 }
 
 /// Helper function to find the point where the line intersects the border of a rectangle
 fn intersects_ray_from_center(rect: Rect, direction: Vec2) -> Pos2 {
-    let mut t_min = f32::NEG_INFINITY;
-    let mut t_max = f32::INFINITY;
+    let mut tmin = f32::NEG_INFINITY;
+    let mut tmax = f32::INFINITY;
 
     for i in 0..2 {
-        let inv_d = 1.0 / direction[i];
+        let inv_d = 1.0 / -direction[i];
         let mut t0 = (rect.min[i] - rect.center()[i]) * inv_d;
         let mut t1 = (rect.max[i] - rect.center()[i]) * inv_d;
 
@@ -140,12 +140,12 @@ fn intersects_ray_from_center(rect: Rect, direction: Vec2) -> Pos2 {
             std::mem::swap(&mut t0, &mut t1);
         }
 
-        t_min = t_min.max(t0);
-        t_max = t_max.min(t1);
+        tmin = tmin.max(t0);
+        tmax = tmax.min(t1);
     }
 
-    let t = t_max.min(t_min); // Pick the first intersection
-    rect.center() + t * direction
+    let t = tmax.min(tmin); // Pick the first intersection
+    rect.center() + t * -direction
 }
 
 #[cfg(test)]
@@ -159,13 +159,13 @@ mod test {
 
         assert_eq!(
             intersects_ray_from_center(rect, Vec2::RIGHT),
-            pos2(1.0, 2.0),
+            pos2(3.0, 2.0),
             "rightward ray"
         );
 
         assert_eq!(
             intersects_ray_from_center(rect, Vec2::UP),
-            pos2(2.0, 3.0),
+            pos2(2.0, 1.0),
             "upward ray"
         );
 
@@ -184,7 +184,25 @@ mod test {
         assert_eq!(
             intersects_ray_from_center(rect, (Vec2::LEFT + Vec2::DOWN).normalized()),
             pos2(1.0, 3.0),
-            "corner ray"
+            "bottom-left corner ray"
+        );
+
+        assert_eq!(
+            intersects_ray_from_center(rect, (Vec2::LEFT + Vec2::UP).normalized()),
+            pos2(1.0, 1.0),
+            "top-left corner ray"
+        );
+
+        assert_eq!(
+            intersects_ray_from_center(rect, (Vec2::RIGHT + Vec2::DOWN).normalized()),
+            pos2(3.0, 3.0),
+            "bottom-right corner ray"
+        );
+
+        assert_eq!(
+            intersects_ray_from_center(rect, (Vec2::RIGHT + Vec2::UP).normalized()),
+            pos2(3.0, 1.0),
+            "top-right corner ray"
         );
     }
 }

@@ -29,7 +29,7 @@ def log_graphs() -> None:
         ("C", None),
         (None, ("A", "B")),
         (None, ("B", "C")),
-        (None, ("A", "C")),
+        (None, ("C", "A")),
     ]
 
     nodes = []
