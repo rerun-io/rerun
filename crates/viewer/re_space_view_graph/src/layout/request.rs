@@ -17,6 +17,9 @@ pub(super) struct GraphTemplate {
     pub(super) edges: BTreeSet<(NodeId, NodeId)>,
 }
 
+/// A [`LayoutRequest`] encapsulates all the information that is considered when computing a layout.
+///
+/// It implements [`PartialEq`] to check if a layout is up-to-date, or if it needs to be recomputed.
 #[derive(PartialEq)]
 pub struct LayoutRequest {
     pub(super) graphs: BTreeMap<EntityPath, GraphTemplate>,
