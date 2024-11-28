@@ -12,7 +12,7 @@ use re_viewer_context::test_context::TestContext;
 use re_viewport_blueprint::ViewportBlueprint;
 
 #[test]
-#[cfg_attr(not(target_os = "macos"), skip)]
+#[cfg_attr(not(target_os = "macos"), ignore)]
 pub fn time_panel_two_sections_should_match_snapshot() {
     let mut test_context = TestContext::default();
 
@@ -38,7 +38,7 @@ pub fn time_panel_two_sections_should_match_snapshot() {
 }
 
 #[test]
-#[cfg_attr(not(target_os = "macos"), skip)]
+#[cfg_attr(not(target_os = "macos"), ignore)]
 pub fn time_panel_dense_data_should_match_snapshot() {
     let mut test_context = TestContext::default();
 
