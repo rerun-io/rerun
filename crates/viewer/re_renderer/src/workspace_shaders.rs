@@ -176,6 +176,12 @@ pub fn init() {
     }
 
     {
+        let virtpath = Path::new("shader/utils/interpolation.wgsl");
+        let content = include_str!("../shader/utils/interpolation.wgsl").into();
+        fs.create_file(virtpath, content).unwrap();
+    }
+
+    {
         let virtpath = Path::new("shader/utils/quaternion.wgsl");
         let content = include_str!("../shader/utils/quaternion.wgsl").into();
         fs.create_file(virtpath, content).unwrap();

@@ -1,4 +1,5 @@
 #import <./global_bindings.wgsl>
+#import <./utils/interpolation.wgsl>
 
 struct WorldGridUniformBuffer {
     color: vec4f,
@@ -48,13 +49,13 @@ fn main_vs(@builtin(vertex_index) v_idx: u32) -> VertexOutput {
     var plane_position = (vec2f(f32(v_idx / 2u), f32(v_idx % 2u)) * 2.0 - 1.0) * PLANE_GEOMETRY_SIZE;
     var world_position: vec3f;
     switch (config.orientation) {
-        case ORIENTATION_XZ: {
-            plane_position += frame.camera_position.xz;
-            world_position = vec3f(plane_position.x, 0.0, plane_position.y);
-        }
         case ORIENTATION_YZ: {
             plane_position += frame.camera_position.yz;
             world_position = vec3f(0.0, plane_position.x, plane_position.y);
+        }
+        case ORIENTATION_ZX: {
+            plane_position += frame.camera_position.xz;
+            world_position = vec3f(plane_position.x, 0.0, plane_position.y);
         }
         case ORIENTATION_XY: {
             plane_position += frame.camera_position.xy;
@@ -71,14 +72,6 @@ fn main_vs(@builtin(vertex_index) v_idx: u32) -> VertexOutput {
     return out;
 }
 
-// Like smoothstep, but linear.
-// Used for antialiasing: smoothstep works as well but is subtly worse.
-fn linearstep(edge0: f32, edge1: f32, x: f32) -> f32 {
-    return saturate((x - edge0) / (edge1 - edge0));
-}
-fn linearstep2(edge0: vec2f, edge1: vec2f, x: vec2f) -> vec2f {
-    return saturate((x - edge0) / (edge1 - edge0));
-}
 
 // Distance to a grid line in x and y ranging from 0 to 1.
 fn calc_distance_to_grid_line(scaled_world_plane_position: vec2f) -> vec2f {
@@ -133,21 +126,7 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     let intensity_combined = saturate(cardinal_and_regular.x * (1.0 - cardinal_and_regular.y) + cardinal_and_regular.y);
 
     // Fade on acute viewing angles.
-    var view_direction_up_component: f32;
-    switch (config.orientation) {
-        case ORIENTATION_XZ: {
-            view_direction_up_component = frame.camera_forward.y;
-        }
-        case ORIENTATION_YZ: {
-            view_direction_up_component = frame.camera_forward.x;
-        }
-        case ORIENTATION_XY: {
-            view_direction_up_component = frame.camera_forward.z;
-        }
-        default: {
-            view_direction_up_component = 0.0;
-        }
-    }
+    var view_direction_up_component = frame.camera_forward[config.orientation];
     let view_angle_fade = smoothstep(0.0, 0.25, abs(view_direction_up_component)); // Empirical values.
 
     return config.color * (intensity_combined * view_angle_fade);
