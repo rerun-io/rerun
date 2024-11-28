@@ -2,9 +2,23 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
+## [0.20.2](https://github.com/rerun-io/rerun/compare/0.20.1...0.20.2) - Build fix
 
-## [0.20.1](https://github.com/rerun-io/rerun/compare/0.20.0...0.20.1) - Fix Rust docs
-- Fix Rust docs [#8168](https://github.com/rerun-io/rerun/pull/8168)
+### 🔎 Details
+
+#### 🪳 Bug fixes
+- Fix a drag-and-drop display regression [#8228](https://github.com/rerun-io/rerun/pull/8228)
+
+#### 📚 Docs
+- Add `map_view` to the default features and improve how the `nasm` feature is handled and documented [#8243](https://github.com/rerun-io/rerun/pull/8243)
+
+#### 🧑‍💻 Dev-experience
+- Gracefully handle `cargo-metadata` failures in users' environments [#8239](https://github.com/rerun-io/rerun/pull/8239)
+
+
+## [0.20.1](https://github.com/rerun-io/rerun/compare/0.20.0...0.20.1) - Doc fix
+
+- Fix doc build - run `cargo metadata` with `--offline` & `--no-deps` [#8168](https://github.com/rerun-io/rerun/pull/8168)
 
 
 ## [0.20.0](https://github.com/rerun-io/rerun/compare/0.19.1...0.20.0) - Map view & native H.264 video support
