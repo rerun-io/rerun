@@ -15,8 +15,7 @@ impl nohash_hasher::IsEnabled for NodeId {}
 // More info: https://crates.io/crates/nohash-hasher
 impl std::hash::Hash for NodeId {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        // TODO(grtlr): Consider using `write_usize` here, to further decrease the risk of collision.
-        let combined = self.entity_hash.hash64() << 32 | self.node_hash.hash64();
+        let combined = self.entity_hash.hash64() ^ self.node_hash.hash64();
         state.write_u64(combined);
     }
 }
