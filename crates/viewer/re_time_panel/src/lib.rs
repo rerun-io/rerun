@@ -8,6 +8,7 @@
 
 mod data_density_graph;
 mod paint_ticks;
+mod recursive_chunks_per_timeline_subscriber;
 mod time_axis;
 mod time_control_ui;
 mod time_ranges_ui;
@@ -32,6 +33,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewportBlueprint;
 
+use recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimeline;
 use time_axis::TimelineAxis;
 use time_control_ui::TimeControlUi;
 use time_ranges_ui::TimeRangesUi;
@@ -126,6 +128,8 @@ pub struct TimePanel {
 
 impl Default for TimePanel {
     fn default() -> Self {
+        PathRecursiveChunksPerTimeline::ensure_registered();
+
         Self {
             data_density_graph_painter: Default::default(),
             prev_col_width: 400.0,
@@ -547,8 +551,11 @@ impl TimePanel {
                     ui.scroll_with_delta(Vec2::Y * time_area_response.drag_delta().y);
                 }
 
-                // Show "/" on top?
-                let show_root = true;
+                // Show "/" on top only for recording streams, because the `/` entity in blueprint
+                // is always empty, so it's just lost space. This works around an issue where the
+                // selection/hover state of the `/` entity is wrongly synchronized between both
+                // stores, due to `Item::*` not tracking stores for entity paths.
+                let show_root = self.source == TimePanelSource::Recording;
 
                 if show_root {
                     self.show_tree(
@@ -632,7 +639,12 @@ impl TimePanel {
 
         // Globally unique id - should only be one of these in view at one time.
         // We do this so that we can support "collapse/expand all" command.
-        let id = egui::Id::new(CollapseScope::StreamsTree.entity(tree.path.clone()));
+        let id = egui::Id::new(match self.source {
+            TimePanelSource::Recording => CollapseScope::StreamsTree.entity(tree.path.clone()),
+            TimePanelSource::Blueprint => {
+                CollapseScope::BlueprintStreamsTree.entity(tree.path.clone())
+            }
+        });
 
         let list_item::ShowCollapsingResponse {
             item_response: response,

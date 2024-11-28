@@ -31,9 +31,11 @@ re_types.workspace = true
 re_types_core.workspace = true
 
 # External
+arrow.workspace = true
 arrow2 = { workspace = true, features = [
+  "arrow",
+  "compute_concatenate",
   "io_ipc",
   "io_print",
-  "compute_concatenate",
 ] }
 once_cell.workspace = true

@@ -113,7 +113,7 @@ def as_html(
     if blueprint is not None:
         output_stream.send_blueprint(blueprint, make_active=True)  # type: ignore[attr-defined]
 
-    data_memory = memory_recording(recording=recording)
+    data_memory = memory_recording(recording=recording)  # NOLINT
     output_memory = output_stream.memory_recording()  # type: ignore[attr-defined]
 
     base64_data = base64.b64encode(output_memory.storage.concat_as_bytes(data_memory.storage)).decode("utf-8")
@@ -165,7 +165,12 @@ def legacy_notebook_show(
 
     """
     html = as_html(
-        width=width, height=height, app_url=app_url, timeout_ms=timeout_ms, blueprint=blueprint, recording=recording
+        width=width,
+        height=height,
+        app_url=app_url,
+        timeout_ms=timeout_ms,
+        blueprint=blueprint,
+        recording=recording,  # NOLINT
     )
     try:
         from IPython.core.display import HTML

@@ -4,6 +4,6 @@ expression: "[format!(\"{NUM_SCALARS} scalars\"),\n        format!(\"{} in total
 ---
 [
     "1048576 scalars",
-    "37.5 MiB in total",
-    "38 B per row",
+    "37.0 MiB in total",
+    "37 B per row",
 ]

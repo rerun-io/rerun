@@ -11,13 +11,10 @@ use egui::{epaint::Vertex, lerp, pos2, remap, Color32, NumExt as _, Rect, Shape}
 
 use re_chunk_store::Chunk;
 use re_chunk_store::RangeQuery;
-use re_log_types::EntityPath;
-use re_log_types::TimeInt;
-use re_log_types::Timeline;
-use re_log_types::{ComponentPath, ResolvedTimeRange};
-use re_types::ComponentName;
+use re_log_types::{ComponentPath, ResolvedTimeRange, TimeInt, Timeline};
 use re_viewer_context::{Item, TimeControl, UiLayout, ViewerContext};
 
+use crate::recursive_chunks_per_timeline_subscriber::PathRecursiveChunksPerTimeline;
 use crate::TimePanelItem;
 
 use super::time_ranges_ui::TimeRangesUi;
@@ -179,12 +176,11 @@ impl DensityGraph {
         }
 
         // full buckets:
-        for i in (min_bucket.ceil() as i64)..=(max_bucket.floor() as i64) {
-            if let Ok(i) = usize::try_from(i) {
-                if let Some(bucket) = self.buckets.get_mut(i) {
-                    *bucket += count_per_bucket;
-                }
-            }
+        let min_full_bucket_idx = (min_bucket.ceil() as i64).at_least(0) as usize;
+        let max_full_bucket_idx =
+            (max_bucket.floor() as i64).at_most(self.buckets.len() as i64 - 1) as usize;
+        for bucket in &mut self.buckets[min_full_bucket_idx..=max_full_bucket_idx] {
+            *bucket += count_per_bucket;
         }
 
         // last bucket, partially filled:
@@ -450,22 +446,56 @@ pub fn build_density_graph<'a>(
         .time_range_from_x_range((row_rect.left() - MARGIN_X)..=(row_rect.right() + MARGIN_X));
 
     // NOTE: These chunks are guaranteed to have data on the current timeline
-    let mut chunk_ranges: Vec<(Arc<Chunk>, ResolvedTimeRange, u64)> = vec![];
-    let mut total_events = 0;
+    let (chunk_ranges, total_events): (Vec<(Arc<Chunk>, ResolvedTimeRange, u64)>, u64) = {
+        re_tracing::profile_scope!("collect chunks");
 
-    {
-        visit_relevant_chunks(
-            db,
-            &item.entity_path,
-            item.component_name,
-            timeline,
-            visible_time_range,
-            |chunk, time_range, num_events| {
-                chunk_ranges.push((chunk, time_range, num_events));
-                total_events += num_events;
-            },
-        );
-    }
+        let engine = db.storage_engine();
+        let store = engine.store();
+        let query = RangeQuery::new(timeline, visible_time_range);
+
+        if let Some(component_name) = item.component_name {
+            let mut total_num_events = 0;
+            (
+                store
+                    .range_relevant_chunks(&query, &item.entity_path, component_name)
+                    .into_iter()
+                    .filter_map(|chunk| {
+                        let time_range = chunk.timelines().get(&timeline)?.time_range();
+                        chunk
+                            .num_events_for_component(component_name)
+                            .map(|num_events| {
+                                total_num_events += num_events;
+                                (chunk, time_range, num_events)
+                            })
+                    })
+                    .collect(),
+                total_num_events,
+            )
+        } else {
+            PathRecursiveChunksPerTimeline::access(&store.id(), |chunks_per_timeline| {
+                let Some(info) = chunks_per_timeline
+                    .path_recursive_chunks_for_entity_and_timeline(&item.entity_path, &timeline)
+                else {
+                    return Default::default();
+                };
+
+                (
+                    info.recursive_chunks_info
+                        .values()
+                        .map(|info| {
+                            (
+                                info.chunk.clone(),
+                                info.resolved_time_range,
+                                info.num_events,
+                            )
+                        })
+                        .collect(),
+                    info.total_num_events,
+                )
+            })
+            .unwrap_or_default()
+        }
+    };
 
     // Small chunk heuristics:
     // We want to render chunks as individual events, but it may be prohibitively expensive
@@ -494,8 +524,6 @@ pub fn build_density_graph<'a>(
         }
 
         for (chunk, time_range, num_events_in_chunk) in chunk_ranges {
-            re_tracing::profile_scope!("chunk_range");
-
             let should_render_individual_events = can_render_individual_events
                 && if chunk.is_timeline_sorted(&timeline) {
                     num_events_in_chunk < config.max_events_in_sorted_chunk
@@ -689,59 +717,6 @@ impl<'a> DensityGraphBuilder<'a> {
                 }
             }
         }
-    }
-}
-
-/// This is a wrapper over `range_relevant_chunks` which also supports querying the entire entity.
-/// Relevant chunks are those which:
-/// - Contain data for `entity_path`
-/// - Contain a `component_name` column (if provided)
-/// - Have data on the given `timeline`
-/// - Have data in the given `time_range`
-///
-/// The does not deduplicates chunks when no `component_name` is provided.
-fn visit_relevant_chunks(
-    db: &re_entity_db::EntityDb,
-    entity_path: &EntityPath,
-    component_name: Option<ComponentName>,
-    timeline: Timeline,
-    time_range: ResolvedTimeRange,
-    mut visitor: impl FnMut(Arc<Chunk>, ResolvedTimeRange, u64),
-) {
-    re_tracing::profile_function!();
-
-    let engine = db.storage_engine();
-    let store = engine.store();
-    let query = RangeQuery::new(timeline, time_range);
-
-    if let Some(component_name) = component_name {
-        let chunks = store.range_relevant_chunks(&query, entity_path, component_name);
-
-        for chunk in chunks {
-            let Some(num_events) = chunk.num_events_for_component(component_name) else {
-                continue;
-            };
-
-            let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
-                continue;
-            };
-
-            visitor(Arc::clone(&chunk), chunk_timeline.time_range(), num_events);
-        }
-    } else if let Some(subtree) = db.tree().subtree(entity_path) {
-        subtree.visit_children_recursively(|entity_path| {
-            for chunk in store.range_relevant_chunks_for_all_components(&query, entity_path) {
-                let Some(chunk_timeline) = chunk.timelines().get(&timeline) else {
-                    continue;
-                };
-
-                visitor(
-                    Arc::clone(&chunk),
-                    chunk_timeline.time_range(),
-                    chunk.num_events_cumulative(),
-                );
-            }
-        });
     }
 }
 

@@ -3,7 +3,7 @@ from typing import Iterator, Optional, Sequence, Union
 
 import pyarrow as pa
 
-from .types import AnyColumn, AnyComponentColumn, ComponentLike, IndexValuesLike, ViewContentsLike
+from .types import AnyColumn, AnyComponentColumn, ComponentLike, IndexValuesLike, MetadataLike, ViewContentsLike
 
 class IndexColumnDescriptor:
     """
@@ -564,6 +564,83 @@ def load_archive(path_to_rrd: str | os.PathLike) -> RRDArchive:
     -------
     RRDArchive
         The loaded archive.
+
+    """
+    ...
+
+class StorageNodeClient:
+    """
+    A client for interfacing with a Rerun storage node.
+
+    Required-feature: `remote`
+    """
+
+    def list_recordings(self) -> pa.RecordBatchReader:
+        """Get the metadata for all recordings in the storage node."""
+        ...
+
+    def register(self, storage_url: str, metadata: Optional[dict[str, MetadataLike]] = None) -> str:
+        """
+        Register a recording along with some metadata.
+
+        Parameters
+        ----------
+        storage_url : str
+            The URL to the storage location.
+        metadata : dict[str, MetadataLike]
+            A dictionary where the keys are the metadata columns and the values are pyarrow arrays.
+
+        """
+        ...
+
+    def update_metadata(self, id: str, metadata: dict[str, MetadataLike]) -> None:
+        """
+        Update the metadata for the recording with the given id.
+
+        Parameters
+        ----------
+        id : str
+            The id of the recording to update.
+        metadata : dict[str, MetadataLike]
+            A dictionary where the keys are the metadata columns and the values are pyarrow arrays.
+
+        """
+        ...
+
+    def open_recording(self, id: str) -> Recording:
+        """
+        Open a [`Recording`][rerun.dataframe.Recording] by id to use with the dataframe APIs.
+
+        This currently downloads the full recording to the local machine.
+
+        Parameters
+        ----------
+        id : str
+            The id of the recording to open.
+
+        Returns
+        -------
+        Recording
+            The opened recording.
+
+        """
+        ...
+
+def connect(addr: str) -> StorageNodeClient:
+    """
+    Load a rerun archive from an RRD file.
+
+    Required-feature: `remote`
+
+    Parameters
+    ----------
+    addr : str
+        The address of the storage node to connect to.
+
+    Returns
+    -------
+    StorageNodeClient
+        The connected client.
 
     """
     ...

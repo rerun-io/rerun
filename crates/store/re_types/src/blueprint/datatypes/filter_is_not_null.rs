@@ -45,30 +45,43 @@ impl ::re_types_core::SizeBytes for FilterIsNotNull {
 
 impl ::re_types_core::Loggable for FilterIsNotNull {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
-            Field::new("active", <crate::datatypes::Bool>::arrow2_datatype(), false),
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![
+            Field::new("active", <crate::datatypes::Bool>::arrow_datatype(), false),
             Field::new(
                 "column",
-                <crate::blueprint::datatypes::ComponentColumnSelector>::arrow2_datatype(),
+                <crate::blueprint::datatypes::ComponentColumnSelector>::arrow_datatype(),
                 false,
             ),
         ]))
     }
 
-    fn to_arrow2_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
+            let fields = Fields::from(vec![
+                Field::new("active", <crate::datatypes::Bool>::arrow_datatype(), false),
+                Field::new(
+                    "column",
+                    <crate::blueprint::datatypes::ComponentColumnSelector>::arrow_datatype(),
+                    false,
+                ),
+            ]);
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
@@ -76,12 +89,12 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let validity: Option<arrow::buffer::NullBuffer> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            StructArray::new(
-                Self::arrow2_datatype(),
+            as_array_ref(StructArray::new(
+                fields,
                 vec![
                     {
                         let (somes, active): (Vec<_>, Vec<_>) = data
@@ -91,19 +104,19 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let active_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let active_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
-                        BooleanArray::new(
-                            DataType::Boolean,
-                            active
-                                .into_iter()
-                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
-                                .collect(),
-                            active_bitmap,
-                        )
-                        .boxed()
+                        as_array_ref(BooleanArray::new(
+                            BooleanBuffer::from(
+                                active
+                                    .into_iter()
+                                    .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
+                                    .collect::<Vec<_>>(),
+                            ),
+                            active_validity,
+                        ))
                     },
                     {
                         let (somes, column): (Vec<_>, Vec<_>) = data
@@ -113,21 +126,20 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let column_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let column_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = column_bitmap;
-                            crate::blueprint::datatypes::ComponentColumnSelector::to_arrow2_opt(
+                            _ = column_validity;
+                            crate::blueprint::datatypes::ComponentColumnSelector::to_arrow_opt(
                                 column,
                             )?
                         }
                     },
                 ],
-                bitmap,
-            )
-            .boxed()
+                validity,
+            ))
         })
     }
 
@@ -139,13 +151,14 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -163,7 +176,7 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
                 let active = {
                     if !arrays_by_name.contains_key("active") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "active",
                         ))
                         .with_context("rerun.blueprint.datatypes.FilterIsNotNull");
@@ -184,7 +197,7 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
                 let column = {
                     if !arrays_by_name.contains_key("column") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "column",
                         ))
                         .with_context("rerun.blueprint.datatypes.FilterIsNotNull");

@@ -33,6 +33,7 @@ include "./datatypes/uint16.fbs";
 include "./datatypes/uint32.fbs";
 include "./datatypes/uint64.fbs";
 include "./datatypes/utf8.fbs";
+include "./datatypes/utf8_pair.fbs";
 include "./datatypes/uuid.fbs";
 include "./datatypes/uvec2d.fbs";
 include "./datatypes/uvec3d.fbs";

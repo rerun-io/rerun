@@ -127,6 +127,7 @@ examples = [
   "dicom_mri",
   "blueprint_stocks",
   "arflow",
+  "air_traffic_data",
 ]
 
 [categories.feature-showcase]
@@ -148,6 +149,9 @@ examples = [
   "plots",
   "live_scrolling_plot",
   "raw_mesh",
+  "graph_lattice",
+  "graph_binary_tree",
+  "air_traffic_data",
 ]
 
 # These are examples that we explicitly exclude from our website. You can check that all examples are either included

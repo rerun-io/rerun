@@ -16,6 +16,8 @@ include "./archetypes/ellipsoids3d.fbs";
 include "./archetypes/encoded_image.fbs";
 include "./archetypes/geo_line_strings.fbs";
 include "./archetypes/geo_points.fbs";
+include "./archetypes/graph_edges.fbs";
+include "./archetypes/graph_nodes.fbs";
 include "./archetypes/image.fbs";
 include "./archetypes/instance_poses3d.fbs";
 include "./archetypes/line_strips2d.fbs";

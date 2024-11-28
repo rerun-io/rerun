@@ -90,6 +90,7 @@ pub const CONTAINER_VERTICAL: Icon = icon_from_path!("../data/icons/container_ve
 pub const SPACE_VIEW_2D: Icon = icon_from_path!("../data/icons/spaceview_2d.png");
 pub const SPACE_VIEW_3D: Icon = icon_from_path!("../data/icons/spaceview_3d.png");
 pub const SPACE_VIEW_DATAFRAME: Icon = icon_from_path!("../data/icons/spaceview_dataframe.png");
+pub const SPACE_VIEW_GRAPH: Icon = icon_from_path!("../data/icons/spaceview_graph.png");
 pub const SPACE_VIEW_GENERIC: Icon = icon_from_path!("../data/icons/spaceview_generic.png");
 pub const SPACE_VIEW_HISTOGRAM: Icon = icon_from_path!("../data/icons/spaceview_histogram.png");
 pub const SPACE_VIEW_LOG: Icon = icon_from_path!("../data/icons/spaceview_log.png");

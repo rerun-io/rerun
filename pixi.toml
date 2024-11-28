@@ -606,15 +606,20 @@ macos = "12.0" # needed for scipy
 [feature.examples-common.dependencies]
 python = "=3.11"
 
+# TODO(ab): otherwise pixi will try to build from source and fail, not sure why (used by air_traffic_data)
+pyproj = ">=3.7.0"
+
 [feature.examples-common.pypi-dependencies]
 # External deps
 jupyter = ">=1.0"
+polars = ">=0.12.0"
 
 segment-anything = { git = "https://github.com/facebookresearch/segment-anything.git" }
 mesh-to-sdf = { git = "https://github.com/marian42/mesh_to_sdf.git" }
 
 # Rerun libs
 
+air_traffic_data = { path = "examples/python/air_traffic_data", editable = true }
 arkit_scenes = { path = "examples/python/arkit_scenes", editable = true }
 blueprint = { path = "examples/python/blueprint", editable = true }
 blueprint_stocks = { path = "examples/python/blueprint_stocks", editable = true }
@@ -635,6 +640,8 @@ minimal = { path = "examples/python/minimal", editable = true }
 minimal_options = { path = "examples/python/minimal_options", editable = true }
 multiprocess_logging = { path = "examples/python/multiprocess_logging", editable = true }
 multithreading = { path = "examples/python/multithreading", editable = true }
+graph_binary_tree = { path = "examples/python/graph_binary_tree", editable = true }
+graph_lattice = { path = "examples/python/graph_lattice", editable = true }
 nuscenes_dataset = { path = "examples/python/nuscenes_dataset", editable = true }
 nv12 = { path = "examples/python/nv12", editable = true }
 objectron = { path = "examples/python/objectron", editable = true }

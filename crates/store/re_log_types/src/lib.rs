@@ -410,6 +410,9 @@ impl std::fmt::Display for PythonVersion {
 pub enum FileSource {
     Cli,
 
+    /// The user clicked on a recording URI in the viewer.
+    Uri,
+
     DragAndDrop {
         /// The [`ApplicationId`] that the viewer heuristically recommends should be used when loading
         /// this data source, based on the surrounding context.
@@ -463,7 +466,7 @@ impl FileSource {
                 recommended_application_id,
                 ..
             } => recommended_application_id.as_ref(),
-            Self::Cli | Self::Sdk => None,
+            Self::Cli | Self::Uri | Self::Sdk => None,
         }
     }
 
@@ -478,7 +481,7 @@ impl FileSource {
                 recommended_recording_id,
                 ..
             } => recommended_recording_id.as_ref(),
-            Self::Cli | Self::Sdk => None,
+            Self::Cli | Self::Uri | Self::Sdk => None,
         }
     }
 
@@ -491,7 +494,7 @@ impl FileSource {
             | Self::DragAndDrop {
                 force_store_info, ..
             } => *force_store_info,
-            Self::Cli | Self::Sdk => false,
+            Self::Cli | Self::Uri | Self::Sdk => false,
         }
     }
 }
@@ -538,6 +541,7 @@ impl std::fmt::Display for StoreSource {
             Self::RustSdk { rustc_version, .. } => write!(f, "Rust SDK (rustc {rustc_version})"),
             Self::File { file_source, .. } => match file_source {
                 FileSource::Cli => write!(f, "File via CLI"),
+                FileSource::Uri => write!(f, "File via URI"),
                 FileSource::DragAndDrop { .. } => write!(f, "File via drag-and-drop"),
                 FileSource::FileDialog { .. } => write!(f, "File via file dialog"),
                 FileSource::Sdk => write!(f, "File via SDK"),

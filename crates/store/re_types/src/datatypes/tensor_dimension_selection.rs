@@ -44,26 +44,35 @@ impl ::re_types_core::SizeBytes for TensorDimensionSelection {
 
 impl ::re_types_core::Loggable for TensorDimensionSelection {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![
             Field::new("dimension", DataType::UInt32, false),
             Field::new("invert", DataType::Boolean, false),
         ]))
     }
 
-    fn to_arrow2_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
+            let fields = Fields::from(vec![
+                Field::new("dimension", DataType::UInt32, false),
+                Field::new("invert", DataType::Boolean, false),
+            ]);
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
@@ -71,12 +80,12 @@ impl ::re_types_core::Loggable for TensorDimensionSelection {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let validity: Option<arrow::buffer::NullBuffer> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            StructArray::new(
-                Self::arrow2_datatype(),
+            as_array_ref(StructArray::new(
+                fields,
                 vec![
                     {
                         let (somes, dimension): (Vec<_>, Vec<_>) = data
@@ -86,19 +95,19 @@ impl ::re_types_core::Loggable for TensorDimensionSelection {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let dimension_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let dimension_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
-                        PrimitiveArray::new(
-                            DataType::UInt32,
-                            dimension
-                                .into_iter()
-                                .map(|v| v.unwrap_or_default())
-                                .collect(),
-                            dimension_bitmap,
-                        )
-                        .boxed()
+                        as_array_ref(PrimitiveArray::<UInt32Type>::new(
+                            ScalarBuffer::from(
+                                dimension
+                                    .into_iter()
+                                    .map(|v| v.unwrap_or_default())
+                                    .collect::<Vec<_>>(),
+                            ),
+                            dimension_validity,
+                        ))
                     },
                     {
                         let (somes, invert): (Vec<_>, Vec<_>) = data
@@ -108,21 +117,23 @@ impl ::re_types_core::Loggable for TensorDimensionSelection {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let invert_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let invert_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
-                        BooleanArray::new(
-                            DataType::Boolean,
-                            invert.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                            invert_bitmap,
-                        )
-                        .boxed()
+                        as_array_ref(BooleanArray::new(
+                            BooleanBuffer::from(
+                                invert
+                                    .into_iter()
+                                    .map(|v| v.unwrap_or_default())
+                                    .collect::<Vec<_>>(),
+                            ),
+                            invert_validity,
+                        ))
                     },
                 ],
-                bitmap,
-            )
-            .boxed()
+                validity,
+            ))
         })
     }
 
@@ -134,13 +145,14 @@ impl ::re_types_core::Loggable for TensorDimensionSelection {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -158,7 +170,7 @@ impl ::re_types_core::Loggable for TensorDimensionSelection {
                 let dimension = {
                     if !arrays_by_name.contains_key("dimension") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "dimension",
                         ))
                         .with_context("rerun.datatypes.TensorDimensionSelection");
@@ -179,7 +191,7 @@ impl ::re_types_core::Loggable for TensorDimensionSelection {
                 let invert = {
                     if !arrays_by_name.contains_key("invert") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "invert",
                         ))
                         .with_context("rerun.datatypes.TensorDimensionSelection");

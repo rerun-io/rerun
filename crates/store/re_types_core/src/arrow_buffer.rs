@@ -1,4 +1,6 @@
-/// Convenience-wrapper around an [`arrow2::buffer::Buffer`] that is known to contain a
+use arrow::datatypes::ArrowNativeType;
+
+/// Convenience-wrapper around an [`arrow::buffer::ScalarBuffer`] that is known to contain a
 /// a primitive type.
 ///
 /// The [`ArrowBuffer`] object is internally reference-counted and can be
@@ -6,30 +8,27 @@
 /// This avoids some of the lifetime complexities that would otherwise
 /// arise from returning a `&[T]` directly, but is significantly more
 /// performant than doing the full allocation necessary to return a `Vec<T>`.
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct ArrowBuffer<T>(arrow2::buffer::Buffer<T>);
+#[derive(Clone, Debug, PartialEq)]
+pub struct ArrowBuffer<T: ArrowNativeType>(arrow::buffer::ScalarBuffer<T>);
 
-impl<T: crate::SizeBytes> crate::SizeBytes for ArrowBuffer<T> {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        let Self(buf) = self;
-        std::mem::size_of_val(buf.as_slice()) as _
+impl<T: ArrowNativeType> Default for ArrowBuffer<T> {
+    fn default() -> Self {
+        Self(arrow::buffer::ScalarBuffer::<T>::from(vec![]))
     }
 }
 
-impl<T> ArrowBuffer<T> {
+impl<T: crate::SizeBytes + ArrowNativeType> crate::SizeBytes for ArrowBuffer<T> {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        std::mem::size_of_val(self.as_slice()) as _
+    }
+}
+
+impl<T: ArrowNativeType> ArrowBuffer<T> {
     /// The number of instances of T stored in this buffer.
     #[inline]
     pub fn num_instances(&self) -> usize {
-        // WARNING: If you are touching this code, make sure you know what len() actually does.
-        //
-        // There is ambiguity in how arrow2 and arrow-rs talk about buffer lengths, including
-        // some incorrect documentation: https://github.com/jorgecarleitao/arrow2/issues/1430
-        //
-        // Arrow2 `Buffer<T>` is typed and `len()` is the number of units of `T`, but the documentation
-        // is currently incorrect.
-        // Arrow-rs `Buffer` is untyped and len() is in bytes, but `ScalarBuffer`s are in units of T.
-        self.0.len()
+        self.as_slice().len()
     }
 
     /// The number of bytes stored in this buffer
@@ -45,7 +44,7 @@ impl<T> ArrowBuffer<T> {
 
     #[inline]
     pub fn as_slice(&self) -> &[T] {
-        self.0.as_slice()
+        self.0.as_ref()
     }
 
     /// Returns a new [`ArrowBuffer`] that is a slice of this buffer starting at `offset`.
@@ -56,19 +55,19 @@ impl<T> ArrowBuffer<T> {
     /// Panics iff `offset + length` is larger than `len`.
     #[inline]
     pub fn sliced(self, range: std::ops::Range<usize>) -> Self {
-        Self(self.0.sliced(range.start, range.len()))
+        Self(self.0.slice(range.start, range.len()))
     }
 }
 
-impl<T: bytemuck::Pod> ArrowBuffer<T> {
+impl<T: bytemuck::Pod + ArrowNativeType> ArrowBuffer<T> {
     /// Cast POD (plain-old-data) types to another POD type.
     ///
     /// For instance: cast a buffer of `u8` to a buffer of `f32`.
     #[inline]
-    pub fn cast_pod<Target: bytemuck::Pod>(
+    pub fn cast_pod<Target: bytemuck::Pod + ArrowNativeType>(
         &self,
     ) -> Result<ArrowBuffer<Target>, bytemuck::PodCastError> {
-        // TODO(emilk): when we switch from arrow2, see if we can make this function zero-copy
+        // TODO(#2978): when we switch from arrow2, see if we can make this function zero-copy
         re_tracing::profile_function!();
         let target_slice: &[Target] = bytemuck::try_cast_slice(self.as_slice())?;
         Ok(ArrowBuffer::from(target_slice.to_vec()))
@@ -84,17 +83,17 @@ impl<T: bytemuck::Pod> ArrowBuffer<T> {
     }
 }
 
-impl<T: Eq> Eq for ArrowBuffer<T> {}
+impl<T: Eq + ArrowNativeType> Eq for ArrowBuffer<T> {}
 
-impl<T: Clone> ArrowBuffer<T> {
+impl<T: ArrowNativeType> ArrowBuffer<T> {
     #[inline]
     pub fn to_vec(&self) -> Vec<T> {
-        self.0.as_slice().to_vec()
+        self.as_slice().to_vec()
     }
 }
 
-impl<T: arrow::datatypes::ArrowNativeType + arrow2::types::NativeType>
-    From<arrow::buffer::ScalarBuffer<T>> for ArrowBuffer<T>
+impl<T: ArrowNativeType + arrow2::types::NativeType> From<arrow::buffer::ScalarBuffer<T>>
+    for ArrowBuffer<T>
 {
     #[inline]
     fn from(value: arrow::buffer::ScalarBuffer<T>) -> Self {
@@ -102,38 +101,61 @@ impl<T: arrow::datatypes::ArrowNativeType + arrow2::types::NativeType>
     }
 }
 
-impl<T> From<arrow2::buffer::Buffer<T>> for ArrowBuffer<T> {
+impl<T: ArrowNativeType + arrow2::types::NativeType> From<arrow2::buffer::Buffer<T>>
+    for ArrowBuffer<T>
+{
     #[inline]
-    fn from(value: arrow2::buffer::Buffer<T>) -> Self {
-        Self(value)
+    fn from(arrow2_buffer: arrow2::buffer::Buffer<T>) -> Self {
+        let num_elements = arrow2_buffer.len();
+        let arrow1_buffer = arrow::buffer::Buffer::from(arrow2_buffer);
+        let scalar_buffer = arrow::buffer::ScalarBuffer::new(arrow1_buffer, 0, num_elements);
+        Self(scalar_buffer)
     }
 }
 
-impl<T> From<Vec<T>> for ArrowBuffer<T> {
+impl<T: ArrowNativeType> From<Vec<T>> for ArrowBuffer<T> {
     #[inline]
     fn from(value: Vec<T>) -> Self {
         Self(value.into())
     }
 }
 
-impl<T: Clone> From<&[T]> for ArrowBuffer<T> {
+impl<T: ArrowNativeType> From<&[T]> for ArrowBuffer<T> {
     #[inline]
     fn from(value: &[T]) -> Self {
-        Self(value.iter().cloned().collect()) // TODO(emilk): avoid extra clones
+        Self(value.iter().copied().collect())
     }
 }
 
-impl<T> FromIterator<T> for ArrowBuffer<T> {
+impl<T: ArrowNativeType> FromIterator<T> for ArrowBuffer<T> {
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
-        Self(arrow2::buffer::Buffer::from_iter(iter))
+        Self(arrow::buffer::ScalarBuffer::from_iter(iter))
     }
 }
 
-impl<T> std::ops::Deref for ArrowBuffer<T> {
+impl<T: ArrowNativeType> std::ops::Deref for ArrowBuffer<T> {
     type Target = [T];
 
     #[inline]
     fn deref(&self) -> &[T] {
-        self.0.as_slice()
+        self.as_slice()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_arrow2_compatibility() {
+        let arrow2_buffer = arrow2::buffer::Buffer::<f32>::from(vec![1.0, 2.0, 3.0, 4.0, 5.0]);
+        assert_eq!(arrow2_buffer.as_slice(), &[1.0, 2.0, 3.0, 4.0, 5.0]);
+
+        let sliced_arrow2_buffer = arrow2_buffer.sliced(1, 3);
+        assert_eq!(sliced_arrow2_buffer.as_slice(), &[2.0, 3.0, 4.0]);
+
+        let arrow_buffer = ArrowBuffer::<f32>::from(sliced_arrow2_buffer);
+        assert_eq!(arrow_buffer.num_instances(), 3);
+        assert_eq!(arrow_buffer.as_slice(), &[2.0, 3.0, 4.0]);
     }
 }

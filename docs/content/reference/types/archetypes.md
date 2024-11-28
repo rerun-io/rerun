@@ -17,6 +17,11 @@ This page lists all built-in archetypes.
 * [`GeoLineStrings`](archetypes/geo_line_strings.md): Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/4326) altitude and longitude (North/East-positive degrees), and optional colors and radii.
 * [`GeoPoints`](archetypes/geo_points.md): Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.
 
+## Graph
+
+* [`GraphEdges`](archetypes/graph_edges.md): A list of edges in a graph.
+* [`GraphNodes`](archetypes/graph_nodes.md): A list of nodes in a graph with optional labels, colors, etc.
+
 ## Image & tensor
 
 * [`DepthImage`](archetypes/depth_image.md): A depth image, i.e. as captured by a depth camera.

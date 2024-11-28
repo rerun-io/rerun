@@ -179,7 +179,7 @@ def log(
         components=components,
         num_instances=num_instances,
         static=static,
-        recording=recording,
+        recording=recording,  # NOLINT
     )
 
 
@@ -253,9 +253,6 @@ def log_components(
         )
         static = True
 
-    # Convert to a native recording
-    recording = RecordingStream.to_native(recording)
-
     instanced: dict[str, pa.Array] = {}
 
     components = list(components)
@@ -294,7 +291,7 @@ def log_components(
         entity_path,
         components=instanced,
         static_=static,
-        recording=recording,
+        recording=recording.to_native() if recording is not None else None,
     )
 
 
@@ -358,7 +355,7 @@ def log_file_from_path(
         Path(file_path),
         entity_path_prefix=entity_path_prefix,
         static_=static,
-        recording=recording,
+        recording=recording.to_native() if recording is not None else None,
     )
 
 
@@ -419,7 +416,7 @@ def log_file_from_contents(
         file_contents,
         entity_path_prefix=entity_path_prefix,
         static_=static,
-        recording=recording,
+        recording=recording.to_native() if recording is not None else None,
     )
 
 

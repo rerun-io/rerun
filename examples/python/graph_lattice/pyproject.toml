@@ -1,0 +1,12 @@
+[project]
+name = "graph_lattice"
+version = "0.1.0"
+readme = "README.md"
+dependencies = ["rerun-sdk"]
+
+[project.scripts]
+graph_lattice = "graph_lattice:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
