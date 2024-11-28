@@ -31,13 +31,6 @@ struct VertexOutput {
     next_cardinality_interpolation: f32,
 };
 
-// We have to make up some world space geometry which then necessarily gets a limited size.
-// Putting a too high number here makes things break down because of floating point inaccuracies.
-// But arguably at that point we're potentially doomed either way since precision will break down in other parts of the rendering as well.
-//
-// This is the main drawback of the plane approach over the screen space filling one.
-const PLANE_GEOMETRY_SIZE: f32 = 10000.0;
-
 // Spans a large quad where centered around the camera.
 //
 // This gives us the "canvas" to drawn the grid on.
@@ -46,8 +39,14 @@ const PLANE_GEOMETRY_SIZE: f32 = 10000.0;
 @vertex
 fn main_vs(@builtin(vertex_index) v_idx: u32) -> VertexOutput {
     var out: VertexOutput;
+    let camera_plane_distance_world = distance_to_plane(config.plane, frame.camera_position);
 
-    var plane_position = (vec2f(f32(v_idx / 2u), f32(v_idx % 2u)) * 2.0 - 1.0) * PLANE_GEOMETRY_SIZE;
+    // Scale the plane geometry based on the distance to the camera.
+    // This preserves relative precision MUCH better than a fixed scale.
+    let plane_geometry_size = 1000.0 * camera_plane_distance_world;
+
+    // 2D position on the plane.
+    let plane_position = (vec2f(f32(v_idx / 2u), f32(v_idx % 2u)) * 2.0 - 1.0) * plane_geometry_size;
 
     // Make up x and y axis for the plane.
     let plane_y_axis = normalize(cross(config.plane.normal, select(vec3f(1.0, 0.0, 0.0), vec3f(0.0, 1.0, 0.0), config.plane.normal.x != 0.0)));
@@ -59,11 +58,9 @@ fn main_vs(@builtin(vertex_index) v_idx: u32) -> VertexOutput {
 
     // Compute world position from shifted plane position.
     let world_position = config.plane.normal * -config.plane.distance + plane_x_axis * shifted_plane_position.x + plane_y_axis * shifted_plane_position.y;
-
     out.position = frame.projection_from_world * vec4f(world_position, 1.0);
 
     // Determine which "scales" of the grid we want to show. We want to show factor 1, 10, 100, 1000, etc.
-    let camera_plane_distance_world = distance_to_plane(config.plane, frame.camera_position);
     let camera_plane_distance_grid_units = camera_plane_distance_world / config.spacing;
     let line_cardinality = max(log2(camera_plane_distance_grid_units) / log2(10.0) - 0.9, 0.0); // -0.9 instead of 1.0 so we always see a little bit of the next level even if we're very close.
     let line_base_cardinality = floor(line_cardinality);
@@ -126,7 +123,6 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     let cardinal_and_regular = mix(intensity_base, intensity_cardinal, in.next_cardinality_interpolation);
     // X and Y are combined like akin to premultiplied alpha operations.
     let intensity_combined = saturate(cardinal_and_regular.x * (1.0 - cardinal_and_regular.y) + cardinal_and_regular.y);
-
 
     return config.color * intensity_combined;
 
