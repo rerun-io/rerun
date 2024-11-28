@@ -470,7 +470,7 @@ fn segmentation_image_to_gpu(
     // We only support u8 and u16 class ids, so 256^2 is the biggest texture we need.
     let num_colors = (max + 1.0) as usize;
     let colormap_width = 256;
-    let colormap_height = (num_colors + colormap_width - 1) / colormap_width;
+    let colormap_height = num_colors.div_ceil(colormap_width);
 
     let colormap_texture_handle = get_or_create_texture(render_ctx, colormap_key, || {
         let data: Vec<u8> = (0..(colormap_width * colormap_height))

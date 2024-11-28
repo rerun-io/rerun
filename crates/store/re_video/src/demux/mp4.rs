@@ -18,7 +18,7 @@ impl VideoData {
             .tracks()
             .values()
             .find(|t| t.kind == Some(re_mp4::TrackKind::Video))
-            .ok_or_else(|| VideoLoadError::NoVideoTrack)?;
+            .ok_or(VideoLoadError::NoVideoTrack)?;
 
         let stsd = track.trak(&mp4).mdia.minf.stbl.stsd.clone();
 

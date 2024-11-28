@@ -198,7 +198,7 @@ impl DataframeTableDelegate<'_> {
     const LEFT_RIGHT_MARGIN: f32 = 4.0;
 }
 
-impl<'a> egui_table::TableDelegate for DataframeTableDelegate<'a> {
+impl egui_table::TableDelegate for DataframeTableDelegate<'_> {
     fn prepare(&mut self, info: &egui_table::PrefetchInfo) {
         re_tracing::profile_function!();
 

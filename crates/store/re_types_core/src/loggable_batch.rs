@@ -86,14 +86,14 @@ impl<'a> std::ops::Deref for MaybeOwnedComponentBatch<'a> {
     }
 }
 
-impl<'a> LoggableBatch for MaybeOwnedComponentBatch<'a> {
+impl LoggableBatch for MaybeOwnedComponentBatch<'_> {
     #[inline]
     fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         self.as_ref().to_arrow2()
     }
 }
 
-impl<'a> ComponentBatch for MaybeOwnedComponentBatch<'a> {
+impl ComponentBatch for MaybeOwnedComponentBatch<'_> {
     #[inline]
     fn name(&self) -> ComponentName {
         self.as_ref().name()
@@ -203,14 +203,14 @@ impl<C: Component, const N: usize> ComponentBatch for [Option<C>; N] {
 
 // --- Slice ---
 
-impl<'a, L: Loggable> LoggableBatch for &'a [L] {
+impl<L: Loggable> LoggableBatch for &[L] {
     #[inline]
     fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow2(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
 }
 
-impl<'a, C: Component> ComponentBatch for &'a [C] {
+impl<C: Component> ComponentBatch for &[C] {
     #[inline]
     fn name(&self) -> ComponentName {
         C::name()
@@ -219,7 +219,7 @@ impl<'a, C: Component> ComponentBatch for &'a [C] {
 
 // --- Slice<Option> ---
 
-impl<'a, L: Loggable> LoggableBatch for &'a [Option<L>] {
+impl<L: Loggable> LoggableBatch for &[Option<L>] {
     #[inline]
     fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow2_opt(
@@ -229,7 +229,7 @@ impl<'a, L: Loggable> LoggableBatch for &'a [Option<L>] {
     }
 }
 
-impl<'a, C: Component> ComponentBatch for &'a [Option<C>] {
+impl<C: Component> ComponentBatch for &[Option<C>] {
     #[inline]
     fn name(&self) -> ComponentName {
         C::name()
@@ -238,14 +238,14 @@ impl<'a, C: Component> ComponentBatch for &'a [Option<C>] {
 
 // --- ArrayRef ---
 
-impl<'a, L: Loggable, const N: usize> LoggableBatch for &'a [L; N] {
+impl<L: Loggable, const N: usize> LoggableBatch for &[L; N] {
     #[inline]
     fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow2(self.iter().map(|v| std::borrow::Cow::Borrowed(v)))
     }
 }
 
-impl<'a, C: Component, const N: usize> ComponentBatch for &'a [C; N] {
+impl<C: Component, const N: usize> ComponentBatch for &[C; N] {
     #[inline]
     fn name(&self) -> ComponentName {
         C::name()
@@ -254,7 +254,7 @@ impl<'a, C: Component, const N: usize> ComponentBatch for &'a [C; N] {
 
 // --- ArrayRef<Option> ---
 
-impl<'a, L: Loggable, const N: usize> LoggableBatch for &'a [Option<L>; N] {
+impl<L: Loggable, const N: usize> LoggableBatch for &[Option<L>; N] {
     #[inline]
     fn to_arrow2(&self) -> SerializationResult<Box<dyn ::arrow2::array::Array>> {
         L::to_arrow2_opt(
@@ -264,7 +264,7 @@ impl<'a, L: Loggable, const N: usize> LoggableBatch for &'a [Option<L>; N] {
     }
 }
 
-impl<'a, C: Component, const N: usize> ComponentBatch for &'a [Option<C>; N] {
+impl<C: Component, const N: usize> ComponentBatch for &[Option<C>; N] {
     #[inline]
     fn name(&self) -> ComponentName {
         C::name()
