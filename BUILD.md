@@ -84,14 +84,16 @@ pixi run py-fmt
 ```
 
 ### Building an installable Python wheel
-The `py-wheel` command builds a whl file:
+The `py-build-wheels-sdk-only` command builds a whl file:
 ```sh
-pixi run py-build-release
+pixi run py-build-wheels-sdk-only
 ```
 Which you can then install in your own Python environment:
 ```sh
-pip install ./target/wheels/*.whl
+pip install ./dist/CURRENT_ARCHITECTURE/*.whl
 ```
+
+**IMPORTANT**: unlike the official wheels, wheels produced by this method do _not_ contain the viewer, so they may only be used for logging purposes.
 
 ## Building and installing the Rerun C++ SDK
 
