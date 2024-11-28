@@ -154,7 +154,6 @@ impl ViewportUi {
                 }
 
                 if egui_tiles_delegate.edited {
-                    // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
                     self.blueprint.deferred_commands.lock().push(ViewportCommand::SetTree(tree));
                 }
             }
@@ -186,7 +185,7 @@ impl ViewportUi {
     }
 
     /// Process any deferred [`ViewportCommand`] and then save to blueprint store (if needed).
-    pub fn update_and_sync_tile_tree_to_blueprint(
+    pub fn save_to_blueprint(
         self,
         ctx: &ViewerContext<'_>,
         space_view_class_registry: &SpaceViewClassRegistry,
@@ -197,21 +196,14 @@ impl ViewportUi {
 
         let commands: Vec<ViewportCommand> = blueprint.deferred_commands.lock().drain(..).collect();
 
-        // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
-        // If set, we will save the tree to the blueprint store at the end of the frame.
-        // This includes saving all the containers in the tree (but not the space views!).
-        let mut tree_edited = false;
+        if commands.is_empty() {
+            return; // No changes this frame - no need to save to blueprint store.
+        }
 
         let mut run_auto_layout = false;
 
         for command in commands {
-            apply_viewport_command(
-                ctx,
-                &mut blueprint,
-                command,
-                &mut tree_edited,
-                &mut run_auto_layout,
-            );
+            apply_viewport_command(ctx, &mut blueprint, command, &mut run_auto_layout);
         }
 
         if run_auto_layout {
@@ -219,22 +211,17 @@ impl ViewportUi {
                 space_view_class_registry,
                 &blueprint.space_views,
             );
-
-            tree_edited = true;
         }
 
-        // Finally, save any edits to the blueprint tree
-        // This is a no-op if the tree hasn't changed.
-        if tree_edited {
-            // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
+        // TODO(emilk): consider diffing the tree against the state it was in at the start of the frame,
+        // so that we only save it if it actually changed.
 
-            // Simplify before we save the tree.
-            // `egui_tiles` also runs a simplifying pass when calling `tree.ui`, but that is too late.
-            // We want the simplified changes saved to the store:
-            blueprint.tree.simplify(&tree_simplification_options());
+        // Simplify before we save the tree.
+        // `egui_tiles` also runs a simplifying pass when calling `tree.ui`, but that is too late.
+        // We want the simplified changes saved to the store:
+        blueprint.tree.simplify(&tree_simplification_options());
 
-            blueprint.save_tree_as_containers(ctx);
-        }
+        blueprint.save_tree_as_containers(ctx);
     }
 }
 
@@ -242,14 +229,12 @@ fn apply_viewport_command(
     ctx: &ViewerContext<'_>,
     bp: &mut ViewportBlueprint,
     command: ViewportCommand,
-    tree_edited: &mut bool,
     run_auto_layout: &mut bool,
 ) {
     re_log::trace!("Processing viewport command: {command:?}");
     match command {
         ViewportCommand::SetTree(new_tree) => {
             bp.tree = new_tree;
-            *tree_edited = true;
         }
 
         ViewportCommand::AddSpaceView {
@@ -292,8 +277,6 @@ fn apply_viewport_command(
                     *run_auto_layout = true;
                 }
             }
-
-            *tree_edited = true;
         }
 
         ViewportCommand::AddContainer {
@@ -318,8 +301,6 @@ fn apply_viewport_command(
                 re_log::trace!("Parent or root was not a container - will re-run auto-layout");
                 *run_auto_layout = true;
             }
-
-            *tree_edited = true;
         }
 
         ViewportCommand::SetContainerKind(container_id, container_kind) => {
@@ -333,8 +314,6 @@ fn apply_viewport_command(
             } else {
                 re_log::trace!("No root found - will re-run auto-layout");
             }
-
-            *tree_edited = true;
         }
 
         ViewportCommand::FocusTab(space_view_id) => {
@@ -343,7 +322,6 @@ fn apply_viewport_command(
                 egui_tiles::Tile::Container(_) => false,
             });
             re_log::trace!("Found tab to focus on for space view ID {space_view_id}: {found}");
-            *tree_edited = true;
         }
 
         ViewportCommand::RemoveContents(contents) => {
@@ -379,14 +357,12 @@ fn apply_viewport_command(
             if Some(tile_id) == bp.tree.root {
                 bp.tree.root = None;
             }
-            *tree_edited = true;
         }
 
         ViewportCommand::SimplifyContainer(container_id, options) => {
             re_log::trace!("Simplifying tree with options: {options:?}");
             let tile_id = blueprint_id_to_tile_id(&container_id);
             bp.tree.simplify_children_of_tile(tile_id, &options);
-            *tree_edited = true;
         }
 
         ViewportCommand::MakeAllChildrenSameSize(container_id) => {
@@ -403,7 +379,6 @@ fn apply_viewport_command(
                     }
                 }
             }
-            *tree_edited = true;
         }
 
         ViewportCommand::MoveContents {
@@ -425,7 +400,6 @@ fn apply_viewport_command(
                 target_position_in_container,
                 true,
             );
-            *tree_edited = true;
         }
 
         ViewportCommand::MoveContentsToNewContainer {
@@ -455,8 +429,6 @@ fn apply_viewport_command(
                     true, // reflow grid if needed
                 );
             }
-
-            *tree_edited = true;
         }
     }
 }

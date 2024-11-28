@@ -464,7 +464,7 @@ impl AppState {
         add_space_view_or_container_modal_ui(&ctx, &viewport_ui.blueprint, ui);
 
         // Process deferred layout operations and apply updates back to blueprint:
-        viewport_ui.update_and_sync_tile_tree_to_blueprint(&ctx, space_view_class_registry);
+        viewport_ui.save_to_blueprint(&ctx, space_view_class_registry);
 
         if WATERMARK {
             ui.ctx().paint_watermark();
