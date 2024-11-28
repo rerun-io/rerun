@@ -3,7 +3,7 @@ use fjadra as fj;
 
 use crate::graph::NodeId;
 
-use super::{request::NodeTemplate, Layout, LayoutRequest};
+use super::{request::NodeTemplate, result::EdgeGeometry, Layout, LayoutRequest};
 
 impl<'a> From<&'a NodeTemplate> for fj::Node {
     fn from(node: &'a NodeTemplate) -> Self {
@@ -17,11 +17,11 @@ impl<'a> From<&'a NodeTemplate> for fj::Node {
 pub struct ForceLayoutProvider {
     simulation: fj::Simulation,
     node_index: ahash::HashMap<NodeId, usize>,
-    edges: Vec<(NodeId, NodeId)>,
+    pub request: LayoutRequest,
 }
 
 impl ForceLayoutProvider {
-    pub fn new(request: &LayoutRequest) -> Self {
+    pub fn new(request: LayoutRequest) -> Self {
         let nodes = request.graphs.iter().flat_map(|(_, graph_template)| {
             graph_template
                 .nodes
@@ -43,9 +43,11 @@ impl ForceLayoutProvider {
             .iter()
             .flat_map(|(_, graph_template)| graph_template.edges.iter());
 
-        let all_edges = all_edges_iter
+        // Looking at self-edges does not make sense in a force-based layout, so we filter those out.
+        let considered_edges = all_edges_iter
             .clone()
-            .map(|(a, b)| (node_index[a], node_index[b]));
+            .filter(|((from, to), _)| (from != to))
+            .map(|((from, to), _)| (node_index[from], node_index[to]));
 
         // TODO(grtlr): Currently we guesstimate good forces. Eventually these should be exposed as blueprints.
         let simulation = fj::SimulationBuilder::default()
@@ -53,7 +55,7 @@ impl ForceLayoutProvider {
             .build(all_nodes)
             .add_force(
                 "link",
-                fj::Link::new(all_edges).distance(50.0).iterations(2),
+                fj::Link::new(considered_edges).distance(50.0).iterations(2),
             )
             .add_force("charge", fj::ManyBody::new())
             // TODO(grtlr): This is a small stop-gap until we have blueprints to prevent nodes from flying away.
@@ -63,15 +65,15 @@ impl ForceLayoutProvider {
         Self {
             simulation,
             node_index,
-            edges: all_edges_iter.copied().collect(),
+            request,
         }
     }
 
-    pub fn init(&self, request: &LayoutRequest) -> Layout {
+    pub fn init(&self) -> Layout {
         let positions = self.simulation.positions().collect::<Vec<_>>();
         let mut extents = ahash::HashMap::default();
 
-        for graph in request.graphs.values() {
+        for graph in self.request.graphs.values() {
             for (id, node) in &graph.nodes {
                 let i = self.node_index[id];
                 let [x, y] = positions[i];
@@ -100,11 +102,28 @@ impl ForceLayoutProvider {
             extent.set_center(pos);
         }
 
-        for (from, to) in &self.edges {
-            layout.edges.insert(
-                (*from, *to),
-                line_segment(layout.nodes[from], layout.nodes[to]),
-            );
+        for (from, to) in self.request.graphs.values().flat_map(|g| g.edges.keys()) {
+            match from == to {
+                true => {
+                    // Self-edges are not supported in force-based layouts.
+                    let anchor = intersects_ray_from_center(layout.nodes[from], Vec2::UP);
+                    layout.edges.insert(
+                        (*from, *to),
+                        EdgeGeometry::CubicBezier {
+                            start: anchor + Vec2::LEFT * 5.,
+                            end: anchor + Vec2::RIGHT * 5.,
+                            // TODO(grtlr): The actual length of that spline should follow the `distance` parameter of the link force.
+                            control: [anchor + Vec2::new(-50., -60.), anchor + Vec2::new(50., -60.)],
+                        },
+                    );
+                }
+                false => {
+                    layout.edges.insert(
+                        (*from, *to),
+                        line_segment(layout.nodes[from], layout.nodes[to]),
+                    );
+                }
+            }
         }
 
         self.simulation.finished()
@@ -112,7 +131,7 @@ impl ForceLayoutProvider {
 }
 
 /// Helper function to calculate the line segment between two rectangles.
-fn line_segment(source: Rect, target: Rect) -> [Pos2; 2] {
+fn line_segment(source: Rect, target: Rect) -> EdgeGeometry {
     let source_center = source.center();
     let target_center = target.center();
 
@@ -123,7 +142,10 @@ fn line_segment(source: Rect, target: Rect) -> [Pos2; 2] {
     let source_point = intersects_ray_from_center(source, direction);
     let target_point = intersects_ray_from_center(target, -direction); // Reverse direction for target
 
-    [source_point, target_point]
+    EdgeGeometry::Line {
+        start: source_point,
+        end: target_point,
+    }
 }
 
 /// Helper function to find the point where the line intersects the border of a rectangle

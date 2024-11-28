@@ -4,4 +4,4 @@ mod result;
 
 pub use provider::ForceLayoutProvider;
 pub use request::LayoutRequest;
-pub use result::Layout;
+pub use result::{EdgeGeometry, Layout};

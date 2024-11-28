@@ -65,14 +65,12 @@ pub enum LayoutState {
     #[default]
     None,
     InProgress {
-        request: LayoutRequest,
         layout: Layout,
         provider: ForceLayoutProvider,
     },
     Finished {
-        request: LayoutRequest,
         layout: Layout,
-        _provider: ForceLayoutProvider,
+        provider: ForceLayoutProvider,
     },
 }
 
@@ -102,46 +100,29 @@ impl LayoutState {
     fn update(self, new_request: LayoutRequest) -> Self {
         match self {
             // Layout is up to date, nothing to do here.
-            Self::Finished { ref request, .. } if request == &new_request => {
+            Self::Finished { ref provider, .. } if &provider.request == &new_request => {
                 self // no op
             }
             // We need to recompute the layout.
             Self::None | Self::Finished { .. } => {
-                let provider = ForceLayoutProvider::new(&new_request);
-                let layout = provider.init(&new_request);
+                let provider = ForceLayoutProvider::new(new_request);
+                let layout = provider.init();
 
-                Self::InProgress {
-                    request: new_request,
-                    layout,
-                    provider,
-                }
+                Self::InProgress { layout, provider }
             }
-            Self::InProgress { request, .. } if request != new_request => {
-                let provider = ForceLayoutProvider::new(&new_request);
-                let layout = provider.init(&new_request);
+            Self::InProgress { provider, .. } if provider.request != new_request => {
+                let provider = ForceLayoutProvider::new(new_request);
+                let layout = provider.init();
 
-                Self::InProgress {
-                    request: new_request,
-                    layout,
-                    provider,
-                }
+                Self::InProgress { layout, provider }
             }
             // We keep iterating on the layout until it is stable.
             Self::InProgress {
-                request,
                 mut layout,
                 mut provider,
             } => match provider.tick(&mut layout) {
-                true => Self::Finished {
-                    request,
-                    layout,
-                    _provider: provider,
-                },
-                false => Self::InProgress {
-                    request,
-                    layout,
-                    provider,
-                },
+                true => Self::Finished { layout, provider },
+                false => Self::InProgress { layout, provider },
             },
         }
     }

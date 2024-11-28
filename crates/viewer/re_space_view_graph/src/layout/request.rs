@@ -1,4 +1,12 @@
-use std::collections::{BTreeMap, BTreeSet};
+//! Contains all the information that is considered when performing a graph layout.
+//!
+//! We support:
+//! * Multiple multiple edges between the same two nodes.
+//! * Self-edges
+//!
+//! <div class="warning"> Duplicated graph nodes are undefined behavior.</div>
+
+use std::collections::BTreeMap;
 
 use egui::{Pos2, Vec2};
 use re_chunk::EntityPath;
@@ -11,10 +19,17 @@ pub(super) struct NodeTemplate {
     pub(super) fixed_position: Option<Pos2>,
 }
 
+#[derive(PartialEq)]
+pub(super) struct EdgeTemplate;
+
 #[derive(Default, PartialEq)]
 pub(super) struct GraphTemplate {
     pub(super) nodes: BTreeMap<NodeId, NodeTemplate>,
-    pub(super) edges: BTreeSet<(NodeId, NodeId)>,
+
+    /// The edges in the layout.
+    ///
+    /// Each entry can contain multiple edges.
+    pub(super) edges: BTreeMap<(NodeId, NodeId), Vec<EdgeTemplate>>,
 }
 
 /// A [`LayoutRequest`] encapsulates all the information that is considered when computing a layout.
@@ -39,11 +54,19 @@ impl LayoutRequest {
                     size: node.size(),
                     fixed_position: node.position(),
                 };
-                entity.nodes.insert(node.id(), shape);
+                let duplicate = entity.nodes.insert(node.id(), shape);
+                debug_assert!(
+                    duplicate.is_none(),
+                    "duplicated nodes are undefined behavior"
+                );
             }
 
             for edge in graph.edges() {
-                entity.edges.insert((edge.from, edge.to));
+                let es = entity
+                    .edges
+                    .entry((edge.from, edge.to))
+                    .or_insert(Vec::new());
+                es.push(EdgeTemplate);
             }
         }
 

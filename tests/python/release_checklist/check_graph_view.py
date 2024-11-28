@@ -21,6 +21,12 @@ Please check the following:
 def log_readme() -> None:
     rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
 
+def log_weird_graph() -> None:
+    rr.log(
+        "weird",
+        rr.GraphNodes(["A", "B"], labels=["A", "B"]),
+        rr.GraphEdges([("A", "A")], graph_type=rr.GraphType.Directed),
+    )
 
 def log_graphs() -> None:
     DATA = [
@@ -45,9 +51,21 @@ def log_graphs() -> None:
         rr.log("graph", rr.GraphNodes(nodes, labels=nodes), rr.GraphEdges(edges, graph_type=rr.GraphType.Directed))
         rr.log("graph2", rr.GraphNodes(nodes, labels=nodes), rr.GraphEdges(edges, graph_type=rr.GraphType.Undirected))
 
+
+def run(args: Namespace) -> None:
+    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
+
+    log_readme()
+    log_graphs()
+    log_weird_graph()
+
     rr.send_blueprint(
         rrb.Blueprint(
             rrb.Grid(
+                rrb.GraphView(origin="weird", name="Weird Graph"),
+                rrb.GraphView(
+                    origin="weird", name="Weird Graph (without labels)", defaults=[rr.components.ShowLabels(False)]
+                ),
                 rrb.GraphView(origin="graph", name="Graph 1"),
                 rrb.GraphView(origin="graph2", name="Graph 2"),
                 rrb.GraphView(name="Both", contents=["/graph", "/graph2"]),
@@ -55,13 +73,6 @@ def log_graphs() -> None:
             )
         )
     )
-
-
-def run(args: Namespace) -> None:
-    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
-
-    log_readme()
-    log_graphs()
 
 
 if __name__ == "__main__":

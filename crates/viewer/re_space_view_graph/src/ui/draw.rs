@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use egui::{
-    Align2, Color32, FontId, FontSelection, Frame, Galley, Painter, Pos2, Rect, Response, RichText,
-    Sense, Shape, Stroke, TextWrapMode, Ui, UiBuilder, Vec2, WidgetText,
+    epaint::CubicBezierShape, Align2, Color32, FontId, FontSelection, Frame, Galley, Painter, Pos2,
+    Rect, Response, RichText, Sense, Shape, Stroke, TextWrapMode, Ui, UiBuilder, Vec2, WidgetText,
 };
 use re_chunk::EntityPath;
 use re_entity_db::InstancePath;
@@ -14,7 +14,7 @@ use re_viewer_context::{
 
 use crate::{
     graph::{Graph, Node},
-    layout::Layout,
+    layout::{EdgeGeometry, Layout},
     visualizers::Label,
 };
 
@@ -191,25 +191,55 @@ fn draw_arrow(painter: &Painter, tip: Pos2, direction: Vec2, color: Color32) {
     ));
 }
 
-/// Draws an edge between two points, optionally with an arrow at the target point.
-fn draw_edge(ui: &mut Ui, points: [Pos2; 2], show_arrow: bool) -> Response {
-    let fg = ui.style().visuals.text_color();
-
-    let rect = Rect::from_points(&points);
+fn draw_edge_line(ui: &Ui, points: [Pos2; 2], stroke: Stroke, show_arrow: bool) {
     let painter = ui.painter();
-    painter.line_segment(points, Stroke::new(1.0, fg));
+    painter.line_segment(points, stroke);
+    // Calculate direction vector from source to target
+    let direction = (points[1] - points[0]).normalized();
+
+    // Conditionally draw an arrow at the target point
+    if show_arrow {
+        draw_arrow(painter, points[1], direction, stroke.color);
+    }
+}
+
+fn draw_edge_bezier(ui: &Ui, points: [Pos2; 4], stroke: Stroke, show_arrow: bool) {
+    let painter = ui.painter();
+    painter.add(CubicBezierShape {
+        points,
+        closed: false,
+        fill: Color32::TRANSPARENT,
+        stroke: stroke.into(),
+    });
 
     // Calculate direction vector from source to target
     let direction = (points[1] - points[0]).normalized();
 
     // Conditionally draw an arrow at the target point
     if show_arrow {
-        draw_arrow(painter, points[1], direction, fg);
+        draw_arrow(painter, points[1], direction, stroke.color);
+    }
+}
+
+/// Draws an edge between two points, optionally with an arrow at the target point.
+pub fn draw_edge(ui: &mut Ui, geometry: &EdgeGeometry, show_arrow: bool) -> Response {
+    let fg = ui.style().visuals.text_color();
+    let stroke = Stroke::new(1.0, fg);
+
+    match geometry {
+        &EdgeGeometry::Line { start, end } => {
+            draw_edge_line(ui, [start, end], stroke, show_arrow);
+        }
+        &EdgeGeometry::CubicBezier {
+            start,
+            end,
+            control,
+        } => draw_edge_bezier(ui, [start, control[0], control[1], end], stroke, show_arrow),
     }
 
     // We can add interactions in the future, for now we simply allocate the
     // rect, so that bounding boxes are computed correctly.
-    ui.allocate_rect(rect, NON_SENSE)
+    ui.allocate_rect(geometry.bounding_rect(), NON_SENSE)
 }
 
 pub fn draw_entity_rect(
@@ -303,7 +333,10 @@ pub fn draw_graph(
     for edge in graph.edges() {
         let points = layout
             .get_edge(edge.from, edge.to)
-            .unwrap_or([Pos2::ZERO, Pos2::ZERO]);
+            .unwrap_or(&EdgeGeometry::Line {
+                start: Pos2::ZERO,
+                end: Pos2::ZERO,
+            });
         let resp = draw_edge(ui, points, edge.arrow);
         current_rect = current_rect.union(resp.rect);
     }

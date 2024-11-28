@@ -4,10 +4,50 @@ use crate::graph::NodeId;
 
 pub type LineSegment = [Pos2; 2];
 
-#[derive(Debug, PartialEq, Eq)]
+fn bounding_rect_points(points: impl IntoIterator<Item = impl Into<Pos2>>) -> egui::Rect {
+    points
+        .into_iter()
+        .fold(egui::Rect::NOTHING, |mut acc, pos| {
+            acc.extend_with(pos.into());
+            acc
+        })
+}
+
+#[derive(Clone, Debug)]
+pub enum EdgeGeometry {
+    Line {
+        start: Pos2,
+        end: Pos2,
+    },
+    /// Represents a cubic bezier curve.
+    ///
+    /// In the future we could probably support more complex splines.
+    CubicBezier {
+        start: Pos2,
+        end: Pos2,
+        control: [Pos2; 2],
+    },
+    // We could add other geometries, such as `Orthogonal` here too.
+}
+
+impl EdgeGeometry {
+    pub fn bounding_rect(&self) -> Rect {
+        match self {
+            EdgeGeometry::Line { start, end } => Rect::from_two_pos(*start, *end),
+            // TODO(grtlr): This is just a crude (upper) approximation, as the resulting bounding box can be too large.
+            EdgeGeometry::CubicBezier {
+                start,
+                end,
+                ref control,
+            } => Rect::from_points(&[&[*start, *end], control.as_slice()].concat()),
+        }
+    }
+}
+
+#[derive(Debug)]
 pub struct Layout {
     pub(super) nodes: ahash::HashMap<NodeId, Rect>,
-    pub(super) edges: ahash::HashMap<(NodeId, NodeId), LineSegment>,
+    pub(super) edges: ahash::HashMap<(NodeId, NodeId), EdgeGeometry>,
     // TODO(grtlr): Consider adding the entity rects here too.
 }
 
@@ -29,7 +69,7 @@ impl Layout {
     }
 
     /// Gets the shape of an edge in the final layout.
-    pub fn get_edge(&self, from: NodeId, to: NodeId) -> Option<LineSegment> {
-        self.edges.get(&(from, to)).copied()
+    pub fn get_edge(&self, from: NodeId, to: NodeId) -> Option<&EdgeGeometry> {
+        self.edges.get(&(from, to))
     }
 }
