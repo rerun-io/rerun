@@ -45,7 +45,7 @@ impl ForceLayoutProvider {
 
         let all_edges = all_edges_iter
             .clone()
-            .map(|(a, b)| (node_index[&a], node_index[&b]));
+            .map(|(a, b)| (node_index[a], node_index[b]));
 
         // TODO(grtlr): Currently we guesstimate good forces. Eventually these should be exposed as blueprints.
         let simulation = fj::SimulationBuilder::default()
@@ -63,7 +63,7 @@ impl ForceLayoutProvider {
         Self {
             simulation,
             node_index,
-            edges: all_edges_iter.cloned().collect(),
+            edges: all_edges_iter.copied().collect(),
         }
     }
 
@@ -73,7 +73,7 @@ impl ForceLayoutProvider {
 
         for graph in request.graphs.values() {
             for (id, node) in &graph.nodes {
-                let i = self.node_index[&id];
+                let i = self.node_index[id];
                 let [x, y] = positions[i];
                 let pos = Pos2::new(x as f32, y as f32);
                 extents.insert(*id, Rect::from_center_size(pos, node.size));

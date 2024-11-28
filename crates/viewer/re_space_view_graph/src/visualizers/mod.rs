@@ -3,8 +3,8 @@ mod nodes;
 
 use std::collections::BTreeSet;
 
-pub use edges::{EdgeData, EdgeInstance, EdgesVisualizer};
-pub use nodes::{Label, NodeData, NodeInstance, NodeVisualizer};
+pub use edges::{EdgeData, EdgesVisualizer};
+pub use nodes::{Label, NodeData, NodeVisualizer};
 
 use re_chunk::EntityPath;
 

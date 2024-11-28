@@ -1,13 +1,16 @@
+use std::sync::Arc;
+
 use egui::{
-    Align2, Color32, FontId, Label, Painter, Pos2, Rect, Response, Sense, Shape, Stroke, Ui,
-    UiBuilder, Vec2,
+    Align2, Color32, FontId, FontSelection, Frame, Galley, Painter, Pos2, Rect, Response, RichText,
+    Sense, Shape, Stroke, TextWrapMode, Ui, UiBuilder, Vec2, WidgetText,
 };
 use re_chunk::EntityPath;
+use re_types::ArrowString;
 use re_viewer_context::{
     HoverHighlight, InteractionHighlight, SelectionHighlight, SpaceViewHighlights,
 };
 
-use crate::ui::draw::{CircleLabel, DrawableLabel, TextLabel};
+use crate::visualizers::Label;
 
 // Sorry for the pun, could not resist 😎.
 // On a serious note, is there no other way to create a `Sense` that does nothing?
@@ -16,6 +19,72 @@ const NON_SENSE: Sense = Sense {
     drag: false,
     focusable: false,
 };
+
+pub enum DrawableLabel {
+    Circle(CircleLabel),
+    Text(TextLabel),
+}
+
+impl DrawableLabel {
+    pub fn from_label(ui: &Ui, label: &Label) -> Self {
+        match label {
+            &Label::Circle { radius, color } => Self::circle(radius, color),
+            Label::Text { text, color } => Self::text(ui, text, *color),
+        }
+    }
+}
+
+pub struct TextLabel {
+    frame: Frame,
+    galley: Arc<Galley>,
+}
+
+pub struct CircleLabel {
+    radius: f32,
+    color: Option<Color32>,
+}
+
+impl DrawableLabel {
+    pub fn size(&self) -> Vec2 {
+        match self {
+            Self::Circle(CircleLabel { radius, .. }) => Vec2::splat(radius * 2.0),
+            Self::Text(TextLabel { galley, frame }) => {
+                frame.inner_margin.sum() + galley.size() + Vec2::splat(frame.stroke.width * 2.0)
+            }
+        }
+    }
+
+    pub fn circle(radius: f32, color: Option<Color32>) -> Self {
+        Self::Circle(CircleLabel { radius, color })
+    }
+
+    pub fn implicit_circle() -> Self {
+        Self::Circle(CircleLabel {
+            radius: 4.0,
+            color: None,
+        })
+    }
+
+    pub fn text(ui: &Ui, text: &ArrowString, color: Option<Color32>) -> Self {
+        let galley = WidgetText::from(
+            RichText::new(text.to_string())
+                .color(color.unwrap_or_else(|| ui.style().visuals.text_color())),
+        )
+        .into_galley(
+            ui,
+            Some(TextWrapMode::Extend),
+            f32::INFINITY,
+            FontSelection::Default,
+        );
+
+        let frame = Frame::default()
+            .inner_margin(Vec2::new(6.0, 4.0))
+            .fill(ui.style().visuals.widgets.noninteractive.bg_fill)
+            .stroke(Stroke::new(1.0, ui.style().visuals.text_color()));
+
+        Self::Text(TextLabel { frame, galley })
+    }
+}
 
 fn draw_circle_label(
     ui: &mut Ui,
@@ -52,7 +121,7 @@ fn draw_text_label(ui: &mut Ui, label: &TextLabel, highlight: InteractionHighlig
         .fill(bg)
         .show(ui, |ui| {
             ui.add(
-                Label::new(galley.clone())
+                egui::Label::new(galley.clone())
                     .selectable(false)
                     .sense(Sense::click()),
             )

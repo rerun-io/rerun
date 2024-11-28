@@ -20,10 +20,9 @@ use re_viewer_context::{
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
-    draw::{draw_debug, draw_edge, draw_entity_rect, draw_node},
     graph::{Graph, Node},
     layout::LayoutRequest,
-    ui::GraphSpaceViewState,
+    ui::{draw_debug, draw_edge, draw_entity_rect, draw_node, GraphSpaceViewState},
     visualizers::{merge, EdgesVisualizer, NodeVisualizer},
 };
 
@@ -188,8 +187,7 @@ Display a graph of nodes and edges.
                         let response = match node {
                             Node::Explicit { instance, .. } => {
                                 let highlight = entity_highlights.index_highlight(*instance);
-                                let response =
-                                    draw_node(ui, center, node.label(), highlight);
+                                let response = draw_node(ui, center, node.label(), highlight);
 
                                 let instance_path =
                                     InstancePath::instance(entity_path.clone(), *instance);
@@ -257,109 +255,5 @@ Display a graph of nodes and edges.
         }
 
         Ok(())
-
-        //
-
-        //
-        // let state = state.downcast_mut::<GraphSpaceViewState>()?;
-        //
-        // let bounds_property = ViewProperty::from_archetype::<VisualBounds2D>(
-        //     ctx.blueprint_db(),
-        //     ctx.blueprint_query,
-        //     query.space_view_id,
-        // );
-        //
-        // let bounds: blueprint::components::VisualBounds2D =
-        //     bounds_property.component_or_fallback(ctx, self, state)?;
-        //
-        // let layout_was_empty = state.layout_state.is_none();
-        // let layout = state
-        //     .layout_state
-        //     .get(discriminator, graphs.iter().map(|(_, graph)| graph));
-        //
-        // let mut needs_remeasure = false;
-        //
-        // state.world_bounds = Some(bounds);
-        // let bounds_rect: egui::Rect = bounds.into();
-        //
-        // let mut scene_builder = SceneBuilder::from_world_bounds(bounds_rect);
-        //
-        // if state.show_debug {
-        //     scene_builder.show_debug();
-        // }
-        //
-        // let (new_world_bounds, response) = scene_builder.add(ui, |mut scene| {
-        //     for (entity, graph) in &graphs {
-        //         // We use the following to keep track of the bounding box over nodes in an entity.
-        //         let mut entity_rect = egui::Rect::NOTHING;
-        //
-        //         let ent_highlights = query.highlights.entity_highlight((*entity).hash());
-        //
-        //         // Draw explicit nodes.
-        //         for node in graph.nodes_explicit() {
-        //             let pos = layout.get(&node.index).unwrap_or(egui::Rect::ZERO);
-        //
-        //             let response = scene.explicit_node(
-        //                 pos.min,
-        //                 node,
-        //                 ent_highlights.index_highlight(node.instance),
-        //             );
-        //
-        //             if response.clicked() {
-        //                 let instance_path =
-        //                     InstancePath::instance((*entity).clone(), node.instance);
-        //                 ctx.select_hovered_on_click(
-        //                     &response,
-        //                     vec![(Item::DataResult(query.space_view_id, instance_path), None)]
-        //                         .into_iter(),
-        //                 );
-        //             }
-        //
-        //             entity_rect = entity_rect.union(response.rect);
-        //             needs_remeasure |= layout.update(&node.index, response.rect);
-        //         }
-        //
-        //         // Draw implicit nodes.
-        //         for node in graph.nodes_implicit() {
-        //             let current = layout.get(&node.index).unwrap_or(egui::Rect::ZERO);
-        //             let response = scene.implicit_node(current.min, node);
-        //             entity_rect = entity_rect.union(response.rect);
-        //             needs_remeasure |= layout.update(&node.index, response.rect);
-        //         }
-        //
-        //         // Draw edges.
-        //         for edge in graph.edges() {
-        //             if let (Some(from), Some(to)) = (
-        //                 layout.get(&edge.source_index),
-        //                 layout.get(&edge.target_index),
-        //             ) {
-        //                 let show_arrow = graph.kind() == components::GraphType::Directed;
-        //                 scene.edge(from, to, edge, show_arrow);
-        //             }
-        //         }
-        //
-        //         // Draw entity rect.
-        //         if graphs.len() > 1 && entity_rect.is_positive() {
-        //             let response = scene.entity(entity, entity_rect, &query.highlights);
-        //
-        //             let instance_path = InstancePath::entity_all((*entity).clone());
-        //             ctx.select_hovered_on_click(
-        //                 &response,
-        //                 vec![(Item::DataResult(query.space_view_id, instance_path), None)]
-        //                     .into_iter(),
-        //             );
-        //         }
-        //     }
-        // });
-        //
-
-        //
-        // if needs_remeasure {
-        //     ui.ctx().request_discard("layout needed a remeasure");
-        // }
-        //
-
-        //
-        // Ok(())
     }
 }

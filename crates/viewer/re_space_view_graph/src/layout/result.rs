@@ -1,6 +1,6 @@
 use egui::{Pos2, Rect};
 
-use crate::{graph::NodeIndex, ui::bounding_rect_from_iter};
+use crate::graph::NodeIndex;
 
 pub type LineSegment = [Pos2; 2];
 
@@ -11,11 +11,15 @@ pub struct Layout {
     // TODO(grtlr): Consider adding the entity rects here too.
 }
 
+fn bounding_rect_from_iter(rectangles: impl Iterator<Item = egui::Rect>) -> egui::Rect {
+    rectangles.fold(egui::Rect::NOTHING, |acc, rect| acc.union(rect))
+}
+
 impl Layout {
-    #[deprecated]
+    /// Returns the bounding rectangle of the layout.
     pub fn bounding_rect(&self) -> Rect {
         // TODO(grtlr): We mostly use this for debugging, but we should probably
-        // take all elements of the layout into account.
+        // take all elements of the layout into account, once we have entity rects too.
         bounding_rect_from_iter(self.nodes.values().copied())
     }
 

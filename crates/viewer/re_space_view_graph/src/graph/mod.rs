@@ -11,7 +11,7 @@ use re_log_types::Instance;
 use re_types::{components::GraphType, ArrowString};
 
 use crate::{
-    ui::draw::DrawableLabel,
+    ui::DrawableLabel,
     visualizers::{EdgeData, NodeData},
 };
 

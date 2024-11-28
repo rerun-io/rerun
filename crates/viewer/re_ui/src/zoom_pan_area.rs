@@ -65,7 +65,8 @@ pub fn zoom_pan_area(
             // Transform to the world space:
             let visible_rect_in_world = ui_from_world.inverse() * view_bounds_ui;
 
-            ui.set_clip_rect(visible_rect_in_world); // set proper clip-rect so we can interact with the background. TODO: why is this needed?
+            // set proper clip-rect so we can interact with the background.
+            ui.set_clip_rect(visible_rect_in_world);
 
             // A Ui for sensing drag-to-pan, scroll-to-zoom, etc
             let mut drag_sense_ui = ui.new_child(
