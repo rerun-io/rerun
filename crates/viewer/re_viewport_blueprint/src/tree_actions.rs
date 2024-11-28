@@ -5,10 +5,10 @@ use re_viewer_context::{ContainerId, Contents, SpaceViewId};
 #[derive(Clone, Debug)]
 pub enum TreeAction {
     /// Add a new space view to the provided container (or the root if `None`).
-    AddSpaceView(SpaceViewId, Option<ContainerId>, Option<usize>), // TODO: name fields
+    AddSpaceView(SpaceViewId, Option<ContainerId>, Option<usize>),
 
     /// Add a new container of the provided kind to the provided container (or the root if `None`).
-    AddContainer(egui_tiles::ContainerKind, Option<ContainerId>), // TODO: name fields
+    AddContainer(egui_tiles::ContainerKind, Option<ContainerId>),
 
     /// Change the kind of a container.
     SetContainerKind(ContainerId, egui_tiles::ContainerKind),

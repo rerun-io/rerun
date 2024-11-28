@@ -74,15 +74,10 @@ impl<'a> Viewport<'a> {
         // If the blueprint tree is empty/missing we need to auto-layout.
         let tree = if blueprint.tree.is_empty() {
             edited = true;
-            let auto_tree = super::auto_layout::tree_from_space_views(
+            super::auto_layout::tree_from_space_views(
                 space_view_class_registry,
                 &blueprint.space_views,
-            );
-            re_log::trace!(
-                "Auto-generated new tree based on {} space_views: {auto_tree:#?}",
-                blueprint.space_views.len()
-            );
-            auto_tree
+            )
         } else {
             blueprint.tree.clone()
         };
@@ -242,9 +237,7 @@ impl<'a> Viewport<'a> {
             re_log::trace!("Processing tree action: {tree_action:?}");
             match tree_action {
                 TreeAction::AddSpaceView(space_view_id, parent_container, position_in_parent) => {
-                    // if self.blueprint.auto_layout()
-                    if false {
-                        // TODO: why was this code here?
+                    if self.blueprint.auto_layout() {
                         // Re-run the auto-layout next frame:
                         re_log::trace!(
                             "Added a space view with no user edits yet - will re-run auto-layout"
@@ -431,8 +424,6 @@ impl<'a> Viewport<'a> {
         // This is a no-op if the tree hasn't changed.
         if self.tree_edited {
             // TODO(#4687): Be extra careful here. If we mark edited inappropriately we can create an infinite edit loop.
-
-            re_log::trace!("Saving edited tree: {:#?}", self.tree);
 
             // Simplify before we save the tree. Normally additional simplification will
             // happen on the next render loop, but that's too late -- unsimplified
