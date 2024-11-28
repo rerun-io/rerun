@@ -83,16 +83,13 @@ jobs:
     strategy:
       matrix:
         include:
-          # TODO(#8245): we also run mac tests on `main` because that's the only platform where UI snapshot tests are covered.
-          # When the linux runners are able to run these tests (with a software renderer), we can move that back to nightly.
-          - ${{ if inputs.CHANNEL == 'main' }}:
-              os: macos-latest
-              name: macos
+          # TODO(#8245): we run mac tests on `main` because that's the only platform where UI snapshot tests are covered.
+          # When the linux runners are able to run these tests (with a software renderer), we can move that back to all nightly.
+          - os: ${{ inputs.CHANNEL == 'main' && 'macos-latest' || 'windows-latest-8-cores' }}
+            name: ${{ inputs.CHANNEL == 'main' && 'macos' || 'windows' }}
 
-          - ${{ if inputs.CHANNEL == 'nightly' }}:
-              os: windows-latest-8-cores
-              name: windows
-
+    # Note: we can't use `matrix.os` here because its evaluated before the matrix stuff.
+    if: ${{ inputs.CHANNEL == 'main' || inputs.CHANNEL == 'nightly' }}
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
