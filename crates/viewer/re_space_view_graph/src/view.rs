@@ -144,6 +144,8 @@ Display a graph of nodes and edges.
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
+        re_tracing::profile_function!();
+
         let node_data = &system_output.view_systems.get::<NodeVisualizer>()?.data;
         let edge_data = &system_output.view_systems.get::<EdgesVisualizer>()?.data;
 
