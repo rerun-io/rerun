@@ -93,6 +93,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          lfs: true
 
       - name: Set up Rust
         uses: ./.github/actions/setup-rust
