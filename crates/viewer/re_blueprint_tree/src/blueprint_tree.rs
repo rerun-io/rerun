@@ -187,9 +187,7 @@ impl BlueprintTree {
         let container_id = viewport.root_container;
 
         let Some(container_blueprint) = viewport.container(&container_id) else {
-            // This happens after a blueprint reset (or there was no blueprint).
-            // TODO(#8056): refactor all of this
-            re_log::debug!("Cannot find root {container_id} in BlueprintTree (b/c recent reset?)");
+            re_log::warn!("Failed to find root container {container_id} in ViewportBlueprint");
             return;
         };
 
