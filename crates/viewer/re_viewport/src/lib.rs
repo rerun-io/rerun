@@ -9,9 +9,9 @@ mod auto_layout;
 mod screenshot;
 mod space_view_highlights;
 mod system_execution;
-mod viewport;
+mod viewport_ui;
 
-pub use self::viewport::Viewport;
+pub use self::viewport_ui::ViewportUi;
 
 pub mod external {
     pub use re_space_view;

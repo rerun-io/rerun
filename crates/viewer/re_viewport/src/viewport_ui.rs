@@ -37,14 +37,15 @@ fn tree_simplification_options() -> egui_tiles::SimplificationOptions {
 
 // ----------------------------------------------------------------------------
 
-/// Defines the layout of the Viewport
-pub struct Viewport {
-    /// The blueprint that drives this viewport. This is the source of truth from the store
-    /// for this frame.
+/// Defines the UI and layout of the Viewport.
+pub struct ViewportUi {
+    /// The blueprint that drives this viewport.
+    /// This is the source of truth from the store for this frame.
+    /// All modifications are accumulated in [`ViewportBlueprint::deferred_commands`] and applied at the end of the frame.
     pub blueprint: ViewportBlueprint,
 }
 
-impl Viewport {
+impl ViewportUi {
     pub fn new(blueprint: ViewportBlueprint) -> Self {
         Self { blueprint }
     }
