@@ -1,5 +1,5 @@
 use std::{
-    collections::{btree_map::Entry as BTreeMapEntry, BTreeSet},
+    collections::{btree_map::Entry as BTreeMapEntry, hash_map::Entry as HashMapEntry, BTreeSet},
     time::Duration,
 };
 
@@ -515,14 +515,14 @@ impl ChunkStore {
         // before we had time to clean the other.
 
         for (entity_path, chunk_ids_to_be_removed) in chunk_ids_to_be_removed {
-            let BTreeMapEntry::Occupied(mut temporal_chunk_ids_per_timeline) = self
+            let HashMapEntry::Occupied(mut temporal_chunk_ids_per_timeline) = self
                 .temporal_chunk_ids_per_entity_per_component
                 .entry(entity_path.clone())
             else {
                 continue;
             };
 
-            let BTreeMapEntry::Occupied(mut temporal_chunk_ids_per_timeline_componentless) =
+            let HashMapEntry::Occupied(mut temporal_chunk_ids_per_timeline_componentless) =
                 self.temporal_chunk_ids_per_entity.entry(entity_path)
             else {
                 continue;
@@ -531,7 +531,7 @@ impl ChunkStore {
             for (timeline, chunk_ids_to_be_removed) in chunk_ids_to_be_removed {
                 // Component-less indices
                 {
-                    let BTreeMapEntry::Occupied(mut temporal_chunk_ids_per_time_componentless) =
+                    let HashMapEntry::Occupied(mut temporal_chunk_ids_per_time_componentless) =
                         temporal_chunk_ids_per_timeline_componentless
                             .get_mut()
                             .entry(timeline)
@@ -595,14 +595,14 @@ impl ChunkStore {
                 // NOTE: This must go all the way, no matter the time budget left. Otherwise the
                 // component-less and per-component indices would go out of sync.
 
-                let BTreeMapEntry::Occupied(mut temporal_chunk_ids_per_component) =
+                let HashMapEntry::Occupied(mut temporal_chunk_ids_per_component) =
                     temporal_chunk_ids_per_timeline.get_mut().entry(timeline)
                 else {
                     continue;
                 };
 
                 for (component_name, chunk_ids_to_be_removed) in chunk_ids_to_be_removed {
-                    let BTreeMapEntry::Occupied(mut temporal_chunk_ids_per_time) =
+                    let HashMapEntry::Occupied(mut temporal_chunk_ids_per_time) =
                         temporal_chunk_ids_per_component
                             .get_mut()
                             .entry(component_name)

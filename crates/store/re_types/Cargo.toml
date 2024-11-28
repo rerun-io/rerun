@@ -62,6 +62,7 @@ re_video = { workspace = true, optional = true }
 # External
 anyhow.workspace = true # TODO(#1845): Use thiserror instead
 array-init.workspace = true
+arrow.workspace = true
 arrow2 = { workspace = true, features = [
   "io_ipc",
   "io_print",

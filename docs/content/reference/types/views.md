@@ -9,6 +9,7 @@ Views are the panels shown in the viewer's viewport and the primary means of ins
 
 * [`BarChartView`](views/bar_chart_view.md): A bar chart view.
 * [`DataframeView`](views/dataframe_view.md): A view to display any data in a tabular form.
+* [`GraphView`](views/graph_view.md): A graph view to display time-variying, directed or undirected graph visualization.
 * [`MapView`](views/map_view.md): A 2D map view to display geospatial primitives.
 * [`Spatial2DView`](views/spatial2d_view.md): For viewing spatial 2D data.
 * [`Spatial3DView`](views/spatial3d_view.md): For viewing spatial 3D data.

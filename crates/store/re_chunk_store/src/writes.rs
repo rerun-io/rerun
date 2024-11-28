@@ -322,9 +322,11 @@ impl ChunkStore {
                             .map(|diff| (diff.chunk.id(), diff.chunk)),
                     )
                     .collect();
-                let dst = chunk_or_compacted.id();
 
-                diff.compacted = Some((srcs, dst));
+                diff.compacted = Some(crate::ChunkCompactionReport {
+                    srcs,
+                    new_chunk: chunk_or_compacted.clone(),
+                });
             }
 
             (chunk_or_compacted, vec![diff])

@@ -57,7 +57,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             filtered_index: Some(timeline),
             view_contents: Some(
                 engine
-                    .iter_entity_paths(&entity_path_filter)
+                    .iter_entity_paths_sorted(&entity_path_filter)
                     .map(|entity_path| (entity_path, None))
                     .collect(),
             ),

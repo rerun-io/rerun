@@ -5,7 +5,7 @@ from typing import Iterable, Protocol, TypeVar, Union
 import pyarrow as pa
 import rerun_bindings as bindings
 
-from ._baseclasses import Archetype, ComponentBatchMixin, ComponentColumn
+from ._baseclasses import Archetype, ComponentBatchLike, ComponentBatchMixin, ComponentColumn
 from ._log import IndicatorComponentBatch
 from .any_value import AnyBatchValue
 from .error_utils import catch_and_log_exceptions
@@ -121,7 +121,7 @@ TArchetype = TypeVar("TArchetype", bound=Archetype)
 def send_columns(
     entity_path: str,
     times: Iterable[TimeColumnLike],
-    components: Iterable[Union[ComponentBatchMixin, ComponentColumn, AnyBatchValue]],
+    components: Iterable[Union[ComponentBatchLike]],
     recording: RecordingStream | None = None,
     strict: bool | None = None,
 ) -> None:
@@ -258,5 +258,5 @@ def send_columns(
         entity_path,
         timelines={t.timeline_name(): t.as_arrow_array() for t in times},
         components=components_args,
-        recording=recording,
+        recording=recording.to_native() if recording is not None else None,
     )

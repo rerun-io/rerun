@@ -99,6 +99,7 @@ re_space_view = { path = "crates/viewer/re_space_view", version = "=0.21.0-alpha
 re_space_view_bar_chart = { path = "crates/viewer/re_space_view_bar_chart", version = "=0.21.0-alpha.1", default-features = false }
 re_space_view_spatial = { path = "crates/viewer/re_space_view_spatial", version = "=0.21.0-alpha.1", default-features = false }
 re_space_view_dataframe = { path = "crates/viewer/re_space_view_dataframe", version = "=0.21.0-alpha.1", default-features = false }
+re_space_view_graph = { path = "crates/viewer/re_space_view_graph", version = "=0.21.0-alpha.1", default-features = false }
 re_space_view_map = { path = "crates/viewer/re_space_view_map", version = "=0.21.0-alpha.1", default-features = false }
 re_space_view_tensor = { path = "crates/viewer/re_space_view_tensor", version = "=0.21.0-alpha.1", default-features = false }
 re_space_view_text_document = { path = "crates/viewer/re_space_view_text_document", version = "=0.21.0-alpha.1", default-features = false }
@@ -186,6 +187,7 @@ enumset = "1.0.12"
 env_logger = { version = "0.10", default-features = false }
 ffmpeg-sidecar = { version = "2.0.2", default-features = false }
 fixed = { version = "1.28", default-features = false }
+fjadra = "0.1"
 flatbuffers = "23.0"
 futures-channel = "0.3"
 futures-util = { version = "0.3", default-features = false }
@@ -325,7 +327,6 @@ wgpu = { version = "23.0", default-features = false, features = [
   "fragile-send-sync-non-atomic-wasm",
 ] }
 wgpu-core = "23.0"
-wgpu-types = "23.0"
 xshell = "0.2"
 zip = { version = "0.6", default-features = false } # We're stuck on 0.6 because https://crates.io/crates/protoc-prebuilt is still using 0.6
 

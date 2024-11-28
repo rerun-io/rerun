@@ -63,6 +63,7 @@ from .uint16 import UInt16, UInt16ArrayLike, UInt16Batch, UInt16Like
 from .uint32 import UInt32, UInt32ArrayLike, UInt32Batch, UInt32Like
 from .uint64 import UInt64, UInt64ArrayLike, UInt64Batch, UInt64Like
 from .utf8 import Utf8, Utf8ArrayLike, Utf8Batch, Utf8Like
+from .utf8pair import Utf8Pair, Utf8PairArrayLike, Utf8PairBatch, Utf8PairLike
 from .uuid import Uuid, UuidArrayLike, UuidBatch, UuidLike
 from .uvec2d import UVec2D, UVec2DArrayLike, UVec2DBatch, UVec2DLike
 from .uvec3d import UVec3D, UVec3DArrayLike, UVec3DBatch, UVec3DLike
@@ -231,6 +232,10 @@ __all__ = [
     "Utf8ArrayLike",
     "Utf8Batch",
     "Utf8Like",
+    "Utf8Pair",
+    "Utf8PairArrayLike",
+    "Utf8PairBatch",
+    "Utf8PairLike",
     "Uuid",
     "UuidArrayLike",
     "UuidBatch",

@@ -1134,6 +1134,19 @@ impl Type {
             Self::Object(fqname) => objects[fqname].has_default_destructor(objects),
         }
     }
+
+    pub fn is_union(&self, objects: &Objects) -> bool {
+        if let Self::Object(fqname) = self {
+            let obj = &objects[fqname];
+            if obj.is_arrow_transparent() {
+                obj.fields[0].typ.is_union(objects)
+            } else {
+                obj.class == ObjectClass::Union
+            }
+        } else {
+            false
+        }
+    }
 }
 
 /// The underlying element type for arrays/vectors/maps.
@@ -1256,6 +1269,19 @@ impl ElementType {
             | Self::Float32
             | Self::Float64 => true,
             Self::Bool | Self::Object(_) | Self::String => false,
+        }
+    }
+
+    pub fn is_union(&self, objects: &Objects) -> bool {
+        if let Self::Object(fqname) = self {
+            let obj = &objects[fqname];
+            if obj.is_arrow_transparent() {
+                obj.fields[0].typ.is_union(objects)
+            } else {
+                obj.class == ObjectClass::Union
+            }
+        } else {
+            false
         }
     }
 }

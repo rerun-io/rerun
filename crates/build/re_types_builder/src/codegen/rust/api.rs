@@ -864,17 +864,17 @@ fn quote_trait_impls_for_datatype_or_component(
     let quoted_arrow_datatype = if let Some(forwarded_type) = forwarded_type.as_ref() {
         quote! {
             #[inline]
-            fn arrow2_datatype() -> arrow2::datatypes::DataType {
-                #forwarded_type::arrow2_datatype()
+            fn arrow_datatype() -> arrow::datatypes::DataType {
+                #forwarded_type::arrow_datatype()
             }
         }
     } else {
         let datatype = ArrowDataTypeTokenizer(&datatype, false);
         quote! {
             #[inline]
-            fn arrow2_datatype() -> arrow2::datatypes::DataType {
+            fn arrow_datatype() -> arrow::datatypes::DataType {
                 #![allow(clippy::wildcard_imports)]
-                use arrow2::datatypes::*;
+                use arrow::datatypes::*;
                 #datatype
             }
         }
@@ -906,7 +906,8 @@ fn quote_trait_impls_for_datatype_or_component(
                 // re_tracing::profile_function!();
 
                 #![allow(clippy::wildcard_imports)]
-                use arrow2::{datatypes::*, array::*, buffer::*};
+                use arrow::datatypes::*;
+                use arrow2::{ array::*, buffer::*};
                 use ::re_types_core::{Loggable as _, ResultExt as _};
 
                 // This code-path cannot have null fields. If it does have a validity mask
@@ -948,7 +949,8 @@ fn quote_trait_impls_for_datatype_or_component(
             // re_tracing::profile_function!();
 
             #![allow(clippy::wildcard_imports)]
-            use arrow2::{datatypes::*, array::*, buffer::*};
+            use arrow::datatypes::*;
+            use arrow2::{ array::*, buffer::*};
             use ::re_types_core::{Loggable as _, ResultExt as _};
             Ok(#quoted_deserializer)
         }
@@ -956,13 +958,13 @@ fn quote_trait_impls_for_datatype_or_component(
 
     let quoted_serializer = if let Some(forwarded_type) = forwarded_type.as_ref() {
         quote! {
-            fn to_arrow2_opt<'a>(
+            fn to_arrow_opt<'a>(
                 data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-            ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+            ) -> SerializationResult<arrow::array::ArrayRef>
             where
                 Self: Clone + 'a,
             {
-                #forwarded_type::to_arrow2_opt(data.into_iter().map(|datum| {
+                #forwarded_type::to_arrow_opt(data.into_iter().map(|datum| {
                     datum.map(|datum| match datum.into() {
                         ::std::borrow::Cow::Borrowed(datum) => ::std::borrow::Cow::Borrowed(&datum.0),
                         ::std::borrow::Cow::Owned(datum) => ::std::borrow::Cow::Owned(datum.0),
@@ -976,9 +978,9 @@ fn quote_trait_impls_for_datatype_or_component(
 
         quote! {
             // NOTE: Don't inline this, this gets _huge_.
-            fn to_arrow2_opt<'a>(
+            fn to_arrow_opt<'a>(
                 data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-            ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+            ) -> SerializationResult<arrow::array::ArrayRef>
             where
                 Self: Clone + 'a
             {
@@ -987,8 +989,13 @@ fn quote_trait_impls_for_datatype_or_component(
 
                 #![allow(clippy::wildcard_imports)]
                 #![allow(clippy::manual_is_variant_and)]
-                use arrow2::{datatypes::*, array::*};
+                use arrow::{array::*, buffer::*, datatypes::*};
                 use ::re_types_core::{Loggable as _, ResultExt as _};
+
+                #[allow(unused)]
+                fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+                    std::sync::Arc::new(t) as ArrayRef
+                }
 
                 Ok(#quoted_serializer)
             }

@@ -449,6 +449,30 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <GraphEdge as Component>::name(),
+            ComponentReflection {
+                docstring_md: "An edge in a graph connecting two nodes.",
+                custom_placeholder: Some(GraphEdge::default().to_arrow2()?),
+                datatype: GraphEdge::arrow2_datatype(),
+            },
+        ),
+        (
+            <GraphNode as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A string-based ID representing a node in a graph.",
+                custom_placeholder: Some(GraphNode::default().to_arrow2()?),
+                datatype: GraphNode::arrow2_datatype(),
+            },
+        ),
+        (
+            <GraphType as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Specifies if a graph has directed or undirected edges.",
+                custom_placeholder: Some(GraphType::default().to_arrow2()?),
+                datatype: GraphType::arrow2_datatype(),
+            },
+        ),
+        (
             <HalfSize2D as Component>::name(),
             ComponentReflection {
                 docstring_md: "Half-size (radius) of a 2D box.\n\nMeasured in its local coordinate system.\n\nThe box extends both in negative and positive direction along each axis.\nNegative sizes indicate that the box is flipped along the respective axis, but this has no effect on how it is displayed.",
@@ -654,6 +678,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 docstring_md: "A 1D range, specifying a lower and upper bound.",
                 custom_placeholder: Some(Range1D::default().to_arrow2()?),
                 datatype: Range1D::arrow2_datatype(),
+            },
+        ),
+        (
+            <RecordingUri as Component>::name(),
+            ComponentReflection {
+                docstring_md: "A recording URI (Uniform Resource Identifier).",
+                custom_placeholder: None,
+                datatype: RecordingUri::arrow2_datatype(),
             },
         ),
         (
@@ -1301,6 +1333,58 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "rerun.components.ClassId".into(), display_name : "Class ids",
                     docstring_md :
                     "Optional class Ids for the points.\n\nThe [`components.ClassId`](https://rerun.io/docs/reference/types/components/class_id) provides colors if not specified explicitly.",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.GraphEdges"),
+            ArchetypeReflection {
+                display_name: "Graph edges",
+                view_types: &["GraphView"],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.GraphEdge".into(), display_name : "Edges",
+                    docstring_md :
+                    "A list of node tuples.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.GraphType".into(), display_name : "Graph type",
+                    docstring_md :
+                    "Specifies if the graph is directed or undirected.\n\nIf no `GraphType` is provided, the graph is assumed to be undirected.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.archetypes.GraphNodes"),
+            ArchetypeReflection {
+                display_name: "Graph nodes",
+                view_types: &["GraphView"],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.components.GraphNode".into(), display_name : "Node ids",
+                    docstring_md :
+                    "A list of node IDs.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : true, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Position2D".into(), display_name : "Positions",
+                    docstring_md :
+                    "Optional center positions of the nodes.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Color".into(), display_name : "Colors",
+                    docstring_md :
+                    "Optional colors for the boxes.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Text".into(), display_name : "Labels", docstring_md
+                    :
+                    "Optional text labels for the node.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.ShowLabels".into(), display_name : "Show labels",
+                    docstring_md :
+                    "Optional choice of whether the text labels should be shown by default.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.components.Radius".into(), display_name : "Radii",
+                    docstring_md :
+                    "Optional radii for nodes.\n\n⚠\u{fe0f} **This type is experimental and may be removed in future versions**",
                     is_required : false, },
                 ],
             },

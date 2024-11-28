@@ -81,7 +81,6 @@ type-map.workspace = true
 web-time.workspace = true
 wgpu.workspace = true
 wgpu-core.workspace = true                                           # Needed for error handling when wgpu-core implemented backend is used.
-wgpu-types.workspace = true
 
 # optional
 arrow2 = { workspace = true, optional = true }

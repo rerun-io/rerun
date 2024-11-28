@@ -15,38 +15,38 @@ import rerun as rr
 rec = rr.new_recording(application_id="test")
 
 rec = rr.new_recording(application_id="test")
-rr.log("test", rr.Points3D([1, 2, 3]), recording=rec.inner)
+rr.log("test", rr.Points3D([1, 2, 3]), recording=rec)
 
 rec = rr.new_recording(application_id="test", make_default=True)
-rr.log("test", rr.Points3D([1, 2, 3]), recording=rec.inner)
+rr.log("test", rr.Points3D([1, 2, 3]), recording=rec)
 
 rec = rr.new_recording(application_id="test", make_thread_default=True)
-rr.log("test", rr.Points3D([1, 2, 3]), recording=rec.inner)
+rr.log("test", rr.Points3D([1, 2, 3]), recording=rec)
 
 rec = rr.new_recording(application_id="test")  # this works
 rr.set_global_data_recording(rec)
-rr.log("test", rr.Points3D([1, 2, 3]), recording=rec.inner)
+rr.log("test", rr.Points3D([1, 2, 3]), recording=rec)
 
 rec = rr.new_recording(application_id="test")  # this works
 rr.set_thread_local_data_recording(rec)
-rr.log("test", rr.Points3D([1, 2, 3]), recording=rec.inner)
+rr.log("test", rr.Points3D([1, 2, 3]), recording=rec)
 
 rec = rr.new_recording(application_id="test", spawn=True)
-rr.log("test", rr.Points3D([1, 2, 3]), recording=rec.inner)
+rr.log("test", rr.Points3D([1, 2, 3]), recording=rec)
 
 rec = rr.new_recording(application_id="test")
 rr.connect_tcp(recording=rec)
-rr.log("test", rr.Points3D([1, 2, 3]), recording=rec.inner)
+rr.log("test", rr.Points3D([1, 2, 3]), recording=rec)
 
 rec = rr.new_recording(application_id="test")
 rr.memory_recording(recording=rec)
-rr.log("test", rr.Points3D([1, 2, 3]), recording=rec.inner)
+rr.log("test", rr.Points3D([1, 2, 3]), recording=rec)
 
 for _ in range(3):
     rec = rr.new_recording(application_id="test", make_default=False, make_thread_default=False)
     mem = rec.memory_recording()
-    rr.log("test", rr.Points3D([1, 2, 3]), recording=rec.inner)
+    rr.log("test", rr.Points3D([1, 2, 3]), recording=rec)
 
 for _ in range(3):
     rec = rr.new_recording(application_id="test", make_default=False, make_thread_default=False)
-    rr.log("test", rr.Points3D([1, 2, 3]), recording=rec.inner)
+    rr.log("test", rr.Points3D([1, 2, 3]), recording=rec)

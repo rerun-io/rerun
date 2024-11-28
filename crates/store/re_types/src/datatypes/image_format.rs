@@ -67,41 +67,65 @@ impl ::re_types_core::SizeBytes for ImageFormat {
 
 impl ::re_types_core::Loggable for ImageFormat {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![
             Field::new("width", DataType::UInt32, false),
             Field::new("height", DataType::UInt32, false),
             Field::new(
                 "pixel_format",
-                <crate::datatypes::PixelFormat>::arrow2_datatype(),
+                <crate::datatypes::PixelFormat>::arrow_datatype(),
                 true,
             ),
             Field::new(
                 "color_model",
-                <crate::datatypes::ColorModel>::arrow2_datatype(),
+                <crate::datatypes::ColorModel>::arrow_datatype(),
                 true,
             ),
             Field::new(
                 "channel_datatype",
-                <crate::datatypes::ChannelDatatype>::arrow2_datatype(),
+                <crate::datatypes::ChannelDatatype>::arrow_datatype(),
                 true,
             ),
         ]))
     }
 
-    fn to_arrow2_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
+            let fields = Fields::from(vec![
+                Field::new("width", DataType::UInt32, false),
+                Field::new("height", DataType::UInt32, false),
+                Field::new(
+                    "pixel_format",
+                    <crate::datatypes::PixelFormat>::arrow_datatype(),
+                    true,
+                ),
+                Field::new(
+                    "color_model",
+                    <crate::datatypes::ColorModel>::arrow_datatype(),
+                    true,
+                ),
+                Field::new(
+                    "channel_datatype",
+                    <crate::datatypes::ChannelDatatype>::arrow_datatype(),
+                    true,
+                ),
+            ]);
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
@@ -109,12 +133,12 @@ impl ::re_types_core::Loggable for ImageFormat {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let validity: Option<arrow::buffer::NullBuffer> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            StructArray::new(
-                Self::arrow2_datatype(),
+            as_array_ref(StructArray::new(
+                fields,
                 vec![
                     {
                         let (somes, width): (Vec<_>, Vec<_>) = data
@@ -124,16 +148,19 @@ impl ::re_types_core::Loggable for ImageFormat {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let width_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let width_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
-                        PrimitiveArray::new(
-                            DataType::UInt32,
-                            width.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                            width_bitmap,
-                        )
-                        .boxed()
+                        as_array_ref(PrimitiveArray::<UInt32Type>::new(
+                            ScalarBuffer::from(
+                                width
+                                    .into_iter()
+                                    .map(|v| v.unwrap_or_default())
+                                    .collect::<Vec<_>>(),
+                            ),
+                            width_validity,
+                        ))
                     },
                     {
                         let (somes, height): (Vec<_>, Vec<_>) = data
@@ -143,16 +170,19 @@ impl ::re_types_core::Loggable for ImageFormat {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let height_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let height_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
-                        PrimitiveArray::new(
-                            DataType::UInt32,
-                            height.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                            height_bitmap,
-                        )
-                        .boxed()
+                        as_array_ref(PrimitiveArray::<UInt32Type>::new(
+                            ScalarBuffer::from(
+                                height
+                                    .into_iter()
+                                    .map(|v| v.unwrap_or_default())
+                                    .collect::<Vec<_>>(),
+                            ),
+                            height_validity,
+                        ))
                     },
                     {
                         let (somes, pixel_format): (Vec<_>, Vec<_>) = data
@@ -165,13 +195,13 @@ impl ::re_types_core::Loggable for ImageFormat {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let pixel_format_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let pixel_format_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = pixel_format_bitmap;
-                            crate::datatypes::PixelFormat::to_arrow2_opt(pixel_format)?
+                            _ = pixel_format_validity;
+                            crate::datatypes::PixelFormat::to_arrow_opt(pixel_format)?
                         }
                     },
                     {
@@ -185,13 +215,13 @@ impl ::re_types_core::Loggable for ImageFormat {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let color_model_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let color_model_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = color_model_bitmap;
-                            crate::datatypes::ColorModel::to_arrow2_opt(color_model)?
+                            _ = color_model_validity;
+                            crate::datatypes::ColorModel::to_arrow_opt(color_model)?
                         }
                     },
                     {
@@ -205,19 +235,18 @@ impl ::re_types_core::Loggable for ImageFormat {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let channel_datatype_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let channel_datatype_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = channel_datatype_bitmap;
-                            crate::datatypes::ChannelDatatype::to_arrow2_opt(channel_datatype)?
+                            _ = channel_datatype_validity;
+                            crate::datatypes::ChannelDatatype::to_arrow_opt(channel_datatype)?
                         }
                     },
                 ],
-                bitmap,
-            )
-            .boxed()
+                validity,
+            ))
         })
     }
 
@@ -229,13 +258,14 @@ impl ::re_types_core::Loggable for ImageFormat {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -253,7 +283,7 @@ impl ::re_types_core::Loggable for ImageFormat {
                 let width = {
                     if !arrays_by_name.contains_key("width") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "width",
                         ))
                         .with_context("rerun.datatypes.ImageFormat");
@@ -274,7 +304,7 @@ impl ::re_types_core::Loggable for ImageFormat {
                 let height = {
                     if !arrays_by_name.contains_key("height") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "height",
                         ))
                         .with_context("rerun.datatypes.ImageFormat");
@@ -295,7 +325,7 @@ impl ::re_types_core::Loggable for ImageFormat {
                 let pixel_format = {
                     if !arrays_by_name.contains_key("pixel_format") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "pixel_format",
                         ))
                         .with_context("rerun.datatypes.ImageFormat");
@@ -308,7 +338,7 @@ impl ::re_types_core::Loggable for ImageFormat {
                 let color_model = {
                     if !arrays_by_name.contains_key("color_model") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "color_model",
                         ))
                         .with_context("rerun.datatypes.ImageFormat");
@@ -321,7 +351,7 @@ impl ::re_types_core::Loggable for ImageFormat {
                 let channel_datatype = {
                     if !arrays_by_name.contains_key("channel_datatype") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "channel_datatype",
                         ))
                         .with_context("rerun.datatypes.ImageFormat");

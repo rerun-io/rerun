@@ -1891,6 +1891,8 @@ fn populate_space_view_class_registry_with_builtin(
 ) -> Result<(), SpaceViewClassRegistryError> {
     re_tracing::profile_function!();
     space_view_class_registry.add_class::<re_space_view_bar_chart::BarChartSpaceView>()?;
+    space_view_class_registry.add_class::<re_space_view_dataframe::DataframeSpaceView>()?;
+    space_view_class_registry.add_class::<re_space_view_graph::GraphSpaceView>()?;
     #[cfg(feature = "map_view")]
     space_view_class_registry.add_class::<re_space_view_map::MapSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_spatial::SpatialSpaceView2D>()?;
@@ -1899,7 +1901,6 @@ fn populate_space_view_class_registry_with_builtin(
     space_view_class_registry.add_class::<re_space_view_text_document::TextDocumentSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_text_log::TextSpaceView>()?;
     space_view_class_registry.add_class::<re_space_view_time_series::TimeSeriesSpaceView>()?;
-    space_view_class_registry.add_class::<re_space_view_dataframe::DataframeSpaceView>()?;
 
     Ok(())
 }

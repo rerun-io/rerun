@@ -1,5 +1,4 @@
 use std::{
-    collections::BTreeMap,
     hash::{Hash as _, Hasher},
     sync::Arc,
     time::{Duration, Instant},
@@ -679,14 +678,14 @@ pub struct PendingRow {
     /// The component data.
     ///
     /// Each array is a single component, i.e. _not_ a list array.
-    pub components: BTreeMap<ComponentName, Box<dyn Arrow2Array>>,
+    pub components: IntMap<ComponentName, Box<dyn Arrow2Array>>,
 }
 
 impl PendingRow {
     #[inline]
     pub fn new(
         timepoint: TimePoint,
-        components: BTreeMap<ComponentName, Box<dyn Arrow2Array>>,
+        components: IntMap<ComponentName, Box<dyn Arrow2Array>>,
     ) -> Self {
         Self {
             row_id: RowId::new(),
@@ -822,7 +821,7 @@ impl PendingRow {
                 re_tracing::profile_scope!("iterate per datatype set");
 
                 let mut row_ids: Vec<RowId> = Vec::with_capacity(rows.len());
-                let mut timelines: BTreeMap<Timeline, PendingTimeColumn> = BTreeMap::default();
+                let mut timelines: IntMap<Timeline, PendingTimeColumn> = IntMap::default();
 
                 // Create all the logical list arrays that we're going to need, accounting for the
                 // possibility of sparse components in the data.
@@ -1008,9 +1007,9 @@ mod tests {
         let components2 = [(MyPoint::name(), points2.clone())];
         let components3 = [(MyPoint::name(), points3.clone())];
 
-        let row1 = PendingRow::new(timepoint1.clone(), components1.into());
-        let row2 = PendingRow::new(timepoint2.clone(), components2.into());
-        let row3 = PendingRow::new(timepoint3.clone(), components3.into());
+        let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
+        let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
+        let row3 = PendingRow::new(timepoint3.clone(), components3.into_iter().collect());
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1087,9 +1086,9 @@ mod tests {
         let components2 = [(MyPoint::name(), points2.clone())];
         let components3 = [(MyPoint::name(), points3.clone())];
 
-        let row1 = PendingRow::new(timeless.clone(), components1.into());
-        let row2 = PendingRow::new(timeless.clone(), components2.into());
-        let row3 = PendingRow::new(timeless.clone(), components3.into());
+        let row1 = PendingRow::new(timeless.clone(), components1.into_iter().collect());
+        let row2 = PendingRow::new(timeless.clone(), components2.into_iter().collect());
+        let row3 = PendingRow::new(timeless.clone(), components3.into_iter().collect());
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1163,9 +1162,9 @@ mod tests {
         let components2 = [(MyPoint::name(), points2.clone())];
         let components3 = [(MyPoint::name(), points3.clone())];
 
-        let row1 = PendingRow::new(timepoint1.clone(), components1.into());
-        let row2 = PendingRow::new(timepoint2.clone(), components2.into());
-        let row3 = PendingRow::new(timepoint3.clone(), components3.into());
+        let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
+        let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
+        let row3 = PendingRow::new(timepoint3.clone(), components3.into_iter().collect());
 
         let entity_path1: EntityPath = "ent1".into();
         let entity_path2: EntityPath = "ent2".into();
@@ -1279,9 +1278,9 @@ mod tests {
         let components2 = [(MyPoint::name(), points2.clone())];
         let components3 = [(MyPoint::name(), points3.clone())];
 
-        let row1 = PendingRow::new(timepoint1.clone(), components1.into());
-        let row2 = PendingRow::new(timepoint2.clone(), components2.into());
-        let row3 = PendingRow::new(timepoint3.clone(), components3.into());
+        let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
+        let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
+        let row3 = PendingRow::new(timepoint3.clone(), components3.into_iter().collect());
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1400,9 +1399,9 @@ mod tests {
         let components2 = [(MyPoint::name(), points2.clone())]; // same name, different datatype
         let components3 = [(MyPoint::name(), points3.clone())];
 
-        let row1 = PendingRow::new(timepoint1.clone(), components1.into());
-        let row2 = PendingRow::new(timepoint2.clone(), components2.into());
-        let row3 = PendingRow::new(timepoint3.clone(), components3.into());
+        let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
+        let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
+        let row3 = PendingRow::new(timepoint3.clone(), components3.into_iter().collect());
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1527,10 +1526,10 @@ mod tests {
         let components3 = [(MyPoint::name(), points3.clone())];
         let components4 = [(MyPoint::name(), points4.clone())];
 
-        let row1 = PendingRow::new(timepoint4.clone(), components1.into());
-        let row2 = PendingRow::new(timepoint1.clone(), components2.into());
-        let row3 = PendingRow::new(timepoint2.clone(), components3.into());
-        let row4 = PendingRow::new(timepoint3.clone(), components4.into());
+        let row1 = PendingRow::new(timepoint4.clone(), components1.into_iter().collect());
+        let row2 = PendingRow::new(timepoint1.clone(), components2.into_iter().collect());
+        let row3 = PendingRow::new(timepoint2.clone(), components3.into_iter().collect());
+        let row4 = PendingRow::new(timepoint3.clone(), components4.into_iter().collect());
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1641,10 +1640,10 @@ mod tests {
         let components3 = [(MyPoint::name(), points3.clone())];
         let components4 = [(MyPoint::name(), points4.clone())];
 
-        let row1 = PendingRow::new(timepoint4.clone(), components1.into());
-        let row2 = PendingRow::new(timepoint1.clone(), components2.into());
-        let row3 = PendingRow::new(timepoint2.clone(), components3.into());
-        let row4 = PendingRow::new(timepoint3.clone(), components4.into());
+        let row1 = PendingRow::new(timepoint4.clone(), components1.into_iter().collect());
+        let row2 = PendingRow::new(timepoint1.clone(), components2.into_iter().collect());
+        let row3 = PendingRow::new(timepoint2.clone(), components3.into_iter().collect());
+        let row4 = PendingRow::new(timepoint3.clone(), components4.into_iter().collect());
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());

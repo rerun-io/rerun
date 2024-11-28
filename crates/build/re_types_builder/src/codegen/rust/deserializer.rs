@@ -60,7 +60,7 @@ pub fn quote_arrow_deserializer(
     let data_src = format_ident!("arrow_data");
 
     let datatype = &arrow_registry.get(&obj.fqname);
-    let quoted_self_datatype = quote! { Self::arrow2_datatype() };
+    let quoted_self_datatype = quote! { Self::arrow_datatype() };
 
     let obj_fqname = obj.fqname.as_str();
     let is_enum = obj.is_enum();

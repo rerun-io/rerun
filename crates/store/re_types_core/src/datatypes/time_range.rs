@@ -45,34 +45,51 @@ crate::macros::impl_into_cow!(TimeRange);
 
 impl crate::Loggable for TimeRange {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![
             Field::new(
                 "start",
-                <crate::datatypes::TimeRangeBoundary>::arrow2_datatype(),
-                false,
+                <crate::datatypes::TimeRangeBoundary>::arrow_datatype(),
+                true,
             ),
             Field::new(
                 "end",
-                <crate::datatypes::TimeRangeBoundary>::arrow2_datatype(),
-                false,
+                <crate::datatypes::TimeRangeBoundary>::arrow_datatype(),
+                true,
             ),
         ]))
     }
 
-    fn to_arrow2_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use crate::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
+            let fields = Fields::from(vec![
+                Field::new(
+                    "start",
+                    <crate::datatypes::TimeRangeBoundary>::arrow_datatype(),
+                    true,
+                ),
+                Field::new(
+                    "end",
+                    <crate::datatypes::TimeRangeBoundary>::arrow_datatype(),
+                    true,
+                ),
+            ]);
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
@@ -80,12 +97,12 @@ impl crate::Loggable for TimeRange {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let validity: Option<arrow::buffer::NullBuffer> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            StructArray::new(
-                Self::arrow2_datatype(),
+            as_array_ref(StructArray::new(
+                fields,
                 vec![
                     {
                         let (somes, start): (Vec<_>, Vec<_>) = data
@@ -95,13 +112,13 @@ impl crate::Loggable for TimeRange {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let start_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let start_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = start_bitmap;
-                            crate::datatypes::TimeRangeBoundary::to_arrow2_opt(start)?
+                            _ = start_validity;
+                            crate::datatypes::TimeRangeBoundary::to_arrow_opt(start)?
                         }
                     },
                     {
@@ -112,19 +129,18 @@ impl crate::Loggable for TimeRange {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let end_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let end_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = end_bitmap;
-                            crate::datatypes::TimeRangeBoundary::to_arrow2_opt(end)?
+                            _ = end_validity;
+                            crate::datatypes::TimeRangeBoundary::to_arrow_opt(end)?
                         }
                     },
                 ],
-                bitmap,
-            )
-            .boxed()
+                validity,
+            ))
         })
     }
 
@@ -136,13 +152,14 @@ impl crate::Loggable for TimeRange {
     {
         #![allow(clippy::wildcard_imports)]
         use crate::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -160,7 +177,7 @@ impl crate::Loggable for TimeRange {
                 let start = {
                     if !arrays_by_name.contains_key("start") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "start",
                         ))
                         .with_context("rerun.datatypes.TimeRange");
@@ -173,7 +190,7 @@ impl crate::Loggable for TimeRange {
                 let end = {
                     if !arrays_by_name.contains_key("end") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "end",
                         ))
                         .with_context("rerun.datatypes.TimeRange");

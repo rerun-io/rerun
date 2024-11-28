@@ -96,11 +96,145 @@ impl ::re_types_core::SizeBytes for TensorBuffer {
 
 impl ::re_types_core::Loggable for TensorBuffer {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
+        use arrow::datatypes::*;
         DataType::Union(
-            std::sync::Arc::new(vec![
+            UnionFields::new(
+                vec![0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+                vec![
+                    Field::new("_null_markers", DataType::Null, true),
+                    Field::new(
+                        "U8",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::UInt8,
+                            false,
+                        ))),
+                        false,
+                    ),
+                    Field::new(
+                        "U16",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::UInt16,
+                            false,
+                        ))),
+                        false,
+                    ),
+                    Field::new(
+                        "U32",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::UInt32,
+                            false,
+                        ))),
+                        false,
+                    ),
+                    Field::new(
+                        "U64",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::UInt64,
+                            false,
+                        ))),
+                        false,
+                    ),
+                    Field::new(
+                        "I8",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::Int8,
+                            false,
+                        ))),
+                        false,
+                    ),
+                    Field::new(
+                        "I16",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::Int16,
+                            false,
+                        ))),
+                        false,
+                    ),
+                    Field::new(
+                        "I32",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::Int32,
+                            false,
+                        ))),
+                        false,
+                    ),
+                    Field::new(
+                        "I64",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::Int64,
+                            false,
+                        ))),
+                        false,
+                    ),
+                    Field::new(
+                        "F16",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::Float16,
+                            false,
+                        ))),
+                        false,
+                    ),
+                    Field::new(
+                        "F32",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::Float32,
+                            false,
+                        ))),
+                        false,
+                    ),
+                    Field::new(
+                        "F64",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            DataType::Float64,
+                            false,
+                        ))),
+                        false,
+                    ),
+                ],
+            ),
+            UnionMode::Dense,
+        )
+    }
+
+    fn to_arrow_opt<'a>(
+        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
+    ) -> SerializationResult<arrow::array::ArrayRef>
+    where
+        Self: Clone + 'a,
+    {
+        #![allow(clippy::wildcard_imports)]
+        #![allow(clippy::manual_is_variant_and)]
+        use ::re_types_core::{Loggable as _, ResultExt as _};
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
+        Ok({
+            // Dense Arrow union
+            let data: Vec<_> = data
+                .into_iter()
+                .map(|datum| {
+                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
+                    datum
+                })
+                .collect();
+            let field_type_ids = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
+            let fields = vec![
                 Field::new("_null_markers", DataType::Null, true),
                 Field::new(
                     "U8",
@@ -201,34 +335,8 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     ))),
                     false,
                 ),
-            ]),
-            Some(std::sync::Arc::new(vec![
-                0i32, 1i32, 2i32, 3i32, 4i32, 5i32, 6i32, 7i32, 8i32, 9i32, 10i32, 11i32,
-            ])),
-            UnionMode::Dense,
-        )
-    }
-
-    fn to_arrow2_opt<'a>(
-        data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
-    where
-        Self: Clone + 'a,
-    {
-        #![allow(clippy::wildcard_imports)]
-        #![allow(clippy::manual_is_variant_and)]
-        use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
-        Ok({
-            // Dense Arrow union
-            let data: Vec<_> = data
-                .into_iter()
-                .map(|datum| {
-                    let datum: Option<::std::borrow::Cow<'a, Self>> = datum.map(Into::into);
-                    datum
-                })
-                .collect();
-            let types = data
+            ];
+            let type_ids: Vec<i8> = data
                 .iter()
                 .map(|a| match a.as_deref() {
                     None => 0,
@@ -245,418 +353,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                     Some(Self::F64(_)) => 11i8,
                 })
                 .collect();
-            let fields = vec![
-                NullArray::new(DataType::Null, data.iter().filter(|v| v.is_none()).count()).boxed(),
-                {
-                    let u8: Vec<_> = data
-                        .iter()
-                        .filter_map(|datum| match datum.as_deref() {
-                            Some(Self::U8(v)) => Some(v.clone()),
-                            _ => None,
-                        })
-                        .collect();
-                    let u8_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                    {
-                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            u8.iter().map(|datum| datum.num_instances()),
-                        )?
-                        .into();
-                        let u8_inner_data: Buffer<_> = u8
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let u8_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::try_new(
-                            DataType::List(std::sync::Arc::new(Field::new(
-                                "item",
-                                DataType::UInt8,
-                                false,
-                            ))),
-                            offsets,
-                            PrimitiveArray::new(DataType::UInt8, u8_inner_data, u8_inner_bitmap)
-                                .boxed(),
-                            u8_bitmap,
-                        )?
-                        .boxed()
-                    }
-                },
-                {
-                    let u16: Vec<_> = data
-                        .iter()
-                        .filter_map(|datum| match datum.as_deref() {
-                            Some(Self::U16(v)) => Some(v.clone()),
-                            _ => None,
-                        })
-                        .collect();
-                    let u16_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                    {
-                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            u16.iter().map(|datum| datum.num_instances()),
-                        )?
-                        .into();
-                        let u16_inner_data: Buffer<_> = u16
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let u16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::try_new(
-                            DataType::List(std::sync::Arc::new(Field::new(
-                                "item",
-                                DataType::UInt16,
-                                false,
-                            ))),
-                            offsets,
-                            PrimitiveArray::new(DataType::UInt16, u16_inner_data, u16_inner_bitmap)
-                                .boxed(),
-                            u16_bitmap,
-                        )?
-                        .boxed()
-                    }
-                },
-                {
-                    let u32: Vec<_> = data
-                        .iter()
-                        .filter_map(|datum| match datum.as_deref() {
-                            Some(Self::U32(v)) => Some(v.clone()),
-                            _ => None,
-                        })
-                        .collect();
-                    let u32_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                    {
-                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            u32.iter().map(|datum| datum.num_instances()),
-                        )?
-                        .into();
-                        let u32_inner_data: Buffer<_> = u32
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let u32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::try_new(
-                            DataType::List(std::sync::Arc::new(Field::new(
-                                "item",
-                                DataType::UInt32,
-                                false,
-                            ))),
-                            offsets,
-                            PrimitiveArray::new(DataType::UInt32, u32_inner_data, u32_inner_bitmap)
-                                .boxed(),
-                            u32_bitmap,
-                        )?
-                        .boxed()
-                    }
-                },
-                {
-                    let u64: Vec<_> = data
-                        .iter()
-                        .filter_map(|datum| match datum.as_deref() {
-                            Some(Self::U64(v)) => Some(v.clone()),
-                            _ => None,
-                        })
-                        .collect();
-                    let u64_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                    {
-                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            u64.iter().map(|datum| datum.num_instances()),
-                        )?
-                        .into();
-                        let u64_inner_data: Buffer<_> = u64
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let u64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::try_new(
-                            DataType::List(std::sync::Arc::new(Field::new(
-                                "item",
-                                DataType::UInt64,
-                                false,
-                            ))),
-                            offsets,
-                            PrimitiveArray::new(DataType::UInt64, u64_inner_data, u64_inner_bitmap)
-                                .boxed(),
-                            u64_bitmap,
-                        )?
-                        .boxed()
-                    }
-                },
-                {
-                    let i8: Vec<_> = data
-                        .iter()
-                        .filter_map(|datum| match datum.as_deref() {
-                            Some(Self::I8(v)) => Some(v.clone()),
-                            _ => None,
-                        })
-                        .collect();
-                    let i8_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                    {
-                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            i8.iter().map(|datum| datum.num_instances()),
-                        )?
-                        .into();
-                        let i8_inner_data: Buffer<_> = i8
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let i8_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::try_new(
-                            DataType::List(std::sync::Arc::new(Field::new(
-                                "item",
-                                DataType::Int8,
-                                false,
-                            ))),
-                            offsets,
-                            PrimitiveArray::new(DataType::Int8, i8_inner_data, i8_inner_bitmap)
-                                .boxed(),
-                            i8_bitmap,
-                        )?
-                        .boxed()
-                    }
-                },
-                {
-                    let i16: Vec<_> = data
-                        .iter()
-                        .filter_map(|datum| match datum.as_deref() {
-                            Some(Self::I16(v)) => Some(v.clone()),
-                            _ => None,
-                        })
-                        .collect();
-                    let i16_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                    {
-                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            i16.iter().map(|datum| datum.num_instances()),
-                        )?
-                        .into();
-                        let i16_inner_data: Buffer<_> = i16
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let i16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::try_new(
-                            DataType::List(std::sync::Arc::new(Field::new(
-                                "item",
-                                DataType::Int16,
-                                false,
-                            ))),
-                            offsets,
-                            PrimitiveArray::new(DataType::Int16, i16_inner_data, i16_inner_bitmap)
-                                .boxed(),
-                            i16_bitmap,
-                        )?
-                        .boxed()
-                    }
-                },
-                {
-                    let i32: Vec<_> = data
-                        .iter()
-                        .filter_map(|datum| match datum.as_deref() {
-                            Some(Self::I32(v)) => Some(v.clone()),
-                            _ => None,
-                        })
-                        .collect();
-                    let i32_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                    {
-                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            i32.iter().map(|datum| datum.num_instances()),
-                        )?
-                        .into();
-                        let i32_inner_data: Buffer<_> = i32
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let i32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::try_new(
-                            DataType::List(std::sync::Arc::new(Field::new(
-                                "item",
-                                DataType::Int32,
-                                false,
-                            ))),
-                            offsets,
-                            PrimitiveArray::new(DataType::Int32, i32_inner_data, i32_inner_bitmap)
-                                .boxed(),
-                            i32_bitmap,
-                        )?
-                        .boxed()
-                    }
-                },
-                {
-                    let i64: Vec<_> = data
-                        .iter()
-                        .filter_map(|datum| match datum.as_deref() {
-                            Some(Self::I64(v)) => Some(v.clone()),
-                            _ => None,
-                        })
-                        .collect();
-                    let i64_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                    {
-                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            i64.iter().map(|datum| datum.num_instances()),
-                        )?
-                        .into();
-                        let i64_inner_data: Buffer<_> = i64
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let i64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::try_new(
-                            DataType::List(std::sync::Arc::new(Field::new(
-                                "item",
-                                DataType::Int64,
-                                false,
-                            ))),
-                            offsets,
-                            PrimitiveArray::new(DataType::Int64, i64_inner_data, i64_inner_bitmap)
-                                .boxed(),
-                            i64_bitmap,
-                        )?
-                        .boxed()
-                    }
-                },
-                {
-                    let f16: Vec<_> = data
-                        .iter()
-                        .filter_map(|datum| match datum.as_deref() {
-                            Some(Self::F16(v)) => Some(v.clone()),
-                            _ => None,
-                        })
-                        .collect();
-                    let f16_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                    {
-                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            f16.iter().map(|datum| datum.num_instances()),
-                        )?
-                        .into();
-                        let f16_inner_data: Buffer<_> = f16
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let f16_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::try_new(
-                            DataType::List(std::sync::Arc::new(Field::new(
-                                "item",
-                                DataType::Float16,
-                                false,
-                            ))),
-                            offsets,
-                            PrimitiveArray::new(
-                                DataType::Float16,
-                                f16_inner_data,
-                                f16_inner_bitmap,
-                            )
-                            .boxed(),
-                            f16_bitmap,
-                        )?
-                        .boxed()
-                    }
-                },
-                {
-                    let f32: Vec<_> = data
-                        .iter()
-                        .filter_map(|datum| match datum.as_deref() {
-                            Some(Self::F32(v)) => Some(v.clone()),
-                            _ => None,
-                        })
-                        .collect();
-                    let f32_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                    {
-                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            f32.iter().map(|datum| datum.num_instances()),
-                        )?
-                        .into();
-                        let f32_inner_data: Buffer<_> = f32
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let f32_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::try_new(
-                            DataType::List(std::sync::Arc::new(Field::new(
-                                "item",
-                                DataType::Float32,
-                                false,
-                            ))),
-                            offsets,
-                            PrimitiveArray::new(
-                                DataType::Float32,
-                                f32_inner_data,
-                                f32_inner_bitmap,
-                            )
-                            .boxed(),
-                            f32_bitmap,
-                        )?
-                        .boxed()
-                    }
-                },
-                {
-                    let f64: Vec<_> = data
-                        .iter()
-                        .filter_map(|datum| match datum.as_deref() {
-                            Some(Self::F64(v)) => Some(v.clone()),
-                            _ => None,
-                        })
-                        .collect();
-                    let f64_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                    {
-                        use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                        let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
-                            f64.iter().map(|datum| datum.num_instances()),
-                        )?
-                        .into();
-                        let f64_inner_data: Buffer<_> = f64
-                            .iter()
-                            .map(|b| b.as_slice())
-                            .collect::<Vec<_>>()
-                            .concat()
-                            .into();
-                        let f64_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                        ListArray::try_new(
-                            DataType::List(std::sync::Arc::new(Field::new(
-                                "item",
-                                DataType::Float64,
-                                false,
-                            ))),
-                            offsets,
-                            PrimitiveArray::new(
-                                DataType::Float64,
-                                f64_inner_data,
-                                f64_inner_bitmap,
-                            )
-                            .boxed(),
-                            f64_bitmap,
-                        )?
-                        .boxed()
-                    }
-                },
-            ];
-            let offsets = Some({
+            let offsets = {
                 let mut u8_offset = 0;
                 let mut u16_offset = 0;
                 let mut u32_offset = 0;
@@ -733,8 +430,359 @@ impl ::re_types_core::Loggable for TensorBuffer {
                         }
                     })
                     .collect()
-            });
-            UnionArray::new(Self::arrow2_datatype(), types, fields, offsets).boxed()
+            };
+            let children = vec![
+                as_array_ref(NullArray::new(data.iter().filter(|v| v.is_none()).count())),
+                {
+                    let u8: Vec<_> = data
+                        .iter()
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Self::U8(v)) => Some(v.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    let u8_validity: Option<arrow::buffer::NullBuffer> = None;
+                    {
+                        let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                            u8.iter().map(|datum| datum.num_instances()),
+                        );
+                        let u8_inner_data: ScalarBuffer<_> = u8
+                            .iter()
+                            .map(|b| b.as_slice())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let u8_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        as_array_ref(ListArray::try_new(
+                            std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
+                            offsets,
+                            as_array_ref(PrimitiveArray::<UInt8Type>::new(
+                                u8_inner_data,
+                                u8_inner_validity,
+                            )),
+                            u8_validity,
+                        )?)
+                    }
+                },
+                {
+                    let u16: Vec<_> = data
+                        .iter()
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Self::U16(v)) => Some(v.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    let u16_validity: Option<arrow::buffer::NullBuffer> = None;
+                    {
+                        let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                            u16.iter().map(|datum| datum.num_instances()),
+                        );
+                        let u16_inner_data: ScalarBuffer<_> = u16
+                            .iter()
+                            .map(|b| b.as_slice())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let u16_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        as_array_ref(ListArray::try_new(
+                            std::sync::Arc::new(Field::new("item", DataType::UInt16, false)),
+                            offsets,
+                            as_array_ref(PrimitiveArray::<UInt16Type>::new(
+                                u16_inner_data,
+                                u16_inner_validity,
+                            )),
+                            u16_validity,
+                        )?)
+                    }
+                },
+                {
+                    let u32: Vec<_> = data
+                        .iter()
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Self::U32(v)) => Some(v.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    let u32_validity: Option<arrow::buffer::NullBuffer> = None;
+                    {
+                        let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                            u32.iter().map(|datum| datum.num_instances()),
+                        );
+                        let u32_inner_data: ScalarBuffer<_> = u32
+                            .iter()
+                            .map(|b| b.as_slice())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let u32_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        as_array_ref(ListArray::try_new(
+                            std::sync::Arc::new(Field::new("item", DataType::UInt32, false)),
+                            offsets,
+                            as_array_ref(PrimitiveArray::<UInt32Type>::new(
+                                u32_inner_data,
+                                u32_inner_validity,
+                            )),
+                            u32_validity,
+                        )?)
+                    }
+                },
+                {
+                    let u64: Vec<_> = data
+                        .iter()
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Self::U64(v)) => Some(v.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    let u64_validity: Option<arrow::buffer::NullBuffer> = None;
+                    {
+                        let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                            u64.iter().map(|datum| datum.num_instances()),
+                        );
+                        let u64_inner_data: ScalarBuffer<_> = u64
+                            .iter()
+                            .map(|b| b.as_slice())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let u64_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        as_array_ref(ListArray::try_new(
+                            std::sync::Arc::new(Field::new("item", DataType::UInt64, false)),
+                            offsets,
+                            as_array_ref(PrimitiveArray::<UInt64Type>::new(
+                                u64_inner_data,
+                                u64_inner_validity,
+                            )),
+                            u64_validity,
+                        )?)
+                    }
+                },
+                {
+                    let i8: Vec<_> = data
+                        .iter()
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Self::I8(v)) => Some(v.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    let i8_validity: Option<arrow::buffer::NullBuffer> = None;
+                    {
+                        let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                            i8.iter().map(|datum| datum.num_instances()),
+                        );
+                        let i8_inner_data: ScalarBuffer<_> = i8
+                            .iter()
+                            .map(|b| b.as_slice())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let i8_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        as_array_ref(ListArray::try_new(
+                            std::sync::Arc::new(Field::new("item", DataType::Int8, false)),
+                            offsets,
+                            as_array_ref(PrimitiveArray::<Int8Type>::new(
+                                i8_inner_data,
+                                i8_inner_validity,
+                            )),
+                            i8_validity,
+                        )?)
+                    }
+                },
+                {
+                    let i16: Vec<_> = data
+                        .iter()
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Self::I16(v)) => Some(v.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    let i16_validity: Option<arrow::buffer::NullBuffer> = None;
+                    {
+                        let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                            i16.iter().map(|datum| datum.num_instances()),
+                        );
+                        let i16_inner_data: ScalarBuffer<_> = i16
+                            .iter()
+                            .map(|b| b.as_slice())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let i16_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        as_array_ref(ListArray::try_new(
+                            std::sync::Arc::new(Field::new("item", DataType::Int16, false)),
+                            offsets,
+                            as_array_ref(PrimitiveArray::<Int16Type>::new(
+                                i16_inner_data,
+                                i16_inner_validity,
+                            )),
+                            i16_validity,
+                        )?)
+                    }
+                },
+                {
+                    let i32: Vec<_> = data
+                        .iter()
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Self::I32(v)) => Some(v.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    let i32_validity: Option<arrow::buffer::NullBuffer> = None;
+                    {
+                        let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                            i32.iter().map(|datum| datum.num_instances()),
+                        );
+                        let i32_inner_data: ScalarBuffer<_> = i32
+                            .iter()
+                            .map(|b| b.as_slice())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let i32_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        as_array_ref(ListArray::try_new(
+                            std::sync::Arc::new(Field::new("item", DataType::Int32, false)),
+                            offsets,
+                            as_array_ref(PrimitiveArray::<Int32Type>::new(
+                                i32_inner_data,
+                                i32_inner_validity,
+                            )),
+                            i32_validity,
+                        )?)
+                    }
+                },
+                {
+                    let i64: Vec<_> = data
+                        .iter()
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Self::I64(v)) => Some(v.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    let i64_validity: Option<arrow::buffer::NullBuffer> = None;
+                    {
+                        let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                            i64.iter().map(|datum| datum.num_instances()),
+                        );
+                        let i64_inner_data: ScalarBuffer<_> = i64
+                            .iter()
+                            .map(|b| b.as_slice())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let i64_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        as_array_ref(ListArray::try_new(
+                            std::sync::Arc::new(Field::new("item", DataType::Int64, false)),
+                            offsets,
+                            as_array_ref(PrimitiveArray::<Int64Type>::new(
+                                i64_inner_data,
+                                i64_inner_validity,
+                            )),
+                            i64_validity,
+                        )?)
+                    }
+                },
+                {
+                    let f16: Vec<_> = data
+                        .iter()
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Self::F16(v)) => Some(v.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    let f16_validity: Option<arrow::buffer::NullBuffer> = None;
+                    {
+                        let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                            f16.iter().map(|datum| datum.num_instances()),
+                        );
+                        let f16_inner_data: ScalarBuffer<_> = f16
+                            .iter()
+                            .map(|b| b.as_slice())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let f16_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        as_array_ref(ListArray::try_new(
+                            std::sync::Arc::new(Field::new("item", DataType::Float16, false)),
+                            offsets,
+                            as_array_ref(PrimitiveArray::<Float16Type>::new(
+                                f16_inner_data,
+                                f16_inner_validity,
+                            )),
+                            f16_validity,
+                        )?)
+                    }
+                },
+                {
+                    let f32: Vec<_> = data
+                        .iter()
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Self::F32(v)) => Some(v.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    let f32_validity: Option<arrow::buffer::NullBuffer> = None;
+                    {
+                        let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                            f32.iter().map(|datum| datum.num_instances()),
+                        );
+                        let f32_inner_data: ScalarBuffer<_> = f32
+                            .iter()
+                            .map(|b| b.as_slice())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let f32_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        as_array_ref(ListArray::try_new(
+                            std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
+                            offsets,
+                            as_array_ref(PrimitiveArray::<Float32Type>::new(
+                                f32_inner_data,
+                                f32_inner_validity,
+                            )),
+                            f32_validity,
+                        )?)
+                    }
+                },
+                {
+                    let f64: Vec<_> = data
+                        .iter()
+                        .filter_map(|datum| match datum.as_deref() {
+                            Some(Self::F64(v)) => Some(v.clone()),
+                            _ => None,
+                        })
+                        .collect();
+                    let f64_validity: Option<arrow::buffer::NullBuffer> = None;
+                    {
+                        let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
+                            f64.iter().map(|datum| datum.num_instances()),
+                        );
+                        let f64_inner_data: ScalarBuffer<_> = f64
+                            .iter()
+                            .map(|b| b.as_slice())
+                            .collect::<Vec<_>>()
+                            .concat()
+                            .into();
+                        let f64_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                        as_array_ref(ListArray::try_new(
+                            std::sync::Arc::new(Field::new("item", DataType::Float64, false)),
+                            offsets,
+                            as_array_ref(PrimitiveArray::<Float64Type>::new(
+                                f64_inner_data,
+                                f64_inner_validity,
+                            )),
+                            f64_validity,
+                        )?)
+                    }
+                },
+            ];
+            debug_assert_eq!(field_type_ids.len(), fields.len());
+            debug_assert_eq!(fields.len(), children.len());
+            as_array_ref(UnionArray::try_new(
+                UnionFields::new(field_type_ids, fields),
+                ScalarBuffer::from(type_ids),
+                Some(offsets),
+                children,
+            )?)
         })
     }
 
@@ -746,13 +794,14 @@ impl ::re_types_core::Loggable for TensorBuffer {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::UnionArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -765,7 +814,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                 let arrow_data_offsets = arrow_data
                     .offsets()
                     .ok_or_else(|| {
-                        let expected = Self::arrow2_datatype();
+                        let expected = Self::arrow_datatype();
                         let actual = arrow_data.data_type().clone();
                         DeserializationError::datatype_mismatch(expected, actual)
                     })
@@ -1701,7 +1750,7 @@ impl ::re_types_core::Loggable for TensorBuffer {
                                 }),
                                 _ => {
                                     return Err(DeserializationError::missing_union_arm(
-                                        Self::arrow2_datatype(),
+                                        Self::arrow_datatype(),
                                         "<invalid>",
                                         *typ as _,
                                     ));

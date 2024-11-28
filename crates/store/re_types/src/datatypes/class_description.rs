@@ -64,20 +64,20 @@ impl ::re_types_core::SizeBytes for ClassDescription {
 
 impl ::re_types_core::Loggable for ClassDescription {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![
             Field::new(
                 "info",
-                <crate::datatypes::AnnotationInfo>::arrow2_datatype(),
+                <crate::datatypes::AnnotationInfo>::arrow_datatype(),
                 false,
             ),
             Field::new(
                 "keypoint_annotations",
                 DataType::List(std::sync::Arc::new(Field::new(
                     "item",
-                    <crate::datatypes::AnnotationInfo>::arrow2_datatype(),
+                    <crate::datatypes::AnnotationInfo>::arrow_datatype(),
                     false,
                 ))),
                 false,
@@ -86,7 +86,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                 "keypoint_connections",
                 DataType::List(std::sync::Arc::new(Field::new(
                     "item",
-                    <crate::datatypes::KeypointPair>::arrow2_datatype(),
+                    <crate::datatypes::KeypointPair>::arrow_datatype(),
                     false,
                 ))),
                 false,
@@ -94,17 +94,47 @@ impl ::re_types_core::Loggable for ClassDescription {
         ]))
     }
 
-    fn to_arrow2_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
+            let fields = Fields::from(vec![
+                Field::new(
+                    "info",
+                    <crate::datatypes::AnnotationInfo>::arrow_datatype(),
+                    false,
+                ),
+                Field::new(
+                    "keypoint_annotations",
+                    DataType::List(std::sync::Arc::new(Field::new(
+                        "item",
+                        <crate::datatypes::AnnotationInfo>::arrow_datatype(),
+                        false,
+                    ))),
+                    false,
+                ),
+                Field::new(
+                    "keypoint_connections",
+                    DataType::List(std::sync::Arc::new(Field::new(
+                        "item",
+                        <crate::datatypes::KeypointPair>::arrow_datatype(),
+                        false,
+                    ))),
+                    false,
+                ),
+            ]);
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
@@ -112,12 +142,12 @@ impl ::re_types_core::Loggable for ClassDescription {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let validity: Option<arrow::buffer::NullBuffer> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            StructArray::new(
-                Self::arrow2_datatype(),
+            as_array_ref(StructArray::new(
+                fields,
                 vec![
                     {
                         let (somes, info): (Vec<_>, Vec<_>) = data
@@ -127,13 +157,13 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let info_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let info_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = info_bitmap;
-                            crate::datatypes::AnnotationInfo::to_arrow2_opt(info)?
+                            _ = info_validity;
+                            crate::datatypes::AnnotationInfo::to_arrow_opt(info)?
                         }
                     },
                     {
@@ -146,41 +176,39 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let keypoint_annotations_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let keypoint_annotations_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                                 keypoint_annotations
                                     .iter()
                                     .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
-                            )?
-                            .into();
+                            );
                             let keypoint_annotations_inner_data: Vec<_> = keypoint_annotations
                                 .into_iter()
                                 .flatten()
                                 .flatten()
                                 .collect();
-                            let keypoint_annotations_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                                None;
-                            ListArray::try_new(
-                                DataType::List(std::sync::Arc::new(Field::new(
+                            let keypoint_annotations_inner_validity: Option<
+                                arrow::buffer::NullBuffer,
+                            > = None;
+                            as_array_ref(ListArray::try_new(
+                                std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::datatypes::AnnotationInfo>::arrow2_datatype(),
+                                    <crate::datatypes::AnnotationInfo>::arrow_datatype(),
                                     false,
-                                ))),
+                                )),
                                 offsets,
                                 {
-                                    _ = keypoint_annotations_inner_bitmap;
-                                    crate::datatypes::AnnotationInfo::to_arrow2_opt(
+                                    _ = keypoint_annotations_inner_validity;
+                                    crate::datatypes::AnnotationInfo::to_arrow_opt(
                                         keypoint_annotations_inner_data.into_iter().map(Some),
                                     )?
                                 },
-                                keypoint_annotations_bitmap,
-                            )?
-                            .boxed()
+                                keypoint_annotations_validity,
+                            )?)
                         }
                     },
                     {
@@ -193,47 +221,44 @@ impl ::re_types_core::Loggable for ClassDescription {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let keypoint_connections_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let keypoint_connections_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                            let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                            let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                                 keypoint_connections
                                     .iter()
                                     .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
-                            )?
-                            .into();
+                            );
                             let keypoint_connections_inner_data: Vec<_> = keypoint_connections
                                 .into_iter()
                                 .flatten()
                                 .flatten()
                                 .collect();
-                            let keypoint_connections_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                                None;
-                            ListArray::try_new(
-                                DataType::List(std::sync::Arc::new(Field::new(
+                            let keypoint_connections_inner_validity: Option<
+                                arrow::buffer::NullBuffer,
+                            > = None;
+                            as_array_ref(ListArray::try_new(
+                                std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::datatypes::KeypointPair>::arrow2_datatype(),
+                                    <crate::datatypes::KeypointPair>::arrow_datatype(),
                                     false,
-                                ))),
+                                )),
                                 offsets,
                                 {
-                                    _ = keypoint_connections_inner_bitmap;
-                                    crate::datatypes::KeypointPair::to_arrow2_opt(
+                                    _ = keypoint_connections_inner_validity;
+                                    crate::datatypes::KeypointPair::to_arrow_opt(
                                         keypoint_connections_inner_data.into_iter().map(Some),
                                     )?
                                 },
-                                keypoint_connections_bitmap,
-                            )?
-                            .boxed()
+                                keypoint_connections_validity,
+                            )?)
                         }
                     },
                 ],
-                bitmap,
-            )
-            .boxed()
+                validity,
+            ))
         })
     }
 
@@ -245,13 +270,14 @@ impl ::re_types_core::Loggable for ClassDescription {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -269,7 +295,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                 let info = {
                     if !arrays_by_name.contains_key("info") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "info",
                         ))
                         .with_context("rerun.datatypes.ClassDescription");
@@ -282,7 +308,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                 let keypoint_annotations = {
                     if !arrays_by_name.contains_key("keypoint_annotations") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "keypoint_annotations",
                         ))
                         .with_context("rerun.datatypes.ClassDescription");
@@ -295,7 +321,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                             .ok_or_else(|| {
                                 let expected = DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::datatypes::AnnotationInfo>::arrow2_datatype(),
+                                    <crate::datatypes::AnnotationInfo>::arrow_datatype(),
                                     false,
                                 )));
                                 let actual = arrow_data.data_type().clone();
@@ -352,7 +378,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                 let keypoint_connections = {
                     if !arrays_by_name.contains_key("keypoint_connections") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "keypoint_connections",
                         ))
                         .with_context("rerun.datatypes.ClassDescription");
@@ -365,7 +391,7 @@ impl ::re_types_core::Loggable for ClassDescription {
                             .ok_or_else(|| {
                                 let expected = DataType::List(std::sync::Arc::new(Field::new(
                                     "item",
-                                    <crate::datatypes::KeypointPair>::arrow2_datatype(),
+                                    <crate::datatypes::KeypointPair>::arrow_datatype(),
                                     false,
                                 )));
                                 let actual = arrow_data.data_type().clone();

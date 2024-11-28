@@ -44,26 +44,35 @@ impl ::re_types_core::SizeBytes for TensorDimension {
 
 impl ::re_types_core::Loggable for TensorDimension {
     #[inline]
-    fn arrow2_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![
             Field::new("size", DataType::UInt64, false),
             Field::new("name", DataType::Utf8, true),
         ]))
     }
 
-    fn to_arrow2_opt<'a>(
+    fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
+            let fields = Fields::from(vec![
+                Field::new("size", DataType::UInt64, false),
+                Field::new("name", DataType::Utf8, true),
+            ]);
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
@@ -71,12 +80,12 @@ impl ::re_types_core::Loggable for TensorDimension {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let validity: Option<arrow::buffer::NullBuffer> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            StructArray::new(
-                Self::arrow2_datatype(),
+            as_array_ref(StructArray::new(
+                fields,
                 vec![
                     {
                         let (somes, size): (Vec<_>, Vec<_>) = data
@@ -86,16 +95,18 @@ impl ::re_types_core::Loggable for TensorDimension {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let size_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let size_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
-                        PrimitiveArray::new(
-                            DataType::UInt64,
-                            size.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                            size_bitmap,
-                        )
-                        .boxed()
+                        as_array_ref(PrimitiveArray::<UInt64Type>::new(
+                            ScalarBuffer::from(
+                                size.into_iter()
+                                    .map(|v| v.unwrap_or_default())
+                                    .collect::<Vec<_>>(),
+                            ),
+                            size_validity,
+                        ))
                     },
                     {
                         let (somes, name): (Vec<_>, Vec<_>) = data
@@ -106,34 +117,26 @@ impl ::re_types_core::Loggable for TensorDimension {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let name_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let name_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
                             let offsets =
-                                arrow2::offset::Offsets::<i32>::try_from_lengths(name.iter().map(
+                                arrow::buffer::OffsetBuffer::<i32>::from_lengths(name.iter().map(
                                     |opt| opt.as_ref().map(|datum| datum.len()).unwrap_or_default(),
-                                ))?
-                                .into();
-                            let inner_data: arrow2::buffer::Buffer<u8> =
+                                ));
+                            let inner_data: arrow::buffer::Buffer =
                                 name.into_iter().flatten().flat_map(|s| s.0).collect();
                             #[allow(unsafe_code, clippy::undocumented_unsafe_blocks)]
-                            unsafe {
-                                Utf8Array::<i32>::new_unchecked(
-                                    DataType::Utf8,
-                                    offsets,
-                                    inner_data,
-                                    name_bitmap,
-                                )
-                            }
-                            .boxed()
+                            as_array_ref(unsafe {
+                                StringArray::new_unchecked(offsets, inner_data, name_validity)
+                            })
                         }
                     },
                 ],
-                bitmap,
-            )
-            .boxed()
+                validity,
+            ))
         })
     }
 
@@ -145,13 +148,14 @@ impl ::re_types_core::Loggable for TensorDimension {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
                 .downcast_ref::<arrow2::array::StructArray>()
                 .ok_or_else(|| {
-                    let expected = Self::arrow2_datatype();
+                    let expected = Self::arrow_datatype();
                     let actual = arrow_data.data_type().clone();
                     DeserializationError::datatype_mismatch(expected, actual)
                 })
@@ -169,7 +173,7 @@ impl ::re_types_core::Loggable for TensorDimension {
                 let size = {
                     if !arrays_by_name.contains_key("size") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "size",
                         ))
                         .with_context("rerun.datatypes.TensorDimension");
@@ -190,7 +194,7 @@ impl ::re_types_core::Loggable for TensorDimension {
                 let name = {
                     if !arrays_by_name.contains_key("name") {
                         return Err(DeserializationError::missing_struct_field(
-                            Self::arrow2_datatype(),
+                            Self::arrow_datatype(),
                             "name",
                         ))
                         .with_context("rerun.datatypes.TensorDimension");
