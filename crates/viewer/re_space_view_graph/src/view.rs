@@ -9,7 +9,9 @@ use re_types::{
     SpaceViewClassIdentifier,
 };
 use re_ui::{
-    self, zoom_pan_area::zoom_pan_area, ModifiersMarkdown, MouseButtonMarkdown, UiExt as _,
+    self,
+    zoom_pan_area::{fit_to_rect_in_scene, zoom_pan_area},
+    ModifiersMarkdown, MouseButtonMarkdown, UiExt as _,
 };
 use re_viewer_context::{
     external::re_entity_db::InstancePath, IdentifiedViewSystem as _, Item, RecommendedSpaceView,
@@ -76,7 +78,7 @@ Display a graph of nodes and edges.
     fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32> {
         let state = state.downcast_ref::<GraphSpaceViewState>().ok()?;
 
-        if let Some(bounds) = state.world_bounds {
+        if let Some(bounds) = state.visual_bounds {
             let width = bounds.x_range.abs_len() as f32;
             let height = bounds.y_range.abs_len() as f32;
             return Some(width / height);
@@ -161,16 +163,18 @@ Display a graph of nodes and edges.
             ctx.blueprint_query,
             query.space_view_id,
         );
-        let bounds: blueprint::components::VisualBounds2D =
+        let rect_in_scene: blueprint::components::VisualBounds2D =
             bounds_property.component_or_fallback(ctx, self, state)?;
 
-        let view_rect = ui.max_rect();
+        let rect_in_ui = ui.max_rect();
 
         let request = LayoutRequest::from_graphs(graphs.iter());
         let layout_was_empty = state.layout_state.is_none();
         let layout = state.layout_state.get(request);
 
-        let (resp, new_bounds) = zoom_pan_area(ui, view_rect, bounds.into(), |ui| {
+        let mut ui_from_world = fit_to_rect_in_scene(rect_in_ui, rect_in_scene.into());
+
+        let resp = zoom_pan_area(ui, rect_in_ui, &mut ui_from_world, |ui| {
             let mut world_bounding_rect = egui::Rect::NOTHING;
 
             for graph in &graphs {
@@ -240,14 +244,15 @@ Display a graph of nodes and edges.
         });
 
         // Update blueprint if changed
-        let updated_bounds: blueprint::components::VisualBounds2D = new_bounds.into();
+        let updated_rect_in_scene =
+            blueprint::components::VisualBounds2D::from(ui_from_world * rect_in_ui);
         if resp.double_clicked() || layout_was_empty {
             bounds_property.reset_blueprint_component::<blueprint::components::VisualBounds2D>(ctx);
-        } else if bounds != updated_bounds {
-            bounds_property.save_blueprint_component(ctx, &updated_bounds);
+        } else if rect_in_scene != updated_rect_in_scene {
+            bounds_property.save_blueprint_component(ctx, &updated_rect_in_scene);
         }
         // Update stored bounds on the state, so visualizers see an up-to-date value.
-        state.world_bounds = Some(bounds);
+        state.visual_bounds = Some(updated_rect_in_scene);
 
         if state.layout_state.is_in_progress() {
             ui.ctx().request_repaint();

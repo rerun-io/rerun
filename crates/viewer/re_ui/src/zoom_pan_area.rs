@@ -2,6 +2,7 @@
 //!
 //! Throughout this module, we use the following conventions or naming the different spaces:
 //! * `ui`-space: The _global_ `egui` space.
+//! * `view`-space: The space where the pan-and-zoom area is drawn.
 //! * `scene`-space: The space where the actual content is drawn.
 
 use egui::{emath::TSTransform, Area, Order, Pos2, Rect, Response, Ui, UiKind, Vec2};
@@ -36,16 +37,18 @@ fn register_pan_and_zoom(ui: &Ui, resp: &Response, ui_from_scene: &mut TSTransfo
 }
 
 /// Creates a transformation that fits a given scene rectangle into the available screen size.
-pub fn fit_to_rect_in_scene(available_size: Vec2, rect_in_scene: Rect) -> TSTransform {
+pub fn fit_to_rect_in_scene(rect_in_ui: Rect, rect_in_scene: Rect) -> TSTransform {
+    let available_size_in_ui = rect_in_ui.size();
+
     // Compute the scale factor to fit the bounding rectangle into the available screen size.
-    let scale_x = available_size.x / rect_in_scene.width();
-    let scale_y = available_size.y / rect_in_scene.height();
+    let scale_x = available_size_in_ui.x / rect_in_scene.width();
+    let scale_y = available_size_in_ui.y / rect_in_scene.height();
 
     // Use the smaller of the two scales to ensure the whole rectangle fits on the screen.
     let scale = scale_x.min(scale_y).min(1.0);
 
     // Compute the translation to center the bounding rect in the screen.
-    let center_screen = Pos2::new(available_size.x / 2.0, available_size.y / 2.0);
+    let center_screen = rect_in_ui.center();
     let center_scene = rect_in_scene.center().to_vec2();
 
     // Set the transformation to scale and then translate to center.
@@ -57,11 +60,9 @@ pub fn fit_to_rect_in_scene(available_size: Vec2, rect_in_scene: Rect) -> TSTran
 pub fn zoom_pan_area(
     ui: &Ui,
     view_bounds_in_ui: Rect,
-    scene_bounds: Rect,
+    ui_from_scene: &mut TSTransform,
     draw_contens: impl FnOnce(&mut Ui),
-) -> (Response, Rect) {
-    let mut ui_from_scene = fit_to_rect_in_scene(view_bounds_in_ui.size(), scene_bounds);
-
+) -> Response {
     let area_resp = Area::new(ui.id().with("zoom_pan_area"))
         .constrain_to(view_bounds_in_ui)
         .order(Order::Middle)
@@ -83,20 +84,20 @@ pub fn zoom_pan_area(
             let pan_response = drag_sense_ui.response();
 
             // Update the transform based on the interactions:
-            register_pan_and_zoom(ui, &pan_response, &mut ui_from_scene);
+            register_pan_and_zoom(ui, &pan_response, ui_from_scene);
 
             // Update the clip-rect with the new transform, to avoid frame-delays
             ui.set_clip_rect(ui_from_scene.inverse() * view_bounds_in_ui);
 
-            // Add the actul contents to the area:
+            // Add the actual contents to the area:
             draw_contens(ui);
 
             pan_response
         });
 
     ui.ctx()
-        .set_transform_layer(area_resp.response.layer_id, ui_from_scene);
+        .set_transform_layer(area_resp.response.layer_id, *ui_from_scene);
 
-    let view_size = Rect::from_min_size(Pos2::ZERO, view_bounds_in_ui.size());
-    (area_resp.inner, ui_from_scene.inverse() * view_size)
+
+    area_resp.inner
 }

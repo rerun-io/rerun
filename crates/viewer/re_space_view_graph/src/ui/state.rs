@@ -15,7 +15,7 @@ pub struct GraphSpaceViewState {
 
     pub show_debug: bool,
 
-    pub world_bounds: Option<VisualBounds2D>,
+    pub visual_bounds: Option<VisualBounds2D>,
 }
 
 impl GraphSpaceViewState {
