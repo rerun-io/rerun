@@ -2,7 +2,7 @@ fn main() {
     re_build_tools::export_build_info_vars_for_crate("rerun-cli");
 
     // Warn about not using the `nasm` feature in a release build.
-    let is_release = std::env::var("PROFILE").unwrap() == "release";
+    let is_release = std::env::var("PROFILE") == Ok("release".to_owned());
     let has_nasm_feature = std::env::var("CARGO_FEATURE_NASM").is_ok();
     if is_release && !has_nasm_feature {
         println!(
