@@ -97,7 +97,7 @@ impl framework::Example for Outlines {
                 color: re_renderer::Rgba::from_rgb(0.5, 0.5, 0.5),
                 spacing: 0.1,
                 thickness_ui: 1.0,
-                orientation: re_renderer::renderer::GridPlane::ZX,
+                plane: re_math::Plane3::ZX,
             },
         ));
         view_builder.queue_draw(re_renderer::renderer::MeshDrawData::new(

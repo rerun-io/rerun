@@ -1,11 +1,11 @@
 #import <./global_bindings.wgsl>
 #import <./utils/interpolation.wgsl>
-
+#import <./utils/plane.wgsl>
 struct WorldGridUniformBuffer {
     color: vec4f,
 
-    /// A value of [`super::GridPlane`]
-    orientation: u32,
+    /// Plane equation, normal + distance.
+    plane: Plane,
 
     /// How far apart the closest sets of lines are.
     spacing: f32,
@@ -17,13 +17,8 @@ struct WorldGridUniformBuffer {
 @group(1) @binding(0)
 var<uniform> config: WorldGridUniformBuffer;
 
-// See world_grid::GridPlane
-const ORIENTATION_YZ: u32 = 0;
-const ORIENTATION_ZX: u32 = 1;
-const ORIENTATION_XY: u32 = 2;
-
 struct VertexOutput {
-    @builtin(position)
+    @builtin(position)W
     position: vec4f,
 
     @location(0)
@@ -35,7 +30,7 @@ struct VertexOutput {
 // But arguably at that point we're potentially doomed either way since precision will break down in other parts of the rendering as well.
 //
 // This is the main drawback of the plane approach over the screen space filling one.
-const PLANE_GEOMETRY_SIZE: f32 = 100000.0;
+const PLANE_GEOMETRY_SIZE: f32 = 10000.0;
 
 // Spans a large quad where centered around the camera.
 //
@@ -47,27 +42,20 @@ fn main_vs(@builtin(vertex_index) v_idx: u32) -> VertexOutput {
     var out: VertexOutput;
 
     var plane_position = (vec2f(f32(v_idx / 2u), f32(v_idx % 2u)) * 2.0 - 1.0) * PLANE_GEOMETRY_SIZE;
-    var world_position: vec3f;
-    switch (config.orientation) {
-        case ORIENTATION_YZ: {
-            plane_position += frame.camera_position.yz;
-            world_position = vec3f(0.0, plane_position.x, plane_position.y);
-        }
-        case ORIENTATION_ZX: {
-            plane_position += frame.camera_position.xz;
-            world_position = vec3f(plane_position.x, 0.0, plane_position.y);
-        }
-        case ORIENTATION_XY: {
-            plane_position += frame.camera_position.xy;
-            world_position = vec3f(plane_position.x, plane_position.y, 0.0);
-        }
-        default: {
-            world_position = vec3f(0.0);
-        }
-    }
+
+    // Make up x and y axis for the plane.
+    let plane_y_axis = normalize(cross(config.plane.normal, select(vec3f(1.0, 0.0, 0.0), vec3f(0.0, 1.0, 0.0), config.plane.normal.x != 0.0)));
+    let plane_x_axis = cross(plane_y_axis, config.plane.normal);
+
+    // Move plane geometry with the camera.
+    let camera_on_plane = vec2f(dot(plane_x_axis, frame.camera_position), dot(plane_y_axis, frame.camera_position));
+    let shifted_plane_position = plane_position + camera_on_plane;
+
+    // Compute world position from shifted plane position.
+    let world_position = config.plane.normal * -config.plane.distance + plane_x_axis * shifted_plane_position.x + plane_y_axis * shifted_plane_position.y;
 
     out.position = frame.projection_from_world * vec4f(world_position, 1.0);
-    out.scaled_world_plane_position = plane_position / config.spacing;
+    out.scaled_world_plane_position = shifted_plane_position / config.spacing;
 
     return out;
 }
@@ -125,14 +113,10 @@ fn main_fs(in: VertexOutput) -> @location(0) vec4f {
     // X and Y are combined like akin to premultiplied alpha operations.
     let intensity_combined = saturate(cardinal_and_regular.x * (1.0 - cardinal_and_regular.y) + cardinal_and_regular.y);
 
-    // Fade on acute viewing angles.
-    var view_direction_up_component = frame.camera_forward[config.orientation];
-    let view_angle_fade = smoothstep(0.0, 0.25, abs(view_direction_up_component)); // Empirical values.
 
-    return config.color * (intensity_combined * view_angle_fade);
+    return config.color * intensity_combined;
 
     // Useful debugging visualizations:
-    //return vec4f(view_angle_fade);
     //return vec4f(intensity_combined);
     //return vec4f(grid_closeness_fade, cardinal_grid_closeness_fade, 0.0, 1.0);
 }

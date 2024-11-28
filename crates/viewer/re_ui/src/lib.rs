@@ -133,7 +133,7 @@ fn format_with_decimals_in_range(
                     return text;
                 }
             }
-        }>
+        }
         // The value has more precision than we expected.
         // Probably the value was set not by the slider, but from outside.
         // In any case: show the full value

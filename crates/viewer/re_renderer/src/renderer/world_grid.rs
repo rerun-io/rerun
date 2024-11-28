@@ -15,22 +15,13 @@ use crate::Rgba;
 
 use smallvec::smallvec;
 
-/// Determines in which plane the grid is drawn.
-// Order is by index of up-axis.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum GridPlane {
-    YZ = 0,
-    ZX = 1,
-    XY = 2,
-}
-
 /// Configuration for the world grid renderer.
 pub struct WorldGridConfiguration {
     /// The color of the grid lines.
     pub color: Rgba,
 
-    /// The orientation of the grid lines.
-    pub orientation: GridPlane,
+    /// The plane in which the grid lines are drawn.
+    pub plane: re_math::Plane3,
 
     /// How far apart the closest sets of lines are.
     pub spacing: f32,
@@ -48,8 +39,8 @@ mod gpu_data {
     pub struct WorldGridUniformBuffer {
         pub color: wgpu_buffer_types::Vec4,
 
-        /// A value of [`super::GridPlane`]
-        pub orientation: u32,
+        /// Plane equation, normal + distance.
+        pub plane: wgpu_buffer_types::Vec4,
 
         /// How far apart the closest sets of lines are.
         pub spacing: f32,
@@ -57,8 +48,8 @@ mod gpu_data {
         /// Radius of the lines in UI units.
         pub thickness_ui: f32,
 
-        pub _padding: u32,
-        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 2],
+        pub _padding: [f32; 2],
+        pub end_padding: [wgpu_buffer_types::PaddingRow; 16 - 3],
     }
 }
 
@@ -86,10 +77,10 @@ impl WorldGridDrawData {
             "WorldGridDrawData".into(),
             gpu_data::WorldGridUniformBuffer {
                 color: config.color.into(),
-                orientation: config.orientation as u32,
+                plane: config.plane.as_vec4().into(),
                 spacing: config.spacing,
                 thickness_ui: config.thickness_ui,
-                _padding: 0,
+                _padding: Default::default(),
                 end_padding: Default::default(),
             },
         );
