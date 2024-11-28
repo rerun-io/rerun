@@ -150,36 +150,4 @@ impl Graph {
     pub fn entity(&self) -> &EntityPath {
         &self.entity
     }
-
-    #[deprecated]
-    pub fn size_hash(&self) -> u64 {
-        let mut hasher = ahash::AHasher::default();
-        for node in &self.nodes {
-            match node {
-                Node::Explicit {
-                    id,
-                    position,
-                    label,
-                    // The following fields can be ignored:
-                    instance: _instance,
-                    node: _node,
-                } => {
-                    id.hash(&mut hasher);
-
-                    position.as_ref().map(bytemuck::bytes_of).hash(&mut hasher);
-                    bytemuck::bytes_of(&label.size()).hash(&mut hasher);
-                }
-                Node::Implicit {
-                    id,
-                    label,
-                    // The following fields can be ignored:
-                    node: _node,
-                } => {
-                    id.hash(&mut hasher);
-                    bytemuck::bytes_of(&label.size()).hash(&mut hasher);
-                }
-            }
-        }
-        hasher.finish()
-    }
 }
