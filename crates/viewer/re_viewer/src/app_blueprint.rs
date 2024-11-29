@@ -207,7 +207,7 @@ pub fn setup_welcome_screen_blueprint(welcome_screen_blueprint: &mut EntityDb) {
 
 // ----------------------------------------------------------------------------
 
-impl<'a> AppBlueprint<'a> {
+impl AppBlueprint<'_> {
     pub(crate) fn send_panel_state(
         &self,
         panel_name: &str,

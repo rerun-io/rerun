@@ -16,7 +16,6 @@ impl SpaceViewClassIdentifier {
 /// In addition to the data that it contains via `SpaceViewContents`, each view
 /// has several view properties that configure how it behaves. Each view property
 /// is a [`crate::Archetype`] that is stored in the viewer's blueprint database.
-
 pub trait View {
     fn identifier() -> SpaceViewClassIdentifier;
 }

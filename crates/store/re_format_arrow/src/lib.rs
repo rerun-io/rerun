@@ -183,7 +183,7 @@ impl std::fmt::Display for DisplayDatatype<'_> {
 
 struct DisplayMetadata<'a>(&'a Metadata, &'a str);
 
-impl<'a> std::fmt::Display for DisplayMetadata<'a> {
+impl std::fmt::Display for DisplayMetadata<'_> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let Self(metadata, prefix) = self;

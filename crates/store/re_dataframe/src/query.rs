@@ -823,9 +823,10 @@ impl<E: StorageEngineLike> QueryHandle<E> {
             .try_with(|store, cache| self._next_row(store, cache));
 
         let engine = self.engine.clone();
-        std::future::poll_fn(move |cx| match &res {
-            Some(row) => std::task::Poll::Ready(row.clone()),
-            None => {
+        std::future::poll_fn(move |cx| {
+            if let Some(row) = &res {
+                std::task::Poll::Ready(row.clone())
+            } else {
                 // The lock is already held by a writer, we have to yield control back to the async
                 // runtime, for now.
                 // Before we do so, we need to schedule a callback that will be in charge of waking up

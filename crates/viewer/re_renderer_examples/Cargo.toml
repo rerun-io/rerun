@@ -36,6 +36,10 @@ path = "outlines.rs"
 name = "picking"
 path = "picking.rs"
 
+[[bin]]
+name = "world_grid"
+path = "world_grid.rs"
+
 [dependencies]
 re_log = { workspace = true, features = ["setup"] }
 re_math.workspace = true

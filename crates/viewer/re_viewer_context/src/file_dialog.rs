@@ -1,6 +1,6 @@
 use crate::ViewerContext;
 
-impl<'a> ViewerContext<'a> {
+impl ViewerContext<'_> {
     /// Save some bytes to disk, after first showing a save dialog.
     #[allow(clippy::unused_self)] // Not used on Wasm
     pub fn save_file_dialog(&self, file_name: String, title: String, data: Vec<u8>) {

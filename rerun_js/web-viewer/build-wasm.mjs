@@ -31,7 +31,7 @@ function buildWebViewer(mode) {
       "cargo run -p re_dev_tools -- build-web-viewer",
       modeFlags,
       "--target no-modules-base",
-      "--features map_view,grpc",
+      "--features grpc",
       "-o rerun_js/web-viewer",
     ].join(" "),
   );

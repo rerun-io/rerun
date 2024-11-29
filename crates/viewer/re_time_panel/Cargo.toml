@@ -43,6 +43,7 @@ vec1.workspace = true
 [dev-dependencies]
 anyhow.workspace = true
 criterion.workspace = true
+egui_kittest.workspace = true
 rand.workspace = true
 
 [lib]

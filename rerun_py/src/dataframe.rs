@@ -334,7 +334,7 @@ enum IndexValuesLike<'py> {
     CatchAll(Bound<'py, PyAny>),
 }
 
-impl<'py> IndexValuesLike<'py> {
+impl IndexValuesLike<'_> {
     fn to_index_values(&self) -> PyResult<BTreeSet<re_chunk_store::TimeInt>> {
         match self {
             Self::PyArrow(array) => {
@@ -609,7 +609,7 @@ impl PyRecordingView {
             ));
         }
 
-        let columns = columns.or_else(|| if !args.is_empty() { Some(args) } else { None });
+        let columns = columns.or(if !args.is_empty() { Some(args) } else { None });
 
         columns
             .map(|cols| {

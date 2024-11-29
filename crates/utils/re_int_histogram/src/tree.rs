@@ -241,7 +241,7 @@ pub struct Iter<'a> {
     iter: TreeIterator<'a>,
 }
 
-impl<'a> Iterator for Iter<'a> {
+impl Iterator for Iter<'_> {
     type Item = (RangeI64, u64);
 
     #[inline]
@@ -741,7 +741,7 @@ struct NodeIterator<'a> {
     index: usize,
 }
 
-impl<'a> Iterator for TreeIterator<'a> {
+impl Iterator for TreeIterator<'_> {
     /// Am inclusive range, and the total count in that range.
     type Item = (RangeU64, u64);
 

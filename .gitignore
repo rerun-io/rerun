@@ -58,6 +58,8 @@ wheels
 
 # Screenshot comparison build
 /compare_screenshot
+**/tests/snapshots/**/*.diff.png
+**/tests/snapshots/**/*.new.png
 
 *.rrd
 

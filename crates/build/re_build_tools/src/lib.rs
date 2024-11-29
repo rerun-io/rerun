@@ -199,10 +199,20 @@ pub fn export_build_info_vars_for_crate(crate_name: &str) {
         // We can't query this during `cargo publish`, but we also don't need the info.
         set_env("RE_BUILD_FEATURES", "<unknown>");
     } else {
-        set_env(
-            "RE_BUILD_FEATURES",
-            &enabled_features_of(crate_name).unwrap().join(" "),
-        );
+        let features = enabled_features_of(crate_name);
+        let features = match features {
+            Ok(features) => features.join(" "),
+
+            // When building as a dependency on users' end, feature flag collection can fail for a
+            // bunch of reasons (e.g. there's no `cargo` to begin with (Bazel, Buck, etc)).
+            // Failing the build entirely is a bit too harsh in that case, everything will still
+            // work just fine otherwise.
+            Err(_err) if environment == Environment::UsedAsDependency => "<error>".to_owned(),
+
+            Err(err) => panic!("{err}"),
+        };
+
+        set_env("RE_BUILD_FEATURES", &features);
     }
 }
 

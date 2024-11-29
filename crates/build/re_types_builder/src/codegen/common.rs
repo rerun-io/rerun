@@ -117,7 +117,7 @@ pub enum ImageUrl<'a> {
     Other(&'a str),
 }
 
-impl<'a> ImageUrl<'a> {
+impl ImageUrl<'_> {
     pub fn parse(s: &str) -> ImageUrl<'_> {
         RerunImageUrl::parse(s).map_or(ImageUrl::Other(s), ImageUrl::Rerun)
     }
@@ -178,7 +178,7 @@ impl<'a> ImageStack<'a> {
 
 pub struct SnippetId<'a>(pub &'a str);
 
-impl<'a> std::fmt::Display for SnippetId<'a> {
+impl std::fmt::Display for SnippetId<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "snippets/{}", self.0)
     }

@@ -55,7 +55,7 @@ impl SpaceViewEntityHighlight {
 #[derive(Copy, Clone)]
 pub struct OptionalSpaceViewEntityHighlight<'a>(Option<&'a SpaceViewEntityHighlight>);
 
-impl<'a> OptionalSpaceViewEntityHighlight<'a> {
+impl OptionalSpaceViewEntityHighlight<'_> {
     #[inline]
     pub fn index_highlight(&self, instance: Instance) -> InteractionHighlight {
         match self.0 {

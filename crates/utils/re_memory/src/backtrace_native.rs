@@ -45,7 +45,7 @@ fn backtrace_to_string(backtrace: &backtrace::Backtrace) -> String {
 
     struct AnonymizedBacktrace<'a>(&'a backtrace::Backtrace);
 
-    impl<'a> std::fmt::Display for AnonymizedBacktrace<'a> {
+    impl std::fmt::Display for AnonymizedBacktrace<'_> {
         fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
             format_backtrace_with_fmt(self.0, f)
         }

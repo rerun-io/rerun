@@ -188,26 +188,26 @@ This will be addressed in <https://github.com/rerun-io/rerun/issues/6673>.".to_o
         let property_type = &objects[property_type_fqname];
         let property_name = &property_type.name;
         let property_type_name = format!("blueprint_archetypes.{}", &property_type.name);
-        code.push_indented(1, &format!("if {parameter_name} is not None:"), 1);
+        code.push_indented(1, format!("if {parameter_name} is not None:"), 1);
         code.push_indented(
             2,
-            &format!("if not isinstance({parameter_name}, {property_type_name}):"),
+            format!("if not isinstance({parameter_name}, {property_type_name}):"),
             1,
         );
         code.push_indented(
             3,
-            &format!("{parameter_name} = {property_type_name}({parameter_name})"),
+            format!("{parameter_name} = {property_type_name}({parameter_name})"),
             1,
         );
         code.push_indented(
             2,
-            &format!(r#"properties["{property_name}"] = {parameter_name}"#),
+            format!(r#"properties["{property_name}"] = {parameter_name}"#),
             2,
         );
     }
     code.push_indented(
         1,
-        &format!(r#"super().__init__(class_identifier="{identifier}", origin=origin, contents=contents, name=name, visible=visible, properties=properties, defaults=defaults, overrides=overrides)"#),
+        format!(r#"super().__init__(class_identifier="{identifier}", origin=origin, contents=contents, name=name, visible=visible, properties=properties, defaults=defaults, overrides=overrides)"#),
         1,
     );
 

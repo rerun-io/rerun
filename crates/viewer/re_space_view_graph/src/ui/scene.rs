@@ -179,7 +179,7 @@ pub struct Scene<'a> {
     children_hovered: &'a mut bool,
 }
 
-impl<'a> Scene<'a> {
+impl Scene<'_> {
     /// Draws a regular node, i.e. an explicit node instance.
     pub fn explicit_node(
         &mut self,

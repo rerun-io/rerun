@@ -283,7 +283,7 @@ struct QueryExpressionEvaluator<'a> {
     individual_override_base_path: EntityPath,
 }
 
-impl<'a> QueryExpressionEvaluator<'a> {
+impl QueryExpressionEvaluator<'_> {
     fn add_entity_tree_to_data_results_recursive(
         &self,
         tree: &EntityTree,
