@@ -34,3 +34,16 @@ impl std::fmt::Debug for NodeId {
         write!(f, "NodeIndex({:?}@{:?})", self.node_hash, self.entity_hash)
     }
 }
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct EdgeId {
+    // TODO(grtlr): Consider something more storage efficient here
+    pub source: NodeId,
+    pub target: NodeId,
+}
+
+impl EdgeId {
+    pub fn is_self_edge(&self) -> bool {
+        self.source == self.target
+    }
+}

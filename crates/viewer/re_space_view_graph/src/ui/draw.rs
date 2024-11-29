@@ -318,7 +318,7 @@ pub fn draw_graph(
         current_rect = current_rect.union(response.rect);
     }
 
-    for (_, _, geometries) in layout.edges() {
+    for (_, geometries) in layout.edges() {
         for geometry in geometries {
             let response = draw_edge(ui, geometry, geometry.target_arrow);
             current_rect = current_rect.union(response.rect);

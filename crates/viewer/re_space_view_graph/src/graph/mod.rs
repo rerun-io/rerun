@@ -2,8 +2,8 @@ mod hash;
 
 use egui::{Pos2, Vec2};
 pub(crate) use hash::GraphNodeHash;
-mod index;
-pub(crate) use index::NodeId;
+mod ids;
+pub(crate) use ids::{EdgeId, NodeId};
 
 use re_chunk::EntityPath;
 use re_types::components::{self, GraphType};
@@ -74,6 +74,15 @@ pub struct Edge {
     pub source: NodeId,
     pub target: NodeId,
     pub arrow: bool,
+}
+
+impl Edge {
+    pub fn id(&self) -> EdgeId {
+        EdgeId {
+            source: self.source,
+            target: self.target,
+        }
+    }
 }
 
 pub struct Graph {

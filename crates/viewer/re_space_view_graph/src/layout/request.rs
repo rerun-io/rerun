@@ -11,7 +11,7 @@ use std::collections::BTreeMap;
 use egui::{Pos2, Vec2};
 use re_chunk::EntityPath;
 
-use crate::graph::{Graph, NodeId};
+use crate::graph::{EdgeId, Graph, NodeId};
 
 #[derive(PartialEq)]
 pub(super) struct NodeTemplate {
@@ -19,10 +19,11 @@ pub(super) struct NodeTemplate {
     pub(super) fixed_position: Option<Pos2>,
 }
 
-
 // TODO(grtlr): Does it make sense to consolidate some of the types, i.e. `Edge` ad `EdgeTemplate`?
 #[derive(PartialEq)]
 pub(super) struct EdgeTemplate {
+    pub(super) source: NodeId,
+    pub(super) target: NodeId,
     pub(super) target_arrow: bool,
 }
 
@@ -33,7 +34,7 @@ pub(super) struct GraphTemplate {
     /// The edges in the layout.
     ///
     /// Each entry can contain multiple edges.
-    pub(super) edges: BTreeMap<(NodeId, NodeId), Vec<EdgeTemplate>>,
+    pub(super) edges: BTreeMap<EdgeId, Vec<EdgeTemplate>>,
 }
 
 /// A [`LayoutRequest`] encapsulates all the information that is considered when computing a layout.
@@ -66,8 +67,10 @@ impl LayoutRequest {
             }
 
             for edge in graph.edges() {
-                let es = entity.edges.entry((edge.source, edge.target)).or_default();
+                let es = entity.edges.entry(edge.id()).or_default();
                 es.push(EdgeTemplate {
+                    source: edge.source,
+                    target: edge.target,
                     target_arrow: edge.arrow,
                 });
             }

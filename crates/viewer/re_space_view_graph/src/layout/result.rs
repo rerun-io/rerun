@@ -1,7 +1,7 @@
 use egui::{Pos2, Rect, Vec2};
 use re_chunk::EntityPath;
 
-use crate::graph::NodeId;
+use crate::graph::{EdgeId, NodeId};
 
 #[derive(Clone, Debug)]
 pub enum PathGeometry {
@@ -76,7 +76,7 @@ impl EdgeGeometry {
 #[derive(Debug)]
 pub struct Layout {
     pub(super) nodes: ahash::HashMap<NodeId, Rect>,
-    pub(super) edges: ahash::HashMap<(NodeId, NodeId), Vec<EdgeGeometry>>,
+    pub(super) edges: ahash::HashMap<EdgeId, Vec<EdgeGeometry>>,
     pub(super) entities: Vec<(EntityPath, Rect)>,
 }
 
@@ -98,15 +98,15 @@ impl Layout {
     }
 
     /// Gets the shape of an edge in the final layout.
-    pub fn get_edge(&self, from: NodeId, to: NodeId) -> Option<&[EdgeGeometry]> {
-        self.edges.get(&(from, to)).map(|es| es.as_slice())
+    pub fn get_edge(&self, edge: &EdgeId) -> Option<&[EdgeGeometry]> {
+        self.edges.get(edge).map(|es| es.as_slice())
     }
 
     /// Returns an iterator over all edges in the layout.
-    pub fn edges(&self) -> impl Iterator<Item = (&NodeId, &NodeId, &[EdgeGeometry])> {
+    pub fn edges(&self) -> impl Iterator<Item = (EdgeId, &[EdgeGeometry])> {
         self.edges
             .iter()
-            .map(|((from, to), es)| (from, to, es.as_slice()))
+            .map(|(id, es)| (*id, es.as_slice()))
     }
 
     /// Returns the number of entities in the layout.

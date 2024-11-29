@@ -1,12 +1,13 @@
 use egui::{Pos2, Rect, Vec2};
 use fjadra::{self as fj};
 
-use crate::graph::NodeId;
+use crate::graph::{EdgeId, NodeId};
 
 use super::{
     request::NodeTemplate,
-    result::{EdgeGeometry, PathGeometry},
-    Layout, LayoutRequest,
+    result::PathGeometry,
+    slots::{slotted_edges, Slot, SlotKind},
+    EdgeGeometry, Layout, LayoutRequest,
 };
 
 impl<'a> From<&'a NodeTemplate> for fj::Node {
@@ -50,8 +51,8 @@ impl ForceLayoutProvider {
         // Looking at self-edges does not make sense in a force-based layout, so we filter those out.
         let considered_edges = all_edges_iter
             .clone()
-            .filter(|((from, to), _)| (from != to))
-            .map(|((from, to), _)| (node_index[from], node_index[to]));
+            .filter(|(id, _)| !id.is_self_edge())
+            .map(|(id, _)| (node_index[&id.source], node_index[&id.target]));
 
         // TODO(grtlr): Currently we guesstimate good forces. Eventually these should be exposed as blueprints.
         let simulation = fj::SimulationBuilder::default()
@@ -59,7 +60,9 @@ impl ForceLayoutProvider {
             .build(all_nodes)
             .add_force(
                 "link",
-                fj::Link::new(considered_edges).distance(50.0).iterations(2),
+                fj::Link::new(considered_edges)
+                    .distance(150.0)
+                    .iterations(2),
             )
             .add_force("charge", fj::ManyBody::new())
             // TODO(grtlr): This is a small stop-gap until we have blueprints to prevent nodes from flying away.
@@ -105,7 +108,6 @@ impl ForceLayoutProvider {
         layout.edges.clear();
 
         for (entity, graph) in &self.request.graphs {
-
             let mut current_rect = Rect::NOTHING;
 
             for node in graph.nodes.keys() {
@@ -119,17 +121,25 @@ impl ForceLayoutProvider {
 
             layout.entities.push((entity.clone(), current_rect));
 
-            // TODO(grtlr): Better to create slots for each edge.
-            for ((from, to), edges) in &graph.edges {
-
-                let mut geometries = Vec::with_capacity(edges.len());
-                match from == to {
-                    true => {
-                        for (i, template) in edges.iter().enumerate() {
+            // Multiple edges can occupy the same space in the layout.
+            for Slot { kind, edges } in
+                slotted_edges(graph.edges.values().flat_map(|ts| ts.iter())).values()
+            {
+                match kind {
+                    SlotKind::SelfEdge => {
+                        for (i, edge) in edges.iter().enumerate() {
                             let offset = (i + 1) as f32;
-                            let target_arrow = template.target_arrow;
+                            let target_arrow = edge.target_arrow;
                             // Self-edges are not supported in force-based layouts.
-                            let anchor = intersects_ray_from_center(layout.nodes[from], Vec2::UP);
+                            let anchor =
+                                intersects_ray_from_center(layout.nodes[&edge.source], Vec2::UP);
+                            let geometries = layout
+                                .edges
+                                .entry(EdgeId {
+                                    source: edge.source,
+                                    target: edge.target,
+                                })
+                                .or_default();
                             geometries.push(EdgeGeometry {
                                 target_arrow,
                                 path: PathGeometry::CubicBezier {
@@ -145,18 +155,66 @@ impl ForceLayoutProvider {
                             });
                         }
                     }
-                    false => {
-                        // TODO(grtlr): perform similar computations here
-                        for template in edges {
-                            let target_arrow = template.target_arrow;
+                    SlotKind::Regular => {
+                        if let &[edge] = edges.as_slice() {
+                            // A single regular straight edge.
+
+                            let target_arrow = edge.target_arrow;
+                            let geometries = layout
+                                .edges
+                                .entry(EdgeId {
+                                    source: edge.source,
+                                    target: edge.target,
+                                })
+                                .or_default();
                             geometries.push(EdgeGeometry {
                                 target_arrow,
-                                path: line_segment(layout.nodes[from], layout.nodes[to]),
+                                path: line_segment(
+                                    layout.nodes[&edge.source],
+                                    layout.nodes[&edge.target],
+                                ),
                             });
+                        } else {
+                            // Multiple edges occupy the same space.
+                            let num_edges = edges.len();
+                            let fan_amount = 20.0;
+
+                            for (i, edge) in edges.iter().enumerate() {
+                                // Calculate an offset for the control points based on index `i`
+                                let offset = (i as f32 - (num_edges as f32 / 2.0)) * fan_amount;
+
+                                let source_rect = layout.nodes[&edge.source];
+                                let target_rect = layout.nodes[&edge.target];
+
+                                let d = (target_rect.center() - source_rect.center()).normalized();
+
+                                let source_pos = intersects_ray_from_center(source_rect, d);
+                                let target_pos = intersects_ray_from_center(target_rect, -d);
+
+                                // Compute control points, `c1` and `c2`, based on the offset
+                                let c1 = Pos2::new(source_pos.x + offset, source_pos.y - offset);
+                                let c2 = Pos2::new(target_pos.x + offset, target_pos.y + offset);
+
+                                let geometries = layout
+                                    .edges
+                                    .entry(EdgeId {
+                                        source: edge.source,
+                                        target: edge.target,
+                                    })
+                                    .or_default();
+
+                                geometries.push(EdgeGeometry {
+                                    target_arrow: edge.target_arrow,
+                                    path: PathGeometry::CubicBezier {
+                                        source: source_pos,
+                                        target: target_pos,
+                                        control: [c1, c2],
+                                    },
+                                });
+                            }
                         }
                     }
                 }
-                layout.edges.insert((*from, *to), geometries);
             }
         }
 
