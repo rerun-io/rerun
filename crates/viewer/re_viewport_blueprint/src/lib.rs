@@ -5,18 +5,18 @@
 mod container;
 mod space_view;
 mod space_view_contents;
-mod tree_actions;
 pub mod ui;
 mod view_properties;
 mod viewport_blueprint;
+mod viewport_command;
 
 pub use container::ContainerBlueprint;
 use re_viewer_context::ViewerContext;
 pub use space_view::SpaceViewBlueprint;
 pub use space_view_contents::SpaceViewContents;
-pub use tree_actions::TreeAction;
 pub use view_properties::{entity_path_for_view_property, ViewProperty, ViewPropertyQueryError};
 pub use viewport_blueprint::ViewportBlueprint;
+pub use viewport_command::ViewportCommand;
 
 pub const VIEWPORT_PATH: &str = "viewport";
 

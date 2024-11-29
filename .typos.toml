@@ -156,4 +156,6 @@ extend-ignore-re = [
   "np.arange",        # numpy spells "arrange" wrong
   "phc_[a-zA-Z0-9]*", # Posthog public key
   "PNG.?",            # Workaround for https://github.com/crate-ci/typos/issues/967
+
+  "_LEVL_", # USed in air_traffic_data.py
 ]

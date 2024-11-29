@@ -1065,8 +1065,8 @@ impl App {
                     .callback_resources
                     .get_mut::<re_renderer::RenderContext>()
                 {
-                    if let Some(store_view) = store_context {
-                        let entity_db = store_view.recording;
+                    if let Some(store_context) = store_context {
+                        let entity_db = store_context.recording;
 
                         #[cfg(target_arch = "wasm32")]
                         let is_history_enabled = self.startup_options.enable_history;
@@ -1079,7 +1079,7 @@ impl App {
                             ui,
                             render_ctx,
                             entity_db,
-                            store_view,
+                            store_context,
                             &self.reflection,
                             &self.component_ui_registry,
                             &self.space_view_class_registry,
@@ -1308,7 +1308,6 @@ impl App {
                         .archetype_reflection_from_short_name(&archetype_name)
                     {
                         for &view_type in archetype.view_types {
-                            // TODO(#7876): remove once `map_view` feature is gone
                             if !cfg!(feature = "map_view") && view_type == "MapView" {
                                 re_log::warn_once!("Found map-related archetype, but viewer was not compiled with the `map_view` feature.");
                             }

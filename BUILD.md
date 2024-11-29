@@ -31,6 +31,21 @@ If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `h
 rustup set default-host aarch64-apple-darwin && rustup install 1.80.0
 ```
 
+## Git-lfs
+
+We use [git-lfs](https://git-lfs.com/) to store big files in the repository, such as UI test snapshots.
+We aim to keep this project buildable without the need of git-lfs (for example, icons and similar assets are checked in to the repo as regular files).
+However, git-lfs is generally required for a proper development environment, e.g. to run tests.
+
+### Setting up git-lfs
+
+The TL;DR is to install git-lfs via your favorite package manager (`apt`, Homebrew, MacPorts, etc.) and run `git lfs install`.
+See the many resources available online more details.
+
+You can ensure that everything is correctly installed by running `git lfs ls-files` from the repository root.
+It should list some test snapshot files.
+
+
 ## Validating your environment
 You can validate your environment is set up correctly by running:
 ```sh
@@ -84,14 +99,16 @@ pixi run py-fmt
 ```
 
 ### Building an installable Python wheel
-The `py-wheel` command builds a whl file:
+The `py-build-wheels-sdk-only` command builds a whl file:
 ```sh
-pixi run py-wheel --release
+pixi run py-build-wheels-sdk-only
 ```
 Which you can then install in your own Python environment:
 ```sh
-pip install ./target/wheels/*.whl
+pip install ./dist/CURRENT_ARCHITECTURE/*.whl
 ```
+
+**IMPORTANT**: unlike the official wheels, wheels produced by this method do _not_ contain the viewer, so they may only be used for logging purposes.
 
 ## Building and installing the Rerun C++ SDK
 

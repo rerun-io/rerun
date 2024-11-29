@@ -117,7 +117,7 @@ fn modal_ui(
         let subtitle = format!("Create a new space view to display {title} content.");
 
         if row_ui(ui, icon, title, &subtitle).clicked() {
-            viewport.add_space_views(std::iter::once(space_view), ctx, target_container, None);
+            viewport.add_space_views(std::iter::once(space_view), target_container, None);
             viewport.mark_user_interaction(ctx);
             *keep_open = false;
         }

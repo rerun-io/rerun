@@ -141,14 +141,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <IncludedSpaceView as Component>::name(),
-            ComponentReflection {
-                docstring_md: "The unique id of a space view, used to refer to views in containers.",
-                custom_placeholder: Some(IncludedSpaceView::default().to_arrow2()?),
-                datatype: IncludedSpaceView::arrow2_datatype(),
-            },
-        ),
-        (
             <Interactive as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether the entity can be interacted with.\n\nNon interactive components are still visible, but mouse interactions in the view are disabled.",

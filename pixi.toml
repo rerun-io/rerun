@@ -175,13 +175,13 @@ rerun-web = { cmd = "cargo run --package rerun-cli --no-default-features --featu
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-build-web = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --features analytics,map_view,grpc --debug"
+rerun-build-web = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --features analytics,grpc --debug"
 
 # Compile the web-viewer wasm and the cli.
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-build-web-cli = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --features analytics,map_view,grpc --debug && cargo build --package rerun-cli --no-default-features --features web_viewer"
+rerun-build-web-cli = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --features analytics,grpc --debug && cargo build --package rerun-cli --no-default-features --features web_viewer"
 
 # Compile and run the web-viewer in release mode via rerun-cli.
 #
@@ -197,7 +197,7 @@ rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --features analytics,map_view,grpc --release -g"
+rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --features analytics,grpc --release -g"
 
 rs-check = { cmd = "rustup target add wasm32-unknown-unknown && python scripts/ci/rust_checks.py", depends_on = [
   "rerun-build-web", # The checks require the web viewer wasm to be around.
@@ -323,6 +323,10 @@ py-build-common-web-viewer-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALL
 py-build-notebook = { cmd = "pip install -e rerun_notebook", depends_on = [
   "js-build-base",
 ] }
+
+# Build an installable SDK-only wheel. IMPORTANT: unlike the officially published wheels, the wheel produced by this command does NOT include the viewer.
+# TODO(ab): add a command that produce a complete wheel, including the viewer.
+py-build-wheels-sdk-only = { cmd = "RERUN_ALLOW_MISSING_BIN=1 python scripts/ci/build_and_upload_wheels.py --mode pr --dir ''" }
 
 
 [feature.python-tasks.tasks]
@@ -602,15 +606,20 @@ macos = "12.0" # needed for scipy
 [feature.examples-common.dependencies]
 python = "=3.11"
 
+# TODO(ab): otherwise pixi will try to build from source and fail, not sure why (used by air_traffic_data)
+pyproj = ">=3.7.0"
+
 [feature.examples-common.pypi-dependencies]
 # External deps
 jupyter = ">=1.0"
+polars = ">=0.12.0"
 
 segment-anything = { git = "https://github.com/facebookresearch/segment-anything.git" }
 mesh-to-sdf = { git = "https://github.com/marian42/mesh_to_sdf.git" }
 
 # Rerun libs
 
+air_traffic_data = { path = "examples/python/air_traffic_data", editable = true }
 arkit_scenes = { path = "examples/python/arkit_scenes", editable = true }
 blueprint = { path = "examples/python/blueprint", editable = true }
 blueprint_stocks = { path = "examples/python/blueprint_stocks", editable = true }

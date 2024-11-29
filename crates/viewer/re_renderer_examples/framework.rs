@@ -37,7 +37,7 @@ pub trait Example {
         resolution: [u32; 2],
         time: &Time,
         pixels_per_point: f32,
-    ) -> Vec<ViewDrawResult>;
+    ) -> anyhow::Result<Vec<ViewDrawResult>>;
 
     fn on_key_event(&mut self, _event: winit::event::KeyEvent) {}
 
@@ -114,7 +114,9 @@ impl<E: Example + 'static> Application<E> {
         let window = Arc::new(window);
         let instance = wgpu::Instance::new(wgpu::InstanceDescriptor {
             backends: supported_backends(),
-            flags: wgpu::InstanceFlags::default(),
+            flags: wgpu::InstanceFlags::default()
+                // Run without validation layers, they can be annoying on shader reload depending on the backend.
+                .intersection(wgpu::InstanceFlags::VALIDATION.complement()),
             dx12_shader_compiler: wgpu::Dx12Compiler::Fxc,
             gles_minor_version: wgpu::Gles3MinorVersion::Automatic,
         });
@@ -161,7 +163,7 @@ impl<E: Example + 'static> Application<E> {
 
         let example = E::new(&re_ctx);
 
-        Ok(Self {
+        let app = Self {
             window,
             adapter,
             surface,
@@ -173,7 +175,10 @@ impl<E: Example + 'static> Application<E> {
             },
 
             example,
-        })
+        };
+
+        app.configure_surface(app.window.inner_size());
+        Ok(app)
     }
 
     fn configure_surface(&self, size: winit::dpi::PhysicalSize<u32>) {
@@ -182,10 +187,9 @@ impl<E: Example + 'static> Application<E> {
         }
 
         let surface_config = wgpu::SurfaceConfiguration {
-            // Not the best setting in general, but nice for quick & easy performance checking.
-            // TODO(andreas): It seems at least on Metal M1 this still does not discard command buffers that come in too fast (even when using `Immediate` explicitly).
-            //                  Quick look into wgpu looks like it does it correctly there. OS limitation? iOS has this limitation, so wouldn't be surprising!
-            present_mode: wgpu::PresentMode::AutoNoVsync,
+            // Use AutoNoVSync if you want to do quick perf checking.
+            // Otherwise, use AutoVsync is much more pleasant to use - laptops don't heat up and desktop won't have annoying coil whine on trivial examples.
+            present_mode: wgpu::PresentMode::AutoVsync,
             format: self.re_ctx.config.output_format_color,
             view_formats: vec![self.re_ctx.config.output_format_color],
             ..self
@@ -240,12 +244,15 @@ impl<E: Example + 'static> Application<E> {
                     .texture
                     .create_view(&wgpu::TextureViewDescriptor::default());
 
-                let draw_results = self.example.draw(
-                    &self.re_ctx,
-                    [frame.texture.width(), frame.texture.height()],
-                    &self.time,
-                    self.window.scale_factor() as f32,
-                );
+                let draw_results = self
+                    .example
+                    .draw(
+                        &self.re_ctx,
+                        [frame.texture.width(), frame.texture.height()],
+                        &self.time,
+                        self.window.scale_factor() as f32,
+                    )
+                    .expect("Failed to draw example");
 
                 let mut composite_cmd_encoder =
                     self.re_ctx

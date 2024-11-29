@@ -40,13 +40,13 @@ pub struct TransformComponentTracker {
 }
 
 impl TransformComponentTracker {
-    /// Accesses the spatial topology for a given store.
+    /// Accesses the transform component tracking data for a given store.
     #[inline]
     pub fn access<T>(store_id: &StoreId, f: impl FnOnce(&Self) -> T) -> Option<T> {
         ChunkStore::with_subscriber_once(
             TransformComponentTrackerStoreSubscriber::subscription_handle(),
-            move |susbcriber: &TransformComponentTrackerStoreSubscriber| {
-                susbcriber.per_store.get(store_id).map(f)
+            move |subscriber: &TransformComponentTrackerStoreSubscriber| {
+                subscriber.per_store.get(store_id).map(f)
             },
         )
         .flatten()

@@ -39,7 +39,7 @@ pub struct HybridRangeResults {
     pub(crate) defaults: LatestAtResults,
 }
 
-impl<'a> HybridLatestAtResults<'a> {
+impl HybridLatestAtResults<'_> {
     /// Returns the [`UnitChunkShared`] for the specified [`re_types_core::Component`].
     #[inline]
     pub fn get(&self, component_name: impl Into<ComponentName>) -> Option<&UnitChunkShared> {
@@ -133,7 +133,7 @@ pub enum HybridResults<'a> {
     Range(RangeQuery, Box<HybridRangeResults>),
 }
 
-impl<'a> HybridResults<'a> {
+impl HybridResults<'_> {
     pub fn query_result_hash(&self) -> Hash64 {
         re_tracing::profile_function!();
         // TODO(andreas): We should be able to do better than this and determine hashes for queries on the fly.
@@ -213,7 +213,7 @@ impl<'a> From<(LatestAtQuery, HybridLatestAtResults<'a>)> for HybridResults<'a> 
     }
 }
 
-impl<'a> From<(RangeQuery, HybridRangeResults)> for HybridResults<'a> {
+impl From<(RangeQuery, HybridRangeResults)> for HybridResults<'_> {
     #[inline]
     fn from((query, results): (RangeQuery, HybridRangeResults)) -> Self {
         Self::Range(query, Box::new(results))
@@ -338,7 +338,7 @@ impl RangeResultsExt for HybridRangeResults {
     }
 }
 
-impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
+impl RangeResultsExt for HybridLatestAtResults<'_> {
     #[inline]
     fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
         if let Some(unit) = self.overrides.get(component_name) {
@@ -390,7 +390,7 @@ impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
     }
 }
 
-impl<'a> RangeResultsExt for HybridResults<'a> {
+impl RangeResultsExt for HybridResults<'_> {
     #[inline]
     fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
         match self {

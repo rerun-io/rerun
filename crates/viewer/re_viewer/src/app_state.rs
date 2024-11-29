@@ -12,7 +12,7 @@ use re_viewer_context::{
     PlayState, RecordingConfig, SpaceViewClassExt as _, SpaceViewClassRegistry, StoreContext,
     StoreHub, SystemCommandSender as _, ViewStates, ViewerContext,
 };
-use re_viewport::Viewport;
+use re_viewport::ViewportUi;
 use re_viewport_blueprint::ui::add_space_view_or_container_modal_ui;
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -57,7 +57,7 @@ pub struct AppState {
     /// Storage for the state of each `SpaceView`
     ///
     /// This is stored here for simplicity. An exclusive reference for that is passed to the users,
-    /// such as [`Viewport`] and [`re_selection_panel::SelectionPanel`].
+    /// such as [`ViewportUi`] and [`re_selection_panel::SelectionPanel`].
     #[serde(skip)]
     view_states: ViewStates,
 
@@ -170,25 +170,12 @@ impl AppState {
         // check state early, before the UI has a chance to close these popups
         let is_any_popup_open = ui.memory(|m| m.any_popup_open());
 
-        // Some of the mutations APIs of `ViewportBlueprints` are recorded as `Viewport::TreeAction`
-        // and must be applied by `Viewport` at the end of the frame. We use a temporary channel for
-        // this, which gives us interior mutability (only a shared reference of `ViewportBlueprint`
-        // is available to the UI code) and, if needed in the future, concurrency.
-        let (sender, receiver) = std::sync::mpsc::channel();
-        let viewport_blueprint = ViewportBlueprint::try_from_db(
-            store_context.blueprint,
-            &blueprint_query,
-            sender.clone(),
-        );
-        let mut viewport = Viewport::new(
-            &viewport_blueprint,
-            space_view_class_registry,
-            receiver,
-            sender,
-        );
+        let viewport_blueprint =
+            ViewportBlueprint::try_from_db(store_context.blueprint, &blueprint_query);
+        let viewport_ui = ViewportUi::new(viewport_blueprint);
 
         // If the blueprint is invalid, reset it.
-        if viewport.blueprint.is_invalid() {
+        if viewport_ui.blueprint.is_invalid() {
             re_log::warn!("Incompatible blueprint detected. Resetting to default.");
             command_sender.send_system(re_viewer_context::SystemCommand::ClearActiveBlueprint);
 
@@ -208,7 +195,7 @@ impl AppState {
                     }
                 }
 
-                viewport.is_item_valid(store_context, item)
+                viewport_ui.blueprint.is_item_valid(store_context, item)
             },
             Some(re_viewer_context::Item::StoreId(
                 store_context.recording.store_id().clone(),
@@ -223,7 +210,7 @@ impl AppState {
         // Execute the queries for every `SpaceView`
         let mut query_results = {
             re_tracing::profile_scope!("query_results");
-            viewport
+            viewport_ui
                 .blueprint
                 .space_views
                 .values()
@@ -279,12 +266,12 @@ impl AppState {
         move_time(&ctx, recording, rx);
 
         // Update the viewport. May spawn new views and handle queued requests (like screenshots).
-        viewport.on_frame_start(&ctx);
+        viewport_ui.on_frame_start(&ctx);
 
         {
             re_tracing::profile_scope!("updated_query_results");
 
-            for space_view in viewport.blueprint.space_views.values() {
+            for space_view in viewport_ui.blueprint.space_views.values() {
                 if let Some(query_result) = query_results.get_mut(&space_view.id) {
                     // TODO(andreas): This needs to be done in a store subscriber that exists per space view (instance, not class!).
                     // Note that right now we determine *all* visualizable entities, not just the queried ones.
@@ -358,7 +345,7 @@ impl AppState {
             if app_options.inspect_blueprint_timeline {
                 blueprint_panel.show_panel(
                     &ctx,
-                    &viewport_blueprint,
+                    &viewport_ui.blueprint,
                     ctx.store_context.blueprint,
                     blueprint_cfg,
                     ui,
@@ -372,7 +359,7 @@ impl AppState {
 
             time_panel.show_panel(
                 &ctx,
-                &viewport_blueprint,
+                &viewport_ui.blueprint,
                 ctx.recording(),
                 ctx.rec_cfg,
                 ui,
@@ -385,7 +372,7 @@ impl AppState {
 
             selection_panel.show_panel(
                 &ctx,
-                &viewport_blueprint,
+                &viewport_ui.blueprint,
                 view_states,
                 ui,
                 app_blueprint.selection_panel_state().is_expanded(),
@@ -440,7 +427,7 @@ impl AppState {
                     ui.add_space(4.0);
 
                     if !show_welcome {
-                        blueprint_tree.show(&ctx, &viewport_blueprint, ui);
+                        blueprint_tree.show(&ctx, &viewport_ui.blueprint, ui);
                     }
                 },
             );
@@ -465,7 +452,7 @@ impl AppState {
                             is_history_enabled,
                         );
                     } else {
-                        viewport.viewport_ui(ui, &ctx, view_states);
+                        viewport_ui.viewport_ui(ui, &ctx, view_states);
                     }
                 });
         }
@@ -474,10 +461,10 @@ impl AppState {
         // Other UI things
         //
 
-        add_space_view_or_container_modal_ui(&ctx, &viewport_blueprint, ui);
+        add_space_view_or_container_modal_ui(&ctx, &viewport_ui.blueprint, ui);
 
-        // Process deferred layout operations and apply updates back to blueprint
-        viewport.update_and_sync_tile_tree_to_blueprint(&ctx);
+        // Process deferred layout operations and apply updates back to blueprint:
+        viewport_ui.save_to_blueprint_store(&ctx, space_view_class_registry);
 
         if WATERMARK {
             ui.ctx().paint_watermark();

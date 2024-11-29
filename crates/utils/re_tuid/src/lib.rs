@@ -46,7 +46,7 @@ impl std::fmt::Debug for Tuid {
     }
 }
 
-impl<'a> From<Tuid> for std::borrow::Cow<'a, Tuid> {
+impl From<Tuid> for std::borrow::Cow<'_, Tuid> {
     #[inline]
     fn from(value: Tuid) -> Self {
         std::borrow::Cow::Owned(value)

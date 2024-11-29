@@ -146,7 +146,7 @@ pub struct TextureInteractionId<'a> {
     pub interaction_idx: u32,
 }
 
-impl<'a> TextureInteractionId<'a> {
+impl TextureInteractionId<'_> {
     pub fn debug_label(&self, topic: &str) -> re_renderer::DebugLabel {
         format!("{topic}__{:?}_{}", self.entity_path, self.interaction_idx).into()
     }

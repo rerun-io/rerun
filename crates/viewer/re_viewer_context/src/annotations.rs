@@ -81,7 +81,7 @@ pub struct ResolvedClassDescription<'a> {
     pub keypoint_map: Option<&'a HashMap<KeypointId, AnnotationInfo>>,
 }
 
-impl<'a> ResolvedClassDescription<'a> {
+impl ResolvedClassDescription<'_> {
     #[inline]
     pub fn annotation_info(&self) -> ResolvedAnnotationInfo {
         ResolvedAnnotationInfo {

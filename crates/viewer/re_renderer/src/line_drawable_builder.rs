@@ -95,7 +95,7 @@ impl<'ctx> LineDrawableBuilder<'ctx> {
 
 pub struct LineBatchBuilder<'a, 'ctx>(&'a mut LineDrawableBuilder<'ctx>);
 
-impl<'a, 'ctx> Drop for LineBatchBuilder<'a, 'ctx> {
+impl Drop for LineBatchBuilder<'_, '_> {
     fn drop(&mut self) {
         // Remove batch again if it wasn't actually used.
         if self.0.batches.last().unwrap().line_vertex_count == 0 {
@@ -104,7 +104,7 @@ impl<'a, 'ctx> Drop for LineBatchBuilder<'a, 'ctx> {
     }
 }
 
-impl<'a, 'ctx> LineBatchBuilder<'a, 'ctx> {
+impl<'ctx> LineBatchBuilder<'_, 'ctx> {
     #[inline]
     fn batch_mut(&mut self) -> &mut LineBatchInfo {
         self.0
@@ -531,7 +531,7 @@ impl<'a, 'ctx> LineStripBuilder<'a, 'ctx> {
     }
 }
 
-impl<'a, 'ctx> Drop for LineStripBuilder<'a, 'ctx> {
+impl Drop for LineStripBuilder<'_, '_> {
     fn drop(&mut self) {
         if self.num_strips_added == 0 {
             // Happens if we reached the maximum number of strips.

@@ -80,6 +80,23 @@ impl ChunkStoreDiffKind {
     }
 }
 
+/// Reports which [`Chunk`]s were merged into a new [`Chunk`] during a compaction.
+#[derive(Debug, Clone)]
+pub struct ChunkCompactionReport {
+    /// The chunks that were merged into a new chunk.
+    pub srcs: BTreeMap<ChunkId, Arc<Chunk>>,
+
+    /// The new chunk that was created as the result of the compaction.
+    pub new_chunk: Arc<Chunk>,
+}
+
+impl PartialEq for ChunkCompactionReport {
+    #[inline]
+    fn eq(&self, rhs: &Self) -> bool {
+        self.srcs.keys().eq(rhs.srcs.keys()) && self.new_chunk.id() == rhs.new_chunk.id()
+    }
+}
+
 /// Describes an atomic change in the Rerun [`ChunkStore`]: a chunk has been added or deleted.
 ///
 /// From a query model standpoint, the [`ChunkStore`] _always_ operates one chunk at a time:
@@ -120,14 +137,15 @@ pub struct ChunkStoreDiff {
     // deallocated.
     pub chunk: Arc<Chunk>,
 
-    /// Reports which [`Chunk`]s were merged into a new [`ChunkId`] (srcs, dst) during a compaction.
+    /// Reports which [`Chunk`]s were merged into a new [`Chunk`] during a compaction.
     ///
     /// This is only specified if an addition to the store triggered a compaction.
     /// When that happens, it is guaranteed that [`ChunkStoreDiff::chunk`] will be present in the
     /// set of source chunks below, since it was compacted on arrival.
     ///
-    /// A corollary to that is that the destination [`ChunkId`] must have never been seen before.
-    pub compacted: Option<(BTreeMap<ChunkId, Arc<Chunk>>, ChunkId)>,
+    /// A corollary to that is that the destination [`Chunk`] must have never been seen before,
+    /// i.e. it's [`ChunkId`] must have never been seen before.
+    pub compacted: Option<ChunkCompactionReport>,
 }
 
 impl PartialEq for ChunkStoreDiff {
@@ -146,10 +164,7 @@ impl Eq for ChunkStoreDiff {}
 
 impl ChunkStoreDiff {
     #[inline]
-    pub fn addition(
-        chunk: Arc<Chunk>,
-        compacted: Option<(BTreeMap<ChunkId, Arc<Chunk>>, ChunkId)>,
-    ) -> Self {
+    pub fn addition(chunk: Arc<Chunk>, compacted: Option<ChunkCompactionReport>) -> Self {
         Self {
             kind: ChunkStoreDiffKind::Addition,
             chunk,
