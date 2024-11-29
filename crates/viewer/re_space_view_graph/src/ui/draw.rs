@@ -270,7 +270,6 @@ pub fn draw_entity_rect(
 }
 
 /// Draws the graph using the layout.
-#[must_use]
 pub fn draw_graph(
     ui: &mut Ui,
     ctx: &ViewerContext<'_>,
@@ -316,37 +315,29 @@ pub fn draw_graph(
             }
         };
 
-        ui.painter().rect(
-            response.rect,
-            0.0,
-            Color32::RED.gamma_multiply(0.5),
-            Stroke::new(1.0, Color32::RED),
-        );
-
         current_rect = current_rect.union(response.rect);
     }
 
     for (_, _, geometries) in layout.edges() {
         for geometry in geometries {
             let response = draw_edge(ui, geometry, geometry.target_arrow);
-
-            ui.painter().rect(
-                response.rect,
-                0.0,
-                Color32::BLUE.gamma_multiply(0.5),
-                Stroke::new(1.0, Color32::BLUE),
-            );
-
             current_rect = current_rect.union(response.rect);
         }
     }
 
-    ui.painter().rect(
-        current_rect,
-        0.0,
-        Color32::GREEN.gamma_multiply(0.5),
-        Stroke::new(1.0, Color32::GREEN),
-    );
+    // We only show entity rects if there are multiple entities.
+    // For now, these entity rects are not part of the layout, but rather tracked on the fly.
+    if layout.num_entities() > 1 {
+        for (entity_path, rect) in layout.entities() {
+            let resp = draw_entity_rect(ui, *rect, entity_path, &query.highlights);
+            current_rect = current_rect.union(resp.rect);
+            let instance_path = InstancePath::entity_all(entity_path.clone());
+            ctx.select_hovered_on_click(
+                &resp,
+                vec![(Item::DataResult(query.space_view_id, instance_path), None)].into_iter(),
+            );
+        }
+    }
 
     current_rect
 }

@@ -1,4 +1,5 @@
 use egui::{Pos2, Rect, Vec2};
+use re_chunk::EntityPath;
 
 use crate::graph::NodeId;
 
@@ -76,7 +77,7 @@ impl EdgeGeometry {
 pub struct Layout {
     pub(super) nodes: ahash::HashMap<NodeId, Rect>,
     pub(super) edges: ahash::HashMap<(NodeId, NodeId), Vec<EdgeGeometry>>,
-    // TODO(grtlr): Consider adding the entity rects here too.
+    pub(super) entities: Vec<(EntityPath, Rect)>,
 }
 
 fn bounding_rect_from_iter(rectangles: impl Iterator<Item = egui::Rect>) -> egui::Rect {
@@ -106,5 +107,15 @@ impl Layout {
         self.edges
             .iter()
             .map(|((from, to), es)| (from, to, es.as_slice()))
+    }
+
+    /// Returns the number of entities in the layout.
+    pub fn num_entities(&self) -> usize {
+        self.entities.len()
+    }
+
+    /// Returns an iterator over all edges in the layout.
+    pub fn entities(&self) -> impl Iterator<Item = &(EntityPath, Rect)> {
+        self.entities.iter()
     }
 }

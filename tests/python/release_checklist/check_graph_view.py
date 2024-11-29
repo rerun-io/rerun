@@ -12,6 +12,9 @@ README = """\
 
 Please check the following:
 * All graphs have a proper layout.
+* The `Weird Graph` views show:
+    * two self-edges for `A`, a single one for `B`.
+    * Additionally, there should be three edges between `A` and `B`.
 * `graph` has directed edges, while `graph2` has undirected edges.
 * `graph` and `graph2` are shown in two different viewers.
 * There is a third viewer, `Both`, that shows both `graph` and `graph2` in the same viewer.

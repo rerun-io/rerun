@@ -1,5 +1,5 @@
 use egui::{Pos2, Rect, Vec2};
-use fjadra as fj;
+use fjadra::{self as fj};
 
 use crate::graph::NodeId;
 
@@ -90,6 +90,7 @@ impl ForceLayoutProvider {
             nodes: extents,
             // Without any real node positions, we probably don't want to draw edges either.
             edges: ahash::HashMap::default(),
+            entities: Vec::new(),
         }
     }
 
@@ -99,50 +100,64 @@ impl ForceLayoutProvider {
 
         let positions = self.simulation.positions().collect::<Vec<_>>();
 
-        for (node, extent) in &mut layout.nodes {
-            let i = self.node_index[node];
-            let [x, y] = positions[i];
-            let pos = Pos2::new(x as f32, y as f32);
-            extent.set_center(pos);
-        }
+        // We clear all unnecessary data deom the previous layout, but keep its space allocated.
+        layout.entities.clear();
+        layout.edges.clear();
 
-        // TODO(grtlr): Better to create slots for each edge.
-        for ((from, to), templates) in self.request.graphs.values().flat_map(|g| g.edges.iter()) {
-            let mut geometries = Vec::with_capacity(templates.len());
-            match from == to {
-                true => {
-                    for (i, template) in templates.iter().enumerate() {
-                        let offset = (i + 1) as f32;
-                        let target_arrow = template.target_arrow;
-                        // Self-edges are not supported in force-based layouts.
-                        let anchor = intersects_ray_from_center(layout.nodes[from], Vec2::UP);
-                        geometries.push(EdgeGeometry {
-                            target_arrow,
-                            path: PathGeometry::CubicBezier {
-                                // TODO(grtlr): We could probably consider the actual node size here.
-                                source: anchor + Vec2::LEFT * 4.,
-                                target: anchor + Vec2::RIGHT * 4.,
-                                // TODO(grtlr): The actual length of that spline should follow the `distance` parameter of the link force.
-                                control: [
-                                    anchor + Vec2::new(-30. * offset, -40. * offset),
-                                    anchor + Vec2::new(30. * offset, -40. * offset),
-                                ],
-                            },
-                        });
-                    }
-                }
-                false => {
-                    // TODO(grtlr): perform similar computations here
-                    for template in templates {
-                        let target_arrow = template.target_arrow;
-                        geometries.push(EdgeGeometry {
-                            target_arrow,
-                            path: line_segment(layout.nodes[from], layout.nodes[to]),
-                        });
-                    }
-                }
+        for (entity, graph) in &self.request.graphs {
+
+            let mut current_rect = Rect::NOTHING;
+
+            for node in graph.nodes.keys() {
+                let extent = layout.nodes.get_mut(node).expect("node has to be present");
+                let i = self.node_index[node];
+                let [x, y] = positions[i];
+                let pos = Pos2::new(x as f32, y as f32);
+                extent.set_center(pos);
+                current_rect = current_rect.union(*extent);
             }
-            layout.edges.insert((*from, *to), geometries);
+
+            layout.entities.push((entity.clone(), current_rect));
+
+            // TODO(grtlr): Better to create slots for each edge.
+            for ((from, to), edges) in &graph.edges {
+
+                let mut geometries = Vec::with_capacity(edges.len());
+                match from == to {
+                    true => {
+                        for (i, template) in edges.iter().enumerate() {
+                            let offset = (i + 1) as f32;
+                            let target_arrow = template.target_arrow;
+                            // Self-edges are not supported in force-based layouts.
+                            let anchor = intersects_ray_from_center(layout.nodes[from], Vec2::UP);
+                            geometries.push(EdgeGeometry {
+                                target_arrow,
+                                path: PathGeometry::CubicBezier {
+                                    // TODO(grtlr): We could probably consider the actual node size here.
+                                    source: anchor + Vec2::LEFT * 4.,
+                                    target: anchor + Vec2::RIGHT * 4.,
+                                    // TODO(grtlr): The actual length of that spline should follow the `distance` parameter of the link force.
+                                    control: [
+                                        anchor + Vec2::new(-30. * offset, -40. * offset),
+                                        anchor + Vec2::new(30. * offset, -40. * offset),
+                                    ],
+                                },
+                            });
+                        }
+                    }
+                    false => {
+                        // TODO(grtlr): perform similar computations here
+                        for template in edges {
+                            let target_arrow = template.target_arrow;
+                            geometries.push(EdgeGeometry {
+                                target_arrow,
+                                path: line_segment(layout.nodes[from], layout.nodes[to]),
+                            });
+                        }
+                    }
+                }
+                layout.edges.insert((*from, *to), geometries);
+            }
         }
 
         self.simulation.finished()
