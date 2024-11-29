@@ -72,7 +72,7 @@ pub fn time_panel_dense_data_should_match_snapshot() {
     run_time_panel_and_save_snapshot(test_context, "time_panel_dense_data");
 }
 
-fn run_time_panel_and_save_snapshot(mut test_context: TestContext, snapshot_name: &str) {
+fn run_time_panel_and_save_snapshot(mut test_context: TestContext, _snapshot_name: &str) {
     let mut panel = TimePanel::default();
 
     //TODO(ab): this contains a lot of boilerplate which should be provided by helpers
@@ -105,5 +105,5 @@ fn run_time_panel_and_save_snapshot(mut test_context: TestContext, snapshot_name
 
     //TODO(#8245): enable this everywhere when we have a software renderer setup
     #[cfg(target_os = "macos")]
-    harness.wgpu_snapshot(snapshot_name);
+    harness.wgpu_snapshot(_snapshot_name);
 }
