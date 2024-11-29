@@ -38,7 +38,7 @@ pub struct AppState {
 
     selection_panel: re_selection_panel::SelectionPanel,
     time_panel: re_time_panel::TimePanel,
-    blueprint_panel: re_time_panel::TimePanel,
+    blueprint_time_panel: re_time_panel::TimePanel,
     #[serde(skip)]
     blueprint_tree: re_blueprint_tree::BlueprintTree,
 
@@ -86,7 +86,7 @@ impl Default for AppState {
             blueprint_cfg: Default::default(),
             selection_panel: Default::default(),
             time_panel: Default::default(),
-            blueprint_panel: re_time_panel::TimePanel::new_blueprint_panel(),
+            blueprint_time_panel: re_time_panel::TimePanel::new_blueprint_panel(),
             blueprint_tree: Default::default(),
             welcome_screen: Default::default(),
             datastore_ui: Default::default(),
@@ -163,7 +163,7 @@ impl AppState {
             blueprint_cfg,
             selection_panel,
             time_panel,
-            blueprint_panel,
+            blueprint_time_panel,
             blueprint_tree,
             welcome_screen,
             datastore_ui,
@@ -355,14 +355,46 @@ impl AppState {
             //
 
             if app_options.inspect_blueprint_timeline {
-                blueprint_panel.show_panel(
+                let blueprint_db = ctx.store_context.blueprint;
+
+                let undo_state = self
+                    .blueprint_undo_state
+                    .entry(ctx.store_context.blueprint.store_id().clone())
+                    .or_default();
+
+                {
+                    // Copy time from undo-state to the blueprint time control struct:
+                    let mut time_ctrl = blueprint_cfg.time_ctrl.write();
+                    if let Some(redo_time) = undo_state.redo_time() {
+                        time_ctrl
+                            .set_play_state(blueprint_db.times_per_timeline(), PlayState::Paused);
+                        time_ctrl.set_time(redo_time);
+                    } else {
+                        time_ctrl.set_play_state(
+                            blueprint_db.times_per_timeline(),
+                            PlayState::Following,
+                        );
+                    }
+                }
+
+                blueprint_time_panel.show_panel(
                     &ctx,
                     &viewport_ui.blueprint,
-                    ctx.store_context.blueprint,
+                    blueprint_db,
                     blueprint_cfg,
                     ui,
                     PanelState::Expanded,
                 );
+
+                {
+                    // Apply changes to the blueprint time to the undo-state:
+                    let time_ctrl = blueprint_cfg.time_ctrl.read();
+                    if time_ctrl.play_state() == PlayState::Following {
+                        undo_state.redo_all();
+                    } else if let Some(time) = time_ctrl.time_int() {
+                        undo_state.set_redo_time(time);
+                    }
+                }
             }
 
             //

@@ -56,6 +56,16 @@ impl BlueprintUndoState {
         }
     }
 
+    /// If set, everything after this time is in "redo-space" (futurum).
+    /// If `None`, there is no undo-buffer.
+    pub fn redo_time(&self) -> Option<TimeInt> {
+        self.current_time
+    }
+
+    pub fn set_redo_time(&mut self, time: TimeInt) {
+        self.current_time = Some(time);
+    }
+
     pub fn undo(&mut self, blueprint_db: &EntityDb) {
         let time = self
             .current_time
@@ -69,13 +79,17 @@ impl BlueprintUndoState {
         }
     }
 
-    pub fn redo(&mut self, _blueprint_db: &EntityDb) {
+    pub fn redo(&mut self) {
         if let Some(time) = self.current_time {
             self.current_time = self.inflection_points.range(time.inc()..).next().copied();
         } else {
             // If we have no time, we're at latest, and have nothing to redo
             re_log::debug!("Nothing to redo");
         }
+    }
+
+    pub fn redo_all(&mut self) {
+        self.current_time = None;
     }
 
     /// Clears the "redo buffer".

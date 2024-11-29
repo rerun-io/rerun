@@ -562,12 +562,11 @@ impl App {
                     .undo(blueprint_db);
             }
             SystemCommand::RedoBlueprint { blueprint_id } => {
-                let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
                 self.state
                     .blueprint_undo_state
                     .entry(blueprint_id)
                     .or_default()
-                    .redo(blueprint_db);
+                    .redo();
             }
 
             SystemCommand::DropEntity(blueprint_id, entity_path) => {
