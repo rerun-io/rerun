@@ -778,11 +778,11 @@ mod tests {
         let mut query_result = contents.execute_query(&store_ctx, visualizable_entities);
         let mut view_states = ViewStates::default();
 
-        test_ctx.run(|ctx, _ui| {
+        test_ctx.run_in_egui_central_panel(|ctx, _ui| {
             resolver.update_overrides(
                 ctx.blueprint_db(),
                 ctx.blueprint_query,
-                &test_ctx.active_timeline,
+                ctx.rec_cfg.time_ctrl.read().timeline(),
                 ctx.space_view_class_registry,
                 &mut query_result,
                 &mut view_states,
