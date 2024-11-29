@@ -15,7 +15,6 @@ use crate::{
 
 /// Describes the differen kind of nodes that we can have in a graph.
 pub enum Node {
-
     /// An explicit node is a node that was provided via [`re_types::archetypes::GraphNodes`].
     ///
     /// It therefore has an instance, as well as all properties that can be added via that archetype.

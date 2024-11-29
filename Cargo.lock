@@ -6231,7 +6231,6 @@ name = "re_space_view_graph"
 version = "0.21.0-alpha.1+dev"
 dependencies = [
  "ahash",
- "bytemuck",
  "egui",
  "fjadra",
  "nohash-hasher",
