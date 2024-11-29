@@ -1897,8 +1897,37 @@ impl eframe::App for App {
         #[cfg(not(target_arch = "wasm32"))]
         egui_ctx.input(|i| {
             for event in &i.raw.events {
-                if let egui::Event::Screenshot { image, .. } = event {
-                    self.screenshotter.save(image);
+                if let egui::Event::Screenshot {
+                    image, user_data, ..
+                } = event
+                {
+                    if let Some(info) = &user_data
+                        .data
+                        .as_ref()
+                        .and_then(|data| data.downcast_ref::<re_viewer_context::ScreenshotInfo>())
+                    {
+                        re_log::info!("Screenshot info: {info:?}");
+                        let ScreenshotInfo {
+                            space_view,
+                            ui_rect,
+                            pixels_per_point,
+                        } = (*info).clone();
+
+                        let rgba = if let Some(ui_rect) = ui_rect {
+                            Arc::new(image.region(&ui_rect, Some(pixels_per_point)))
+                        } else {
+                            image.clone()
+                        };
+
+                        re_viewer_context::Clipboard::with(|clipboard| {
+                            clipboard.set_image(
+                                [rgba.width(), rgba.height()],
+                                bytemuck::cast_slice(rgba.as_raw()),
+                            );
+                        });
+                    } else {
+                        self.screenshotter.save(image);
+                    }
                 }
             }
         });

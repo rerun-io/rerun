@@ -127,3 +127,13 @@ pub fn contents_name_style(name: &ContentsName) -> re_ui::LabelStyle {
         ContentsName::Placeholder(_) => re_ui::LabelStyle::Unnamed,
     }
 }
+
+/// Info given to egui when taking a screenshot.
+///
+/// Specified what we are screenshotting.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ScreenshotInfo {
+    pub space_view: Option<SpaceViewId>,
+    pub ui_rect: Option<egui::Rect>,
+    pub pixels_per_point: f32,
+}

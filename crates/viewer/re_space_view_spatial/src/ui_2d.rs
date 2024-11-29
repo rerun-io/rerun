@@ -250,9 +250,14 @@ impl SpatialSpaceView2D {
         // ------------------------------------------------------------------------
 
         if let Some(mode) = screenshot_context_menu(ctx, &response) {
-            view_builder
-                .schedule_screenshot(render_ctx, query.space_view_id.gpu_readback_id(), mode)
-                .ok();
+            ctx.egui_ctx
+                .send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::new(
+                    re_viewer_context::ScreenshotInfo {
+                        space_view: Some(query.space_view_id),
+                        ui_rect: Some(response.rect),
+                        pixels_per_point: ui.ctx().pixels_per_point(),
+                    },
+                )));
         }
 
         // Draw a re_renderer driven view.
