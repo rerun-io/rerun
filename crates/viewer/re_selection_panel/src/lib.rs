@@ -30,11 +30,9 @@ mod test {
         });
 
         test_ctx.run_in_egui_central_panel(|ctx, ui| {
-            let (sender, _) = std::sync::mpsc::channel();
             let blueprint = ViewportBlueprint::try_from_db(
                 ctx.store_context.blueprint,
                 &LatestAtQuery::latest(blueprint_timeline()),
-                sender,
             );
 
             let mut selection_panel = SelectionPanel::default();

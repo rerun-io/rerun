@@ -3594,7 +3594,7 @@ checksum = "e2db585e1d738fc771bf08a151420d3ed193d9d895a36df7f6f8a9456b911ddc"
 [[package]]
 name = "kittest"
 version = "0.1.0"
-source = "git+https://github.com/rerun-io/kittest?branch=main#63c5b7d58178900e523428ca5edecbba007a2702"
+source = "git+https://github.com/rerun-io/kittest?branch=main#06e01f17fed36a997e1541f37b2d47e3771d7533"
 dependencies = [
  "accesskit",
  "accesskit_consumer 0.25.0",
@@ -6761,6 +6761,7 @@ dependencies = [
  "image",
  "itertools 0.13.0",
  "nohash-hasher",
+ "parking_lot",
  "rayon",
  "re_context_menu",
  "re_entity_db",

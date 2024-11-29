@@ -33,6 +33,7 @@ use crate::{SpaceViewContents, ViewProperty};
 ///
 /// If you want a new space view otherwise identical to an existing one, use
 /// `re_viewport::ViewportBlueprint::duplicate_space_view`.
+#[derive(Clone, Debug)]
 pub struct SpaceViewBlueprint {
     pub id: SpaceViewId,
     pub display_name: Option<String>,

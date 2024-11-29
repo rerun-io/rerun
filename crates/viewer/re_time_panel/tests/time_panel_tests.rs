@@ -82,11 +82,9 @@ fn run_time_panel_and_save_snapshot(mut test_context: TestContext, snapshot_name
         .with_size(Vec2::new(700.0, 300.0))
         .build_ui(|ui| {
             test_context.run(&ui.ctx().clone(), |viewer_ctx| {
-                let (sender, _) = std::sync::mpsc::channel();
                 let blueprint = ViewportBlueprint::try_from_db(
                     viewer_ctx.store_context.blueprint,
                     &LatestAtQuery::latest(blueprint_timeline()),
-                    sender,
                 );
 
                 let mut time_ctrl = viewer_ctx.rec_cfg.time_ctrl.read().clone();
@@ -98,6 +96,8 @@ fn run_time_panel_and_save_snapshot(mut test_context: TestContext, snapshot_name
                     &mut time_ctrl,
                     ui,
                 );
+
+                *viewer_ctx.rec_cfg.time_ctrl.write() = time_ctrl;
             });
 
             test_context.handle_system_commands();
