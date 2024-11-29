@@ -25,7 +25,7 @@ use crate::{container::ContainerBlueprint, SpaceViewBlueprint, ViewportCommand, 
 
 /// Describes the layout and contents of the Viewport Panel.
 ///
-/// The is loaded from the blueprint store at the start of each frame.
+/// This datastructure is loaded from the blueprint store at the start of each frame.
 ///
 /// It remain immutable during the frame.
 ///
