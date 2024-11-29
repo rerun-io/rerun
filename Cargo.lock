@@ -6575,6 +6575,7 @@ dependencies = [
  "egui",
  "egui_commonmark",
  "egui_extras",
+ "egui_kittest",
  "egui_tiles",
  "once_cell",
  "parking_lot",
