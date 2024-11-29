@@ -321,7 +321,7 @@ impl SpaceViewBlueprint {
                 &re_types::archetypes::Clear::recursive(),
             )
             .build()
-            .unwrap();
+            .expect("Failed to serialize Clear component !?");
 
         ctx.command_sender
             .send_system(SystemCommand::UpdateBlueprint(
