@@ -39,7 +39,7 @@ impl SpaceViewEntityPicker {
                     return;
                 };
 
-                let Some(space_view) = viewport_blueprint.space_views.get(space_view_id) else {
+                let Some(space_view) = viewport_blueprint.view(space_view_id) else {
                     *open = false;
                     return;
                 };

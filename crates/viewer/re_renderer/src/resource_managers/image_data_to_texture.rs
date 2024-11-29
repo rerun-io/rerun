@@ -122,7 +122,7 @@ pub struct ImageDataDesc<'a> {
     //generate_mip_maps: bool, // TODO(andreas): generate mipmaps!
 }
 
-impl<'a> ImageDataDesc<'a> {
+impl ImageDataDesc<'_> {
     fn validate(
         &self,
         limits: &wgpu::Limits,

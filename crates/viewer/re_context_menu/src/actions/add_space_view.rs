@@ -33,7 +33,6 @@ impl ContextMenuAction for AddSpaceViewAction {
 
         ctx.viewport_blueprint.add_space_views(
             std::iter::once(space_view),
-            ctx.viewer_context,
             Some(*container_id),
             None,
         );

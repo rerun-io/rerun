@@ -92,7 +92,7 @@ impl<'ctx> PointCloudBuilder<'ctx> {
 
 pub struct PointCloudBatchBuilder<'a, 'ctx>(&'a mut PointCloudBuilder<'ctx>);
 
-impl<'a, 'ctx> Drop for PointCloudBatchBuilder<'a, 'ctx> {
+impl Drop for PointCloudBatchBuilder<'_, '_> {
     fn drop(&mut self) {
         // Remove batch again if it wasn't actually used.
         if self.0.batches.last().unwrap().point_count == 0 {
@@ -101,7 +101,7 @@ impl<'a, 'ctx> Drop for PointCloudBatchBuilder<'a, 'ctx> {
     }
 }
 
-impl<'a, 'ctx> PointCloudBatchBuilder<'a, 'ctx> {
+impl PointCloudBatchBuilder<'_, '_> {
     #[inline]
     fn batch_mut(&mut self) -> &mut PointCloudBatchInfo {
         self.0

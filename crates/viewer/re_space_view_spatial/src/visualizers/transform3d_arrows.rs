@@ -62,12 +62,12 @@ impl VisualizerSystem for Transform3DArrowsVisualizer {
     fn applicability_filter(
         &self,
     ) -> Option<Box<dyn re_viewer_context::VisualizerAdditionalApplicabilityFilter>> {
-        return Some(Box::new(Transform3DApplicabilityFilter {
+        Some(Box::new(Transform3DApplicabilityFilter {
             applicability_trigger_components: Transform3D::all_components()
                 .iter()
                 .copied()
                 .collect(),
-        }));
+        }))
     }
 
     fn filter_visualizable_entities(

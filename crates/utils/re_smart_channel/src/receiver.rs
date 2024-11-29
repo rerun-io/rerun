@@ -37,12 +37,9 @@ impl<T: Send> Receiver<T> {
 
     #[cfg(not(target_arch = "wasm32"))] // Cannot block on web
     pub fn recv(&self) -> Result<SmartMessage<T>, crate::RecvError> {
-        let msg = match self.rx.recv() {
-            Ok(x) => x,
-            Err(crate::RecvError) => {
-                self.connected.store(false, Relaxed);
-                return Err(crate::RecvError);
-            }
+        let Ok(msg) = self.rx.recv() else {
+            self.connected.store(false, Relaxed);
+            return Err(crate::RecvError);
         };
 
         let latency_ns = msg.time.elapsed().as_nanos() as u64;

@@ -6,7 +6,9 @@ use crate::{
     wgpu_resources::{GpuRenderPipelineHandle, PipelineLayoutDesc, RenderPipelineDesc},
 };
 
-use super::*;
+use super::{
+    DrawData, DrawError, DrawPhase, GpuRenderPipelinePoolAccessor, RenderContext, Renderer,
+};
 
 pub struct TestTriangle {
     render_pipeline: GpuRenderPipelineHandle,

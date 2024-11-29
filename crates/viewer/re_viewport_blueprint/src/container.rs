@@ -22,7 +22,7 @@ use re_viewer_context::{
 ///
 /// The main reason this exists is to handle type conversions that aren't yet
 /// well handled by the code-generated archetypes.
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 pub struct ContainerBlueprint {
     pub id: ContainerId,
     pub container_kind: egui_tiles::ContainerKind,
@@ -52,6 +52,13 @@ impl Default for ContainerBlueprint {
 }
 
 impl ContainerBlueprint {
+    pub fn new(id: ContainerId) -> Self {
+        Self {
+            id,
+            ..Default::default()
+        }
+    }
+
     /// Attempt to load a [`ContainerBlueprint`] from the blueprint store.
     pub fn try_from_db(
         blueprint_db: &EntityDb,
@@ -364,6 +371,15 @@ impl ContainerBlueprint {
                 ctx.save_empty_blueprint_component::<GridColumns>(&self.entity_path());
             }
         }
+    }
+
+    /// Clears the blueprint component for this container.
+    pub fn clear(&self, ctx: &ViewerContext<'_>) {
+        // TODO: ecursive clear
+        ctx.command_sender.send_system(SystemCommand::DropEntity(
+            ctx.store_context.blueprint.store_id().clone(),
+            self.entity_path(),
+        ));
     }
 
     pub fn to_tile(&self) -> egui_tiles::Tile<SpaceViewId> {

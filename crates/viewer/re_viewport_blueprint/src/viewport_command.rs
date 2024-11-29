@@ -1,14 +1,27 @@
 use re_viewer_context::{ContainerId, Contents, SpaceViewId};
 
-/// Mutation actions to perform on the tree at the end of the frame. These messages are sent by the mutation APIs from
-/// [`crate::ViewportBlueprint`].
+use crate::SpaceViewBlueprint;
+
+/// Mutation actions to perform on the viewport tree at the end of the frame.
+///
+/// These are deferred so that we have an immutable viewport during the duration of the frame.
 #[derive(Clone, Debug)]
-pub enum TreeAction {
+pub enum ViewportCommand {
+    /// Set the whole viewport tree.
+    SetTree(egui_tiles::Tree<SpaceViewId>),
+
     /// Add a new space view to the provided container (or the root if `None`).
-    AddSpaceView(SpaceViewId, Option<ContainerId>, Option<usize>),
+    AddSpaceView {
+        space_view: SpaceViewBlueprint,
+        parent_container: Option<ContainerId>,
+        position_in_parent: Option<usize>,
+    },
 
     /// Add a new container of the provided kind to the provided container (or the root if `None`).
-    AddContainer(egui_tiles::ContainerKind, Option<ContainerId>),
+    AddContainer {
+        container_kind: egui_tiles::ContainerKind,
+        parent_container: Option<ContainerId>,
+    },
 
     /// Change the kind of a container.
     SetContainerKind(ContainerId, egui_tiles::ContainerKind),

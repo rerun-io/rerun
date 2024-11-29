@@ -36,7 +36,7 @@ impl From<core::convert::Infallible> for TryFromIntError {
     }
 }
 
-/// ---
+// ---
 
 /// An integer that is known not to equal its minimum value.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
