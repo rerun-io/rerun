@@ -61,7 +61,7 @@ pub fn zoom_pan_area(
     ui: &Ui,
     view_bounds_in_ui: Rect,
     ui_from_scene: &mut TSTransform,
-    draw_contens: impl FnOnce(&mut Ui),
+    draw_contents: impl FnOnce(&mut Ui),
 ) -> Response {
     let area_resp = Area::new(ui.id().with("zoom_pan_area"))
         .constrain_to(view_bounds_in_ui)
@@ -90,7 +90,7 @@ pub fn zoom_pan_area(
             ui.set_clip_rect(ui_from_scene.inverse() * view_bounds_in_ui);
 
             // Add the actual contents to the area:
-            draw_contens(ui);
+            draw_contents(ui);
 
             pan_response
         });

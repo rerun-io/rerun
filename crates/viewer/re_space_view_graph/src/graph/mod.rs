@@ -13,7 +13,7 @@ use crate::{
     visualizers::{EdgeData, NodeData, NodeInstance},
 };
 
-/// Describes the differen kind of nodes that we can have in a graph.
+/// Describes the different kind of nodes that we can have in a graph.
 pub enum Node {
     /// An explicit node is a node that was provided via [`re_types::archetypes::GraphNodes`].
     ///
