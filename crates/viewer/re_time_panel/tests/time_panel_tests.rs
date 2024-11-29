@@ -12,7 +12,6 @@ use re_viewer_context::test_context::TestContext;
 use re_viewport_blueprint::ViewportBlueprint;
 
 #[test]
-#[cfg_attr(not(target_os = "macos"), ignore)]
 pub fn time_panel_two_sections_should_match_snapshot() {
     TimePanel::ensure_registered_subscribers();
     let mut test_context = TestContext::default();
@@ -38,7 +37,6 @@ pub fn time_panel_two_sections_should_match_snapshot() {
 }
 
 #[test]
-#[cfg_attr(not(target_os = "macos"), ignore)]
 pub fn time_panel_dense_data_should_match_snapshot() {
     TimePanel::ensure_registered_subscribers();
     let mut test_context = TestContext::default();
@@ -105,5 +103,7 @@ fn run_time_panel_and_save_snapshot(mut test_context: TestContext, snapshot_name
 
     harness.run();
 
+    //TODO(#8245): enable this everywhere when we have a software renderer setup
+    #[cfg(target_os = "macos")]
     harness.wgpu_snapshot(snapshot_name);
 }
