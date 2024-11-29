@@ -3,7 +3,7 @@ use egui::{Pos2, Rect, Vec2};
 use crate::graph::NodeId;
 
 #[derive(Clone, Debug)]
-pub enum EdgeGeometry {
+pub enum PathGeometry {
     /// A simple straight edge.
     Line { source: Pos2, target: Pos2 },
 
@@ -18,36 +18,43 @@ pub enum EdgeGeometry {
     // We could add other geometries, such as `Orthogonal` here too.
 }
 
+#[derive(Debug)]
+pub struct EdgeGeometry {
+    pub target_arrow: bool,
+    pub path: PathGeometry,
+}
+
 impl EdgeGeometry {
     pub fn bounding_rect(&self) -> Rect {
-        match self {
-            Self::Line { source, target } => Rect::from_two_pos(*source, *target),
+        match self.path {
+            PathGeometry::Line { source, target } => Rect::from_two_pos(source, target),
             // TODO(grtlr): This is just a crude (upper) approximation, as the resulting bounding box can be too large.
-            Self::CubicBezier {
+            PathGeometry::CubicBezier {
                 source,
                 target,
                 ref control,
-            } => Rect::from_points(&[&[*source, *target], control.as_slice()].concat()),
+            } => Rect::from_points(&[&[source, target], control.as_slice()].concat()),
         }
     }
 
     pub fn source_pos(&self) -> Pos2 {
-        match self {
-            Self::Line { source, .. } | Self::CubicBezier { source, .. } => *source,
+        match self.path {
+            PathGeometry::Line { source, .. } | PathGeometry::CubicBezier { source, .. } => source,
         }
     }
 
     pub fn target_pos(&self) -> Pos2 {
-        match self {
-            Self::Line { target, .. } | Self::CubicBezier { target, .. } => *target,
+        match self.path {
+            PathGeometry::Line { target, .. } | PathGeometry::CubicBezier { target, .. } => target,
         }
     }
 
     /// The direction of the edge at the source node (normalized).
     pub fn source_arrow_direction(&self) -> Vec2 {
-        match self {
-            Self::Line { source, target } => (source.to_vec2() - target.to_vec2()).normalized(),
-            Self::CubicBezier {
+        use PathGeometry::{CubicBezier, Line};
+        match self.path {
+            Line { source, target } => (source.to_vec2() - target.to_vec2()).normalized(),
+            CubicBezier {
                 source, control, ..
             } => (control[0].to_vec2() - source.to_vec2()).normalized(),
         }
@@ -55,9 +62,10 @@ impl EdgeGeometry {
 
     /// The direction of the edge at the target node (normalized).
     pub fn target_arrow_direction(&self) -> Vec2 {
-        match self {
-            Self::Line { source, target } => (target.to_vec2() - source.to_vec2()).normalized(),
-            Self::CubicBezier {
+        use PathGeometry::{CubicBezier, Line};
+        match self.path {
+            Line { source, target } => (target.to_vec2() - source.to_vec2()).normalized(),
+            CubicBezier {
                 target, control, ..
             } => (target.to_vec2() - control[1].to_vec2()).normalized(),
         }
@@ -91,5 +99,12 @@ impl Layout {
     /// Gets the shape of an edge in the final layout.
     pub fn get_edge(&self, from: NodeId, to: NodeId) -> Option<&[EdgeGeometry]> {
         self.edges.get(&(from, to)).map(|es| es.as_slice())
+    }
+
+    /// Returns an iterator over all edges in the layout.
+    pub fn edges(&self) -> impl Iterator<Item = (&NodeId, &NodeId, &[EdgeGeometry])> {
+        self.edges
+            .iter()
+            .map(|((from, to), es)| (from, to, es.as_slice()))
     }
 }

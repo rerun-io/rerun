@@ -14,7 +14,7 @@ use re_viewer_context::{
 
 use crate::{
     graph::{Graph, Node},
-    layout::{EdgeGeometry, Layout},
+    layout::{EdgeGeometry, Layout, PathGeometry},
     visualizers::Label,
 };
 
@@ -132,7 +132,7 @@ fn draw_text_label(ui: &mut Ui, label: &TextLabel, highlight: InteractionHighlig
                     .sense(Sense::click()),
             )
         })
-        .inner
+        .response
 }
 
 /// Draws a node at the given position.
@@ -198,11 +198,11 @@ pub fn draw_edge(ui: &mut Ui, geometry: &EdgeGeometry, show_arrow: bool) -> Resp
 
     let painter = ui.painter();
 
-    match *geometry {
-        EdgeGeometry::Line { source, target } => {
+    match geometry.path {
+        PathGeometry::Line { source, target } => {
             painter.line_segment([source, target], stroke);
         }
-        EdgeGeometry::CubicBezier {
+        PathGeometry::CubicBezier {
             source,
             target,
             control,
@@ -316,18 +316,37 @@ pub fn draw_graph(
             }
         };
 
+        ui.painter().rect(
+            response.rect,
+            0.0,
+            Color32::RED.gamma_multiply(0.5),
+            Stroke::new(1.0, Color32::RED),
+        );
+
         current_rect = current_rect.union(response.rect);
     }
 
-    for edge in graph.edges() {
-        for geometry in layout
-            .get_edge(edge.source, edge.target)
-            .unwrap_or_default()
-        {
-            let resp = draw_edge(ui, geometry, edge.arrow);
-            current_rect = current_rect.union(resp.rect);
+    for (_, _, geometries) in layout.edges() {
+        for geometry in geometries {
+            let response = draw_edge(ui, geometry, geometry.target_arrow);
+
+            ui.painter().rect(
+                response.rect,
+                0.0,
+                Color32::BLUE.gamma_multiply(0.5),
+                Stroke::new(1.0, Color32::BLUE),
+            );
+
+            current_rect = current_rect.union(response.rect);
         }
     }
+
+    ui.painter().rect(
+        current_rect,
+        0.0,
+        Color32::GREEN.gamma_multiply(0.5),
+        Stroke::new(1.0, Color32::GREEN),
+    );
 
     current_rect
 }

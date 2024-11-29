@@ -19,8 +19,12 @@ pub(super) struct NodeTemplate {
     pub(super) fixed_position: Option<Pos2>,
 }
 
+
+// TODO(grtlr): Does it make sense to consolidate some of the types, i.e. `Edge` ad `EdgeTemplate`?
 #[derive(PartialEq)]
-pub(super) struct EdgeTemplate;
+pub(super) struct EdgeTemplate {
+    pub(super) target_arrow: bool,
+}
 
 #[derive(Default, PartialEq)]
 pub(super) struct GraphTemplate {
@@ -62,11 +66,10 @@ impl LayoutRequest {
             }
 
             for edge in graph.edges() {
-                let es = entity
-                    .edges
-                    .entry((edge.source, edge.target))
-                    .or_insert(Vec::new());
-                es.push(EdgeTemplate);
+                let es = entity.edges.entry((edge.source, edge.target)).or_default();
+                es.push(EdgeTemplate {
+                    target_arrow: edge.arrow,
+                });
             }
         }
 

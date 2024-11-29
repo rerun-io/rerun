@@ -3,7 +3,11 @@ use fjadra as fj;
 
 use crate::graph::NodeId;
 
-use super::{request::NodeTemplate, result::EdgeGeometry, Layout, LayoutRequest};
+use super::{
+    request::NodeTemplate,
+    result::{EdgeGeometry, PathGeometry},
+    Layout, LayoutRequest,
+};
 
 impl<'a> From<&'a NodeTemplate> for fj::Node {
     fn from(node: &'a NodeTemplate) -> Self {
@@ -103,29 +107,42 @@ impl ForceLayoutProvider {
         }
 
         // TODO(grtlr): Better to create slots for each edge.
-        for ((from, to), template) in self.request.graphs.values().flat_map(|g| g.edges.iter()) {
-            let geometries = layout.edges.entry((*from, *to)).or_default();
+        for ((from, to), templates) in self.request.graphs.values().flat_map(|g| g.edges.iter()) {
+            let mut geometries = Vec::with_capacity(templates.len());
             match from == to {
                 true => {
-                    for i in 1..=template.len() {
+                    for (i, template) in templates.iter().enumerate() {
+                        let offset = (i + 1) as f32;
+                        let target_arrow = template.target_arrow;
                         // Self-edges are not supported in force-based layouts.
                         let anchor = intersects_ray_from_center(layout.nodes[from], Vec2::UP);
-                        geometries.push(EdgeGeometry::CubicBezier {
-                            // TODO(grtlr): We could probably consider the actual node size here.
-                            source: anchor + Vec2::LEFT * 4.,
-                            target: anchor + Vec2::RIGHT * 4.,
-                            // TODO(grtlr): The actual length of that spline should follow the `distance` parameter of the link force.
-                            control: [
-                                anchor + Vec2::new(-50. * i as f32, -60. * i as f32),
-                                anchor + Vec2::new(50. * i as f32, -60. * i as f32),
-                            ],
+                        geometries.push(EdgeGeometry {
+                            target_arrow,
+                            path: PathGeometry::CubicBezier {
+                                // TODO(grtlr): We could probably consider the actual node size here.
+                                source: anchor + Vec2::LEFT * 4.,
+                                target: anchor + Vec2::RIGHT * 4.,
+                                // TODO(grtlr): The actual length of that spline should follow the `distance` parameter of the link force.
+                                control: [
+                                    anchor + Vec2::new(-30. * offset, -40. * offset),
+                                    anchor + Vec2::new(30. * offset, -40. * offset),
+                                ],
+                            },
                         });
                     }
                 }
                 false => {
-                    geometries.push(line_segment(layout.nodes[from], layout.nodes[to]));
+                    // TODO(grtlr): perform similar computations here
+                    for template in templates {
+                        let target_arrow = template.target_arrow;
+                        geometries.push(EdgeGeometry {
+                            target_arrow,
+                            path: line_segment(layout.nodes[from], layout.nodes[to]),
+                        });
+                    }
                 }
             }
+            layout.edges.insert((*from, *to), geometries);
         }
 
         self.simulation.finished()
@@ -133,7 +150,7 @@ impl ForceLayoutProvider {
 }
 
 /// Helper function to calculate the line segment between two rectangles.
-fn line_segment(source: Rect, target: Rect) -> EdgeGeometry {
+fn line_segment(source: Rect, target: Rect) -> PathGeometry {
     let source_center = source.center();
     let target_center = target.center();
 
@@ -144,7 +161,7 @@ fn line_segment(source: Rect, target: Rect) -> EdgeGeometry {
     let source_point = intersects_ray_from_center(source, direction);
     let target_point = intersects_ray_from_center(target, -direction); // Reverse direction for target
 
-    EdgeGeometry::Line {
+    PathGeometry::Line {
         source: source_point,
         target: target_point,
     }

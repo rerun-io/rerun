@@ -100,7 +100,7 @@ impl LayoutState {
     fn update(self, new_request: LayoutRequest) -> Self {
         match self {
             // Layout is up to date, nothing to do here.
-            Self::Finished { ref provider, .. } if &provider.request == &new_request => {
+            Self::Finished { ref provider, .. } if provider.request == new_request => {
                 self // no op
             }
             // We need to recompute the layout.
