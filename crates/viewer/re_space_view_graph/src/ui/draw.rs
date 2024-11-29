@@ -191,50 +191,39 @@ fn draw_arrow(painter: &Painter, tip: Pos2, direction: Vec2, color: Color32) {
     ));
 }
 
-fn draw_edge_line(ui: &Ui, points: [Pos2; 2], stroke: Stroke, show_arrow: bool) {
-    let painter = ui.painter();
-    painter.line_segment(points, stroke);
-    // Calculate direction vector from source to target
-    let direction = (points[1] - points[0]).normalized();
-
-    // Conditionally draw an arrow at the target point
-    if show_arrow {
-        draw_arrow(painter, points[1], direction, stroke.color);
-    }
-}
-
-fn draw_edge_bezier(ui: &Ui, points: [Pos2; 4], stroke: Stroke, show_arrow: bool) {
-    let painter = ui.painter();
-    painter.add(CubicBezierShape {
-        points,
-        closed: false,
-        fill: Color32::TRANSPARENT,
-        stroke: stroke.into(),
-    });
-
-    // Calculate direction vector from source to target
-    let direction = (points[1] - points[0]).normalized();
-
-    // Conditionally draw an arrow at the target point
-    if show_arrow {
-        draw_arrow(painter, points[1], direction, stroke.color);
-    }
-}
-
 /// Draws an edge between two points, optionally with an arrow at the target point.
 pub fn draw_edge(ui: &mut Ui, geometry: &EdgeGeometry, show_arrow: bool) -> Response {
     let fg = ui.style().visuals.text_color();
     let stroke = Stroke::new(1.0, fg);
 
-    match geometry {
-        &EdgeGeometry::Line { start, end } => {
-            draw_edge_line(ui, [start, end], stroke, show_arrow);
+    let painter = ui.painter();
+
+    match *geometry {
+        EdgeGeometry::Line { source, target } => {
+            painter.line_segment([source, target], stroke);
         }
-        &EdgeGeometry::CubicBezier {
-            start,
-            end,
+        EdgeGeometry::CubicBezier {
+            source,
+            target,
             control,
-        } => draw_edge_bezier(ui, [start, control[0], control[1], end], stroke, show_arrow),
+        } => {
+            painter.add(CubicBezierShape {
+                points: [source, control[0], control[1], target],
+                closed: false,
+                fill: Color32::TRANSPARENT,
+                stroke: stroke.into(),
+            });
+        }
+    }
+
+    // Conditionally draw an arrow at the target point
+    if show_arrow {
+        draw_arrow(
+            painter,
+            geometry.target_pos(),
+            geometry.target_arrow_direction(),
+            stroke.color,
+        );
     }
 
     // We can add interactions in the future, for now we simply allocate the
@@ -331,14 +320,13 @@ pub fn draw_graph(
     }
 
     for edge in graph.edges() {
-        let points = layout
-            .get_edge(edge.from, edge.to)
-            .unwrap_or(&EdgeGeometry::Line {
-                start: Pos2::ZERO,
-                end: Pos2::ZERO,
-            });
-        let resp = draw_edge(ui, points, edge.arrow);
-        current_rect = current_rect.union(resp.rect);
+        for geometry in layout
+            .get_edge(edge.source, edge.target)
+            .unwrap_or_default()
+        {
+            let resp = draw_edge(ui, geometry, edge.arrow);
+            current_rect = current_rect.union(resp.rect);
+        }
     }
 
     current_rect

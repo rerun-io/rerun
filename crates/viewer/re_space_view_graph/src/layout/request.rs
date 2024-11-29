@@ -64,7 +64,7 @@ impl LayoutRequest {
             for edge in graph.edges() {
                 let es = entity
                     .edges
-                    .entry((edge.from, edge.to))
+                    .entry((edge.source, edge.target))
                     .or_insert(Vec::new());
                 es.push(EdgeTemplate);
             }

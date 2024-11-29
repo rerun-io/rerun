@@ -25,7 +25,20 @@ def log_weird_graph() -> None:
     rr.log(
         "weird",
         rr.GraphNodes(["A", "B"], labels=["A", "B"]),
-        rr.GraphEdges([("A", "A")], graph_type=rr.GraphType.Directed),
+        rr.GraphEdges(
+            [
+                # self-edges
+                ("A", "A"),
+                ("B", "B"),
+                # duplicated edges
+                ("A", "B"),
+                ("B", "A"),
+                ("B", "A"),
+                # duplicated self-edges
+                ("A", "A"),
+            ],
+            graph_type=rr.GraphType.Directed,
+        ),
     )
 
 def log_graphs() -> None:

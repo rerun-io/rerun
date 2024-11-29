@@ -1,30 +1,18 @@
-use egui::{Pos2, Rect};
+use egui::{Pos2, Rect, Vec2};
 
 use crate::graph::NodeId;
 
-pub type LineSegment = [Pos2; 2];
-
-fn bounding_rect_points(points: impl IntoIterator<Item = impl Into<Pos2>>) -> egui::Rect {
-    points
-        .into_iter()
-        .fold(egui::Rect::NOTHING, |mut acc, pos| {
-            acc.extend_with(pos.into());
-            acc
-        })
-}
-
 #[derive(Clone, Debug)]
 pub enum EdgeGeometry {
-    Line {
-        start: Pos2,
-        end: Pos2,
-    },
+    /// A simple straight edge.
+    Line { source: Pos2, target: Pos2 },
+
     /// Represents a cubic bezier curve.
     ///
     /// In the future we could probably support more complex splines.
     CubicBezier {
-        start: Pos2,
-        end: Pos2,
+        source: Pos2,
+        target: Pos2,
         control: [Pos2; 2],
     },
     // We could add other geometries, such as `Orthogonal` here too.
@@ -33,13 +21,45 @@ pub enum EdgeGeometry {
 impl EdgeGeometry {
     pub fn bounding_rect(&self) -> Rect {
         match self {
-            EdgeGeometry::Line { start, end } => Rect::from_two_pos(*start, *end),
+            Self::Line { source, target } => Rect::from_two_pos(*source, *target),
             // TODO(grtlr): This is just a crude (upper) approximation, as the resulting bounding box can be too large.
-            EdgeGeometry::CubicBezier {
-                start,
-                end,
+            Self::CubicBezier {
+                source,
+                target,
                 ref control,
-            } => Rect::from_points(&[&[*start, *end], control.as_slice()].concat()),
+            } => Rect::from_points(&[&[*source, *target], control.as_slice()].concat()),
+        }
+    }
+
+    pub fn source_pos(&self) -> Pos2 {
+        match self {
+            Self::Line { source, .. } | Self::CubicBezier { source, .. } => *source,
+        }
+    }
+
+    pub fn target_pos(&self) -> Pos2 {
+        match self {
+            Self::Line { target, .. } | Self::CubicBezier { target, .. } => *target,
+        }
+    }
+
+    /// The direction of the edge at the source node (normalized).
+    pub fn source_arrow_direction(&self) -> Vec2 {
+        match self {
+            Self::Line { source, target } => (source.to_vec2() - target.to_vec2()).normalized(),
+            Self::CubicBezier {
+                source, control, ..
+            } => (control[0].to_vec2() - source.to_vec2()).normalized(),
+        }
+    }
+
+    /// The direction of the edge at the target node (normalized).
+    pub fn target_arrow_direction(&self) -> Vec2 {
+        match self {
+            Self::Line { source, target } => (target.to_vec2() - source.to_vec2()).normalized(),
+            Self::CubicBezier {
+                target, control, ..
+            } => (target.to_vec2() - control[1].to_vec2()).normalized(),
         }
     }
 }
@@ -47,7 +67,7 @@ impl EdgeGeometry {
 #[derive(Debug)]
 pub struct Layout {
     pub(super) nodes: ahash::HashMap<NodeId, Rect>,
-    pub(super) edges: ahash::HashMap<(NodeId, NodeId), EdgeGeometry>,
+    pub(super) edges: ahash::HashMap<(NodeId, NodeId), Vec<EdgeGeometry>>,
     // TODO(grtlr): Consider adding the entity rects here too.
 }
 
@@ -69,7 +89,7 @@ impl Layout {
     }
 
     /// Gets the shape of an edge in the final layout.
-    pub fn get_edge(&self, from: NodeId, to: NodeId) -> Option<&EdgeGeometry> {
-        self.edges.get(&(from, to))
+    pub fn get_edge(&self, from: NodeId, to: NodeId) -> Option<&[EdgeGeometry]> {
+        self.edges.get(&(from, to)).map(|es| es.as_slice())
     }
 }

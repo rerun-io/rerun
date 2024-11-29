@@ -71,8 +71,8 @@ impl Node {
 }
 
 pub struct Edge {
-    pub from: NodeId,
-    pub to: NodeId,
+    pub source: NodeId,
+    pub target: NodeId,
     pub arrow: bool,
 }
 
@@ -128,8 +128,8 @@ impl Graph {
             }
 
             let es = data.edges.iter().map(|e| Edge {
-                from: e.source_index,
-                to: e.target_index,
+                source: e.source_index,
+                target: e.target_index,
                 arrow: data.graph_type == GraphType::Directed,
             });
 

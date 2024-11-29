@@ -102,26 +102,28 @@ impl ForceLayoutProvider {
             extent.set_center(pos);
         }
 
-        for (from, to) in self.request.graphs.values().flat_map(|g| g.edges.keys()) {
+        // TODO(grtlr): Better to create slots for each edge.
+        for ((from, to), template) in self.request.graphs.values().flat_map(|g| g.edges.iter()) {
+            let geometries = layout.edges.entry((*from, *to)).or_default();
             match from == to {
                 true => {
-                    // Self-edges are not supported in force-based layouts.
-                    let anchor = intersects_ray_from_center(layout.nodes[from], Vec2::UP);
-                    layout.edges.insert(
-                        (*from, *to),
-                        EdgeGeometry::CubicBezier {
-                            start: anchor + Vec2::LEFT * 5.,
-                            end: anchor + Vec2::RIGHT * 5.,
+                    for i in 1..=template.len() {
+                        // Self-edges are not supported in force-based layouts.
+                        let anchor = intersects_ray_from_center(layout.nodes[from], Vec2::UP);
+                        geometries.push(EdgeGeometry::CubicBezier {
+                            // TODO(grtlr): We could probably consider the actual node size here.
+                            source: anchor + Vec2::LEFT * 4.,
+                            target: anchor + Vec2::RIGHT * 4.,
                             // TODO(grtlr): The actual length of that spline should follow the `distance` parameter of the link force.
-                            control: [anchor + Vec2::new(-50., -60.), anchor + Vec2::new(50., -60.)],
-                        },
-                    );
+                            control: [
+                                anchor + Vec2::new(-50. * i as f32, -60. * i as f32),
+                                anchor + Vec2::new(50. * i as f32, -60. * i as f32),
+                            ],
+                        });
+                    }
                 }
                 false => {
-                    layout.edges.insert(
-                        (*from, *to),
-                        line_segment(layout.nodes[from], layout.nodes[to]),
-                    );
+                    geometries.push(line_segment(layout.nodes[from], layout.nodes[to]));
                 }
             }
         }
@@ -143,8 +145,8 @@ fn line_segment(source: Rect, target: Rect) -> EdgeGeometry {
     let target_point = intersects_ray_from_center(target, -direction); // Reverse direction for target
 
     EdgeGeometry::Line {
-        start: source_point,
-        end: target_point,
+        source: source_point,
+        target: target_point,
     }
 }
 
