@@ -7,7 +7,7 @@ order: 1
 Archetypes are bundles of components for which the Rerun viewer has first-class
 built-in support. When logged, each archetype also includes an _indicator component_ which captures
 the intent of the logging code and triggers the activation of the corresponding visualizers. See
-[Entities and Compponents](../../concepts/entity-component.md) and
+[Entities and Components](../../concepts/entity-component.md) and
 [Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for more information.
 
 This page lists all built-in archetypes.
