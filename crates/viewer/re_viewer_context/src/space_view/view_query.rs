@@ -277,7 +277,7 @@ impl<'s> ViewQuery<'s> {
         &'a self,
         ctx: &'a ViewContext<'a>,
         visualizer: ViewSystemIdentifier,
-    ) -> impl Iterator<Item = &DataResult>
+    ) -> impl Iterator<Item = &'a DataResult>
     where
         's: 'a,
     {

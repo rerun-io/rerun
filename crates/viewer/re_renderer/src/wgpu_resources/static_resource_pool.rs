@@ -113,7 +113,7 @@ pub struct StaticResourcePoolReadLockAccessor<'a, Handle: Key, Res> {
     current_frame_index: u64,
 }
 
-impl<'a, Handle: Key, Res> StaticResourcePoolReadLockAccessor<'a, Handle, Res> {
+impl<Handle: Key, Res> StaticResourcePoolReadLockAccessor<'_, Handle, Res> {
     pub fn get(&self, handle: Handle) -> Result<&Res, PoolError> {
         to_pool_error(
             self.resources.get(handle).map(|resource| {

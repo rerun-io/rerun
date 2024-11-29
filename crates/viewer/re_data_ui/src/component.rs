@@ -15,7 +15,7 @@ pub struct ComponentPathLatestAtResults<'a> {
     pub unit: &'a UnitChunkShared,
 }
 
-impl<'a> DataUi for ComponentPathLatestAtResults<'a> {
+impl DataUi for ComponentPathLatestAtResults<'_> {
     fn data_ui(
         &self,
         ctx: &ViewerContext<'_>,

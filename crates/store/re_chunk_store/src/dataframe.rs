@@ -769,7 +769,7 @@ impl ChunkStore {
         let datatype = self
             .lookup_datatype(&component_name)
             .cloned()
-            .unwrap_or_else(|| Arrow2Datatype::Null);
+            .unwrap_or(Arrow2Datatype::Null);
 
         ComponentColumnDescriptor {
             entity_path: selector.entity_path.clone(),

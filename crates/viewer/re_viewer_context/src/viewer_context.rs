@@ -81,7 +81,7 @@ pub struct ViewerContext<'a> {
     pub focused_item: &'a Option<crate::Item>,
 }
 
-impl<'a> ViewerContext<'a> {
+impl ViewerContext<'_> {
     /// The active recording.
     #[inline]
     pub fn recording(&self) -> &EntityDb {

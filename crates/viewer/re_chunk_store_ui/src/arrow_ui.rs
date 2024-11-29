@@ -73,7 +73,7 @@ pub(crate) fn arrow_ui(ui: &mut egui::Ui, array: &dyn arrow2::array::Array) {
 
         if data_type_formatted.len() < 20 {
             // e.g. "4.2 KiB of Float32"
-            ui.label(&format!("{bytes} of {data_type_formatted}"));
+            ui.label(format!("{bytes} of {data_type_formatted}"));
         } else {
             // Huge datatype, probably a union horror show
             ui.label(format!("{bytes} of data"));

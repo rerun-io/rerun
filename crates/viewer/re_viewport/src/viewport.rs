@@ -470,7 +470,7 @@ struct TabViewer<'a, 'b> {
     edited: bool,
 }
 
-impl<'a, 'b> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, 'b> {
+impl<'a> egui_tiles::Behavior<SpaceViewId> for TabViewer<'a, '_> {
     fn pane_ui(
         &mut self,
         ui: &mut egui::Ui,

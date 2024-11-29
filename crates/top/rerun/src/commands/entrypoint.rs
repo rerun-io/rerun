@@ -1000,7 +1000,6 @@ fn stream_to_rrd_on_disk(
     path: &std::path::PathBuf,
 ) -> Result<(), re_log_encoding::FileSinkError> {
     use re_log_encoding::FileSinkError;
-    use re_smart_channel::RecvError;
 
     if path.exists() {
         re_log::warn!("Overwriting existing file at {path:?}");
@@ -1018,16 +1017,13 @@ fn stream_to_rrd_on_disk(
     )?;
 
     loop {
-        match rx.recv() {
-            Ok(msg) => {
-                if let Some(payload) = msg.into_data() {
-                    encoder.append(&payload)?;
-                }
+        if let Ok(msg) = rx.recv() {
+            if let Some(payload) = msg.into_data() {
+                encoder.append(&payload)?;
             }
-            Err(RecvError) => {
-                re_log::info!("Log stream disconnected, stopping.");
-                break;
-            }
+        } else {
+            re_log::info!("Log stream disconnected, stopping.");
+            break;
         }
     }
 

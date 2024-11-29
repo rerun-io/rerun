@@ -56,7 +56,7 @@ pub fn arrow_datatype_docs(page: &mut String, indent: usize, datatype: &DataType
                 arrow::datatypes::UnionMode::Dense => page.push_str("DenseUnion {\n"),
             }
             for (index, field) in union_fields.iter() {
-                page.push_indented(indent + 1, &format!("{index} = {:?}: ", field.name()), 0);
+                page.push_indented(indent + 1, format!("{index} = {:?}: ", field.name()), 0);
                 if field.is_nullable() {
                     page.push_str("nullable ");
                 }

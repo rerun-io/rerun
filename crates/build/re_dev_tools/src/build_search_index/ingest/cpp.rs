@@ -54,7 +54,7 @@ struct Visitor<'a> {
     visited: HashSet<String>,
 }
 
-impl<'a> Visitor<'a> {
+impl Visitor<'_> {
     fn push(&mut self, id: &str, name: String, description: String, uri: impl Display) {
         if self.visited.contains(id) {
             return;
