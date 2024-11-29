@@ -711,8 +711,9 @@ impl StoreHub {
                 }
 
                 let store_events = blueprint.gc(&GarbageCollectionOptions {
+                    // TODO(#8249): configure blueprint GC to remove an entity if all that remains of it is a recursive clear
                     target: GarbageCollectionTarget::Everything,
-                    protect_latest: 0,
+                    protect_latest: 1, // keep the latest instance of everything, or we will forget things that haven't changed in a while
                     time_budget: re_entity_db::DEFAULT_GC_TIME_BUDGET,
                     protected_time_ranges,
                 });

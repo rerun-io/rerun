@@ -78,6 +78,7 @@ impl BlueprintUndoState {
         }
     }
 
+    /// Clears the "redo buffer".
     pub fn clear_redo(&mut self, blueprint_db: &mut EntityDb) {
         re_tracing::profile_function!();
 
@@ -85,7 +86,7 @@ impl BlueprintUndoState {
             let first_dropped_event_time =
                 TimeInt::new_temporal(last_kept_event_time.as_i64().saturating_add(1));
 
-            // Drop everything before the current timeline time
+            // Drop everything after the current timeline time
             blueprint_db.drop_time_range(
                 &blueprint_timeline(),
                 ResolvedTimeRange::new(first_dropped_event_time, re_chunk::TimeInt::MAX),

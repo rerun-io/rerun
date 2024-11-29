@@ -841,9 +841,8 @@ impl ViewportBlueprint {
             }
         }
 
-        // TODO: log a recursive clear here
-        // Clear any existing container blueprints that aren't referenced
-        // by any tiles.
+        // Clear any existing container blueprints that aren't referenced by any tiles,
+        // allowing the GC to remove the previous (non-clear) data from the store (saving RAM).
         for (container_id, container) in &self.containers {
             let tile_id = blueprint_id_to_tile_id(container_id);
             if self.tree.tiles.get(tile_id).is_none() {
