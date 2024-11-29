@@ -57,7 +57,7 @@ pub struct AppState {
     /// Storage for the state of each `SpaceView`
     ///
     /// This is stored here for simplicity. An exclusive reference for that is passed to the users,
-    /// such as [`Viewport`] and [`re_selection_panel::SelectionPanel`].
+    /// such as [`ViewportUi`] and [`re_selection_panel::SelectionPanel`].
     #[serde(skip)]
     view_states: ViewStates,
 
