@@ -47,7 +47,7 @@ NOTE: take care to not put any proprietary user-information here or in any publi
 ## Tasks
 <!-- Tasks needed to complete the project -->
 
-- [ ] Simple inline TODO items
+- [ ] Simple inline tasks
 - [ ] Links to sub-issues
 
 ## Non-goals and won't do
