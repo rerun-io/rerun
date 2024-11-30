@@ -70,8 +70,11 @@ impl ControlApp {
                             app.handle_connection(socket).await;
                         });
                     }
-                    Err(e) => {
-                        re_log::error!("Error accepting connection: {:?}", e);
+                    Err(err) => {
+                        re_log::error!(
+                            "Error accepting connection: {}",
+                            re_error::format_ref(&err)
+                        );
                     }
                 }
             }
@@ -120,12 +123,15 @@ impl ControlApp {
                             handler(&message);
                         }
                     }
-                    Err(e) => {
-                        re_log::error!("Failed to decode message: {:?}", e);
+                    Err(err) => {
+                        re_log::error!("Failed to decode message: {}", re_error::format_ref(&err));
                     }
                 },
-                Err(e) => {
-                    re_log::error!("Error reading from socket: {:?}", e);
+                Err(err) => {
+                    re_log::error!(
+                        "Error reading from socket: {:?}",
+                        re_error::format_ref(&err),
+                    );
                     break;
                 }
             }

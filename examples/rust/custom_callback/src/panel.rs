@@ -1,5 +1,6 @@
 use std::time::Instant;
 
+use crate::comms::{protocol::Message, viewer::ControlViewerHandle};
 use re_log::ResultExt;
 use re_viewer::external::{
     eframe,
@@ -7,7 +8,6 @@ use re_viewer::external::{
     re_ui::{list_item, UiExt},
 };
 
-use crate::comms::{protocol::Message, viewer::ControlViewerHandle};
 #[derive(Default)]
 pub struct ControlStates {
     pub last_resource_update: Option<Instant>,

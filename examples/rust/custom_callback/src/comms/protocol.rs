@@ -23,14 +23,15 @@ pub enum Message {
 
 impl Message {
     pub fn encode(&self) -> io::Result<Vec<u8>> {
-        bincode::serialize(self).map_err(|e| io::Error::new(ErrorKind::InvalidData, e))
+        bincode::serialize(self).map_err(|err| io::Error::new(ErrorKind::InvalidData, err))
     }
 
     pub fn encode_into(&self, buffer: &mut [u8]) -> io::Result<()> {
-        bincode::serialize_into(buffer, self).map_err(|e| io::Error::new(ErrorKind::InvalidData, e))
+        bincode::serialize_into(buffer, self)
+            .map_err(|err| io::Error::new(ErrorKind::InvalidData, err))
     }
 
     pub fn decode(data: &[u8]) -> io::Result<Self> {
-        bincode::deserialize(data).map_err(|e| io::Error::new(ErrorKind::InvalidData, e))
+        bincode::deserialize(data).map_err(|err| io::Error::new(ErrorKind::InvalidData, err))
     }
 }

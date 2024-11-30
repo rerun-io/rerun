@@ -62,8 +62,11 @@ impl ControlViewer {
         loop {
             match TcpStream::connect(self.address.clone()).await {
                 Ok(socket) => {
-                    if let Err(e) = socket.set_linger(Some(Duration::from_secs(2))) {
-                        re_log::error!("Failed to set socket linger: {:?}", e);
+                    if let Err(err) = socket.set_linger(Some(Duration::from_secs(2))) {
+                        re_log::error!(
+                            "Failed to set socket linger: {}",
+                            re_error::format_ref(&err)
+                        );
                     }
 
                     re_log::info!("Connected to {}", self.address);
@@ -82,21 +85,25 @@ impl ControlViewer {
                     // Wait for tasks to complete
                     tokio::select! {
                         result = reader_task => {
-                            if let Err(e) = result {
-                                re_log::error!("Reader task ended with error: {:?}", e);
+                            if let Err(err) = result {
+                                re_log::error!("Reader task ended with error: {}", re_error::format_ref(&err));
                             }
                         }
                         result = writer_task => {
-                            if let Err(e) = result {
-                                re_log::error!("Writer task ended with error: {:?}", e);
+                            if let Err(err) = result {
+                                re_log::error!("Writer task ended with error: {}", re_error::format_ref(&err));
                             }
                         }
                     }
 
                     re_log::info!("Connection lost. Attempting to reconnect...");
                 }
-                Err(e) => {
-                    re_log::error!("Failed to connect to {}: {:?}", self.address, e);
+                Err(err) => {
+                    re_log::error!(
+                        "Failed to connect to {}: {}",
+                        self.address,
+                        re_error::format_ref(&err)
+                    );
                 }
             }
 
@@ -134,12 +141,18 @@ impl ControlViewer {
                         // we received a message from the server, we can process it here if needed
                         re_log::info!("Received message from server: {:?}", message);
                     }
-                    Err(e) => {
-                        re_log::error!("Failed to decode message: {:?}", e);
+                    Err(err) => {
+                        re_log::error!(
+                            "Failed to decode message: {:?}",
+                            re_error::format_ref(&err)
+                        );
                     }
                 },
-                Err(e) => {
-                    re_log::error!("Error reading from server: {:?}", e);
+                Err(err) => {
+                    re_log::error!(
+                        "Error reading from server: {:?}",
+                        re_error::format_ref(&err)
+                    );
                     break;
                 }
             }
@@ -166,11 +179,10 @@ impl ControlViewer {
                     }
                     _ => {
                         if let Ok(data) = message.encode() {
-                            if let Err(e) = write.write_all(&data).await {
-                                re_log::info!(
-                                    "Failed to send message: {:?}, error: {:?}",
-                                    message,
-                                    e
+                            if let Err(err) = write.write_all(&data).await {
+                                re_log::error!(
+                                    "Failed to send message error: {}",
+                                    re_error::format_ref(&err)
                                 );
                                 break;
                             }

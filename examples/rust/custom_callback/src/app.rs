@@ -14,10 +14,11 @@ use tokio::sync::mpsc::{UnboundedReceiver, UnboundedSender};
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut app = ControlApp::bind("127.0.0.1:8888").await?.run();
-    let rec = rerun::RecordingStreamBuilder::new("rerun_control_panel_example").connect_tcp_opts(
-        "127.0.0.1:9877".to_socket_addrs().unwrap().next().unwrap(),
-        None,
-    )?;
+    let rec = rerun::RecordingStreamBuilder::new("rerun_example_custom_callback")
+        .connect_tcp_opts(
+            "127.0.0.1:9877".to_socket_addrs().unwrap().next().unwrap(),
+            None,
+        )?;
 
     // Add a handler for incoming messages
     let add_rec = rec.clone();

@@ -27,6 +27,7 @@ re_sdk_comms = { path = "../../../crates/store/re_sdk_comms", features = [
 ] }
 re_viewer = { path = "../../../crates/viewer/re_viewer", default-features = false }
 re_log = { path = "../../../crates/utils/re_log" }
+re_error = { path = "../../../crates/utils/re_error" }
 rerun = { path = "../../../crates/top/rerun" }
 
 bincode = "1.3.3"

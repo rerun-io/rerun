@@ -1729,6 +1729,7 @@ dependencies = [
  "bincode",
  "mimalloc",
  "re_crash_handler",
+ "re_error",
  "re_log",
  "re_sdk_comms",
  "re_viewer",
