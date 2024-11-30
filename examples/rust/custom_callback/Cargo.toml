@@ -1,0 +1,43 @@
+[package]
+name = "custom_callback"
+version = "0.21.0-alpha.1+dev"
+edition = "2021"
+rust-version = "1.80"
+license = "MIT OR Apache-2.0"
+publish = false
+
+[[bin]]
+name = "custom_callback_viewer"
+path = "src/viewer.rs"
+
+[[bin]]
+name = "custom_callback_app"
+path = "src/app.rs"
+
+[features]
+default = []
+
+# Turn on if you want to share analytics with Rerun (e.g. callstacks on crashes).
+analytics = ["re_crash_handler/analytics", "re_viewer/analytics"]
+
+[dependencies]
+re_crash_handler = { path = "../../../crates/utils/re_crash_handler" }
+re_sdk_comms = { path = "../../../crates/store/re_sdk_comms", features = [
+  "server",
+] }
+re_viewer = { path = "../../../crates/viewer/re_viewer", default-features = false }
+re_log = { path = "../../../crates/utils/re_log" }
+rerun = { path = "../../../crates/top/rerun" }
+
+bincode = "1.3.3"
+mimalloc = "0.1.43"
+serde = { version = "1.0.213", features = ["derive"] }
+tokio = { version = "1.14.0", features = [
+  "macros",
+  "rt-multi-thread",
+  "time",
+  "net",
+  "io-util",
+  "sync",
+  "signal",
+] }
