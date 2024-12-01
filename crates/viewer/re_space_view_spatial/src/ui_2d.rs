@@ -249,13 +249,14 @@ impl SpatialSpaceView2D {
 
         // ------------------------------------------------------------------------
 
-        if let Some(mode) = screenshot_context_menu(ctx, &response) {
+        if let Some(target) = screenshot_context_menu(ctx, &response) {
             ctx.egui_ctx
                 .send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::new(
                     re_viewer_context::ScreenshotInfo {
-                        space_view: Some(query.space_view_id),
                         ui_rect: Some(response.rect),
                         pixels_per_point: ui.ctx().pixels_per_point(),
+                        source: re_viewer_context::ScreenshotSource::SpaceView(query.space_view_id),
+                        target,
                     },
                 )));
         }

@@ -2,14 +2,14 @@ use egui::{epaint::util::OrderedFloat, text::TextWrapping, NumExt as _, WidgetTe
 
 use re_format::format_f32;
 use re_math::BoundingBox;
-use re_space_view::ScreenshotMode;
 use re_types::{
     archetypes::Pinhole, blueprint::components::VisualBounds2D, components::ViewCoordinates,
     image::ImageKind,
 };
 use re_ui::UiExt as _;
 use re_viewer_context::{
-    HoverHighlight, SelectionHighlight, SpaceViewHighlights, SpaceViewState, ViewerContext,
+    HoverHighlight, ScreenshotTarget, SelectionHighlight, SpaceViewHighlights, SpaceViewState,
+    ViewerContext,
 };
 
 use crate::{
@@ -344,7 +344,7 @@ pub fn paint_loading_spinners(
 pub fn screenshot_context_menu(
     _ctx: &ViewerContext<'_>,
     _response: &egui::Response,
-) -> Option<ScreenshotMode> {
+) -> Option<ScreenshotTarget> {
     #[cfg(not(target_arch = "wasm32"))]
     {
         if _ctx.app_options.experimental_space_view_screenshots {
@@ -352,10 +352,10 @@ pub fn screenshot_context_menu(
             _response.context_menu(|ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 if ui.button("Save screenshot to disk").clicked() {
-                    take_screenshot = Some(ScreenshotMode::SaveAndCopyToClipboard);
+                    take_screenshot = Some(ScreenshotTarget::SaveAndCopyToClipboard);
                     ui.close_menu();
                 } else if ui.button("Copy screenshot to clipboard").clicked() {
-                    take_screenshot = Some(ScreenshotMode::CopyToClipboard);
+                    take_screenshot = Some(ScreenshotTarget::CopyToClipboard);
                     ui.close_menu();
                 }
             });

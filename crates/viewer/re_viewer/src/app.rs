@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use itertools::Itertools as _;
+
 use re_build_info::CrateVersion;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
@@ -12,8 +13,8 @@ use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, BlueprintUndoState, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState,
-    SpaceViewClass, SpaceViewClassRegistry, SpaceViewClassRegistryError, StoreContext,
-    SystemCommand, SystemCommandSender,
+    ScreenshotInfo, SpaceViewClass, SpaceViewClassRegistry, SpaceViewClassRegistryError,
+    StoreContext, SystemCommand, SystemCommandSender,
 };
 
 use crate::app_blueprint::PanelStateOverrides;
@@ -1904,13 +1905,14 @@ impl eframe::App for App {
                     if let Some(info) = &user_data
                         .data
                         .as_ref()
-                        .and_then(|data| data.downcast_ref::<re_viewer_context::ScreenshotInfo>())
+                        .and_then(|data| data.downcast_ref::<ScreenshotInfo>())
                     {
                         re_log::info!("Screenshot info: {info:?}");
                         let ScreenshotInfo {
-                            space_view,
                             ui_rect,
                             pixels_per_point,
+                            source,
+                            target,
                         } = (*info).clone();
 
                         let rgba = if let Some(ui_rect) = ui_rect {

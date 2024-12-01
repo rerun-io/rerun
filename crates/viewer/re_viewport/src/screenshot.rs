@@ -1,18 +1,19 @@
-use re_space_view::ScreenshotMode;
+use re_viewer_context::ScreenshotTarget;
 use re_viewport_blueprint::SpaceViewBlueprint;
 
+// TODO: use this
 pub fn handle_pending_space_view_screenshots(
     space_view: &SpaceViewBlueprint,
     data: &[u8],
     extent: glam::UVec2,
-    mode: ScreenshotMode,
+    target: ScreenshotTarget,
 ) {
     // Set to clipboard.
     #[cfg(not(target_arch = "wasm32"))]
     re_viewer_context::Clipboard::with(|clipboard| {
         clipboard.set_image([extent.x as _, extent.y as _], data);
     });
-    if mode == ScreenshotMode::CopyToClipboard {
+    if target == ScreenshotTarget::CopyToClipboard {
         return;
     }
 
@@ -33,20 +34,16 @@ pub fn handle_pending_space_view_screenshots(
         i += 1;
     };
     let filename = std::path::Path::new(&filename);
+    let readable_path = filename.canonicalize().unwrap_or(filename.to_path_buf());
+
+    // TODO: use rfd to pick a path?
 
     match image::save_buffer(filename, data, extent.x, extent.y, image::ColorType::Rgba8) {
-        Ok(_) => {
-            re_log::info!(
-                "Saved screenshot to {:?}.",
-                filename.canonicalize().unwrap_or(filename.to_path_buf())
-            );
+        Ok(()) => {
+            re_log::info!("Saved screenshot to {readable_path:?}.",);
         }
         Err(err) => {
-            re_log::error!(
-                "Failed to safe screenshot to {:?}: {}",
-                filename.canonicalize().unwrap_or(filename.to_path_buf()),
-                err
-            );
+            re_log::error!("Failed to save screenshot to {readable_path:?}: {err}");
         }
     }
 }

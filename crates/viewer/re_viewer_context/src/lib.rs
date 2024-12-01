@@ -133,7 +133,31 @@ pub fn contents_name_style(name: &ContentsName) -> re_ui::LabelStyle {
 /// Specified what we are screenshotting.
 #[derive(Clone, Debug, PartialEq)]
 pub struct ScreenshotInfo {
-    pub space_view: Option<SpaceViewId>,
+    /// What portion of the UI to take a screenshot of (in ui points).
     pub ui_rect: Option<egui::Rect>,
     pub pixels_per_point: f32,
+
+    /// What we are screenshotting.
+    pub source: ScreenshotSource,
+
+    /// Where to put the screenshot.
+    pub target: ScreenshotTarget,
+}
+
+/// What we are screenshotting.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ScreenshotSource {
+    WholeApp,
+
+    SpaceView(SpaceViewId),
+}
+
+/// Where to put the screenshot.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ScreenshotTarget {
+    /// The screenshot will be saved to disc and copied to the clipboard.
+    SaveAndCopyToClipboard,
+
+    /// The screenshot will be copied to the clipboard.
+    CopyToClipboard,
 }
