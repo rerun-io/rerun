@@ -92,8 +92,8 @@ impl BlueprintUndoState {
         self.current_time = None;
     }
 
-    /// Clears the "redo buffer".
-    pub fn clear_redo(&mut self, blueprint_db: &mut EntityDb) {
+    /// After calling this, there is no way to redo what was once undone.
+    pub fn clear_redo_buffer(&mut self, blueprint_db: &mut EntityDb) {
         re_tracing::profile_function!();
 
         if let Some(last_kept_event_time) = self.current_time.take() {

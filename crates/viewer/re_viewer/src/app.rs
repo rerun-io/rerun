@@ -517,28 +517,11 @@ impl App {
             SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
                 let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
 
-                if self.state.app_options.inspect_blueprint_timeline {
-                    // We may we viewing a historical blueprint, and doing an edit based on that.
-                    // We therefor throw away everything after the currently viewed time (like an undo)
-                    let last_kept_event_time =
-                        self.state.blueprint_query_for_viewer(blueprint_db).at();
-                    let first_dropped_event_time = last_kept_event_time.inc();
-                    blueprint_db.drop_time_range(
-                        &re_viewer_context::blueprint_timeline(),
-                        re_log_types::ResolvedTimeRange::new(
-                            first_dropped_event_time,
-                            re_chunk::TimeInt::MAX,
-                        ),
-                    );
-                } else {
-                    let undo_state = self
-                        .state
-                        .blueprint_undo_state
-                        .entry(blueprint_id)
-                        .or_default();
-
-                    undo_state.clear_redo(blueprint_db);
-                }
+                self.state
+                    .blueprint_undo_state
+                    .entry(blueprint_id)
+                    .or_default()
+                    .clear_redo_buffer(blueprint_db);
 
                 for chunk in updates {
                     match blueprint_db.add_chunk(&Arc::new(chunk)) {
@@ -548,10 +531,6 @@ impl App {
                         }
                     }
                 }
-
-                // If we inspect the timeline, make sure we show the latest state:
-                let mut time_ctrl = self.state.blueprint_cfg.time_ctrl.write();
-                time_ctrl.set_play_state(blueprint_db.times_per_timeline(), PlayState::Following);
             }
             SystemCommand::UndoBlueprint { blueprint_id } => {
                 let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
