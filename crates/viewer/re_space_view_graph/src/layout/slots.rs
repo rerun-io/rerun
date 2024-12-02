@@ -1,7 +1,7 @@
 //! Force-directed graph layouts assume edges to be straight lines. This
 //! function brings edges in a canonical form and finds the ones that occupy the same space.
 
-use crate::graph::{EdgeId, NodeId};
+use crate::graph::NodeId;
 
 use super::request::EdgeTemplate;
 
@@ -21,8 +21,11 @@ impl SlotId {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum SlotKind {
-    /// A regular edge going from `source` to `target`.
-    Regular,
+    /// An edge slot going from `source` to `target`. Source and target represent the canonical order of the slot, as specified by [`SlotId`]
+    Regular {
+        source: NodeId,
+        target: NodeId,
+    },
     /// An edge where `source == target`.
     SelfEdge,
 }
@@ -38,12 +41,16 @@ pub fn slotted_edges<'a>(
     let mut slots: ahash::HashMap<SlotId, Slot<'a>> = ahash::HashMap::default();
 
     for e in edges {
+        let id = SlotId::new(e.source, e.target);
         let slot = slots
-            .entry(SlotId::new(e.source, e.target))
-            .or_insert_with(|| Slot {
+            .entry(id)
+            .or_insert_with_key(|id| Slot {
                 kind: match e.source == e.target {
                     true => SlotKind::SelfEdge,
-                    false => SlotKind::Regular,
+                    false => SlotKind::Regular {
+                        source: id.0,
+                        target: id.1,
+                    },
                 },
                 edges: Vec::new(),
             });

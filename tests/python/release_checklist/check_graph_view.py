@@ -14,7 +14,9 @@ Please check the following:
 * All graphs have a proper layout.
 * The `Weird Graph` views show:
     * two self-edges for `A`, a single one for `B`.
-    * Additionally, there should be three edges between `A` and `B`.
+    * Additionally, there should be:
+        * two edges from `A` to `B`.
+        * one edge from `B` to `A`.
 * `graph` has directed edges, while `graph2` has undirected edges.
 * `graph` and `graph2` are shown in two different viewers.
 * There is a third viewer, `Both`, that shows both `graph` and `graph2` in the same viewer.
@@ -35,7 +37,7 @@ def log_weird_graph() -> None:
                 ("B", "B"),
                 # duplicated edges
                 ("A", "B"),
-                ("B", "A"),
+                ("A", "B"),
                 ("B", "A"),
                 # duplicated self-edges
                 ("A", "A"),

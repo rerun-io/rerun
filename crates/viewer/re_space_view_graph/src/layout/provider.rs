@@ -132,7 +132,7 @@ impl ForceLayoutProvider {
                             let target_arrow = edge.target_arrow;
                             // Self-edges are not supported in force-based layouts.
                             let anchor =
-                                intersects_ray_from_center(layout.nodes[&edge.source], Vec2::UP);
+                                layout.nodes[&edge.source].intersects_ray_from_center(Vec2::UP);
                             let geometries = layout
                                 .edges
                                 .entry(EdgeId {
@@ -155,10 +155,12 @@ impl ForceLayoutProvider {
                             });
                         }
                     }
-                    SlotKind::Regular => {
+                    SlotKind::Regular {
+                        source: slot_source,
+                        target: slot_target,
+                    } => {
                         if let &[edge] = edges.as_slice() {
                             // A single regular straight edge.
-
                             let target_arrow = edge.target_arrow;
                             let geometries = layout
                                 .edges
@@ -175,7 +177,7 @@ impl ForceLayoutProvider {
                                 ),
                             });
                         } else {
-                            // Multiple edges occupy the same space.
+                            // Multiple edges occupy the same space, so we fan them out.
                             let num_edges = edges.len();
                             let fan_amount = 20.0;
 
@@ -183,17 +185,33 @@ impl ForceLayoutProvider {
                                 // Calculate an offset for the control points based on index `i`
                                 let offset = (i as f32 - (num_edges as f32 / 2.0)) * fan_amount;
 
-                                let source_rect = layout.nodes[&edge.source];
-                                let target_rect = layout.nodes[&edge.target];
+                                let source_rect = layout.nodes[slot_source];
+                                let target_rect = layout.nodes[slot_target];
 
                                 let d = (target_rect.center() - source_rect.center()).normalized();
 
-                                let source_pos = intersects_ray_from_center(source_rect, d);
-                                let target_pos = intersects_ray_from_center(target_rect, -d);
+                                let source_pos = source_rect.intersects_ray_from_center(d);
+                                let target_pos = target_rect.intersects_ray_from_center(-d);
 
-                                // Compute control points, `c1` and `c2`, based on the offset
-                                let c1 = Pos2::new(source_pos.x + offset, source_pos.y - offset);
-                                let c2 = Pos2::new(target_pos.x + offset, target_pos.y + offset);
+                                // How far along the edge should the control points be?
+                                let c1_base = source_pos + (target_pos - source_pos) * 0.25;
+                                let c2_base = source_pos + (target_pos - source_pos) * 0.75;
+
+                                let c1_base_n = Vec2::new(-c1_base.y, c1_base.x).normalized();
+                                let mut c2_base_n = Vec2::new(-c2_base.y, c2_base.x).normalized();
+
+                                // Make sure both point to the same side of the edge.
+                                if c1_base_n.dot(c2_base_n) < 0.0 {
+                                    // If they point in opposite directions, flip one of them.
+                                    c2_base_n = -c2_base_n;
+                                }
+
+                                let c1_left = c1_base + c1_base_n * offset;
+                                let c2_left = c2_base + c2_base_n * offset;
+
+                                // // Compute control points, `c1` and `c2`, based on the offset
+                                // let c1 = Pos2::new(source_pos.x + offset, source_pos.y - offset);
+                                // let c2 = Pos2::new(target_pos.x + offset, target_pos.y + offset);
 
                                 let geometries = layout
                                     .edges
@@ -203,13 +221,24 @@ impl ForceLayoutProvider {
                                     })
                                     .or_default();
 
-                                geometries.push(EdgeGeometry {
-                                    target_arrow: edge.target_arrow,
-                                    path: PathGeometry::CubicBezier {
+                                // We potentially need to restore the direction of the edge, after we have used it's cannonical form earlier.
+                                let path = if edge.source == *slot_source {
+                                    PathGeometry::CubicBezier {
                                         source: source_pos,
                                         target: target_pos,
-                                        control: [c1, c2],
-                                    },
+                                        control: [c1_left, c2_left],
+                                    }
+                                } else {
+                                    PathGeometry::CubicBezier {
+                                        source: target_pos,
+                                        target: source_pos,
+                                        control: [c2_left, c1_left],
+                                    }
+                                };
+
+                                geometries.push(EdgeGeometry {
+                                    target_arrow: edge.target_arrow,
+                                    path,
                                 });
                             }
                         }
@@ -231,92 +260,11 @@ fn line_segment(source: Rect, target: Rect) -> PathGeometry {
     let direction = (target_center - source_center).normalized();
 
     // Find the border points on both rectangles
-    let source_point = intersects_ray_from_center(source, direction);
-    let target_point = intersects_ray_from_center(target, -direction); // Reverse direction for target
+    let source_point = source.intersects_ray_from_center(direction);
+    let target_point = target.intersects_ray_from_center(-direction); // Reverse direction for target
 
     PathGeometry::Line {
         source: source_point,
         target: target_point,
-    }
-}
-
-/// Helper function to find the point where the line intersects the border of a rectangle
-fn intersects_ray_from_center(rect: Rect, direction: Vec2) -> Pos2 {
-    let mut tmin = f32::NEG_INFINITY;
-    let mut tmax = f32::INFINITY;
-
-    for i in 0..2 {
-        let inv_d = 1.0 / -direction[i];
-        let mut t0 = (rect.min[i] - rect.center()[i]) * inv_d;
-        let mut t1 = (rect.max[i] - rect.center()[i]) * inv_d;
-
-        if inv_d < 0.0 {
-            std::mem::swap(&mut t0, &mut t1);
-        }
-
-        tmin = tmin.max(t0);
-        tmax = tmax.min(t1);
-    }
-
-    let t = tmax.min(tmin); // Pick the first intersection
-    rect.center() + t * -direction
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use egui::pos2;
-
-    #[test]
-    fn test_ray_intersection() {
-        let rect = Rect::from_min_max(pos2(1.0, 1.0), pos2(3.0, 3.0));
-
-        assert_eq!(
-            intersects_ray_from_center(rect, Vec2::RIGHT),
-            pos2(3.0, 2.0),
-            "rightward ray"
-        );
-
-        assert_eq!(
-            intersects_ray_from_center(rect, Vec2::UP),
-            pos2(2.0, 1.0),
-            "upward ray"
-        );
-
-        assert_eq!(
-            intersects_ray_from_center(rect, Vec2::LEFT),
-            pos2(1.0, 2.0),
-            "leftward ray"
-        );
-
-        assert_eq!(
-            intersects_ray_from_center(rect, Vec2::DOWN),
-            pos2(2.0, 3.0),
-            "downward ray"
-        );
-
-        assert_eq!(
-            intersects_ray_from_center(rect, (Vec2::LEFT + Vec2::DOWN).normalized()),
-            pos2(1.0, 3.0),
-            "bottom-left corner ray"
-        );
-
-        assert_eq!(
-            intersects_ray_from_center(rect, (Vec2::LEFT + Vec2::UP).normalized()),
-            pos2(1.0, 1.0),
-            "top-left corner ray"
-        );
-
-        assert_eq!(
-            intersects_ray_from_center(rect, (Vec2::RIGHT + Vec2::DOWN).normalized()),
-            pos2(3.0, 3.0),
-            "bottom-right corner ray"
-        );
-
-        assert_eq!(
-            intersects_ray_from_center(rect, (Vec2::RIGHT + Vec2::UP).normalized()),
-            pos2(3.0, 1.0),
-            "top-right corner ray"
-        );
     }
 }
