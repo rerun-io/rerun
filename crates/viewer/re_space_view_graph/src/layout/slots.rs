@@ -47,7 +47,7 @@ pub fn slotted_edges<'a>(
         let id = SlotId::new(e.source, e.target);
         let slot = slots.entry(id).or_insert_with_key(|id| Slot {
             kind: match e.source == e.target {
-                true => SlotKind::SelfEdge{ node: e.source },
+                true => SlotKind::SelfEdge { node: e.source },
                 false => SlotKind::Regular {
                     source: id.0,
                     target: id.1,
