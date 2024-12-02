@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use itertools::Itertools as _;
 use re_build_info::CrateVersion;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
@@ -514,7 +515,12 @@ impl App {
                 store_hub.clear_active_blueprint();
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
-            SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
+            SystemCommand::UpdateBlueprint(blueprint_id, chunks) => {
+                re_log::trace!(
+                    "Update blueprint entities: {}",
+                    chunks.iter().map(|c| c.entity_path()).join(", ")
+                );
+
                 let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
 
                 self.state
@@ -523,7 +529,7 @@ impl App {
                     .or_default()
                     .clear_redo_buffer(blueprint_db);
 
-                for chunk in updates {
+                for chunk in chunks {
                     match blueprint_db.add_chunk(&Arc::new(chunk)) {
                         Ok(_store_events) => {}
                         Err(err) => {

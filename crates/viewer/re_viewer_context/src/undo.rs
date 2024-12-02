@@ -72,6 +72,7 @@ impl BlueprintUndoState {
             .unwrap_or_else(|| max_blueprint_time(blueprint_db));
 
         if let Some(previous) = self.inflection_points.range(..time).next_back().copied() {
+            re_log::trace!("Undo");
             self.current_time = Some(previous);
         } else {
             // nothing to undo to
@@ -81,6 +82,7 @@ impl BlueprintUndoState {
 
     pub fn redo(&mut self) {
         if let Some(time) = self.current_time {
+            re_log::trace!("Redo");
             self.current_time = self.inflection_points.range(time.inc()..).next().copied();
         } else {
             // If we have no time, we're at latest, and have nothing to redo
@@ -101,10 +103,12 @@ impl BlueprintUndoState {
                 TimeInt::new_temporal(last_kept_event_time.as_i64().saturating_add(1));
 
             // Drop everything after the current timeline time
-            blueprint_db.drop_time_range(
+            let events = blueprint_db.drop_time_range(
                 &blueprint_timeline(),
                 ResolvedTimeRange::new(first_dropped_event_time, re_chunk::TimeInt::MAX),
             );
+
+            re_log::trace!("{} chunks affected when clearing redo buffer", events.len());
         }
     }
 

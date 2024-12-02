@@ -18,6 +18,7 @@ pub use view_properties::{entity_path_for_view_property, ViewProperty, ViewPrope
 pub use viewport_blueprint::ViewportBlueprint;
 pub use viewport_command::ViewportCommand;
 
+/// The entity path of the viewport blueprint in the blueprint store.
 pub const VIEWPORT_PATH: &str = "viewport";
 
 /// Converts a [`re_types_blueprint::blueprint::components::ContainerKind`] into a [`egui_tiles::ContainerKind`].
