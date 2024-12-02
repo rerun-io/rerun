@@ -49,7 +49,7 @@ pub enum SystemCommand {
     /// is both modified and changed in the same frame.
     ///
     /// Instead of using this directly, consider using
-    /// [`ViewerContext::save_blueprint_archetype`] or similar.
+    /// [`crate::ViewerContext::save_blueprint_archetype`] or similar.
     UpdateBlueprint(StoreId, Vec<Chunk>),
 
     UndoBlueprint {
