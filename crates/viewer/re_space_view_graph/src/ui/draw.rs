@@ -213,9 +213,6 @@ pub fn draw_edge(ui: &mut Ui, geometry: &EdgeGeometry, show_arrow: bool) -> Resp
                 fill: Color32::TRANSPARENT,
                 stroke: stroke.into(),
             });
-
-            painter.circle(control[0], 1.0, Color32::RED, Stroke::NONE);
-            painter.circle(control[1], 1.0, Color32::GREEN, Stroke::NONE);
         }
     }
 

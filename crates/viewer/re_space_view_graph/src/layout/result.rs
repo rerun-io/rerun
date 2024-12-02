@@ -104,9 +104,7 @@ impl Layout {
 
     /// Returns an iterator over all edges in the layout.
     pub fn edges(&self) -> impl Iterator<Item = (EdgeId, &[EdgeGeometry])> {
-        self.edges
-            .iter()
-            .map(|(id, es)| (*id, es.as_slice()))
+        self.edges.iter().map(|(id, es)| (*id, es.as_slice()))
     }
 
     /// Returns the number of entities in the layout.

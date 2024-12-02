@@ -179,12 +179,11 @@ impl ForceLayoutProvider {
                         } else {
                             // Multiple edges occupy the same space, so we fan them out.
                             let num_edges = edges.len();
+
+                            // Controls the amount of space (in scene coordinates) that a slot can occupy.
                             let fan_amount = 20.0;
 
                             for (i, edge) in edges.iter().enumerate() {
-                                // Calculate an offset for the control points based on index `i`
-                                let offset = (i as f32 - (num_edges as f32 / 2.0)) * fan_amount;
-
                                 let source_rect = layout.nodes[slot_source];
                                 let target_rect = layout.nodes[slot_target];
 
@@ -206,12 +205,18 @@ impl ForceLayoutProvider {
                                     c2_base_n = -c2_base_n;
                                 }
 
-                                let c1_left = c1_base + c1_base_n * offset;
-                                let c2_left = c2_base + c2_base_n * offset;
+                                let c1_left = c1_base + c1_base_n * (fan_amount / 2.);
+                                let c2_left = c2_base + c2_base_n * (fan_amount / 2.);
 
-                                // // Compute control points, `c1` and `c2`, based on the offset
-                                // let c1 = Pos2::new(source_pos.x + offset, source_pos.y - offset);
-                                // let c2 = Pos2::new(target_pos.x + offset, target_pos.y + offset);
+                                let c1_right = c1_base - c1_base_n * (fan_amount / 2.);
+                                let c2_right = c2_base - c2_base_n * (fan_amount / 2.);
+
+                                // Calculate an offset for the control points based on index `i`, spreading points equidistantly.
+                                let t = (i as f32) / (num_edges - 1) as f32;
+
+                                // Compute control points, `c1` and `c2`, based on the offset
+                                let c1 = c1_right + (c1_left - c1_right) * t;
+                                let c2 = c2_right + (c2_left - c2_right) * t;
 
                                 let geometries = layout
                                     .edges
@@ -226,13 +231,13 @@ impl ForceLayoutProvider {
                                     PathGeometry::CubicBezier {
                                         source: source_pos,
                                         target: target_pos,
-                                        control: [c1_left, c2_left],
+                                        control: [c1, c2],
                                     }
                                 } else {
                                     PathGeometry::CubicBezier {
                                         source: target_pos,
                                         target: source_pos,
-                                        control: [c2_left, c1_left],
+                                        control: [c2, c1],
                                     }
                                 };
 

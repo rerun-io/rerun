@@ -22,10 +22,8 @@ impl SlotId {
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum SlotKind {
     /// An edge slot going from `source` to `target`. Source and target represent the canonical order of the slot, as specified by [`SlotId`]
-    Regular {
-        source: NodeId,
-        target: NodeId,
-    },
+    Regular { source: NodeId, target: NodeId },
+
     /// An edge where `source == target`.
     SelfEdge,
 }
@@ -42,18 +40,16 @@ pub fn slotted_edges<'a>(
 
     for e in edges {
         let id = SlotId::new(e.source, e.target);
-        let slot = slots
-            .entry(id)
-            .or_insert_with_key(|id| Slot {
-                kind: match e.source == e.target {
-                    true => SlotKind::SelfEdge,
-                    false => SlotKind::Regular {
-                        source: id.0,
-                        target: id.1,
-                    },
+        let slot = slots.entry(id).or_insert_with_key(|id| Slot {
+            kind: match e.source == e.target {
+                true => SlotKind::SelfEdge,
+                false => SlotKind::Regular {
+                    source: id.0,
+                    target: id.1,
                 },
-                edges: Vec::new(),
-            });
+            },
+            edges: Vec::new(),
+        });
 
         slot.edges.push(e);
     }
