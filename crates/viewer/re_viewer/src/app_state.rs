@@ -33,7 +33,7 @@ pub struct AppState {
     recording_configs: HashMap<StoreId, RecordingConfig>,
     pub blueprint_cfg: RecordingConfig,
 
-    /// Maps blueperint id to the current undo state for it.
+    /// Maps blueprint id to the current undo state for it.
     pub blueprint_undo_state: HashMap<StoreId, BlueprintUndoState>,
 
     selection_panel: re_selection_panel::SelectionPanel,
