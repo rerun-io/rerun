@@ -22,6 +22,16 @@ namespace rerun::datatypes {
         std::string value;
 
       public: // START of extensions from utf8_ext.cpp:
+        /// Construct from a C string.
+        Utf8(const char* utf8_) : value(utf8_) {}
+
+        /// Explicit copy assignment from a C string to avoid ambiguity in some cases.
+        Utf8& operator=(const char* utf8_) {
+            value = utf8_;
+            return *this;
+        }
+
+        /// Returns a pointer to the underlying C string.
         const char* c_str() const {
             return value.c_str();
         }

@@ -13,9 +13,12 @@
 </h1>
 
 ## Rerun command-line tool
-You can install the binary with `cargo install rerun-cli --locked`
+You can install the binary with `cargo install rerun-cli --locked --features nasm`.
 
-This can act either as a server, a viewer, or both, depending on which options you use when you start it.
+**Note**: this requires the [`nasm`](https://www.nasm.us) CLI to be installed and available in your path.
+Alternatively, you may skip enabling the `nasm` feature, but this may result in inferior video decoding performance.
+
+The `rerun` CLI can act either as a server, a viewer, or both, depending on which options you use when you start it.
 
 Running `rerun` with no arguments will start the viewer, waiting for an SDK to connect to it over TCP.
 
@@ -25,9 +28,7 @@ Run `rerun --help` for more.
 ## What is Rerun?
 - [Examples](https://github.com/rerun-io/rerun/tree/latest/examples/rust)
 - [High-level docs](http://rerun.io/docs)
-<!-- TODO(#8165): docs.rs/rerun is broken right now -->
-<!-- - [Rust API docs](https://ref.rerun.io/docs/rust/stable) -->
-- [Rust API docs](https://ref.rerun.io/docs/rust/stable/rerun/)
+- [Rust API docs](https://docs.rs/rerun/)
 - [Troubleshooting](https://www.rerun.io/docs/getting-started/troubleshooting)
 
 

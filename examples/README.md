@@ -47,5 +47,9 @@ If you want to run the example on CI and include it in the in-viewer example pag
 add a `channel` entry to its README frontmatter. The available channels right now are:
 - `main` for simple/fast examples built on each merge to `main`
 - `nightly` for heavier examples built once per day
+- `release` for very heavy examples built once per release
+
+These channels are defined in: https://github.com/rerun-io/rerun/blob/18189a436271d58efe55a9c58fb3ff4d29098fd2/crates/build/re_dev_tools/src/build_examples/example.rs#L150-L158
+
 
 If `channel` is missing, the example is never built on CI.

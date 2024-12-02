@@ -174,7 +174,7 @@ impl Query {
         let all_components = ctx
             .recording_engine()
             .store()
-            .all_components_on_timeline(timeline, &filter_entity)
+            .all_components_on_timeline_sorted(timeline, &filter_entity)
             .unwrap_or_default();
 
         // The list of suggested components is build as follows:
@@ -486,7 +486,7 @@ fn edit_timeline_name(
     value: &mut TimelineName,
 ) -> egui::Response {
     let mut changed = false;
-    let mut combobox_response = egui::ComboBox::from_id_salt(&value)
+    let mut combobox_response = egui::ComboBox::from_id_salt(value.as_str())
         .selected_text(value.as_str())
         .show_ui(ui, |ui| {
             for timeline in ctx.recording().timelines() {

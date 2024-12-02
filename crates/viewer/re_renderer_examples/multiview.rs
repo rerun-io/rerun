@@ -1,8 +1,5 @@
 //! Example with several independent views, using various primitives.
 
-// TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
-
 use std::f32::consts::TAU;
 
 use framework::Example;
@@ -29,7 +26,7 @@ fn build_mesh_instances(
     model_mesh_instances: &[GpuMeshInstance],
     mesh_instance_positions_and_colors: &[(glam::Vec3, Color32)],
     seconds_since_startup: f32,
-) -> MeshDrawData {
+) -> anyhow::Result<MeshDrawData> {
     let mesh_instances = mesh_instance_positions_and_colors
         .chunks_exact(model_mesh_instances.len())
         .enumerate()
@@ -53,7 +50,7 @@ fn build_mesh_instances(
             )
         })
         .collect_vec();
-    MeshDrawData::new(re_ctx, &mesh_instances).unwrap()
+    Ok(MeshDrawData::new(re_ctx, &mesh_instances)?)
 }
 
 fn lorenz_points(seconds_since_startup: f32) -> Vec<glam::Vec3> {
@@ -84,14 +81,12 @@ fn lorenz_points(seconds_since_startup: f32) -> Vec<glam::Vec3> {
     .collect()
 }
 
-fn build_lines(re_ctx: &RenderContext, seconds_since_startup: f32) -> LineDrawData {
+fn build_lines(re_ctx: &RenderContext, seconds_since_startup: f32) -> anyhow::Result<LineDrawData> {
     // Calculate some points that look nice for an animated line.
     let lorenz_points = lorenz_points(seconds_since_startup);
 
     let mut builder = LineDrawableBuilder::new(re_ctx);
-    builder
-        .reserve_vertices(lorenz_points.len() + 4 + 1000)
-        .unwrap();
+    builder.reserve_vertices(lorenz_points.len() + 4 + 1000)?;
 
     {
         let mut batch = builder.batch("lines without transform");
@@ -140,7 +135,7 @@ fn build_lines(re_ctx: &RenderContext, seconds_since_startup: f32) -> LineDrawDa
         .radius(Size::new_scene_units(0.1))
         .flags(LineStripFlags::FLAG_CAP_END_TRIANGLE);
 
-    builder.into_draw_data().unwrap()
+    Ok(builder.into_draw_data()?)
 }
 
 enum CameraControl {
@@ -218,32 +213,29 @@ fn handle_incoming_screenshots(re_ctx: &RenderContext) {
 
 impl Multiview {
     fn draw_view<D: 'static + re_renderer::renderer::DrawData + Sync + Send + Clone>(
-        &mut self,
+        &self,
         re_ctx: &RenderContext,
         target_cfg: TargetConfiguration,
         skybox: GenericSkyboxDrawData,
         draw_data: D,
         index: u32,
-    ) -> (ViewBuilder, wgpu::CommandBuffer) {
+    ) -> anyhow::Result<(ViewBuilder, wgpu::CommandBuffer)> {
         let mut view_builder = ViewBuilder::new(re_ctx, target_cfg);
 
         if self
             .take_screenshot_next_frame_for_view
             .map_or(false, |i| i == index)
         {
-            view_builder
-                .schedule_screenshot(re_ctx, READBACK_IDENTIFIER, index)
-                .unwrap();
+            view_builder.schedule_screenshot(re_ctx, READBACK_IDENTIFIER, index)?;
             re_log::info!("Scheduled screenshot for view {}", index);
         }
 
         let command_buffer = view_builder
             .queue_draw(skybox)
             .queue_draw(draw_data)
-            .draw(re_ctx, Rgba::TRANSPARENT)
-            .unwrap();
+            .draw(re_ctx, Rgba::TRANSPARENT)?;
 
-        (view_builder, command_buffer)
+        Ok((view_builder, command_buffer))
     }
 }
 
@@ -311,7 +303,7 @@ impl Example for Multiview {
         resolution: [u32; 2],
         time: &framework::Time,
         pixels_per_point: f32,
-    ) -> Vec<framework::ViewDrawResult> {
+    ) -> anyhow::Result<Vec<framework::ViewDrawResult>> {
         if matches!(self.camera_control, CameraControl::RotateAroundCenter) {
             let seconds_since_startup = time.seconds_since_startup();
             self.camera_position = Vec3::new(
@@ -324,12 +316,11 @@ impl Example for Multiview {
         handle_incoming_screenshots(re_ctx);
 
         let seconds_since_startup = time.seconds_since_startup();
-        let view_from_world =
-            IsoTransform::look_at_rh(self.camera_position, Vec3::ZERO, Vec3::Y).unwrap();
-
+        let view_from_world = IsoTransform::look_at_rh(self.camera_position, Vec3::ZERO, Vec3::Y)
+            .ok_or(anyhow::format_err!("invalid camera"))?;
         let triangle = TestTriangleDrawData::new(re_ctx);
         let skybox = GenericSkyboxDrawData::new(re_ctx, Default::default());
-        let lines = build_lines(re_ctx, seconds_since_startup);
+        let lines = build_lines(re_ctx, seconds_since_startup)?;
 
         let mut builder = PointCloudBuilder::new(re_ctx);
         builder
@@ -342,13 +333,13 @@ impl Example for Multiview {
                 &[],
             );
 
-        let point_cloud = builder.into_draw_data().unwrap();
+        let point_cloud = builder.into_draw_data()?;
         let meshes = build_mesh_instances(
             re_ctx,
             &self.model_mesh_instances,
             &self.mesh_instance_positions_and_colors,
             seconds_since_startup,
-        );
+        )?;
 
         let splits = framework::split_resolution(resolution, 2, 2).collect::<Vec<_>>();
 
@@ -383,7 +374,7 @@ impl Example for Multiview {
                     skybox.clone(),
                     $name,
                     $n,
-                );
+                )?;
                 framework::ViewDrawResult {
                     view_builder,
                     command_buffer,
@@ -401,7 +392,7 @@ impl Example for Multiview {
 
         self.take_screenshot_next_frame_for_view = None;
 
-        draw_results
+        Ok(draw_results)
     }
 
     fn on_key_event(&mut self, input: winit::event::KeyEvent) {

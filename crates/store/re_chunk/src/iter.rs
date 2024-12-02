@@ -2,9 +2,9 @@ use std::sync::Arc;
 
 use arrow2::{
     array::{
-        Array as ArrowArray, FixedSizeListArray as ArrowFixedSizeListArray,
-        ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray,
-        Utf8Array as ArrowUtf8Array,
+        Array as Arrow2Array, FixedSizeListArray as Arrow2FixedSizeListArray,
+        ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
+        Utf8Array as Arrow2Utf8Array,
     },
     Either,
 };
@@ -212,7 +212,7 @@ impl Chunk {
     pub fn iter_component_arrays(
         &self,
         component_name: &ComponentName,
-    ) -> impl Iterator<Item = Box<dyn ArrowArray>> + '_ {
+    ) -> impl Iterator<Item = Box<dyn Arrow2Array>> + '_ {
         let Some(list_array) = self.components.get(component_name) else {
             return Either::Left(std::iter::empty());
         };
@@ -246,7 +246,7 @@ impl Chunk {
         let Some(values) = list_array
             .values()
             .as_any()
-            .downcast_ref::<ArrowPrimitiveArray<T>>()
+            .downcast_ref::<Arrow2PrimitiveArray<T>>()
         else {
             if cfg!(debug_assertions) {
                 panic!("downcast failed for {component_name}, data discarded");
@@ -291,7 +291,7 @@ impl Chunk {
         let Some(fixed_size_list_array) = list_array
             .values()
             .as_any()
-            .downcast_ref::<ArrowFixedSizeListArray>()
+            .downcast_ref::<Arrow2FixedSizeListArray>()
         else {
             if cfg!(debug_assertions) {
                 panic!("downcast failed for {component_name}, data discarded");
@@ -304,7 +304,7 @@ impl Chunk {
         let Some(values) = fixed_size_list_array
             .values()
             .as_any()
-            .downcast_ref::<ArrowPrimitiveArray<T>>()
+            .downcast_ref::<Arrow2PrimitiveArray<T>>()
         else {
             if cfg!(debug_assertions) {
                 panic!("downcast failed for {component_name}, data discarded");
@@ -353,7 +353,7 @@ impl Chunk {
         let Some(inner_list_array) = list_array
             .values()
             .as_any()
-            .downcast_ref::<ArrowListArray<i32>>()
+            .downcast_ref::<Arrow2ListArray<i32>>()
         else {
             if cfg!(debug_assertions) {
                 panic!("downcast failed for {component_name}, data discarded");
@@ -369,7 +369,7 @@ impl Chunk {
         let Some(fixed_size_list_array) = inner_list_array
             .values()
             .as_any()
-            .downcast_ref::<ArrowFixedSizeListArray>()
+            .downcast_ref::<Arrow2FixedSizeListArray>()
         else {
             if cfg!(debug_assertions) {
                 panic!("downcast failed for {component_name}, data discarded");
@@ -382,7 +382,7 @@ impl Chunk {
         let Some(values) = fixed_size_list_array
             .values()
             .as_any()
-            .downcast_ref::<ArrowPrimitiveArray<T>>()
+            .downcast_ref::<Arrow2PrimitiveArray<T>>()
         else {
             if cfg!(debug_assertions) {
                 panic!("downcast failed for {component_name}, data discarded");
@@ -435,7 +435,7 @@ impl Chunk {
         let Some(utf8_array) = list_array
             .values()
             .as_any()
-            .downcast_ref::<ArrowUtf8Array<i32>>()
+            .downcast_ref::<Arrow2Utf8Array<i32>>()
         else {
             if cfg!(debug_assertions) {
                 panic!("downcast failed for {component_name}, data discarded");
@@ -475,7 +475,7 @@ impl Chunk {
     /// * [`Self::iter_string`].
     /// * [`Self::iter_component_arrays`].
     /// * [`Self::iter_component`].
-    pub fn iter_buffer<T: arrow2::types::NativeType>(
+    pub fn iter_buffer<T: arrow::datatypes::ArrowNativeType + arrow2::types::NativeType>(
         &self,
         component_name: &ComponentName,
     ) -> impl Iterator<Item = Vec<ArrowBuffer<T>>> + '_ {
@@ -486,7 +486,7 @@ impl Chunk {
         let Some(inner_list_array) = list_array
             .values()
             .as_any()
-            .downcast_ref::<ArrowListArray<i32>>()
+            .downcast_ref::<Arrow2ListArray<i32>>()
         else {
             if cfg!(debug_assertions) {
                 panic!("downcast failed for {component_name}, data discarded");
@@ -499,7 +499,7 @@ impl Chunk {
         let Some(values) = inner_list_array
             .values()
             .as_any()
-            .downcast_ref::<ArrowPrimitiveArray<T>>()
+            .downcast_ref::<Arrow2PrimitiveArray<T>>()
         else {
             if cfg!(debug_assertions) {
                 panic!("downcast failed for {component_name}, data discarded");
@@ -705,7 +705,7 @@ impl Chunk {
         };
 
         let values = list_array.values();
-        let values = match C::from_arrow(&**values) {
+        let values = match C::from_arrow2(&**values) {
             Ok(values) => values,
             Err(err) => {
                 if cfg!(debug_assertions) {

@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use arrow2::array::Array as ArrowArray;
+use arrow2::array::Array as Arrow2Array;
 
 use re_log_types::{TimeInt, Timeline};
 use re_types_core::{Component, ComponentName, SizeBytes};
@@ -20,7 +20,7 @@ impl Chunk {
         &self,
         component_name: &ComponentName,
         row_index: usize,
-    ) -> Option<ChunkResult<Box<dyn ArrowArray>>> {
+    ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
         self.components.get(component_name).and_then(|list_array| {
             if list_array.len() > row_index {
                 list_array
@@ -48,7 +48,7 @@ impl Chunk {
             Err(err) => return Some(Err(err)),
         };
 
-        let data = C::from_arrow(&*array);
+        let data = C::from_arrow2(&*array);
         Some(data.map_err(Into::into))
     }
 
@@ -63,7 +63,7 @@ impl Chunk {
         component_name: &ComponentName,
         row_index: usize,
         instance_index: usize,
-    ) -> Option<ChunkResult<Box<dyn ArrowArray>>> {
+    ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
         let res = self.component_batch_raw(component_name, row_index)?;
 
         let array = match res {
@@ -99,7 +99,7 @@ impl Chunk {
             Err(err) => return Some(Err(err)),
         };
 
-        match C::from_arrow(&*array) {
+        match C::from_arrow2(&*array) {
             Ok(data) => data.into_iter().next().map(Ok), // NOTE: It's already sliced!
             Err(err) => Some(Err(err.into())),
         }
@@ -116,7 +116,7 @@ impl Chunk {
         &self,
         component_name: &ComponentName,
         row_index: usize,
-    ) -> Option<ChunkResult<Box<dyn ArrowArray>>> {
+    ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
         let res = self.component_batch_raw(component_name, row_index)?;
 
         let array = match res {
@@ -148,7 +148,7 @@ impl Chunk {
             Err(err) => return Some(Err(err)),
         };
 
-        match C::from_arrow(&*array) {
+        match C::from_arrow2(&*array) {
             Ok(data) => data.into_iter().next().map(Ok), // NOTE: It's already sliced!
             Err(err) => Some(Err(err.into())),
         }
@@ -256,7 +256,7 @@ impl UnitChunkShared {
     pub fn component_batch_raw(
         &self,
         component_name: &ComponentName,
-    ) -> Option<Box<dyn ArrowArray>> {
+    ) -> Option<Box<dyn Arrow2Array>> {
         debug_assert!(self.num_rows() == 1);
         self.components
             .get(component_name)
@@ -268,7 +268,7 @@ impl UnitChunkShared {
     /// Returns an error if the data cannot be deserialized.
     #[inline]
     pub fn component_batch<C: Component>(&self) -> Option<ChunkResult<Vec<C>>> {
-        let data = C::from_arrow(&*self.component_batch_raw(&C::name())?);
+        let data = C::from_arrow2(&*self.component_batch_raw(&C::name())?);
         Some(data.map_err(Into::into))
     }
 
@@ -282,7 +282,7 @@ impl UnitChunkShared {
         &self,
         component_name: &ComponentName,
         instance_index: usize,
-    ) -> Option<ChunkResult<Box<dyn ArrowArray>>> {
+    ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
         let array = self.component_batch_raw(component_name)?;
         if array.len() > instance_index {
             Some(Ok(array.sliced(instance_index, 1)))
@@ -310,7 +310,7 @@ impl UnitChunkShared {
             Err(err) => return Some(Err(err)),
         };
 
-        match C::from_arrow(&*array) {
+        match C::from_arrow2(&*array) {
             Ok(data) => data.into_iter().next().map(Ok), // NOTE: It's already sliced!
             Err(err) => Some(Err(err.into())),
         }
@@ -325,7 +325,7 @@ impl UnitChunkShared {
     pub fn component_mono_raw(
         &self,
         component_name: &ComponentName,
-    ) -> Option<ChunkResult<Box<dyn ArrowArray>>> {
+    ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
         let array = self.component_batch_raw(component_name)?;
         if array.len() == 1 {
             Some(Ok(array.sliced(0, 1)))
@@ -350,7 +350,7 @@ impl UnitChunkShared {
             Err(err) => return Some(Err(err)),
         };
 
-        match C::from_arrow(&*array) {
+        match C::from_arrow2(&*array) {
             Ok(data) => data.into_iter().next().map(Ok), // NOTE: It's already sliced!
             Err(err) => Some(Err(err.into())),
         }

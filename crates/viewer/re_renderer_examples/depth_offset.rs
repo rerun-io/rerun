@@ -7,9 +7,6 @@
 //! Press arrow up/down to increase/decrease the distance of the camera to the z==0 plane in tandem with the scale of the rectangles.
 //! Press arrow left/right to increase/decrease the near plane distance.
 
-// TODO(#6330): remove unwrap()
-#![allow(clippy::unwrap_used)]
-
 use re_renderer::Hsva;
 use re_renderer::{
     renderer::{ColormappedTexture, RectangleDrawData, RectangleOptions, TexturedRect},
@@ -42,7 +39,7 @@ impl framework::Example for Render2D {
         resolution: [u32; 2],
         _time: &framework::Time,
         pixels_per_point: f32,
-    ) -> Vec<framework::ViewDrawResult> {
+    ) -> anyhow::Result<Vec<framework::ViewDrawResult>> {
         let mut rectangles = Vec::new();
 
         let extent_u = glam::vec3(1.0, 0.0, 0.0) * self.distance_scale;
@@ -107,7 +104,7 @@ impl framework::Example for Render2D {
                     glam::Vec3::ZERO,
                     glam::Vec3::Y,
                 )
-                .unwrap(),
+                .ok_or(anyhow::format_err!("invalid camera"))?,
                 projection_from_view: Projection::Perspective {
                     vertical_fov: 70.0 * std::f32::consts::TAU / 360.0,
                     near_plane_distance: self.near_plane,
@@ -118,17 +115,16 @@ impl framework::Example for Render2D {
             },
         );
         let command_buffer = view_builder
-            .queue_draw(RectangleDrawData::new(re_ctx, &rectangles).unwrap())
-            .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)
-            .unwrap();
+            .queue_draw(RectangleDrawData::new(re_ctx, &rectangles)?)
+            .draw(re_ctx, re_renderer::Rgba::TRANSPARENT)?;
 
-        vec![{
+        Ok(vec![{
             framework::ViewDrawResult {
                 view_builder,
                 command_buffer,
                 target_location: glam::Vec2::ZERO,
             }
-        }]
+        }])
     }
 
     fn on_key_event(&mut self, input: winit::event::KeyEvent) {

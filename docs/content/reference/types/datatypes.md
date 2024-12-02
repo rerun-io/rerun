@@ -46,6 +46,7 @@ Data types are the lowest layer of the data model hierarchy. They are re-usable 
 * [`UVec3D`](datatypes/uvec3d.md): A uint32 vector in 3D space.
 * [`UVec4D`](datatypes/uvec4d.md): A uint vector in 4D space.
 * [`Utf8`](datatypes/utf8.md): A string of text, encoded as UTF-8.
+* [`Utf8Pair`](datatypes/utf8pair.md): Stores a tuple of UTF-8 strings.
 * [`Uuid`](datatypes/uuid.md): A 16-byte UUID.
 * [`Vec2D`](datatypes/vec2d.md): A vector in 2D space.
 * [`Vec3D`](datatypes/vec3d.md): A vector in 3D space.

@@ -7,7 +7,7 @@ order: 1
 Archetypes are bundles of components for which the Rerun viewer has first-class
 built-in support. When logged, each archetype also includes an _indicator component_ which captures
 the intent of the logging code and triggers the activation of the corresponding visualizers. See
-[Entities and Compponents](../../concepts/entity-component.md) and
+[Entities and Components](../../concepts/entity-component.md) and
 [Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for more information.
 
 This page lists all built-in archetypes.
@@ -16,6 +16,11 @@ This page lists all built-in archetypes.
 
 * [`GeoLineStrings`](archetypes/geo_line_strings.md): Geospatial line strings with positions expressed in [EPSG:4326](https://epsg.io/4326) altitude and longitude (North/East-positive degrees), and optional colors and radii.
 * [`GeoPoints`](archetypes/geo_points.md): Geospatial points with positions expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees), and optional colors and radii.
+
+## Graph
+
+* [`GraphEdges`](archetypes/graph_edges.md): A list of edges in a graph.
+* [`GraphNodes`](archetypes/graph_nodes.md): A list of nodes in a graph with optional labels, colors, etc.
 
 ## Image & tensor
 

@@ -41,7 +41,7 @@ pub struct QueryContext<'a> {
     pub view_ctx: Option<&'a ViewContext<'a>>,
 }
 
-impl<'a> QueryContext<'a> {
+impl QueryContext<'_> {
     #[inline]
     pub fn recording(&self) -> &re_entity_db::EntityDb {
         self.viewer_ctx.recording()

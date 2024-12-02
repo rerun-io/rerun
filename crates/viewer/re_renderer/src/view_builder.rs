@@ -265,6 +265,7 @@ impl ViewBuilder {
     /// which the samples are derived. What we'd like to happen is:
     /// * use alpha to indicate coverage == number of samples written to
     /// * write alpha==1.0 for each active sample despite what we set earlier
+    ///
     /// This way, we'd get the correct alpha and end up with pre-multipltiplied color values during MSAA resolve,
     /// just like with opaque geometry!
     /// OpenGL exposes this as `GL_SAMPLE_ALPHA_TO_ONE`, Vulkan as `alphaToOne`. Unfortunately though, WebGPU does not support this!
@@ -633,7 +634,11 @@ impl ViewBuilder {
 
             pass.set_bind_group(0, &setup.bind_group_0, &[]);
 
-            for phase in [DrawPhase::Opaque, DrawPhase::Background] {
+            for phase in [
+                DrawPhase::Opaque,
+                DrawPhase::Background,
+                DrawPhase::Transparent,
+            ] {
                 self.draw_phase(&renderers, &pipelines, phase, &mut pass);
             }
         }

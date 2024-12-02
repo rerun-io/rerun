@@ -4,7 +4,7 @@ pub enum MaybeMutRef<'a, T> {
     MutRef(&'a mut T),
 }
 
-impl<'a, T> MaybeMutRef<'a, T> {
+impl<T> MaybeMutRef<'_, T> {
     /// Returns the mutable reference, if possible.
     #[inline]
     pub fn as_mut(&mut self) -> Option<&mut T> {
@@ -15,7 +15,7 @@ impl<'a, T> MaybeMutRef<'a, T> {
     }
 }
 
-impl<'a, T> std::ops::Deref for MaybeMutRef<'a, T> {
+impl<T> std::ops::Deref for MaybeMutRef<'_, T> {
     type Target = T;
 
     #[inline]
@@ -27,7 +27,7 @@ impl<'a, T> std::ops::Deref for MaybeMutRef<'a, T> {
     }
 }
 
-impl<'a, T> AsRef<T> for MaybeMutRef<'a, T> {
+impl<T> AsRef<T> for MaybeMutRef<'_, T> {
     #[inline]
     fn as_ref(&self) -> &T {
         match self {

@@ -31,7 +31,6 @@ pub use re_types_blueprint::blueprint::components::AutoLayout;
 pub use re_types_blueprint::blueprint::components::AutoSpaceViews;
 pub use re_types_blueprint::blueprint::components::ContainerKind;
 pub use re_types_blueprint::blueprint::components::GridColumns;
-pub use re_types_blueprint::blueprint::components::IncludedSpaceView;
 pub use re_types_blueprint::blueprint::components::RootContainer;
 pub use re_types_blueprint::blueprint::components::SpaceViewMaximized;
 pub use re_types_blueprint::blueprint::components::VisualizerOverrides;
@@ -53,7 +52,6 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<FilterIsNotNull>(blueprint)
         && validate_component::<GridColumns>(blueprint)
         && validate_component::<IncludedContent>(blueprint)
-        && validate_component::<IncludedSpaceView>(blueprint)
         && validate_component::<Interactive>(blueprint)
         && validate_component::<LockRangeDuringZoom>(blueprint)
         && validate_component::<MapProvider>(blueprint)

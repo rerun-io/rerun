@@ -1,0 +1,15 @@
+namespace rerun.datatypes;
+
+/// Stores a tuple of UTF-8 strings.
+table Utf8Pair (
+  "attr.docs.unreleased",
+  "attr.python.aliases": "Tuple[datatypes.Utf8Like, datatypes.Utf8Like]",
+  "attr.python.array_aliases": "npt.NDArray[np.str_]",
+  "attr.rust.derive": "Default, PartialEq, Eq, PartialOrd, Ord"
+) {
+  /// The first string.
+  first: rerun.datatypes.Utf8 (order: 100);
+
+  /// The second string.
+  second: rerun.datatypes.Utf8 (order: 200);
+}

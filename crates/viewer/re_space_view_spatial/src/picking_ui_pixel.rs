@@ -146,7 +146,7 @@ pub struct TextureInteractionId<'a> {
     pub interaction_idx: u32,
 }
 
-impl<'a> TextureInteractionId<'a> {
+impl TextureInteractionId<'_> {
     pub fn debug_label(&self, topic: &str) -> re_renderer::DebugLabel {
         format!("{topic}__{:?}_{}", self.entity_path, self.interaction_idx).into()
     }
@@ -294,6 +294,7 @@ enum PixelValueSource<'a> {
     /// * the texture is known to be able to read back
     /// * the texture format is `Rgba8UnormSrgb`
     /// * you don't care about alpha (since there's no 24bit textures, we assume we can just ignore it)
+    ///
     /// Note that these restrictions are not final,
     /// but merely what covers the usecases right now with the least amount of effort.
     GpuTexture(&'a GpuTexture2D),

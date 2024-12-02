@@ -175,13 +175,13 @@ rerun-web = { cmd = "cargo run --package rerun-cli --no-default-features --featu
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-build-web = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --features analytics,map_view,grpc --debug"
+rerun-build-web = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --features analytics,grpc --debug"
 
 # Compile the web-viewer wasm and the cli.
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-build-web-cli = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --features analytics,map_view,grpc --debug && cargo build --package rerun-cli --no-default-features --features web_viewer"
+rerun-build-web-cli = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --features analytics,grpc --debug && cargo build --package rerun-cli --no-default-features --features web_viewer"
 
 # Compile and run the web-viewer in release mode via rerun-cli.
 #
@@ -197,7 +197,7 @@ rerun-web-release = { cmd = "cargo run --package rerun-cli --no-default-features
 #
 # This installs the `wasm32-unknown-unknown` rust target if it's not already installed.
 # (this looks heavy but takes typically below 0.1s!)
-rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --features analytics,map_view,grpc --release -g"
+rerun-build-web-release = "rustup target add wasm32-unknown-unknown && cargo run -p re_dev_tools -- build-web-viewer --features analytics,grpc --release -g"
 
 rs-check = { cmd = "rustup target add wasm32-unknown-unknown && python scripts/ci/rust_checks.py", depends_on = [
   "rerun-build-web", # The checks require the web viewer wasm to be around.
@@ -323,6 +323,10 @@ py-build-common-web-viewer-release = { cmd = "PIP_REQUIRE_VIRTUALENV=0 RERUN_ALL
 py-build-notebook = { cmd = "pip install -e rerun_notebook", depends_on = [
   "js-build-base",
 ] }
+
+# Build an installable SDK-only wheel. IMPORTANT: unlike the officially published wheels, the wheel produced by this command does NOT include the viewer.
+# TODO(ab): add a command that produce a complete wheel, including the viewer.
+py-build-wheels-sdk-only = { cmd = "RERUN_ALLOW_MISSING_BIN=1 python scripts/ci/build_and_upload_wheels.py --mode pr --dir ''" }
 
 
 [feature.python-tasks.tasks]
@@ -456,7 +460,7 @@ fd-find = ">=10.1.0"              # Used by `cpp-fmt` to find C++ files
 flatbuffers = ">=23"
 gitignore-parser = ">=0.1.9"
 gitpython = ">=3.1.40"
-jinja2 = ">=3.1.3,<3.2"           # For `update_pr_bodies.py`, `generate_pr_summary.py`, `build_screenshot_compare.py` and other utilities that build websites.
+jinja2 = ">=3.1.3,<3.2"           # For `build_screenshot_compare.py` and other utilities that build websites.
 mypy = "1.8.0"
 nasm = ">=2.16"                   # Required by https://github.com/memorysafety/rav1d for native video support
 ninja = "1.11.1"
@@ -480,7 +484,7 @@ cryptography = "==38.0.4"        # For `upload_image.py`
 google-cloud-storage = "==2.9.0" # For `upload_image.py`
 hatch = "==1.12.0"               # For `rerun_notebook`
 Pillow = "==10.0.0"              # For `thumbnails.py`
-pygithub = "==1.59.0"            # Among others for `generate_pr_summary.py`, `sync_release_assets.py`, `update_pr_body.py`.
+pygithub = "==1.59.0"            # Among others for `sync_release_assets.py`.
 requests = ">=2.31,<3"           # For `thumbnails.py` & `upload_image.py`
 types-Deprecated = "==1.2.9.2"   # Type hint stubs
 types-requests = ">=2.31,<3"     # Type hint stubs
@@ -602,15 +606,20 @@ macos = "12.0" # needed for scipy
 [feature.examples-common.dependencies]
 python = "=3.11"
 
+# TODO(ab): otherwise pixi will try to build from source and fail, not sure why (used by air_traffic_data)
+pyproj = ">=3.7.0"
+
 [feature.examples-common.pypi-dependencies]
 # External deps
 jupyter = ">=1.0"
+polars = ">=0.12.0"
 
 segment-anything = { git = "https://github.com/facebookresearch/segment-anything.git" }
 mesh-to-sdf = { git = "https://github.com/marian42/mesh_to_sdf.git" }
 
 # Rerun libs
 
+air_traffic_data = { path = "examples/python/air_traffic_data", editable = true }
 arkit_scenes = { path = "examples/python/arkit_scenes", editable = true }
 blueprint = { path = "examples/python/blueprint", editable = true }
 blueprint_stocks = { path = "examples/python/blueprint_stocks", editable = true }
@@ -631,6 +640,8 @@ minimal = { path = "examples/python/minimal", editable = true }
 minimal_options = { path = "examples/python/minimal_options", editable = true }
 multiprocess_logging = { path = "examples/python/multiprocess_logging", editable = true }
 multithreading = { path = "examples/python/multithreading", editable = true }
+graph_binary_tree = { path = "examples/python/graph_binary_tree", editable = true }
+graph_lattice = { path = "examples/python/graph_lattice", editable = true }
 nuscenes_dataset = { path = "examples/python/nuscenes_dataset", editable = true }
 nv12 = { path = "examples/python/nv12", editable = true }
 objectron = { path = "examples/python/objectron", editable = true }

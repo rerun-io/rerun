@@ -86,7 +86,7 @@ pub fn display_text_ui(
     _row_id: Option<RowId>,
     data: &dyn arrow2::array::Array,
 ) {
-    let text = match Text::from_arrow(data) {
+    let text = match Text::from_arrow2(data) {
         Ok(text) => text.first().cloned(),
         Err(err) => {
             ui.error_label("Failed to deserialize")
@@ -115,7 +115,7 @@ pub fn display_name_ui(
     _row_id: Option<RowId>,
     data: &dyn arrow2::array::Array,
 ) {
-    let name = match Name::from_arrow(data) {
+    let name = match Name::from_arrow2(data) {
         Ok(name) => name.first().cloned(),
         Err(err) => {
             ui.error_label("Failed to deserialize")

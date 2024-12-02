@@ -15,3 +15,4 @@ fn main(@builtin(vertex_index) vertex_index: u32) -> VertexOutput {
     out.texcoord.y = 1.0 - out.texcoord.y;
     return out;
 }
+

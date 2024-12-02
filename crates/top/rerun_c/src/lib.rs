@@ -12,16 +12,14 @@ mod ptr;
 mod recording_streams;
 mod video;
 
-use std::{
-    collections::BTreeMap,
-    ffi::{c_char, c_uchar, CString},
-};
+use std::ffi::{c_char, c_uchar, CString};
 
 use component_type_registry::COMPONENT_TYPES;
 use once_cell::sync::Lazy;
 
 use arrow_utils::arrow_array_from_c_ffi;
 use re_sdk::{
+    external::nohash_hasher::IntMap,
     log::{Chunk, ChunkId, PendingRow, TimeColumn},
     time::TimeType,
     ComponentName, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimePoint,
@@ -780,7 +778,7 @@ fn rr_recording_stream_log_impl(
 
     let batches = unsafe { std::slice::from_raw_parts_mut(batches, num_data_cells) };
 
-    let mut components = BTreeMap::default();
+    let mut components = IntMap::default();
     {
         let component_type_registry = COMPONENT_TYPES.read();
 
@@ -928,7 +926,7 @@ fn rr_recording_stream_send_columns_impl(
     let stream = recording_stream(stream)?;
     let entity_path = entity_path.as_str("entity_path")?;
 
-    let time_columns: BTreeMap<Timeline, TimeColumn> = time_columns
+    let time_columns: IntMap<Timeline, TimeColumn> = time_columns
         .iter()
         .map(|time_column| {
             let timeline: Timeline = time_column.timeline.clone().try_into()?;
@@ -955,7 +953,7 @@ fn rr_recording_stream_send_columns_impl(
         })
         .collect::<Result<_, CError>>()?;
 
-    let components: BTreeMap<ComponentName, arrow2::array::ListArray<i32>> = {
+    let components: IntMap<ComponentName, arrow2::array::ListArray<i32>> = {
         let component_type_registry = COMPONENT_TYPES.read();
         component_columns
             .iter()

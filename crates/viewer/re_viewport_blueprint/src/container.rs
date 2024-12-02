@@ -1,18 +1,14 @@
 use ahash::HashMap;
 use egui_tiles::TileId;
 
-use re_chunk::{Chunk, LatestAtQuery, RowId};
+use re_chunk::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log::ResultExt;
 use re_log_types::EntityPath;
 use re_types::components::Name;
 use re_types::{blueprint::components::Visible, Archetype as _};
 use re_types_blueprint::blueprint::archetypes as blueprint_archetypes;
 use re_types_blueprint::blueprint::components::{ContainerKind, GridColumns};
-use re_viewer_context::{
-    ContainerId, Contents, ContentsName, SpaceViewId, SystemCommand, SystemCommandSender as _,
-    ViewerContext,
-};
+use re_viewer_context::{ContainerId, Contents, ContentsName, SpaceViewId, ViewerContext};
 
 /// The native version of a [`re_types_blueprint::blueprint::archetypes::ContainerBlueprint`].
 ///
@@ -22,7 +18,7 @@ use re_viewer_context::{
 ///
 /// The main reason this exists is to handle type conversions that aren't yet
 /// well handled by the code-generated archetypes.
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct ContainerBlueprint {
     pub id: ContainerId,
     pub container_kind: egui_tiles::ContainerKind,
@@ -52,6 +48,13 @@ impl Default for ContainerBlueprint {
 }
 
 impl ContainerBlueprint {
+    pub fn new(id: ContainerId) -> Self {
+        Self {
+            id,
+            ..Default::default()
+        }
+    }
+
     /// Attempt to load a [`ContainerBlueprint`] from the blueprint store.
     pub fn try_from_db(
         blueprint_db: &EntityDb,
@@ -139,6 +142,24 @@ impl ContainerBlueprint {
         self.id.as_entity_path()
     }
 
+    pub fn add_child(&mut self, content: Contents) {
+        self.contents.push(content);
+        match self.container_kind {
+            egui_tiles::ContainerKind::Tabs => {
+                self.active_tab = self.active_tab.or(Some(content));
+            }
+            egui_tiles::ContainerKind::Horizontal => {
+                self.col_shares.push(1.0);
+            }
+            egui_tiles::ContainerKind::Vertical => {
+                self.row_shares.push(1.0);
+            }
+            egui_tiles::ContainerKind::Grid => {
+                // dunno
+            }
+        }
+    }
+
     /// Persist the entire [`ContainerBlueprint`] to the blueprint store.
     ///
     /// This only needs to be called if the [`ContainerBlueprint`] was created with [`Self::from_egui_tiles_container`].
@@ -146,8 +167,6 @@ impl ContainerBlueprint {
     /// Otherwise, incremental calls to `set_` functions will write just the necessary component
     /// update directly to the store.
     pub fn save_to_blueprint_store(&self, ctx: &ViewerContext<'_>) {
-        let timepoint = ctx.store_context.blueprint_timepoint_for_writes();
-
         let Self {
             id,
             container_kind,
@@ -190,17 +209,7 @@ impl ContainerBlueprint {
             ctx.save_empty_blueprint_component::<GridColumns>(&id.as_entity_path());
         }
 
-        if let Some(chunk) = Chunk::builder(id.as_entity_path())
-            .with_archetype(RowId::new(), timepoint, &arch)
-            .build()
-            .warn_on_err_once("Failed to create container blueprint.")
-        {
-            ctx.command_sender
-                .send_system(SystemCommand::UpdateBlueprint(
-                    ctx.store_context.blueprint.store_id().clone(),
-                    vec![chunk],
-                ));
-        }
+        ctx.save_blueprint_archetype(&id.as_entity_path(), &arch);
     }
 
     /// Creates a new [`ContainerBlueprint`] from the given [`egui_tiles::Container`].
@@ -349,12 +358,13 @@ impl ContainerBlueprint {
     }
 
     /// Clears the blueprint component for this container.
-    // TODO(jleibs): Should this be a recursive clear?
     pub fn clear(&self, ctx: &ViewerContext<'_>) {
-        ctx.command_sender.send_system(SystemCommand::DropEntity(
-            ctx.store_context.blueprint.store_id().clone(),
-            self.entity_path(),
-        ));
+        // We can't delete the entity, because we need to support undo.
+        // TODO(#8249): configure blueprint GC to remove this entity if all that remains is the recursive clear.
+        ctx.save_blueprint_archetype(
+            &self.entity_path(),
+            &re_types::archetypes::Clear::recursive(),
+        );
     }
 
     pub fn to_tile(&self) -> egui_tiles::Tile<SpaceViewId> {

@@ -43,31 +43,26 @@ deny = [
   { name = "egui_glow" },   # We use wgpu
   { name = "openssl-sys" }, # We prefer rustls
   { name = "openssl" },     # We prefer rustls
-  # { name = "reqwest" },   # We prefer ureq - less dependencies TODO(#7876): reenable that when `walkers` is updated
 ]
 skip = [
-  { name = "ahash" },             # Popular crate + fast release schedule = lots of crates still using old versions
-  { name = "async-channel" },     # Old version via accesskit
-  { name = "async-fs" },          # Old version via accesskit
-  { name = "base64" },            # Too popular
-  { name = "cargo_metadata" },    # Older version used by ply-rs. It's small, and it's build-time only!
-  { name = "cfg_aliases" },       # Tiny macro-only crate. wgpu/naga is using an old version
-  { name = "hashbrown" },         # Old version used by polar-rs
-  { name = "memoffset" },         # Small crate
-  { name = "prettyplease" },      # Old version being used by prost
-  { name = "pulldown-cmark" },    # Build-dependency via `ply-rs` (!). TODO(emilk): use a better crate for .ply parsing
-  { name = "raw-window-handle" }, # Pretty small crate; some crates still on old version
-  { name = "redox_syscall" },     # Plenty of versions in the wild
-  { name = "pollster" },          # rfd is still on 0.3, but
+  { name = "ahash" },          # Popular crate + fast release schedule = lots of crates still using old versions
+  { name = "base64" },         # Too popular
+  { name = "cargo_metadata" }, # Older version used by ply-rs. It's small, and it's build-time only!
+  { name = "cfg_aliases" },    # Tiny macro-only crate. wgpu/naga is using an old version
+  { name = "hashbrown" },      # Old version used by polar-rs
+  { name = "memoffset" },      # Small crate
+  { name = "prettyplease" },   # Old version being used by prost
+  { name = "pulldown-cmark" }, # Build-dependency via `ply-rs` (!). TODO(emilk): use a better crate for .ply parsing
+  { name = "redox_syscall" },  # Plenty of versions in the wild
+  { name = "pollster" },       # rfd is still on 0.3
 ]
 skip-tree = [
   { name = "cargo-run-wasm" }, # Dev-tool
   { name = "criterion" },      # dev-dependency
-  { name = "quick-xml" },      # Old version via accesskit
-  { name = "toml_edit" },      # Old version via egui-winit, newer used by rustdoc-json
+  { name = "quick-xml" },      # Old version via rfd
   { name = "tower" },          # tonic depends on 0.4.3, but also transitively (axum) on 0.5.1
   { name = "walkers" },        # TODO(#7876): suppress that when `walkers` is updated
-  { name = "windows" },        # Old version used by accesskit_windows, newer version used by wgpu
+  { name = "windows" },        # Latest sysinfo uses 0.57 max, latest wgpu uses 0.58. See also https://github.com/GuillaumeGomez/sysinfo/pull/1338.
   { name = "zbus" },           # Old version via rfd
 ]
 

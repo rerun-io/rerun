@@ -81,7 +81,7 @@ pub struct ViewerContext<'a> {
     pub focused_item: &'a Option<crate::Item>,
 }
 
-impl<'a> ViewerContext<'a> {
+impl ViewerContext<'_> {
     /// The active recording.
     #[inline]
     pub fn recording(&self) -> &EntityDb {
@@ -176,7 +176,7 @@ impl<'a> ViewerContext<'a> {
     pub fn placeholder_for(
         &self,
         component: re_chunk::ComponentName,
-    ) -> Box<dyn re_chunk::ArrowArray> {
+    ) -> Box<dyn re_chunk::Arrow2Array> {
         let datatype = if let Some(reflection) = self.reflection.components.get(&component) {
             // It's a builtin type with reflection. We either have custom place holder, or can rely on the known datatype.
             if let Some(placeholder) = reflection.custom_placeholder.as_ref() {

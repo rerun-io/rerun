@@ -1,7 +1,7 @@
-use arrow2::array::Array as ArrowArray;
-use arrow2::chunk::Chunk as ArrowChunk;
-use arrow2::datatypes::Schema as ArrowSchema;
-use arrow2::error::Error as ArrowError;
+use arrow2::array::Array as Arrow2Array;
+use arrow2::chunk::Chunk as Arrow2Chunk;
+use arrow2::datatypes::Schema as Arrow2Schema;
+use arrow2::error::Error as Arrow2Error;
 use arrow2::io::ipc::{read, write};
 use re_dataframe::TransportChunk;
 
@@ -10,7 +10,7 @@ use crate::v0::{EncoderVersion, RecordingMetadata};
 #[derive(Debug, thiserror::Error)]
 pub enum CodecError {
     #[error("Arrow serialization error: {0}")]
-    ArrowSerialization(ArrowError),
+    ArrowSerialization(Arrow2Error),
 
     #[error("Failed to decode message header {0}")]
     HeaderDecoding(std::io::Error),
@@ -191,11 +191,11 @@ impl RecordingMetadata {
             .position(|field| field.name == "id")
             .ok_or_else(|| CodecError::InvalidArgument("missing id field in schema".to_owned()))?;
 
-        use arrow2::array::Utf8Array as ArrowUtf8Array;
+        use arrow2::array::Utf8Array as Arrow2Utf8Array;
 
         let id = metadata.data.columns()[id_pos]
             .as_any()
-            .downcast_ref::<ArrowUtf8Array<i32>>()
+            .downcast_ref::<Arrow2Utf8Array<i32>>()
             .ok_or_else(|| {
                 CodecError::InvalidArgument(format!(
                     "Unexpected type for id with position {id_pos} in schema: {:?}",
@@ -215,8 +215,8 @@ impl RecordingMetadata {
 /// using Arrow IPC format.
 fn write_arrow_to_bytes<W: std::io::Write>(
     writer: &mut W,
-    schema: &ArrowSchema,
-    data: &ArrowChunk<Box<dyn ArrowArray>>,
+    schema: &Arrow2Schema,
+    data: &Arrow2Chunk<Box<dyn Arrow2Array>>,
 ) -> Result<(), CodecError> {
     let options = write::WriteOptions { compression: None };
     let mut sw = write::StreamWriter::new(writer, options);
@@ -234,7 +234,7 @@ fn write_arrow_to_bytes<W: std::io::Write>(
 /// using Arrow IPC format.
 fn read_arrow_from_bytes<R: std::io::Read>(
     reader: &mut R,
-) -> Result<(ArrowSchema, ArrowChunk<Box<dyn ArrowArray>>), CodecError> {
+) -> Result<(Arrow2Schema, Arrow2Chunk<Box<dyn Arrow2Array>>), CodecError> {
     let metadata = read::read_stream_metadata(reader).map_err(CodecError::ArrowSerialization)?;
     let mut stream = read::StreamReader::new(reader, metadata, None);
 
@@ -253,12 +253,11 @@ fn read_arrow_from_bytes<R: std::io::Read>(
 
 #[cfg(test)]
 mod tests {
-
-    use arrow2::array::Utf8Array as ArrowUtf8Array;
-    use arrow2::chunk::Chunk as ArrowChunk;
+    use arrow2::array::Utf8Array as Arrow2Utf8Array;
+    use arrow2::chunk::Chunk as Arrow2Chunk;
     use arrow2::{
-        array::Int32Array as ArrowInt32Array, datatypes::Field as ArrowField,
-        datatypes::Schema as ArrowSchema,
+        array::Int32Array as Arrow2Int32Array, datatypes::Field as Arrow2Field,
+        datatypes::Schema as Arrow2Schema,
     };
     use re_dataframe::external::re_chunk::{Chunk, RowId};
     use re_dataframe::TransportChunk;
@@ -360,14 +359,14 @@ mod tests {
 
     #[test]
     fn test_recording_metadata_serialization() {
-        let expected_schema = ArrowSchema::from(vec![
-            ArrowField::new("id", arrow2::datatypes::DataType::Utf8, false),
-            ArrowField::new("my_int", arrow2::datatypes::DataType::Int32, false),
+        let expected_schema = Arrow2Schema::from(vec![
+            Arrow2Field::new("id", arrow2::datatypes::DataType::Utf8, false),
+            Arrow2Field::new("my_int", arrow2::datatypes::DataType::Int32, false),
         ]);
 
-        let id = ArrowUtf8Array::<i32>::from_slice(["some_id"]);
-        let my_ints = ArrowInt32Array::from_slice([42]);
-        let expected_chunk = ArrowChunk::new(vec![Box::new(id) as _, Box::new(my_ints) as _]);
+        let id = Arrow2Utf8Array::<i32>::from_slice(["some_id"]);
+        let my_ints = Arrow2Int32Array::from_slice([42]);
+        let expected_chunk = Arrow2Chunk::new(vec![Box::new(id) as _, Box::new(my_ints) as _]);
         let metadata_tc = TransportChunk {
             schema: expected_schema.clone(),
             data: expected_chunk.clone(),
@@ -387,15 +386,15 @@ mod tests {
 
     #[test]
     fn test_recording_metadata_fails_with_non_unit_batch() {
-        let expected_schema = ArrowSchema::from(vec![ArrowField::new(
+        let expected_schema = Arrow2Schema::from(vec![Arrow2Field::new(
             "my_int",
             arrow2::datatypes::DataType::Int32,
             false,
         )]);
         // more than 1 row in the batch
-        let my_ints = ArrowInt32Array::from_slice([41, 42]);
+        let my_ints = Arrow2Int32Array::from_slice([41, 42]);
 
-        let expected_chunk = ArrowChunk::new(vec![Box::new(my_ints) as _]);
+        let expected_chunk = Arrow2Chunk::new(vec![Box::new(my_ints) as _]);
         let metadata_tc = TransportChunk {
             schema: expected_schema.clone(),
             data: expected_chunk,

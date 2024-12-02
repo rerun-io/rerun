@@ -18,9 +18,9 @@ use crate::{
 /// This short-circuits on error using the `try` (`?`) operator: the outer scope must be one that
 /// returns a `Result<_, DeserializationError>`!
 ///
-/// There is a 1:1 relationship between `quote_arrow_deserializer` and `Loggable::from_arrow_opt`:
+/// There is a 1:1 relationship between `quote_arrow_deserializer` and `Loggable::from_arrow2_opt`:
 /// ```ignore
-/// fn from_arrow_opt(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Option<Self>>> {
+/// fn from_arrow2_opt(data: &dyn ::arrow2::array::Array) -> DeserializationResult<Vec<Option<Self>>> {
 ///     Ok(#quoted_deserializer)
 /// }
 /// ```
@@ -494,7 +494,7 @@ enum InnerRepr {
 ///
 /// The `datatype` comes from our compile-time Arrow registry, not from the runtime payload!
 /// If the datatype happens to be a struct or union, this will merely inject a runtime call to
-/// `Loggable::from_arrow_opt` and call it a day, preventing code bloat.
+/// `Loggable::from_arrow2_opt` and call it a day, preventing code bloat.
 ///
 /// `data_src` is the runtime identifier of the variable holding the Arrow payload (`&dyn ::arrow2::array::Array`).
 /// The returned `TokenStream` always instantiates a `Vec<Option<T>>`.
@@ -517,7 +517,7 @@ fn quote_arrow_field_deserializer(
     if let DataType::Extension(fqname, _, _) = datatype {
         if objects.get(fqname).map_or(false, |obj| obj.is_enum()) {
             let fqname_use = quote_fqname_as_type_path(fqname);
-            return quote!(#fqname_use::from_arrow_opt(#data_src).with_context(#obj_field_fqname)?.into_iter());
+            return quote!(#fqname_use::from_arrow2_opt(#data_src).with_context(#obj_field_fqname)?.into_iter());
         }
     }
 
@@ -848,7 +848,7 @@ fn quote_arrow_field_deserializer(
                 unreachable!()
             };
             let fqname_use = quote_fqname_as_type_path(fqname);
-            quote!(#fqname_use::from_arrow_opt(#data_src).with_context(#obj_field_fqname)?.into_iter())
+            quote!(#fqname_use::from_arrow2_opt(#data_src).with_context(#obj_field_fqname)?.into_iter())
         }
 
         _ => unimplemented!("{datatype:#?}"),

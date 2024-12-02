@@ -751,7 +751,7 @@ impl quote::ToTokens for TypeTokenizer<'_> {
             Type::Int32 => quote!(i32),
             Type::Int64 => quote!(i64),
             Type::Bool => quote!(bool),
-            Type::Float16 => quote!(arrow2::types::f16),
+            Type::Float16 => quote!(half::f16),
             Type::Float32 => quote!(f32),
             Type::Float64 => quote!(f64),
             Type::String => quote!(::re_types_core::ArrowString),
@@ -789,7 +789,7 @@ impl quote::ToTokens for &ElementType {
             ElementType::Int32 => quote!(i32),
             ElementType::Int64 => quote!(i64),
             ElementType::Bool => quote!(bool),
-            ElementType::Float16 => quote!(arrow2::types::f16),
+            ElementType::Float16 => quote!(half::f16),
             ElementType::Float32 => quote!(f32),
             ElementType::Float64 => quote!(f64),
             ElementType::String => quote!(::re_types_core::ArrowString),
@@ -864,7 +864,7 @@ fn quote_trait_impls_for_datatype_or_component(
     let quoted_arrow_datatype = if let Some(forwarded_type) = forwarded_type.as_ref() {
         quote! {
             #[inline]
-            fn arrow_datatype() -> arrow2::datatypes::DataType {
+            fn arrow_datatype() -> arrow::datatypes::DataType {
                 #forwarded_type::arrow_datatype()
             }
         }
@@ -872,16 +872,16 @@ fn quote_trait_impls_for_datatype_or_component(
         let datatype = ArrowDataTypeTokenizer(&datatype, false);
         quote! {
             #[inline]
-            fn arrow_datatype() -> arrow2::datatypes::DataType {
+            fn arrow_datatype() -> arrow::datatypes::DataType {
                 #![allow(clippy::wildcard_imports)]
-                use arrow2::datatypes::*;
+                use arrow::datatypes::*;
                 #datatype
             }
         }
     };
 
-    let quoted_from_arrow = if optimize_for_buffer_slice {
-        let from_arrow_body = if let Some(forwarded_type) = forwarded_type.as_ref() {
+    let quoted_from_arrow2 = if optimize_for_buffer_slice {
+        let from_arrow2_body = if let Some(forwarded_type) = forwarded_type.as_ref() {
             let is_pod = obj
                 .try_get_attr::<String>(ATTR_RUST_DERIVE)
                 .map_or(false, |d| d.contains("bytemuck::Pod"))
@@ -890,11 +890,11 @@ fn quote_trait_impls_for_datatype_or_component(
                     .map_or(false, |d| d.contains("bytemuck::Pod"));
             if is_pod {
                 quote! {
-                    #forwarded_type::from_arrow(arrow_data).map(bytemuck::cast_vec)
+                    #forwarded_type::from_arrow2(arrow_data).map(bytemuck::cast_vec)
                 }
             } else {
                 quote! {
-                    #forwarded_type::from_arrow(arrow_data).map(|v| v.into_iter().map(Self).collect())
+                    #forwarded_type::from_arrow2(arrow_data).map(|v| v.into_iter().map(Self).collect())
                 }
             }
         } else {
@@ -906,7 +906,8 @@ fn quote_trait_impls_for_datatype_or_component(
                 // re_tracing::profile_function!();
 
                 #![allow(clippy::wildcard_imports)]
-                use arrow2::{datatypes::*, array::*, buffer::*};
+                use arrow::datatypes::*;
+                use arrow2::{ array::*, buffer::*};
                 use ::re_types_core::{Loggable as _, ResultExt as _};
 
                 // This code-path cannot have null fields. If it does have a validity mask
@@ -923,13 +924,13 @@ fn quote_trait_impls_for_datatype_or_component(
 
         quote! {
             #[inline]
-            fn from_arrow(
+            fn from_arrow2(
                 arrow_data: &dyn arrow2::array::Array,
             ) -> DeserializationResult<Vec<Self>>
             where
                 Self: Sized
             {
-                #from_arrow_body
+                #from_arrow2_body
             }
         }
     } else {
@@ -939,7 +940,7 @@ fn quote_trait_impls_for_datatype_or_component(
     // Forward deserialization to existing datatype if it's transparent.
     let quoted_deserializer = if let Some(forwarded_type) = forwarded_type.as_ref() {
         quote! {
-            #forwarded_type::from_arrow_opt(arrow_data).map(|v| v.into_iter().map(|v| v.map(Self)).collect())
+            #forwarded_type::from_arrow2_opt(arrow_data).map(|v| v.into_iter().map(|v| v.map(Self)).collect())
         }
     } else {
         let quoted_deserializer = quote_arrow_deserializer(arrow_registry, objects, obj);
@@ -948,7 +949,8 @@ fn quote_trait_impls_for_datatype_or_component(
             // re_tracing::profile_function!();
 
             #![allow(clippy::wildcard_imports)]
-            use arrow2::{datatypes::*, array::*, buffer::*};
+            use arrow::datatypes::*;
+            use arrow2::{ array::*, buffer::*};
             use ::re_types_core::{Loggable as _, ResultExt as _};
             Ok(#quoted_deserializer)
         }
@@ -958,7 +960,7 @@ fn quote_trait_impls_for_datatype_or_component(
         quote! {
             fn to_arrow_opt<'a>(
                 data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-            ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+            ) -> SerializationResult<arrow::array::ArrayRef>
             where
                 Self: Clone + 'a,
             {
@@ -978,7 +980,7 @@ fn quote_trait_impls_for_datatype_or_component(
             // NOTE: Don't inline this, this gets _huge_.
             fn to_arrow_opt<'a>(
                 data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-            ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+            ) -> SerializationResult<arrow::array::ArrayRef>
             where
                 Self: Clone + 'a
             {
@@ -987,8 +989,13 @@ fn quote_trait_impls_for_datatype_or_component(
 
                 #![allow(clippy::wildcard_imports)]
                 #![allow(clippy::manual_is_variant_and)]
-                use arrow2::{datatypes::*, array::*};
+                use arrow::{array::*, buffer::*, datatypes::*};
                 use ::re_types_core::{Loggable as _, ResultExt as _};
+
+                #[allow(unused)]
+                fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+                    std::sync::Arc::new(t) as ArrayRef
+                }
 
                 Ok(#quoted_serializer)
             }
@@ -1015,7 +1022,7 @@ fn quote_trait_impls_for_datatype_or_component(
             #quoted_serializer
 
             // NOTE: Don't inline this, this gets _huge_.
-            fn from_arrow_opt(
+            fn from_arrow2_opt(
                 arrow_data: &dyn arrow2::array::Array,
             ) -> DeserializationResult<Vec<Option<Self>>>
             where
@@ -1024,7 +1031,7 @@ fn quote_trait_impls_for_datatype_or_component(
                 #quoted_deserializer
             }
 
-            #quoted_from_arrow
+            #quoted_from_arrow2
         }
 
         #quoted_impl_component
@@ -1173,7 +1180,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
 
                 quote! {
                     if let Some(array) = arrays_by_name.get(#field_typ_fqname_str) {
-                        <#component>::from_arrow_opt(&**array)
+                        <#component>::from_arrow2_opt(&**array)
                             .with_context(#obj_field_fqname)?
                             #quoted_collection
                     } else {
@@ -1184,7 +1191,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
                 quote! {
                     if let Some(array) = arrays_by_name.get(#field_typ_fqname_str) {
                         Some({
-                            <#component>::from_arrow_opt(&**array)
+                            <#component>::from_arrow2_opt(&**array)
                                 .with_context(#obj_field_fqname)?
                                 #quoted_collection
                         })
@@ -1199,7 +1206,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
                         .ok_or_else(DeserializationError::missing_data)
                         .with_context(#obj_field_fqname)?;
 
-                    <#component>::from_arrow_opt(&**array).with_context(#obj_field_fqname)? #quoted_collection
+                    <#component>::from_arrow2_opt(&**array).with_context(#obj_field_fqname)? #quoted_collection
                 }}
             };
 
@@ -1269,7 +1276,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
             }
 
             #[inline]
-            fn from_arrow_components(
+            fn from_arrow2_components(
                 arrow_data: impl IntoIterator<Item = (
                     ComponentName,
                     Box<dyn arrow2::array::Array>,

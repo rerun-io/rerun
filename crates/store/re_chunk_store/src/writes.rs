@@ -1,7 +1,7 @@
 use std::{collections::BTreeSet, sync::Arc};
 
 use ahash::HashMap;
-use arrow2::array::{Array as _, ListArray as ArrowListArray};
+use arrow2::array::{Array as _, ListArray as Arrow2ListArray};
 use itertools::Itertools as _;
 
 use re_chunk::{Chunk, EntityPath, RowId};
@@ -45,7 +45,7 @@ impl ChunkStore {
             return Ok(Vec::new());
         };
 
-        re_tracing::profile_function!(format!("{}", row_id_range.0));
+        re_tracing::profile_function!();
 
         self.insert_id += 1;
 
@@ -322,9 +322,11 @@ impl ChunkStore {
                             .map(|diff| (diff.chunk.id(), diff.chunk)),
                     )
                     .collect();
-                let dst = chunk_or_compacted.id();
 
-                diff.compacted = Some((srcs, dst));
+                diff.compacted = Some(crate::ChunkCompactionReport {
+                    srcs,
+                    new_chunk: chunk_or_compacted.clone(),
+                });
             }
 
             (chunk_or_compacted, vec![diff])
@@ -339,7 +341,7 @@ impl ChunkStore {
         for (&component_name, list_array) in chunk.components() {
             self.type_registry.insert(
                 component_name,
-                ArrowListArray::<i32>::get_child_type(list_array.data_type()).clone(),
+                Arrow2ListArray::<i32>::get_child_type(list_array.data_type()).clone(),
             );
 
             let column_metadata_state = self
@@ -391,7 +393,7 @@ impl ChunkStore {
     /// Everytime we encounter a neighbor, it earns points.
     ///
     /// The neighbor with the most points at the end of the process is elected.
-    fn find_and_elect_compaction_candidate(&mut self, chunk: &Arc<Chunk>) -> Option<Arc<Chunk>> {
+    fn find_and_elect_compaction_candidate(&self, chunk: &Arc<Chunk>) -> Option<Arc<Chunk>> {
         re_tracing::profile_function!();
 
         let mut candidates_below_threshold: HashMap<ChunkId, bool> = HashMap::default();

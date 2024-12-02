@@ -32,7 +32,7 @@ uint8
 ## API reference links
  * 🌊 [C++ API docs for `ColorModel`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1datatypes.html)
  * 🐍 [Python API docs for `ColorModel`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.ColorModel)
- * 🦀 [Rust API docs for `ColorModel`](https://ref.rerun.io/docs/rust/stable/rerun/datatypes/enum.ColorModel.html)
+ * 🦀 [Rust API docs for `ColorModel`](https://docs.rs/rerun/latest/rerun/datatypes/enum.ColorModel.html)
 
 
 ## Used by

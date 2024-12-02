@@ -4,7 +4,7 @@ use std::sync::Arc;
 use egui_extras::{Column, TableRow};
 use itertools::Itertools;
 
-use re_chunk_store::external::re_chunk::{ArrowArray, TransportChunk};
+use re_chunk_store::external::re_chunk::{Arrow2Array, TransportChunk};
 use re_chunk_store::Chunk;
 use re_log_types::external::re_types_core::SizeBytes;
 use re_log_types::{TimeZone, Timeline};
@@ -187,7 +187,7 @@ impl ChunkUi {
     }
 
     // Returns true if the user wants to exit the chunk viewer.
-    fn chunk_info_ui(&mut self, ui: &mut egui::Ui) -> bool {
+    fn chunk_info_ui(&self, ui: &mut egui::Ui) -> bool {
         let metadata_ui = |ui: &mut egui::Ui, metadata: &BTreeMap<String, String>| {
             for (key, value) in metadata {
                 ui.list_item_flat_noninteractive(

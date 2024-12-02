@@ -253,15 +253,15 @@ If no arguments are given, a server will be hosted which a Rerun SDK can connect
     /// Possible values:
     ///
     /// * `auto`
-    /// May use hardware acceleration if available and compatible with the codec.
+    ///   May use hardware acceleration if available and compatible with the codec.
     ///
     /// * `prefer_software`
-    /// Should use a software decoder even if hardware acceleration is available.
-    /// If no software decoder is present, this may cause decoding to fail.
+    ///   Should use a software decoder even if hardware acceleration is available.
+    ///   If no software decoder is present, this may cause decoding to fail.
     ///
     /// * `prefer_hardware`
-    /// Should use a hardware decoder.
-    /// If no hardware decoder is present, this may cause decoding to fail.
+    ///   Should use a hardware decoder.
+    ///   If no hardware decoder is present, this may cause decoding to fail.
     #[clap(long, verbatim_doc_comment)]
     video_decoder: Option<String>,
 
@@ -1000,7 +1000,6 @@ fn stream_to_rrd_on_disk(
     path: &std::path::PathBuf,
 ) -> Result<(), re_log_encoding::FileSinkError> {
     use re_log_encoding::FileSinkError;
-    use re_smart_channel::RecvError;
 
     if path.exists() {
         re_log::warn!("Overwriting existing file at {path:?}");
@@ -1018,16 +1017,13 @@ fn stream_to_rrd_on_disk(
     )?;
 
     loop {
-        match rx.recv() {
-            Ok(msg) => {
-                if let Some(payload) = msg.into_data() {
-                    encoder.append(&payload)?;
-                }
+        if let Ok(msg) = rx.recv() {
+            if let Some(payload) = msg.into_data() {
+                encoder.append(&payload)?;
             }
-            Err(RecvError) => {
-                re_log::info!("Log stream disconnected, stopping.");
-                break;
-            }
+        } else {
+            re_log::info!("Log stream disconnected, stopping.");
+            break;
         }
     }
 

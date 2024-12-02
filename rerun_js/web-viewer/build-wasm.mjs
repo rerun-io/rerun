@@ -15,20 +15,26 @@ const exec = (cmd) => {
 };
 
 function buildWebViewer(mode) {
+  let modeFlags = "";
   switch (mode) {
-    case "debug": {
-      return exec(
-        "cargo run -p re_dev_tools -- build-web-viewer --debug --target no-modules-base -o rerun_js/web-viewer",
-      );
-    }
-    case "release": {
-      return exec(
-        "cargo run -p re_dev_tools -- build-web-viewer --release -g --target no-modules-base -o rerun_js/web-viewer",
-      );
-    }
+    case "debug":
+      modeFlags = "--debug";
+      break;
+    case "release":
+      modeFlags = "--release -g";
+      break;
     default:
       throw new Error(`Unknown mode: ${mode}`);
   }
+  return exec(
+    [
+      "cargo run -p re_dev_tools -- build-web-viewer",
+      modeFlags,
+      "--target no-modules-base",
+      "--features grpc",
+      "-o rerun_js/web-viewer",
+    ].join(" "),
+  );
 }
 
 function re_viewer_js() {

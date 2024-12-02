@@ -180,7 +180,7 @@ impl ::re_types_core::Archetype for TextDocument {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -194,7 +194,7 @@ impl ::re_types_core::Archetype for TextDocument {
                 .get("rerun.components.Text")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.archetypes.TextDocument#text")?;
-            <crate::components::Text>::from_arrow_opt(&**array)
+            <crate::components::Text>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.TextDocument#text")?
                 .into_iter()
                 .next()
@@ -203,7 +203,7 @@ impl ::re_types_core::Archetype for TextDocument {
                 .with_context("rerun.archetypes.TextDocument#text")?
         };
         let media_type = if let Some(array) = arrays_by_name.get("rerun.components.MediaType") {
-            <crate::components::MediaType>::from_arrow_opt(&**array)
+            <crate::components::MediaType>::from_arrow2_opt(&**array)
                 .with_context("rerun.archetypes.TextDocument#media_type")?
                 .into_iter()
                 .next()

@@ -34,6 +34,7 @@ use crate::{SpaceViewBlueprint, ViewProperty};
 ///
 /// If you want a new space view otherwise identical to an existing one, use
 /// [`SpaceViewBlueprint::duplicate`].
+#[derive(Clone, Debug)]
 pub struct SpaceViewContents {
     pub blueprint_entity_path: EntityPath,
 
@@ -282,7 +283,7 @@ struct QueryExpressionEvaluator<'a> {
     individual_override_base_path: EntityPath,
 }
 
-impl<'a> QueryExpressionEvaluator<'a> {
+impl QueryExpressionEvaluator<'_> {
     fn add_entity_tree_to_data_results_recursive(
         &self,
         tree: &EntityTree,

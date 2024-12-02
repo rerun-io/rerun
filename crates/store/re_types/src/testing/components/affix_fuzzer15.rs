@@ -66,47 +66,54 @@ impl std::ops::DerefMut for AffixFuzzer15 {
 
 impl ::re_types_core::Loggable for AffixFuzzer15 {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
+        use arrow::datatypes::*;
         DataType::Union(
-            std::sync::Arc::new(vec![
-                Field::new("_null_markers", DataType::Null, true),
-                Field::new("degrees", DataType::Float32, false),
-                Field::new(
-                    "craziness",
-                    DataType::List(std::sync::Arc::new(Field::new(
-                        "item",
-                        <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
+            UnionFields::new(
+                vec![0, 1, 2, 3, 4],
+                vec![
+                    Field::new("_null_markers", DataType::Null, true),
+                    Field::new("degrees", DataType::Float32, false),
+                    Field::new(
+                        "craziness",
+                        DataType::List(std::sync::Arc::new(Field::new(
+                            "item",
+                            <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
+                            false,
+                        ))),
                         false,
-                    ))),
-                    false,
-                ),
-                Field::new(
-                    "fixed_size_shenanigans",
-                    DataType::FixedSizeList(
-                        std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
-                        3usize,
                     ),
-                    false,
-                ),
-                Field::new("empty_variant", DataType::Null, true),
-            ]),
-            Some(std::sync::Arc::new(vec![0i32, 1i32, 2i32, 3i32, 4i32])),
+                    Field::new(
+                        "fixed_size_shenanigans",
+                        DataType::FixedSizeList(
+                            std::sync::Arc::new(Field::new("item", DataType::Float32, false)),
+                            3,
+                        ),
+                        false,
+                    ),
+                    Field::new("empty_variant", DataType::Null, true),
+                ],
+            ),
             UnionMode::Dense,
         )
     }
 
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -116,18 +123,18 @@ impl ::re_types_core::Loggable for AffixFuzzer15 {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let data0_validity: Option<arrow::buffer::NullBuffer> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
-                _ = data0_bitmap;
+                _ = data0_validity;
                 crate::testing::datatypes::AffixFuzzer3::to_arrow_opt(data0)?
             }
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -135,9 +142,10 @@ impl ::re_types_core::Loggable for AffixFuzzer15 {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok(
-            crate::testing::datatypes::AffixFuzzer3::from_arrow_opt(arrow_data)
+            crate::testing::datatypes::AffixFuzzer3::from_arrow2_opt(arrow_data)
                 .with_context("rerun.testing.components.AffixFuzzer15#single_optional_union")?
                 .into_iter()
                 .map(Ok)

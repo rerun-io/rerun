@@ -15,7 +15,6 @@ from .filter_by_range import FilterByRange, FilterByRangeBatch
 from .filter_is_not_null import FilterIsNotNull, FilterIsNotNullBatch
 from .grid_columns import GridColumns, GridColumnsBatch
 from .included_content import IncludedContent, IncludedContentBatch
-from .included_space_view import IncludedSpaceView, IncludedSpaceViewBatch
 from .interactive import Interactive, InteractiveBatch
 from .lock_range_during_zoom import LockRangeDuringZoom, LockRangeDuringZoomBatch
 from .map_provider import MapProvider, MapProviderArrayLike, MapProviderBatch, MapProviderLike
@@ -70,8 +69,6 @@ __all__ = [
     "GridColumnsBatch",
     "IncludedContent",
     "IncludedContentBatch",
-    "IncludedSpaceView",
-    "IncludedSpaceViewBatch",
     "Interactive",
     "InteractiveBatch",
     "LockRangeDuringZoom",

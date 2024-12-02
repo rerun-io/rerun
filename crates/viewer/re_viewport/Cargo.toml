@@ -44,4 +44,5 @@ glam.workspace = true
 image = { workspace = true, default-features = false, features = ["png"] }
 itertools.workspace = true
 nohash-hasher.workspace = true
+parking_lot.workspace = true
 rayon.workspace = true

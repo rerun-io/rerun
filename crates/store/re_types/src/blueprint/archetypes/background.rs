@@ -107,7 +107,7 @@ impl ::re_types_core::Archetype for Background {
     }
 
     #[inline]
-    fn from_arrow_components(
+    fn from_arrow2_components(
         arrow_data: impl IntoIterator<Item = (ComponentName, Box<dyn arrow2::array::Array>)>,
     ) -> DeserializationResult<Self> {
         re_tracing::profile_function!();
@@ -121,7 +121,7 @@ impl ::re_types_core::Archetype for Background {
                 .get("rerun.blueprint.components.BackgroundKind")
                 .ok_or_else(DeserializationError::missing_data)
                 .with_context("rerun.blueprint.archetypes.Background#kind")?;
-            <crate::blueprint::components::BackgroundKind>::from_arrow_opt(&**array)
+            <crate::blueprint::components::BackgroundKind>::from_arrow2_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.Background#kind")?
                 .into_iter()
                 .next()
@@ -130,7 +130,7 @@ impl ::re_types_core::Archetype for Background {
                 .with_context("rerun.blueprint.archetypes.Background#kind")?
         };
         let color = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
-            <crate::components::Color>::from_arrow_opt(&**array)
+            <crate::components::Color>::from_arrow2_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.Background#color")?
                 .into_iter()
                 .next()

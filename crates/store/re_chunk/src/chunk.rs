@@ -1,17 +1,17 @@
-use std::{
-    collections::BTreeMap,
-    sync::atomic::{AtomicU64, Ordering},
-};
+use std::sync::atomic::{AtomicU64, Ordering};
 
+use ahash::HashMap;
 use arrow2::{
     array::{
-        Array as ArrowArray, ListArray as ArrowListArray, PrimitiveArray as ArrowPrimitiveArray,
-        StructArray as ArrowStructArray,
+        Array as Arrow2Array, ListArray as Arrow2ListArray, PrimitiveArray as Arrow2PrimitiveArray,
+        StructArray as Arrow2StructArray,
     },
     Either,
 };
 
 use itertools::{izip, Itertools};
+use nohash_hasher::IntMap;
+
 use re_log_types::{EntityPath, ResolvedTimeRange, Time, TimeInt, TimePoint, Timeline};
 use re_types_core::{
     ComponentName, DeserializationError, Loggable, LoggableBatch, SerializationError, SizeBytes,
@@ -74,14 +74,14 @@ pub struct Chunk {
     pub(crate) is_sorted: bool,
 
     /// The respective [`RowId`]s for each row of data.
-    pub(crate) row_ids: ArrowStructArray,
+    pub(crate) row_ids: Arrow2StructArray,
 
     /// The time columns.
     ///
     /// Each column must be the same length as `row_ids`.
     ///
     /// Empty if this is a static chunk.
-    pub(crate) timelines: BTreeMap<Timeline, TimeColumn>,
+    pub(crate) timelines: IntMap<Timeline, TimeColumn>,
 
     /// A sparse `ListArray` for each component.
     ///
@@ -90,7 +90,7 @@ pub struct Chunk {
     /// Sparse so that we can e.g. log a `Position` at one timestamp but not a `Color`.
     //
     // TODO(#6576): support non-list based columns?
-    pub(crate) components: BTreeMap<ComponentName, ArrowListArray<i32>>,
+    pub(crate) components: IntMap<ComponentName, Arrow2ListArray<i32>>,
 }
 
 impl PartialEq for Chunk {
@@ -147,15 +147,17 @@ impl Chunk {
         *entity_path == rhs.entity_path
             && timelines.keys().collect_vec() == rhs.timelines.keys().collect_vec()
             && {
-                let timelines: BTreeMap<_, _> = timelines
+                let timelines: IntMap<_, _> = timelines
                     .iter()
+                    .map(|(timeline, time_chunk)| (*timeline, time_chunk))
                     .filter(|(timeline, _time_chunk)| {
                         timeline.typ() != re_log_types::TimeType::Time
                     })
                     .collect();
-                let rhs_timelines: BTreeMap<_, _> = rhs
+                let rhs_timelines: IntMap<_, _> = rhs
                     .timelines
                     .iter()
+                    .map(|(timeline, time_chunk)| (*timeline, time_chunk))
                     .filter(|(timeline, _time_chunk)| {
                         timeline.typ() != re_log_types::TimeType::Time
                     })
@@ -189,7 +191,7 @@ impl Chunk {
             row_ids.validity().cloned(),
         );
 
-        let components_no_extension: BTreeMap<_, _> = components
+        let components_no_extension: IntMap<_, _> = components
             .iter()
             .map(|(name, arr)| {
                 let arr = arrow2::array::ListArray::new(
@@ -198,11 +200,11 @@ impl Chunk {
                     arr.values().clone(),
                     arr.validity().cloned(),
                 );
-                (name, arr)
+                (*name, arr)
             })
             .collect();
 
-        let other_components_no_extension: BTreeMap<_, _> = other
+        let other_components_no_extension: IntMap<_, _> = other
             .components
             .iter()
             .map(|(name, arr)| {
@@ -212,7 +214,7 @@ impl Chunk {
                     arr.values().clone(),
                     arr.validity().cloned(),
                 );
-                (name, arr)
+                (*name, arr)
             })
             .collect();
 
@@ -265,11 +267,11 @@ impl Chunk {
         .collect_vec();
 
         #[allow(clippy::unwrap_used)]
-        let row_ids = <RowId as Loggable>::to_arrow(&row_ids)
+        let row_ids = <RowId as Loggable>::to_arrow2(&row_ids)
             // Unwrap: native RowIds cannot fail to serialize.
             .unwrap()
             .as_any()
-            .downcast_ref::<ArrowStructArray>()
+            .downcast_ref::<Arrow2StructArray>()
             // Unwrap: RowId schema is known in advance to be a struct array -- always.
             .unwrap()
             .clone();
@@ -295,11 +297,11 @@ impl Chunk {
             .collect_vec();
 
         #[allow(clippy::unwrap_used)]
-        let row_ids = <RowId as Loggable>::to_arrow(&row_ids)
+        let row_ids = <RowId as Loggable>::to_arrow2(&row_ids)
             // Unwrap: native RowIds cannot fail to serialize.
             .unwrap()
             .as_any()
-            .downcast_ref::<ArrowStructArray>()
+            .downcast_ref::<Arrow2StructArray>()
             // Unwrap: RowId schema is known in advance to be a struct array -- always.
             .unwrap()
             .clone();
@@ -318,7 +320,7 @@ impl Chunk {
     #[inline]
     pub fn time_range_per_component(
         &self,
-    ) -> BTreeMap<Timeline, BTreeMap<ComponentName, ResolvedTimeRange>> {
+    ) -> IntMap<Timeline, IntMap<ComponentName, ResolvedTimeRange>> {
         re_tracing::profile_function!();
 
         self.timelines
@@ -448,24 +450,31 @@ impl Chunk {
 
         debug_assert!(!time_column.is_sorted());
 
-        self.components
-            .values()
-            .flat_map(move |list_array| {
-                izip!(
-                    time_column.times(),
-                    // Reminder: component columns are sparse, we must take a look at the validity bitmaps.
-                    list_array.validity().map_or_else(
-                        || arrow2::Either::Left(std::iter::repeat(1).take(self.num_rows())),
-                        |validity| arrow2::Either::Right(validity.iter().map(|b| b as u64)),
-                    )
-                )
-            })
-            .fold(BTreeMap::default(), |mut acc, (time, is_valid)| {
-                *acc.entry(time).or_default() += is_valid;
-                acc
-            })
-            .into_iter()
-            .collect()
+        // NOTE: This is used on some very hot paths (time panel rendering).
+
+        let result_unordered =
+            self.components
+                .values()
+                .fold(HashMap::default(), |acc, list_array| {
+                    if let Some(validity) = list_array.validity() {
+                        time_column.times().zip(validity.iter()).fold(
+                            acc,
+                            |mut acc, (time, is_valid)| {
+                                *acc.entry(time).or_default() += is_valid as u64;
+                                acc
+                            },
+                        )
+                    } else {
+                        time_column.times().fold(acc, |mut acc, time| {
+                            *acc.entry(time).or_default() += 1;
+                            acc
+                        })
+                    }
+                });
+
+        let mut result = result_unordered.into_iter().collect_vec();
+        result.sort_by_key(|val| val.0);
+        result
     }
 
     /// The number of events in this chunk for the specified component.
@@ -492,7 +501,7 @@ impl Chunk {
     /// This is crucial for indexing and queries to work properly.
     //
     // TODO(cmc): This needs to be stored in chunk metadata and transported across IPC.
-    pub fn row_id_range_per_component(&self) -> BTreeMap<ComponentName, (RowId, RowId)> {
+    pub fn row_id_range_per_component(&self) -> IntMap<ComponentName, (RowId, RowId)> {
         re_tracing::profile_function!();
 
         let row_ids = self.row_ids().collect_vec();
@@ -555,7 +564,7 @@ pub struct TimeColumn {
     /// * This is guaranteed to always be dense, because chunks are split anytime a timeline is
     ///   added or removed.
     /// * This cannot ever contain `TimeInt::STATIC`, since static data doesn't even have timelines.
-    pub(crate) times: ArrowPrimitiveArray<i64>,
+    pub(crate) times: Arrow2PrimitiveArray<i64>,
 
     /// Is [`Self::times`] sorted?
     ///
@@ -583,9 +592,9 @@ impl Chunk {
         id: ChunkId,
         entity_path: EntityPath,
         is_sorted: Option<bool>,
-        row_ids: ArrowStructArray,
-        timelines: BTreeMap<Timeline, TimeColumn>,
-        components: BTreeMap<ComponentName, ArrowListArray<i32>>,
+        row_ids: Arrow2StructArray,
+        timelines: IntMap<Timeline, TimeColumn>,
+        components: IntMap<ComponentName, Arrow2ListArray<i32>>,
     ) -> ChunkResult<Self> {
         let mut chunk = Self {
             id,
@@ -618,18 +627,18 @@ impl Chunk {
         entity_path: EntityPath,
         is_sorted: Option<bool>,
         row_ids: &[RowId],
-        timelines: BTreeMap<Timeline, TimeColumn>,
-        components: BTreeMap<ComponentName, ArrowListArray<i32>>,
+        timelines: IntMap<Timeline, TimeColumn>,
+        components: IntMap<ComponentName, Arrow2ListArray<i32>>,
     ) -> ChunkResult<Self> {
         re_tracing::profile_function!();
         let row_ids = row_ids
-            .to_arrow()
+            .to_arrow2()
             // NOTE: impossible, but better safe than sorry.
             .map_err(|err| ChunkError::Malformed {
                 reason: format!("RowIds failed to serialize: {err}"),
             })?
             .as_any()
-            .downcast_ref::<ArrowStructArray>()
+            .downcast_ref::<Arrow2StructArray>()
             // NOTE: impossible, but better safe than sorry.
             .ok_or_else(|| ChunkError::Malformed {
                 reason: "RowIds failed to downcast".to_owned(),
@@ -649,8 +658,8 @@ impl Chunk {
     pub fn from_auto_row_ids(
         id: ChunkId,
         entity_path: EntityPath,
-        timelines: BTreeMap<Timeline, TimeColumn>,
-        components: BTreeMap<ComponentName, ArrowListArray<i32>>,
+        timelines: IntMap<Timeline, TimeColumn>,
+        components: IntMap<ComponentName, Arrow2ListArray<i32>>,
     ) -> ChunkResult<Self> {
         let count = components
             .iter()
@@ -680,8 +689,8 @@ impl Chunk {
         id: ChunkId,
         entity_path: EntityPath,
         is_sorted: Option<bool>,
-        row_ids: ArrowStructArray,
-        components: BTreeMap<ComponentName, ArrowListArray<i32>>,
+        row_ids: Arrow2StructArray,
+        components: IntMap<ComponentName, Arrow2ListArray<i32>>,
     ) -> ChunkResult<Self> {
         Self::new(
             id,
@@ -700,13 +709,13 @@ impl Chunk {
             entity_path,
             heap_size_bytes: Default::default(),
             is_sorted: true,
-            row_ids: ArrowStructArray::new_empty(RowId::arrow_datatype()),
+            row_ids: Arrow2StructArray::new_empty(RowId::arrow2_datatype()),
             timelines: Default::default(),
             components: Default::default(),
         }
     }
 
-    /// Unconditionally inserts an [`ArrowListArray`] as a component column.
+    /// Unconditionally inserts an [`Arrow2ListArray`] as a component column.
     ///
     /// Removes and replaces the column if it already exists.
     ///
@@ -715,7 +724,7 @@ impl Chunk {
     pub fn add_component(
         &mut self,
         component_name: ComponentName,
-        list_array: ArrowListArray<i32>,
+        list_array: Arrow2ListArray<i32>,
     ) -> ChunkResult<()> {
         self.components.insert(component_name, list_array);
         self.sanity_check()
@@ -744,7 +753,7 @@ impl TimeColumn {
     pub fn new(
         is_sorted: Option<bool>,
         timeline: Timeline,
-        times: ArrowPrimitiveArray<i64>,
+        times: Arrow2PrimitiveArray<i64>,
     ) -> Self {
         re_tracing::profile_function_if!(1000 < times.len(), format!("{} times", times.len()));
 
@@ -811,7 +820,7 @@ impl TimeColumn {
         Self::new(
             None,
             Timeline::new_sequence(name.into()),
-            ArrowPrimitiveArray::<i64>::from_vec(time_vec),
+            Arrow2PrimitiveArray::<i64>::from_vec(time_vec),
         )
     }
 
@@ -838,7 +847,7 @@ impl TimeColumn {
         Self::new(
             None,
             Timeline::new_temporal(name.into()),
-            ArrowPrimitiveArray::<i64>::from_vec(time_vec),
+            Arrow2PrimitiveArray::<i64>::from_vec(time_vec),
         )
     }
 
@@ -868,7 +877,7 @@ impl TimeColumn {
         Self::new(
             None,
             Timeline::new_temporal(name.into()),
-            ArrowPrimitiveArray::<i64>::from_vec(time_vec),
+            Arrow2PrimitiveArray::<i64>::from_vec(time_vec),
         )
     }
 }
@@ -929,13 +938,13 @@ impl Chunk {
     }
 
     #[inline]
-    pub fn row_ids_array(&self) -> &ArrowStructArray {
+    pub fn row_ids_array(&self) -> &Arrow2StructArray {
         &self.row_ids
     }
 
     /// Returns the [`RowId`]s in their raw-est form: a tuple of (times, counters) arrays.
     #[inline]
-    pub fn row_ids_raw(&self) -> (&ArrowPrimitiveArray<u64>, &ArrowPrimitiveArray<u64>) {
+    pub fn row_ids_raw(&self) -> (&Arrow2PrimitiveArray<u64>, &Arrow2PrimitiveArray<u64>) {
         let [times, counters] = self.row_ids.values() else {
             panic!("RowIds are corrupt -- this should be impossible (sanity checked)");
         };
@@ -943,13 +952,13 @@ impl Chunk {
         #[allow(clippy::unwrap_used)]
         let times = times
             .as_any()
-            .downcast_ref::<ArrowPrimitiveArray<u64>>()
+            .downcast_ref::<Arrow2PrimitiveArray<u64>>()
             .unwrap(); // sanity checked
 
         #[allow(clippy::unwrap_used)]
         let counters = counters
             .as_any()
-            .downcast_ref::<ArrowPrimitiveArray<u64>>()
+            .downcast_ref::<Arrow2PrimitiveArray<u64>>()
             .unwrap(); // sanity checked
 
         (times, counters)
@@ -1045,7 +1054,7 @@ impl Chunk {
     }
 
     #[inline]
-    pub fn timelines(&self) -> &BTreeMap<Timeline, TimeColumn> {
+    pub fn timelines(&self) -> &IntMap<Timeline, TimeColumn> {
         &self.timelines
     }
 
@@ -1055,7 +1064,7 @@ impl Chunk {
     }
 
     #[inline]
-    pub fn components(&self) -> &BTreeMap<ComponentName, ArrowListArray<i32>> {
+    pub fn components(&self) -> &IntMap<ComponentName, Arrow2ListArray<i32>> {
         &self.components
     }
 
@@ -1098,7 +1107,7 @@ impl TimeColumn {
     }
 
     #[inline]
-    pub fn times_array(&self) -> &ArrowPrimitiveArray<i64> {
+    pub fn times_array(&self) -> &Arrow2PrimitiveArray<i64> {
         &self.times
     }
 
@@ -1137,8 +1146,8 @@ impl TimeColumn {
     // TODO(cmc): This needs to be stored in chunk metadata and transported across IPC.
     pub fn time_range_per_component(
         &self,
-        components: &BTreeMap<ComponentName, ArrowListArray<i32>>,
-    ) -> BTreeMap<ComponentName, ResolvedTimeRange> {
+        components: &IntMap<ComponentName, Arrow2ListArray<i32>>,
+    ) -> IntMap<ComponentName, ResolvedTimeRange> {
         let times = self.times_raw();
         components
             .iter()
@@ -1264,11 +1273,11 @@ impl Chunk {
 
         // Row IDs
         {
-            if *row_ids.data_type().to_logical_type() != RowId::arrow_datatype() {
+            if *row_ids.data_type().to_logical_type() != RowId::arrow2_datatype() {
                 return Err(ChunkError::Malformed {
                     reason: format!(
                         "RowId data has the wrong datatype: expected {:?} but got {:?} instead",
-                        RowId::arrow_datatype(),
+                        RowId::arrow2_datatype(),
                         *row_ids.data_type(),
                     ),
                 });

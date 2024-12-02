@@ -167,18 +167,12 @@ fn create_space_view_for_selected_entities(
     };
 
     let space_view = SpaceViewBlueprint::new(identifier, recommended);
-
-    let new_space_view = ctx.viewport_blueprint.add_space_views(
-        std::iter::once(space_view),
-        ctx.viewer_context,
-        target_container_id,
-        None,
-    );
-    if let Some(space_view_id) = new_space_view.first() {
-        ctx.viewer_context
-            .selection_state()
-            .set_selection(Item::SpaceView(*space_view_id));
-    }
+    let space_view_id = space_view.id;
+    ctx.viewport_blueprint
+        .add_space_views(std::iter::once(space_view), target_container_id, None);
+    ctx.viewer_context
+        .selection_state()
+        .set_selection(Item::SpaceView(space_view_id));
     ctx.viewport_blueprint
         .mark_user_interaction(ctx.viewer_context);
 }

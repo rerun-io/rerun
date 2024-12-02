@@ -1,11 +1,10 @@
 use std::{
-    collections::BTreeMap,
     hash::{Hash as _, Hasher},
     sync::Arc,
     time::{Duration, Instant},
 };
 
-use arrow2::array::{Array as ArrowArray, PrimitiveArray as ArrowPrimitiveArray};
+use arrow2::array::{Array as Arrow2Array, PrimitiveArray as Arrow2PrimitiveArray};
 use crossbeam::channel::{Receiver, Sender};
 use nohash_hasher::IntMap;
 
@@ -679,14 +678,14 @@ pub struct PendingRow {
     /// The component data.
     ///
     /// Each array is a single component, i.e. _not_ a list array.
-    pub components: BTreeMap<ComponentName, Box<dyn ArrowArray>>,
+    pub components: IntMap<ComponentName, Box<dyn Arrow2Array>>,
 }
 
 impl PendingRow {
     #[inline]
     pub fn new(
         timepoint: TimePoint,
-        components: BTreeMap<ComponentName, Box<dyn ArrowArray>>,
+        components: IntMap<ComponentName, Box<dyn Arrow2Array>>,
     ) -> Self {
         Self {
             row_id: RowId::new(),
@@ -726,7 +725,7 @@ impl PendingRow {
         let timelines = timepoint
             .into_iter()
             .map(|(timeline, time)| {
-                let times = ArrowPrimitiveArray::<i64>::from_vec(vec![time.as_i64()]);
+                let times = Arrow2PrimitiveArray::<i64>::from_vec(vec![time.as_i64()]);
                 let time_column = TimeColumn::new(Some(true), timeline, times);
                 (timeline, time_column)
             })
@@ -799,7 +798,7 @@ impl PendingRow {
             re_tracing::profile_scope!("iterate per timeline set");
 
             // Then we split the micro batches even further -- one sub-batch per unique set of datatypes.
-            let mut per_datatype_set: IntMap<u64 /* ArrowDatatype set */, Vec<Self>> =
+            let mut per_datatype_set: IntMap<u64 /* Arrow2Datatype set */, Vec<Self>> =
                 Default::default();
             {
                 re_tracing::profile_scope!("compute datatype sets");
@@ -822,11 +821,11 @@ impl PendingRow {
                 re_tracing::profile_scope!("iterate per datatype set");
 
                 let mut row_ids: Vec<RowId> = Vec::with_capacity(rows.len());
-                let mut timelines: BTreeMap<Timeline, PendingTimeColumn> = BTreeMap::default();
+                let mut timelines: IntMap<Timeline, PendingTimeColumn> = IntMap::default();
 
                 // Create all the logical list arrays that we're going to need, accounting for the
                 // possibility of sparse components in the data.
-                let mut all_components: IntMap<ComponentName, Vec<Option<&dyn ArrowArray>>> =
+                let mut all_components: IntMap<ComponentName, Vec<Option<&dyn Arrow2Array>>> =
                     IntMap::default();
                 for row in &rows {
                     for component_name in row.components.keys() {
@@ -893,7 +892,7 @@ impl PendingRow {
                         arrays.push(
                             row_components
                                 .get(component_name)
-                                .map(|array| &**array as &dyn ArrowArray),
+                                .map(|array| &**array as &dyn Arrow2Array),
                         );
                     }
                 }
@@ -967,7 +966,7 @@ impl PendingTimeColumn {
 
         TimeColumn {
             timeline,
-            times: ArrowPrimitiveArray::<i64>::from_vec(times).to(timeline.datatype()),
+            times: Arrow2PrimitiveArray::<i64>::from_vec(times).to(timeline.datatype()),
             is_sorted,
             time_range,
         }
@@ -1000,17 +999,17 @@ mod tests {
         let timepoint2 = TimePoint::default().with(timeline1, 43);
         let timepoint3 = TimePoint::default().with(timeline1, 44);
 
-        let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
-        let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
-        let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
+        let points1 = MyPoint::to_arrow2([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
+        let points2 = MyPoint::to_arrow2([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
+        let points3 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
         let components1 = [(MyPoint::name(), points1.clone())];
         let components2 = [(MyPoint::name(), points2.clone())];
         let components3 = [(MyPoint::name(), points3.clone())];
 
-        let row1 = PendingRow::new(timepoint1.clone(), components1.into());
-        let row2 = PendingRow::new(timepoint2.clone(), components2.into());
-        let row3 = PendingRow::new(timepoint3.clone(), components3.into());
+        let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
+        let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
+        let row3 = PendingRow::new(timepoint3.clone(), components3.into_iter().collect());
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1047,7 +1046,7 @@ mod tests {
                 TimeColumn::new(
                     Some(true),
                     timeline1,
-                    ArrowPrimitiveArray::from_vec(vec![42, 43, 44]),
+                    Arrow2PrimitiveArray::from_vec(vec![42, 43, 44]),
                 ),
             )];
             let expected_components = [(
@@ -1079,17 +1078,17 @@ mod tests {
 
         let timeless = TimePoint::default();
 
-        let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
-        let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
-        let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
+        let points1 = MyPoint::to_arrow2([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
+        let points2 = MyPoint::to_arrow2([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
+        let points3 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
         let components1 = [(MyPoint::name(), points1.clone())];
         let components2 = [(MyPoint::name(), points2.clone())];
         let components3 = [(MyPoint::name(), points3.clone())];
 
-        let row1 = PendingRow::new(timeless.clone(), components1.into());
-        let row2 = PendingRow::new(timeless.clone(), components2.into());
-        let row3 = PendingRow::new(timeless.clone(), components3.into());
+        let row1 = PendingRow::new(timeless.clone(), components1.into_iter().collect());
+        let row2 = PendingRow::new(timeless.clone(), components2.into_iter().collect());
+        let row3 = PendingRow::new(timeless.clone(), components3.into_iter().collect());
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1155,17 +1154,17 @@ mod tests {
         let timepoint2 = TimePoint::default().with(timeline1, 43);
         let timepoint3 = TimePoint::default().with(timeline1, 44);
 
-        let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
-        let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
-        let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
+        let points1 = MyPoint::to_arrow2([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
+        let points2 = MyPoint::to_arrow2([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
+        let points3 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
         let components1 = [(MyPoint::name(), points1.clone())];
         let components2 = [(MyPoint::name(), points2.clone())];
         let components3 = [(MyPoint::name(), points3.clone())];
 
-        let row1 = PendingRow::new(timepoint1.clone(), components1.into());
-        let row2 = PendingRow::new(timepoint2.clone(), components2.into());
-        let row3 = PendingRow::new(timepoint3.clone(), components3.into());
+        let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
+        let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
+        let row3 = PendingRow::new(timepoint3.clone(), components3.into_iter().collect());
 
         let entity_path1: EntityPath = "ent1".into();
         let entity_path2: EntityPath = "ent2".into();
@@ -1203,7 +1202,7 @@ mod tests {
                 TimeColumn::new(
                     Some(true),
                     timeline1,
-                    ArrowPrimitiveArray::from_vec(vec![42, 44]),
+                    Arrow2PrimitiveArray::from_vec(vec![42, 44]),
                 ),
             )];
             let expected_components = [(
@@ -1231,7 +1230,7 @@ mod tests {
                 TimeColumn::new(
                     Some(true),
                     timeline1,
-                    ArrowPrimitiveArray::from_vec(vec![43]),
+                    Arrow2PrimitiveArray::from_vec(vec![43]),
                 ),
             )];
             let expected_components = [(
@@ -1271,17 +1270,17 @@ mod tests {
             .with(timeline1, 44)
             .with(timeline2, 1001);
 
-        let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
-        let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
-        let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
+        let points1 = MyPoint::to_arrow2([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
+        let points2 = MyPoint::to_arrow2([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
+        let points3 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
         let components1 = [(MyPoint::name(), points1.clone())];
         let components2 = [(MyPoint::name(), points2.clone())];
         let components3 = [(MyPoint::name(), points3.clone())];
 
-        let row1 = PendingRow::new(timepoint1.clone(), components1.into());
-        let row2 = PendingRow::new(timepoint2.clone(), components2.into());
-        let row3 = PendingRow::new(timepoint3.clone(), components3.into());
+        let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
+        let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
+        let row3 = PendingRow::new(timepoint3.clone(), components3.into_iter().collect());
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1318,7 +1317,7 @@ mod tests {
                 TimeColumn::new(
                     Some(true),
                     timeline1,
-                    ArrowPrimitiveArray::from_vec(vec![42]),
+                    Arrow2PrimitiveArray::from_vec(vec![42]),
                 ),
             )];
             let expected_components = [(
@@ -1347,7 +1346,7 @@ mod tests {
                     TimeColumn::new(
                         Some(true),
                         timeline1,
-                        ArrowPrimitiveArray::from_vec(vec![43, 44]),
+                        Arrow2PrimitiveArray::from_vec(vec![43, 44]),
                     ),
                 ),
                 (
@@ -1355,7 +1354,7 @@ mod tests {
                     TimeColumn::new(
                         Some(true),
                         timeline2,
-                        ArrowPrimitiveArray::from_vec(vec![1000, 1001]),
+                        Arrow2PrimitiveArray::from_vec(vec![1000, 1001]),
                     ),
                 ),
             ];
@@ -1391,18 +1390,18 @@ mod tests {
         let timepoint2 = TimePoint::default().with(timeline1, 43);
         let timepoint3 = TimePoint::default().with(timeline1, 44);
 
-        let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
+        let points1 = MyPoint::to_arrow2([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
         let points2 =
-            MyPoint64::to_arrow([MyPoint64::new(10.0, 20.0), MyPoint64::new(30.0, 40.0)])?;
-        let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
+            MyPoint64::to_arrow2([MyPoint64::new(10.0, 20.0), MyPoint64::new(30.0, 40.0)])?;
+        let points3 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
 
         let components1 = [(MyPoint::name(), points1.clone())];
         let components2 = [(MyPoint::name(), points2.clone())]; // same name, different datatype
         let components3 = [(MyPoint::name(), points3.clone())];
 
-        let row1 = PendingRow::new(timepoint1.clone(), components1.into());
-        let row2 = PendingRow::new(timepoint2.clone(), components2.into());
-        let row3 = PendingRow::new(timepoint3.clone(), components3.into());
+        let row1 = PendingRow::new(timepoint1.clone(), components1.into_iter().collect());
+        let row2 = PendingRow::new(timepoint2.clone(), components2.into_iter().collect());
+        let row3 = PendingRow::new(timepoint3.clone(), components3.into_iter().collect());
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1439,7 +1438,7 @@ mod tests {
                 TimeColumn::new(
                     Some(true),
                     timeline1,
-                    ArrowPrimitiveArray::from_vec(vec![42, 44]),
+                    Arrow2PrimitiveArray::from_vec(vec![42, 44]),
                 ),
             )];
             let expected_components = [(
@@ -1467,7 +1466,7 @@ mod tests {
                 TimeColumn::new(
                     Some(true),
                     timeline1,
-                    ArrowPrimitiveArray::from_vec(vec![43]),
+                    Arrow2PrimitiveArray::from_vec(vec![43]),
                 ),
             )];
             let expected_components = [(
@@ -1516,21 +1515,21 @@ mod tests {
             .with(timeline2, 1003)
             .with(timeline1, 45);
 
-        let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
-        let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
-        let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
+        let points1 = MyPoint::to_arrow2([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
+        let points2 = MyPoint::to_arrow2([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
+        let points3 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
         let points4 =
-            MyPoint::to_arrow([MyPoint::new(1000.0, 2000.0), MyPoint::new(3000.0, 4000.0)])?;
+            MyPoint::to_arrow2([MyPoint::new(1000.0, 2000.0), MyPoint::new(3000.0, 4000.0)])?;
 
         let components1 = [(MyPoint::name(), points1.clone())];
         let components2 = [(MyPoint::name(), points2.clone())];
         let components3 = [(MyPoint::name(), points3.clone())];
         let components4 = [(MyPoint::name(), points4.clone())];
 
-        let row1 = PendingRow::new(timepoint4.clone(), components1.into());
-        let row2 = PendingRow::new(timepoint1.clone(), components2.into());
-        let row3 = PendingRow::new(timepoint2.clone(), components3.into());
-        let row4 = PendingRow::new(timepoint3.clone(), components4.into());
+        let row1 = PendingRow::new(timepoint4.clone(), components1.into_iter().collect());
+        let row2 = PendingRow::new(timepoint1.clone(), components2.into_iter().collect());
+        let row3 = PendingRow::new(timepoint2.clone(), components3.into_iter().collect());
+        let row4 = PendingRow::new(timepoint3.clone(), components4.into_iter().collect());
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1569,7 +1568,7 @@ mod tests {
                     TimeColumn::new(
                         Some(false),
                         timeline1,
-                        ArrowPrimitiveArray::from_vec(vec![45, 42, 43, 44]),
+                        Arrow2PrimitiveArray::from_vec(vec![45, 42, 43, 44]),
                     ),
                 ),
                 (
@@ -1577,7 +1576,7 @@ mod tests {
                     TimeColumn::new(
                         Some(false),
                         timeline2,
-                        ArrowPrimitiveArray::from_vec(vec![1003, 1000, 1001, 1002]),
+                        Arrow2PrimitiveArray::from_vec(vec![1003, 1000, 1001, 1002]),
                     ),
                 ),
             ];
@@ -1630,21 +1629,21 @@ mod tests {
             .with(timeline2, 1003)
             .with(timeline1, 45);
 
-        let points1 = MyPoint::to_arrow([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
-        let points2 = MyPoint::to_arrow([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
-        let points3 = MyPoint::to_arrow([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
+        let points1 = MyPoint::to_arrow2([MyPoint::new(1.0, 2.0), MyPoint::new(3.0, 4.0)])?;
+        let points2 = MyPoint::to_arrow2([MyPoint::new(10.0, 20.0), MyPoint::new(30.0, 40.0)])?;
+        let points3 = MyPoint::to_arrow2([MyPoint::new(100.0, 200.0), MyPoint::new(300.0, 400.0)])?;
         let points4 =
-            MyPoint::to_arrow([MyPoint::new(1000.0, 2000.0), MyPoint::new(3000.0, 4000.0)])?;
+            MyPoint::to_arrow2([MyPoint::new(1000.0, 2000.0), MyPoint::new(3000.0, 4000.0)])?;
 
         let components1 = [(MyPoint::name(), points1.clone())];
         let components2 = [(MyPoint::name(), points2.clone())];
         let components3 = [(MyPoint::name(), points3.clone())];
         let components4 = [(MyPoint::name(), points4.clone())];
 
-        let row1 = PendingRow::new(timepoint4.clone(), components1.into());
-        let row2 = PendingRow::new(timepoint1.clone(), components2.into());
-        let row3 = PendingRow::new(timepoint2.clone(), components3.into());
-        let row4 = PendingRow::new(timepoint3.clone(), components4.into());
+        let row1 = PendingRow::new(timepoint4.clone(), components1.into_iter().collect());
+        let row2 = PendingRow::new(timepoint1.clone(), components2.into_iter().collect());
+        let row3 = PendingRow::new(timepoint2.clone(), components3.into_iter().collect());
+        let row4 = PendingRow::new(timepoint3.clone(), components4.into_iter().collect());
 
         let entity_path1: EntityPath = "a/b/c".into();
         batcher.push_row(entity_path1.clone(), row1.clone());
@@ -1683,7 +1682,7 @@ mod tests {
                     TimeColumn::new(
                         Some(false),
                         timeline1,
-                        ArrowPrimitiveArray::from_vec(vec![45, 42, 43]),
+                        Arrow2PrimitiveArray::from_vec(vec![45, 42, 43]),
                     ),
                 ),
                 (
@@ -1691,7 +1690,7 @@ mod tests {
                     TimeColumn::new(
                         Some(false),
                         timeline2,
-                        ArrowPrimitiveArray::from_vec(vec![1003, 1000, 1001]),
+                        Arrow2PrimitiveArray::from_vec(vec![1003, 1000, 1001]),
                     ),
                 ),
             ];
@@ -1722,7 +1721,7 @@ mod tests {
                     TimeColumn::new(
                         Some(true),
                         timeline1,
-                        ArrowPrimitiveArray::from_vec(vec![44]),
+                        Arrow2PrimitiveArray::from_vec(vec![44]),
                     ),
                 ),
                 (
@@ -1730,7 +1729,7 @@ mod tests {
                     TimeColumn::new(
                         Some(true),
                         timeline2,
-                        ArrowPrimitiveArray::from_vec(vec![1002]),
+                        Arrow2PrimitiveArray::from_vec(vec![1002]),
                     ),
                 ),
             ];

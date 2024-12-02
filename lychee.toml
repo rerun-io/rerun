@@ -89,9 +89,10 @@ exclude = [
   # Local links that require further setup.
   'http://127.0.0.1',
   'http://localhost',
-  'recording:/',      # rrd recording link.
+  'recording:/',          # rrd recording link.
   'ws:/',
-  're_viewer.js',     # Build artifact that html is linking to.
+  're_viewer.js',         # Build artifact that html is linking to.
+  'http://0.0.0.0:51234',
 
   # Api endpoints.
   'https://fonts.googleapis.com/',                                               # Font API entrypoint, not a link.
@@ -113,6 +114,7 @@ exclude = [
   'https://static.rerun.io/my_screenshot/',
   'https://your-hosted-asset-url.com/widget.js',
   'file:///path/to/file',
+  'rerun://localhost:51234/recording/some-recording-id',
 
   # Link fragments and data links in examples.
   'https://raw.githubusercontent.com/googlefonts/noto-emoji/', # URL fragment.

@@ -35,11 +35,30 @@ doc = false
 ## so we have all the bells and wistles here, except those that may require extra tools
 ## (like "nasm").
 ## That is: `cargo install rerun-cli --locked` should work for _everyone_.
-default = ["native_viewer", "web_viewer"]
+default = ["native_viewer", "web_viewer", "map_view"]
+
+
+# !!!IMPORTANT!!!
+#
+# Do you _really_ want to add features in `release` that are not in `default`?
+#
+# Here are some reasons not to:
+# - These features will be missing from the `cargo install rerun-cli` command our users will inevitably use.
+# - These features will not be picked up in places where we cannot use the `release` feature set (e.g. rerun_js).
+# - This list is not exhaustive and will unexpectedly grow in the future.
+#
+# If you insist on adding a feature here, please make sure you address all the concerns above.
+#
+# `nasm`
+# ------
+#
+# This requires external build tools (the `nasm` cli) and would break any build on a system without it. Mitigation: a
+# warning with instructions is printed when building `rerun-cli` in release mode without the `nasm` feature (see
+# `build.rs`).
 
 ## The features we enable when we build the pre-built binaries during our releases.
-## This may enable features that require extra build tools that not everyone heas.
-release = ["default", "nasm", "map_view"]
+## This may enable features that require extra build tools that not everyone has.
+release = ["default", "nasm"]
 
 ## Enable faster native video decoding with assembly.
 ## You need to install [nasm](https://nasm.us/) to compile with this feature.
@@ -51,7 +70,6 @@ native_viewer = ["rerun/native_viewer"]
 
 ## Support the map view.
 ## This adds a lot of extra dependencies.
-#TODO(#7876): remove this feature when we have fewer dependencies
 map_view = ["rerun/map_view"]
 
 ## Enable the gRPC Rerun Data Platform data source.

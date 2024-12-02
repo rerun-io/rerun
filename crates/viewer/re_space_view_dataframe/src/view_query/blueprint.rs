@@ -288,12 +288,13 @@ mod test {
 
         let view_id = SpaceViewId::random();
 
-        test_context.run_and_handle_system_commands(|ctx, _| {
+        test_context.run_in_egui_central_panel(|ctx, _| {
             let query = Query::from_blueprint(ctx, view_id);
             query.save_latest_at_enabled(ctx, true);
         });
+        test_context.handle_system_commands();
 
-        test_context.run(|ctx, _| {
+        test_context.run_in_egui_central_panel(|ctx, _| {
             let query = Query::from_blueprint(ctx, view_id);
             assert!(query.latest_at_enabled().unwrap());
         });

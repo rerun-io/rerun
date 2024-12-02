@@ -14,7 +14,7 @@ In contrast to the `log` function, `send_columns` does NOT add any other timelin
 API docs of `send_columns`:
 * [🌊 C++](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#ad17571d51185ce2fc2fc2f5c3070ad65)
 * [🐍 Python](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_columns)
-* [🦀 Rust](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStream.html#method.send_columns)
+* [🦀 Rust](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.send_columns)
 
 
 ### Using `send_columns` for logging scalars
@@ -26,7 +26,18 @@ snippet: archetypes/image_send_columns
 
 
 ### Using `send_columns` for logging points
-Each row the in the component column can be a batch of data, e.g. a batch of positions.
+Each row in the component column can be a batch of data, e.g. a batch of positions.
 This lets you log the evolution of a point cloud over time efficiently.
 
 snippet: archetypes/points3d_send_columns.py
+
+### Using `send_columns` for logging custom components
+
+An entire batch of a custom component can be logged at once using [`rr.AnyBatchValue`](https://ref.rerun.io/docs/python/0.20.0/common/custom_data/#rerun.AnyBatchValue?speculative-link) along with `send_column`:
+
+snippet: howto/any_batch_value_send_columns
+
+The [`rr.AnyValues`](https://ref.rerun.io/docs/python/0.20.0/common/custom_data/#rerun.AnyValues) class can also be used to log multiple components at a time.
+It does not support partitioning, so each component batch and the timeline must hold the same number of elements.
+
+snippet: howto/any_values_send_columns

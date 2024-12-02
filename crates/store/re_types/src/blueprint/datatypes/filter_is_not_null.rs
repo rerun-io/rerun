@@ -45,10 +45,10 @@ impl ::re_types_core::SizeBytes for FilterIsNotNull {
 
 impl ::re_types_core::Loggable for FilterIsNotNull {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![
             Field::new("active", <crate::datatypes::Bool>::arrow_datatype(), false),
             Field::new(
                 "column",
@@ -60,15 +60,28 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
 
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
+            let fields = Fields::from(vec![
+                Field::new("active", <crate::datatypes::Bool>::arrow_datatype(), false),
+                Field::new(
+                    "column",
+                    <crate::blueprint::datatypes::ComponentColumnSelector>::arrow_datatype(),
+                    false,
+                ),
+            ]);
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
@@ -76,12 +89,12 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let validity: Option<arrow::buffer::NullBuffer> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            StructArray::new(
-                Self::arrow_datatype(),
+            as_array_ref(StructArray::new(
+                fields,
                 vec![
                     {
                         let (somes, active): (Vec<_>, Vec<_>) = data
@@ -91,19 +104,19 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let active_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let active_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
-                        BooleanArray::new(
-                            DataType::Boolean,
-                            active
-                                .into_iter()
-                                .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
-                                .collect(),
-                            active_bitmap,
-                        )
-                        .boxed()
+                        as_array_ref(BooleanArray::new(
+                            BooleanBuffer::from(
+                                active
+                                    .into_iter()
+                                    .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
+                                    .collect::<Vec<_>>(),
+                            ),
+                            active_validity,
+                        ))
                     },
                     {
                         let (somes, column): (Vec<_>, Vec<_>) = data
@@ -113,25 +126,24 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let column_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let column_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            _ = column_bitmap;
+                            _ = column_validity;
                             crate::blueprint::datatypes::ComponentColumnSelector::to_arrow_opt(
                                 column,
                             )?
                         }
                     },
                 ],
-                bitmap,
-            )
-            .boxed()
+                validity,
+            ))
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -139,7 +151,8 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
@@ -190,9 +203,11 @@ impl ::re_types_core::Loggable for FilterIsNotNull {
                         .with_context("rerun.blueprint.datatypes.FilterIsNotNull");
                     }
                     let arrow_data = &**arrays_by_name["column"];
-                    crate::blueprint::datatypes::ComponentColumnSelector::from_arrow_opt(arrow_data)
-                        .with_context("rerun.blueprint.datatypes.FilterIsNotNull#column")?
-                        .into_iter()
+                    crate::blueprint::datatypes::ComponentColumnSelector::from_arrow2_opt(
+                        arrow_data,
+                    )
+                    .with_context("rerun.blueprint.datatypes.FilterIsNotNull#column")?
+                    .into_iter()
                 };
                 arrow2::bitmap::utils::ZipValidity::new_with_validity(
                     ::itertools::izip!(active, column),

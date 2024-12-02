@@ -73,6 +73,7 @@ re_sdk_comms.workspace = true
 re_smart_channel.workspace = true
 re_space_view_bar_chart.workspace = true
 re_space_view_dataframe.workspace = true
+re_space_view_graph.workspace = true
 re_space_view_spatial.workspace = true
 re_space_view_tensor.workspace = true
 re_space_view_text_document.workspace = true

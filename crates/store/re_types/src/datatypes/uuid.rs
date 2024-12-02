@@ -56,25 +56,30 @@ impl From<Uuid> for [u8; 16usize] {
 
 impl ::re_types_core::Loggable for Uuid {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
+        use arrow::datatypes::*;
         DataType::FixedSizeList(
             std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
-            16usize,
+            16,
         )
     }
 
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
             let (somes, bytes): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -84,12 +89,11 @@ impl ::re_types_core::Loggable for Uuid {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bytes_bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let bytes_validity: Option<arrow::buffer::NullBuffer> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
-                use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                 let bytes_inner_data: Vec<_> = bytes
                     .into_iter()
                     .flat_map(|v| match v {
@@ -99,31 +103,29 @@ impl ::re_types_core::Loggable for Uuid {
                         ),
                     })
                     .collect();
-                let bytes_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                    bytes_bitmap.as_ref().map(|bitmap| {
-                        bitmap
+                let bytes_inner_validity: Option<arrow::buffer::NullBuffer> =
+                    bytes_validity.as_ref().map(|validity| {
+                        validity
                             .iter()
                             .map(|b| std::iter::repeat(b).take(16usize))
                             .flatten()
                             .collect::<Vec<_>>()
                             .into()
                     });
-                FixedSizeListArray::new(
-                    Self::arrow_datatype(),
-                    PrimitiveArray::new(
-                        DataType::UInt8,
-                        bytes_inner_data.into_iter().collect(),
-                        bytes_inner_bitmap,
-                    )
-                    .boxed(),
-                    bytes_bitmap,
-                )
-                .boxed()
+                as_array_ref(FixedSizeListArray::new(
+                    std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
+                    16,
+                    as_array_ref(PrimitiveArray::<UInt8Type>::new(
+                        ScalarBuffer::from(bytes_inner_data.into_iter().collect::<Vec<_>>()),
+                        bytes_inner_validity,
+                    )),
+                    bytes_validity,
+                ))
             }
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -131,7 +133,8 @@ impl ::re_types_core::Loggable for Uuid {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
@@ -199,13 +202,14 @@ impl ::re_types_core::Loggable for Uuid {
     }
 
     #[inline]
-    fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
+    fn from_arrow2(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
     where
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         if let Some(validity) = arrow_data.validity() {
             if validity.unset_bits() != 0 {
                 return Err(DeserializationError::missing_data());
@@ -219,7 +223,7 @@ impl ::re_types_core::Loggable for Uuid {
                     .ok_or_else(|| {
                         let expected = DataType::FixedSizeList(
                             std::sync::Arc::new(Field::new("item", DataType::UInt8, false)),
-                            16usize,
+                            16,
                         );
                         let actual = arrow_data.data_type().clone();
                         DeserializationError::datatype_mismatch(expected, actual)

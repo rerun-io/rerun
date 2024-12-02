@@ -45,10 +45,10 @@ impl ::re_types_core::SizeBytes for Range2D {
 
 impl ::re_types_core::Loggable for Range2D {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
-        DataType::Struct(std::sync::Arc::new(vec![
+        use arrow::datatypes::*;
+        DataType::Struct(Fields::from(vec![
             Field::new(
                 "x_range",
                 <crate::datatypes::Range1D>::arrow_datatype(),
@@ -64,15 +64,32 @@ impl ::re_types_core::Loggable for Range2D {
 
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
+            let fields = Fields::from(vec![
+                Field::new(
+                    "x_range",
+                    <crate::datatypes::Range1D>::arrow_datatype(),
+                    false,
+                ),
+                Field::new(
+                    "y_range",
+                    <crate::datatypes::Range1D>::arrow_datatype(),
+                    false,
+                ),
+            ]);
             let (somes, data): (Vec<_>, Vec<_>) = data
                 .into_iter()
                 .map(|datum| {
@@ -80,12 +97,12 @@ impl ::re_types_core::Loggable for Range2D {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let validity: Option<arrow::buffer::NullBuffer> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            StructArray::new(
-                Self::arrow_datatype(),
+            as_array_ref(StructArray::new(
+                fields,
                 vec![
                     {
                         let (somes, x_range): (Vec<_>, Vec<_>) = data
@@ -95,44 +112,36 @@ impl ::re_types_core::Loggable for Range2D {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let x_range_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let x_range_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let x_range_inner_data: Vec<_> = x_range
                                 .into_iter()
                                 .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .flatten()
                                 .collect();
-                            let x_range_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                                x_range_bitmap.as_ref().map(|bitmap| {
-                                    bitmap
+                            let x_range_inner_validity: Option<arrow::buffer::NullBuffer> =
+                                x_range_validity.as_ref().map(|validity| {
+                                    validity
                                         .iter()
                                         .map(|b| std::iter::repeat(b).take(2usize))
                                         .flatten()
                                         .collect::<Vec<_>>()
                                         .into()
                                 });
-                            FixedSizeListArray::new(
-                                DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field::new(
-                                        "item",
-                                        DataType::Float64,
-                                        false,
-                                    )),
-                                    2usize,
-                                ),
-                                PrimitiveArray::new(
-                                    DataType::Float64,
-                                    x_range_inner_data.into_iter().collect(),
-                                    x_range_inner_bitmap,
-                                )
-                                .boxed(),
-                                x_range_bitmap,
-                            )
-                            .boxed()
+                            as_array_ref(FixedSizeListArray::new(
+                                std::sync::Arc::new(Field::new("item", DataType::Float64, false)),
+                                2,
+                                as_array_ref(PrimitiveArray::<Float64Type>::new(
+                                    ScalarBuffer::from(
+                                        x_range_inner_data.into_iter().collect::<Vec<_>>(),
+                                    ),
+                                    x_range_inner_validity,
+                                )),
+                                x_range_validity,
+                            ))
                         }
                     },
                     {
@@ -143,54 +152,45 @@ impl ::re_types_core::Loggable for Range2D {
                                 (datum.is_some(), datum)
                             })
                             .unzip();
-                        let y_range_bitmap: Option<arrow2::bitmap::Bitmap> = {
+                        let y_range_validity: Option<arrow::buffer::NullBuffer> = {
                             let any_nones = somes.iter().any(|some| !*some);
                             any_nones.then(|| somes.into())
                         };
                         {
-                            use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
                             let y_range_inner_data: Vec<_> = y_range
                                 .into_iter()
                                 .map(|datum| datum.map(|datum| datum.0).unwrap_or_default())
                                 .flatten()
                                 .collect();
-                            let y_range_inner_bitmap: Option<arrow2::bitmap::Bitmap> =
-                                y_range_bitmap.as_ref().map(|bitmap| {
-                                    bitmap
+                            let y_range_inner_validity: Option<arrow::buffer::NullBuffer> =
+                                y_range_validity.as_ref().map(|validity| {
+                                    validity
                                         .iter()
                                         .map(|b| std::iter::repeat(b).take(2usize))
                                         .flatten()
                                         .collect::<Vec<_>>()
                                         .into()
                                 });
-                            FixedSizeListArray::new(
-                                DataType::FixedSizeList(
-                                    std::sync::Arc::new(Field::new(
-                                        "item",
-                                        DataType::Float64,
-                                        false,
-                                    )),
-                                    2usize,
-                                ),
-                                PrimitiveArray::new(
-                                    DataType::Float64,
-                                    y_range_inner_data.into_iter().collect(),
-                                    y_range_inner_bitmap,
-                                )
-                                .boxed(),
-                                y_range_bitmap,
-                            )
-                            .boxed()
+                            as_array_ref(FixedSizeListArray::new(
+                                std::sync::Arc::new(Field::new("item", DataType::Float64, false)),
+                                2,
+                                as_array_ref(PrimitiveArray::<Float64Type>::new(
+                                    ScalarBuffer::from(
+                                        y_range_inner_data.into_iter().collect::<Vec<_>>(),
+                                    ),
+                                    y_range_inner_validity,
+                                )),
+                                y_range_validity,
+                            ))
                         }
                     },
                 ],
-                bitmap,
-            )
-            .boxed()
+                validity,
+            ))
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -198,7 +198,8 @@ impl ::re_types_core::Loggable for Range2D {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
@@ -239,7 +240,7 @@ impl ::re_types_core::Loggable for Range2D {
                                         DataType::Float64,
                                         false,
                                     )),
-                                    2usize,
+                                    2,
                                 );
                                 let actual = arrow_data.data_type().clone();
                                 DeserializationError::datatype_mismatch(expected, actual)
@@ -320,7 +321,7 @@ impl ::re_types_core::Loggable for Range2D {
                                         DataType::Float64,
                                         false,
                                     )),
-                                    2usize,
+                                    2,
                                 );
                                 let actual = arrow_data.data_type().clone();
                                 DeserializationError::datatype_mismatch(expected, actual)

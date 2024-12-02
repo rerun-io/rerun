@@ -92,7 +92,7 @@ impl CodeGenerator for DocsCodeGenerator {
                 r"Archetypes are bundles of components for which the Rerun viewer has first-class
 built-in support. When logged, each archetype also includes an _indicator component_ which captures
 the intent of the logging code and triggers the activation of the corresponding visualizers. See
-[Entities and Compponents](../../concepts/entity-component.md) and
+[Entities and Components](../../concepts/entity-component.md) and
 [Visualizers and Overrides](../../concepts/visualizers-and-overrides.md) for more information.
 
 This page lists all built-in archetypes.",
@@ -381,9 +381,7 @@ fn list_links(is_unreleased: bool, page: &mut String, object: &Object) {
 
         putln!(
             page,
-            // TODO(#8165): docs.rs/rerun is broken right now
-            // " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/latest/rerun/{}/{}.{}.html{speculative_marker})",
-            " * 🦀 [Rust API docs for `{}`](https://ref.rerun.io/docs/rust/stable/rerun/{}/{}.{}.html{speculative_marker})",
+            " * 🦀 [Rust API docs for `{}`](https://docs.rs/rerun/latest/rerun/{}/{}.{}.html{speculative_marker})",
             object.name,
             object.kind.plural_snake_case(),
             if object.is_struct() { "struct" } else { "enum" },

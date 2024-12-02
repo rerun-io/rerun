@@ -7,7 +7,7 @@ use std::collections::HashSet;
 
 use camino::{Utf8Path, Utf8PathBuf};
 use itertools::Itertools;
-use proc_macro2::{Ident, TokenStream};
+use proc_macro2::{Ident, Literal, TokenStream};
 use quote::{format_ident, quote};
 use rayon::prelude::*;
 
@@ -1241,7 +1241,7 @@ impl QuotedObject {
                 let field_name = field_name_identifier(obj_field);
 
                 // We assign the arrow type index to the enum fields to make encoding simpler and faster:
-                let arrow_type_index = proc_macro2::Literal::usize_unsuffixed(enum_value as _);
+                let arrow_type_index = Literal::usize_unsuffixed(enum_value as _);
 
                 quote! {
                     #NEWLINE_TOKEN
@@ -1417,7 +1417,7 @@ fn arrow_data_type_method(
             cpp_includes.insert_system("arrow/type_fwd.h");
             hpp_declarations.insert("arrow", ForwardDecl::Class(format_ident!("DataType")));
 
-            let quoted_datatype = quote_arrow_data_type(
+            let quoted_datatype = quote_arrow_datatype(
                 &Type::Object(obj.fqname.clone()),
                 objects,
                 cpp_includes,
@@ -1729,12 +1729,12 @@ fn quote_fill_arrow_array_builder(
             // C-style enum, encoded as a sparse arrow union
             ObjectClass::Enum => {
                 quote! {
-                #parameter_check
-                ARROW_RETURN_NOT_OK(#builder->Reserve(static_cast<int64_t>(num_elements)));
-                for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
-                    const auto variant = elements[elem_idx];
-                    ARROW_RETURN_NOT_OK(#builder->Append(static_cast<uint8_t>(variant)));
-                }
+                    #parameter_check
+                    ARROW_RETURN_NOT_OK(#builder->Reserve(static_cast<int64_t>(num_elements)));
+                    for (size_t elem_idx = 0; elem_idx < num_elements; elem_idx += 1) {
+                        const auto variant = elements[elem_idx];
+                        ARROW_RETURN_NOT_OK(#builder->Append(static_cast<uint8_t>(variant)));
+                    }
                 }
             }
 
@@ -2234,7 +2234,7 @@ fn quote_field_type(includes: &mut Includes, obj_field: &ObjectField) -> TokenSt
         Type::Array { elem_type, length } => {
             includes.insert_system("array");
             let elem_type = quote_element_type(includes, elem_type);
-            let length = proc_macro2::Literal::usize_unsuffixed(*length);
+            let length = Literal::usize_unsuffixed(*length);
             quote! { std::array<#elem_type, #length> }
         }
         Type::Vector { elem_type } => {
@@ -2401,7 +2401,7 @@ fn quote_integer<T: std::fmt::Display>(t: T) -> TokenStream {
     quote!(#t)
 }
 
-fn quote_arrow_data_type(
+fn quote_arrow_datatype(
     typ: &Type,
     objects: &Objects,
     includes: &mut Includes,
@@ -2444,7 +2444,7 @@ fn quote_arrow_data_type(
                 let quoted_fqname = quote_fqname_as_type_path(includes, fqname);
                 quote!(Loggable<#quoted_fqname>::arrow_datatype())
             } else if obj.is_arrow_transparent() {
-                quote_arrow_data_type(&obj.fields[0].typ, objects, includes, false)
+                quote_arrow_datatype(&obj.fields[0].typ, objects, includes, false)
             } else {
                 let quoted_fields = obj
                     .fields
@@ -2480,8 +2480,9 @@ fn quote_arrow_field_type(
     includes: &mut Includes,
 ) -> TokenStream {
     let name = &field.name;
-    let datatype = quote_arrow_data_type(&field.typ, objects, includes, false);
+    let datatype = quote_arrow_datatype(&field.typ, objects, includes, false);
     let is_nullable = field.is_nullable || field.typ == Type::Unit; // null type is always nullable
+    let is_nullable = is_nullable || field.typ.is_union(objects); // Rerun unions always has a `_null_marker: null` variant, so they are always nullable
 
     quote! {
         arrow::field(#name, #datatype, #is_nullable)
@@ -2494,8 +2495,9 @@ fn quote_arrow_elem_type(
     includes: &mut Includes,
 ) -> TokenStream {
     let typ: Type = elem_type.clone().into();
-    let datatype = quote_arrow_data_type(&typ, objects, includes, false);
+    let datatype = quote_arrow_datatype(&typ, objects, includes, false);
     let is_nullable = typ == Type::Unit; // null type must be nullable
+    let is_nullable = is_nullable || elem_type.is_union(objects); // Rerun unions always has a `_null_marker: null` variant, so they are always nullable
     quote! {
         arrow::field("item", #datatype, #is_nullable)
     }

@@ -53,22 +53,27 @@ crate::macros::impl_into_cow!(Float32);
 
 impl crate::Loggable for Float32 {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
+        use arrow::datatypes::*;
         DataType::Float32
     }
 
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use crate::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -78,20 +83,23 @@ impl crate::Loggable for Float32 {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let data0_validity: Option<arrow::buffer::NullBuffer> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
-            PrimitiveArray::new(
-                Self::arrow_datatype(),
-                data0.into_iter().map(|v| v.unwrap_or_default()).collect(),
-                data0_bitmap,
-            )
-            .boxed()
+            as_array_ref(PrimitiveArray::<Float32Type>::new(
+                ScalarBuffer::from(
+                    data0
+                        .into_iter()
+                        .map(|v| v.unwrap_or_default())
+                        .collect::<Vec<_>>(),
+                ),
+                data0_validity,
+            ))
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -99,7 +107,8 @@ impl crate::Loggable for Float32 {
     {
         #![allow(clippy::wildcard_imports)]
         use crate::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok(arrow_data
             .as_any()
             .downcast_ref::<Float32Array>()
@@ -119,13 +128,14 @@ impl crate::Loggable for Float32 {
     }
 
     #[inline]
-    fn from_arrow(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
+    fn from_arrow2(arrow_data: &dyn arrow2::array::Array) -> DeserializationResult<Vec<Self>>
     where
         Self: Sized,
     {
         #![allow(clippy::wildcard_imports)]
         use crate::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         if let Some(validity) = arrow_data.validity() {
             if validity.unset_bits() != 0 {
                 return Err(DeserializationError::missing_data());

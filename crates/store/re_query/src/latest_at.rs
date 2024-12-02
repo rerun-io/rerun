@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use arrow2::array::Array as ArrowArray;
+use arrow2::array::Array as Arrow2Array;
 use nohash_hasher::IntMap;
 use parking_lot::RwLock;
 
@@ -172,7 +172,7 @@ impl QueryCache {
     }
 
     /// Free up some RAM by forgetting the older parts of all timelines.
-    pub fn purge_fraction_of_ram(&mut self, fraction_to_purge: f32) {
+    pub fn purge_fraction_of_ram(&self, fraction_to_purge: f32) {
         re_tracing::profile_function!();
 
         let mut caches = self.latest_at_per_cache_key.write();
@@ -308,7 +308,7 @@ impl LatestAtResults {
     pub fn component_batch_raw(
         &self,
         component_name: &ComponentName,
-    ) -> Option<Box<dyn ArrowArray>> {
+    ) -> Option<Box<dyn Arrow2Array>> {
         self.components
             .get(component_name)
             .and_then(|unit| unit.component_batch_raw(component_name))
@@ -354,7 +354,7 @@ impl LatestAtResults {
         log_level: re_log::Level,
         component_name: &ComponentName,
         instance_index: usize,
-    ) -> Option<Box<dyn ArrowArray>> {
+    ) -> Option<Box<dyn Arrow2Array>> {
         self.components.get(component_name).and_then(|unit| {
             self.ok_or_log_err(
                 log_level,
@@ -372,7 +372,7 @@ impl LatestAtResults {
         &self,
         component_name: &ComponentName,
         instance_index: usize,
-    ) -> Option<Box<dyn ArrowArray>> {
+    ) -> Option<Box<dyn Arrow2Array>> {
         self.component_instance_raw_with_log_level(
             re_log::Level::Error,
             component_name,
@@ -386,7 +386,7 @@ impl LatestAtResults {
         &self,
         component_name: &ComponentName,
         instance_index: usize,
-    ) -> Option<Box<dyn ArrowArray>> {
+    ) -> Option<Box<dyn Arrow2Array>> {
         self.components.get(component_name).and_then(|unit| {
             unit.component_instance_raw(component_name, instance_index)?
                 .ok()
@@ -440,7 +440,7 @@ impl LatestAtResults {
         &self,
         log_level: re_log::Level,
         component_name: &ComponentName,
-    ) -> Option<Box<dyn ArrowArray>> {
+    ) -> Option<Box<dyn Arrow2Array>> {
         self.components.get(component_name).and_then(|unit| {
             self.ok_or_log_err(
                 log_level,
@@ -457,7 +457,7 @@ impl LatestAtResults {
     pub fn component_mono_raw(
         &self,
         component_name: &ComponentName,
-    ) -> Option<Box<dyn ArrowArray>> {
+    ) -> Option<Box<dyn Arrow2Array>> {
         self.component_mono_raw_with_log_level(re_log::Level::Error, component_name)
     }
 
@@ -468,7 +468,7 @@ impl LatestAtResults {
     pub fn component_mono_raw_quiet(
         &self,
         component_name: &ComponentName,
-    ) -> Option<Box<dyn ArrowArray>> {
+    ) -> Option<Box<dyn Arrow2Array>> {
         self.components
             .get(component_name)
             .and_then(|unit| unit.component_mono_raw(component_name)?.ok())

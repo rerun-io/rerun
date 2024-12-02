@@ -4,7 +4,7 @@ use std::sync::Arc;
 use itertools::Itertools as _;
 
 use re_chunk_store::{Chunk, LatestAtQuery, RangeQuery, UnitChunkShared};
-use re_log_types::external::arrow2::array::Array as ArrowArray;
+use re_log_types::external::arrow2::array::Array as Arrow2Array;
 use re_log_types::hash::Hash64;
 use re_query::{LatestAtResults, RangeResults};
 use re_types_core::ComponentName;
@@ -39,7 +39,7 @@ pub struct HybridRangeResults {
     pub(crate) defaults: LatestAtResults,
 }
 
-impl<'a> HybridLatestAtResults<'a> {
+impl HybridLatestAtResults<'_> {
     /// Returns the [`UnitChunkShared`] for the specified [`re_types_core::Component`].
     #[inline]
     pub fn get(&self, component_name: impl Into<ComponentName>) -> Option<&UnitChunkShared> {
@@ -50,7 +50,7 @@ impl<'a> HybridLatestAtResults<'a> {
             .or_else(|| self.defaults.get(&component_name))
     }
 
-    pub fn fallback_raw(&self, component_name: ComponentName) -> Box<dyn ArrowArray> {
+    pub fn fallback_raw(&self, component_name: ComponentName) -> Box<dyn Arrow2Array> {
         let query_context = QueryContext {
             viewer_ctx: self.ctx.viewer_ctx,
             target_entity_path: &self.data_result.entity_path,
@@ -118,7 +118,7 @@ impl<'a> HybridLatestAtResults<'a> {
             .or_else(|| {
                 // No override, no store, no default -> try fallback instead
                 let raw_fallback = self.fallback_raw(C::name());
-                C::from_arrow(raw_fallback.as_ref())
+                C::from_arrow2(raw_fallback.as_ref())
                     .ok()
                     .and_then(|r| r.first().cloned())
             })
@@ -133,7 +133,7 @@ pub enum HybridResults<'a> {
     Range(RangeQuery, Box<HybridRangeResults>),
 }
 
-impl<'a> HybridResults<'a> {
+impl HybridResults<'_> {
     pub fn query_result_hash(&self) -> Hash64 {
         re_tracing::profile_function!();
         // TODO(andreas): We should be able to do better than this and determine hashes for queries on the fly.
@@ -213,7 +213,7 @@ impl<'a> From<(LatestAtQuery, HybridLatestAtResults<'a>)> for HybridResults<'a> 
     }
 }
 
-impl<'a> From<(RangeQuery, HybridRangeResults)> for HybridResults<'a> {
+impl From<(RangeQuery, HybridRangeResults)> for HybridResults<'_> {
     #[inline]
     fn from((query, results): (RangeQuery, HybridRangeResults)) -> Self {
         Self::Range(query, Box::new(results))
@@ -338,7 +338,7 @@ impl RangeResultsExt for HybridRangeResults {
     }
 }
 
-impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
+impl RangeResultsExt for HybridLatestAtResults<'_> {
     #[inline]
     fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
         if let Some(unit) = self.overrides.get(component_name) {
@@ -390,7 +390,7 @@ impl<'a> RangeResultsExt for HybridLatestAtResults<'a> {
     }
 }
 
-impl<'a> RangeResultsExt for HybridResults<'a> {
+impl RangeResultsExt for HybridResults<'_> {
     #[inline]
     fn get_required_chunks(&self, component_name: &ComponentName) -> Option<Cow<'_, [Chunk]>> {
         match self {
@@ -500,7 +500,7 @@ impl<'a> HybridResultsChunkIter<'a> {
     /// Iterate as indexed buffers.
     ///
     /// See [`Chunk::iter_buffer`] for more information.
-    pub fn buffer<T: arrow2::types::NativeType>(
+    pub fn buffer<T: arrow::datatypes::ArrowNativeType + arrow2::types::NativeType>(
         &'a self,
     ) -> impl Iterator<Item = ((TimeInt, RowId), Vec<re_types_core::ArrowBuffer<T>>)> + 'a {
         self.chunks.iter().flat_map(|chunk| {

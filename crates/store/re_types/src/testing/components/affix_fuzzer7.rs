@@ -45,9 +45,9 @@ impl<I: Into<crate::testing::datatypes::AffixFuzzer1>, T: IntoIterator<Item = I>
 
 impl ::re_types_core::Loggable for AffixFuzzer7 {
     #[inline]
-    fn arrow_datatype() -> arrow2::datatypes::DataType {
+    fn arrow_datatype() -> arrow::datatypes::DataType {
         #![allow(clippy::wildcard_imports)]
-        use arrow2::datatypes::*;
+        use arrow::datatypes::*;
         DataType::List(std::sync::Arc::new(Field::new(
             "item",
             <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
@@ -57,14 +57,19 @@ impl ::re_types_core::Loggable for AffixFuzzer7 {
 
     fn to_arrow_opt<'a>(
         data: impl IntoIterator<Item = Option<impl Into<::std::borrow::Cow<'a, Self>>>>,
-    ) -> SerializationResult<Box<dyn arrow2::array::Array>>
+    ) -> SerializationResult<arrow::array::ArrayRef>
     where
         Self: Clone + 'a,
     {
         #![allow(clippy::wildcard_imports)]
         #![allow(clippy::manual_is_variant_and)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, datatypes::*};
+        use arrow::{array::*, buffer::*, datatypes::*};
+
+        #[allow(unused)]
+        fn as_array_ref<T: Array + 'static>(t: T) -> ArrayRef {
+            std::sync::Arc::new(t) as ArrayRef
+        }
         Ok({
             let (somes, data0): (Vec<_>, Vec<_>) = data
                 .into_iter()
@@ -74,37 +79,38 @@ impl ::re_types_core::Loggable for AffixFuzzer7 {
                     (datum.is_some(), datum)
                 })
                 .unzip();
-            let data0_bitmap: Option<arrow2::bitmap::Bitmap> = {
+            let data0_validity: Option<arrow::buffer::NullBuffer> = {
                 let any_nones = somes.iter().any(|some| !*some);
                 any_nones.then(|| somes.into())
             };
             {
-                use arrow2::{buffer::Buffer, offset::OffsetsBuffer};
-                let offsets = arrow2::offset::Offsets::<i32>::try_from_lengths(
+                let offsets = arrow::buffer::OffsetBuffer::<i32>::from_lengths(
                     data0
                         .iter()
                         .map(|opt| opt.as_ref().map_or(0, |datum| datum.len())),
-                )?
-                .into();
+                );
                 let data0_inner_data: Vec<_> = data0.into_iter().flatten().flatten().collect();
-                let data0_inner_bitmap: Option<arrow2::bitmap::Bitmap> = None;
-                ListArray::try_new(
-                    Self::arrow_datatype(),
+                let data0_inner_validity: Option<arrow::buffer::NullBuffer> = None;
+                as_array_ref(ListArray::try_new(
+                    std::sync::Arc::new(Field::new(
+                        "item",
+                        <crate::testing::datatypes::AffixFuzzer1>::arrow_datatype(),
+                        false,
+                    )),
                     offsets,
                     {
-                        _ = data0_inner_bitmap;
+                        _ = data0_inner_validity;
                         crate::testing::datatypes::AffixFuzzer1::to_arrow_opt(
                             data0_inner_data.into_iter().map(Some),
                         )?
                     },
-                    data0_bitmap,
-                )?
-                .boxed()
+                    data0_validity,
+                )?)
             }
         })
     }
 
-    fn from_arrow_opt(
+    fn from_arrow2_opt(
         arrow_data: &dyn arrow2::array::Array,
     ) -> DeserializationResult<Vec<Option<Self>>>
     where
@@ -112,7 +118,8 @@ impl ::re_types_core::Loggable for AffixFuzzer7 {
     {
         #![allow(clippy::wildcard_imports)]
         use ::re_types_core::{Loggable as _, ResultExt as _};
-        use arrow2::{array::*, buffer::*, datatypes::*};
+        use arrow::datatypes::*;
+        use arrow2::{array::*, buffer::*};
         Ok({
             let arrow_data = arrow_data
                 .as_any()
@@ -128,7 +135,7 @@ impl ::re_types_core::Loggable for AffixFuzzer7 {
             } else {
                 let arrow_data_inner = {
                     let arrow_data_inner = &**arrow_data.values();
-                    crate::testing::datatypes::AffixFuzzer1::from_arrow_opt(arrow_data_inner)
+                    crate::testing::datatypes::AffixFuzzer1::from_arrow2_opt(arrow_data_inner)
                         .with_context("rerun.testing.components.AffixFuzzer7#many_optional")?
                         .into_iter()
                         .collect::<Vec<_>>()

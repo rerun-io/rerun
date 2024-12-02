@@ -42,6 +42,9 @@ impl App {
 
         ui.add_space(SPACING);
 
+        UICommand::Undo.menu_button_ui(ui, &self.command_sender); // TODO(emilk): only enabled if there is something to undo
+        UICommand::Redo.menu_button_ui(ui, &self.command_sender); // TODO(emilk): only enabled if there is something to redo
+
         UICommand::ToggleCommandPalette.menu_button_ui(ui, &self.command_sender);
 
         ui.add_space(SPACING);
@@ -171,7 +174,7 @@ impl App {
         }
     }
 
-    fn save_buttons_ui(&mut self, ui: &mut egui::Ui, store_ctx: Option<&StoreContext<'_>>) {
+    fn save_buttons_ui(&self, ui: &mut egui::Ui, store_ctx: Option<&StoreContext<'_>>) {
         use re_ui::UICommandSender;
 
         let file_save_in_progress = self.background_tasks.is_file_save_in_progress();

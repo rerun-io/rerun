@@ -362,15 +362,15 @@ impl PythonCodeGenerator {
             .extend(names.iter().cloned());
 
             let mut code = String::new();
-            code.push_indented(0, &format!("# {}", autogen_warning!()), 1);
+            code.push_indented(0, format!("# {}", autogen_warning!()), 1);
             if let Some(source_path) = obj.relative_filepath() {
-                code.push_indented(0, &format!("# Based on {:?}.", format_path(source_path)), 2);
+                code.push_indented(0, format!("# Based on {:?}.", format_path(source_path)), 2);
 
                 if obj.kind != ObjectKind::View {
                     // View type extension isn't implemented yet (shouldn't be hard though to add if needed).
                     code.push_indented(
                         0,
-                        &format!(
+                        format!(
                             "# You can extend this class by creating a {:?} class in {:?}.",
                             ext_class.name, ext_class.file_name
                         ),
@@ -514,7 +514,7 @@ fn write_init_file(
     let path = kind_path.join("__init__.py");
     let mut code = String::new();
     let manifest = quote_manifest(mods.iter().flat_map(|(_, names)| names.iter()));
-    code.push_indented(0, &format!("# {}", autogen_warning!()), 2);
+    code.push_indented(0, format!("# {}", autogen_warning!()), 2);
     code.push_unindented(
         "
             from __future__ import annotations
@@ -524,7 +524,7 @@ fn write_init_file(
     );
     for (module, names) in mods {
         let names = names.join(", ");
-        code.push_indented(0, &format!("from .{module} import {names}"), 1);
+        code.push_indented(0, format!("from .{module} import {names}"), 1);
     }
     if !manifest.is_empty() {
         code.push_unindented(format!("\n__all__ = [{manifest}]"), 0);
@@ -2022,7 +2022,7 @@ fn quote_arrow_serialization(
 
             code.push_indented(0, "from typing import cast", 1);
             code.push_indented(0, quote_local_batch_type_imports(&obj.fields), 2);
-            code.push_indented(0, &format!("if isinstance(data, {name}):"), 1);
+            code.push_indented(0, format!("if isinstance(data, {name}):"), 1);
             code.push_indented(1, "data = [data]", 2);
 
             code.push_indented(0, "return pa.StructArray.from_arrays(", 1);
@@ -2550,7 +2550,8 @@ fn quote_arrow_field(field: &Field) -> String {
     } = field;
 
     let datatype = quote_arrow_datatype(data_type);
-    let is_nullable = if *is_nullable { "True" } else { "False" };
+    let is_nullable = *is_nullable || matches!(data_type.to_logical_type(), DataType::Union { .. }); // Rerun unions always has a `_null_marker: null` variant, so they are always nullable
+    let is_nullable = if is_nullable { "True" } else { "False" };
     let metadata = quote_metadata_map(metadata);
 
     format!(r#"pa.field("{name}", {datatype}, nullable={is_nullable}, metadata={metadata})"#)

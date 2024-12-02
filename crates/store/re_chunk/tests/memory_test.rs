@@ -56,10 +56,10 @@ fn memory_use<R>(run: impl Fn() -> R) -> (R, usize) {
 
 use arrow2::{
     array::{
-        Array as ArrowArray, BooleanArray as ArrowBooleanArray, ListArray as ArrowListArray,
-        PrimitiveArray as ArrowPrimitiveArray,
+        Array as Arrow2Array, BooleanArray as Arrow2BooleanArray, ListArray as ArrowListArray,
+        PrimitiveArray as Arrow2PrimitiveArray,
     },
-    offset::Offsets as ArrowOffsets,
+    offset::Offsets as Arrow2Offsets,
 };
 use itertools::Itertools;
 
@@ -79,14 +79,14 @@ fn concat_does_allocate() {
             std::iter::repeat(NUM_SCALARS as usize / 10)
                 .take(10)
                 .map(|_| {
-                    ArrowPrimitiveArray::from_vec((0..NUM_SCALARS / 10).collect_vec()).to_boxed()
+                    Arrow2PrimitiveArray::from_vec((0..NUM_SCALARS / 10).collect_vec()).to_boxed()
                 })
                 .collect_vec()
         });
         let unconcatenated_refs = unconcatenated
             .0
             .iter()
-            .map(|a| &**a as &dyn ArrowArray)
+            .map(|a| &**a as &dyn Arrow2Array)
             .collect_vec();
 
         let concatenated =
@@ -117,8 +117,9 @@ fn concat_single_is_noop() {
         ((unconcatenated, unconcatenated_size_bytes), (concatenated, concatenated_size_bytes)),
         total_size_bytes,
     ) = memory_use(|| {
-        let unconcatenated =
-            memory_use(|| ArrowPrimitiveArray::from_vec((0..NUM_SCALARS).collect_vec()).to_boxed());
+        let unconcatenated = memory_use(|| {
+            Arrow2PrimitiveArray::from_vec((0..NUM_SCALARS).collect_vec()).to_boxed()
+        });
 
         let concatenated =
             memory_use(|| re_chunk::util::concat_arrays(&[&*unconcatenated.0]).unwrap());
@@ -140,11 +141,11 @@ fn concat_single_is_noop() {
     {
         let unconcatenated = unconcatenated
             .as_any()
-            .downcast_ref::<ArrowPrimitiveArray<i64>>()
+            .downcast_ref::<Arrow2PrimitiveArray<i64>>()
             .unwrap();
         let concatenated = concatenated
             .as_any()
-            .downcast_ref::<ArrowPrimitiveArray<i64>>()
+            .downcast_ref::<Arrow2PrimitiveArray<i64>>()
             .unwrap();
 
         assert!(
@@ -168,10 +169,10 @@ fn filter_does_allocate() {
     let (((unfiltered, unfiltered_size_bytes), (filtered, filtered_size_bytes)), total_size_bytes) =
         memory_use(|| {
             let unfiltered = memory_use(|| {
-                let scalars = ArrowPrimitiveArray::from_vec((0..NUM_SCALARS).collect_vec());
+                let scalars = Arrow2PrimitiveArray::from_vec((0..NUM_SCALARS).collect_vec());
                 ArrowListArray::<i32>::new(
                     ArrowListArray::<i32>::default_datatype(scalars.data_type().clone()),
-                    ArrowOffsets::try_from_lengths(
+                    Arrow2Offsets::try_from_lengths(
                         std::iter::repeat(NUM_SCALARS as usize / 10).take(10),
                     )
                     .unwrap()
@@ -181,7 +182,7 @@ fn filter_does_allocate() {
                 )
             });
 
-            let filter = ArrowBooleanArray::from_slice(
+            let filter = Arrow2BooleanArray::from_slice(
                 (0..unfiltered.0.len()).map(|i| i % 2 == 0).collect_vec(),
             );
             let filtered = memory_use(|| re_chunk::util::filter_array(&unfiltered.0, &filter));
@@ -203,12 +204,12 @@ fn filter_does_allocate() {
         let unfiltered = unfiltered
             .values()
             .as_any()
-            .downcast_ref::<ArrowPrimitiveArray<i64>>()
+            .downcast_ref::<Arrow2PrimitiveArray<i64>>()
             .unwrap();
         let filtered = filtered
             .values()
             .as_any()
-            .downcast_ref::<ArrowPrimitiveArray<i64>>()
+            .downcast_ref::<Arrow2PrimitiveArray<i64>>()
             .unwrap();
 
         assert!(
@@ -230,10 +231,10 @@ fn filter_empty_or_full_is_noop() {
     let (((unfiltered, unfiltered_size_bytes), (filtered, filtered_size_bytes)), total_size_bytes) =
         memory_use(|| {
             let unfiltered = memory_use(|| {
-                let scalars = ArrowPrimitiveArray::from_vec((0..NUM_SCALARS).collect_vec());
+                let scalars = Arrow2PrimitiveArray::from_vec((0..NUM_SCALARS).collect_vec());
                 ArrowListArray::<i32>::new(
                     ArrowListArray::<i32>::default_datatype(scalars.data_type().clone()),
-                    ArrowOffsets::try_from_lengths(
+                    Arrow2Offsets::try_from_lengths(
                         std::iter::repeat(NUM_SCALARS as usize / 10).take(10),
                     )
                     .unwrap()
@@ -243,7 +244,7 @@ fn filter_empty_or_full_is_noop() {
                 )
             });
 
-            let filter = ArrowBooleanArray::from_slice(
+            let filter = Arrow2BooleanArray::from_slice(
                 std::iter::repeat(true)
                     .take(unfiltered.0.len())
                     .collect_vec(),
@@ -269,12 +270,12 @@ fn filter_empty_or_full_is_noop() {
         let unfiltered = unfiltered
             .values()
             .as_any()
-            .downcast_ref::<ArrowPrimitiveArray<i64>>()
+            .downcast_ref::<Arrow2PrimitiveArray<i64>>()
             .unwrap();
         let filtered = filtered
             .values()
             .as_any()
-            .downcast_ref::<ArrowPrimitiveArray<i64>>()
+            .downcast_ref::<Arrow2PrimitiveArray<i64>>()
             .unwrap();
 
         assert!(
@@ -301,10 +302,10 @@ fn take_does_not_allocate() {
     let (((untaken, untaken_size_bytes), (taken, taken_size_bytes)), total_size_bytes) =
         memory_use(|| {
             let untaken = memory_use(|| {
-                let scalars = ArrowPrimitiveArray::from_vec((0..NUM_SCALARS).collect_vec());
+                let scalars = Arrow2PrimitiveArray::from_vec((0..NUM_SCALARS).collect_vec());
                 ArrowListArray::<i32>::new(
                     ArrowListArray::<i32>::default_datatype(scalars.data_type().clone()),
-                    ArrowOffsets::try_from_lengths(
+                    Arrow2Offsets::try_from_lengths(
                         std::iter::repeat(NUM_SCALARS as usize / 10).take(10),
                     )
                     .unwrap()
@@ -314,7 +315,7 @@ fn take_does_not_allocate() {
                 )
             });
 
-            let indices = ArrowPrimitiveArray::from_vec(
+            let indices = Arrow2PrimitiveArray::from_vec(
                 (0..untaken.0.len() as i32)
                     .filter(|i| i % 2 == 0)
                     .collect_vec(),
@@ -338,12 +339,12 @@ fn take_does_not_allocate() {
         let untaken = untaken
             .values()
             .as_any()
-            .downcast_ref::<ArrowPrimitiveArray<i64>>()
+            .downcast_ref::<Arrow2PrimitiveArray<i64>>()
             .unwrap();
         let taken = taken
             .values()
             .as_any()
-            .downcast_ref::<ArrowPrimitiveArray<i64>>()
+            .downcast_ref::<Arrow2PrimitiveArray<i64>>()
             .unwrap();
 
         assert!(
@@ -365,10 +366,10 @@ fn take_empty_or_full_is_noop() {
     let (((untaken, untaken_size_bytes), (taken, taken_size_bytes)), total_size_bytes) =
         memory_use(|| {
             let untaken = memory_use(|| {
-                let scalars = ArrowPrimitiveArray::from_vec((0..NUM_SCALARS).collect_vec());
+                let scalars = Arrow2PrimitiveArray::from_vec((0..NUM_SCALARS).collect_vec());
                 ArrowListArray::<i32>::new(
                     ArrowListArray::<i32>::default_datatype(scalars.data_type().clone()),
-                    ArrowOffsets::try_from_lengths(
+                    Arrow2Offsets::try_from_lengths(
                         std::iter::repeat(NUM_SCALARS as usize / 10).take(10),
                     )
                     .unwrap()
@@ -378,7 +379,7 @@ fn take_empty_or_full_is_noop() {
                 )
             });
 
-            let indices = ArrowPrimitiveArray::from_vec((0..untaken.0.len() as i32).collect_vec());
+            let indices = Arrow2PrimitiveArray::from_vec((0..untaken.0.len() as i32).collect_vec());
             let taken = memory_use(|| re_chunk::util::take_array(&untaken.0, &indices));
 
             (untaken, taken)
@@ -400,12 +401,12 @@ fn take_empty_or_full_is_noop() {
         let untaken = untaken
             .values()
             .as_any()
-            .downcast_ref::<ArrowPrimitiveArray<i64>>()
+            .downcast_ref::<Arrow2PrimitiveArray<i64>>()
             .unwrap();
         let taken = taken
             .values()
             .as_any()
-            .downcast_ref::<ArrowPrimitiveArray<i64>>()
+            .downcast_ref::<Arrow2PrimitiveArray<i64>>()
             .unwrap();
 
         assert!(

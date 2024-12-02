@@ -23,13 +23,28 @@ cd rerun
 
 Now install the `pixi` package manager: <https://github.com/prefix-dev/pixi?tab=readme-ov-file#installation>
 
-Make sure `cargo --version` prints `1.79.0` once you are done.
+Make sure `cargo --version` prints `1.80.0` once you are done.
 
 If you are using an Apple-silicon Mac (M1, M2), make sure `rustc -vV` outputs `host: aarch64-apple-darwin`. If not, this should fix it:
 
 ```sh
-rustup set default-host aarch64-apple-darwin && rustup install 1.79.0
+rustup set default-host aarch64-apple-darwin && rustup install 1.80.0
 ```
+
+## Git-lfs
+
+We use [git-lfs](https://git-lfs.com/) to store big files in the repository, such as UI test snapshots.
+We aim to keep this project buildable without the need of git-lfs (for example, icons and similar assets are checked in to the repo as regular files).
+However, git-lfs is generally required for a proper development environment, e.g. to run tests.
+
+### Setting up git-lfs
+
+The TL;DR is to install git-lfs via your favorite package manager (`apt`, Homebrew, MacPorts, etc.) and run `git lfs install`.
+See the many resources available online more details.
+
+You can ensure that everything is correctly installed by running `git lfs ls-files` from the repository root.
+It should list some test snapshot files.
+
 
 ## Validating your environment
 You can validate your environment is set up correctly by running:
@@ -84,14 +99,16 @@ pixi run py-fmt
 ```
 
 ### Building an installable Python wheel
-The `py-wheel` command builds a whl file:
+The `py-build-wheels-sdk-only` command builds a whl file:
 ```sh
-pixi run py-wheel --release
+pixi run py-build-wheels-sdk-only
 ```
 Which you can then install in your own Python environment:
 ```sh
-pip install ./target/wheels/*.whl
+pip install ./dist/CURRENT_ARCHITECTURE/*.whl
 ```
+
+**IMPORTANT**: unlike the official wheels, wheels produced by this method do _not_ contain the viewer, so they may only be used for logging purposes.
 
 ## Building and installing the Rerun C++ SDK
 
@@ -112,7 +129,7 @@ High-level documentation for Rerun can be found at [http://rerun.io/docs](http:/
 
 - 🌊 [C++ API docs](https://ref.rerun.io/docs/cpp) are built with `doxygen` and hosted on GitHub. Use `pixi run -e cpp cpp-docs` to build them locally. For details on the C++ doc-system, see [Writing Docs](rerun_cpp/docs/writing_docs.md).
 - 🐍 [Python API docs](https://ref.rerun.io/docs/python) are built via `mkdocs` and hosted on GitHub. For details on the Python doc-system, see [Writing Docs](rerun_py/docs/writing_docs.md).
-- 🦀 [Rust API docs](https://ref.rerun.io/docs/rust/stable) are hosted on  <https://ref.rerun.io/docs/rust/stable>. You can build them locally with: `cargo doc --all-features --no-deps --open`.
+- 🦀 [Rust API docs](https://docs.rs/rerun/) are hosted on  <https://docs.rs/rerun/>. You can build them locally with: `cargo doc --all-features --no-deps --open`.
 
 ## Building for the web
 

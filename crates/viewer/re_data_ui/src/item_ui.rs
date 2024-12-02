@@ -607,7 +607,7 @@ pub fn instance_hover_card_ui(
     instance_path: &InstancePath,
     include_subtree: bool,
 ) {
-    if !ctx.recording().is_known_entity(&instance_path.entity_path) {
+    if !db.is_known_entity(&instance_path.entity_path) {
         ui.label("Unknown entity.");
         return;
     }
@@ -626,7 +626,7 @@ pub fn instance_hover_card_ui(
     // Then we can move the size view into `data_ui`.
 
     if instance_path.instance.is_all() {
-        if let Some(subtree) = ctx.recording().tree().subtree(&instance_path.entity_path) {
+        if let Some(subtree) = db.tree().subtree(&instance_path.entity_path) {
             entity_tree_stats_ui(ui, &query.timeline(), db, subtree, include_subtree);
         }
     } else {

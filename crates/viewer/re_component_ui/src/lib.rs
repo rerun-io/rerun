@@ -15,6 +15,7 @@ mod map_provider;
 mod marker_shape;
 mod pinhole;
 mod radius;
+mod recording_uri;
 mod resolution;
 mod response_utils;
 mod timeline;
@@ -37,15 +38,13 @@ use re_types::{
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
-        FillRatio, GammaCorrection, ImagePlaneDistance, MagnificationFilter, MarkerSize, Name,
-        Opacity, Range1D, Scale3D, ShowLabels, StrokeWidth, Text, TransformRelation, Translation3D,
-        ValueRange,
+        FillRatio, GammaCorrection, GraphType, ImagePlaneDistance, MagnificationFilter, MarkerSize,
+        Name, Opacity, Range1D, Scale3D, ShowLabels, StrokeWidth, Text, TransformRelation,
+        Translation3D, ValueRange,
     },
     Component as _,
 };
-use re_types_blueprint::blueprint::components::{
-    IncludedSpaceView, RootContainer, SpaceViewMaximized,
-};
+use re_types_blueprint::blueprint::components::{RootContainer, SpaceViewMaximized};
 use re_viewer_context::gpu_bridge::colormap_edit_or_view_ui;
 
 /// Default number of ui points to show a number.
@@ -103,6 +102,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<BackgroundKind>(edit_view_enum);
     registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
     registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
+    registry.add_singleline_edit_or_view::<GraphType>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MagnificationFilter>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MapProvider>(
         edit_view_enum_with_variant_available::<
@@ -118,7 +118,6 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<Scale3D>(edit_or_view_vec3d);
 
     // Components that refer to views:
-    registry.add_singleline_edit_or_view::<IncludedSpaceView>(view_view_id);
     registry.add_singleline_edit_or_view::<SpaceViewMaximized>(view_view_id);
 
     registry.add_singleline_edit_or_view::<RootContainer>(view_uuid);
@@ -156,6 +155,8 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     registry.add_singleline_edit_or_view(pinhole::singleline_view_pinhole);
     registry.add_multiline_edit_or_view(pinhole::multiline_view_pinhole);
+
+    registry.add_singleline_edit_or_view(recording_uri::singleline_view_recording_uri);
 
     line_strip::register_linestrip_component_ui(&mut registry);
     geo_line_string::register_geo_line_string_component_ui(&mut registry);

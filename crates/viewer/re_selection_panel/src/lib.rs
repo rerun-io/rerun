@@ -29,12 +29,10 @@ mod test {
             selection_state.set_selection(Item::SpaceView(SpaceViewId::random()));
         });
 
-        test_ctx.run(|ctx, ui| {
-            let (sender, _) = std::sync::mpsc::channel();
+        test_ctx.run_in_egui_central_panel(|ctx, ui| {
             let blueprint = ViewportBlueprint::try_from_db(
                 ctx.store_context.blueprint,
                 &LatestAtQuery::latest(blueprint_timeline()),
-                sender,
             );
 
             let mut selection_panel = SelectionPanel::default();

@@ -67,7 +67,7 @@ fn parse_tuid(array: &dyn Array, index: usize) -> Option<Tuid> {
         _ => (array.to_boxed(), index),
     };
 
-    let tuids = Tuid::from_arrow(array.as_ref()).ok()?;
+    let tuids = Tuid::from_arrow2(array.as_ref()).ok()?;
     tuids.get(index).copied()
 }
 
@@ -183,7 +183,7 @@ impl std::fmt::Display for DisplayDatatype<'_> {
 
 struct DisplayMetadata<'a>(&'a Metadata, &'a str);
 
-impl<'a> std::fmt::Display for DisplayMetadata<'a> {
+impl std::fmt::Display for DisplayMetadata<'_> {
     #[inline]
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         let Self(metadata, prefix) = self;

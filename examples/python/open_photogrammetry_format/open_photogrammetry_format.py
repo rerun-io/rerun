@@ -32,7 +32,7 @@ The full source code for this example is available
 
 ### Links
 * [OPF specification](https://pix4d.github.io/opf-spec/index.html)
-* [Dataset source](https://support.pix4d.com/en-us/articles/360000235126#OPF)
+* [Dataset source](https://support.pix4d.com/hc/en-us/articles/360000235126#OPF)
 * [pyopf](https://github.com/Pix4D/pyopf)
 """
 

@@ -12,20 +12,20 @@ pub struct SelectionHistoryUi {}
 
 impl SelectionHistoryUi {
     pub(crate) fn selection_ui(
-        &mut self,
+        &self,
         ui: &mut egui::Ui,
-        blueprint: &ViewportBlueprint,
+        viewport: &ViewportBlueprint,
         history: &mut SelectionHistory,
     ) -> Option<ItemCollection> {
-        let next = self.next_button_ui(ui, blueprint, history);
-        let prev = self.prev_button_ui(ui, blueprint, history);
+        let next = self.next_button_ui(ui, viewport, history);
+        let prev = self.prev_button_ui(ui, viewport, history);
         prev.or(next)
     }
 
     fn prev_button_ui(
-        &mut self,
+        &self,
         ui: &mut egui::Ui,
-        blueprint: &ViewportBlueprint,
+        viewport: &ViewportBlueprint,
         history: &mut SelectionHistory,
     ) -> Option<ItemCollection> {
         // undo selection
@@ -38,7 +38,7 @@ impl SelectionHistoryUi {
                 \n\
                 Right-click for more.",
                     UICommand::SelectionPrevious.format_shortcut_tooltip_suffix(ui.ctx()),
-                    selection_to_string(blueprint, &previous.selection),
+                    selection_to_string(viewport, &previous.selection),
                 ));
 
             let mut return_current = false;
@@ -46,7 +46,7 @@ impl SelectionHistoryUi {
                 // undo: newest on top, oldest on bottom
                 let cur = history.current;
                 for i in (0..history.current).rev() {
-                    self.history_item_ui(blueprint, ui, i, history);
+                    self.history_item_ui(viewport, ui, i, history);
                 }
                 return_current = cur != history.current;
             });
@@ -71,9 +71,9 @@ impl SelectionHistoryUi {
     }
 
     fn next_button_ui(
-        &mut self,
+        &self,
         ui: &mut egui::Ui,
-        blueprint: &ViewportBlueprint,
+        viewport: &ViewportBlueprint,
         history: &mut SelectionHistory,
     ) -> Option<ItemCollection> {
         // redo selection
@@ -86,7 +86,7 @@ impl SelectionHistoryUi {
                 \n\
                 Right-click for more.",
                     UICommand::SelectionNext.format_shortcut_tooltip_suffix(ui.ctx()),
-                    selection_to_string(blueprint, &next.selection),
+                    selection_to_string(viewport, &next.selection),
                 ));
 
             let mut return_current = false;
@@ -94,7 +94,7 @@ impl SelectionHistoryUi {
                 // redo: oldest on top, most recent on bottom
                 let cur = history.current;
                 for i in (history.current + 1)..history.stack.len() {
-                    self.history_item_ui(blueprint, ui, i, history);
+                    self.history_item_ui(viewport, ui, i, history);
                 }
                 return_current = cur != history.current;
             });
@@ -120,8 +120,8 @@ impl SelectionHistoryUi {
 
     #[allow(clippy::unused_self)]
     fn history_item_ui(
-        &mut self,
-        blueprint: &ViewportBlueprint,
+        &self,
+        viewport: &ViewportBlueprint,
         ui: &mut egui::Ui,
         index: usize,
         history: &mut SelectionHistory,
@@ -130,7 +130,7 @@ impl SelectionHistoryUi {
             ui.horizontal(|ui| {
                 {
                     // borrow checker workaround
-                    let sel = selection_to_string(blueprint, sel);
+                    let sel = selection_to_string(viewport, sel);
                     if ui
                         .selectable_value(&mut history.current, index, sel)
                         .clicked()
@@ -154,14 +154,14 @@ fn item_kind_ui(ui: &mut egui::Ui, sel: &Item) {
     ui.weak(RichText::new(format!("({})", sel.kind())));
 }
 
-fn selection_to_string(blueprint: &ViewportBlueprint, selection: &ItemCollection) -> String {
+fn selection_to_string(viewport: &ViewportBlueprint, selection: &ItemCollection) -> String {
     debug_assert!(
         !selection.is_empty(),
         "History should never contain empty selections."
     );
     if selection.len() == 1 {
         if let Some(item) = selection.iter_items().next() {
-            item_to_string(blueprint, item)
+            item_to_string(viewport, item)
         } else {
             // All items got removed or weren't there to begin with.
             debug_assert!(
@@ -177,14 +177,14 @@ fn selection_to_string(blueprint: &ViewportBlueprint, selection: &ItemCollection
     }
 }
 
-fn item_to_string(blueprint: &ViewportBlueprint, item: &Item) -> String {
+fn item_to_string(viewport: &ViewportBlueprint, item: &Item) -> String {
     match item {
         Item::AppId(app_id) => app_id.to_string(),
         Item::DataSource(data_source) => data_source.to_string(),
         Item::StoreId(store_id) => store_id.to_string(),
         Item::SpaceView(space_view_id) => {
             // TODO(#4678): unnamed space views should have their label formatted accordingly (subdued)
-            if let Some(space_view) = blueprint.view(space_view_id) {
+            if let Some(space_view) = viewport.view(space_view_id) {
                 space_view.display_name_or_default().as_ref().to_owned()
             } else {
                 "<removed space view>".to_owned()
@@ -193,7 +193,7 @@ fn item_to_string(blueprint: &ViewportBlueprint, item: &Item) -> String {
         Item::InstancePath(instance_path) => instance_path.to_string(),
         Item::DataResult(space_view_id, instance_path) => {
             // TODO(#4678): unnamed space views should have their label formatted accordingly (subdued)
-            let space_view_display_name = if let Some(space_view) = blueprint.view(space_view_id) {
+            let space_view_display_name = if let Some(space_view) = viewport.view(space_view_id) {
                 space_view.display_name_or_default().as_ref().to_owned()
             } else {
                 "<removed space view>".to_owned()
@@ -206,7 +206,7 @@ fn item_to_string(blueprint: &ViewportBlueprint, item: &Item) -> String {
         }
         Item::Container(container_id) => {
             // TODO(#4678): unnamed container should have their label formatted accordingly (subdued)
-            if let Some(container) = blueprint.container(container_id) {
+            if let Some(container) = viewport.container(container_id) {
                 container.display_name_or_default().as_ref().to_owned()
             } else {
                 "<removed container>".to_owned()

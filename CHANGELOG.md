@@ -2,6 +2,25 @@
 
 ## [Unreleased](https://github.com/rerun-io/rerun/compare/latest...HEAD)
 
+## [0.20.2](https://github.com/rerun-io/rerun/compare/0.20.1...0.20.2) - Build fix
+
+### 🔎 Details
+
+#### 🪳 Bug fixes
+- Fix a drag-and-drop display regression [#8228](https://github.com/rerun-io/rerun/pull/8228)
+
+#### 📚 Docs
+- Add `map_view` to the default features and improve how the `nasm` feature is handled and documented [#8243](https://github.com/rerun-io/rerun/pull/8243)
+
+#### 🧑‍💻 Dev-experience
+- Gracefully handle `cargo-metadata` failures in users' environments [#8239](https://github.com/rerun-io/rerun/pull/8239)
+
+
+## [0.20.1](https://github.com/rerun-io/rerun/compare/0.20.0...0.20.1) - Doc fix
+
+- Fix doc build - run `cargo metadata` with `--offline` & `--no-deps` [#8168](https://github.com/rerun-io/rerun/pull/8168)
+
+
 ## [0.20.0](https://github.com/rerun-io/rerun/compare/0.19.1...0.20.0) - Map view & native H.264 video support
 
 https://github.com/user-attachments/assets/553b6d88-143d-4cf9-a4bc-6b620534ab95
@@ -313,7 +332,7 @@ This can both greatly simplify logging code and drastically improve performance 
 API documentation:
 * 🐍 [Python `send_columns` docs](https://ref.rerun.io/docs/python/stable/common/columnar_api/#rerun.send_columns)
 * 🌊 [C++ `send_columns` docs](https://ref.rerun.io/docs/cpp/stable/classrerun_1_1RecordingStream.html#ad17571d51185ce2fc2fc2f5c3070ad65)
-* 🦀 [Rust `send_columns` docs](https://ref.rerun.io/docs/rust/stable/rerun/struct.RecordingStream.html#method.send_columns)
+* 🦀 [Rust `send_columns` docs](https://docs.rs/rerun/latest/rerun/struct.RecordingStream.html#method.send_columns)
 
 API usage examples:
 <details>

@@ -127,6 +127,15 @@ ALL_COMPONENTS: dict[str, TestCase] = {
             ((3, 3), (4, 4), (5, 5)),
         ]
     ),
+    "GraphEdgeBatch": TestCase(
+        batch=[
+            rr.components.GraphEdge("a", "b"),
+            rr.components.GraphEdge("b", "c"),
+            rr.components.GraphEdge("c", "a"),
+        ]
+    ),
+    "GraphNodeBatch": TestCase(batch=["a", "b", "c"]),
+    "GraphTypeBatch": TestCase(rr.components.GraphType.Directed),
     "HalfSize2DBatch": TestCase(batch=[(5.0, 10.0), (50, 30), (23, 45)]),
     "HalfSize3DBatch": TestCase(batch=[(5.0, 10.0, 20.0), (50, 30, 40), (23, 45, 67)]),
     "ImageBufferBatch": TestCase(
@@ -186,6 +195,12 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     "Position3DBatch": TestCase(batch=[(0, 3, 4), (1, 4, 5), (2, 5, 6)]),
     "RadiusBatch": TestCase(batch=[4.5, 5, 6, 7]),
     "Range1DBatch": TestCase((0, 5)),
+    "RecordingUriBatch": TestCase(
+        batch=[
+            rr.components.RecordingUri("file:///path/to/file"),
+            rr.components.RecordingUri("rerun://localhost:51234/recording/some-recording-id"),
+        ]
+    ),
     "ResolutionBatch": TestCase((1920, 1080)),
     "RotationAxisAngleBatch": TestCase(
         rr.datatypes.RotationAxisAngle(axis=(1, 0, 0), angle=rr.datatypes.Angle(rad=math.pi))

@@ -14,6 +14,7 @@ pub mod modal;
 mod section_collapsing_header;
 pub mod toasts;
 mod ui_ext;
+pub mod zoom_pan_area;
 
 use egui::NumExt as _;
 

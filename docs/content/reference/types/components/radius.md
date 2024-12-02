@@ -24,7 +24,7 @@ float32
 ## API reference links
  * 🌊 [C++ API docs for `Radius`](https://ref.rerun.io/docs/cpp/stable/structrerun_1_1components_1_1Radius.html)
  * 🐍 [Python API docs for `Radius`](https://ref.rerun.io/docs/python/stable/common/components#rerun.components.Radius)
- * 🦀 [Rust API docs for `Radius`](https://ref.rerun.io/docs/rust/stable/rerun/components/struct.Radius.html)
+ * 🦀 [Rust API docs for `Radius`](https://docs.rs/rerun/latest/rerun/components/struct.Radius.html)
 
 
 ## Used by
@@ -37,6 +37,7 @@ float32
 * [`Ellipsoids3D`](../archetypes/ellipsoids3d.md)
 * [`GeoLineStrings`](../archetypes/geo_line_strings.md)
 * [`GeoPoints`](../archetypes/geo_points.md)
+* [`GraphNodes`](../archetypes/graph_nodes.md?speculative-link)
 * [`LineStrips2D`](../archetypes/line_strips2d.md)
 * [`LineStrips3D`](../archetypes/line_strips3d.md)
 * [`Points2D`](../archetypes/points2d.md)

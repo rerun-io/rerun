@@ -30,7 +30,7 @@ include = [
 ]
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/rerun-io/rerun"
-rust-version = "1.79"
+rust-version = "1.80"
 version = "0.21.0-alpha.1+dev"
 
 [workspace.dependencies]
@@ -99,6 +99,7 @@ re_space_view = { path = "crates/viewer/re_space_view", version = "=0.21.0-alpha
 re_space_view_bar_chart = { path = "crates/viewer/re_space_view_bar_chart", version = "=0.21.0-alpha.1", default-features = false }
 re_space_view_spatial = { path = "crates/viewer/re_space_view_spatial", version = "=0.21.0-alpha.1", default-features = false }
 re_space_view_dataframe = { path = "crates/viewer/re_space_view_dataframe", version = "=0.21.0-alpha.1", default-features = false }
+re_space_view_graph = { path = "crates/viewer/re_space_view_graph", version = "=0.21.0-alpha.1", default-features = false }
 re_space_view_map = { path = "crates/viewer/re_space_view_map", version = "=0.21.0-alpha.1", default-features = false }
 re_space_view_tensor = { path = "crates/viewer/re_space_view_tensor", version = "=0.21.0-alpha.1", default-features = false }
 re_space_view_text_document = { path = "crates/viewer/re_space_view_text_document", version = "=0.21.0-alpha.1", default-features = false }
@@ -133,6 +134,7 @@ eframe = { version = "0.29.1", default-features = false, features = [
 ] }
 egui = { version = "0.29.1", features = [
   "callstack",
+  "color-hex",
   "log",
   "puffin",
   "rayon",
@@ -144,6 +146,7 @@ egui_extras = { version = "0.29.1", features = [
   "puffin",
   "serde",
 ] }
+egui_kittest = { version = "0.29.1", features = ["wgpu", "snapshot"] }
 egui_plot = "0.29.0" # https://github.com/emilk/egui_plot
 egui_table = "0.1.0" # https://github.com/rerun-io/egui_table
 egui_tiles = "0.10.1" # https://github.com/rerun-io/egui_tiles
@@ -186,6 +189,7 @@ enumset = "1.0.12"
 env_logger = { version = "0.10", default-features = false }
 ffmpeg-sidecar = { version = "2.0.2", default-features = false }
 fixed = { version = "1.28", default-features = false }
+fjadra = "0.1"
 flatbuffers = "23.0"
 futures-channel = "0.3"
 futures-util = { version = "0.3", default-features = false }
@@ -325,7 +329,6 @@ wgpu = { version = "23.0", default-features = false, features = [
   "fragile-send-sync-non-atomic-wasm",
 ] }
 wgpu-core = "23.0"
-wgpu-types = "23.0"
 xshell = "0.2"
 zip = { version = "0.6", default-features = false } # We're stuck on 0.6 because https://crates.io/crates/protoc-prebuilt is still using 0.6
 
@@ -377,13 +380,13 @@ opt-level = 0 # we often debug egui via Rerun
 unsafe_code = "deny"
 
 elided_lifetimes_in_paths = "warn"
-future_incompatible = "warn"
-nonstandard_style = "warn"
-rust_2018_idioms = "warn"
+future_incompatible = { level = "warn", priority = -1 }
+nonstandard_style = { level = "warn", priority = -1 }
+rust_2018_idioms = { level = "warn", priority = -1 }
 rust_2021_prelude_collisions = "warn"
 semicolon_in_expressions_from_macros = "warn"
 trivial_numeric_casts = "warn"
-unsafe_op_in_unsafe_fn = "warn"               # `unsafe_op_in_unsafe_fn` may become the default in future Rust versions: https://github.com/rust-lang/rust/issues/71668
+unsafe_op_in_unsafe_fn = "warn"                         # `unsafe_op_in_unsafe_fn` may become the default in future Rust versions: https://github.com/rust-lang/rust/issues/71668
 unused_extern_crates = "warn"
 unused_import_braces = "warn"
 unused_lifetimes = "warn"
@@ -498,6 +501,7 @@ rest_pat_in_fully_bound_structs = "warn"
 same_functions_in_if_condition = "warn"
 semicolon_if_nothing_returned = "warn"
 should_panic_without_expect = "warn"
+single_char_pattern = "warn"
 single_match_else = "warn"
 str_split_at_newline = "warn"
 str_to_string = "warn"
@@ -555,12 +559,14 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "83a30064f4812d0029532675a5f2bf38c257ad0e" }      # egui master 2024-11-19
-eframe = { git = "https://github.com/emilk/egui.git", rev = "83a30064f4812d0029532675a5f2bf38c257ad0e" }      # egui master 2024-11-19
-egui = { git = "https://github.com/emilk/egui.git", rev = "83a30064f4812d0029532675a5f2bf38c257ad0e" }        # egui master 2024-11-19
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "83a30064f4812d0029532675a5f2bf38c257ad0e" } # egui master 2024-11-19
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "83a30064f4812d0029532675a5f2bf38c257ad0e" }   # egui master 2024-11-19
-emath = { git = "https://github.com/emilk/egui.git", rev = "83a30064f4812d0029532675a5f2bf38c257ad0e" }       # egui master 2024-11-19
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "84cc1572b175d49a64f1b323a6d7e56b1f1fba66" }      # egui master 2024-11-27
+eframe = { git = "https://github.com/emilk/egui.git", rev = "84cc1572b175d49a64f1b323a6d7e56b1f1fba66" }      # egui master 2024-11-27
+egui = { git = "https://github.com/emilk/egui.git", rev = "84cc1572b175d49a64f1b323a6d7e56b1f1fba66" }        # egui master 2024-11-27
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "84cc1572b175d49a64f1b323a6d7e56b1f1fba66" } # egui master 2024-11-27
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "84cc1572b175d49a64f1b323a6d7e56b1f1fba66" }   # egui master 2024-11-27
+emath = { git = "https://github.com/emilk/egui.git", rev = "84cc1572b175d49a64f1b323a6d7e56b1f1fba66" }       # egui master 2024-11-27
+
+egui_kittest = { git = "https://github.com/emilk/egui.git", rev = "84cc1572b175d49a64f1b323a6d7e56b1f1fba66" } # egui master 2024-11-27
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
@@ -581,7 +587,7 @@ egui_tiles = { git = "https://github.com/rerun-io/egui_tiles", rev = "48e0ef5664
 # walkers = { git = "https://github.com/rerun-io/walkers", rev = "8939cceb3fa49ca8648ee16fe1d8432f5ab0bdcc" } # https://github.com/podusowski/walkers/pull/222
 
 # commit on `rerun-io/re_arrow2` `main` branch
-# https://github.com/rerun-io/re_arrow2/commit/e4717d6debc6d4474ec10db8f629f823f57bad07
-# re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2", rev = "e4717d6debc6d4474ec10db8f629f823f57bad07" }
+# https://github.com/rerun-io/re_arrow2/commit/79ba149e823c88c1baa770a33c6ea8b6244d0597
+re_arrow2 = { git = "https://github.com/rerun-io/re_arrow2", rev = "79ba149e823c88c1baa770a33c6ea8b6244d0597" }
 
 # dav1d = { path = "/home/cmc/dev/rerun-io/rav1d", package = "re_rav1d", version = "0.1.1" }

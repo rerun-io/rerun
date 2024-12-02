@@ -50,7 +50,7 @@ uint8
 ## API reference links
  * 🌊 [C++ API docs for `ChannelDatatype`](https://ref.rerun.io/docs/cpp/stable/namespacererun_1_1datatypes.html)
  * 🐍 [Python API docs for `ChannelDatatype`](https://ref.rerun.io/docs/python/stable/common/datatypes#rerun.datatypes.ChannelDatatype)
- * 🦀 [Rust API docs for `ChannelDatatype`](https://ref.rerun.io/docs/rust/stable/rerun/datatypes/enum.ChannelDatatype.html)
+ * 🦀 [Rust API docs for `ChannelDatatype`](https://docs.rs/rerun/latest/rerun/datatypes/enum.ChannelDatatype.html)
 
 
 ## Used by

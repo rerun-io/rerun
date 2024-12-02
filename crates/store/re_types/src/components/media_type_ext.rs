@@ -47,7 +47,7 @@ impl MediaType {
     pub const STL: &'static str = "model/stl";
 
     // -------------------------------------------------------
-    /// Videos:
+    // Videos:
 
     /// [MP4 video](https://en.wikipedia.org/wiki/MP4_file_format): `video/mp4`.
     ///

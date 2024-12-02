@@ -4,12 +4,13 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use arrow2::{
     array::ListArray as ArrowListArray,
-    datatypes::{DataType as ArrowDatatype, Field as ArrowField},
+    datatypes::{DataType as Arrow2Datatype, Field as Arrow2Field},
 };
+use itertools::Itertools;
 
 use re_chunk::TimelineName;
 use re_log_types::{ComponentPath, EntityPath, ResolvedTimeRange, TimeInt, Timeline};
-use re_types_core::{ArchetypeName, ComponentName};
+use re_types_core::{ArchetypeName, ComponentName, ComponentNameSet};
 
 use crate::{ChunkStore, ColumnMetadata};
 
@@ -40,7 +41,7 @@ impl ColumnDescriptor {
     }
 
     #[inline]
-    pub fn datatype(&self) -> ArrowDatatype {
+    pub fn datatype(&self) -> Arrow2Datatype {
         match self {
             Self::Time(descr) => descr.datatype.clone(),
             Self::Component(descr) => descr.returned_datatype(),
@@ -48,7 +49,7 @@ impl ColumnDescriptor {
     }
 
     #[inline]
-    pub fn to_arrow_field(&self) -> ArrowField {
+    pub fn to_arrow_field(&self) -> Arrow2Field {
         match self {
             Self::Time(descr) => descr.to_arrow_field(),
             Self::Component(descr) => descr.to_arrow_field(),
@@ -79,7 +80,7 @@ pub struct TimeColumnDescriptor {
     pub timeline: Timeline,
 
     /// The Arrow datatype of the column.
-    pub datatype: ArrowDatatype,
+    pub datatype: Arrow2Datatype,
 }
 
 impl PartialOrd for TimeColumnDescriptor {
@@ -103,9 +104,9 @@ impl Ord for TimeColumnDescriptor {
 impl TimeColumnDescriptor {
     #[inline]
     // Time column must be nullable since static data doesn't have a time.
-    pub fn to_arrow_field(&self) -> ArrowField {
+    pub fn to_arrow_field(&self) -> Arrow2Field {
         let Self { timeline, datatype } = self;
-        ArrowField::new(
+        Arrow2Field::new(
             timeline.name().to_string(),
             datatype.clone(),
             true, /* nullable */
@@ -149,7 +150,7 @@ pub struct ComponentColumnDescriptor {
     /// This is the log-time datatype corresponding to how this data is encoded
     /// in a chunk. Currently this will always be an [`ArrowListArray`], but as
     /// we introduce mono-type optimization, this might be a native type instead.
-    pub store_datatype: ArrowDatatype,
+    pub store_datatype: Arrow2Datatype,
 
     /// Whether this column represents static data.
     pub is_static: bool,
@@ -289,13 +290,13 @@ impl ComponentColumnDescriptor {
     }
 
     #[inline]
-    pub fn returned_datatype(&self) -> ArrowDatatype {
+    pub fn returned_datatype(&self) -> Arrow2Datatype {
         self.store_datatype.clone()
     }
 
     #[inline]
-    pub fn to_arrow_field(&self) -> ArrowField {
-        ArrowField::new(
+    pub fn to_arrow_field(&self) -> Arrow2Field {
+        Arrow2Field::new(
             format!(
                 "{}:{}",
                 self.entity_path,
@@ -471,7 +472,7 @@ impl std::fmt::Display for SparseFillStrategy {
 ///
 // TODO(cmc): we need to be able to build that easily in a command-line context, otherwise it's just
 // very annoying. E.g. `--with /world/points:[rr.Position3D, rr.Radius] --with /cam:[rr.Pinhole]`.
-pub type ViewContentsSelector = BTreeMap<EntityPath, Option<BTreeSet<ComponentName>>>;
+pub type ViewContentsSelector = BTreeMap<EntityPath, Option<ComponentNameSet>>;
 
 // TODO(cmc): Ultimately, this shouldn't be hardcoded to `Timeline`, but to a generic `I: Index`.
 //            `Index` in this case should also be implemented on tuples (`(I1, I2, ...)`).
@@ -637,14 +638,14 @@ impl ChunkStore {
     pub fn schema(&self) -> Vec<ColumnDescriptor> {
         re_tracing::profile_function!();
 
-        let timelines = self.all_timelines().into_iter().map(|timeline| {
+        let timelines = self.all_timelines_sorted().into_iter().map(|timeline| {
             ColumnDescriptor::Time(TimeColumnDescriptor {
                 timeline,
                 datatype: timeline.datatype(),
             })
         });
 
-        let components = self
+        let mut components = self
             .per_column_metadata
             .iter()
             .flat_map(|(entity_path, per_component)| {
@@ -668,7 +669,7 @@ impl ChunkStore {
 
                 // TODO(#6889): Fill `archetype_name`/`archetype_field_name` (or whatever their
                 // final name ends up being) once we generate tags.
-                ColumnDescriptor::Component(ComponentColumnDescriptor {
+                ComponentColumnDescriptor {
                     entity_path: entity_path.clone(),
                     archetype_name: None,
                     archetype_field_name: None,
@@ -681,10 +682,26 @@ impl ChunkStore {
                     is_indicator,
                     is_tombstone,
                     is_semantically_empty,
-                })
-            });
+                }
+            })
+            .collect_vec();
 
-        timelines.chain(components).collect()
+        components.sort_by(|descr1, descr2| {
+            descr1
+                .entity_path
+                .cmp(&descr2.entity_path)
+                .then(descr1.archetype_name.cmp(&descr2.archetype_name))
+                .then(
+                    descr1
+                        .archetype_field_name
+                        .cmp(&descr2.archetype_field_name),
+                )
+                .then(descr1.component_name.cmp(&descr2.component_name))
+        });
+
+        timelines
+            .chain(components.into_iter().map(ColumnDescriptor::Component))
+            .collect()
     }
 
     /// Given a [`TimeColumnSelector`], returns the corresponding [`TimeColumnDescriptor`].
@@ -752,7 +769,7 @@ impl ChunkStore {
         let datatype = self
             .lookup_datatype(&component_name)
             .cloned()
-            .unwrap_or_else(|| ArrowDatatype::Null);
+            .unwrap_or(Arrow2Datatype::Null);
 
         ComponentColumnDescriptor {
             entity_path: selector.entity_path.clone(),
