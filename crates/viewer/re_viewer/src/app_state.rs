@@ -6,7 +6,7 @@ use re_entity_db::EntityDb;
 use re_log_types::{LogMsg, ResolvedTimeRangeF, StoreId};
 use re_smart_channel::ReceiveSet;
 use re_types::blueprint::components::PanelState;
-use re_ui::ContextExt as _;
+use re_ui::{ContextExt as _, DesignTokens};
 use re_viewer_context::{
     AppOptions, ApplicationSelectionState, BlueprintUndoState, CommandSender, ComponentUiRegistry,
     PlayState, RecordingConfig, SpaceViewClassExt as _, SpaceViewClassRegistry, StoreContext,
@@ -384,6 +384,8 @@ impl AppState {
                     blueprint_cfg,
                     ui,
                     PanelState::Expanded,
+                    // Give the blueprint time panel a distinct color from the normal time panel:
+                    DesignTokens::bottom_panel_frame().fill(egui::hex_color!("#141326")),
                 );
 
                 {
@@ -408,6 +410,7 @@ impl AppState {
                 ctx.rec_cfg,
                 ui,
                 app_blueprint.time_panel_state(),
+                DesignTokens::bottom_panel_frame(),
             );
 
             //
