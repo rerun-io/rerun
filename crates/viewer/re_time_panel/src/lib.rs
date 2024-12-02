@@ -157,6 +157,7 @@ impl TimePanel {
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn show_panel(
         &mut self,
         ctx: &ViewerContext<'_>,
@@ -165,6 +166,7 @@ impl TimePanel {
         rec_cfg: &RecordingConfig,
         ui: &mut egui::Ui,
         state: PanelState,
+        mut panel_frame: egui::Frame,
     ) {
         if state.is_hidden() {
             return;
@@ -180,8 +182,6 @@ impl TimePanel {
         // this is the size of everything above the central panel (window title bar, top bar on web,
         // etc.)
         let screen_header_height = ui.cursor().top();
-
-        let mut panel_frame = DesignTokens::bottom_panel_frame();
 
         if state.is_expanded() {
             // Since we use scroll bars we want to fill the whole vertical space downwards:

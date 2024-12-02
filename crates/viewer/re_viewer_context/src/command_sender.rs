@@ -47,7 +47,17 @@ pub enum SystemCommand {
     /// The [`StoreId`] should generally be the currently selected blueprint
     /// but is tracked manually to ensure self-consistency if the blueprint
     /// is both modified and changed in the same frame.
+    ///
+    /// Instead of using this directly, consider using
+    /// [`crate::ViewerContext::save_blueprint_archetype`] or similar.
     UpdateBlueprint(StoreId, Vec<Chunk>),
+
+    UndoBlueprint {
+        blueprint_id: StoreId,
+    },
+    RedoBlueprint {
+        blueprint_id: StoreId,
+    },
 
     /// Drop a specific entity from a store.
     ///

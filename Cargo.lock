@@ -1399,6 +1399,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "color-hex"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ecdffb913a326b6c642290a0d0ec8e8d6597291acdc07cc4c9cb4b3635d44cf9"
+
+[[package]]
 name = "colorchoice"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1920,6 +1926,7 @@ version = "0.29.1"
 source = "git+https://github.com/emilk/egui.git?rev=84cc1572b175d49a64f1b323a6d7e56b1f1fba66#84cc1572b175d49a64f1b323a6d7e56b1f1fba66"
 dependencies = [
  "bytemuck",
+ "color-hex",
  "emath",
  "serde",
 ]
