@@ -460,6 +460,7 @@ struct TilesDelegate<'a, 'b> {
 
     /// The user edited the tree.
     edited: bool,
+
     /// The user edited the tree by drag-dropping a tile.
     tile_dropped: bool,
 }
