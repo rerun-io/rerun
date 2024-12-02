@@ -1,4 +1,4 @@
-//! Contains all the information that is considered when performing a graph layout.
+//! Contains all the (geometric) information that is considered when performing a graph layout.
 //!
 //! We support:
 //! * Multiple multiple edges between the same two nodes.
@@ -19,12 +19,11 @@ pub(super) struct NodeTemplate {
     pub(super) fixed_position: Option<Pos2>,
 }
 
-// TODO(grtlr): Does it make sense to consolidate some of the types, i.e. `Edge` ad `EdgeTemplate`?
-#[derive(PartialEq)]
-pub(super) struct EdgeTemplate {
-    pub(super) source: NodeId,
-    pub(super) target: NodeId,
-    pub(super) target_arrow: bool,
+#[derive(Clone, PartialEq, Eq)]
+pub struct EdgeTemplate {
+    pub source: NodeId,
+    pub target: NodeId,
+    pub target_arrow: bool,
 }
 
 #[derive(Default, PartialEq)]
@@ -67,12 +66,13 @@ impl LayoutRequest {
             }
 
             for edge in graph.edges() {
-                let es = entity.edges.entry(edge.id()).or_default();
-                es.push(EdgeTemplate {
+                let id = EdgeId {
                     source: edge.source,
                     target: edge.target,
-                    target_arrow: edge.arrow,
-                });
+                };
+
+                let es = entity.edges.entry(id).or_default();
+                es.push(edge.clone());
             }
         }
 

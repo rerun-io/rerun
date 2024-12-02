@@ -43,6 +43,13 @@ pub struct EdgeId {
 }
 
 impl EdgeId {
+    pub fn self_edge(node: NodeId) -> Self {
+        Self {
+            source: node,
+            target: node,
+        }
+    }
+
     pub fn is_self_edge(&self) -> bool {
         self.source == self.target
     }

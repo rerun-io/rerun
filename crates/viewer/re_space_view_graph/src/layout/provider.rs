@@ -1,3 +1,10 @@
+//! Performs the layout of the graph, i.e. converting an [`LayoutRequest`] into a [`Layout`].
+
+// For now we have only a single layout provider that is based on a force-directed model.
+// In the future, this could be expanded to support different (specialized layout alorithms).
+// Low-hanging fruit would be tree-based layouts. But we could also think about more complex
+// layouts, such as `dot` from `graphviz`.
+
 use egui::{Pos2, Rect, Vec2};
 use fjadra::{self as fj};
 
@@ -5,9 +12,8 @@ use crate::graph::{EdgeId, NodeId};
 
 use super::{
     request::NodeTemplate,
-    result::PathGeometry,
     slots::{slotted_edges, Slot, SlotKind},
-    EdgeGeometry, Layout, LayoutRequest,
+    EdgeGeometry, EdgeTemplate, Layout, LayoutRequest, PathGeometry,
 };
 
 impl<'a> From<&'a NodeTemplate> for fj::Node {
@@ -60,9 +66,7 @@ impl ForceLayoutProvider {
             .build(all_nodes)
             .add_force(
                 "link",
-                fj::Link::new(considered_edges)
-                    .distance(150.0)
-                    .iterations(2),
+                fj::Link::new(considered_edges).distance(50.0).iterations(2),
             )
             .add_force("charge", fj::ManyBody::new())
             // TODO(grtlr): This is a small stop-gap until we have blueprints to prevent nodes from flying away.
@@ -126,34 +130,11 @@ impl ForceLayoutProvider {
                 slotted_edges(graph.edges.values().flat_map(|ts| ts.iter())).values()
             {
                 match kind {
-                    SlotKind::SelfEdge => {
-                        for (i, edge) in edges.iter().enumerate() {
-                            let offset = (i + 1) as f32;
-                            let target_arrow = edge.target_arrow;
-                            // Self-edges are not supported in force-based layouts.
-                            let anchor =
-                                layout.nodes[&edge.source].intersects_ray_from_center(Vec2::UP);
-                            let geometries = layout
-                                .edges
-                                .entry(EdgeId {
-                                    source: edge.source,
-                                    target: edge.target,
-                                })
-                                .or_default();
-                            geometries.push(EdgeGeometry {
-                                target_arrow,
-                                path: PathGeometry::CubicBezier {
-                                    // TODO(grtlr): We could probably consider the actual node size here.
-                                    source: anchor + Vec2::LEFT * 4.,
-                                    target: anchor + Vec2::RIGHT * 4.,
-                                    // TODO(grtlr): The actual length of that spline should follow the `distance` parameter of the link force.
-                                    control: [
-                                        anchor + Vec2::new(-30. * offset, -40. * offset),
-                                        anchor + Vec2::new(30. * offset, -40. * offset),
-                                    ],
-                                },
-                            });
-                        }
+                    SlotKind::SelfEdge { node } => {
+                        let rect = layout.nodes[node];
+                        let id = EdgeId::self_edge(*node);
+                        let geometries = layout.edges.entry(id).or_default();
+                        geometries.extend(layout_self_edges(rect, edges));
                     }
                     SlotKind::Regular {
                         source: slot_source,
@@ -226,7 +207,7 @@ impl ForceLayoutProvider {
                                     })
                                     .or_default();
 
-                                // We potentially need to restore the direction of the edge, after we have used it's cannonical form earlier.
+                                // We potentially need to restore the direction of the edge, after we have used it's canonical form earlier.
                                 let path = if edge.source == *slot_source {
                                     PathGeometry::CubicBezier {
                                         source: source_pos,
@@ -272,4 +253,29 @@ fn line_segment(source: Rect, target: Rect) -> PathGeometry {
         source: source_point,
         target: target_point,
     }
+}
+
+fn layout_self_edges<'a>(
+    rect: Rect,
+    edges: &'a [&EdgeTemplate],
+) -> impl Iterator<Item = EdgeGeometry> + 'a {
+    edges.iter().enumerate().map(move |(i, edge)| {
+        let offset = (i + 1) as f32;
+        let target_arrow = edge.target_arrow;
+        let anchor = rect.center_top();
+
+        EdgeGeometry {
+            target_arrow,
+            path: PathGeometry::CubicBezier {
+                // TODO(grtlr): We could probably consider the actual node size here.
+                source: anchor + Vec2::LEFT * 4.,
+                target: anchor + Vec2::RIGHT * 4.,
+                // TODO(grtlr): The actual length of that spline should follow the `distance` parameter of the link force.
+                control: [
+                    anchor + Vec2::new(-30. * offset, -40. * offset),
+                    anchor + Vec2::new(30. * offset, -40. * offset),
+                ],
+            },
+        }
+    })
 }
