@@ -2,19 +2,15 @@
 //!
 //! Contains all space views.
 
-use std::sync::Arc;
-
 use ahash::HashMap;
 use egui_tiles::{Behavior as _, EditAction};
-use parking_lot::Mutex;
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
 use re_renderer::ScreenshotProcessor;
 use re_ui::{ContextExt as _, DesignTokens, Icon, UiExt as _};
 use re_viewer_context::{
-    blueprint_id_to_tile_id, icon_for_container_kind, ContainerId, Contents, Item,
-    SpaceViewClassRegistry, SpaceViewId, SystemExecutionOutput, ViewQuery, ViewStates,
-    ViewerContext,
+    blueprint_id_to_tile_id, icon_for_container_kind, Contents, Item, SpaceViewClassRegistry,
+    SpaceViewId, SystemExecutionOutput, ViewQuery, ViewStates, ViewerContext,
 };
 use re_viewport_blueprint::{ViewportBlueprint, ViewportCommand};
 
@@ -100,11 +96,10 @@ impl ViewportUi {
                 ctx,
                 viewport_blueprint: blueprint,
                 maximized: &mut maximized,
-                edited: false,
                 executed_systems_per_space_view,
                 contents_per_tile_id,
-                deferred_commands: self.blueprint.deferred_commands.clone(),
-                root_container_id: self.blueprint.root_container,
+                edited: false,
+                tile_dropped: false,
             };
 
             tree.ui(&mut egui_tiles_delegate, ui);
@@ -154,6 +149,18 @@ impl ViewportUi {
                 }
 
                 if egui_tiles_delegate.edited {
+                    if egui_tiles_delegate.tile_dropped {
+                        // Remove any empty containers left after dragging:
+                        tree.simplify(&egui_tiles::SimplificationOptions {
+                            prune_empty_tabs: true,
+                            prune_empty_containers: false,
+                            prune_single_child_tabs: true,
+                            prune_single_child_containers: false,
+                            all_panes_must_have_tabs: true,
+                            join_nested_linear_containers: false,
+                        });
+                    }
+
                     self.blueprint.deferred_commands.lock().push(ViewportCommand::SetTree(tree));
                 }
             }
@@ -444,8 +451,6 @@ struct TilesDelegate<'a, 'b> {
     ctx: &'a ViewerContext<'b>,
     viewport_blueprint: &'a ViewportBlueprint,
     maximized: &'a mut Option<SpaceViewId>,
-    root_container_id: ContainerId,
-    deferred_commands: Arc<Mutex<Vec<ViewportCommand>>>,
 
     /// List of query & system execution results for each space view.
     executed_systems_per_space_view: HashMap<SpaceViewId, (ViewQuery<'a>, SystemExecutionOutput)>,
@@ -455,6 +460,8 @@ struct TilesDelegate<'a, 'b> {
 
     /// The user edited the tree.
     edited: bool,
+    /// The user edited the tree by drag-dropping a tile.
+    tile_dropped: bool,
 }
 
 impl<'a> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, '_> {
@@ -745,32 +752,13 @@ impl<'a> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, '_> {
     // Callbacks:
 
     fn on_edit(&mut self, edit_action: egui_tiles::EditAction) {
+        re_log::trace!("Tree edit: {edit_action:?}");
         match edit_action {
             EditAction::TileDropped => {
-                // TODO(ab): when we finally stop using egui_tiles as application-level data
-                //                  structure, this work-around should be unnecessary.
-
-                // The continuous simplification options are considerably reduced when the additive
-                // workflow is enabled. Due to the egui_tiles -> blueprint synchronisation process,
-                // drag and drop operation often lead to many spurious empty containers. To work
-                // around this, we run a simplification pass when a drop occurs.
-
-                self.deferred_commands
-                    .lock()
-                    .push(ViewportCommand::SimplifyContainer(
-                        self.root_container_id,
-                        egui_tiles::SimplificationOptions {
-                            prune_empty_tabs: true,
-                            prune_empty_containers: false,
-                            prune_single_child_tabs: true,
-                            prune_single_child_containers: false,
-                            all_panes_must_have_tabs: true,
-                            join_nested_linear_containers: false,
-                        },
-                    ));
-
+                self.tile_dropped = true;
                 self.edited = true;
             }
+
             EditAction::TabSelected | EditAction::TileResized => {
                 self.edited = true;
             }
