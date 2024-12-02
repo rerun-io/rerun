@@ -312,22 +312,10 @@ impl SpaceViewBlueprint {
     pub fn clear(&self, ctx: &ViewerContext<'_>) {
         // We can't delete the entity, because we need to support undo.
         // TODO(#8249): configure blueprint GC to remove this entity if all that remains is the recursive clear.
-        let timepoint = ctx.store_context.blueprint_timepoint_for_writes();
-
-        let chunk = Chunk::builder(self.entity_path())
-            .with_archetype(
-                RowId::new(),
-                timepoint.clone(),
-                &re_types::archetypes::Clear::recursive(),
-            )
-            .build()
-            .expect("Failed to serialize Clear component !?");
-
-        ctx.command_sender
-            .send_system(SystemCommand::UpdateBlueprint(
-                ctx.store_context.blueprint.store_id().clone(),
-                vec![chunk],
-            ));
+        ctx.save_blueprint_archetype(
+            &self.entity_path(),
+            &re_types::archetypes::Clear::recursive(),
+        );
     }
 
     #[inline]
