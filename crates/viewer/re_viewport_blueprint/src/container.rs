@@ -1,18 +1,14 @@
 use ahash::HashMap;
 use egui_tiles::TileId;
 
-use re_chunk::{Chunk, LatestAtQuery, RowId};
+use re_chunk::LatestAtQuery;
 use re_entity_db::EntityDb;
-use re_log::ResultExt;
 use re_log_types::EntityPath;
 use re_types::components::Name;
 use re_types::{blueprint::components::Visible, Archetype as _};
 use re_types_blueprint::blueprint::archetypes as blueprint_archetypes;
 use re_types_blueprint::blueprint::components::{ContainerKind, GridColumns};
-use re_viewer_context::{
-    ContainerId, Contents, ContentsName, SpaceViewId, SystemCommand, SystemCommandSender as _,
-    ViewerContext,
-};
+use re_viewer_context::{ContainerId, Contents, ContentsName, SpaceViewId, ViewerContext};
 
 /// The native version of a [`re_types_blueprint::blueprint::archetypes::ContainerBlueprint`].
 ///
