@@ -661,12 +661,12 @@ fn item_tile(
     match &item {
         Item::AppId(app_id) => {
             let title = app_id.to_string();
-            Some(ItemTitle::new(title).with_icon(&icons::APPLICATION))
+            Some(ItemTitle::new(title, &icons::APPLICATION))
         }
 
         Item::DataSource(data_source) => {
             let title = data_source.to_string();
-            Some(ItemTitle::new(title).with_icon(&icons::DATA_SOURCE))
+            Some(ItemTitle::new(title, &icons::DATA_SOURCE))
         }
 
         Item::StoreId(store_id) => {
@@ -692,7 +692,7 @@ fn item_tile(
                 re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
             };
 
-            Some(ItemTitle::new(title).with_icon(icon).with_tooltip(id_str))
+            Some(ItemTitle::new(title, icon).with_tooltip(id_str))
         }
 
         Item::Container(container_id) => {
@@ -709,12 +709,14 @@ fn item_tile(
 
                 let container_name = container_blueprint.display_name_or_default();
                 Some(
-                    ItemTitle::new(container_name.as_ref())
-                        .with_icon(re_viewer_context::icon_for_container_kind(
+                    ItemTitle::new(
+                        container_name.as_ref(),
+                        re_viewer_context::icon_for_container_kind(
                             &container_blueprint.container_kind,
-                        ))
-                        .with_label_style(contents_name_style(&container_name))
-                        .with_tooltip(hover_text),
+                        ),
+                    )
+                    .with_label_style(contents_name_style(&container_name))
+                    .with_tooltip(hover_text),
                 )
             } else {
                 None
@@ -732,18 +734,20 @@ fn item_tile(
                 .entity_has_static_component(entity_path, component_name);
 
             Some(
-                ItemTitle::new(component_name.short_name())
-                    .with_icon(if is_static {
+                ItemTitle::new(
+                    component_name.short_name(),
+                    if is_static {
                         &icons::COMPONENT_STATIC
                     } else {
                         &icons::COMPONENT_TEMPORAL
-                    })
-                    .with_tooltip(format!(
-                        "{} component {} of entity '{}'",
-                        if is_static { "Static" } else { "Temporal" },
-                        component_name.full_name(),
-                        entity_path
-                    )),
+                    },
+                )
+                .with_tooltip(format!(
+                    "{} component {} of entity '{}'",
+                    if is_static { "Static" } else { "Temporal" },
+                    component_name.full_name(),
+                    entity_path
+                )),
             )
         }
 
@@ -764,10 +768,12 @@ fn item_tile(
                 let view_name = view.display_name_or_default();
 
                 Some(
-                    ItemTitle::new(view_name.as_ref())
-                        .with_icon(view.class(ctx.space_view_class_registry).icon())
-                        .with_label_style(contents_name_style(&view_name))
-                        .with_tooltip(hover_text),
+                    ItemTitle::new(
+                        view_name.as_ref(),
+                        view.class(ctx.space_view_class_registry).icon(),
+                    )
+                    .with_label_style(contents_name_style(&view_name))
+                    .with_tooltip(hover_text),
                 )
             } else {
                 None
@@ -779,8 +785,7 @@ fn item_tile(
             let name = instance_path.syntax_highlighted(style);
 
             Some(
-                ItemTitle::new(name)
-                    .with_icon(guess_instance_path_icon(ctx, instance_path))
+                ItemTitle::new(name, guess_instance_path_icon(ctx, instance_path))
                     .with_tooltip(format!("{typ} '{instance_path}'")),
             )
         }
@@ -791,8 +796,7 @@ fn item_tile(
             if let Some(view) = viewport.view(view_id) {
                 let typ = item.kind();
                 Some(
-                    ItemTitle::new(name)
-                        .with_icon(guess_instance_path_icon(ctx, instance_path))
+                    ItemTitle::new(name, guess_instance_path_icon(ctx, instance_path))
                         .with_tooltip(format!(
                             "{typ} '{instance_path}' as shown in view {:?}",
                             view.display_name
@@ -814,11 +818,11 @@ struct ItemTitle {
 }
 
 impl ItemTitle {
-    fn new(name: impl Into<egui::WidgetText>) -> Self {
+    fn new(name: impl Into<egui::WidgetText>, icon: &'static re_ui::Icon) -> Self {
         Self {
             name: name.into(),
             hover: None,
-            icon: None,
+            icon: Some(icon),
             label_style: None,
         }
     }
@@ -826,12 +830,6 @@ impl ItemTitle {
     #[inline]
     fn with_tooltip(mut self, hover: impl Into<String>) -> Self {
         self.hover = Some(hover.into());
-        self
-    }
-
-    #[inline]
-    fn with_icon(mut self, icon: &'static re_ui::Icon) -> Self {
-        self.icon = Some(icon);
         self
     }
 
