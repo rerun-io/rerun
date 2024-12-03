@@ -11,4 +11,6 @@ table GraphView (
     ///
     /// Somethings outside of these bounds may also be visible due to letterboxing.
     visual_bounds: rerun.blueprint.archetypes.VisualBounds2D (order: 1000);
+
+    force_position_x: rerun.blueprint.archetypes.ForcePositionX (order: 2000);
 }
