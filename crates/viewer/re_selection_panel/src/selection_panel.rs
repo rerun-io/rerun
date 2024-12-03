@@ -124,12 +124,7 @@ impl SelectionPanel {
         };
         for (i, item) in selection.iter_items().enumerate() {
             list_item::list_item_scope(ui, item, |ui| {
-                if let Some(item_title) = ItemTitle::from_item(ctx, viewport, ui.style(), item) {
-                    item_title.ui(ctx, ui, item);
-                } else {
-                    re_log::warn_once!("Failed to create item title for {item:?}");
-                    return; // WEIRD
-                }
+                item_heading(ctx, viewport, ui, item);
                 self.item_ui(ctx, viewport, view_states, ui, item, ui_layout);
             });
 
@@ -439,6 +434,17 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
             visible_time_range_ui_for_view(ctx, ui, view, view_class, view_state);
         }
     }
+}
+
+/// We show this above each item section
+fn item_heading(
+    ctx: &ViewerContext<'_>,
+    viewport: &ViewportBlueprint,
+    ui: &mut egui::Ui,
+    item: &Item,
+) {
+    let item_title = ItemTitle::from_item(ctx, viewport, ui.style(), item);
+    item_title.ui(ctx, ui, item);
 }
 
 fn entity_selection_ui(

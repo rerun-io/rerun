@@ -17,16 +17,16 @@ impl ItemTitle {
         viewport: &ViewportBlueprint,
         style: &egui::Style,
         item: &Item,
-    ) -> Option<Self> {
+    ) -> Self {
         match &item {
             Item::AppId(app_id) => {
                 let title = app_id.to_string();
-                Some(Self::new(title, &icons::APPLICATION))
+                Self::new(title, &icons::APPLICATION)
             }
 
             Item::DataSource(data_source) => {
                 let title = data_source.to_string();
-                Some(Self::new(title, &icons::DATA_SOURCE))
+                Self::new(title, &icons::DATA_SOURCE)
             }
 
             Item::StoreId(store_id) => {
@@ -55,7 +55,41 @@ impl ItemTitle {
                     re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
                 };
 
-                Some(Self::new(title, icon).with_tooltip(id_str))
+                Self::new(title, icon).with_tooltip(id_str)
+            }
+
+            Item::InstancePath(instance_path) => {
+                let typ = item.kind();
+                let name = instance_path.syntax_highlighted(style);
+
+                Self::new(name, guess_instance_path_icon(ctx, instance_path))
+                    .with_tooltip(format!("{typ} '{instance_path}'"))
+            }
+
+            Item::ComponentPath(component_path) => {
+                let entity_path = &component_path.entity_path;
+                let component_name = &component_path.component_name;
+
+                let (_query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
+                let is_static = db
+                    .storage_engine()
+                    .store()
+                    .entity_has_static_component(entity_path, component_name);
+
+                Self::new(
+                    component_name.short_name(),
+                    if is_static {
+                        &icons::COMPONENT_STATIC
+                    } else {
+                        &icons::COMPONENT_TEMPORAL
+                    },
+                )
+                .with_tooltip(format!(
+                    "{} component {} of entity '{}'",
+                    if is_static { "Static" } else { "Temporal" },
+                    component_name.full_name(),
+                    entity_path
+                ))
             }
 
             Item::Container(container_id) => {
@@ -71,47 +105,21 @@ impl ItemTitle {
                         };
 
                     let container_name = container_blueprint.display_name_or_default();
-                    Some(
-                        Self::new(
-                            container_name.as_ref(),
-                            re_viewer_context::icon_for_container_kind(
-                                &container_blueprint.container_kind,
-                            ),
-                        )
-                        .with_label_style(contents_name_style(&container_name))
-                        .with_tooltip(hover_text),
-                    )
-                } else {
-                    None
-                }
-            }
-
-            Item::ComponentPath(component_path) => {
-                let entity_path = &component_path.entity_path;
-                let component_name = &component_path.component_name;
-
-                let (_query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
-                let is_static = db
-                    .storage_engine()
-                    .store()
-                    .entity_has_static_component(entity_path, component_name);
-
-                Some(
                     Self::new(
-                        component_name.short_name(),
-                        if is_static {
-                            &icons::COMPONENT_STATIC
-                        } else {
-                            &icons::COMPONENT_TEMPORAL
-                        },
+                        container_name.as_ref(),
+                        re_viewer_context::icon_for_container_kind(
+                            &container_blueprint.container_kind,
+                        ),
                     )
-                    .with_tooltip(format!(
-                        "{} component {} of entity '{}'",
-                        if is_static { "Static" } else { "Temporal" },
-                        component_name.full_name(),
-                        entity_path
-                    )),
-                )
+                    .with_label_style(contents_name_style(&container_name))
+                    .with_tooltip(hover_text)
+                } else {
+                    Self::new(
+                        format!("Unknown container {container_id}"),
+                        &icons::SPACE_VIEW_UNKNOWN,
+                    )
+                    .with_tooltip("Failed to find container in blueprint")
+                }
             }
 
             Item::SpaceView(view_id) => {
@@ -130,44 +138,34 @@ impl ItemTitle {
 
                     let view_name = view.display_name_or_default();
 
-                    Some(
-                        Self::new(
-                            view_name.as_ref(),
-                            view.class(ctx.space_view_class_registry).icon(),
-                        )
-                        .with_label_style(contents_name_style(&view_name))
-                        .with_tooltip(hover_text),
+                    Self::new(
+                        view_name.as_ref(),
+                        view.class(ctx.space_view_class_registry).icon(),
                     )
+                    .with_label_style(contents_name_style(&view_name))
+                    .with_tooltip(hover_text)
                 } else {
-                    None
+                    Self::new(
+                        format!("Unknown view {view_id}"),
+                        &icons::SPACE_VIEW_UNKNOWN,
+                    )
+                    .with_tooltip("Failed to find view in blueprint")
                 }
-            }
-
-            Item::InstancePath(instance_path) => {
-                let typ = item.kind();
-                let name = instance_path.syntax_highlighted(style);
-
-                Some(
-                    Self::new(name, guess_instance_path_icon(ctx, instance_path))
-                        .with_tooltip(format!("{typ} '{instance_path}'")),
-                )
             }
 
             Item::DataResult(view_id, instance_path) => {
                 let name = instance_path.syntax_highlighted(style);
 
+                let item_title = Self::new(name, guess_instance_path_icon(ctx, instance_path));
+
                 if let Some(view) = viewport.view(view_id) {
                     let typ = item.kind();
-                    Some(
-                        Self::new(name, guess_instance_path_icon(ctx, instance_path)).with_tooltip(
-                            format!(
-                                "{typ} '{instance_path}' as shown in view {:?}",
-                                view.display_name
-                            ),
-                        ),
-                    )
+                    item_title.with_tooltip(format!(
+                        "{typ} '{instance_path}' as shown in view {:?}",
+                        view.display_name
+                    ))
                 } else {
-                    None
+                    item_title
                 }
             }
         }
