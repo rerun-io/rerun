@@ -14,8 +14,8 @@ impl Plane3D {
     ///
     /// The plane will not be normalized upon creation.
     #[inline]
-    pub fn new(normal: impl Into<crate::datatypes::Vec3D>, d: f32) -> Self {
-        Self(crate::datatypes::Plane3D::new(normal, d))
+    pub fn new(normal: impl Into<crate::datatypes::Vec3D>, distance: f32) -> Self {
+        Self(crate::datatypes::Plane3D::new(normal, distance))
     }
 }
 

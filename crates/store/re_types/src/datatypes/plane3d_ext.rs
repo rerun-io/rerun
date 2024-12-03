@@ -26,9 +26,9 @@ impl Plane3D {
     ///
     /// The plane will not be normalized upon creation.
     #[inline]
-    pub fn new(normal: impl Into<crate::datatypes::Vec3D>, d: f32) -> Self {
+    pub fn new(normal: impl Into<crate::datatypes::Vec3D>, distance: f32) -> Self {
         let normal = normal.into();
-        Self([normal.0[0], normal.0[1], normal.0[2], d])
+        Self([normal.0[0], normal.0[1], normal.0[2], distance])
     }
 }
 

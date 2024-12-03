@@ -28,11 +28,14 @@ namespace rerun::blueprint::archetypes {
         std::optional<rerun::blueprint::components::Visible> visible;
 
         /// Space between grid lines spacing of one line to the next in scene units.
+        ///
+        /// As you zoom out, successively only every tenth line is shown.
+        /// This controls the closest zoom level.
         std::optional<rerun::blueprint::components::GridSpacing> spacing;
 
         /// In what plane the grid is drawn.
         ///
-        /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`archetype.ViewCoordinates`] if present.
+        /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by `components::ViewCoordinates` if present.
         std::optional<rerun::components::Plane3D> plane;
 
         /// How thick the lines should be in ui units.
@@ -67,6 +70,9 @@ namespace rerun::blueprint::archetypes {
         }
 
         /// Space between grid lines spacing of one line to the next in scene units.
+        ///
+        /// As you zoom out, successively only every tenth line is shown.
+        /// This controls the closest zoom level.
         LineGrid3D with_spacing(rerun::blueprint::components::GridSpacing _spacing) && {
             spacing = std::move(_spacing);
             // See: https://github.com/rerun-io/rerun/issues/4027
@@ -75,7 +81,7 @@ namespace rerun::blueprint::archetypes {
 
         /// In what plane the grid is drawn.
         ///
-        /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`archetype.ViewCoordinates`] if present.
+        /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by `components::ViewCoordinates` if present.
         LineGrid3D with_plane(rerun::components::Plane3D _plane) && {
             plane = std::move(_plane);
             // See: https://github.com/rerun-io/rerun/issues/4027

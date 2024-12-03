@@ -43,10 +43,13 @@ class LineGrid3D(Archetype):
             Defaults to true.
         spacing:
             Space between grid lines spacing of one line to the next in scene units.
+
+            As you zoom out, successively only every tenth line is shown.
+            This controls the closest zoom level.
         plane:
             In what plane the grid is drawn.
 
-            Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`archetype.ViewCoordinates`] if present.
+            Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`components.ViewCoordinates`][rerun.components.ViewCoordinates] if present.
         stroke_width:
             How thick the lines should be in ui units.
 
@@ -100,6 +103,9 @@ class LineGrid3D(Archetype):
     )
     # Space between grid lines spacing of one line to the next in scene units.
     #
+    # As you zoom out, successively only every tenth line is shown.
+    # This controls the closest zoom level.
+    #
     # (Docstring intentionally commented out to hide this field from the docs)
 
     plane: components.Plane3DBatch | None = field(
@@ -109,7 +115,7 @@ class LineGrid3D(Archetype):
     )
     # In what plane the grid is drawn.
     #
-    # Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`archetype.ViewCoordinates`] if present.
+    # Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`components.ViewCoordinates`][rerun.components.ViewCoordinates] if present.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

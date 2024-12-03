@@ -27,11 +27,14 @@ pub struct LineGrid3D {
     pub visible: Option<crate::blueprint::components::Visible>,
 
     /// Space between grid lines spacing of one line to the next in scene units.
+    ///
+    /// As you zoom out, successively only every tenth line is shown.
+    /// This controls the closest zoom level.
     pub spacing: Option<crate::blueprint::components::GridSpacing>,
 
     /// In what plane the grid is drawn.
     ///
-    /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`archetype.ViewCoordinates`] if present.
+    /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`components::ViewCoordinates`][crate::components::ViewCoordinates] if present.
     pub plane: Option<crate::components::Plane3D>,
 
     /// How thick the lines should be in ui units.
@@ -265,6 +268,9 @@ impl LineGrid3D {
     }
 
     /// Space between grid lines spacing of one line to the next in scene units.
+    ///
+    /// As you zoom out, successively only every tenth line is shown.
+    /// This controls the closest zoom level.
     #[inline]
     pub fn with_spacing(
         mut self,
@@ -276,7 +282,7 @@ impl LineGrid3D {
 
     /// In what plane the grid is drawn.
     ///
-    /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`archetype.ViewCoordinates`] if present.
+    /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`components::ViewCoordinates`][crate::components::ViewCoordinates] if present.
     #[inline]
     pub fn with_plane(mut self, plane: impl Into<crate::components::Plane3D>) -> Self {
         self.plane = Some(plane.into());

@@ -10,11 +10,14 @@ table LineGrid3D (
     visible: rerun.blueprint.components.Visible ("attr.rerun.component_optional", nullable, order: 1000);
 
     /// Space between grid lines spacing of one line to the next in scene units.
+    ///
+    /// As you zoom out, successively only every tenth line is shown.
+    /// This controls the closest zoom level.
     spacing: rerun.blueprint.components.GridSpacing ("attr.rerun.component_optional", nullable, order: 2000);
 
     /// In what plane the grid is drawn.
     ///
-    /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`archetype.ViewCoordinates`] if present.
+    /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by [components.ViewCoordinates] if present.
     plane: rerun.components.Plane3D ("attr.rerun.component_optional", nullable, order: 3000);
 
     /// How thick the lines should be in ui units.

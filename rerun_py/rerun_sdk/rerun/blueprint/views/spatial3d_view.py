@@ -45,6 +45,15 @@ class Spatial3DView(SpaceView):
             name="3D Scene",
             # Set the background color to light blue.
             background=[100, 149, 237],
+            # Configure the line grid.
+            line_grid=rrb.archetypes.LineGrid3D(
+                visible=True,  # The grid is enabled by default, but you can hide it with this property.
+                spacing=0.1,  # Makes the grid more fine-grained.
+                # By default, the plane is inferred from view coordinates setup, but you can set arbitrary planes.
+                plane=rr.components.Plane3D((0, 0, 1), -5.0),
+                stroke_width=2.0,  # Makes the grid lines twice as thick as usual.
+                color=[255, 255, 255, 128],  # Colors the grid a half-transparent white.
+            ),
         ),
         collapse_panels=True,
     )
