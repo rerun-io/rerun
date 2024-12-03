@@ -1,14 +1,14 @@
 use re_data_ui::item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity};
-use re_ui::{icons, list_item, DesignTokens, SyntaxHighlighting as _, UiExt as _};
-use re_viewer_context::{contents_name_style, Item, SystemCommandSender as _, ViewerContext};
+use re_ui::{icons, list_item, SyntaxHighlighting as _};
+use re_viewer_context::{contents_name_style, Item, ViewerContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
 #[must_use]
 pub struct ItemTitle {
-    name: egui::WidgetText,
-    hover: Option<String>,
-    icon: &'static re_ui::Icon,
-    label_style: Option<re_ui::LabelStyle>,
+    pub name: egui::WidgetText,
+    pub tooltip: Option<String>,
+    pub icon: &'static re_ui::Icon,
+    pub label_style: Option<re_ui::LabelStyle>,
 }
 
 impl ItemTitle {
@@ -174,7 +174,7 @@ impl ItemTitle {
     fn new(name: impl Into<egui::WidgetText>, icon: &'static re_ui::Icon) -> Self {
         Self {
             name: name.into(),
-            hover: None,
+            tooltip: None,
             icon,
             label_style: None,
         }
@@ -182,7 +182,7 @@ impl ItemTitle {
 
     #[inline]
     fn with_tooltip(mut self, hover: impl Into<String>) -> Self {
-        self.hover = Some(hover.into());
+        self.tooltip = Some(hover.into());
         self
     }
 
@@ -190,37 +190,5 @@ impl ItemTitle {
     fn with_label_style(mut self, label_style: re_ui::LabelStyle) -> Self {
         self.label_style = Some(label_style);
         self
-    }
-
-    pub fn ui(self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, item: &Item) {
-        let Self {
-            name,
-            hover,
-            icon,
-            label_style,
-        } = self;
-
-        let mut content = list_item::LabelContent::new(name).with_icon(icon);
-
-        if let Some(label_style) = label_style {
-            content = content.label_style(label_style);
-        }
-
-        let response = ui
-            .list_item()
-            .with_height(DesignTokens::title_bar_height())
-            .selected(true)
-            .show_flat(ui, content);
-
-        if response.clicked() {
-            // If the user has multiple things selected but only wants to have one thing selected,
-            // this is how they can do it.
-            ctx.command_sender
-                .send_system(re_viewer_context::SystemCommand::SetSelection(item.clone()));
-        }
-
-        if let Some(hover) = hover {
-            response.on_hover_text(hover);
-        }
     }
 }
