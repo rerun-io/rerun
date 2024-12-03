@@ -184,6 +184,7 @@ ALL_COMPONENTS: dict[str, TestCase] = {
     "NameBatch": TestCase(batch=["Hello World", "Foo Bar", "Baz Qux"]),
     "OpacityBatch": TestCase(0.5),
     "PinholeProjectionBatch": TestCase([(0, 1, 2), (3, 4, 5), (6, 7, 8)]),
+    "Plane3DBatch": TestCase(rr.datatypes.Plane3D(xyzd=(1, 2, 3, 4))),
     "PoseRotationAxisAngleBatch": TestCase(
         rr.datatypes.RotationAxisAngle(axis=(1, 0, 0), angle=rr.datatypes.Angle(rad=math.pi))
     ),
