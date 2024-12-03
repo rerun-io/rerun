@@ -24,7 +24,7 @@ use re_viewport_blueprint::ViewProperty;
 use crate::{
     scene_bounding_boxes::SceneBoundingBoxes,
     space_camera_3d::SpaceCamera3D,
-    ui::{create_labels, screenshot_context_menu, SpatialSpaceViewState},
+    ui::{create_labels, SpatialSpaceViewState},
     view_kind::SpatialSpaceViewKind,
     visualizers::{collect_ui_labels, image_view_coordinates, CamerasVisualizer},
     SpatialSpaceView3D,
@@ -607,13 +607,6 @@ impl SpatialSpaceView3D {
                 state.state_3d.camera_before_tracked_entity = None;
                 state.state_3d.tracked_entity = None;
             }
-        }
-
-        // Screenshot context menu.
-        if let Some(mode) = screenshot_context_menu(ctx, &response) {
-            view_builder
-                .schedule_screenshot(render_ctx, query.space_view_id.gpu_readback_id(), mode)
-                .ok();
         }
 
         for selected_context in ctx.selection_state().selection_space_contexts() {

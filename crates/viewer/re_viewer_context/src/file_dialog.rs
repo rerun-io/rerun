@@ -1,10 +1,21 @@
-use crate::ViewerContext;
+use crate::CommandSender;
 
-impl ViewerContext<'_> {
+fn is_safe_filename_char(c: char) -> bool {
+    c.is_alphanumeric() || matches!(c, ' ' | '-' | '_' | '.')
+}
+
+/// Replace "dangerous" characters by a safe one.
+pub fn santitize_file_name(file_name: &str) -> String {
+    file_name.replace(|c: char| !is_safe_filename_char(c), "-")
+}
+
+impl CommandSender {
     /// Save some bytes to disk, after first showing a save dialog.
     #[allow(clippy::unused_self)] // Not used on Wasm
-    pub fn save_file_dialog(&self, file_name: String, title: String, data: Vec<u8>) {
+    pub fn save_file_dialog(&self, file_name: &str, title: String, data: Vec<u8>) {
         re_tracing::profile_function!();
+
+        let file_name = santitize_file_name(file_name);
 
         #[cfg(target_arch = "wasm32")]
         {
@@ -12,7 +23,9 @@ impl ViewerContext<'_> {
             wasm_bindgen_futures::spawn_local(async move {
                 if let Err(err) = async_save_dialog(&file_name, &title, data).await {
                     re_log::error!("File saving failed: {err}");
-                }
+                } else {
+                    re_log::info!("{file_name} saved.");
+                };
             });
         }
 
@@ -28,11 +41,10 @@ impl ViewerContext<'_> {
             };
             if let Some(path) = path {
                 use crate::SystemCommandSender as _;
-                self.command_sender
-                    .send_system(crate::SystemCommand::FileSaver(Box::new(move || {
-                        std::fs::write(&path, &data)?;
-                        Ok(path)
-                    })));
+                self.send_system(crate::SystemCommand::FileSaver(Box::new(move || {
+                    std::fs::write(&path, &data)?;
+                    Ok(path)
+                })));
             }
         }
     }
