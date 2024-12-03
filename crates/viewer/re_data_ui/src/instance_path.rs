@@ -385,7 +385,7 @@ fn image_download_button_ui(
                         .to_owned()
                 );
                 ctx.command_sender
-                    .save_file_dialog(file_name, "Save image".to_owned(), png_bytes);
+                    .save_file_dialog(&file_name, "Save image".to_owned(), png_bytes);
             }
             Err(err) => {
                 re_log::error!("{err}");

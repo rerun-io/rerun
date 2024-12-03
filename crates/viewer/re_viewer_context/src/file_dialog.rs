@@ -1,10 +1,21 @@
 use crate::CommandSender;
 
+fn is_safe_filename_char(c: char) -> bool {
+    c.is_alphanumeric() || matches!(c, ' ' | '-' | '_' | '.')
+}
+
+/// Replace "dangerous" characters by a safe one.
+pub fn santitize_file_name(file_name: &str) -> String {
+    file_name.replace(|c: char| !is_safe_filename_char(c), "-")
+}
+
 impl CommandSender {
     /// Save some bytes to disk, after first showing a save dialog.
     #[allow(clippy::unused_self)] // Not used on Wasm
-    pub fn save_file_dialog(&self, file_name: String, title: String, data: Vec<u8>) {
+    pub fn save_file_dialog(&self, file_name: &str, title: String, data: Vec<u8>) {
         re_tracing::profile_function!();
+
+        let file_name = santitize_file_name(file_name);
 
         #[cfg(target_arch = "wasm32")]
         {

@@ -156,7 +156,7 @@ pub fn blob_preview_and_save_ui(
                 }
 
                 ctx.command_sender.save_file_dialog(
-                    file_name,
+                    &file_name,
                     "Save blob".to_owned(),
                     blob.to_vec(),
                 );

@@ -1659,7 +1659,7 @@ impl App {
                     } else {
                         let file_name = format!("{name}.png");
                         self.command_sender.save_file_dialog(
-                            file_name,
+                            &file_name,
                             "Save screenshot".to_owned(),
                             png_bytes,
                         );
