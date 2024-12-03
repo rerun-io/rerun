@@ -98,6 +98,9 @@ message CatalogFilter {
 }
 
 message QueryCatalogResponse {
+    EncoderVersion encoder_version = 1;
+    // raw bytes are TransportChunks (i.e. RecordBatches) encoded with the relevant codec
+    bytes payload = 2;
 }
 
 enum RecordingType {
