@@ -32,7 +32,7 @@ function buildWebViewer(mode) {
       modeFlags,
       "--target no-modules-base",
       "--no-default-features",
-      "--features grpc",
+      "--features grpc,map_view",
       "-o rerun_js/web-viewer",
     ].join(" "),
   );
