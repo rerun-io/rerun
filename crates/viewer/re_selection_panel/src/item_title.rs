@@ -7,7 +7,7 @@ use re_viewport_blueprint::ViewportBlueprint;
 pub struct ItemTitle {
     name: egui::WidgetText,
     hover: Option<String>,
-    icon: Option<&'static re_ui::Icon>,
+    icon: &'static re_ui::Icon,
     label_style: Option<re_ui::LabelStyle>,
 }
 
@@ -177,7 +177,7 @@ impl ItemTitle {
         Self {
             name: name.into(),
             hover: None,
-            icon: Some(icon),
+            icon,
             label_style: None,
         }
     }
@@ -202,11 +202,7 @@ impl ItemTitle {
             label_style,
         } = self;
 
-        let mut content = list_item::LabelContent::new(name);
-
-        if let Some(icon) = icon {
-            content = content.with_icon(icon);
-        }
+        let mut content = list_item::LabelContent::new(name).with_icon(icon);
 
         if let Some(label_style) = label_style {
             content = content.label_style(label_style);
