@@ -25,7 +25,6 @@ use re_viewport_blueprint::{ui::show_add_space_view_or_container_modal, Viewport
 use crate::space_view_entity_picker::SpaceViewEntityPicker;
 use crate::{defaults_ui::view_components_defaults_section_ui, visualizer_ui::visualizer_ui};
 use crate::{
-    selection_history_ui::SelectionHistoryUi,
     visible_time_range_ui::visible_time_range_ui_for_data_result,
     visible_time_range_ui::visible_time_range_ui_for_view,
 };
@@ -39,8 +38,6 @@ fn default_selection_panel_width(screen_width: f32) -> f32 {
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct SelectionPanel {
-    selection_state_ui: SelectionHistoryUi,
-
     #[serde(skip)]
     /// State for the "Add entity" modal.
     space_view_entity_modal: SpaceViewEntityPicker,
@@ -74,15 +71,7 @@ impl SelectionPanel {
             ui.panel_content(|ui| {
                 let hover = "The selection view contains information and options about \
                     the currently selected object(s)";
-                ui.panel_title_bar_with_buttons("Selection", Some(hover), |ui| {
-                    let mut history = ctx.selection_state().history.lock();
-                    if let Some(selection) =
-                        self.selection_state_ui
-                            .selection_ui(ui, viewport, &mut history)
-                    {
-                        ctx.selection_state().set_selection(selection);
-                    }
-                });
+                ui.panel_title_bar("Selection", Some(hover));
             });
 
             // move the vertical spacing between the title and the content to _inside_ the scroll
