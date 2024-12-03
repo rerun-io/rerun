@@ -18,10 +18,6 @@ pub struct AppOptions {
     /// Include the "Welcome screen" application in the recordings panel?
     pub include_welcome_screen_button_in_recordings_panel: bool,
 
-    /// Enable the experimental feature for space view screenshots.
-    #[cfg(not(target_arch = "wasm32"))]
-    pub experimental_space_view_screenshots: bool,
-
     /// Displays an overlay for debugging picking.
     pub show_picking_debug_overlay: bool,
 
@@ -79,9 +75,6 @@ impl Default for AppOptions {
             show_metrics: cfg!(debug_assertions),
 
             include_welcome_screen_button_in_recordings_panel: true,
-
-            #[cfg(not(target_arch = "wasm32"))]
-            experimental_space_view_screenshots: false,
 
             show_picking_debug_overlay: false,
 

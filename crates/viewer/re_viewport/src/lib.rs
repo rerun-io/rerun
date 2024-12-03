@@ -6,7 +6,6 @@
 #![allow(clippy::unwrap_used)]
 
 mod auto_layout;
-mod screenshot;
 mod space_view_highlights;
 mod system_execution;
 mod viewport_ui;

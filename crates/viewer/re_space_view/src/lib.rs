@@ -11,7 +11,6 @@ mod instance_hash_conversions;
 mod outlines;
 mod query;
 mod results_ext;
-mod screenshot;
 mod view_property_ui;
 
 pub use annotation_context_utils::{
@@ -31,7 +30,6 @@ pub use query::{
 pub use results_ext::{
     HybridLatestAtResults, HybridResults, HybridResultsChunkIter, RangeResultsExt,
 };
-pub use screenshot::ScreenshotMode;
 pub use view_property_ui::view_property_ui;
 
 pub mod external {

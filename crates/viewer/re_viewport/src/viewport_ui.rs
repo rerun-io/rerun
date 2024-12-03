@@ -6,18 +6,15 @@ use ahash::HashMap;
 use egui_tiles::{Behavior as _, EditAction};
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
-use re_renderer::ScreenshotProcessor;
 use re_ui::{ContextExt as _, DesignTokens, Icon, UiExt as _};
 use re_viewer_context::{
-    blueprint_id_to_tile_id, icon_for_container_kind, Contents, Item, SpaceViewClassRegistry,
-    SpaceViewId, SystemExecutionOutput, ViewQuery, ViewStates, ViewerContext,
+    blueprint_id_to_tile_id, icon_for_container_kind, Contents, Item, PublishedSpaceViewInfo,
+    SpaceViewClassRegistry, SpaceViewId, SystemExecutionOutput, ViewQuery, ViewStates,
+    ViewerContext,
 };
 use re_viewport_blueprint::{ViewportBlueprint, ViewportCommand};
 
-use crate::{
-    screenshot::handle_pending_space_view_screenshots,
-    system_execution::{execute_systems_for_all_views, execute_systems_for_space_view},
-};
+use crate::system_execution::{execute_systems_for_all_views, execute_systems_for_space_view};
 
 fn tree_simplification_options() -> egui_tiles::SimplificationOptions {
     egui_tiles::SimplificationOptions {
@@ -171,22 +168,6 @@ impl ViewportUi {
 
     pub fn on_frame_start(&self, ctx: &ViewerContext<'_>) {
         re_tracing::profile_function!();
-
-        // Handle pending view screenshots:
-        if let Some(render_ctx) = ctx.render_ctx {
-            for space_view in self.blueprint.space_views.values() {
-                #[allow(clippy::blocks_in_conditions)]
-                while ScreenshotProcessor::next_readback_result(
-                    render_ctx,
-                    space_view.id.gpu_readback_id(),
-                    |data, extent, mode| {
-                        handle_pending_space_view_screenshots(space_view, data, extent, mode);
-                    },
-                )
-                .is_some()
-                {}
-            }
-        }
 
         self.blueprint.spawn_heuristic_space_views(ctx);
     }
@@ -543,6 +524,21 @@ impl<'a> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, '_> {
                         class.display_name(),
                     );
                 });
+
+            ui.ctx().memory_mut(|mem| {
+                mem.caches
+                    .cache::<re_viewer_context::SpaceViewRectPublisher>()
+                    .set(
+                        *view_id,
+                        PublishedSpaceViewInfo {
+                            name: space_view_blueprint
+                                .display_name_or_default()
+                                .as_ref()
+                                .to_owned(),
+                            rect: ui.min_rect(),
+                        },
+                    );
+            });
         });
 
         Default::default()

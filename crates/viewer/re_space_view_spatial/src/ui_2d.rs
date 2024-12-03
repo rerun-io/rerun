@@ -20,10 +20,7 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ViewProperty;
 
-use super::{
-    eye::Eye,
-    ui::{create_labels, screenshot_context_menu},
-};
+use super::{eye::Eye, ui::create_labels};
 use crate::{
     query_pinhole_legacy, ui::SpatialSpaceViewState, view_kind::SpatialSpaceViewKind,
     visualizers::collect_ui_labels, SpatialSpaceView2D,
@@ -169,7 +166,7 @@ impl SpatialSpaceView2D {
         state.pinhole_at_origin =
             query_pinhole_legacy(ctx, &ctx.current_query(), query.space_origin);
 
-        let (mut response, painter) =
+        let (response, painter) =
             ui.allocate_painter(ui.available_size(), egui::Sense::click_and_drag());
 
         // Convert ui coordinates to/from scene coordinates.
@@ -216,7 +213,7 @@ impl SpatialSpaceView2D {
                 ui.ctx().pixels_per_point(),
                 &eye,
             );
-            response = crate::picking_ui::picking(
+            crate::picking_ui::picking(
                 ctx,
                 &picking_context,
                 ui,
@@ -248,12 +245,6 @@ impl SpatialSpaceView2D {
         }
 
         // ------------------------------------------------------------------------
-
-        if let Some(mode) = screenshot_context_menu(ctx, &response) {
-            view_builder
-                .schedule_screenshot(render_ctx, query.space_view_id.gpu_readback_id(), mode)
-                .ok();
-        }
 
         // Draw a re_renderer driven view.
         // Camera & projection are configured to ingest space coordinates directly.
