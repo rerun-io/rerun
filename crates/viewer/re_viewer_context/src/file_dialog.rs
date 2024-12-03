@@ -26,7 +26,7 @@ impl CommandSender {
                 } else {
                     re_log::info!("{file_name} saved.");
                 };
-            })
+            });
         }
 
         #[cfg(not(target_arch = "wasm32"))]
