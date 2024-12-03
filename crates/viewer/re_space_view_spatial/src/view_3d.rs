@@ -6,12 +6,11 @@ use re_entity_db::EntityDb;
 use re_log_types::EntityPath;
 use re_space_view::view_property_ui;
 use re_types::blueprint::archetypes::LineGrid3D;
-use re_types::View;
 use re_types::{
     blueprint::archetypes::Background, components::ViewCoordinates, Component,
-    SpaceViewClassIdentifier,
+    SpaceViewClassIdentifier, View,
 };
-use re_ui::UiExt as _;
+use re_ui::{list_item, UiExt as _};
 use re_viewer_context::{
     ApplicableEntities, IdentifiedViewSystem, IndicatedEntities, PerVisualizer,
     RecommendedSpaceView, SmallVisualizerSet, SpaceViewClass, SpaceViewClassRegistryError,
@@ -19,6 +18,7 @@ use re_viewer_context::{
     SpaceViewSystemExecutionError, ViewQuery, ViewSystemIdentifier, ViewerContext,
     VisualizableEntities, VisualizableFilterContext,
 };
+use re_viewport_blueprint::ViewProperty;
 
 use crate::visualizers::{AxisLengthDetector, CamerasVisualizer, Transform3DArrowsVisualizer};
 use crate::{
@@ -422,7 +422,8 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
         re_ui::list_item::list_item_scope(ui, "spatial_view3d_selection_ui", |ui| {
             view_property_ui::<Background>(ctx, ui, view_id, self, state);
-            view_property_ui::<LineGrid3D>(ctx, ui, view_id, self, state);
+            //view_property_ui::<LineGrid3D>(ctx, ui, view_id, self, state);
+            view_property_ui_grid3d(ctx, ui, view_id, self, state);
         });
 
         Ok(())
@@ -444,4 +445,85 @@ impl SpaceViewClass for SpatialSpaceView3D {
 
         self.view_3d(ctx, ui, state, query, system_output)
     }
+}
+
+fn view_property_ui_grid3d(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    view_id: SpaceViewId,
+    fallback_provider: &dyn re_viewer_context::ComponentFallbackProvider,
+    view_state: &dyn SpaceViewState,
+) {
+    let property = ViewProperty::from_archetype::<LineGrid3D>(
+        ctx.blueprint_db(),
+        ctx.blueprint_query,
+        view_id,
+    );
+    let Some(reflection) = ctx.reflection.archetypes.get(&property.archetype_name) else {
+        ui.error_label(format!(
+            "Missing reflection data for archetype {:?}.",
+            property.archetype_name
+        ));
+        return;
+    };
+
+    let query_ctx = property.query_context(ctx, view_state);
+    let sub_prop_ui = |ui: &mut egui::Ui| {
+        for field in &reflection.fields {
+            // TODO(#1611): The color picker for the color component doesn't show alpha values so far since alpha is almost never supported.
+            // Here however, we need that alpha color picker!
+            if field.component_name == re_types::components::Color::name() {
+                re_space_view::view_property_component_ui_custom(
+                    &query_ctx,
+                    ui,
+                    &property,
+                    field.display_name,
+                    field,
+                    &|ui| {
+                        let Ok(color) = property
+                            .component_or_fallback::<re_types::components::Color>(
+                                ctx,
+                                fallback_provider,
+                                view_state,
+                            )
+                        else {
+                            ui.error_label("Failed to query color component");
+                            return;
+                        };
+                        let mut edit_color = egui::Color32::from(*color);
+                        if egui::color_picker::color_edit_button_srgba(
+                            ui,
+                            &mut edit_color,
+                            egui::color_picker::Alpha::OnlyBlend,
+                        )
+                        .changed()
+                        {
+                            let color = re_types::components::Color::from(edit_color);
+                            property.save_blueprint_component(ctx, &[color]);
+                        }
+                    },
+                    None, // No multiline editor.
+                );
+            } else {
+                re_space_view::view_property_component_ui(
+                    &query_ctx,
+                    ui,
+                    &property,
+                    field.display_name,
+                    field,
+                    fallback_provider,
+                );
+            }
+        }
+    };
+
+    ui.list_item()
+        .interactive(false)
+        .show_hierarchical_with_children(
+            ui,
+            ui.make_persistent_id(property.archetype_name.full_name()),
+            true,
+            list_item::LabelContent::new(reflection.display_name),
+            sub_prop_ui,
+        );
 }
