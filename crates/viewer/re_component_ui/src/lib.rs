@@ -172,7 +172,8 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     registry.add_singleline_edit_or_view(zoom_level::edit_zoom_level);
 
-    // TODO: add ui for plane
+    registry.add_singleline_edit_or_view(plane3d::edit_or_view_plane3d);
+    registry.add_multiline_edit_or_view(plane3d::multiline_edit_or_view_plane3d);
 
     registry
 }

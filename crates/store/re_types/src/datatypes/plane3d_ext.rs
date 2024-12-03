@@ -11,11 +11,13 @@ impl Plane3D {
     pub const XY: Self = Self([0.0, 0.0, 1.0, 0.0]);
 
     /// The normal of the plane (unnormalized if the plane is unnormalized).
+    #[inline]
     pub const fn normal(&self) -> super::Vec3D {
         super::Vec3D([self.0[0], self.0[1], self.0[2]])
     }
 
     /// The distance of the plane from the origin (in multiples of the normal if the normal is unnormalized).
+    #[inline]
     pub const fn distance(&self) -> f32 {
         self.0[3]
     }
@@ -23,6 +25,7 @@ impl Plane3D {
     /// Create a new plane from a normal and distance.
     ///
     /// The plane will not be normalized upon creation.
+    #[inline]
     pub fn new(normal: impl Into<crate::datatypes::Vec3D>, d: f32) -> Self {
         let normal = normal.into();
         Self([normal.0[0], normal.0[1], normal.0[2], d])

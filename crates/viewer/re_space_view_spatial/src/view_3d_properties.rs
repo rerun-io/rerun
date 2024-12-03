@@ -52,11 +52,7 @@ impl TypedComponentFallbackProvider<Plane3D> for SpatialSpaceView3D {
             .state_3d
             .scene_view_coordinates
             .and_then(|view_coordinates| view_coordinates.up())
-            .map_or(DEFAULT_PLANE, |up| match up.axis {
-                re_types::view_coordinates::Axis3::X => Plane3D::YZ,
-                re_types::view_coordinates::Axis3::Y => Plane3D::ZX,
-                re_types::view_coordinates::Axis3::Z => Plane3D::XY,
-            })
+            .map_or(DEFAULT_PLANE, |up| Plane3D::new(up.as_vec3(), 0.0))
     }
 }
 
