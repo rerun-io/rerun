@@ -1603,6 +1603,47 @@ impl App {
 
         false
     }
+
+    fn process_screenshot_result(
+        &mut self,
+        image: &Arc<egui::ColorImage>,
+        user_data: &egui::UserData,
+    ) {
+        if cfg!(target_arch = "wasm32") {
+            // TODO(#8264): screenshotting on web
+            re_log::warn!("Screenshotting is not supported on the web. See https://github.com/rerun-io/rerun/issues/8264");
+            return;
+        }
+
+        if let Some(info) = &user_data
+            .data
+            .as_ref()
+            .and_then(|data| data.downcast_ref::<ScreenshotInfo>())
+        {
+            let ScreenshotInfo {
+                ui_rect,
+                pixels_per_point,
+                source,
+                target,
+            } = (*info).clone();
+
+            let rgba = if let Some(ui_rect) = ui_rect {
+                Arc::new(image.region(&ui_rect, Some(pixels_per_point)))
+            } else {
+                image.clone()
+            };
+
+            #[cfg(not(target_arch = "wasm32"))] // TODO(#8264)
+            re_viewer_context::Clipboard::with(|clipboard| {
+                clipboard.set_image(
+                    [rgba.width(), rgba.height()],
+                    bytemuck::cast_slice(rgba.as_raw()),
+                );
+            });
+        } else {
+            self.screenshotter.save(image);
+        }
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1895,41 +1936,13 @@ impl eframe::App for App {
         self.store_hub = Some(store_hub);
 
         // Check for returned screenshot:
-        #[cfg(not(target_arch = "wasm32"))]
         egui_ctx.input(|i| {
             for event in &i.raw.events {
                 if let egui::Event::Screenshot {
                     image, user_data, ..
                 } = event
                 {
-                    if let Some(info) = &user_data
-                        .data
-                        .as_ref()
-                        .and_then(|data| data.downcast_ref::<ScreenshotInfo>())
-                    {
-                        re_log::info!("Screenshot info: {info:?}");
-                        let ScreenshotInfo {
-                            ui_rect,
-                            pixels_per_point,
-                            source,
-                            target,
-                        } = (*info).clone();
-
-                        let rgba = if let Some(ui_rect) = ui_rect {
-                            Arc::new(image.region(&ui_rect, Some(pixels_per_point)))
-                        } else {
-                            image.clone()
-                        };
-
-                        re_viewer_context::Clipboard::with(|clipboard| {
-                            clipboard.set_image(
-                                [rgba.width(), rgba.height()],
-                                bytemuck::cast_slice(rgba.as_raw()),
-                            );
-                        });
-                    } else {
-                        self.screenshotter.save(image);
-                    }
+                    self.process_screenshot_result(image, user_data);
                 }
             }
         });

@@ -147,17 +147,24 @@ pub struct ScreenshotInfo {
 /// What we are screenshotting.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ScreenshotSource {
-    WholeApp,
-
     SpaceView(SpaceViewId),
 }
 
 /// Where to put the screenshot.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ScreenshotTarget {
-    /// The screenshot will be saved to disc and copied to the clipboard.
-    SaveAndCopyToClipboard,
-
     /// The screenshot will be copied to the clipboard.
     CopyToClipboard,
+
+    /// The screenshot will be saved to disk.
+    SaveToDisk,
 }
+
+// ----------------------------------------------------------------------------------------
+
+/// Used to publish the ui rectangle for each space view.
+///
+/// We use this to know what portion of the screen to screenshot.
+///
+/// Accessed with [`egui::Memory::caches`].
+pub type SpaceViewRectPublisher = egui::cache::FramePublisher<SpaceViewId, egui::Rect>;

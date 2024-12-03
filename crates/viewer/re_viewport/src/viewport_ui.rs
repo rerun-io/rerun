@@ -173,6 +173,7 @@ impl ViewportUi {
         re_tracing::profile_function!();
 
         // Handle pending view screenshots:
+        // TODO: remove
         if let Some(render_ctx) = ctx.render_ctx {
             for space_view in self.blueprint.space_views.values() {
                 #[allow(clippy::blocks_in_conditions)]
@@ -543,6 +544,12 @@ impl<'a> egui_tiles::Behavior<SpaceViewId> for TilesDelegate<'a, '_> {
                         class.display_name(),
                     );
                 });
+
+            ui.ctx().memory_mut(|mem| {
+                mem.caches
+                    .cache::<re_viewer_context::SpaceViewRectPublisher>()
+                    .set(*view_id, ui.min_rect());
+            });
         });
 
         Default::default()

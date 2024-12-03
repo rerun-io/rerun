@@ -18,6 +18,7 @@ use actions::{
     move_contents_to_new_container::MoveContentsToNewContainerAction,
     remove::RemoveAction,
     show_hide::{HideAction, ShowAction},
+    ScreenshotAction,
 };
 use sub_menu::SubMenu;
 
@@ -112,6 +113,11 @@ fn action_list(
                 Box::new(ShowAction),
                 Box::new(HideAction),
                 Box::new(RemoveAction),
+            ],
+            #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): screenshotting on web
+            vec![
+                Box::new(ScreenshotAction::CopyScreenshot),
+                Box::new(ScreenshotAction::SaveScreenshot),
             ],
             vec![
                 Box::new(CollapseExpandAllAction::ExpandAll),

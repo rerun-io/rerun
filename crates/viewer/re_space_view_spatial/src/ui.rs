@@ -352,7 +352,7 @@ pub fn screenshot_context_menu(
             _response.context_menu(|ui| {
                 ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
                 if ui.button("Save screenshot to disk").clicked() {
-                    take_screenshot = Some(ScreenshotTarget::SaveAndCopyToClipboard);
+                    take_screenshot = Some(ScreenshotTarget::SaveToDisk);
                     ui.close_menu();
                 } else if ui.button("Copy screenshot to clipboard").clicked() {
                     take_screenshot = Some(ScreenshotTarget::CopyToClipboard);

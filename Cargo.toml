@@ -559,19 +559,20 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "1c0b02293946f2f2047b9c9f5ed80421a1755034" }       # this is from a PR. TODO: update to egui master
-eframe = { git = "https://github.com/emilk/egui.git", rev = "1c0b02293946f2f2047b9c9f5ed80421a1755034" }       # this is from a PR. TODO: update to egui master
-egui = { git = "https://github.com/emilk/egui.git", rev = "1c0b02293946f2f2047b9c9f5ed80421a1755034" }         # this is from a PR. TODO: update to egui master
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "1c0b02293946f2f2047b9c9f5ed80421a1755034" }  # this is from a PR. TODO: update to egui master
-egui_kittest = { git = "https://github.com/emilk/egui.git", rev = "1c0b02293946f2f2047b9c9f5ed80421a1755034" } # this is from a PR. TODO: update to egui master
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "1c0b02293946f2f2047b9c9f5ed80421a1755034" }    # this is from a PR. TODO: update to egui master
-emath = { git = "https://github.com/emilk/egui.git", rev = "1c0b02293946f2f2047b9c9f5ed80421a1755034" }        # this is from a PR. TODO: update to egui master
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "1d6153b56b6e203ce5e5abeaa0e2a04f4a45b7b3" }       # this is from a PR. TODO: update to egui master
+eframe = { git = "https://github.com/emilk/egui.git", rev = "1d6153b56b6e203ce5e5abeaa0e2a04f4a45b7b3" }       # this is from a PR. TODO: update to egui master
+egui = { git = "https://github.com/emilk/egui.git", rev = "1d6153b56b6e203ce5e5abeaa0e2a04f4a45b7b3" }         # this is from a PR. TODO: update to egui master
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "1d6153b56b6e203ce5e5abeaa0e2a04f4a45b7b3" }  # this is from a PR. TODO: update to egui master
+egui_kittest = { git = "https://github.com/emilk/egui.git", rev = "1d6153b56b6e203ce5e5abeaa0e2a04f4a45b7b3" } # this is from a PR. TODO: update to egui master
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "1d6153b56b6e203ce5e5abeaa0e2a04f4a45b7b3" }    # this is from a PR. TODO: update to egui master
+emath = { git = "https://github.com/emilk/egui.git", rev = "1d6153b56b6e203ce5e5abeaa0e2a04f4a45b7b3" }        # this is from a PR. TODO: update to egui master
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
 # eframe = { path = "../../egui/crates/eframe" }
 # egui = { path = "../../egui/crates/egui" }
 # egui_extras = { path = "../../egui/crates/egui_extras" }
+# egui_kittest = { path = "../../egui/crates/egui_kittest" }
 # egui-wgpu = { path = "../../egui/crates/egui-wgpu" }
 # emath = { path = "../../egui/crates/emath" }
 

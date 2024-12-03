@@ -249,6 +249,7 @@ impl SpatialSpaceView2D {
 
         // ------------------------------------------------------------------------
 
+        // TODO: remove
         if let Some(target) = screenshot_context_menu(ctx, &response) {
             ctx.egui_ctx
                 .send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::new(
