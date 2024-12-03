@@ -48,74 +48,85 @@ If we are doing a patch release, we do a branch off of the latest release tag (e
 
 # Release process
 
-1. ### Check the root [`Cargo.toml`](/Cargo.toml) to see what version we are currently on.
+### 1. Check the root [`Cargo.toml`](/Cargo.toml) to see what version we are currently on.
 
-2. ### Create a release branch.
+### 2. Create a release branch.
 
-   The name should be:
-   - `release-0.x.y` for final releases and their release candidates.
-   - `release-0.x.y-alpha.N` where `N` is incremented from the previous alpha,
-     or defaulted to `1` if no previous alpha exists.
+The name should be:
+- `release-0.x.y` for final releases and their release candidates.
+- `release-0.x.y-alpha.N` where `N` is incremented from the previous alpha,
+  or defaulted to `1` if no previous alpha exists.
 
-   Note that `release-0.x` is _invalid_. Always specify the `y`, even if it is `0`,
-   e.g. `release-0.15.0` instead of `release-0.15`.
+Note that `release-0.x` is _invalid_. Always specify the `y`, even if it is `0`,
+e.g. `release-0.15.0` instead of `release-0.15`.
 
-   For minor release, the branch is typically created from `main`. For patch release, the branch is typically created
-   from the previous release's tag.
+For minor release, the branch is typically created from `main`. For patch release, the branch is typically created
+from the previous release's tag.
 
-   ![Image showing the branch create UI. You can find the `new branch` button at https://github.com/rerun-io/rerun/branches](https://github.com/rerun-io/rerun/assets/1665677/becaad03-9262-4476-b811-c23d40305aec)
+![Image showing the branch create UI. You can find the `new branch` button at https://github.com/rerun-io/rerun/branches](https://github.com/rerun-io/rerun/assets/1665677/becaad03-9262-4476-b811-c23d40305aec)
 
-   Note: you do not need to create a PR for this branch -- the release workflow will do that for you.
+Note: you do not need to create a PR for this branch -- the release workflow will do that for you.
 
-3. ### If this is a patch release, cherry-pick commits for inclusion in the release into the branch.
+### 3. If this is a patch release, cherry-pick commits for inclusion in the release into the branch.
 
-   When done, run [`cargo semver-checks`](https://github.com/obi1kenobi/cargo-semver-checks) to check that we haven't introduced any semver breaking changes.
+When done, run [`cargo semver-checks`](https://github.com/obi1kenobi/cargo-semver-checks) to check that we haven't introduced any semver breaking changes.
 
-   :warning: Any commits between the last release's tag and the `docs-latest` branch should also be cherry-picked.
-   Otherwise, these changes will be lost when `docs-latest` is updated.
+:warning: Any commits between the last release's tag and the `docs-latest` branch should also be cherry-picked,
+otherwise these changes will be lost when `docs-latest` is updated.
 
-4. ### Update [`CHANGELOG.md`](/CHANGELOG.md) and clean ups.
+```
+# On branch `release-0.x.y`
+git fetch origin docs-latest:docs-latest
+git cherry-pick 0.x.z..docs-latest
+```
 
-    Update the change log. It should include:
-      - A one-line summary of the release
-      - A multi-line summary of the release
-      - A gif showing a major new feature
-      - Run `pip install GitPython && scripts/generate_changelog.py > new_changelog.md`
-      - Edit PR descriptions/labels to improve the generated changelog
-      - Copy-paste the results into `CHANGELOG.md`.
-      - Editorialize the changelog if necessary
-      - Make sure the changelog includes instructions for handling any breaking changes
+Where `z` is the previous patch number.
 
-    Remove the speculative link markers and the `attr.docs.unreleased` attributes in the .fbs files.
+Note that the `cherry-pick` will fail if there are no additional `docs-latest` commits to include,
+which is fine.
 
-    Once you're done, commit and push onto the release branch.
+### 4. Update [`CHANGELOG.md`](/CHANGELOG.md) and clean ups.
 
-5. ### Run the [release workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml).
+Update the change log. It should include:
+  - A one-line summary of the release
+  - A multi-line summary of the release
+  - A gif showing a major new feature
+  - Run `pip install GitPython && scripts/generate_changelog.py > new_changelog.md`
+  - Edit PR descriptions/labels to improve the generated changelog
+  - Copy-paste the results into `CHANGELOG.md`.
+  - Editorialize the changelog if necessary
+  - Make sure the changelog includes instructions for handling any breaking changes
 
-   In the UI:
-   - Set `Use workflow from` to the release branch you created in step (2).
-   - Then choose one of the following values in the dropdown:
-     - `alpha` if the branch name is `release-x.y.z-alpha.N`.
-       This will create a one-off alpha release.
+Remove the speculative link markers and the `attr.docs.unreleased` attributes in the .fbs files.
 
-     - `rc` if the branch name is `release-x.y.z`.
-       This will create a pull request for the release, and publish a release candidate.
+Once you're done, commit and push onto the release branch.
 
-     - `final` for the final public release
+### 5. Run the [release workflow](https://github.com/rerun-io/rerun/actions/workflows/release.yml).
 
-   ![Image showing the Run workflow UI. It can be found at https://github.com/rerun-io/rerun/actions/workflows/release.yml](https://github.com/rerun-io/rerun/assets/1665677/6cdc8e7e-c0fc-4cf1-99cb-0749957b8328)
+In the UI:
+- Set `Use workflow from` to the release branch you created in step (2).
+- Then choose one of the following values in the dropdown:
+  - `alpha` if the branch name is `release-x.y.z-alpha.N`.
+    This will create a one-off alpha release.
 
-6. ### Wait for the workflow to finish
+  - `rc` if the branch name is `release-x.y.z`.
+    This will create a pull request for the release, and publish a release candidate.
 
-   The PR description will contain next steps.
+  - `final` for the final public release
 
-   Note: there are two separate workflows running -- the one building the release artifacts, and the one running the PR checks.
-   You will have to wait for the [former](https://github.com/rerun-io/rerun/actions/workflows/release.yml) in order to get a link to the artifacts.
+![Image showing the Run workflow UI. It can be found at https://github.com/rerun-io/rerun/actions/workflows/release.yml](https://github.com/rerun-io/rerun/assets/1665677/6cdc8e7e-c0fc-4cf1-99cb-0749957b8328)
 
-7. ### Merge changes to `main`
+### 6. Wait for the workflow to finish
 
-   For minor release, merge the release branch to `main`.
+The PR description will contain next steps.
 
-   For patch release, manually create a new PR from `main` and cherry-pick the required commits. This includes at least
-   the `CHANLGE.log` update, plus any other changes made on the release branch that hasn't been cherry-picked in the
-   first place.
+Note: there are two separate workflows running -- the one building the release artifacts, and the one running the PR checks.
+You will have to wait for the [former](https://github.com/rerun-io/rerun/actions/workflows/release.yml) in order to get a link to the artifacts.
+
+### 7. Merge changes to `main`
+
+For minor release, merge the release branch to `main`.
+
+For patch release, manually create a new PR from `main` and cherry-pick the required commits. This includes at least
+the `CHANLGE.log` update, plus any other changes made on the release branch that hasn't been cherry-picked in the
+first place.
