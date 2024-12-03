@@ -17,20 +17,20 @@ pub enum Item {
     /// A recording (or blueprint)
     StoreId(re_log_types::StoreId),
 
-    /// A component of an entity from the chunk store.
-    ComponentPath(ComponentPath),
-
-    /// A space view.
-    SpaceView(SpaceViewId),
-
     /// An entity or instance from the chunk store.
     InstancePath(InstancePath),
 
+    /// A component of an entity from the chunk store.
+    ComponentPath(ComponentPath),
+
+    /// A viewport container.
+    Container(ContainerId),
+
+    /// A viwport space view.
+    SpaceView(SpaceViewId),
+
     /// An entity or instance in the context of a space view's data results.
     DataResult(SpaceViewId, InstancePath),
-
-    /// A container.
-    Container(ContainerId),
 }
 
 impl Item {
