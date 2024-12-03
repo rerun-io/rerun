@@ -19,7 +19,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Defines a force that acts similar to a spring between nodes.
-#[derive(Clone, Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ForceLink {
     /// Whether the force is enabled.
     pub enabled: bool,

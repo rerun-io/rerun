@@ -18,7 +18,7 @@ use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
-#[derive(Clone, Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ForceCollideRadius(pub crate::blueprint::datatypes::ForceCollideRadius);
 
 impl ::re_types_core::SizeBytes for ForceCollideRadius {

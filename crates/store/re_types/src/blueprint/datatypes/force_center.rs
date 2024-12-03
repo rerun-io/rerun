@@ -19,7 +19,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Defines a force that globally centers a graph by moving its center of mass towards a given position.
-#[derive(Clone, Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ForceCenter {
     /// Whether the force is enabled.
     pub enabled: bool,

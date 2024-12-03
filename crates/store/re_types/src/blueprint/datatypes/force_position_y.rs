@@ -19,7 +19,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Defines a force that pulls nodes towards an `y` position.
-#[derive(Clone, Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ForcePositionY {
     /// Whether the force is enabled.
     pub enabled: bool,

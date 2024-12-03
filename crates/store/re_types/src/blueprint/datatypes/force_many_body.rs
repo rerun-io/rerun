@@ -21,7 +21,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// **Datatype**: Defines a force that is similar to an electric charge between nodes.
 ///
 /// Positive strengths will push nodes apart, while negative strengths will pull nodes together.
-#[derive(Clone, Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ForceManyBody {
     /// Whether the force is enabled.
     pub enabled: bool,

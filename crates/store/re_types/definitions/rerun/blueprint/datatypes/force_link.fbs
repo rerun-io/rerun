@@ -2,7 +2,7 @@ namespace rerun.blueprint.datatypes;
 
 /// Defines a force that acts similar to a spring between nodes.
 struct ForceLink (
-    "attr.rust.derive": "Default, Clone, PartialEq, Eq",
+    "attr.rust.derive": "Default, PartialEq",
     "attr.rerun.scope": "blueprint"
 ) {
     /// Whether the force is enabled.

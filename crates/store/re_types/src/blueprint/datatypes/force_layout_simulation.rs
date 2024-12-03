@@ -19,7 +19,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: The parameters for a force layout simulation.
-#[derive(Clone, Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ForceLayoutSimulation {
     /// Similar to the the temperature in a simulated annealing algorithm.
     pub alpha: f64,

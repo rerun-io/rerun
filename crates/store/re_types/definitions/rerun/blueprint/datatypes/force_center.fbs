@@ -2,7 +2,7 @@ namespace rerun.blueprint.datatypes;
 
 /// Defines a force that globally centers a graph by moving its center of mass towards a given position.
 struct ForceCenter (
-    "attr.rust.derive": "Default, Clone, PartialEq, Eq",
+    "attr.rust.derive": "Default, PartialEq",
     "attr.rerun.scope": "blueprint"
 ) {
     /// Whether the force is enabled.

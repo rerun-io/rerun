@@ -2,7 +2,7 @@ namespace rerun.blueprint.components;
 
 struct ForceLayoutSimulation (
     "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default, Clone, PartialEq, Eq"
+    "attr.rust.derive": "Default, PartialEq"
 ) {
     simulation: rerun.blueprint.datatypes.ForceLayoutSimulation (order: 100);
 }

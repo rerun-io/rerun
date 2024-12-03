@@ -19,7 +19,7 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: Defines a force that resolves collisions between the radii of `GraphNodes`.
-#[derive(Clone, Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct ForceCollideRadius {
     /// Whether the force is enabled.
     pub enabled: bool,
