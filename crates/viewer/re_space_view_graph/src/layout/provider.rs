@@ -1,9 +1,20 @@
+//! Performs the layout of the graph, i.e. converting an [`LayoutRequest`] into a [`Layout`].
+
+// For now we have only a single layout provider that is based on a force-directed model.
+// In the future, this could be expanded to support different (specialized layout alorithms).
+// Low-hanging fruit would be tree-based layouts. But we could also think about more complex
+// layouts, such as `dot` from `graphviz`.
+
 use egui::{Pos2, Rect, Vec2};
-use fjadra as fj;
+use fjadra::{self as fj};
 
-use crate::graph::NodeId;
+use crate::graph::{EdgeId, NodeId};
 
-use super::{request::NodeTemplate, Layout, LayoutRequest};
+use super::{
+    request::NodeTemplate,
+    slots::{slotted_edges, Slot, SlotKind},
+    EdgeGeometry, EdgeTemplate, Layout, LayoutRequest, PathGeometry,
+};
 
 impl<'a> From<&'a NodeTemplate> for fj::Node {
     fn from(node: &'a NodeTemplate) -> Self {
@@ -17,11 +28,11 @@ impl<'a> From<&'a NodeTemplate> for fj::Node {
 pub struct ForceLayoutProvider {
     simulation: fj::Simulation,
     node_index: ahash::HashMap<NodeId, usize>,
-    edges: Vec<(NodeId, NodeId)>,
+    pub request: LayoutRequest,
 }
 
 impl ForceLayoutProvider {
-    pub fn new(request: &LayoutRequest) -> Self {
+    pub fn new(request: LayoutRequest) -> Self {
         let nodes = request.graphs.iter().flat_map(|(_, graph_template)| {
             graph_template
                 .nodes
@@ -43,9 +54,11 @@ impl ForceLayoutProvider {
             .iter()
             .flat_map(|(_, graph_template)| graph_template.edges.iter());
 
-        let all_edges = all_edges_iter
+        // Looking at self-edges does not make sense in a force-based layout, so we filter those out.
+        let considered_edges = all_edges_iter
             .clone()
-            .map(|(a, b)| (node_index[a], node_index[b]));
+            .filter(|(id, _)| !id.is_self_edge())
+            .map(|(id, _)| (node_index[&id.source], node_index[&id.target]));
 
         // TODO(grtlr): Currently we guesstimate good forces. Eventually these should be exposed as blueprints.
         let simulation = fj::SimulationBuilder::default()
@@ -53,7 +66,7 @@ impl ForceLayoutProvider {
             .build(all_nodes)
             .add_force(
                 "link",
-                fj::Link::new(all_edges).distance(50.0).iterations(2),
+                fj::Link::new(considered_edges).distance(50.0).iterations(2),
             )
             .add_force("charge", fj::ManyBody::new())
             // TODO(grtlr): This is a small stop-gap until we have blueprints to prevent nodes from flying away.
@@ -63,15 +76,15 @@ impl ForceLayoutProvider {
         Self {
             simulation,
             node_index,
-            edges: all_edges_iter.copied().collect(),
+            request,
         }
     }
 
-    pub fn init(&self, request: &LayoutRequest) -> Layout {
+    pub fn init(&self) -> Layout {
         let positions = self.simulation.positions().collect::<Vec<_>>();
         let mut extents = ahash::HashMap::default();
 
-        for graph in request.graphs.values() {
+        for graph in self.request.graphs.values() {
             for (id, node) in &graph.nodes {
                 let i = self.node_index[id];
                 let [x, y] = positions[i];
@@ -84,6 +97,7 @@ impl ForceLayoutProvider {
             nodes: extents,
             // Without any real node positions, we probably don't want to draw edges either.
             edges: ahash::HashMap::default(),
+            entities: Vec::new(),
         }
     }
 
@@ -93,18 +107,130 @@ impl ForceLayoutProvider {
 
         let positions = self.simulation.positions().collect::<Vec<_>>();
 
-        for (node, extent) in &mut layout.nodes {
-            let i = self.node_index[node];
-            let [x, y] = positions[i];
-            let pos = Pos2::new(x as f32, y as f32);
-            extent.set_center(pos);
-        }
+        // We clear all unnecessary data from the previous layout, but keep its space allocated.
+        layout.entities.clear();
+        layout.edges.clear();
 
-        for (from, to) in &self.edges {
-            layout.edges.insert(
-                (*from, *to),
-                line_segment(layout.nodes[from], layout.nodes[to]),
-            );
+        for (entity, graph) in &self.request.graphs {
+            let mut current_rect = Rect::NOTHING;
+
+            for node in graph.nodes.keys() {
+                let extent = layout.nodes.get_mut(node).expect("node has to be present");
+                let i = self.node_index[node];
+                let [x, y] = positions[i];
+                let pos = Pos2::new(x as f32, y as f32);
+                extent.set_center(pos);
+                current_rect = current_rect.union(*extent);
+            }
+
+            layout.entities.push((entity.clone(), current_rect));
+
+            // Multiple edges can occupy the same space in the layout.
+            for Slot { kind, edges } in
+                slotted_edges(graph.edges.values().flat_map(|ts| ts.iter())).values()
+            {
+                match kind {
+                    SlotKind::SelfEdge { node } => {
+                        let rect = layout.nodes[node];
+                        let id = EdgeId::self_edge(*node);
+                        let geometries = layout.edges.entry(id).or_default();
+                        geometries.extend(layout_self_edges(rect, edges));
+                    }
+                    SlotKind::Regular {
+                        source: slot_source,
+                        target: slot_target,
+                    } => {
+                        if let &[edge] = edges.as_slice() {
+                            // A single regular straight edge.
+                            let target_arrow = edge.target_arrow;
+                            let geometries = layout
+                                .edges
+                                .entry(EdgeId {
+                                    source: edge.source,
+                                    target: edge.target,
+                                })
+                                .or_default();
+                            geometries.push(EdgeGeometry {
+                                target_arrow,
+                                path: line_segment(
+                                    layout.nodes[&edge.source],
+                                    layout.nodes[&edge.target],
+                                ),
+                            });
+                        } else {
+                            // Multiple edges occupy the same space, so we fan them out.
+                            let num_edges = edges.len();
+
+                            // Controls the amount of space (in scene coordinates) that a slot can occupy.
+                            let fan_amount = 20.0;
+
+                            for (i, edge) in edges.iter().enumerate() {
+                                let source_rect = layout.nodes[slot_source];
+                                let target_rect = layout.nodes[slot_target];
+
+                                let d = (target_rect.center() - source_rect.center()).normalized();
+
+                                let source_pos = source_rect.intersects_ray_from_center(d);
+                                let target_pos = target_rect.intersects_ray_from_center(-d);
+
+                                // How far along the edge should the control points be?
+                                let c1_base = source_pos + (target_pos - source_pos) * 0.25;
+                                let c2_base = source_pos + (target_pos - source_pos) * 0.75;
+
+                                let c1_base_n = Vec2::new(-c1_base.y, c1_base.x).normalized();
+                                let mut c2_base_n = Vec2::new(-c2_base.y, c2_base.x).normalized();
+
+                                // Make sure both point to the same side of the edge.
+                                if c1_base_n.dot(c2_base_n) < 0.0 {
+                                    // If they point in opposite directions, flip one of them.
+                                    c2_base_n = -c2_base_n;
+                                }
+
+                                let c1_left = c1_base + c1_base_n * (fan_amount / 2.);
+                                let c2_left = c2_base + c2_base_n * (fan_amount / 2.);
+
+                                let c1_right = c1_base - c1_base_n * (fan_amount / 2.);
+                                let c2_right = c2_base - c2_base_n * (fan_amount / 2.);
+
+                                // Calculate an offset for the control points based on index `i`, spreading points equidistantly.
+                                let t = (i as f32) / (num_edges - 1) as f32;
+
+                                // Compute control points, `c1` and `c2`, based on the offset
+                                let c1 = c1_right + (c1_left - c1_right) * t;
+                                let c2 = c2_right + (c2_left - c2_right) * t;
+
+                                let geometries = layout
+                                    .edges
+                                    .entry(EdgeId {
+                                        source: edge.source,
+                                        target: edge.target,
+                                    })
+                                    .or_default();
+
+                                // We potentially need to restore the direction of the edge, after we have used it's canonical form earlier.
+                                let path = if edge.source == *slot_source {
+                                    PathGeometry::CubicBezier {
+                                        source: source_pos,
+                                        target: target_pos,
+                                        control: [c1, c2],
+                                    }
+                                } else {
+                                    PathGeometry::CubicBezier {
+                                        source: target_pos,
+                                        target: source_pos,
+                                        control: [c2, c1],
+                                    }
+                                };
+
+                                geometries.push(EdgeGeometry {
+                                    target_arrow: edge.target_arrow,
+                                    path,
+                                });
+                            }
+                        }
+                    }
+                }
+            }
         }
 
         self.simulation.finished()
@@ -112,7 +238,7 @@ impl ForceLayoutProvider {
 }
 
 /// Helper function to calculate the line segment between two rectangles.
-fn line_segment(source: Rect, target: Rect) -> [Pos2; 2] {
+fn line_segment(source: Rect, target: Rect) -> PathGeometry {
     let source_center = source.center();
     let target_center = target.center();
 
@@ -120,89 +246,36 @@ fn line_segment(source: Rect, target: Rect) -> [Pos2; 2] {
     let direction = (target_center - source_center).normalized();
 
     // Find the border points on both rectangles
-    let source_point = intersects_ray_from_center(source, direction);
-    let target_point = intersects_ray_from_center(target, -direction); // Reverse direction for target
+    let source_point = source.intersects_ray_from_center(direction);
+    let target_point = target.intersects_ray_from_center(-direction); // Reverse direction for target
 
-    [source_point, target_point]
+    PathGeometry::Line {
+        source: source_point,
+        target: target_point,
+    }
 }
 
-/// Helper function to find the point where the line intersects the border of a rectangle
-fn intersects_ray_from_center(rect: Rect, direction: Vec2) -> Pos2 {
-    let mut tmin = f32::NEG_INFINITY;
-    let mut tmax = f32::INFINITY;
+fn layout_self_edges<'a>(
+    rect: Rect,
+    edges: &'a [&EdgeTemplate],
+) -> impl Iterator<Item = EdgeGeometry> + 'a {
+    edges.iter().enumerate().map(move |(i, edge)| {
+        let offset = (i + 1) as f32;
+        let target_arrow = edge.target_arrow;
+        let anchor = rect.center_top();
 
-    for i in 0..2 {
-        let inv_d = 1.0 / -direction[i];
-        let mut t0 = (rect.min[i] - rect.center()[i]) * inv_d;
-        let mut t1 = (rect.max[i] - rect.center()[i]) * inv_d;
-
-        if inv_d < 0.0 {
-            std::mem::swap(&mut t0, &mut t1);
+        EdgeGeometry {
+            target_arrow,
+            path: PathGeometry::CubicBezier {
+                // TODO(grtlr): We could probably consider the actual node size here.
+                source: anchor + Vec2::LEFT * 4.,
+                target: anchor + Vec2::RIGHT * 4.,
+                // TODO(grtlr): The actual length of that spline should follow the `distance` parameter of the link force.
+                control: [
+                    anchor + Vec2::new(-30. * offset, -40. * offset),
+                    anchor + Vec2::new(30. * offset, -40. * offset),
+                ],
+            },
         }
-
-        tmin = tmin.max(t0);
-        tmax = tmax.min(t1);
-    }
-
-    let t = tmax.min(tmin); // Pick the first intersection
-    rect.center() + t * -direction
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    use egui::pos2;
-
-    #[test]
-    fn test_ray_intersection() {
-        let rect = Rect::from_min_max(pos2(1.0, 1.0), pos2(3.0, 3.0));
-
-        assert_eq!(
-            intersects_ray_from_center(rect, Vec2::RIGHT),
-            pos2(3.0, 2.0),
-            "rightward ray"
-        );
-
-        assert_eq!(
-            intersects_ray_from_center(rect, Vec2::UP),
-            pos2(2.0, 1.0),
-            "upward ray"
-        );
-
-        assert_eq!(
-            intersects_ray_from_center(rect, Vec2::LEFT),
-            pos2(1.0, 2.0),
-            "leftward ray"
-        );
-
-        assert_eq!(
-            intersects_ray_from_center(rect, Vec2::DOWN),
-            pos2(2.0, 3.0),
-            "downward ray"
-        );
-
-        assert_eq!(
-            intersects_ray_from_center(rect, (Vec2::LEFT + Vec2::DOWN).normalized()),
-            pos2(1.0, 3.0),
-            "bottom-left corner ray"
-        );
-
-        assert_eq!(
-            intersects_ray_from_center(rect, (Vec2::LEFT + Vec2::UP).normalized()),
-            pos2(1.0, 1.0),
-            "top-left corner ray"
-        );
-
-        assert_eq!(
-            intersects_ray_from_center(rect, (Vec2::RIGHT + Vec2::DOWN).normalized()),
-            pos2(3.0, 3.0),
-            "bottom-right corner ray"
-        );
-
-        assert_eq!(
-            intersects_ray_from_center(rect, (Vec2::RIGHT + Vec2::UP).normalized()),
-            pos2(3.0, 1.0),
-            "top-right corner ray"
-        );
-    }
+    })
 }

@@ -1,9 +1,17 @@
-use std::collections::{BTreeMap, BTreeSet};
+//! Contains all the (geometric) information that is considered when performing a graph layout.
+//!
+//! We support:
+//! * Multiple edges between the same two nodes.
+//! * Self-edges
+//!
+//! <div class="warning"> Duplicated graph nodes are undefined behavior.</div>
+
+use std::collections::BTreeMap;
 
 use egui::{Pos2, Vec2};
 use re_chunk::EntityPath;
 
-use crate::graph::{Graph, NodeId};
+use crate::graph::{EdgeId, Graph, NodeId};
 
 #[derive(PartialEq)]
 pub(super) struct NodeTemplate {
@@ -11,10 +19,21 @@ pub(super) struct NodeTemplate {
     pub(super) fixed_position: Option<Pos2>,
 }
 
+#[derive(Clone, PartialEq, Eq)]
+pub struct EdgeTemplate {
+    pub source: NodeId,
+    pub target: NodeId,
+    pub target_arrow: bool,
+}
+
 #[derive(Default, PartialEq)]
 pub(super) struct GraphTemplate {
     pub(super) nodes: BTreeMap<NodeId, NodeTemplate>,
-    pub(super) edges: BTreeSet<(NodeId, NodeId)>,
+
+    /// The edges in the layout.
+    ///
+    /// Each entry can contain multiple edges.
+    pub(super) edges: BTreeMap<EdgeId, Vec<EdgeTemplate>>,
 }
 
 /// A [`LayoutRequest`] encapsulates all the information that is considered when computing a layout.
@@ -39,11 +58,21 @@ impl LayoutRequest {
                     size: node.size(),
                     fixed_position: node.position(),
                 };
-                entity.nodes.insert(node.id(), shape);
+                let duplicate = entity.nodes.insert(node.id(), shape);
+                debug_assert!(
+                    duplicate.is_none(),
+                    "duplicated nodes are undefined behavior"
+                );
             }
 
             for edge in graph.edges() {
-                entity.edges.insert((edge.from, edge.to));
+                let id = EdgeId {
+                    source: edge.source,
+                    target: edge.target,
+                };
+
+                let es = entity.edges.entry(id).or_default();
+                es.push(edge.clone());
             }
         }
 

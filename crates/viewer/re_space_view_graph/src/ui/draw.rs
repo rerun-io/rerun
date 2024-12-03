@@ -1,8 +1,8 @@
 use std::sync::Arc;
 
 use egui::{
-    Align2, Color32, FontId, FontSelection, Frame, Galley, Painter, Pos2, Rect, Response, RichText,
-    Sense, Shape, Stroke, TextWrapMode, Ui, UiBuilder, Vec2, WidgetText,
+    epaint::CubicBezierShape, Align2, Color32, FontId, FontSelection, Frame, Galley, Painter, Pos2,
+    Rect, Response, RichText, Sense, Shape, Stroke, TextWrapMode, Ui, UiBuilder, Vec2, WidgetText,
 };
 use re_chunk::EntityPath;
 use re_entity_db::InstancePath;
@@ -14,16 +14,8 @@ use re_viewer_context::{
 
 use crate::{
     graph::{Graph, Node},
-    layout::Layout,
+    layout::{EdgeGeometry, Layout, PathGeometry},
     visualizers::Label,
-};
-
-// Sorry for the pun, could not resist 😎.
-// On a serious note, is there no other way to create a `Sense` that does nothing?
-const NON_SENSE: Sense = Sense {
-    click: false,
-    drag: false,
-    focusable: false,
 };
 
 pub enum DrawableLabel {
@@ -132,7 +124,7 @@ fn draw_text_label(ui: &mut Ui, label: &TextLabel, highlight: InteractionHighlig
                     .sense(Sense::click()),
             )
         })
-        .inner
+        .response
 }
 
 /// Draws a node at the given position.
@@ -192,24 +184,43 @@ fn draw_arrow(painter: &Painter, tip: Pos2, direction: Vec2, color: Color32) {
 }
 
 /// Draws an edge between two points, optionally with an arrow at the target point.
-fn draw_edge(ui: &mut Ui, points: [Pos2; 2], show_arrow: bool) -> Response {
+pub fn draw_edge(ui: &mut Ui, geometry: &EdgeGeometry, show_arrow: bool) -> Response {
     let fg = ui.style().visuals.text_color();
+    let stroke = Stroke::new(1.0, fg);
 
-    let rect = Rect::from_points(&points);
     let painter = ui.painter();
-    painter.line_segment(points, Stroke::new(1.0, fg));
 
-    // Calculate direction vector from source to target
-    let direction = (points[1] - points[0]).normalized();
+    match geometry.path {
+        PathGeometry::Line { source, target } => {
+            painter.line_segment([source, target], stroke);
+        }
+        PathGeometry::CubicBezier {
+            source,
+            target,
+            control,
+        } => {
+            painter.add(CubicBezierShape {
+                points: [source, control[0], control[1], target],
+                closed: false,
+                fill: Color32::TRANSPARENT,
+                stroke: stroke.into(),
+            });
+        }
+    }
 
     // Conditionally draw an arrow at the target point
     if show_arrow {
-        draw_arrow(painter, points[1], direction, fg);
+        draw_arrow(
+            painter,
+            geometry.target_pos(),
+            geometry.target_arrow_direction(),
+            stroke.color,
+        );
     }
 
     // We can add interactions in the future, for now we simply allocate the
     // rect, so that bounding boxes are computed correctly.
-    ui.allocate_rect(rect, NON_SENSE)
+    ui.allocate_rect(geometry.bounding_rect(), Sense::hover())
 }
 
 pub fn draw_entity_rect(
@@ -251,7 +262,6 @@ pub fn draw_entity_rect(
 }
 
 /// Draws the graph using the layout.
-#[must_use]
 pub fn draw_graph(
     ui: &mut Ui,
     ctx: &ViewerContext<'_>,
@@ -300,12 +310,25 @@ pub fn draw_graph(
         current_rect = current_rect.union(response.rect);
     }
 
-    for edge in graph.edges() {
-        let points = layout
-            .get_edge(edge.from, edge.to)
-            .unwrap_or([Pos2::ZERO, Pos2::ZERO]);
-        let resp = draw_edge(ui, points, edge.arrow);
-        current_rect = current_rect.union(resp.rect);
+    for (_, geometries) in layout.edges() {
+        for geometry in geometries {
+            let response = draw_edge(ui, geometry, geometry.target_arrow);
+            current_rect = current_rect.union(response.rect);
+        }
+    }
+
+    // We only show entity rects if there are multiple entities.
+    // For now, these entity rects are not part of the layout, but rather tracked on the fly.
+    if layout.num_entities() > 1 {
+        for (entity_path, rect) in layout.entities() {
+            let resp = draw_entity_rect(ui, *rect, entity_path, &query.highlights);
+            current_rect = current_rect.union(resp.rect);
+            let instance_path = InstancePath::entity_all(entity_path.clone());
+            ctx.select_hovered_on_click(
+                &resp,
+                vec![(Item::DataResult(query.space_view_id, instance_path), None)].into_iter(),
+            );
+        }
     }
 
     current_rect
