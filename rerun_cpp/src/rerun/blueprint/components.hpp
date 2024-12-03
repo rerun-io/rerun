@@ -29,7 +29,6 @@
 #include "blueprint/components/space_view_origin.hpp"
 #include "blueprint/components/tensor_dimension_index_slider.hpp"
 #include "blueprint/components/timeline_name.hpp"
-#include "blueprint/components/ui_radius.hpp"
 #include "blueprint/components/view_fit.hpp"
 #include "blueprint/components/viewer_recommendation_hash.hpp"
 #include "blueprint/components/visible.hpp"

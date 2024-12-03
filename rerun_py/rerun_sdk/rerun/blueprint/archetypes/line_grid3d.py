@@ -29,7 +29,7 @@ class LineGrid3D(Archetype):
         visible: datatypes.BoolLike | None = None,
         spacing: datatypes.Float32Like | None = None,
         plane: datatypes.Plane3DLike | None = None,
-        line_radius: datatypes.Float32Like | None = None,
+        stroke_width: datatypes.Float32Like | None = None,
         color: datatypes.Rgba32Like | None = None,
     ):
         """
@@ -47,10 +47,10 @@ class LineGrid3D(Archetype):
             In what plane the grid is drawn.
 
             Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`archetype.ViewCoordinates`] if present.
-        line_radius:
+        stroke_width:
             How thick the lines should be in ui units.
 
-            Default is 0.5 ui unit.
+            Default is 1.0 ui unit.
         color:
             Color used for the grid.
 
@@ -61,7 +61,7 @@ class LineGrid3D(Archetype):
 
         # You can define your own __init__ function as a member of LineGrid3DExt in line_grid3d_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(visible=visible, spacing=spacing, plane=plane, line_radius=line_radius, color=color)
+            self.__attrs_init__(visible=visible, spacing=spacing, plane=plane, stroke_width=stroke_width, color=color)
             return
         self.__attrs_clear__()
 
@@ -71,7 +71,7 @@ class LineGrid3D(Archetype):
             visible=None,  # type: ignore[arg-type]
             spacing=None,  # type: ignore[arg-type]
             plane=None,  # type: ignore[arg-type]
-            line_radius=None,  # type: ignore[arg-type]
+            stroke_width=None,  # type: ignore[arg-type]
             color=None,  # type: ignore[arg-type]
         )
 
@@ -113,14 +113,14 @@ class LineGrid3D(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    line_radius: blueprint_components.UiRadiusBatch | None = field(
+    stroke_width: components.StrokeWidthBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.UiRadiusBatch._optional,  # type: ignore[misc]
+        converter=components.StrokeWidthBatch._optional,  # type: ignore[misc]
     )
     # How thick the lines should be in ui units.
     #
-    # Default is 0.5 ui unit.
+    # Default is 1.0 ui unit.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

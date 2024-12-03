@@ -36,8 +36,8 @@ pub struct LineGrid3D {
 
     /// How thick the lines should be in ui units.
     ///
-    /// Default is 0.5 ui unit.
-    pub line_radius: Option<crate::blueprint::components::UiRadius>,
+    /// Default is 1.0 ui unit.
+    pub stroke_width: Option<crate::components::StrokeWidth>,
 
     /// Color used for the grid.
     ///
@@ -52,7 +52,7 @@ impl ::re_types_core::SizeBytes for LineGrid3D {
         self.visible.heap_size_bytes()
             + self.spacing.heap_size_bytes()
             + self.plane.heap_size_bytes()
-            + self.line_radius.heap_size_bytes()
+            + self.stroke_width.heap_size_bytes()
             + self.color.heap_size_bytes()
     }
 
@@ -61,7 +61,7 @@ impl ::re_types_core::SizeBytes for LineGrid3D {
         <Option<crate::blueprint::components::Visible>>::is_pod()
             && <Option<crate::blueprint::components::GridSpacing>>::is_pod()
             && <Option<crate::components::Plane3D>>::is_pod()
-            && <Option<crate::blueprint::components::UiRadius>>::is_pod()
+            && <Option<crate::components::StrokeWidth>>::is_pod()
             && <Option<crate::components::Color>>::is_pod()
     }
 }
@@ -78,7 +78,7 @@ static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
             "rerun.blueprint.components.Visible".into(),
             "rerun.blueprint.components.GridSpacing".into(),
             "rerun.components.Plane3D".into(),
-            "rerun.blueprint.components.UiRadius".into(),
+            "rerun.components.StrokeWidth".into(),
             "rerun.components.Color".into(),
         ]
     });
@@ -90,7 +90,7 @@ static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
             "rerun.blueprint.components.Visible".into(),
             "rerun.blueprint.components.GridSpacing".into(),
             "rerun.components.Plane3D".into(),
-            "rerun.blueprint.components.UiRadius".into(),
+            "rerun.components.StrokeWidth".into(),
             "rerun.components.Color".into(),
         ]
     });
@@ -181,16 +181,15 @@ impl ::re_types_core::Archetype for LineGrid3D {
         } else {
             None
         };
-        let line_radius =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.UiRadius") {
-                <crate::blueprint::components::UiRadius>::from_arrow2_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.LineGrid3D#line_radius")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
+        let stroke_width = if let Some(array) = arrays_by_name.get("rerun.components.StrokeWidth") {
+            <crate::components::StrokeWidth>::from_arrow2_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.LineGrid3D#stroke_width")?
+                .into_iter()
+                .next()
+                .flatten()
+        } else {
+            None
+        };
         let color = if let Some(array) = arrays_by_name.get("rerun.components.Color") {
             <crate::components::Color>::from_arrow2_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.LineGrid3D#color")?
@@ -204,7 +203,7 @@ impl ::re_types_core::Archetype for LineGrid3D {
             visible,
             spacing,
             plane,
-            line_radius,
+            stroke_width,
             color,
         })
     }
@@ -225,7 +224,7 @@ impl ::re_types_core::AsComponents for LineGrid3D {
             self.plane
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.line_radius
+            self.stroke_width
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.color
@@ -248,7 +247,7 @@ impl LineGrid3D {
             visible: None,
             spacing: None,
             plane: None,
-            line_radius: None,
+            stroke_width: None,
             color: None,
         }
     }
@@ -286,13 +285,13 @@ impl LineGrid3D {
 
     /// How thick the lines should be in ui units.
     ///
-    /// Default is 0.5 ui unit.
+    /// Default is 1.0 ui unit.
     #[inline]
-    pub fn with_line_radius(
+    pub fn with_stroke_width(
         mut self,
-        line_radius: impl Into<crate::blueprint::components::UiRadius>,
+        stroke_width: impl Into<crate::components::StrokeWidth>,
     ) -> Self {
-        self.line_radius = Some(line_radius.into());
+        self.stroke_width = Some(stroke_width.into());
         self
     }
 

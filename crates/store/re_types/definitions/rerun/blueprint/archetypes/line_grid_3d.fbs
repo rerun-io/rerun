@@ -19,8 +19,8 @@ table LineGrid3D (
 
     /// How thick the lines should be in ui units.
     ///
-    /// Default is 0.5 ui unit.
-    line_radius: rerun.blueprint.components.UiRadius ("attr.rerun.component_optional", nullable, order: 5000);
+    /// Default is 1.0 ui unit.
+    stroke_width: rerun.components.StrokeWidth ("attr.rerun.component_optional", nullable, order: 5000);
 
     /// Color used for the grid.
     ///

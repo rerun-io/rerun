@@ -255,14 +255,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <UiRadius as Component>::name(),
-            ComponentReflection {
-                docstring_md: "Like `Radius`, but in always in ui units.",
-                custom_placeholder: None,
-                datatype: UiRadius::arrow2_datatype(),
-            },
-        ),
-        (
             <ViewFit as Component>::name(),
             ComponentReflection {
                 docstring_md: "Determines whether an image or texture should be scaled to fit the viewport.",
@@ -1973,9 +1965,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     docstring_md :
                     "In what plane the grid is drawn.\n\nDefaults to whatever plane is determined as the plane at zero units up/down as defined by [`archetype.ViewCoordinates`] if present.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.UiRadius".into(), display_name :
-                    "Line radius", docstring_md :
-                    "How thick the lines should be in ui units.\n\nDefault is 0.5 ui unit.",
+                    "rerun.components.StrokeWidth".into(), display_name : "Stroke width",
+                    docstring_md :
+                    "How thick the lines should be in ui units.\n\nDefault is 1.0 ui unit.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.components.Color".into(), display_name : "Color", docstring_md
                     :

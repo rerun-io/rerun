@@ -15,7 +15,7 @@ use re_space_view::controls::{
 use re_types::{
     blueprint::{
         archetypes::{Background, LineGrid3D},
-        components::{GridSpacing, UiRadius, Visible},
+        components::{GridSpacing, Visible},
     },
     components::ViewCoordinates,
     view_coordinates::SignedAxis3,
@@ -722,8 +722,8 @@ impl SpatialSpaceView3D {
         }
 
         let spacing = **grid_config.component_or_fallback::<GridSpacing>(ctx, self, state)?;
-        let thickness_ui =
-            (**grid_config.component_or_fallback::<UiRadius>(ctx, self, state)?) * 2.0;
+        let thickness_ui = **grid_config
+            .component_or_fallback::<re_types::components::StrokeWidth>(ctx, self, state)?;
         let color =
             grid_config.component_or_fallback::<re_types::components::Color>(ctx, self, state)?;
         let plane =

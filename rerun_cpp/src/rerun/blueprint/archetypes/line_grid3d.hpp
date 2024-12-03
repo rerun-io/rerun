@@ -4,13 +4,13 @@
 #pragma once
 
 #include "../../blueprint/components/grid_spacing.hpp"
-#include "../../blueprint/components/ui_radius.hpp"
 #include "../../blueprint/components/visible.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../components/color.hpp"
 #include "../../components/plane3d.hpp"
+#include "../../components/stroke_width.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
@@ -37,8 +37,8 @@ namespace rerun::blueprint::archetypes {
 
         /// How thick the lines should be in ui units.
         ///
-        /// Default is 0.5 ui unit.
-        std::optional<rerun::blueprint::components::UiRadius> line_radius;
+        /// Default is 1.0 ui unit.
+        std::optional<rerun::components::StrokeWidth> stroke_width;
 
         /// Color used for the grid.
         ///
@@ -84,9 +84,9 @@ namespace rerun::blueprint::archetypes {
 
         /// How thick the lines should be in ui units.
         ///
-        /// Default is 0.5 ui unit.
-        LineGrid3D with_line_radius(rerun::blueprint::components::UiRadius _line_radius) && {
-            line_radius = std::move(_line_radius);
+        /// Default is 1.0 ui unit.
+        LineGrid3D with_stroke_width(rerun::components::StrokeWidth _stroke_width) && {
+            stroke_width = std::move(_stroke_width);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

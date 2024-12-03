@@ -29,7 +29,6 @@ from .space_view_maximized import SpaceViewMaximized, SpaceViewMaximizedBatch
 from .space_view_origin import SpaceViewOrigin, SpaceViewOriginBatch
 from .tensor_dimension_index_slider import TensorDimensionIndexSlider, TensorDimensionIndexSliderBatch
 from .timeline_name import TimelineName, TimelineNameBatch
-from .ui_radius import UiRadius, UiRadiusBatch
 from .view_fit import ViewFit, ViewFitArrayLike, ViewFitBatch, ViewFitLike
 from .viewer_recommendation_hash import ViewerRecommendationHash, ViewerRecommendationHashBatch
 from .visible import Visible, VisibleBatch
@@ -103,8 +102,6 @@ __all__ = [
     "TensorDimensionIndexSliderBatch",
     "TimelineName",
     "TimelineNameBatch",
-    "UiRadius",
-    "UiRadiusBatch",
     "ViewFit",
     "ViewFitArrayLike",
     "ViewFitBatch",

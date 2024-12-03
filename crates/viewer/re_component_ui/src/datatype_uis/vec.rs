@@ -36,7 +36,7 @@ fn edit_or_view_vector_component_immutable(
 
         MaybeMutRef::MutRef(value) => MaybeMutRef::Ref(&value[i]),
     };
-    edit_f32_float_raw(ui, &mut value, f32::MIN..=f32::MAX)
+    edit_f32_float_raw(ui, &mut value, f32::MIN..=f32::MAX, "")
 }
 
 pub fn edit_or_view_vec3d_raw(
@@ -57,5 +57,5 @@ fn edit_or_view_vector_component(
         MaybeMutRef::Ref(value) => MaybeMutRef::Ref(&value[i]),
         MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(&mut value[i]),
     };
-    edit_f32_float_raw(ui, &mut value, f32::MIN..=f32::MAX)
+    edit_f32_float_raw(ui, &mut value, f32::MIN..=f32::MAX, "")
 }

@@ -1,9 +1,9 @@
 use re_types::{
     blueprint::{
         archetypes::{Background, LineGrid3D},
-        components::{BackgroundKind, UiRadius},
+        components::BackgroundKind,
     },
-    components::{Color, Plane3D},
+    components::{Color, Plane3D, StrokeWidth},
     Archetype,
 };
 use re_viewer_context::{SpaceViewStateExt as _, TypedComponentFallbackProvider};
@@ -29,14 +29,9 @@ impl TypedComponentFallbackProvider<BackgroundKind> for SpatialSpaceView3D {
     }
 }
 
-impl TypedComponentFallbackProvider<UiRadius> for SpatialSpaceView3D {
-    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> UiRadius {
-        if ctx.archetype_name == Some(LineGrid3D::name()) {
-            // 1 ui unit thickness by default.
-            0.5.into()
-        } else {
-            1.0.into()
-        }
+impl TypedComponentFallbackProvider<StrokeWidth> for SpatialSpaceView3D {
+    fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> StrokeWidth {
+        1.0.into()
     }
 }
 
@@ -56,4 +51,4 @@ impl TypedComponentFallbackProvider<Plane3D> for SpatialSpaceView3D {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(SpatialSpaceView3D => [BackgroundKind, Color, UiRadius, Plane3D]);
+re_viewer_context::impl_component_fallback_provider!(SpatialSpaceView3D => [BackgroundKind, Color, StrokeWidth, Plane3D]);

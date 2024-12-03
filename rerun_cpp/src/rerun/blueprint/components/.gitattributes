@@ -33,7 +33,6 @@ space_view_maximized.hpp linguist-generated=true
 space_view_origin.hpp linguist-generated=true
 tensor_dimension_index_slider.hpp linguist-generated=true
 timeline_name.hpp linguist-generated=true
-ui_radius.hpp linguist-generated=true
 view_fit.cpp linguist-generated=true
 view_fit.hpp linguist-generated=true
 viewer_recommendation_hash.hpp linguist-generated=true

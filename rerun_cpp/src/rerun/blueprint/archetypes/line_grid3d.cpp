@@ -31,8 +31,8 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.line_radius.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.line_radius.value());
+        if (archetype.stroke_width.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.stroke_width.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
