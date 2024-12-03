@@ -57,7 +57,7 @@ fn main_vs(@builtin(vertex_index) v_idx: u32) -> VertexOutput {
     let shifted_plane_position = plane_position + camera_on_plane;
 
     // Compute world position from shifted plane position.
-    let world_position = config.plane.normal * -config.plane.distance + plane_x_axis * shifted_plane_position.x + plane_y_axis * shifted_plane_position.y;
+    let world_position = config.plane.normal * config.plane.distance + plane_x_axis * shifted_plane_position.x + plane_y_axis * shifted_plane_position.y;
     out.position = frame.projection_from_world * vec4f(world_position, 1.0);
 
     // Determine which "scales" of the grid we want to show. We want to show factor 1, 10, 100, 1000, etc.
