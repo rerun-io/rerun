@@ -40,7 +40,7 @@ pub struct Args {
     features: String,
 
     /// whether to exclude default features from `re_viewer` wasm build
-    #[argh(option, long = "no-default-features", default = "false")]
+    #[argh(switch, long = "no-default-features")]
     no_default_features: bool,
 }
 
