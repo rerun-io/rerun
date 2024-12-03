@@ -5,7 +5,7 @@ use re_viewer_context::{
 use crate::{ContextMenuAction, ContextMenuContext};
 
 /// Space view screenshot action.
-#[cfg(not(target_arch = "wasm32"))] // TODO(#8264): screenshotting on web
+#[cfg(not(target_arch = "wasm32"))]
 pub enum ScreenshotAction {
     /// Scrteenshot the space view, and copy the results to clipboard.
     CopyScreenshot,

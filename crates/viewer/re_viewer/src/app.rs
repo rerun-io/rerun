@@ -13,8 +13,8 @@ use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
     AppOptions, BlueprintUndoState, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState,
-    ScreenshotInfo, SpaceViewClass, SpaceViewClassRegistry, SpaceViewClassRegistryError,
-    StoreContext, SystemCommand, SystemCommandSender,
+    SpaceViewClass, SpaceViewClassRegistry, SpaceViewClassRegistryError, StoreContext,
+    SystemCommand, SystemCommandSender,
 };
 
 use crate::app_blueprint::PanelStateOverrides;
@@ -1604,16 +1604,13 @@ impl App {
         false
     }
 
+    #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): screenshotting on web
     fn process_screenshot_result(
         &mut self,
         image: &Arc<egui::ColorImage>,
         user_data: &egui::UserData,
     ) {
-        if cfg!(target_arch = "wasm32") {
-            // TODO(#8264): screenshotting on web
-            re_log::warn!("Screenshotting is not supported on the web. See https://github.com/rerun-io/rerun/issues/8264");
-            return;
-        }
+        use re_viewer_context::ScreenshotInfo;
 
         if let Some(info) = &user_data
             .data
@@ -1962,6 +1959,7 @@ impl eframe::App for App {
         self.store_hub = Some(store_hub);
 
         // Check for returned screenshot:
+        #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): screenshotting on web
         egui_ctx.input(|i| {
             for event in &i.raw.events {
                 if let egui::Event::Screenshot {
