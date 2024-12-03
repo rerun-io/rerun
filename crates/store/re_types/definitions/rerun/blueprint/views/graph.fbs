@@ -17,4 +17,10 @@ table GraphView (
 
     /// Adds a force that pull nodes towards an `y` position.
     force_position_y: rerun.blueprint.archetypes.ForcePositionY (order: 2100);
+
+    /// Adds a force that moves the center of mass of all nodes to a given position.
+    force_center: rerun.blueprint.archetypes.ForcePositionX (order: 3000);
+
+    /// Adds a force that resolves collisions between graph nodes.
+    force_collide_radius: rerun.blueprint.archetypes.ForceCollideRadius (order: 4000);
 }
