@@ -13,6 +13,8 @@ from .container_kind import ContainerKind, ContainerKindArrayLike, ContainerKind
 from .corner2d import Corner2D, Corner2DArrayLike, Corner2DBatch, Corner2DLike
 from .filter_by_range import FilterByRange, FilterByRangeBatch
 from .filter_is_not_null import FilterIsNotNull, FilterIsNotNullBatch
+from .force_position_x import ForcePositionX, ForcePositionXBatch
+from .force_position_y import ForcePositionY, ForcePositionYBatch
 from .grid_columns import GridColumns, GridColumnsBatch
 from .included_content import IncludedContent, IncludedContentBatch
 from .interactive import Interactive, InteractiveBatch
@@ -65,6 +67,10 @@ __all__ = [
     "FilterByRangeBatch",
     "FilterIsNotNull",
     "FilterIsNotNullBatch",
+    "ForcePositionX",
+    "ForcePositionXBatch",
+    "ForcePositionY",
+    "ForcePositionYBatch",
     "GridColumns",
     "GridColumnsBatch",
     "IncludedContent",

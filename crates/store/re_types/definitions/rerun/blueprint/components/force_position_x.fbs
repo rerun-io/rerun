@@ -2,7 +2,7 @@ namespace rerun.blueprint.components;
 
 struct ForcePositionX (
     "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default, Clone, PartialEq, Eq",
+    "attr.rust.derive": "Default, Clone, PartialEq, Eq"
 ) {
-    position_x: rerun.datatypes.ForcePositionX (order: 100);
+    position_x: rerun.blueprint.datatypes.ForcePositionX (order: 100);
 }

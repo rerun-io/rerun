@@ -2,6 +2,8 @@
 
 mod background;
 mod dataframe_query;
+mod force_position_x;
+mod force_position_y;
 mod map_background;
 mod map_zoom;
 mod plot_legend;
@@ -17,6 +19,8 @@ mod visual_bounds2d;
 
 pub use self::background::Background;
 pub use self::dataframe_query::DataframeQuery;
+pub use self::force_position_x::ForcePositionX;
+pub use self::force_position_y::ForcePositionY;
 pub use self::map_background::MapBackground;
 pub use self::map_zoom::MapZoom;
 pub use self::plot_legend::PlotLegend;

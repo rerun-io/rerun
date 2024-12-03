@@ -11,6 +11,10 @@ A graph view to display time-variying, directed or undirected graph visualizatio
 Everything within these bounds is guaranteed to be visible.
 
 Somethings outside of these bounds may also be visible due to letterboxing.
+### `force_position_x`
+Adds a force that pull nodes towards an `x` position.
+### `force_position_y`
+Adds a force that pull nodes towards an `y` position.
 
 ## API reference links
  * 🐍 [Python API docs for `GraphView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views?speculative-link#rerun.blueprint.views.GraphView)

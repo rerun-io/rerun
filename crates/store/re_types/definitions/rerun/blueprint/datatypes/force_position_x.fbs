@@ -3,7 +3,7 @@ namespace rerun.blueprint.datatypes;
 /// Defines a force that pulls nodes towards an `x` position.
 struct ForcePositionX (
     "attr.rust.derive": "Default, Clone, PartialEq, Eq",
-    "attr.rerun.scope": "blueprint",
+    "attr.rerun.scope": "blueprint"
 ) {
     /// Whether the force is enabled.
     enabled: bool (order: 100);

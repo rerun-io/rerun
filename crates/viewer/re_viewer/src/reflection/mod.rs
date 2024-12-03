@@ -125,6 +125,22 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ForcePositionX as Component>::name(),
+            ComponentReflection {
+                docstring_md: "",
+                custom_placeholder: Some(ForcePositionX::default().to_arrow2()?),
+                datatype: ForcePositionX::arrow2_datatype(),
+            },
+        ),
+        (
+            <ForcePositionY as Component>::name(),
+            ComponentReflection {
+                docstring_md: "",
+                custom_placeholder: Some(ForcePositionY::default().to_arrow2()?),
+                datatype: ForcePositionY::arrow2_datatype(),
+            },
+        ),
+        (
             <GridColumns as Component>::name(),
             ComponentReflection {
                 docstring_md: "How many columns a grid container should have.",
@@ -1927,6 +1943,30 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Select", docstring_md :
                     "Selected columns. If unset, all columns are selected.", is_required
                     : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.ForcePositionX"),
+            ArchetypeReflection {
+                display_name: "Force position x",
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ForcePositionX".into(), display_name :
+                    "Force", docstring_md : "", is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.ForcePositionY"),
+            ArchetypeReflection {
+                display_name: "Force position y",
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ForcePositionY".into(), display_name :
+                    "Force", docstring_md : "", is_required : false, },
                 ],
             },
         ),

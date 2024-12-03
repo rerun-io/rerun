@@ -13,6 +13,8 @@
 #include "blueprint/components/corner2d.hpp"
 #include "blueprint/components/filter_by_range.hpp"
 #include "blueprint/components/filter_is_not_null.hpp"
+#include "blueprint/components/force_position_x.hpp"
+#include "blueprint/components/force_position_y.hpp"
 #include "blueprint/components/grid_columns.hpp"
 #include "blueprint/components/included_content.hpp"
 #include "blueprint/components/interactive.hpp"

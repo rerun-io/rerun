@@ -5,6 +5,8 @@ from __future__ import annotations
 from .background import Background
 from .container_blueprint import ContainerBlueprint
 from .dataframe_query import DataframeQuery
+from .force_position_x import ForcePositionX
+from .force_position_y import ForcePositionY
 from .map_background import MapBackground
 from .map_zoom import MapZoom
 from .panel_blueprint import PanelBlueprint
@@ -23,6 +25,8 @@ __all__ = [
     "Background",
     "ContainerBlueprint",
     "DataframeQuery",
+    "ForcePositionX",
+    "ForcePositionY",
     "MapBackground",
     "MapZoom",
     "PanelBlueprint",

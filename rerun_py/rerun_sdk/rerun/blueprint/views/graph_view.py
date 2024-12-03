@@ -70,6 +70,8 @@ class GraphView(SpaceView):
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
         visual_bounds: blueprint_archetypes.VisualBounds2D | None = None,
+        force_position_x: blueprint_archetypes.ForcePositionX | None = None,
+        force_position_y: blueprint_archetypes.ForcePositionY | None = None,
     ) -> None:
         """
         Construct a blueprint for a new GraphView view.
@@ -104,6 +106,10 @@ class GraphView(SpaceView):
             Everything within these bounds is guaranteed to be visible.
 
             Somethings outside of these bounds may also be visible due to letterboxing.
+        force_position_x:
+            Adds a force that pull nodes towards an `x` position.
+        force_position_y:
+            Adds a force that pull nodes towards an `y` position.
 
         """
 
@@ -112,6 +118,16 @@ class GraphView(SpaceView):
             if not isinstance(visual_bounds, blueprint_archetypes.VisualBounds2D):
                 visual_bounds = blueprint_archetypes.VisualBounds2D(visual_bounds)
             properties["VisualBounds2D"] = visual_bounds
+
+        if force_position_x is not None:
+            if not isinstance(force_position_x, blueprint_archetypes.ForcePositionX):
+                force_position_x = blueprint_archetypes.ForcePositionX(force_position_x)
+            properties["ForcePositionX"] = force_position_x
+
+        if force_position_y is not None:
+            if not isinstance(force_position_y, blueprint_archetypes.ForcePositionY):
+                force_position_y = blueprint_archetypes.ForcePositionY(force_position_y)
+            properties["ForcePositionY"] = force_position_y
 
         super().__init__(
             class_identifier="Graph",

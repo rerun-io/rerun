@@ -2,7 +2,7 @@ namespace rerun.blueprint.archetypes;
 
 struct ForcePositionY (
     "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default",
+    "attr.rust.derive": "Default"
 ) {
-    force: rerun.datatypes.ForcePositionY (order: 100);
+    force: rerun.blueprint.components.ForcePositionY (order: 100);
 }

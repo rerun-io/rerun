@@ -10,6 +10,8 @@ from .component_column_selector import (
 )
 from .filter_by_range import FilterByRange, FilterByRangeArrayLike, FilterByRangeBatch, FilterByRangeLike
 from .filter_is_not_null import FilterIsNotNull, FilterIsNotNullArrayLike, FilterIsNotNullBatch, FilterIsNotNullLike
+from .force_position_x import ForcePositionX, ForcePositionXArrayLike, ForcePositionXBatch, ForcePositionXLike
+from .force_position_y import ForcePositionY, ForcePositionYArrayLike, ForcePositionYBatch, ForcePositionYLike
 from .selected_columns import SelectedColumns, SelectedColumnsArrayLike, SelectedColumnsBatch, SelectedColumnsLike
 from .tensor_dimension_index_slider import (
     TensorDimensionIndexSlider,
@@ -32,6 +34,14 @@ __all__ = [
     "FilterIsNotNullArrayLike",
     "FilterIsNotNullBatch",
     "FilterIsNotNullLike",
+    "ForcePositionX",
+    "ForcePositionXArrayLike",
+    "ForcePositionXBatch",
+    "ForcePositionXLike",
+    "ForcePositionY",
+    "ForcePositionYArrayLike",
+    "ForcePositionYBatch",
+    "ForcePositionYLike",
     "SelectedColumns",
     "SelectedColumnsArrayLike",
     "SelectedColumnsBatch",

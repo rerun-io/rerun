@@ -9,6 +9,8 @@ pub use re_types::blueprint::components::ComponentColumnSelector;
 pub use re_types::blueprint::components::Corner2D;
 pub use re_types::blueprint::components::FilterByRange;
 pub use re_types::blueprint::components::FilterIsNotNull;
+pub use re_types::blueprint::components::ForcePositionX;
+pub use re_types::blueprint::components::ForcePositionY;
 pub use re_types::blueprint::components::IncludedContent;
 pub use re_types::blueprint::components::Interactive;
 pub use re_types::blueprint::components::LockRangeDuringZoom;
@@ -50,6 +52,8 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<Corner2D>(blueprint)
         && validate_component::<FilterByRange>(blueprint)
         && validate_component::<FilterIsNotNull>(blueprint)
+        && validate_component::<ForcePositionX>(blueprint)
+        && validate_component::<ForcePositionY>(blueprint)
         && validate_component::<GridColumns>(blueprint)
         && validate_component::<IncludedContent>(blueprint)
         && validate_component::<Interactive>(blueprint)

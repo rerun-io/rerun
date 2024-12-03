@@ -25,48 +25,27 @@ pub struct GraphView {
     ///
     /// Somethings outside of these bounds may also be visible due to letterboxing.
     pub visual_bounds: crate::blueprint::archetypes::VisualBounds2D,
+
+    /// Adds a force that pull nodes towards an `x` position.
+    pub force_position_x: crate::blueprint::archetypes::ForcePositionX,
+
+    /// Adds a force that pull nodes towards an `y` position.
+    pub force_position_y: crate::blueprint::archetypes::ForcePositionY,
 }
 
 impl ::re_types_core::SizeBytes for GraphView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.visual_bounds.heap_size_bytes()
+            + self.force_position_x.heap_size_bytes()
+            + self.force_position_y.heap_size_bytes()
     }
 
     #[inline]
     fn is_pod() -> bool {
         <crate::blueprint::archetypes::VisualBounds2D>::is_pod()
-    }
-}
-
-impl<T: Into<crate::blueprint::archetypes::VisualBounds2D>> From<T> for GraphView {
-    fn from(v: T) -> Self {
-        Self {
-            visual_bounds: v.into(),
-        }
-    }
-}
-
-impl std::borrow::Borrow<crate::blueprint::archetypes::VisualBounds2D> for GraphView {
-    #[inline]
-    fn borrow(&self) -> &crate::blueprint::archetypes::VisualBounds2D {
-        &self.visual_bounds
-    }
-}
-
-impl std::ops::Deref for GraphView {
-    type Target = crate::blueprint::archetypes::VisualBounds2D;
-
-    #[inline]
-    fn deref(&self) -> &crate::blueprint::archetypes::VisualBounds2D {
-        &self.visual_bounds
-    }
-}
-
-impl std::ops::DerefMut for GraphView {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::blueprint::archetypes::VisualBounds2D {
-        &mut self.visual_bounds
+            && <crate::blueprint::archetypes::ForcePositionX>::is_pod()
+            && <crate::blueprint::archetypes::ForcePositionY>::is_pod()
     }
 }
 
