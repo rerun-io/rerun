@@ -207,6 +207,17 @@ impl ViewportBlueprint {
         self.space_views.keys()
     }
 
+    /// Find the parent container of a given contents.
+    ///
+    /// Returns `None` if this is unknown contents, or if it is the root contaioner.
+    pub fn parent(&self, needle: &Contents) -> Option<ContainerId> {
+        self.containers
+            .iter()
+            .find_map(|(container_id, container)| {
+                container.contents.contains(needle).then_some(*container_id)
+            })
+    }
+
     pub fn view(&self, space_view: &SpaceViewId) -> Option<&SpaceViewBlueprint> {
         self.space_views.get(space_view)
     }
