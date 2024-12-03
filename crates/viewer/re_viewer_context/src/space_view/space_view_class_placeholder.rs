@@ -1,10 +1,11 @@
+use re_types::SpaceViewClassIdentifier;
+use re_ui::UiExt;
+
 use crate::{
     SpaceViewClass, SpaceViewClassRegistryError, SpaceViewSpawnHeuristics, SpaceViewState,
     SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
     ViewerContext,
 };
-use re_types::SpaceViewClassIdentifier;
-use re_ui::UiExt;
 
 /// A placeholder space view class that can be used when the actual class is not registered.
 #[derive(Default)]
