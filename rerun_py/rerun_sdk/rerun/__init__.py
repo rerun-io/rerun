@@ -9,8 +9,8 @@ from uuid import UUID
 
 import numpy as np
 
-__version__ = "0.21.0-alpha.1+dev"
-__version_info__ = (0, 21, 0, "alpha.1")
+__version__ = "0.20.3-rc.1"
+__version_info__ = (0, 20, 3, "rc.1")
 
 if sys.version_info < (3, 9):
     warnings.warn(
