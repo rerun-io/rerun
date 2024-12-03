@@ -1633,7 +1633,7 @@ impl App {
                 image.clone()
             };
 
-            #[cfg(not(target_arch = "wasm32"))] // TODO(#8264)
+            #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): screenshotting on web
             re_viewer_context::Clipboard::with(|clipboard| {
                 clipboard.set_image(
                     [rgba.width(), rgba.height()],

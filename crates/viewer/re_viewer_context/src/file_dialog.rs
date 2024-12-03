@@ -1,6 +1,6 @@
-use crate::ViewerContext;
+use crate::CommandSender;
 
-impl ViewerContext<'_> {
+impl CommandSender {
     /// Save some bytes to disk, after first showing a save dialog.
     #[allow(clippy::unused_self)] // Not used on Wasm
     pub fn save_file_dialog(&self, file_name: String, title: String, data: Vec<u8>) {
@@ -12,8 +12,10 @@ impl ViewerContext<'_> {
             wasm_bindgen_futures::spawn_local(async move {
                 if let Err(err) = async_save_dialog(&file_name, &title, data).await {
                     re_log::error!("File saving failed: {err}");
-                }
-            });
+                } else {
+                    re_log::info!("{file_name} saved.");
+                };
+            })
         }
 
         #[cfg(not(target_arch = "wasm32"))]
@@ -28,11 +30,10 @@ impl ViewerContext<'_> {
             };
             if let Some(path) = path {
                 use crate::SystemCommandSender as _;
-                self.command_sender
-                    .send_system(crate::SystemCommand::FileSaver(Box::new(move || {
-                        std::fs::write(&path, &data)?;
-                        Ok(path)
-                    })));
+                self.send_system(crate::SystemCommand::FileSaver(Box::new(move || {
+                    std::fs::write(&path, &data)?;
+                    Ok(path)
+                })));
             }
         }
     }
