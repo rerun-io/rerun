@@ -47,7 +47,7 @@ pub fn test_modal_list_item_should_match_snapshot() {
 fn run_modal_test(
     mut make_modal: impl FnMut() -> ModalWrapper,
     mut content_ui: impl FnMut(&mut egui::Ui),
-    test_name: &'static str,
+    _test_name: &'static str,
 ) {
     let mut modal_handler = ModalHandler::default();
     modal_handler.open();
@@ -64,5 +64,5 @@ fn run_modal_test(
 
     //TODO(#8245): enable this everywhere when we have a software renderer setup
     #[cfg(target_os = "macos")]
-    harness.wgpu_snapshot(test_name);
+    harness.wgpu_snapshot(_test_name);
 }
