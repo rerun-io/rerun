@@ -24,15 +24,7 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
     }
 
     fn help_markdown(&self, _egui_ctx: &egui::Context) -> String {
-        "The space view class was not recognized.\n\n\
-        \
-        This happens if either the blueprint specifies an invalid space view class or this version \
-        of the viewer does not know about \
-        this type.\n\n\
-        \
-        **Note**: some views may require a specific Cargo feature to be enabled. In particular, \
-        the map view requires the `map_view` feature."
-            .to_owned()
+        "Placeholder view for unknown space view class".to_owned()
     }
 
     fn on_register(
@@ -56,7 +48,7 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
 
     fn ui(
         &self,
-        ctx: &ViewerContext<'_>,
+        _ctx: &ViewerContext<'_>,
         ui: &mut egui::Ui,
         _state: &mut dyn SpaceViewState,
         _query: &ViewQuery<'_>,
@@ -67,7 +59,15 @@ impl SpaceViewClass for SpaceViewClassPlaceholder {
             ..Default::default()
         }
         .show(ui, |ui| {
-            ui.markdown_ui(&self.help_markdown(ctx.egui_ctx));
+            ui.warning_label("Unknown space view class");
+
+            ui.markdown_ui(
+                "This happens if either the blueprint specifies an invalid space view class or \
+                this version of the viewer does not know about this type.\n\n\
+                \
+                **Note**: some views may require a specific Cargo feature to be enabled. In \
+                particular, the map view requires the `map_view` feature.",
+            );
         });
 
         Ok(())
