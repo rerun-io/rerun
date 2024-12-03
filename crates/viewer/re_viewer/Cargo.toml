@@ -31,7 +31,7 @@ crate-type = ["cdylib", "rlib"]
 
 
 [features]
-default = ["analytics"]
+default = ["analytics", "map_view"]
 
 ## Enable telemetry using our analytics SDK.
 analytics = ["dep:re_analytics"]
