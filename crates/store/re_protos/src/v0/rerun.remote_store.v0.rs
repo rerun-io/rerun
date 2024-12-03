@@ -295,8 +295,14 @@ pub struct CatalogFilter {
     #[prost(message, repeated, tag = "1")]
     pub recording_ids: ::prost::alloc::vec::Vec<RecordingId>,
 }
-#[derive(Clone, Copy, PartialEq, ::prost::Message)]
-pub struct QueryCatalogResponse {}
+#[derive(Clone, PartialEq, ::prost::Message)]
+pub struct QueryCatalogResponse {
+    #[prost(enumeration = "EncoderVersion", tag = "1")]
+    pub encoder_version: i32,
+    /// raw bytes are TransportChunks (i.e. RecordBatches) encoded with the relevant codec
+    #[prost(bytes = "vec", tag = "2")]
+    pub payload: ::prost::alloc::vec::Vec<u8>,
+}
 #[derive(Clone, PartialEq, ::prost::Message)]
 pub struct FetchRecordingRequest {
     #[prost(message, optional, tag = "1")]
