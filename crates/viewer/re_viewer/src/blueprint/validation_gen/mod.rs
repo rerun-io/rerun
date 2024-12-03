@@ -15,8 +15,6 @@ pub use re_types::blueprint::components::Interactive;
 pub use re_types::blueprint::components::LockRangeDuringZoom;
 pub use re_types::blueprint::components::MapProvider;
 pub use re_types::blueprint::components::PanelState;
-pub use re_types::blueprint::components::PlaneOffset;
-pub use re_types::blueprint::components::PlaneOrientation;
 pub use re_types::blueprint::components::QueryExpression;
 pub use re_types::blueprint::components::RowShare;
 pub use re_types::blueprint::components::SelectedColumns;
@@ -61,8 +59,6 @@ pub fn is_valid_blueprint(blueprint: &EntityDb) -> bool {
         && validate_component::<LockRangeDuringZoom>(blueprint)
         && validate_component::<MapProvider>(blueprint)
         && validate_component::<PanelState>(blueprint)
-        && validate_component::<PlaneOffset>(blueprint)
-        && validate_component::<PlaneOrientation>(blueprint)
         && validate_component::<QueryExpression>(blueprint)
         && validate_component::<RootContainer>(blueprint)
         && validate_component::<RowShare>(blueprint)

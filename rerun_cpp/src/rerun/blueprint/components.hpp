@@ -20,8 +20,6 @@
 #include "blueprint/components/lock_range_during_zoom.hpp"
 #include "blueprint/components/map_provider.hpp"
 #include "blueprint/components/panel_state.hpp"
-#include "blueprint/components/plane_offset.hpp"
-#include "blueprint/components/plane_orientation.hpp"
 #include "blueprint/components/query_expression.hpp"
 #include "blueprint/components/root_container.hpp"
 #include "blueprint/components/row_share.hpp"

@@ -63,6 +63,7 @@ mod opacity_ext;
 mod pinhole_projection;
 mod pinhole_projection_ext;
 mod plane3d;
+mod plane3d_ext;
 mod pose_rotation_axis_angle;
 mod pose_rotation_axis_angle_ext;
 mod pose_rotation_quat;

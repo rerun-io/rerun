@@ -12,13 +12,10 @@ table LineGrid3D (
     /// Space between grid lines spacing of one line to the next in scene units.
     spacing: rerun.blueprint.components.GridSpacing ("attr.rerun.component_optional", nullable, order: 2000);
 
-    /// How the grid is oriented.
+    /// In what plane the grid is drawn.
     ///
-    /// Defaults to whatever plane is determined as the down plane by view coordinates if present.
-    orientation: rerun.blueprint.components.PlaneOrientation ("attr.rerun.component_optional", nullable, order: 3000);
-
-    /// Offset of the grid along its normal.
-    offset: rerun.blueprint.components.PlaneOffset ("attr.rerun.component_optional", nullable, order: 4000);
+    /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`archetype.ViewCoordinates`] if present.
+    plane: rerun.components.Plane3D ("attr.rerun.component_optional", nullable, order: 3000);
 
     /// How thick the lines should be in ui units.
     ///

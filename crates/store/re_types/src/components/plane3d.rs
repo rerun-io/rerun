@@ -26,7 +26,7 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 /// Note: although the normal will be passed through to the
 /// datastore as provided, when used in the Viewer, planes will always be normalized.
 /// I.e. the plane with xyz = (2, 0, 0), d = 1 is equivalent to xyz = (1, 0, 0), d = 0.5
-#[derive(Clone, Debug, Default, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
+#[derive(Clone, Debug, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct Plane3D(pub crate::datatypes::Plane3D);
 

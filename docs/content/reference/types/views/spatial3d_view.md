@@ -17,8 +17,7 @@ Configuration for the 3D line grid.
 
 * `visible`: Whether the grid is visible.
 * `spacing`: Space between grid lines spacing of one line to the next in scene units.
-* `orientation`: How the grid is oriented.
-* `offset`: Offset of the grid along its normal.
+* `plane`: In what plane the grid is drawn.
 * `line_radius`: How thick the lines should be in ui units.
 * `color`: Color used for the grid.
 ### `time_ranges`

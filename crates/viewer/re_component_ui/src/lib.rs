@@ -34,8 +34,8 @@ use datatype_uis::{
 
 use re_types::{
     blueprint::components::{
-        BackgroundKind, Corner2D, GridSpacing, LockRangeDuringZoom, MapProvider, PlaneOffset,
-        PlaneOrientation, UiRadius, ViewFit, Visible,
+        BackgroundKind, Corner2D, GridSpacing, LockRangeDuringZoom, MapProvider, UiRadius, ViewFit,
+        Visible,
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
@@ -80,7 +80,6 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     // float min-max components:
     registry.add_singleline_edit_or_view::<DrawOrder>(edit_f32_min_to_max_float);
-    registry.add_singleline_edit_or_view::<PlaneOffset>(edit_f32_min_to_max_float);
 
     // float 0-1 components:
     registry.add_singleline_edit_or_view::<Opacity>(edit_f32_zero_to_one);
@@ -106,7 +105,6 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<Corner2D>(edit_view_enum);
     registry.add_singleline_edit_or_view::<FillMode>(edit_view_enum);
     registry.add_singleline_edit_or_view::<GraphType>(edit_view_enum);
-    registry.add_singleline_edit_or_view::<PlaneOrientation>(edit_view_enum);
     registry.add_singleline_edit_or_view::<MapProvider>(
         edit_view_enum_with_variant_available::<
             MapProvider,
@@ -172,6 +170,8 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view(lat_lon::singleline_view_lat_lon);
 
     registry.add_singleline_edit_or_view(zoom_level::edit_zoom_level);
+
+    // TODO: add ui for plane
 
     registry
 }

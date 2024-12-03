@@ -28,8 +28,7 @@ class LineGrid3D(Archetype):
         *,
         visible: datatypes.BoolLike | None = None,
         spacing: datatypes.Float32Like | None = None,
-        orientation: blueprint_components.PlaneOrientationLike | None = None,
-        offset: datatypes.Float32Like | None = None,
+        plane: datatypes.Plane3DLike | None = None,
         line_radius: datatypes.Float32Like | None = None,
         color: datatypes.Rgba32Like | None = None,
     ):
@@ -44,12 +43,10 @@ class LineGrid3D(Archetype):
             Defaults to true.
         spacing:
             Space between grid lines spacing of one line to the next in scene units.
-        orientation:
-            How the grid is oriented.
+        plane:
+            In what plane the grid is drawn.
 
-            Defaults to whatever plane is determined as the down plane by view coordinates if present.
-        offset:
-            Offset of the grid along its normal.
+            Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`archetype.ViewCoordinates`] if present.
         line_radius:
             How thick the lines should be in ui units.
 
@@ -64,14 +61,7 @@ class LineGrid3D(Archetype):
 
         # You can define your own __init__ function as a member of LineGrid3DExt in line_grid3d_ext.py
         with catch_and_log_exceptions(context=self.__class__.__name__):
-            self.__attrs_init__(
-                visible=visible,
-                spacing=spacing,
-                orientation=orientation,
-                offset=offset,
-                line_radius=line_radius,
-                color=color,
-            )
+            self.__attrs_init__(visible=visible, spacing=spacing, plane=plane, line_radius=line_radius, color=color)
             return
         self.__attrs_clear__()
 
@@ -80,8 +70,7 @@ class LineGrid3D(Archetype):
         self.__attrs_init__(
             visible=None,  # type: ignore[arg-type]
             spacing=None,  # type: ignore[arg-type]
-            orientation=None,  # type: ignore[arg-type]
-            offset=None,  # type: ignore[arg-type]
+            plane=None,  # type: ignore[arg-type]
             line_radius=None,  # type: ignore[arg-type]
             color=None,  # type: ignore[arg-type]
         )
@@ -113,23 +102,14 @@ class LineGrid3D(Archetype):
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    orientation: blueprint_components.PlaneOrientationBatch | None = field(
+    plane: components.Plane3DBatch | None = field(
         metadata={"component": "optional"},
         default=None,
-        converter=blueprint_components.PlaneOrientationBatch._optional,  # type: ignore[misc]
+        converter=components.Plane3DBatch._optional,  # type: ignore[misc]
     )
-    # How the grid is oriented.
+    # In what plane the grid is drawn.
     #
-    # Defaults to whatever plane is determined as the down plane by view coordinates if present.
-    #
-    # (Docstring intentionally commented out to hide this field from the docs)
-
-    offset: blueprint_components.PlaneOffsetBatch | None = field(
-        metadata={"component": "optional"},
-        default=None,
-        converter=blueprint_components.PlaneOffsetBatch._optional,  # type: ignore[misc]
-    )
-    # Offset of the grid along its normal.
+    # Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`archetype.ViewCoordinates`] if present.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

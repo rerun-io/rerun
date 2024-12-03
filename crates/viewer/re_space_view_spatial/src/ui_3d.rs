@@ -15,7 +15,7 @@ use re_space_view::controls::{
 use re_types::{
     blueprint::{
         archetypes::{Background, LineGrid3D},
-        components::{GridSpacing, PlaneOffset, PlaneOrientation, UiRadius, Visible},
+        components::{GridSpacing, UiRadius, Visible},
     },
     components::ViewCoordinates,
     view_coordinates::SignedAxis3,
@@ -726,14 +726,8 @@ impl SpatialSpaceView3D {
             (**grid_config.component_or_fallback::<UiRadius>(ctx, self, state)?) * 2.0;
         let color =
             grid_config.component_or_fallback::<re_types::components::Color>(ctx, self, state)?;
-        let orientation =
-            grid_config.component_or_fallback::<PlaneOrientation>(ctx, self, state)?;
-        let normal_offset = **grid_config.component_or_fallback::<PlaneOffset>(ctx, self, state)?;
-        let plane = match orientation {
-            PlaneOrientation::Xy => re_math::Plane3::from_normal_dist(glam::Vec3::Z, normal_offset),
-            PlaneOrientation::Yz => re_math::Plane3::from_normal_dist(glam::Vec3::X, normal_offset),
-            PlaneOrientation::Xz => re_math::Plane3::from_normal_dist(glam::Vec3::Y, normal_offset),
-        };
+        let plane =
+            grid_config.component_or_fallback::<re_types::components::Plane3D>(ctx, self, state)?;
 
         let Some(render_ctx) = ctx.render_ctx else {
             return Ok(None);
@@ -743,7 +737,7 @@ impl SpatialSpaceView3D {
             render_ctx,
             &re_renderer::renderer::WorldGridConfiguration {
                 color: color.into(),
-                plane,
+                plane: plane.into(),
                 spacing,
                 thickness_ui,
             },

@@ -14,7 +14,7 @@ namespace rerun {
     ) {
         using namespace blueprint::archetypes;
         std::vector<ComponentBatch> cells;
-        cells.reserve(7);
+        cells.reserve(6);
 
         if (archetype.visible.has_value()) {
             auto result = ComponentBatch::from_loggable(archetype.visible.value());
@@ -26,13 +26,8 @@ namespace rerun {
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        if (archetype.orientation.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.orientation.value());
-            RR_RETURN_NOT_OK(result.error);
-            cells.push_back(std::move(result.value));
-        }
-        if (archetype.offset.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.offset.value());
+        if (archetype.plane.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.plane.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

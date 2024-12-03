@@ -4,14 +4,13 @@
 #pragma once
 
 #include "../../blueprint/components/grid_spacing.hpp"
-#include "../../blueprint/components/plane_offset.hpp"
-#include "../../blueprint/components/plane_orientation.hpp"
 #include "../../blueprint/components/ui_radius.hpp"
 #include "../../blueprint/components/visible.hpp"
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../components/color.hpp"
+#include "../../components/plane3d.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
@@ -31,13 +30,10 @@ namespace rerun::blueprint::archetypes {
         /// Space between grid lines spacing of one line to the next in scene units.
         std::optional<rerun::blueprint::components::GridSpacing> spacing;
 
-        /// How the grid is oriented.
+        /// In what plane the grid is drawn.
         ///
-        /// Defaults to whatever plane is determined as the down plane by view coordinates if present.
-        std::optional<rerun::blueprint::components::PlaneOrientation> orientation;
-
-        /// Offset of the grid along its normal.
-        std::optional<rerun::blueprint::components::PlaneOffset> offset;
+        /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`archetype.ViewCoordinates`] if present.
+        std::optional<rerun::components::Plane3D> plane;
 
         /// How thick the lines should be in ui units.
         ///
@@ -77,19 +73,11 @@ namespace rerun::blueprint::archetypes {
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }
 
-        /// How the grid is oriented.
+        /// In what plane the grid is drawn.
         ///
-        /// Defaults to whatever plane is determined as the down plane by view coordinates if present.
-        LineGrid3D with_orientation(rerun::blueprint::components::PlaneOrientation _orientation
-        ) && {
-            orientation = std::move(_orientation);
-            // See: https://github.com/rerun-io/rerun/issues/4027
-            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
-        }
-
-        /// Offset of the grid along its normal.
-        LineGrid3D with_offset(rerun::blueprint::components::PlaneOffset _offset) && {
-            offset = std::move(_offset);
+        /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`archetype.ViewCoordinates`] if present.
+        LineGrid3D with_plane(rerun::components::Plane3D _plane) && {
+            plane = std::move(_plane);
             // See: https://github.com/rerun-io/rerun/issues/4027
             RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
         }

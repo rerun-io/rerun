@@ -181,22 +181,6 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
-            <PlaneOffset as Component>::name(),
-            ComponentReflection {
-                docstring_md: "Offset of a plane along its normal in scene units.",
-                custom_placeholder: Some(PlaneOffset::default().to_arrow2()?),
-                datatype: PlaneOffset::arrow2_datatype(),
-            },
-        ),
-        (
-            <PlaneOrientation as Component>::name(),
-            ComponentReflection {
-                docstring_md: "Orientation of a 3D axis aligned plane.",
-                custom_placeholder: Some(PlaneOrientation::default().to_arrow2()?),
-                datatype: PlaneOrientation::arrow2_datatype(),
-            },
-        ),
-        (
             <QueryExpression as Component>::name(),
             ComponentReflection {
                 docstring_md: "An individual query expression used to filter a set of [`datatypes.EntityPath`](https://rerun.io/docs/reference/types/datatypes/entity_path)s.\n\nEach expression is either an inclusion or an exclusion expression.\nInclusions start with an optional `+` and exclusions must start with a `-`.\n\nMultiple expressions are combined together as part of `SpaceViewContents`.\n\nThe `/**` suffix matches the whole subtree, i.e. self and any child, recursively\n(`/world/**` matches both `/world` and `/world/car/driver`).\nOther uses of `*` are not (yet) supported.",
@@ -636,7 +620,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Plane3D as Component>::name(),
             ComponentReflection {
                 docstring_md: "An infinite 3D plane represented by a unit normal vector and a distance.\n\nAny point P on the plane fulfills the equation `dot(xyz, P) - d = 0`, where `xyz` is the plane's normal and `d` the distance.\nThis representation is also known as the Hesse normal form, see https://en.wikipedia.org/wiki/Hesse_normal_form\n\nNote: although the normal will be passed through to the\ndatastore as provided, when used in the Viewer, planes will always be normalized.\nI.e. the plane with xyz = (2, 0, 0), d = 1 is equivalent to xyz = (1, 0, 0), d = 0.5",
-                custom_placeholder: Some(Plane3D::default().to_arrow2()?),
+                custom_placeholder: None,
                 datatype: Plane3D::arrow2_datatype(),
             },
         ),
@@ -1985,12 +1969,9 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Spacing", docstring_md :
                     "Space between grid lines spacing of one line to the next in scene units.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.PlaneOrientation".into(), display_name :
-                    "Orientation", docstring_md :
-                    "How the grid is oriented.\n\nDefaults to whatever plane is determined as the down plane by view coordinates if present.",
-                    is_required : false, }, ArchetypeFieldReflection { component_name :
-                    "rerun.blueprint.components.PlaneOffset".into(), display_name :
-                    "Offset", docstring_md : "Offset of the grid along its normal.",
+                    "rerun.components.Plane3D".into(), display_name : "Plane",
+                    docstring_md :
+                    "In what plane the grid is drawn.\n\nDefaults to whatever plane is determined as the plane at zero units up/down as defined by [`archetype.ViewCoordinates`] if present.",
                     is_required : false, }, ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.UiRadius".into(), display_name :
                     "Line radius", docstring_md :

@@ -18,8 +18,6 @@ include "./components/interactive.fbs";
 include "./components/lock_range_during_zoom.fbs";
 include "./components/map_provider.fbs";
 include "./components/panel_state.fbs";
-include "./components/plane_offset.fbs";
-include "./components/plane_orientation.fbs";
 include "./components/query_expression.fbs";
 include "./components/root_container.fbs";
 include "./components/row_share.fbs";

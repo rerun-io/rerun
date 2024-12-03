@@ -29,13 +29,10 @@ pub struct LineGrid3D {
     /// Space between grid lines spacing of one line to the next in scene units.
     pub spacing: Option<crate::blueprint::components::GridSpacing>,
 
-    /// How the grid is oriented.
+    /// In what plane the grid is drawn.
     ///
-    /// Defaults to whatever plane is determined as the down plane by view coordinates if present.
-    pub orientation: Option<crate::blueprint::components::PlaneOrientation>,
-
-    /// Offset of the grid along its normal.
-    pub offset: Option<crate::blueprint::components::PlaneOffset>,
+    /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`archetype.ViewCoordinates`] if present.
+    pub plane: Option<crate::components::Plane3D>,
 
     /// How thick the lines should be in ui units.
     ///
@@ -54,8 +51,7 @@ impl ::re_types_core::SizeBytes for LineGrid3D {
     fn heap_size_bytes(&self) -> u64 {
         self.visible.heap_size_bytes()
             + self.spacing.heap_size_bytes()
-            + self.orientation.heap_size_bytes()
-            + self.offset.heap_size_bytes()
+            + self.plane.heap_size_bytes()
             + self.line_radius.heap_size_bytes()
             + self.color.heap_size_bytes()
     }
@@ -64,8 +60,7 @@ impl ::re_types_core::SizeBytes for LineGrid3D {
     fn is_pod() -> bool {
         <Option<crate::blueprint::components::Visible>>::is_pod()
             && <Option<crate::blueprint::components::GridSpacing>>::is_pod()
-            && <Option<crate::blueprint::components::PlaneOrientation>>::is_pod()
-            && <Option<crate::blueprint::components::PlaneOffset>>::is_pod()
+            && <Option<crate::components::Plane3D>>::is_pod()
             && <Option<crate::blueprint::components::UiRadius>>::is_pod()
             && <Option<crate::components::Color>>::is_pod()
     }
@@ -77,34 +72,32 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.LineGrid3DIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.Visible".into(),
             "rerun.blueprint.components.GridSpacing".into(),
-            "rerun.blueprint.components.PlaneOrientation".into(),
-            "rerun.blueprint.components.PlaneOffset".into(),
+            "rerun.components.Plane3D".into(),
             "rerun.blueprint.components.UiRadius".into(),
             "rerun.components.Color".into(),
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 7usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 6usize]> =
     once_cell::sync::Lazy::new(|| {
         [
             "rerun.blueprint.components.LineGrid3DIndicator".into(),
             "rerun.blueprint.components.Visible".into(),
             "rerun.blueprint.components.GridSpacing".into(),
-            "rerun.blueprint.components.PlaneOrientation".into(),
-            "rerun.blueprint.components.PlaneOffset".into(),
+            "rerun.components.Plane3D".into(),
             "rerun.blueprint.components.UiRadius".into(),
             "rerun.components.Color".into(),
         ]
     });
 
 impl LineGrid3D {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 6 optional
-    pub const NUM_COMPONENTS: usize = 7usize;
+    /// The total number of components in the archetype: 0 required, 1 recommended, 5 optional
+    pub const NUM_COMPONENTS: usize = 6usize;
 }
 
 /// Indicator component for the [`LineGrid3D`] [`::re_types_core::Archetype`]
@@ -179,27 +172,15 @@ impl ::re_types_core::Archetype for LineGrid3D {
             } else {
                 None
             };
-        let orientation = if let Some(array) =
-            arrays_by_name.get("rerun.blueprint.components.PlaneOrientation")
-        {
-            <crate::blueprint::components::PlaneOrientation>::from_arrow2_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.LineGrid3D#orientation")?
+        let plane = if let Some(array) = arrays_by_name.get("rerun.components.Plane3D") {
+            <crate::components::Plane3D>::from_arrow2_opt(&**array)
+                .with_context("rerun.blueprint.archetypes.LineGrid3D#plane")?
                 .into_iter()
                 .next()
                 .flatten()
         } else {
             None
         };
-        let offset =
-            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.PlaneOffset") {
-                <crate::blueprint::components::PlaneOffset>::from_arrow2_opt(&**array)
-                    .with_context("rerun.blueprint.archetypes.LineGrid3D#offset")?
-                    .into_iter()
-                    .next()
-                    .flatten()
-            } else {
-                None
-            };
         let line_radius =
             if let Some(array) = arrays_by_name.get("rerun.blueprint.components.UiRadius") {
                 <crate::blueprint::components::UiRadius>::from_arrow2_opt(&**array)
@@ -222,8 +203,7 @@ impl ::re_types_core::Archetype for LineGrid3D {
         Ok(Self {
             visible,
             spacing,
-            orientation,
-            offset,
+            plane,
             line_radius,
             color,
         })
@@ -242,10 +222,7 @@ impl ::re_types_core::AsComponents for LineGrid3D {
             self.spacing
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.orientation
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.offset
+            self.plane
                 .as_ref()
                 .map(|comp| (comp as &dyn ComponentBatch).into()),
             self.line_radius
@@ -270,8 +247,7 @@ impl LineGrid3D {
         Self {
             visible: None,
             spacing: None,
-            orientation: None,
-            offset: None,
+            plane: None,
             line_radius: None,
             color: None,
         }
@@ -299,25 +275,12 @@ impl LineGrid3D {
         self
     }
 
-    /// How the grid is oriented.
+    /// In what plane the grid is drawn.
     ///
-    /// Defaults to whatever plane is determined as the down plane by view coordinates if present.
+    /// Defaults to whatever plane is determined as the plane at zero units up/down as defined by [`archetype.ViewCoordinates`] if present.
     #[inline]
-    pub fn with_orientation(
-        mut self,
-        orientation: impl Into<crate::blueprint::components::PlaneOrientation>,
-    ) -> Self {
-        self.orientation = Some(orientation.into());
-        self
-    }
-
-    /// Offset of the grid along its normal.
-    #[inline]
-    pub fn with_offset(
-        mut self,
-        offset: impl Into<crate::blueprint::components::PlaneOffset>,
-    ) -> Self {
-        self.offset = Some(offset.into());
+    pub fn with_plane(mut self, plane: impl Into<crate::components::Plane3D>) -> Self {
+        self.plane = Some(plane.into());
         self
     }
 

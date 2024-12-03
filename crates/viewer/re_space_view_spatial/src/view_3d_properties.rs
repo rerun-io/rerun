@@ -1,9 +1,9 @@
 use re_types::{
     blueprint::{
         archetypes::{Background, LineGrid3D},
-        components::{BackgroundKind, PlaneOrientation, UiRadius},
+        components::{BackgroundKind, UiRadius},
     },
-    components::Color,
+    components::{Color, Plane3D},
     Archetype,
 };
 use re_viewer_context::{SpaceViewStateExt as _, TypedComponentFallbackProvider};
@@ -40,22 +40,24 @@ impl TypedComponentFallbackProvider<UiRadius> for SpatialSpaceView3D {
     }
 }
 
-impl TypedComponentFallbackProvider<PlaneOrientation> for SpatialSpaceView3D {
-    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> PlaneOrientation {
+impl TypedComponentFallbackProvider<Plane3D> for SpatialSpaceView3D {
+    fn fallback_for(&self, ctx: &re_viewer_context::QueryContext<'_>) -> Plane3D {
+        const DEFAULT_PLANE: Plane3D = Plane3D::XY;
+
         let Ok(view_state) = ctx.view_state.downcast_ref::<SpatialSpaceViewState>() else {
-            return PlaneOrientation::default();
+            return DEFAULT_PLANE;
         };
 
         view_state
             .state_3d
             .scene_view_coordinates
             .and_then(|view_coordinates| view_coordinates.up())
-            .map_or(PlaneOrientation::default(), |up| match up.axis {
-                re_types::view_coordinates::Axis3::X => PlaneOrientation::Yz,
-                re_types::view_coordinates::Axis3::Y => PlaneOrientation::Xz,
-                re_types::view_coordinates::Axis3::Z => PlaneOrientation::Xy,
+            .map_or(DEFAULT_PLANE, |up| match up.axis {
+                re_types::view_coordinates::Axis3::X => Plane3D::YZ,
+                re_types::view_coordinates::Axis3::Y => Plane3D::ZX,
+                re_types::view_coordinates::Axis3::Z => Plane3D::XY,
             })
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(SpatialSpaceView3D => [BackgroundKind, Color, UiRadius, PlaneOrientation]);
+re_viewer_context::impl_component_fallback_provider!(SpatialSpaceView3D => [BackgroundKind, Color, UiRadius, Plane3D]);

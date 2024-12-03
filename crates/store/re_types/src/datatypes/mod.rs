@@ -31,6 +31,7 @@ mod mat4x4_ext;
 mod pixel_format;
 mod pixel_format_ext;
 mod plane3d;
+mod plane3d_ext;
 mod quaternion;
 mod quaternion_ext;
 mod range1d;
