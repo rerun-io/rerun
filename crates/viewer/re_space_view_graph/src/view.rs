@@ -1,5 +1,4 @@
-use std::hash::{Hash as _, Hasher as _};
-
+use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_space_view::{
     controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER},
@@ -7,12 +6,16 @@ use re_space_view::{
 };
 use re_types::{
     blueprint::{self, archetypes::VisualBounds2D},
-    components, SpaceViewClassIdentifier,
+    SpaceViewClassIdentifier,
 };
-use re_ui::{self, ModifiersMarkdown, MouseButtonMarkdown, UiExt as _};
+use re_ui::{
+    self,
+    zoom_pan_area::{fit_to_rect_in_scene, zoom_pan_area},
+    ModifiersMarkdown, MouseButtonMarkdown, UiExt as _,
+};
 use re_viewer_context::{
-    external::re_entity_db::InstancePath, IdentifiedViewSystem as _, Item, RecommendedSpaceView,
-    SpaceViewClass, SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
+    IdentifiedViewSystem as _, Item, RecommendedSpaceView, SpaceViewClass,
+    SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
     SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
     SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
     ViewerContext,
@@ -21,7 +24,8 @@ use re_viewport_blueprint::ViewProperty;
 
 use crate::{
     graph::Graph,
-    ui::{scene::SceneBuilder, Discriminator, GraphSpaceViewState},
+    layout::LayoutRequest,
+    ui::{draw_debug, draw_entity_rect, draw_graph, GraphSpaceViewState},
     visualizers::{merge, EdgesVisualizer, NodeVisualizer},
 };
 
@@ -74,7 +78,7 @@ Display a graph of nodes and edges.
     fn preferred_tile_aspect_ratio(&self, state: &dyn SpaceViewState) -> Option<f32> {
         let state = state.downcast_ref::<GraphSpaceViewState>().ok()?;
 
-        if let Some(bounds) = state.world_bounds {
+        if let Some(bounds) = state.visual_bounds {
             let width = bounds.x_range.abs_len() as f32;
             let height = bounds.y_range.abs_len() as f32;
             return Some(width / height);
@@ -143,20 +147,14 @@ Display a graph of nodes and edges.
         query: &ViewQuery<'_>,
         system_output: SystemExecutionOutput,
     ) -> Result<(), SpaceViewSystemExecutionError> {
+        re_tracing::profile_function!();
+
         let node_data = &system_output.view_systems.get::<NodeVisualizer>()?.data;
         let edge_data = &system_output.view_systems.get::<EdgesVisualizer>()?.data;
 
         let graphs = merge(node_data, edge_data)
-            .map(|(ent, nodes, edges)| (ent, Graph::new(nodes, edges)))
+            .map(|(ent, nodes, edges)| Graph::new(ui, ent.clone(), nodes, edges))
             .collect::<Vec<_>>();
-
-        // We could move this computation to the visualizers to improve
-        // performance if needed.
-        let discriminator = {
-            let mut hasher = ahash::AHasher::default();
-            graphs.hash(&mut hasher);
-            Discriminator::new(hasher.finish())
-        };
 
         let state = state.downcast_mut::<GraphSpaceViewState>()?;
 
@@ -165,103 +163,57 @@ Display a graph of nodes and edges.
             ctx.blueprint_query,
             query.space_view_id,
         );
-
-        let bounds: blueprint::components::VisualBounds2D =
+        let rect_in_scene: blueprint::components::VisualBounds2D =
             bounds_property.component_or_fallback(ctx, self, state)?;
 
+        let rect_in_ui = ui.max_rect();
+
+        let request = LayoutRequest::from_graphs(graphs.iter());
         let layout_was_empty = state.layout_state.is_none();
-        let layout = state
-            .layout_state
-            .get(discriminator, graphs.iter().map(|(_, graph)| graph));
+        let layout = state.layout_state.get(request);
 
-        let mut needs_remeasure = false;
+        let mut ui_from_world = fit_to_rect_in_scene(rect_in_ui, rect_in_scene.into());
 
-        state.world_bounds = Some(bounds);
-        let bounds_rect: egui::Rect = bounds.into();
+        let resp = zoom_pan_area(ui, rect_in_ui, &mut ui_from_world, |ui| {
+            let mut world_bounding_rect = egui::Rect::NOTHING;
 
-        let mut scene_builder = SceneBuilder::from_world_bounds(bounds_rect);
+            for graph in &graphs {
+                let mut current_rect = draw_graph(ui, ctx, graph, layout, query);
 
-        if state.show_debug {
-            scene_builder.show_debug();
-        }
+                // We only show entity rects if there are multiple entities.
+                // For now, these entity rects are not part of the layout, but rather tracked on the fly.
+                if graphs.len() > 1 {
+                    let resp =
+                        draw_entity_rect(ui, current_rect, graph.entity(), &query.highlights);
 
-        let (new_world_bounds, response) = scene_builder.add(ui, |mut scene| {
-            for (entity, graph) in &graphs {
-                // We use the following to keep track of the bounding box over nodes in an entity.
-                let mut entity_rect = egui::Rect::NOTHING;
-
-                let ent_highlights = query.highlights.entity_highlight((*entity).hash());
-
-                // Draw explicit nodes.
-                for node in graph.nodes_explicit() {
-                    let pos = layout.get(&node.index).unwrap_or(egui::Rect::ZERO);
-
-                    let response = scene.explicit_node(
-                        pos.min,
-                        node,
-                        ent_highlights.index_highlight(node.instance),
-                    );
-
-                    if response.clicked() {
-                        let instance_path =
-                            InstancePath::instance((*entity).clone(), node.instance);
-                        ctx.select_hovered_on_click(
-                            &response,
-                            vec![(Item::DataResult(query.space_view_id, instance_path), None)]
-                                .into_iter(),
-                        );
-                    }
-
-                    entity_rect = entity_rect.union(response.rect);
-                    needs_remeasure |= layout.update(&node.index, response.rect);
-                }
-
-                // Draw implicit nodes.
-                for node in graph.nodes_implicit() {
-                    let current = layout.get(&node.index).unwrap_or(egui::Rect::ZERO);
-                    let response = scene.implicit_node(current.min, node);
-                    entity_rect = entity_rect.union(response.rect);
-                    needs_remeasure |= layout.update(&node.index, response.rect);
-                }
-
-                // Draw edges.
-                for edge in graph.edges() {
-                    if let (Some(from), Some(to)) = (
-                        layout.get(&edge.source_index),
-                        layout.get(&edge.target_index),
-                    ) {
-                        let show_arrow = graph.kind() == components::GraphType::Directed;
-                        scene.edge(from, to, edge, show_arrow);
-                    }
-                }
-
-                // Draw entity rect.
-                if graphs.len() > 1 && entity_rect.is_positive() {
-                    let response = scene.entity(entity, entity_rect, &query.highlights);
-
-                    let instance_path = InstancePath::entity_all((*entity).clone());
+                    let instance_path = InstancePath::entity_all(graph.entity().clone());
                     ctx.select_hovered_on_click(
-                        &response,
+                        &resp,
                         vec![(Item::DataResult(query.space_view_id, instance_path), None)]
                             .into_iter(),
                     );
+                    current_rect = current_rect.union(resp.rect);
                 }
+
+                world_bounding_rect = world_bounding_rect.union(current_rect);
+            }
+
+            // We need to draw the debug information after the rest to ensure that we have the correct bounding box.
+            if state.show_debug {
+                draw_debug(ui, world_bounding_rect);
             }
         });
 
         // Update blueprint if changed
-        let updated_bounds: blueprint::components::VisualBounds2D = new_world_bounds.into();
-        if response.double_clicked() || layout_was_empty {
+        let updated_rect_in_scene =
+            blueprint::components::VisualBounds2D::from(ui_from_world.inverse() * rect_in_ui);
+        if resp.double_clicked() || layout_was_empty {
             bounds_property.reset_blueprint_component::<blueprint::components::VisualBounds2D>(ctx);
-        } else if bounds != updated_bounds {
-            bounds_property.save_blueprint_component(ctx, &updated_bounds);
+        } else if rect_in_scene != updated_rect_in_scene {
+            bounds_property.save_blueprint_component(ctx, &updated_rect_in_scene);
         }
         // Update stored bounds on the state, so visualizers see an up-to-date value.
-        state.world_bounds = Some(bounds);
-
-        if needs_remeasure {
-            ui.ctx().request_discard("layout needed a remeasure");
-        }
+        state.visual_bounds = Some(updated_rect_in_scene);
 
         if state.layout_state.is_in_progress() {
             ui.ctx().request_repaint();

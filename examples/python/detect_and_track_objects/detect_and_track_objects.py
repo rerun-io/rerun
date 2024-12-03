@@ -205,7 +205,7 @@ class Tracker:
     def log_tracked(self) -> None:
         if self.is_tracking:
             rr.log(
-                f"image/tracked/{self.tracking_id}",
+                f"video/tracked/{self.tracking_id}",
                 rr.Boxes2D(
                     array=self.tracked.bbox_xywh,
                     array_format=rr.Box2DFormat.XYWH,
@@ -213,7 +213,7 @@ class Tracker:
                 ),
             )
         else:
-            rr.log(f"image/tracked/{self.tracking_id}", rr.Clear(recursive=False))  # TODO(#3381)
+            rr.log(f"video/tracked/{self.tracking_id}", rr.Clear(recursive=False))  # TODO(#3381)
 
     def update_with_detection(self, detection: Detection, bgr: cv2.typing.MatLike) -> None:
         self.num_recent_undetected_frames = 0
@@ -339,6 +339,11 @@ def track_objects(video_path: str, *, max_frame_count: int | None) -> None:
     detector = Detector(coco_categories=coco_categories)
     logging.info("Detector initialized.")
 
+    video_asset = rr.AssetVideo(path=video_path)
+    frame_timestamps_ns = video_asset.read_frame_timestamps_ns()
+
+    rr.log("video", video_asset, static=True)
+
     logging.info("Loading input video: %s", str(video_path))
     cap = cv2.VideoCapture(video_path)
     frame_idx = 0
@@ -358,7 +363,7 @@ def track_objects(video_path: str, *, max_frame_count: int | None) -> None:
             break
 
         rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
-        rr.log("image", rr.Image(rgb).compress(jpeg_quality=85))
+        rr.log("video", rr.VideoFrameReference(nanoseconds=frame_timestamps_ns[frame_idx]))
 
         if not trackers or frame_idx % 40 == 0:
             detections = detector.detect_objects_to_track(rgb=rgb, frame_idx=frame_idx)

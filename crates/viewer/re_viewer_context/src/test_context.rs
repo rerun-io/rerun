@@ -185,6 +185,8 @@ impl TestContext {
                 | SystemCommand::ClearAndGenerateBlueprint
                 | SystemCommand::ActivateRecording(_)
                 | SystemCommand::CloseStore(_)
+                | SystemCommand::UndoBlueprint { .. }
+                | SystemCommand::RedoBlueprint { .. }
                 | SystemCommand::CloseAllRecordings => handled = false,
 
                 #[cfg(debug_assertions)]

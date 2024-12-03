@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use itertools::Itertools as _;
 use re_build_info::CrateVersion;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
@@ -10,9 +11,9 @@ use re_ui::{toasts, DesignTokens, UICommand, UICommandSender};
 use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
-    AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState, SpaceViewClass,
-    SpaceViewClassRegistry, SpaceViewClassRegistryError, StoreContext, SystemCommand,
-    SystemCommandSender,
+    AppOptions, BlueprintUndoState, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState,
+    SpaceViewClass, SpaceViewClassRegistry, SpaceViewClassRegistryError, StoreContext,
+    SystemCommand, SystemCommandSender,
 };
 
 use crate::app_blueprint::PanelStateOverrides;
@@ -514,24 +515,21 @@ impl App {
                 store_hub.clear_active_blueprint();
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
-            SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
+            SystemCommand::UpdateBlueprint(blueprint_id, chunks) => {
+                re_log::trace!(
+                    "Update blueprint entities: {}",
+                    chunks.iter().map(|c| c.entity_path()).join(", ")
+                );
+
                 let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
 
-                if self.state.app_options.inspect_blueprint_timeline {
-                    // We may we viewing a historical blueprint, and doing an edit based on that.
-                    // We therefor throw away everything after the currently viewed time (like an undo)
-                    let last_kept_event_time = self.state.blueprint_query_for_viewer().at();
-                    let first_dropped_event_time = last_kept_event_time.inc();
-                    blueprint_db.drop_time_range(
-                        &re_viewer_context::blueprint_timeline(),
-                        re_log_types::ResolvedTimeRange::new(
-                            first_dropped_event_time,
-                            re_chunk::TimeInt::MAX,
-                        ),
-                    );
-                }
+                self.state
+                    .blueprint_undo_state
+                    .entry(blueprint_id)
+                    .or_default()
+                    .clear_redo_buffer(blueprint_db);
 
-                for chunk in updates {
+                for chunk in chunks {
                     match blueprint_db.add_chunk(&Arc::new(chunk)) {
                         Ok(_store_events) => {}
                         Err(err) => {
@@ -539,11 +537,23 @@ impl App {
                         }
                     }
                 }
-
-                // If we inspect the timeline, make sure we show the latest state:
-                let mut time_ctrl = self.state.blueprint_cfg.time_ctrl.write();
-                time_ctrl.set_play_state(blueprint_db.times_per_timeline(), PlayState::Following);
             }
+            SystemCommand::UndoBlueprint { blueprint_id } => {
+                let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
+                self.state
+                    .blueprint_undo_state
+                    .entry(blueprint_id)
+                    .or_default()
+                    .undo(blueprint_db);
+            }
+            SystemCommand::RedoBlueprint { blueprint_id } => {
+                self.state
+                    .blueprint_undo_state
+                    .entry(blueprint_id)
+                    .or_default()
+                    .redo();
+            }
+
             SystemCommand::DropEntity(blueprint_id, entity_path) => {
                 let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
                 blueprint_db.drop_entity_path_recursive(&entity_path);
@@ -708,6 +718,21 @@ impl App {
             UICommand::CloseAllRecordings => {
                 self.command_sender
                     .send_system(SystemCommand::CloseAllRecordings);
+            }
+
+            UICommand::Undo => {
+                if let Some(store_context) = store_context {
+                    let blueprint_id = store_context.blueprint.store_id().clone();
+                    self.command_sender
+                        .send_system(SystemCommand::UndoBlueprint { blueprint_id });
+                }
+            }
+            UICommand::Redo => {
+                if let Some(store_context) = store_context {
+                    let blueprint_id = store_context.blueprint.store_id().clone();
+                    self.command_sender
+                        .send_system(SystemCommand::RedoBlueprint { blueprint_id });
+                }
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -1665,7 +1690,7 @@ impl eframe::App for App {
         // TODO(#2579): implement web-storage for blueprints as well
         if let Some(hub) = &mut self.store_hub {
             if self.state.app_options.blueprint_gc {
-                hub.gc_blueprints();
+                hub.gc_blueprints(&self.state.blueprint_undo_state);
             }
 
             if let Err(err) = hub.save_app_blueprints() {
@@ -1793,7 +1818,7 @@ impl eframe::App for App {
         self.receive_messages(&mut store_hub, egui_ctx);
 
         if self.app_options().blueprint_gc {
-            store_hub.gc_blueprints();
+            store_hub.gc_blueprints(&self.state.blueprint_undo_state);
         }
 
         store_hub.purge_empty();
@@ -1820,9 +1845,17 @@ impl eframe::App for App {
         {
             let store_context = store_hub.read_context();
 
+            let blueprint_query = store_context.as_ref().map_or(
+                BlueprintUndoState::default_query(),
+                |store_context| {
+                    self.state
+                        .blueprint_query_for_viewer(store_context.blueprint)
+                },
+            );
+
             let app_blueprint = AppBlueprint::new(
                 store_context.as_ref(),
-                &self.state.blueprint_query_for_viewer(),
+                &blueprint_query,
                 egui_ctx,
                 self.panel_state_overrides_active
                     .then_some(self.panel_state_overrides),

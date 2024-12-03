@@ -1399,6 +1399,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "color-hex"
+version = "0.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ecdffb913a326b6c642290a0d0ec8e8d6597291acdc07cc4c9cb4b3635d44cf9"
+
+[[package]]
 name = "colorchoice"
 version = "1.0.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1920,6 +1926,7 @@ version = "0.29.1"
 source = "git+https://github.com/emilk/egui.git?rev=64c0c6297afe7ff22907c9adce895599c4c7baaf#64c0c6297afe7ff22907c9adce895599c4c7baaf"
 dependencies = [
  "bytemuck",
+ "color-hex",
  "emath",
  "serde",
 ]
@@ -6231,11 +6238,11 @@ name = "re_space_view_graph"
 version = "0.21.0-alpha.1+dev"
 dependencies = [
  "ahash",
- "bytemuck",
  "egui",
  "fjadra",
  "nohash-hasher",
  "re_chunk",
+ "re_entity_db",
  "re_format",
  "re_log_types",
  "re_query",
@@ -6762,7 +6769,6 @@ dependencies = [
  "image",
  "itertools 0.13.0",
  "nohash-hasher",
- "parking_lot",
  "rayon",
  "re_context_menu",
  "re_entity_db",

@@ -134,6 +134,7 @@ eframe = { version = "0.29.1", default-features = false, features = [
 ] }
 egui = { version = "0.29.1", features = [
   "callstack",
+  "color-hex",
   "log",
   "puffin",
   "rayon",

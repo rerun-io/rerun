@@ -1,3 +1,4 @@
+use egui::Color32;
 use re_chunk::LatestAtQuery;
 use re_log_types::{EntityPath, Instance};
 use re_query::{clamped_zip_2x4, range_zip_1x4};
@@ -15,53 +16,37 @@ use re_viewer_context::{
     ViewSystemIdentifier, VisualizerQueryInfo, VisualizerSystem,
 };
 
-use crate::graph::NodeIndex;
+use crate::graph::NodeId;
 
 #[derive(Default)]
 pub struct NodeVisualizer {
     pub data: ahash::HashMap<EntityPath, NodeData>,
 }
 
+/// The label information of a [`re_types::archetypes::GraphNodes`].
+#[derive(Clone)]
+pub enum Label {
+    Circle {
+        /// Radius of the circle in world coordinates.
+        radius: f32,
+        color: Option<Color32>,
+    },
+    Text {
+        text: ArrowString,
+        color: Option<Color32>,
+    },
+}
+
+/// A [`NodeInstance`] is the output of the [`NodeVisualizer`] and represents a single node in the graph.
+#[derive(Clone)]
 pub struct NodeInstance {
-    pub node: components::GraphNode,
-    pub instance: Instance,
-    pub index: NodeIndex,
-    pub label: Option<ArrowString>,
-    pub show_label: bool,
-    pub color: Option<egui::Color32>,
+    pub graph_node: components::GraphNode,
+    pub instance_index: Instance,
+    pub id: NodeId,
     pub position: Option<egui::Pos2>,
-    pub radius: Option<components::Radius>,
+    pub label: Label,
 }
 
-impl std::hash::Hash for NodeInstance {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        // We use the more verbose destructring here, to make sure that we
-        // exhaustively consider all fields when hashing (we get a compiler
-        // warning when we forget a field).
-        let Self {
-            // The index already uniquely identifies a node, so we don't need to
-            // hash the node itself.
-            node: _,
-            instance,
-            index,
-            label,
-            show_label,
-            color,
-            position,
-            radius,
-        } = self;
-        instance.hash(state);
-        index.hash(state);
-        label.hash(state);
-        show_label.hash(state);
-        color.hash(state);
-        // The following fields don't implement `Hash`.
-        position.as_ref().map(bytemuck::bytes_of).hash(state);
-        radius.as_ref().map(bytemuck::bytes_of).hash(state);
-    }
-}
-
-#[derive(Hash)]
 pub struct NodeData {
     pub nodes: Vec<NodeInstance>,
 }
@@ -107,7 +92,7 @@ impl VisualizerSystem for NodeVisualizer {
                 all_colors.component::<components::Color>(),
                 all_positions.primitive_array::<2, f32>(),
                 all_labels.string(),
-                all_radii.component::<components::Radius>(),
+                all_radii.primitive::<f32>(),
             );
 
             for (_index, nodes, colors, positions, labels, radii) in data {
@@ -122,23 +107,32 @@ impl VisualizerSystem for NodeVisualizer {
                         .copied()
                         .map(Option::Some),
                     Option::<[f32; 2]>::default,
-                    labels.unwrap_or_default().iter().map(Option::Some),
-                    Option::<&ArrowString>::default,
-                    radii.unwrap_or_default().iter().map(Option::Some),
-                    Option::<&components::Radius>::default,
+                    labels.unwrap_or_default().iter().cloned().map(Option::Some),
+                    Option::<ArrowString>::default,
+                    radii.unwrap_or_default().iter().copied().map(Option::Some),
+                    Option::<f32>::default,
                 )
-                .map(
-                    |(node, instance, color, position, label, radius)| NodeInstance {
-                        node: node.clone(),
-                        instance,
-                        index: NodeIndex::from_entity_node(&data_result.entity_path, node),
-                        color: color.map(|&Color(color)| color.into()),
+                .map(|(node, instance, color, position, label, radius)| {
+                    let color = color.map(|&c| egui::Color32::from(c));
+                    let label = match (label, show_label) {
+                        (Some(label), true) => Label::Text {
+                            text: label.clone(),
+                            color,
+                        },
+                        _ => Label::Circle {
+                            radius: radius.unwrap_or(4.0),
+                            color,
+                        },
+                    };
+
+                    NodeInstance {
+                        graph_node: node.clone(),
+                        instance_index: instance,
+                        id: NodeId::from_entity_node(&data_result.entity_path, node),
                         position: position.map(|[x, y]| egui::Pos2::new(x, y)),
-                        label: label.cloned(),
-                        show_label,
-                        radius: radius.copied(),
-                    },
-                )
+                        label,
+                    }
+                })
                 .collect::<Vec<_>>();
 
                 self.data
