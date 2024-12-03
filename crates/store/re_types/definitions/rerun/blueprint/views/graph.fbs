@@ -23,4 +23,10 @@ table GraphView (
 
     /// Adds a force that resolves collisions between graph nodes.
     force_collide_radius: rerun.blueprint.archetypes.ForceCollideRadius (order: 4000);
+
+    /// Adds a force that acts like an electric charge between nodes.
+    force_many_body: rerun.blueprint.archetypes.ForceManyBody (order: 5000);
+
+    /// Adds a force that acts like a spring between nodes.
+    force_link: rerun.blueprint.archetypes.ForceLink (order: 6000);
 }

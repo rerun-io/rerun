@@ -2,6 +2,10 @@
 
 mod background;
 mod dataframe_query;
+mod force_center;
+mod force_collide_radius;
+mod force_link;
+mod force_many_body;
 mod force_position_x;
 mod force_position_y;
 mod map_background;
@@ -19,6 +23,10 @@ mod visual_bounds2d;
 
 pub use self::background::Background;
 pub use self::dataframe_query::DataframeQuery;
+pub use self::force_center::ForceCenter;
+pub use self::force_collide_radius::ForceCollideRadius;
+pub use self::force_link::ForceLink;
+pub use self::force_many_body::ForceManyBody;
 pub use self::force_position_x::ForcePositionX;
 pub use self::force_position_y::ForcePositionY;
 pub use self::map_background::MapBackground;

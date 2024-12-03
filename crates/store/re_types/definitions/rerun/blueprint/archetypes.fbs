@@ -3,6 +3,10 @@
 include "./archetypes/background.fbs";
 include "./archetypes/container_blueprint.fbs";
 include "./archetypes/dataframe_query.fbs";
+include "./archetypes/force_center.fbs";
+include "./archetypes/force_collide_radius.fbs";
+include "./archetypes/force_link.fbs";
+include "./archetypes/force_many_body.fbs";
 include "./archetypes/force_position_x.fbs";
 include "./archetypes/force_position_y.fbs";
 include "./archetypes/map_background.fbs";

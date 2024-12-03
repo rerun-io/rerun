@@ -125,6 +125,38 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ForceCenter as Component>::name(),
+            ComponentReflection {
+                docstring_md: "",
+                custom_placeholder: Some(ForceCenter::default().to_arrow2()?),
+                datatype: ForceCenter::arrow2_datatype(),
+            },
+        ),
+        (
+            <ForceCollideRadius as Component>::name(),
+            ComponentReflection {
+                docstring_md: "",
+                custom_placeholder: Some(ForceCollideRadius::default().to_arrow2()?),
+                datatype: ForceCollideRadius::arrow2_datatype(),
+            },
+        ),
+        (
+            <ForceLink as Component>::name(),
+            ComponentReflection {
+                docstring_md: "",
+                custom_placeholder: Some(ForceLink::default().to_arrow2()?),
+                datatype: ForceLink::arrow2_datatype(),
+            },
+        ),
+        (
+            <ForceManyBody as Component>::name(),
+            ComponentReflection {
+                docstring_md: "",
+                custom_placeholder: Some(ForceManyBody::default().to_arrow2()?),
+                datatype: ForceManyBody::arrow2_datatype(),
+            },
+        ),
+        (
             <ForcePositionX as Component>::name(),
             ComponentReflection {
                 docstring_md: "",
@@ -1943,6 +1975,54 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Select", docstring_md :
                     "Selected columns. If unset, all columns are selected.", is_required
                     : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.ForceCenter"),
+            ArchetypeReflection {
+                display_name: "Force center",
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ForceCenter".into(), display_name :
+                    "Force", docstring_md : "", is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.ForceCollideRadius"),
+            ArchetypeReflection {
+                display_name: "Force collide radius",
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ForceCollideRadius".into(), display_name
+                    : "Force", docstring_md : "", is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.ForceLink"),
+            ArchetypeReflection {
+                display_name: "Force link",
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ForceLink".into(), display_name :
+                    "Force", docstring_md : "", is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.ForceManyBody"),
+            ArchetypeReflection {
+                display_name: "Force many body",
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ForceManyBody".into(), display_name :
+                    "Force", docstring_md : "", is_required : false, },
                 ],
             },
         ),

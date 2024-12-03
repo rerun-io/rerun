@@ -15,6 +15,14 @@ Somethings outside of these bounds may also be visible due to letterboxing.
 Adds a force that pull nodes towards an `x` position.
 ### `force_position_y`
 Adds a force that pull nodes towards an `y` position.
+### `force_center`
+Adds a force that moves the center of mass of all nodes to a given position.
+### `force_collide_radius`
+Adds a force that resolves collisions between graph nodes.
+### `force_many_body`
+Adds a force that acts like an electric charge between nodes.
+### `force_link`
+Adds a force that acts like a spring between nodes.
 
 ## API reference links
  * 🐍 [Python API docs for `GraphView`](https://ref.rerun.io/docs/python/stable/common/blueprint_views?speculative-link#rerun.blueprint.views.GraphView)

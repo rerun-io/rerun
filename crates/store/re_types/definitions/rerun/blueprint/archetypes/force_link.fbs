@@ -1,0 +1,8 @@
+namespace rerun.blueprint.archetypes;
+
+struct ForceLink (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default"
+) {
+    force: rerun.blueprint.components.ForceLink (order: 100);
+}

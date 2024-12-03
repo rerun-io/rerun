@@ -11,7 +11,7 @@ struct ForceCollideRadius (
     enabled: bool (order: 100);
 
     /// The number of iterations to resolve collisions.
-    iterations: u32 (order: 200);
+    iterations: uint32 (order: 200);
 
     /// The strength of the force.
     strength: double (order: 300);

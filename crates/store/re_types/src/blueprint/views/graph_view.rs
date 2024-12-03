@@ -31,6 +31,18 @@ pub struct GraphView {
 
     /// Adds a force that pull nodes towards an `y` position.
     pub force_position_y: crate::blueprint::archetypes::ForcePositionY,
+
+    /// Adds a force that moves the center of mass of all nodes to a given position.
+    pub force_center: crate::blueprint::archetypes::ForcePositionX,
+
+    /// Adds a force that resolves collisions between graph nodes.
+    pub force_collide_radius: crate::blueprint::archetypes::ForceCollideRadius,
+
+    /// Adds a force that acts like an electric charge between nodes.
+    pub force_many_body: crate::blueprint::archetypes::ForceManyBody,
+
+    /// Adds a force that acts like a spring between nodes.
+    pub force_link: crate::blueprint::archetypes::ForceLink,
 }
 
 impl ::re_types_core::SizeBytes for GraphView {
@@ -39,6 +51,10 @@ impl ::re_types_core::SizeBytes for GraphView {
         self.visual_bounds.heap_size_bytes()
             + self.force_position_x.heap_size_bytes()
             + self.force_position_y.heap_size_bytes()
+            + self.force_center.heap_size_bytes()
+            + self.force_collide_radius.heap_size_bytes()
+            + self.force_many_body.heap_size_bytes()
+            + self.force_link.heap_size_bytes()
     }
 
     #[inline]
@@ -46,6 +62,10 @@ impl ::re_types_core::SizeBytes for GraphView {
         <crate::blueprint::archetypes::VisualBounds2D>::is_pod()
             && <crate::blueprint::archetypes::ForcePositionX>::is_pod()
             && <crate::blueprint::archetypes::ForcePositionY>::is_pod()
+            && <crate::blueprint::archetypes::ForcePositionX>::is_pod()
+            && <crate::blueprint::archetypes::ForceCollideRadius>::is_pod()
+            && <crate::blueprint::archetypes::ForceManyBody>::is_pod()
+            && <crate::blueprint::archetypes::ForceLink>::is_pod()
     }
 }
 

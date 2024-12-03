@@ -12,8 +12,8 @@ struct ForceCenter (
     x: double (order: 200);
 
     /// The `y` position to pull nodes towards.
-    y: double (order: 200);
+    y: double (order: 300);
 
     /// The strength of the force.
-    strength: double (order: 300);
+    strength: double (order: 400);
 }
