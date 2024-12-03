@@ -32,7 +32,7 @@ impl SpaceViewEntityPicker {
     ) {
         self.modal_handler.ui(
             egui_ctx,
-            || re_ui::modal::Modal::new("Add/remove Entities").default_height(640.0),
+            || re_ui::modal::ModalWrapper::new("Add/remove Entities").default_height(640.0),
             |ui, open| {
                 let Some(space_view_id) = &self.space_view_id else {
                     *open = false;
