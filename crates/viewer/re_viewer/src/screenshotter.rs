@@ -57,7 +57,7 @@ impl Screenshotter {
                 // is done and transferred to ram.
                 // Obviously we want to send the command this command only once, so we keep counting down
                 // to negatives until we get a call to `save` which then disables the counter.
-                egui_ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot);
+                egui_ctx.send_viewport_cmd(egui::ViewportCommand::Screenshot(Default::default()));
             }
             *countdown -= 1;
 

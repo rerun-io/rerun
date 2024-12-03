@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use itertools::Itertools as _;
+
 use re_build_info::CrateVersion;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
@@ -1602,6 +1603,70 @@ impl App {
 
         false
     }
+
+    #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): screenshotting on web
+    fn process_screenshot_result(
+        &mut self,
+        image: &Arc<egui::ColorImage>,
+        user_data: &egui::UserData,
+    ) {
+        use re_viewer_context::ScreenshotInfo;
+
+        if let Some(info) = &user_data
+            .data
+            .as_ref()
+            .and_then(|data| data.downcast_ref::<ScreenshotInfo>())
+        {
+            let ScreenshotInfo {
+                ui_rect,
+                pixels_per_point,
+                name,
+                target,
+            } = (*info).clone();
+
+            let rgba = if let Some(ui_rect) = ui_rect {
+                Arc::new(image.region(&ui_rect, Some(pixels_per_point)))
+            } else {
+                image.clone()
+            };
+
+            match target {
+                re_viewer_context::ScreenshotTarget::CopyToClipboard => {
+                    #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): screenshotting on web
+                    re_viewer_context::Clipboard::with(|clipboard| {
+                        clipboard.set_image(
+                            [rgba.width(), rgba.height()],
+                            bytemuck::cast_slice(rgba.as_raw()),
+                        );
+                    });
+                }
+
+                re_viewer_context::ScreenshotTarget::SaveToDisk => {
+                    use image::ImageEncoder as _;
+                    let mut png_bytes: Vec<u8> = Vec::new();
+                    if let Err(err) = image::codecs::png::PngEncoder::new(&mut png_bytes)
+                        .write_image(
+                            rgba.as_raw(),
+                            rgba.width() as u32,
+                            rgba.height() as u32,
+                            image::ExtendedColorType::Rgba8,
+                        )
+                    {
+                        re_log::error!("Failed to encode screenshot as PNG: {err}");
+                    } else {
+                        let file_name = format!("{name}.png");
+                        self.command_sender.save_file_dialog(
+                            &file_name,
+                            "Save screenshot".to_owned(),
+                            png_bytes,
+                        );
+                    }
+                }
+            }
+        } else {
+            self.screenshotter.save(image);
+        }
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1894,11 +1959,14 @@ impl eframe::App for App {
         self.store_hub = Some(store_hub);
 
         // Check for returned screenshot:
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): screenshotting on web
         egui_ctx.input(|i| {
             for event in &i.raw.events {
-                if let egui::Event::Screenshot { image, .. } = event {
-                    self.screenshotter.save(image);
+                if let egui::Event::Screenshot {
+                    image, user_data, ..
+                } = event
+                {
+                    self.process_screenshot_result(image, user_data);
                 }
             }
         });

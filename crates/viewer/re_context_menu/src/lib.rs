@@ -113,6 +113,11 @@ fn action_list(
                 Box::new(HideAction),
                 Box::new(RemoveAction),
             ],
+            #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): screenshotting on web
+            vec![
+                Box::new(actions::ScreenshotAction::CopyScreenshot),
+                Box::new(actions::ScreenshotAction::SaveScreenshot),
+            ],
             vec![
                 Box::new(CollapseExpandAllAction::ExpandAll),
                 Box::new(CollapseExpandAllAction::CollapseAll),
