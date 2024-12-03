@@ -29,7 +29,7 @@ pub struct ModalHandler {
 }
 
 impl ModalHandler {
-    /// Open the model next time the [`ModalHandler::ui`] method is called.
+    /// Open the model the next time the [`ModalHandler::ui`] method is called.
     pub fn open(&mut self) {
         self.should_open = true;
     }
@@ -53,7 +53,7 @@ impl ModalHandler {
                 self.modal = None;
             }
 
-            inner
+            Some(inner)
         } else {
             None
         }
@@ -61,9 +61,10 @@ impl ModalHandler {
 }
 
 /// Response returned by [`Modal::ui`].
+//TODO: rename to ModalWrapperResponse
 pub struct ModalResponse<R> {
-    /// What the content closure returned, if it was actually run.
-    pub inner: Option<R>,
+    /// What the content closure returned if it was actually run.
+    pub inner: R,
 
     /// Whether the modal should remain open.
     pub open: bool,
@@ -71,28 +72,9 @@ pub struct ModalResponse<R> {
 
 /// Show a modal window with Rerun style.
 ///
-/// [`Modal`] fakes as a modal window, since egui [doesn't have them yet](https://github.com/emilk/egui/issues/686).
-/// This done by dimming the background and capturing clicks outside the window.
+/// Relies on [`egui::Modal`].
 ///
-/// The positioning of the modal is as follows:
-///
-/// ```text
-/// ┌─rerun window─────▲─────────────────────┐
-/// │                  │ 75px / 10%          │
-/// │          ╔═modal═▼══════════╗  ▲       │
-/// │          ║               ▲  ║  │       │
-/// │          ║ actual height │  ║  │       │
-/// │          ║      based on │  ║  │ max   │
-/// │          ║       content │  ║  │ height│
-/// │          ║               │  ║  │       │
-/// │          ║               ▼  ║  │       │
-/// │          ╚══════════════════╝  │       │
-/// │          │                  │  │       │
-/// │          └───────▲──────────┘  ▼       │
-/// │                  │ 75px / 10%          │
-/// └──────────────────▼─────────────────────┘
-/// ```
-///
+/// TODO:
 /// The modal sets the clip rect such as to allow full-span highlighting behavior (e.g. with
 /// [`crate::list_item::ListItem`]). Consider using [`crate::UiExt::full_span_separator`] to draw a
 /// separator that spans the full width of the modal instead of the usual [`egui::Ui::separator`]
@@ -108,6 +90,7 @@ pub struct Modal {
     full_span_content: bool,
 }
 
+//TODO: rename to ModalWrapper
 impl Modal {
     /// Create a new modal with the given title.
     pub fn new(title: &str) -> Self {
@@ -162,95 +145,160 @@ impl Modal {
         ctx: &egui::Context,
         content_ui: impl FnOnce(&mut egui::Ui, &mut bool) -> R,
     ) -> ModalResponse<R> {
-        Self::dim_background(ctx);
+        let id = egui::Id::new(&self.title);
 
-        // We consume such as to avoid the top-level deselect-on-ESC behavior.
-        let mut open = ctx.input_mut(|i| !i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
+        let mut open = true;
 
-        let screen_height = ctx.screen_rect().height();
-        let modal_vertical_margins = (75.0).at_most(screen_height * 0.1);
+        let mut area = egui::Modal::default_area(id).constrain(true);
+        if let Some(default_height) = self.default_height {
+            area = area.default_height(default_height);
+        }
 
-        let mut window = egui::Window::new(&self.title)
-            .pivot(egui::Align2::CENTER_TOP)
-            .fixed_pos(ctx.screen_rect().center_top() + egui::vec2(0.0, modal_vertical_margins))
-            .constrain_to(ctx.screen_rect())
-            .max_height(screen_height - 2.0 * modal_vertical_margins)
-            .collapsible(false)
-            .resizable(true)
+        let modal_response = egui::Modal::new("add_view_or_container_modal".into())
             .frame(egui::Frame {
-                // Note: inner margin are kept to zero so the clip rect is set to the same size as the modal itself,
-                // which is needed for the full-span highlighting behavior.
                 fill: ctx.style().visuals.panel_fill,
                 ..Default::default()
             })
-            .title_bar(false);
+            .area(area)
+            .show(ctx, |ui| {
+                let item_spacing_y = ui.spacing().item_spacing.y;
+                ui.spacing_mut().item_spacing.y = 0.0;
 
-        if let Some(min_width) = self.min_width {
-            window = window.min_width(min_width);
-        }
-
-        if let Some(min_height) = self.min_height {
-            window = window.min_height(min_height);
-        }
-
-        if let Some(default_height) = self.default_height {
-            window = window.default_height(default_height);
-        }
-
-        let response = window.show(ctx, |ui| {
-            let item_spacing_y = ui.spacing().item_spacing.y;
-            ui.spacing_mut().item_spacing.y = 0.0;
-
-            egui::Frame {
-                inner_margin: egui::Margin::symmetric(DesignTokens::view_padding(), 0.0),
-                ..Default::default()
-            }
-            .show(ui, |ui| {
-                ui.add_space(DesignTokens::view_padding());
-                Self::title_bar(ui, &self.title, &mut open);
-                ui.add_space(DesignTokens::view_padding());
-                ui.full_span_separator();
-
-                if self.full_span_content {
-                    // no further spacing for the content UI
-                    content_ui(ui, &mut open)
-                } else {
-                    // we must restore vertical spacing and add view padding at the bottom
-                    ui.add_space(item_spacing_y);
-
-                    egui::Frame {
-                        inner_margin: egui::Margin {
-                            bottom: DesignTokens::view_padding(),
-                            ..Default::default()
-                        },
-                        ..Default::default()
-                    }
-                    .show(ui, |ui| {
-                        ui.spacing_mut().item_spacing.y = item_spacing_y;
-                        content_ui(ui, &mut open)
-                    })
-                    .inner
+                if let Some(min_width) = self.min_width {
+                    ui.set_min_width(min_width);
                 }
-            })
-            .inner
-        });
 
-        // Any click outside causes the window to close.
-        let cursor_was_over_window = response
-            .as_ref()
-            .and_then(|response| {
-                ctx.input(|i| i.pointer.interact_pos())
-                    .map(|interact_pos| response.response.rect.contains(interact_pos))
-            })
-            .unwrap_or(false);
-        if !cursor_was_over_window && ctx.input(|i| i.pointer.any_pressed()) {
+                if let Some(min_height) = self.min_height {
+                    ui.set_min_height(min_height);
+                }
+
+                egui::Frame {
+                    inner_margin: egui::Margin::symmetric(DesignTokens::view_padding(), 0.0),
+                    ..Default::default()
+                }
+                .show(ui, |ui| {
+                    ui.add_space(DesignTokens::view_padding());
+                    Self::title_bar(ui, &self.title, &mut open);
+                    ui.add_space(DesignTokens::view_padding());
+                    ui.full_span_separator();
+
+                    if self.full_span_content {
+                        // no further spacing for the content UI
+                        content_ui(ui, &mut open)
+                    } else {
+                        // we must restore vertical spacing and add view padding at the bottom
+                        ui.add_space(item_spacing_y);
+
+                        egui::Frame {
+                            inner_margin: egui::Margin {
+                                bottom: DesignTokens::view_padding(),
+                                ..Default::default()
+                            },
+                            ..Default::default()
+                        }
+                        .show(ui, |ui| {
+                            ui.spacing_mut().item_spacing.y = item_spacing_y;
+                            content_ui(ui, &mut open)
+                        })
+                        .inner
+                    }
+                })
+                .inner
+            });
+
+        if modal_response.should_close() {
             open = false;
         }
 
         ModalResponse {
-            inner: response.and_then(|response| response.inner),
+            inner: modal_response.inner,
             open,
         }
+
+        // Self::dim_background(ctx);
+        //
+        // // We consume such as to avoid the top-level deselect-on-ESC behavior.
+        // let mut open = ctx.input_mut(|i| !i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
+        //
+        // let screen_height = ctx.screen_rect().height();
+        // let modal_vertical_margins = (75.0).at_most(screen_height * 0.1);
+        //
+        //let mut window = egui::Window::new(&self.title)
+        //     .pivot(egui::Align2::CENTER_TOP)
+        //     .fixed_pos(ctx.screen_rect().center_top() + egui::vec2(0.0, modal_vertical_margins))
+        //     .constrain_to(ctx.screen_rect())
+        //     .max_height(screen_height - 2.0 * modal_vertical_margins)
+        //     .collapsible(false)
+        //     .resizable(true)
+        //     .frame(egui::Frame {
+        //         // Note: inner margin are kept to zero so the clip rect is set to the same size as the modal itself,
+        //         // which is needed for the full-span highlighting behavior.
+        //         fill: ctx.style().visuals.panel_fill,
+        //         ..Default::default()
+        //     })
+        //     .title_bar(false);
+        //
+        // if let Some(min_width) = self.min_width {
+        //     window = window.min_width(min_width);
+        // }
+        //
+        // if let Some(min_height) = self.min_height {
+        //     window = window.min_height(min_height);
+        // }
+        //
+        // if let Some(default_height) = self.default_height {
+        //     window = window.default_height(default_height);
+        // }
+        //
+        // let response = window.show(ctx, |ui| {
+        //     let item_spacing_y = ui.spacing().item_spacing.y;
+        //     ui.spacing_mut().item_spacing.y = 0.0;
+        //
+        //     egui::Frame {
+        //         inner_margin: egui::Margin::symmetric(DesignTokens::view_padding(), 0.0),
+        //         ..Default::default()
+        //     }
+        //     .show(ui, |ui| {
+        //         ui.add_space(DesignTokens::view_padding());
+        //         Self::title_bar(ui, &self.title, &mut open);
+        //         ui.add_space(DesignTokens::view_padding());
+        //         ui.full_span_separator();
+        //
+        //         if self.full_span_content {
+        //             // no further spacing for the content UI
+        //             content_ui(ui, &mut open)
+        //         } else {
+        //             // we must restore vertical spacing and add view padding at the bottom
+        //             ui.add_space(item_spacing_y);
+        //
+        //             egui::Frame {
+        //                 inner_margin: egui::Margin {
+        //                     bottom: DesignTokens::view_padding(),
+        //                     ..Default::default()
+        //                 },
+        //                 ..Default::default()
+        //             }
+        //             .show(ui, |ui| {
+        //                 ui.spacing_mut().item_spacing.y = item_spacing_y;
+        //                 content_ui(ui, &mut open)
+        //             })
+        //             .inner
+        //         }
+        //     })
+        //     .inner
+        // });
+        //
+        // // Any click outside causes the window to close.
+        // let cursor_was_over_window = response
+        //     .as_ref()
+        //     .and_then(|response| {
+        //         ctx.input(|i| i.pointer.interact_pos())
+        //             .map(|interact_pos| response.response.rect.contains(interact_pos))
+        //     })
+        //     .unwrap_or(false);
+        // if !cursor_was_over_window && ctx.input(|i| i.pointer.any_pressed()) {
+        //     open = false;
+        // }
     }
 
     /// Dim the background to indicate that the window is modal.

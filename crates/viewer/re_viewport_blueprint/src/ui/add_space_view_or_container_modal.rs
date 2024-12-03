@@ -11,12 +11,14 @@ use re_viewer_context::{
 pub struct AddSpaceViewOrContainerModal {
     target_container: Option<ContainerId>,
     is_open: bool,
+    modal_handler: re_ui::modal::ModalHandler,
 }
 
 impl AddSpaceViewOrContainerModal {
     pub(crate) fn open(&mut self, target_container: ContainerId) {
         self.target_container = Some(target_container);
         self.is_open = true;
+        self.modal_handler.open();
     }
 
     pub(crate) fn ui(
@@ -26,30 +28,30 @@ impl AddSpaceViewOrContainerModal {
         viewport: &ViewportBlueprint,
     ) {
         //TODO: fix this, probably move it to some helper (or replace the guts of the existing helper)
-        if self.is_open {
-            let modal_response = egui::Modal::new("add_view_or_container_modal".into())
-                .frame(egui::Frame {
-                    fill: egui_ctx.style().visuals.panel_fill,
-                    ..Default::default()
-                })
-                .show(egui_ctx, |ui| {
-                    ui.set_min_width(500.0);
-                    modal_ui(ui, ctx, viewport, self.target_container, &mut self.is_open);
-                });
-
-            if modal_response.should_close() {
-                self.is_open = false;
-            }
-        }
-        // self.modal_handler.ui(
-        //     egui_ctx,
-        //     || {
-        //         re_ui::modal::Modal::new("Add space view or container")
-        //             .min_width(500.0)
-        //             .full_span_content(true)
-        //     },
-        //     |ui, keep_open| modal_ui(ui, ctx, viewport, self.target_container, keep_open),
-        // );
+        // if self.is_open {
+        //     let modal_response = egui::Modal::new("add_view_or_container_modal".into())
+        //         .frame(egui::Frame {
+        //             fill: egui_ctx.style().visuals.panel_fill,
+        //             ..Default::default()
+        //         })
+        //         .show(egui_ctx, |ui| {
+        //             ui.set_min_width(500.0);
+        //             modal_ui(ui, ctx, viewport, self.target_container, &mut self.is_open);
+        //         });
+        //
+        //     if modal_response.should_close() {
+        //         self.is_open = false;
+        //     }
+        // }
+        self.modal_handler.ui(
+            egui_ctx,
+            || {
+                re_ui::modal::Modal::new("Add space view or container")
+                    .min_width(500.0)
+                    .full_span_content(true)
+            },
+            |ui, keep_open| modal_ui(ui, ctx, viewport, self.target_container, keep_open),
+        );
     }
 }
 

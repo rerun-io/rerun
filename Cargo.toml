@@ -559,14 +559,14 @@ significant_drop_tightening = "allow" # An update of parking_lot made this trigg
 # As a last resport, patch with a commit to our own repository.
 # ALWAYS document what PR the commit hash is part of, or when it was merged into the upstream trunk.
 
-ecolor = { git = "https://github.com/emilk/egui.git", rev = "64c0c6297afe7ff22907c9adce895599c4c7baaf" }      # egui PR #5414 2024-11-29
-eframe = { git = "https://github.com/emilk/egui.git", rev = "64c0c6297afe7ff22907c9adce895599c4c7baaf" }      # egui PR #5414 2024-11-29
-egui = { git = "https://github.com/emilk/egui.git", rev = "64c0c6297afe7ff22907c9adce895599c4c7baaf" }        # egui PR #5414 2024-11-29
-egui_extras = { git = "https://github.com/emilk/egui.git", rev = "64c0c6297afe7ff22907c9adce895599c4c7baaf" } # egui PR #5414 2024-11-29
-egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "64c0c6297afe7ff22907c9adce895599c4c7baaf" }   # egui PR #5414 2024-11-29
-emath = { git = "https://github.com/emilk/egui.git", rev = "64c0c6297afe7ff22907c9adce895599c4c7baaf" }       # egui PR #5414 2024-11-29
+ecolor = { git = "https://github.com/emilk/egui.git", rev = "09667f854965c428bee0a535a7da4b8dc4ea3177" }      # egui PR #5414 2024-12-03
+eframe = { git = "https://github.com/emilk/egui.git", rev = "09667f854965c428bee0a535a7da4b8dc4ea3177" }      # egui PR #5414 2024-12-03
+egui = { git = "https://github.com/emilk/egui.git", rev = "09667f854965c428bee0a535a7da4b8dc4ea3177" }        # egui PR #5414 2024-12-03
+egui_extras = { git = "https://github.com/emilk/egui.git", rev = "09667f854965c428bee0a535a7da4b8dc4ea3177" } # egui PR #5414 2024-12-03
+egui-wgpu = { git = "https://github.com/emilk/egui.git", rev = "09667f854965c428bee0a535a7da4b8dc4ea3177" }   # egui PR #5414 2024-12-03
+emath = { git = "https://github.com/emilk/egui.git", rev = "09667f854965c428bee0a535a7da4b8dc4ea3177" }       # egui PR #5414 2024-12-03
 
-egui_kittest = { git = "https://github.com/emilk/egui.git", rev = "64c0c6297afe7ff22907c9adce895599c4c7baaf" } # egui PR #5414 2024-11-29
+egui_kittest = { git = "https://github.com/emilk/egui.git", rev = "09667f854965c428bee0a535a7da4b8dc4ea3177" } # egui PR #5414 2024-12-03
 
 # Useful while developing:
 # ecolor = { path = "../../egui/crates/ecolor" }
