@@ -7,10 +7,10 @@ use crate::{ContextMenuAction, ContextMenuContext};
 /// Space view screenshot action.
 #[cfg(not(target_arch = "wasm32"))]
 pub enum ScreenshotAction {
-    /// Scrteenshot the space view, and copy the results to clipboard.
+    /// Screenshot the space view, and copy the results to clipboard.
     CopyScreenshot,
 
-    /// Scrteenshot the space view, and save the results to disk.
+    /// Screenshot the space view, and save the results to disk.
     SaveScreenshot,
 }
 
