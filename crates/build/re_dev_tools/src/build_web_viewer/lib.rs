@@ -119,13 +119,13 @@ pub fn build(
             "--lib",
             "--target=wasm32-unknown-unknown",
             &format!("--target-dir={}", target_wasm_dir.as_str()),
-            if no_default_features {
-                "--no-default-features"
-            } else {
-                ""
-            },
-            &format!("--features={features}"),
         ]);
+        if no_default_features {
+            cmd.arg("--no-default-features");
+        }
+        if !features.is_empty() {
+            cmd.arg(&format!("--features={features}"));
+        }
         if profile == Profile::Release {
             cmd.arg("--release");
         }
