@@ -1,7 +1,7 @@
 //! Contains all the (geometric) information that is considered when performing a graph layout.
 //!
 //! We support:
-//! * Multiple multiple edges between the same two nodes.
+//! * Multiple edges between the same two nodes.
 //! * Self-edges
 //!
 //! <div class="warning"> Duplicated graph nodes are undefined behavior.</div>

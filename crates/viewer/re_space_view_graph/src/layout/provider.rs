@@ -107,7 +107,7 @@ impl ForceLayoutProvider {
 
         let positions = self.simulation.positions().collect::<Vec<_>>();
 
-        // We clear all unnecessary data deom the previous layout, but keep its space allocated.
+        // We clear all unnecessary data from the previous layout, but keep its space allocated.
         layout.entities.clear();
         layout.edges.clear();
 

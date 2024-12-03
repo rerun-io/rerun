@@ -12,11 +12,6 @@ README = """\
 
 Please check the following:
 * All graphs have a proper layout.
-* The `Weird Graph` views show:
-    * two self-edges for `A`, a single one for `B`.
-    * Additionally, there should be:
-        * two edges from `A` to `B`.
-        * one edge from `B` to `A`.
 * `graph` has directed edges, while `graph2` has undirected edges.
 * `graph` and `graph2` are shown in two different viewers.
 * There is a third viewer, `Both`, that shows both `graph` and `graph2` in the same viewer.
@@ -25,27 +20,6 @@ Please check the following:
 
 def log_readme() -> None:
     rr.log("readme", rr.TextDocument(README, media_type=rr.MediaType.MARKDOWN), static=True)
-
-
-def log_weird_graph() -> None:
-    rr.log(
-        "weird",
-        rr.GraphNodes(["A", "B"], labels=["A", "B"]),
-        rr.GraphEdges(
-            [
-                # self-edges
-                ("A", "A"),
-                ("B", "B"),
-                # duplicated edges
-                ("A", "B"),
-                ("A", "B"),
-                ("B", "A"),
-                # duplicated self-edges
-                ("A", "A"),
-            ],
-            graph_type=rr.GraphType.Directed,
-        ),
-    )
 
 
 def log_graphs() -> None:
@@ -77,15 +51,10 @@ def run(args: Namespace) -> None:
 
     log_readme()
     log_graphs()
-    log_weird_graph()
 
     rr.send_blueprint(
         rrb.Blueprint(
             rrb.Grid(
-                rrb.GraphView(origin="weird", name="Weird Graph"),
-                rrb.GraphView(
-                    origin="weird", name="Weird Graph (without labels)", defaults=[rr.components.ShowLabels(False)]
-                ),
                 rrb.GraphView(origin="graph", name="Graph 1"),
                 rrb.GraphView(origin="graph2", name="Graph 2"),
                 rrb.GraphView(name="Both", contents=["/graph", "/graph2"]),

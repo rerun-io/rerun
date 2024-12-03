@@ -18,14 +18,6 @@ use crate::{
     visualizers::Label,
 };
 
-// Sorry for the pun, could not resist 😎.
-// On a serious note, is there no other way to create a `Sense` that does nothing?
-const NON_SENSE: Sense = Sense {
-    click: false,
-    drag: false,
-    focusable: false,
-};
-
 pub enum DrawableLabel {
     Circle(CircleLabel),
     Text(TextLabel),
@@ -228,7 +220,7 @@ pub fn draw_edge(ui: &mut Ui, geometry: &EdgeGeometry, show_arrow: bool) -> Resp
 
     // We can add interactions in the future, for now we simply allocate the
     // rect, so that bounding boxes are computed correctly.
-    ui.allocate_rect(geometry.bounding_rect(), NON_SENSE)
+    ui.allocate_rect(geometry.bounding_rect(), Sense::hover())
 }
 
 pub fn draw_entity_rect(
