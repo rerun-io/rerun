@@ -124,6 +124,12 @@ impl SelectionPanel {
         };
         for (i, item) in selection.iter_items().enumerate() {
             list_item::list_item_scope(ui, item, |ui| {
+                if let Some(item_title) = ItemTitle::from_item(ctx, viewport, ui.style(), item) {
+                    item_title.ui(ctx, ui, item);
+                } else {
+                    re_log::warn_once!("Failed to create item title for {item:?}");
+                    return; // WEIRD
+                }
                 self.item_ui(ctx, viewport, view_states, ui, item, ui_layout);
             });
 
@@ -143,12 +149,6 @@ impl SelectionPanel {
         item: &Item,
         ui_layout: UiLayout,
     ) {
-        if let Some(item_title) = ItemTitle::from_item(ctx, viewport, ui.style(), item) {
-            item_title.ui(ctx, ui, item);
-        } else {
-            return; // WEIRD
-        }
-
         match item {
             Item::ComponentPath(component_path) => {
                 let entity_path = &component_path.entity_path;
