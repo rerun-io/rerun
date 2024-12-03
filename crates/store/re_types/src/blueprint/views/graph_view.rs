@@ -26,6 +26,9 @@ pub struct GraphView {
     /// Somethings outside of these bounds may also be visible due to letterboxing.
     pub visual_bounds: crate::blueprint::archetypes::VisualBounds2D,
 
+    /// The parameters for the force layout simulation.
+    pub force_layout_simulation: crate::blueprint::archetypes::ForceLayoutSimulation,
+
     /// Adds a force that pull nodes towards an `x` position.
     pub force_position_x: crate::blueprint::archetypes::ForcePositionX,
 
@@ -49,6 +52,7 @@ impl ::re_types_core::SizeBytes for GraphView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
         self.visual_bounds.heap_size_bytes()
+            + self.force_layout_simulation.heap_size_bytes()
             + self.force_position_x.heap_size_bytes()
             + self.force_position_y.heap_size_bytes()
             + self.force_center.heap_size_bytes()
@@ -60,6 +64,7 @@ impl ::re_types_core::SizeBytes for GraphView {
     #[inline]
     fn is_pod() -> bool {
         <crate::blueprint::archetypes::VisualBounds2D>::is_pod()
+            && <crate::blueprint::archetypes::ForceLayoutSimulation>::is_pod()
             && <crate::blueprint::archetypes::ForcePositionX>::is_pod()
             && <crate::blueprint::archetypes::ForcePositionY>::is_pod()
             && <crate::blueprint::archetypes::ForcePositionX>::is_pod()

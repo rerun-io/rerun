@@ -70,6 +70,7 @@ class GraphView(SpaceView):
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
         visual_bounds: blueprint_archetypes.VisualBounds2D | None = None,
+        force_layout_simulation: blueprint_archetypes.ForceLayoutSimulation | None = None,
         force_position_x: blueprint_archetypes.ForcePositionX | None = None,
         force_position_y: blueprint_archetypes.ForcePositionY | None = None,
         force_center: blueprint_archetypes.ForcePositionX | None = None,
@@ -110,6 +111,8 @@ class GraphView(SpaceView):
             Everything within these bounds is guaranteed to be visible.
 
             Somethings outside of these bounds may also be visible due to letterboxing.
+        force_layout_simulation:
+            The parameters for the force layout simulation.
         force_position_x:
             Adds a force that pull nodes towards an `x` position.
         force_position_y:
@@ -130,6 +133,11 @@ class GraphView(SpaceView):
             if not isinstance(visual_bounds, blueprint_archetypes.VisualBounds2D):
                 visual_bounds = blueprint_archetypes.VisualBounds2D(visual_bounds)
             properties["VisualBounds2D"] = visual_bounds
+
+        if force_layout_simulation is not None:
+            if not isinstance(force_layout_simulation, blueprint_archetypes.ForceLayoutSimulation):
+                force_layout_simulation = blueprint_archetypes.ForceLayoutSimulation(force_layout_simulation)
+            properties["ForceLayoutSimulation"] = force_layout_simulation
 
         if force_position_x is not None:
             if not isinstance(force_position_x, blueprint_archetypes.ForcePositionX):

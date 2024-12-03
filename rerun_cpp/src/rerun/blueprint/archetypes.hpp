@@ -7,6 +7,7 @@
 #include "blueprint/archetypes/dataframe_query.hpp"
 #include "blueprint/archetypes/force_center.hpp"
 #include "blueprint/archetypes/force_collide_radius.hpp"
+#include "blueprint/archetypes/force_layout_simulation.hpp"
 #include "blueprint/archetypes/force_link.hpp"
 #include "blueprint/archetypes/force_many_body.hpp"
 #include "blueprint/archetypes/force_position_x.hpp"

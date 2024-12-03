@@ -11,6 +11,8 @@ A graph view to display time-variying, directed or undirected graph visualizatio
 Everything within these bounds is guaranteed to be visible.
 
 Somethings outside of these bounds may also be visible due to letterboxing.
+### `force_layout_simulation`
+The parameters for the force layout simulation.
 ### `force_position_x`
 Adds a force that pull nodes towards an `x` position.
 ### `force_position_y`

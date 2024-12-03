@@ -15,6 +15,7 @@ from .filter_by_range import FilterByRange, FilterByRangeBatch
 from .filter_is_not_null import FilterIsNotNull, FilterIsNotNullBatch
 from .force_center import ForceCenter, ForceCenterBatch
 from .force_collide_radius import ForceCollideRadius, ForceCollideRadiusBatch
+from .force_layout_simulation import ForceLayoutSimulation, ForceLayoutSimulationBatch
 from .force_link import ForceLink, ForceLinkBatch
 from .force_many_body import ForceManyBody, ForceManyBodyBatch
 from .force_position_x import ForcePositionX, ForcePositionXBatch
@@ -75,6 +76,8 @@ __all__ = [
     "ForceCenterBatch",
     "ForceCollideRadius",
     "ForceCollideRadiusBatch",
+    "ForceLayoutSimulation",
+    "ForceLayoutSimulationBatch",
     "ForceLink",
     "ForceLinkBatch",
     "ForceManyBody",

@@ -1,0 +1,8 @@
+namespace rerun.blueprint.archetypes;
+
+struct ForceLayoutSimulation (
+    "attr.rerun.scope": "blueprint",
+    "attr.rust.derive": "Default"
+) {
+    simulation: rerun.blueprint.components.ForceLayoutSimulation (order: 100);
+}

@@ -1,0 +1,22 @@
+namespace rerun.blueprint.datatypes;
+
+/// The parameters for a force layout simulation.
+struct ForceLayoutSimulation (
+    "attr.rust.derive": "Default, Clone, PartialEq, Eq",
+    "attr.rerun.scope": "blueprint"
+) {
+    /// Similar to the the temperature in a simulated annealing algorithm.
+    alpha: double (order: 100);
+
+    /// If `alpha` drops below this value, the simulation stops.
+    alpha_min: double (order: 200);
+
+    /// The rate at which `alpha` decreases after each iteration.
+    alpha_decay: double (order: 300);
+
+    /// The target value for `alpha`, must be in the range `[0, 1]`.
+    alpha_target: double (order: 400);
+
+    /// Acts as a damping factor for the velocity of nodes.
+    velocity_decay: double (order: 500);
+}

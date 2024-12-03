@@ -7,6 +7,7 @@
 #include "blueprint/datatypes/filter_is_not_null.hpp"
 #include "blueprint/datatypes/force_center.hpp"
 #include "blueprint/datatypes/force_collide_radius.hpp"
+#include "blueprint/datatypes/force_layout_simulation.hpp"
 #include "blueprint/datatypes/force_link.hpp"
 #include "blueprint/datatypes/force_many_body.hpp"
 #include "blueprint/datatypes/force_position_x.hpp"

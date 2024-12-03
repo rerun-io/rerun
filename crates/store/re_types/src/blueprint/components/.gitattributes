@@ -11,6 +11,7 @@ filter_by_range.rs linguist-generated=true
 filter_is_not_null.rs linguist-generated=true
 force_center.rs linguist-generated=true
 force_collide_radius.rs linguist-generated=true
+force_layout_simulation.rs linguist-generated=true
 force_link.rs linguist-generated=true
 force_many_body.rs linguist-generated=true
 force_position_x.rs linguist-generated=true

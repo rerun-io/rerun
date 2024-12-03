@@ -13,6 +13,7 @@ include "./components/filter_by_range.fbs";
 include "./components/filter_is_not_null.fbs";
 include "./components/force_center.fbs";
 include "./components/force_collide_radius.fbs";
+include "./components/force_layout_simulation.fbs";
 include "./components/force_link.fbs";
 include "./components/force_many_body.fbs";
 include "./components/force_position_x.fbs";

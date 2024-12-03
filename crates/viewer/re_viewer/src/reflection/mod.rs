@@ -141,6 +141,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <ForceLayoutSimulation as Component>::name(),
+            ComponentReflection {
+                docstring_md: "",
+                custom_placeholder: Some(ForceLayoutSimulation::default().to_arrow2()?),
+                datatype: ForceLayoutSimulation::arrow2_datatype(),
+            },
+        ),
+        (
             <ForceLink as Component>::name(),
             ComponentReflection {
                 docstring_md: "",
@@ -1999,6 +2007,19 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     ArchetypeFieldReflection { component_name :
                     "rerun.blueprint.components.ForceCollideRadius".into(), display_name
                     : "Force", docstring_md : "", is_required : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.ForceLayoutSimulation"),
+            ArchetypeReflection {
+                display_name: "Force layout simulation",
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ForceLayoutSimulation".into(),
+                    display_name : "Simulation", docstring_md : "", is_required : false,
+                    },
                 ],
             },
         ),

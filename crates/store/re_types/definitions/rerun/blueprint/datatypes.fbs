@@ -5,6 +5,7 @@ include "./datatypes/filter_by_range.fbs";
 include "./datatypes/filter_is_not_null.fbs";
 include "./datatypes/force_center.fbs";
 include "./datatypes/force_collide_radius.fbs";
+include "./datatypes/force_layout_simulation.fbs";
 include "./datatypes/force_link.fbs";
 include "./datatypes/force_many_body.fbs";
 include "./datatypes/force_position_x.fbs";

@@ -15,6 +15,7 @@
 #include "blueprint/components/filter_is_not_null.hpp"
 #include "blueprint/components/force_center.hpp"
 #include "blueprint/components/force_collide_radius.hpp"
+#include "blueprint/components/force_layout_simulation.hpp"
 #include "blueprint/components/force_link.hpp"
 #include "blueprint/components/force_many_body.hpp"
 #include "blueprint/components/force_position_x.hpp"

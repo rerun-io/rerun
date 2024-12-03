@@ -7,6 +7,7 @@ from .container_blueprint import ContainerBlueprint
 from .dataframe_query import DataframeQuery
 from .force_center import ForceCenter
 from .force_collide_radius import ForceCollideRadius
+from .force_layout_simulation import ForceLayoutSimulation
 from .force_link import ForceLink
 from .force_many_body import ForceManyBody
 from .force_position_x import ForcePositionX
@@ -31,6 +32,7 @@ __all__ = [
     "DataframeQuery",
     "ForceCenter",
     "ForceCollideRadius",
+    "ForceLayoutSimulation",
     "ForceLink",
     "ForceManyBody",
     "ForcePositionX",
