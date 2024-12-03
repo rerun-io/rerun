@@ -32,7 +32,7 @@ namespace rerun::archetypes {
     ///
     /// Currently, many visualizers support only a single instance transform per entity.
     /// Check archetype documentations for details - if not otherwise specified, only the first instance transform is applied.
-    /// Some visualizers like the mesh visualizer used for `archetype::Mesh3D`,
+    /// Some visualizers like the mesh visualizer used for `archetypes::Mesh3D`,
     /// will draw an object for every pose, a behavior also known as "instancing".
     ///
     /// ## Example
