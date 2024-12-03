@@ -1,4 +1,6 @@
-use re_viewer_context::{Item, ScreenshotTarget, SpaceViewId, SpaceViewRectPublisher};
+use re_viewer_context::{
+    Item, PublishedSpaceViewInfo, ScreenshotTarget, SpaceViewId, SpaceViewRectPublisher,
+};
 
 use crate::{ContextMenuAction, ContextMenuContext};
 
@@ -45,26 +47,26 @@ impl ContextMenuAction for ScreenshotAction {
     }
 
     fn process_space_view(&self, ctx: &ContextMenuContext<'_>, space_view_id: &SpaceViewId) {
-        let Some(space_view_rect) = ctx.egui_context.memory_mut(|mem| {
+        let Some(space_view_info) = ctx.egui_context.memory_mut(|mem| {
             mem.caches
                 .cache::<SpaceViewRectPublisher>()
                 .get(space_view_id)
-                .copied()
+                .cloned()
         }) else {
             return;
         };
+
+        let PublishedSpaceViewInfo { name, rect } = space_view_info;
 
         let target = match self {
             Self::CopyScreenshot => ScreenshotTarget::CopyToClipboard,
             Self::SaveScreenshot => ScreenshotTarget::SaveToDisk,
         };
 
-        let name = "view".to_owned(); // TODO: get the name of the space view
-
         ctx.egui_context
             .send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::new(
                 re_viewer_context::ScreenshotInfo {
-                    ui_rect: Some(space_view_rect),
+                    ui_rect: Some(rect),
                     pixels_per_point: ctx.egui_context.pixels_per_point(),
                     name,
                     target,

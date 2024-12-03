@@ -156,9 +156,19 @@ pub enum ScreenshotTarget {
 
 // ----------------------------------------------------------------------------------------
 
-/// Used to publish the ui rectangle for each space view.
+/// Used to publish info aboutr each space view.
 ///
-/// We use this to know what portion of the screen to screenshot.
+/// We use this for space-view screenshotting.
 ///
 /// Accessed with [`egui::Memory::caches`].
-pub type SpaceViewRectPublisher = egui::cache::FramePublisher<SpaceViewId, egui::Rect>;
+pub type SpaceViewRectPublisher = egui::cache::FramePublisher<SpaceViewId, PublishedSpaceViewInfo>;
+
+/// Information about a space view that is published each frame by [`SpaceViewRectPublisher`].
+#[derive(Clone, Debug)]
+pub struct PublishedSpaceViewInfo {
+    /// Human-readable name of the space view.
+    pub name: String,
+
+    /// Where on screen (in ui coords).
+    pub rect: egui::Rect,
+}
