@@ -3,7 +3,7 @@ namespace rerun.components;
 /// An infinite 3D plane represented by a unit normal vector and a distance.
 ///
 /// Any point P on the plane fulfills the equation `dot(xyz, P) - d = 0`, where `xyz` is the plane's normal and `d` the distance.
-/// This representation is also known as the Hesse normal form, see https://en.wikipedia.org/wiki/Hesse_normal_form
+/// This representation is also known as the Hesse normal form.
 ///
 /// Note: although the normal will be passed through to the
 /// datastore as provided, when used in the Viewer, planes will always be normalized.

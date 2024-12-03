@@ -619,7 +619,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
         (
             <Plane3D as Component>::name(),
             ComponentReflection {
-                docstring_md: "An infinite 3D plane represented by a unit normal vector and a distance.\n\nAny point P on the plane fulfills the equation `dot(xyz, P) - d = 0`, where `xyz` is the plane's normal and `d` the distance.\nThis representation is also known as the Hesse normal form, see https://en.wikipedia.org/wiki/Hesse_normal_form\n\nNote: although the normal will be passed through to the\ndatastore as provided, when used in the Viewer, planes will always be normalized.\nI.e. the plane with xyz = (2, 0, 0), d = 1 is equivalent to xyz = (1, 0, 0), d = 0.5",
+                docstring_md: "An infinite 3D plane represented by a unit normal vector and a distance.\n\nAny point P on the plane fulfills the equation `dot(xyz, P) - d = 0`, where `xyz` is the plane's normal and `d` the distance.\nThis representation is also known as the Hesse normal form.\n\nNote: although the normal will be passed through to the\ndatastore as provided, when used in the Viewer, planes will always be normalized.\nI.e. the plane with xyz = (2, 0, 0), d = 1 is equivalent to xyz = (1, 0, 0), d = 0.5",
                 custom_placeholder: None,
                 datatype: Plane3D::arrow2_datatype(),
             },

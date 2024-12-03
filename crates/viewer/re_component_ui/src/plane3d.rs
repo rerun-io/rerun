@@ -78,7 +78,7 @@ pub fn edit_or_view_plane3d(
     let distance = value.distance();
 
     ui.label("n");
-    // Show simplified combobox if this is is axis aligned.
+    // Show simplified combobox if this is axis aligned.
     let normal_response = if let Ok(mut axis_dir) =
         AxisDirection::try_from(glam::Vec3::from(value.normal()))
     {
