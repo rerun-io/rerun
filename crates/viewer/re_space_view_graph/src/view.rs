@@ -1,4 +1,3 @@
-use re_entity_db::InstancePath;
 use re_log_types::EntityPath;
 use re_space_view::{
     controls::{DRAG_PAN2D_BUTTON, ZOOM_SCROLL_MODIFIER},
@@ -14,18 +13,17 @@ use re_ui::{
     ModifiersMarkdown, MouseButtonMarkdown, UiExt as _,
 };
 use re_viewer_context::{
-    IdentifiedViewSystem as _, Item, RecommendedSpaceView, SpaceViewClass,
-    SpaceViewClassLayoutPriority, SpaceViewClassRegistryError, SpaceViewId,
-    SpaceViewSpawnHeuristics, SpaceViewState, SpaceViewStateExt as _,
-    SpaceViewSystemExecutionError, SpaceViewSystemRegistrator, SystemExecutionOutput, ViewQuery,
-    ViewerContext,
+    IdentifiedViewSystem as _, RecommendedSpaceView, SpaceViewClass, SpaceViewClassLayoutPriority,
+    SpaceViewClassRegistryError, SpaceViewId, SpaceViewSpawnHeuristics, SpaceViewState,
+    SpaceViewStateExt as _, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
+    SystemExecutionOutput, ViewQuery, ViewerContext,
 };
 use re_viewport_blueprint::ViewProperty;
 
 use crate::{
     graph::Graph,
     layout::LayoutRequest,
-    ui::{draw_debug, draw_entity_rect, draw_graph, GraphSpaceViewState},
+    ui::{draw_debug, draw_graph, GraphSpaceViewState},
     visualizers::{merge, EdgesVisualizer, NodeVisualizer},
 };
 
@@ -178,24 +176,8 @@ Display a graph of nodes and edges.
             let mut world_bounding_rect = egui::Rect::NOTHING;
 
             for graph in &graphs {
-                let mut current_rect = draw_graph(ui, ctx, graph, layout, query);
-
-                // We only show entity rects if there are multiple entities.
-                // For now, these entity rects are not part of the layout, but rather tracked on the fly.
-                if graphs.len() > 1 {
-                    let resp =
-                        draw_entity_rect(ui, current_rect, graph.entity(), &query.highlights);
-
-                    let instance_path = InstancePath::entity_all(graph.entity().clone());
-                    ctx.select_hovered_on_click(
-                        &resp,
-                        vec![(Item::DataResult(query.space_view_id, instance_path), None)]
-                            .into_iter(),
-                    );
-                    current_rect = current_rect.union(resp.rect);
-                }
-
-                world_bounding_rect = world_bounding_rect.union(current_rect);
+                let graph_rect = draw_graph(ui, ctx, graph, layout, query);
+                world_bounding_rect = world_bounding_rect.union(graph_rect);
             }
 
             // We need to draw the debug information after the rest to ensure that we have the correct bounding box.
