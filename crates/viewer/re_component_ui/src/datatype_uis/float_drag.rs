@@ -14,7 +14,7 @@ pub fn edit_f32_zero_to_max(
         MaybeMutRef::Ref(value) => MaybeMutRef::Ref(value),
         MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(&mut value.deref_mut().0),
     };
-    edit_f32_float_raw_impl(ui, &mut value, 0.0..=f32::MAX)
+    edit_f32_float_raw(ui, &mut value, 0.0..=f32::MAX)
 }
 
 /// Generic editor for a [`re_types::datatypes::Float32`] value from min to max float.
@@ -27,11 +27,11 @@ pub fn edit_f32_min_to_max_float(
         MaybeMutRef::Ref(value) => MaybeMutRef::Ref(value),
         MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(&mut value.deref_mut().0),
     };
-    edit_f32_float_raw_impl(ui, &mut value, f32::MIN..=f32::MAX)
+    edit_f32_float_raw(ui, &mut value, f32::MIN..=f32::MAX)
 }
 
 /// Non monomorphized implementation for f32 float editing.
-pub fn edit_f32_float_raw_impl(
+pub fn edit_f32_float_raw(
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, f32>,
     range: RangeInclusive<f32>,

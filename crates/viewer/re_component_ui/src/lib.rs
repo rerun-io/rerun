@@ -14,6 +14,7 @@ mod line_strip;
 mod map_provider;
 mod marker_shape;
 mod pinhole;
+mod plane3d;
 mod radius;
 mod recording_uri;
 mod resolution;

@@ -1,7 +1,7 @@
 use re_types::datatypes;
 use re_viewer_context::MaybeMutRef;
 
-use super::float_drag::edit_f32_float_raw_impl;
+use super::float_drag::edit_f32_float_raw;
 
 pub fn edit_or_view_vec3d(
     _ctx: &re_viewer_context::ViewerContext<'_>,
@@ -12,10 +12,10 @@ pub fn edit_or_view_vec3d(
         MaybeMutRef::Ref(value) => MaybeMutRef::Ref(value),
         MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(value),
     };
-    edit_or_view_vec3d_impl(ui, &mut value)
+    edit_or_view_vec3d_raw(ui, &mut value)
 }
 
-fn edit_or_view_vec3d_impl(
+pub fn edit_or_view_vec3d_raw(
     ui: &mut egui::Ui,
     value: &mut MaybeMutRef<'_, datatypes::Vec3D>,
 ) -> egui::Response {
@@ -35,5 +35,5 @@ fn edit_or_view_vector_component(
         //MaybeMutRef::MutRef(value) => MaybeMutRef::MutRef(&mut value[i]),
         MaybeMutRef::MutRef(value) => MaybeMutRef::Ref(&value[i]),
     };
-    edit_f32_float_raw_impl(ui, &mut value, f32::MIN..=f32::MAX)
+    edit_f32_float_raw(ui, &mut value, f32::MIN..=f32::MAX)
 }
