@@ -138,18 +138,18 @@ man = "cargo --quiet run --package rerun-cli --all-features -- man > docs/conten
 # Compile and run the rerun viewer.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer --"
+rerun = "cargo run --package rerun-cli --no-default-features --features grpc,map_view,nasm,native_viewer --"
 
 # Compile `rerun-cli` without the web-viewer.
-rerun-build = "cargo build --package rerun-cli --no-default-features --features map_view,nasm,native_viewer"
+rerun-build = "cargo build --package rerun-cli --no-default-features --features grpc,map_view,nasm,native_viewer"
 
 # Compile `rerun-cli` without the web-viewer.
-rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features map_view,nasm,native_viewer"
+rerun-build-release = "cargo build --package rerun-cli --release --no-default-features --features grpc,map_view,nasm,native_viewer"
 
 # Compile and run the rerun viewer with --release.
 #
 # You can also give an argument for what to view (e.g. an .rrd file).
-rerun-release = "cargo run --package rerun-cli --no-default-features --features map_view,nasm,native_viewer --release --"
+rerun-release = "cargo run --package rerun-cli --no-default-features --features grpc,map_view,nasm,native_viewer --release --"
 
 # Compile `rerun-cli` with the same feature set as we build for releases.
 rerun-build-native-and-web = { cmd = "cargo build --package rerun-cli --no-default-features --features release --", depends_on = [
