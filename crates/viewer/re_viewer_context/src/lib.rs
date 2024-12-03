@@ -171,5 +171,7 @@ pub struct PublishedSpaceViewInfo {
     pub name: String,
 
     /// Where on screen (in ui coords).
+    ///
+    /// NOTE: this can include a highlighted border of the space-view.
     pub rect: egui::Rect,
 }
