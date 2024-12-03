@@ -6765,8 +6765,6 @@ dependencies = [
  "ahash",
  "egui",
  "egui_tiles",
- "glam",
- "image",
  "itertools 0.13.0",
  "nohash-hasher",
  "rayon",
