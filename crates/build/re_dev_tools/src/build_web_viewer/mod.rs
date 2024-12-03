@@ -38,6 +38,10 @@ pub struct Args {
     /// comma-separated list of features to pass on to `re_viewer`
     #[argh(option, short = 'F', long = "features", default = "default_features()")]
     features: String,
+
+    /// whether to exclude defualt features from `re_viewer` wasm build
+    #[argh(option, long = "no-default-features", default = "false")]
+    no_default_features: bool,
 }
 
 fn default_features() -> String {
@@ -62,6 +66,7 @@ pub fn main(args: Args) -> anyhow::Result<()> {
         args.debug_symbols,
         args.target,
         &build_dir,
+        args.no_default_features,
         &args.features,
     )
 }

@@ -74,6 +74,7 @@ pub fn build(
     debug_symbols: bool,
     target: Target,
     build_dir: &Utf8Path,
+    no_default_features: bool,
     features: &String,
 ) -> anyhow::Result<()> {
     std::env::set_current_dir(workspace_root())?;
@@ -118,7 +119,11 @@ pub fn build(
             "--lib",
             "--target=wasm32-unknown-unknown",
             &format!("--target-dir={}", target_wasm_dir.as_str()),
-            "--no-default-features",
+            if no_default_features {
+                "--no-default-features"
+            } else {
+                ""
+            },
             &format!("--features={features}"),
         ]);
         if profile == Profile::Release {
