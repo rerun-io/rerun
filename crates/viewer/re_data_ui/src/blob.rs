@@ -155,7 +155,11 @@ pub fn blob_preview_and_save_ui(
                     file_name.push_str(file_extension);
                 }
 
-                ctx.save_file_dialog(file_name, "Save blob".to_owned(), blob.to_vec());
+                ctx.command_sender.save_file_dialog(
+                    &file_name,
+                    "Save blob".to_owned(),
+                    blob.to_vec(),
+                );
             }
 
             #[cfg(not(target_arch = "wasm32"))]

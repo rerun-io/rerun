@@ -129,12 +129,10 @@ fn settings_screen_ui_impl(ui: &mut egui::Ui, app_options: &mut AppOptions, keep
     // Currently, the wasm target does not have any experimental features. If/when that changes,
     // move the conditional compilation flag to the respective checkbox code.
     #[cfg(not(target_arch = "wasm32"))]
-    {
+    // Currently there are no experimental features
+    if false {
         separator_with_some_space(ui);
         ui.strong("Experimental features");
-        ui
-            .re_checkbox(&mut app_options.experimental_space_view_screenshots, "Space view screenshots")
-            .on_hover_text("Allow taking screenshots of 2D and 3D space views via their context menu. Does not contain labels.");
     }
 }
 

@@ -28,63 +28,66 @@ pub mod test_context; //TODO(ab): this should be behind #[cfg(test)], but then `
 mod time_control;
 mod time_drag_value;
 mod typed_entity_collections;
+mod undo;
 mod utils;
 mod viewer_context;
 
 // TODO(andreas): Move to its own crate?
 pub mod gpu_bridge;
 
-pub use annotations::{
-    AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos,
+pub use self::{
+    annotations::{AnnotationMap, Annotations, ResolvedAnnotationInfo, ResolvedAnnotationInfos},
+    app_options::AppOptions,
+    blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes},
+    blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, SpaceViewId},
+    cache::{Cache, Caches, ImageDecodeCache, ImageStatsCache, TensorStatsCache, VideoCache},
+    collapsed_id::{CollapseItem, CollapseScope, CollapsedId},
+    command_sender::{
+        command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
+    },
+    component_fallbacks::{
+        ComponentFallbackError, ComponentFallbackProvider, ComponentFallbackProviderResult,
+        TypedComponentFallbackProvider,
+    },
+    component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, UiLayout},
+    contents::{blueprint_id_to_tile_id, Contents, ContentsName},
+    file_dialog::santitize_file_name,
+    image_info::{ColormapWithRange, ImageInfo},
+    item::Item,
+    maybe_mut_ref::MaybeMutRef,
+    query_context::{
+        DataQueryResult, DataResultHandle, DataResultNode, DataResultTree, QueryContext,
+    },
+    query_range::QueryRange,
+    selection_history::SelectionHistory,
+    selection_state::{
+        ApplicationSelectionState, HoverHighlight, InteractionHighlight, ItemCollection,
+        ItemSpaceContext, SelectionHighlight,
+    },
+    space_view::{
+        DataResult, IdentifiedViewSystem, OptionalSpaceViewEntityHighlight, OverridePath,
+        PerSystemDataResults, PerSystemEntities, PropertyOverrides, RecommendedSpaceView,
+        SmallVisualizerSet, SpaceViewClass, SpaceViewClassExt, SpaceViewClassLayoutPriority,
+        SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewEntityHighlight,
+        SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewSpawnHeuristics, SpaceViewState,
+        SpaceViewStateExt, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
+        SystemExecutionOutput, ViewContext, ViewContextCollection, ViewContextSystem, ViewQuery,
+        ViewStates, ViewSystemIdentifier, VisualizableFilterContext,
+        VisualizerAdditionalApplicabilityFilter, VisualizerCollection, VisualizerQueryInfo,
+        VisualizerSystem,
+    },
+    store_context::StoreContext,
+    store_hub::StoreHub,
+    tensor::{ImageStats, TensorStats},
+    time_control::{Looping, PlayState, TimeControl, TimeView},
+    time_drag_value::TimeDragValue,
+    typed_entity_collections::{
+        ApplicableEntities, IndicatedEntities, PerVisualizer, VisualizableEntities,
+    },
+    undo::BlueprintUndoState,
+    utils::{auto_color_egui, auto_color_for_entity_path, level_to_rich_text},
+    viewer_context::{RecordingConfig, ViewerContext},
 };
-pub use app_options::AppOptions;
-pub use blueprint_helpers::{blueprint_timeline, blueprint_timepoint_for_writes};
-pub use blueprint_id::{BlueprintId, BlueprintIdRegistry, ContainerId, SpaceViewId};
-pub use cache::{Cache, Caches, ImageDecodeCache, ImageStatsCache, TensorStatsCache, VideoCache};
-pub use collapsed_id::{CollapseItem, CollapseScope, CollapsedId};
-pub use command_sender::{
-    command_channel, CommandReceiver, CommandSender, SystemCommand, SystemCommandSender,
-};
-pub use component_fallbacks::{
-    ComponentFallbackError, ComponentFallbackProvider, ComponentFallbackProviderResult,
-    TypedComponentFallbackProvider,
-};
-pub use component_ui_registry::{ComponentUiRegistry, ComponentUiTypes, UiLayout};
-pub use contents::{blueprint_id_to_tile_id, Contents, ContentsName};
-pub use image_info::{ColormapWithRange, ImageInfo};
-pub use item::Item;
-pub use maybe_mut_ref::MaybeMutRef;
-pub use query_context::{
-    DataQueryResult, DataResultHandle, DataResultNode, DataResultTree, QueryContext,
-};
-pub use query_range::QueryRange;
-pub use selection_history::SelectionHistory;
-pub use selection_state::{
-    ApplicationSelectionState, HoverHighlight, InteractionHighlight, ItemCollection,
-    ItemSpaceContext, SelectionHighlight,
-};
-pub use space_view::{
-    DataResult, IdentifiedViewSystem, OptionalSpaceViewEntityHighlight, OverridePath,
-    PerSystemDataResults, PerSystemEntities, PropertyOverrides, RecommendedSpaceView,
-    SmallVisualizerSet, SpaceViewClass, SpaceViewClassExt, SpaceViewClassLayoutPriority,
-    SpaceViewClassRegistry, SpaceViewClassRegistryError, SpaceViewEntityHighlight,
-    SpaceViewHighlights, SpaceViewOutlineMasks, SpaceViewSpawnHeuristics, SpaceViewState,
-    SpaceViewStateExt, SpaceViewSystemExecutionError, SpaceViewSystemRegistrator,
-    SystemExecutionOutput, ViewContext, ViewContextCollection, ViewContextSystem, ViewQuery,
-    ViewStates, ViewSystemIdentifier, VisualizableFilterContext,
-    VisualizerAdditionalApplicabilityFilter, VisualizerCollection, VisualizerQueryInfo,
-    VisualizerSystem,
-};
-pub use store_context::StoreContext;
-pub use store_hub::StoreHub;
-pub use tensor::{ImageStats, TensorStats};
-pub use time_control::{Looping, PlayState, TimeControl, TimeView};
-pub use time_drag_value::TimeDragValue;
-pub use typed_entity_collections::{
-    ApplicableEntities, IndicatedEntities, PerVisualizer, VisualizableEntities,
-};
-pub use utils::{auto_color_egui, auto_color_for_entity_path, level_to_rich_text};
-pub use viewer_context::{RecordingConfig, ViewerContext};
 
 #[cfg(not(target_arch = "wasm32"))]
 mod clipboard;
@@ -124,4 +127,51 @@ pub fn contents_name_style(name: &ContentsName) -> re_ui::LabelStyle {
         ContentsName::Named(_) => re_ui::LabelStyle::Normal,
         ContentsName::Placeholder(_) => re_ui::LabelStyle::Unnamed,
     }
+}
+
+/// Info given to egui when taking a screenshot.
+///
+/// Specified what we are screenshotting.
+#[derive(Clone, Debug, PartialEq)]
+pub struct ScreenshotInfo {
+    /// What portion of the UI to take a screenshot of (in ui points).
+    pub ui_rect: Option<egui::Rect>,
+    pub pixels_per_point: f32,
+
+    /// Name of the screenshot (e.g. space view name), excluding file extension.
+    pub name: String,
+
+    /// Where to put the screenshot.
+    pub target: ScreenshotTarget,
+}
+
+/// Where to put the screenshot.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ScreenshotTarget {
+    /// The screenshot will be copied to the clipboard.
+    CopyToClipboard,
+
+    /// The screenshot will be saved to disk.
+    SaveToDisk,
+}
+
+// ----------------------------------------------------------------------------------------
+
+/// Used to publish info aboutr each space view.
+///
+/// We use this for space-view screenshotting.
+///
+/// Accessed with [`egui::Memory::caches`].
+pub type SpaceViewRectPublisher = egui::cache::FramePublisher<SpaceViewId, PublishedSpaceViewInfo>;
+
+/// Information about a space view that is published each frame by [`SpaceViewRectPublisher`].
+#[derive(Clone, Debug)]
+pub struct PublishedSpaceViewInfo {
+    /// Human-readable name of the space view.
+    pub name: String,
+
+    /// Where on screen (in ui coords).
+    ///
+    /// NOTE: this can include a highlighted border of the space-view.
+    pub rect: egui::Rect,
 }

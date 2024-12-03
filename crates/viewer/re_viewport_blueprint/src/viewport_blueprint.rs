@@ -1,19 +1,25 @@
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::{collections::BTreeMap, sync::Arc};
+use std::{
+    collections::BTreeMap,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 use ahash::HashMap;
 use egui_tiles::{SimplificationOptions, TileId};
 use nohash_hasher::IntSet;
 use parking_lot::Mutex;
-use re_types::{Archetype as _, SpaceViewClassIdentifier};
 use smallvec::SmallVec;
 
 use re_chunk_store::LatestAtQuery;
 use re_entity_db::EntityPath;
-use re_types::blueprint::components::ViewerRecommendationHash;
-use re_types_blueprint::blueprint::archetypes as blueprint_archetypes;
-use re_types_blueprint::blueprint::components::{
-    AutoLayout, AutoSpaceViews, RootContainer, SpaceViewMaximized,
+use re_types::{
+    blueprint::components::ViewerRecommendationHash, Archetype as _, SpaceViewClassIdentifier,
+};
+use re_types_blueprint::blueprint::{
+    archetypes as blueprint_archetypes,
+    components::{AutoLayout, AutoSpaceViews, RootContainer, SpaceViewMaximized},
 };
 use re_viewer_context::{
     blueprint_id_to_tile_id, ContainerId, Contents, Item, SpaceViewId, ViewerContext,
@@ -835,8 +841,8 @@ impl ViewportBlueprint {
             }
         }
 
-        // Clear any existing container blueprints that aren't referenced
-        // by any tiles.
+        // Clear any existing container blueprints that aren't referenced by any tiles,
+        // allowing the GC to remove the previous (non-clear) data from the store (saving RAM).
         for (container_id, container) in &self.containers {
             let tile_id = blueprint_id_to_tile_id(container_id);
             if self.tree.tiles.get(tile_id).is_none() {
@@ -872,8 +878,10 @@ impl ViewportBlueprint {
             .and_then(|contents| contents.as_container_id())
             .map(|container_id| RootContainer((container_id).into()))
         {
+            re_log::trace!("Saving with a root container");
             ctx.save_blueprint_component(&VIEWPORT_PATH.into(), &root_container);
         } else {
+            re_log::trace!("Saving empty viewport");
             ctx.save_empty_blueprint_component::<RootContainer>(&VIEWPORT_PATH.into());
         }
     }

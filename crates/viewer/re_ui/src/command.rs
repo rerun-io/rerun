@@ -21,6 +21,9 @@ pub enum UICommand {
     CloseCurrentRecording,
     CloseAllRecordings,
 
+    Undo,
+    Redo,
+
     #[cfg(not(target_arch = "wasm32"))]
     Quit,
 
@@ -120,7 +123,10 @@ impl UICommand {
             ),
 
             Self::CloseAllRecordings => ("Close all recordings",
-                "Close all open current recording (unsaved data will be lost)",),
+                "Close all open current recording (unsaved data will be lost)"),
+
+            Self::Undo => ("Undo", "Undo the last blueprint edit for the open recording"),
+            Self::Redo => ("Redo", "Redo the last undone thing"),
 
             #[cfg(not(target_arch = "wasm32"))]
             Self::Quit => ("Quit", "Close the Rerun Viewer"),
@@ -269,15 +275,15 @@ impl UICommand {
         }
 
         fn cmd_shift(key: Key) -> KeyboardShortcut {
-            KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::SHIFT), key)
+            KeyboardShortcut::new(Modifiers::COMMAND | Modifiers::SHIFT, key)
         }
 
         fn cmd_alt(key: Key) -> KeyboardShortcut {
-            KeyboardShortcut::new(Modifiers::COMMAND.plus(Modifiers::ALT), key)
+            KeyboardShortcut::new(Modifiers::COMMAND | Modifiers::ALT, key)
         }
 
         fn ctrl_shift(key: Key) -> KeyboardShortcut {
-            KeyboardShortcut::new(Modifiers::CTRL.plus(Modifiers::SHIFT), key)
+            KeyboardShortcut::new(Modifiers::CTRL | Modifiers::SHIFT, key)
         }
 
         match self {
@@ -288,6 +294,9 @@ impl UICommand {
             Self::Import => Some(cmd_shift(Key::O)),
             Self::CloseCurrentRecording => None,
             Self::CloseAllRecordings => None,
+
+            Self::Undo => Some(cmd(Key::Z)),
+            Self::Redo => Some(cmd_shift(Key::Z)),
 
             #[cfg(all(not(target_arch = "wasm32"), target_os = "windows"))]
             Self::Quit => Some(KeyboardShortcut::new(Modifiers::ALT, Key::F4)),

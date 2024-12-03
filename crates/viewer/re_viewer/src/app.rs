@@ -1,5 +1,7 @@
 use std::sync::Arc;
 
+use itertools::Itertools as _;
+
 use re_build_info::CrateVersion;
 use re_data_source::{DataSource, FileContents};
 use re_entity_db::entity_db::EntityDb;
@@ -10,9 +12,9 @@ use re_ui::{toasts, DesignTokens, UICommand, UICommandSender};
 use re_viewer_context::{
     command_channel,
     store_hub::{BlueprintPersistence, StoreHub, StoreHubStats},
-    AppOptions, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState, SpaceViewClass,
-    SpaceViewClassRegistry, SpaceViewClassRegistryError, StoreContext, SystemCommand,
-    SystemCommandSender,
+    AppOptions, BlueprintUndoState, CommandReceiver, CommandSender, ComponentUiRegistry, PlayState,
+    SpaceViewClass, SpaceViewClassRegistry, SpaceViewClassRegistryError, StoreContext,
+    SystemCommand, SystemCommandSender,
 };
 
 use crate::app_blueprint::PanelStateOverrides;
@@ -514,24 +516,21 @@ impl App {
                 store_hub.clear_active_blueprint();
                 egui_ctx.request_repaint(); // Many changes take a frame delay to show up.
             }
-            SystemCommand::UpdateBlueprint(blueprint_id, updates) => {
+            SystemCommand::UpdateBlueprint(blueprint_id, chunks) => {
+                re_log::trace!(
+                    "Update blueprint entities: {}",
+                    chunks.iter().map(|c| c.entity_path()).join(", ")
+                );
+
                 let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
 
-                if self.state.app_options.inspect_blueprint_timeline {
-                    // We may we viewing a historical blueprint, and doing an edit based on that.
-                    // We therefor throw away everything after the currently viewed time (like an undo)
-                    let last_kept_event_time = self.state.blueprint_query_for_viewer().at();
-                    let first_dropped_event_time = last_kept_event_time.inc();
-                    blueprint_db.drop_time_range(
-                        &re_viewer_context::blueprint_timeline(),
-                        re_log_types::ResolvedTimeRange::new(
-                            first_dropped_event_time,
-                            re_chunk::TimeInt::MAX,
-                        ),
-                    );
-                }
+                self.state
+                    .blueprint_undo_state
+                    .entry(blueprint_id)
+                    .or_default()
+                    .clear_redo_buffer(blueprint_db);
 
-                for chunk in updates {
+                for chunk in chunks {
                     match blueprint_db.add_chunk(&Arc::new(chunk)) {
                         Ok(_store_events) => {}
                         Err(err) => {
@@ -539,11 +538,23 @@ impl App {
                         }
                     }
                 }
-
-                // If we inspect the timeline, make sure we show the latest state:
-                let mut time_ctrl = self.state.blueprint_cfg.time_ctrl.write();
-                time_ctrl.set_play_state(blueprint_db.times_per_timeline(), PlayState::Following);
             }
+            SystemCommand::UndoBlueprint { blueprint_id } => {
+                let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
+                self.state
+                    .blueprint_undo_state
+                    .entry(blueprint_id)
+                    .or_default()
+                    .undo(blueprint_db);
+            }
+            SystemCommand::RedoBlueprint { blueprint_id } => {
+                self.state
+                    .blueprint_undo_state
+                    .entry(blueprint_id)
+                    .or_default()
+                    .redo();
+            }
+
             SystemCommand::DropEntity(blueprint_id, entity_path) => {
                 let blueprint_db = store_hub.entity_db_mut(&blueprint_id);
                 blueprint_db.drop_entity_path_recursive(&entity_path);
@@ -708,6 +719,21 @@ impl App {
             UICommand::CloseAllRecordings => {
                 self.command_sender
                     .send_system(SystemCommand::CloseAllRecordings);
+            }
+
+            UICommand::Undo => {
+                if let Some(store_context) = store_context {
+                    let blueprint_id = store_context.blueprint.store_id().clone();
+                    self.command_sender
+                        .send_system(SystemCommand::UndoBlueprint { blueprint_id });
+                }
+            }
+            UICommand::Redo => {
+                if let Some(store_context) = store_context {
+                    let blueprint_id = store_context.blueprint.store_id().clone();
+                    self.command_sender
+                        .send_system(SystemCommand::RedoBlueprint { blueprint_id });
+                }
             }
 
             #[cfg(not(target_arch = "wasm32"))]
@@ -1577,6 +1603,70 @@ impl App {
 
         false
     }
+
+    #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): screenshotting on web
+    fn process_screenshot_result(
+        &mut self,
+        image: &Arc<egui::ColorImage>,
+        user_data: &egui::UserData,
+    ) {
+        use re_viewer_context::ScreenshotInfo;
+
+        if let Some(info) = &user_data
+            .data
+            .as_ref()
+            .and_then(|data| data.downcast_ref::<ScreenshotInfo>())
+        {
+            let ScreenshotInfo {
+                ui_rect,
+                pixels_per_point,
+                name,
+                target,
+            } = (*info).clone();
+
+            let rgba = if let Some(ui_rect) = ui_rect {
+                Arc::new(image.region(&ui_rect, Some(pixels_per_point)))
+            } else {
+                image.clone()
+            };
+
+            match target {
+                re_viewer_context::ScreenshotTarget::CopyToClipboard => {
+                    #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): screenshotting on web
+                    re_viewer_context::Clipboard::with(|clipboard| {
+                        clipboard.set_image(
+                            [rgba.width(), rgba.height()],
+                            bytemuck::cast_slice(rgba.as_raw()),
+                        );
+                    });
+                }
+
+                re_viewer_context::ScreenshotTarget::SaveToDisk => {
+                    use image::ImageEncoder as _;
+                    let mut png_bytes: Vec<u8> = Vec::new();
+                    if let Err(err) = image::codecs::png::PngEncoder::new(&mut png_bytes)
+                        .write_image(
+                            rgba.as_raw(),
+                            rgba.width() as u32,
+                            rgba.height() as u32,
+                            image::ExtendedColorType::Rgba8,
+                        )
+                    {
+                        re_log::error!("Failed to encode screenshot as PNG: {err}");
+                    } else {
+                        let file_name = format!("{name}.png");
+                        self.command_sender.save_file_dialog(
+                            &file_name,
+                            "Save screenshot".to_owned(),
+                            png_bytes,
+                        );
+                    }
+                }
+            }
+        } else {
+            self.screenshotter.save(image);
+        }
+    }
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -1665,7 +1755,7 @@ impl eframe::App for App {
         // TODO(#2579): implement web-storage for blueprints as well
         if let Some(hub) = &mut self.store_hub {
             if self.state.app_options.blueprint_gc {
-                hub.gc_blueprints();
+                hub.gc_blueprints(&self.state.blueprint_undo_state);
             }
 
             if let Err(err) = hub.save_app_blueprints() {
@@ -1793,7 +1883,7 @@ impl eframe::App for App {
         self.receive_messages(&mut store_hub, egui_ctx);
 
         if self.app_options().blueprint_gc {
-            store_hub.gc_blueprints();
+            store_hub.gc_blueprints(&self.state.blueprint_undo_state);
         }
 
         store_hub.purge_empty();
@@ -1820,9 +1910,17 @@ impl eframe::App for App {
         {
             let store_context = store_hub.read_context();
 
+            let blueprint_query = store_context.as_ref().map_or(
+                BlueprintUndoState::default_query(),
+                |store_context| {
+                    self.state
+                        .blueprint_query_for_viewer(store_context.blueprint)
+                },
+            );
+
             let app_blueprint = AppBlueprint::new(
                 store_context.as_ref(),
-                &self.state.blueprint_query_for_viewer(),
+                &blueprint_query,
                 egui_ctx,
                 self.panel_state_overrides_active
                     .then_some(self.panel_state_overrides),
@@ -1861,11 +1959,14 @@ impl eframe::App for App {
         self.store_hub = Some(store_hub);
 
         // Check for returned screenshot:
-        #[cfg(not(target_arch = "wasm32"))]
+        #[cfg(not(target_arch = "wasm32"))] // TODO(#8264): screenshotting on web
         egui_ctx.input(|i| {
             for event in &i.raw.events {
-                if let egui::Event::Screenshot { image, .. } = event {
-                    self.screenshotter.save(image);
+                if let egui::Event::Screenshot {
+                    image, user_data, ..
+                } = event
+                {
+                    self.process_screenshot_result(image, user_data);
                 }
             }
         });
