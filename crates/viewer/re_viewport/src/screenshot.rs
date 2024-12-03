@@ -1,7 +1,7 @@
 use re_viewer_context::ScreenshotTarget;
 use re_viewport_blueprint::SpaceViewBlueprint;
 
-// TODO: use this
+// TODO: remove this
 pub fn handle_pending_space_view_screenshots(
     space_view: &SpaceViewBlueprint,
     data: &[u8],

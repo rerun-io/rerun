@@ -59,12 +59,14 @@ impl ContextMenuAction for ScreenshotAction {
             Self::SaveScreenshot => ScreenshotTarget::SaveToDisk,
         };
 
+        let name = "view".to_owned(); // TODO: get the name of the space view
+
         ctx.egui_context
             .send_viewport_cmd(egui::ViewportCommand::Screenshot(egui::UserData::new(
                 re_viewer_context::ScreenshotInfo {
                     ui_rect: Some(space_view_rect),
                     pixels_per_point: ctx.egui_context.pixels_per_point(),
-                    source: re_viewer_context::ScreenshotSource::SpaceView(*space_view_id),
+                    name,
                     target,
                 },
             )));

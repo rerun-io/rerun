@@ -137,17 +137,11 @@ pub struct ScreenshotInfo {
     pub ui_rect: Option<egui::Rect>,
     pub pixels_per_point: f32,
 
-    /// What we are screenshotting.
-    pub source: ScreenshotSource,
+    /// Name of the screenshot (e.g. space view name), excluding file extension.
+    pub name: String,
 
     /// Where to put the screenshot.
     pub target: ScreenshotTarget,
-}
-
-/// What we are screenshotting.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ScreenshotSource {
-    SpaceView(SpaceViewId),
 }
 
 /// Where to put the screenshot.

@@ -7,10 +7,7 @@ use re_types::{
     image::ImageKind,
 };
 use re_ui::UiExt as _;
-use re_viewer_context::{
-    HoverHighlight, ScreenshotTarget, SelectionHighlight, SpaceViewHighlights, SpaceViewState,
-    ViewerContext,
-};
+use re_viewer_context::{HoverHighlight, SelectionHighlight, SpaceViewHighlights, SpaceViewState};
 
 use crate::{
     eye::EyeMode,
@@ -338,35 +335,6 @@ pub fn paint_loading_spinners(
 
             egui::Spinner::new().paint_at(ui, rect);
         }
-    }
-}
-
-pub fn screenshot_context_menu(
-    _ctx: &ViewerContext<'_>,
-    _response: &egui::Response,
-) -> Option<ScreenshotTarget> {
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        if _ctx.app_options.experimental_space_view_screenshots {
-            let mut take_screenshot = None;
-            _response.context_menu(|ui| {
-                ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Extend);
-                if ui.button("Save screenshot to disk").clicked() {
-                    take_screenshot = Some(ScreenshotTarget::SaveToDisk);
-                    ui.close_menu();
-                } else if ui.button("Copy screenshot to clipboard").clicked() {
-                    take_screenshot = Some(ScreenshotTarget::CopyToClipboard);
-                    ui.close_menu();
-                }
-            });
-            take_screenshot
-        } else {
-            None
-        }
-    }
-    #[cfg(target_arch = "wasm32")]
-    {
-        None
     }
 }
 
