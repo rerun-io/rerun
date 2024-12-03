@@ -8,7 +8,7 @@ use crate::graph::NodeId;
 
 use super::request::EdgeTemplate;
 
-/// Uniquely identifies an [`EdgeSlot`] by ordering the [`NodeIds`](NodeId) that make up an edge.
+/// Uniquely identifies a [`Slot`] by ordering the [`NodeIds`](NodeId) that make up an edge.
 #[derive(Clone, Copy, Hash, PartialEq, Eq)]
 pub struct SlotId(NodeId, NodeId);
 
