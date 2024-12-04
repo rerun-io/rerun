@@ -289,11 +289,7 @@ pub fn draw_graph(
                     InstancePath::instance(entity_path.clone(), instance.instance_index);
                 ctx.select_hovered_on_click(
                     &response,
-                    vec![(
-                        Item::DataResult(query.space_view_id, instance_path.clone()),
-                        None,
-                    )]
-                    .into_iter(),
+                    Item::DataResult(query.space_view_id, instance_path.clone()),
                 );
 
                 response = response.on_hover_ui_at_pointer(|ui| {
@@ -313,28 +309,11 @@ pub fn draw_graph(
 
                 response
             }
-            Node::Implicit { edge_instance, .. } => {
-                let mut response = draw_node(ui, center, node.label(), Default::default());
-
-                // TODO(#6889): @grtlr This is only somewhat correct until we have tagged components.
-                let instance_path = InstancePath::instance(entity_path.clone(), *edge_instance);
-
-                response = response.on_hover_ui_at_pointer(|ui| {
-                    list_item::list_item_scope(ui, "graph_edge_hover", |ui| {
-                        item_ui::instance_path_button(
-                            ctx,
-                            &query.latest_at_query(),
-                            ctx.recording(),
-                            ui,
-                            Some(query.space_view_id),
-                            &instance_path,
-                        );
-
-                        instance_path.data_ui_recording(ctx, ui, UiLayout::Tooltip);
-                    });
-                });
-
-                response
+            Node::Implicit { graph_node, .. } => {
+                draw_node(ui, center, node.label(), Default::default()).on_hover_text(format!(
+                    "Implicit node {} created via a reference in a GraphEdge component",
+                    graph_node.as_str(),
+                ))
             }
         };
 
