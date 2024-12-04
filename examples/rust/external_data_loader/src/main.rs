@@ -29,9 +29,17 @@ struct Args {
     #[argh(positional)]
     filepath: std::path::PathBuf,
 
+    /// optional recommended ID for the opened application
+    #[argh(option)]
+    opened_application_id: Option<String>,
+
     /// optional recommended ID for the application
     #[argh(option)]
     application_id: Option<String>,
+
+    /// optional recommended ID for the opened recording
+    #[argh(option)]
+    opened_recording_id: Option<String>,
 
     /// optional recommended ID for the recording
     #[argh(option)]
@@ -83,11 +91,19 @@ fn main() -> anyhow::Result<()> {
 
     let rec = {
         let mut rec = rerun::RecordingStreamBuilder::new(
-            args.application_id
-                .as_deref()
-                .unwrap_or("rerun_example_external_data_loader"),
+            args.opened_application_id.as_deref().unwrap_or(
+                args.application_id
+                    .as_deref()
+                    .unwrap_or("rerun_example_external_data_loader"),
+            ),
         );
-        if let Some(recording_id) = args.recording_id.as_ref() {
+
+        let recording_id = args
+            .opened_recording_id
+            .as_ref()
+            .or(args.recording_id.as_ref());
+
+        if let Some(recording_id) = recording_id {
             rec = rec.recording_id(recording_id);
         };
 
