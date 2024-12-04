@@ -143,13 +143,7 @@ impl Item {
                 re_log_types::StoreKind::Recording => "Recording ID",
                 re_log_types::StoreKind::Blueprint => "Blueprint ID",
             },
-            Self::InstancePath(instance_path) => {
-                if instance_path.instance.is_specific() {
-                    "Entity instance"
-                } else {
-                    "Entity"
-                }
-            }
+            Self::InstancePath(instance_path) => instance_path.kind(),
             Self::ComponentPath(_) => "Entity component",
             Self::SpaceView(_) => "View",
             Self::Container(_) => "Container",
