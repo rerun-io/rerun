@@ -14,6 +14,7 @@ from .. import datatypes
 from .._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
+    ComponentDescriptor,
     ComponentMixin,
 )
 from .annotation_context_ext import AnnotationContextExt
@@ -131,7 +132,7 @@ class AnnotationContextBatch(BaseBatch[AnnotationContextArrayLike], ComponentBat
             metadata={},
         )
     )
-    _COMPONENT_NAME: str = "rerun.components.AnnotationContext"
+    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.AnnotationContext")
 
     @staticmethod
     def _native_to_pa_array(data: AnnotationContextArrayLike, data_type: pa.DataType) -> pa.Array:

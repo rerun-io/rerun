@@ -6,7 +6,7 @@ from typing import Any, Iterable
 import pyarrow as pa
 import rerun_bindings as bindings
 
-from ._baseclasses import AsComponents, ComponentBatchLike
+from ._baseclasses import AsComponents, ComponentBatchLike, ComponentDescriptor
 from .error_utils import _send_warning_or_raise, catch_and_log_exceptions
 from .recording_stream import RecordingStream
 
@@ -42,6 +42,9 @@ class IndicatorComponentBatch:
 
     def as_arrow_array(self) -> pa.Array:
         return self.data
+
+    def component_descriptor(self) -> ComponentDescriptor:
+        return ComponentDescriptor(self.component_name())
 
 
 @catch_and_log_exceptions()
@@ -253,11 +256,11 @@ def log_components(
         )
         static = True
 
-    instanced: dict[str, pa.Array] = {}
+    instanced: dict[ComponentDescriptor, pa.Array] = {}
 
     components = list(components)
 
-    names = [comp.component_name() for comp in components]
+    descriptors = [comp.component_descriptor() for comp in components]
     arrow_arrays = [comp.as_arrow_array() for comp in components]
 
     if num_instances is None:
@@ -268,7 +271,7 @@ def log_components(
 
     added = set()
 
-    for name, array in zip(names, arrow_arrays):
+    for descr, array in zip(descriptors, arrow_arrays):
         # Array could be None if there was an error producing the empty array
         # Nothing we can do at this point other than ignore it. Some form of error
         # should have been logged.
@@ -276,16 +279,16 @@ def log_components(
             continue
 
         # Skip components which were logged multiple times.
-        if name in added:
+        if descr in added:
             _send_warning_or_raise(
-                f"Component {name} was included multiple times. Only the first instance will be used.",
+                f"Component {descr} was included multiple times. Only the first instance will be used.",
                 depth_to_user_code=1,
             )
             continue
         else:
-            added.add(name)
+            added.add(descr)
 
-        instanced[name] = array
+        instanced[descr] = array
 
     bindings.log_arrow_msg(  # pyright: ignore[reportGeneralTypeIssues]
         entity_path,

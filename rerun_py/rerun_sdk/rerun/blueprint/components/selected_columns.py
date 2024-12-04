@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from ..._baseclasses import (
     ComponentBatchMixin,
+    ComponentDescriptor,
     ComponentMixin,
 )
 from ...blueprint import datatypes as blueprint_datatypes
@@ -25,7 +26,7 @@ class SelectedColumns(blueprint_datatypes.SelectedColumns, ComponentMixin):
 
 
 class SelectedColumnsBatch(blueprint_datatypes.SelectedColumnsBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.SelectedColumns"
+    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.SelectedColumns")
 
 
 # This is patched in late to avoid circular dependencies.
