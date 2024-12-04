@@ -30366,7 +30366,7 @@ packages:
   sha256: 47c3d5402bdc07984228039a79f4be949d93fce1ec565e64bbc1ff00b3bd928f
   requires_dist:
   - attrs>=23.1.0
-  - numpy>=1.23,<2
+  - numpy>=1.23
   - pillow>=8.0.0
   - pyarrow>=14.0.2
   - typing-extensions>=4.5
