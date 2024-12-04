@@ -145,13 +145,9 @@ impl ItemTitle {
                     let view_class = view.class(ctx.space_view_class_registry);
 
                     let hover_text = if let Some(display_name) = view.display_name.as_ref() {
-                        format!(
-                            "View {:?} of type {}",
-                            display_name,
-                            view_class.display_name()
-                        )
+                        format!("{} view {display_name:?}", view_class.display_name(),)
                     } else {
-                        format!("View of type {}", view_class.display_name())
+                        format!("{} view", view_class.display_name())
                     };
 
                     let view_name = view.display_name_or_default();
