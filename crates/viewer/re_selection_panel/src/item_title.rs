@@ -1,5 +1,7 @@
+use re_chunk::EntityPath;
 use re_data_ui::item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity};
-use re_ui::{icons, SyntaxHighlighting as _};
+use re_entity_db::InstancePath;
+use re_ui::{icons, syntax_highlighting::InstanceWithCarets, SyntaxHighlighting as _};
 use re_viewer_context::{contents_name_style, Item, ViewerContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -59,8 +61,24 @@ impl ItemTitle {
             }
 
             Item::InstancePath(instance_path) => {
+                let InstancePath {
+                    entity_path,
+                    instance,
+                } = instance_path;
+
                 let typ = item.kind();
-                let name = instance_path.syntax_highlighted(style);
+
+                let name = if instance.is_all() {
+                    // Entity path
+                    if let Some(last) = entity_path.last() {
+                        last.syntax_highlighted(style)
+                    } else {
+                        EntityPath::root().syntax_highlighted(style)
+                    }
+                } else {
+                    // Instance path
+                    InstanceWithCarets(*instance).syntax_highlighted(style)
+                };
 
                 Self::new(name, guess_instance_path_icon(ctx, instance_path))
                     .with_tooltip(format!("{typ} '{instance_path}'"))

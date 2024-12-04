@@ -2,16 +2,15 @@
 
 mod command;
 mod command_palette;
-mod design_tokens;
-mod syntax_highlighting;
-
 mod context_ext;
+mod design_tokens;
 pub mod drag_and_drop;
 pub mod icons;
 pub mod list_item;
 mod markdown_utils;
 pub mod modal;
 mod section_collapsing_header;
+pub mod syntax_highlighting;
 pub mod toasts;
 mod ui_ext;
 pub mod zoom_pan_area;

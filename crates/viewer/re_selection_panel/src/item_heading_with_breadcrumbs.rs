@@ -40,6 +40,7 @@ pub fn item_heading_with_breadcrumbs(
                         .max_rect(context.rect)
                         .layout(egui::Layout::left_to_right(egui::Align::Center)),
                     |ui| {
+                        ui.spacing_mut().item_spacing.x = 4.0;
                         item_heading_contents(ctx, viewport, ui, item);
                     },
                 );
@@ -58,7 +59,20 @@ fn item_heading_contents(
             // TODO(emilk): maybe some of these could have breadcrumbs
         }
         Item::InstancePath(instance_path) => {
-            // TODO: bread-crumbs of the entity path
+            let InstancePath {
+                entity_path,
+                instance,
+            } = instance_path;
+
+            if instance.is_all() {
+                // Entity path
+                if let [ancestry @ .., _] = entity_path.as_slice() {
+                    entity_path_breadcrumbs(ctx, ui, ancestry);
+                }
+            } else {
+                // Instance path
+                entity_path_breadcrumbs(ctx, ui, entity_path.as_slice());
+            }
         }
         Item::ComponentPath(component_path) => {
             entity_path_breadcrumbs(ctx, ui, component_path.entity_path.as_slice());
