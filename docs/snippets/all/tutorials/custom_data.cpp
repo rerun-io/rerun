@@ -49,12 +49,9 @@ struct rerun::AsComponents<CustomPoints3D> {
 
         // Add custom confidence components if present.
         if (archetype.confidences) {
-            // TODO: with_methods would be nice
-            auto descriptor = rerun::ComponentDescriptor(
-                "user.CustomPoints3D",
-                "confidences",
-                rerun::Loggable<Confidence>::Descriptor.component_name
-            );
+            auto descriptor = rerun::Loggable<Confidence>::Descriptor
+                                  .or_with_archetype_name("user.CustomPoints3D")
+                                  .or_with_archetype_field_name("confidences");
             batches.push_back(
                 ComponentBatch::from_loggable(*archetype.confidences, descriptor).value_or_throw()
             );

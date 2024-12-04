@@ -3,8 +3,6 @@
 #include <optional>
 #include <string_view>
 
-// TODO: to_string maybe?
-
 namespace rerun {
     /// A `ComponentDescriptor` fully describes the semantics of a column of data.
     ///
@@ -32,8 +30,6 @@ namespace rerun {
         /// Example: `rerun.components.Position3D`.
         std::string_view component_name;
 
-        // TODO: {entity_path}@{archetype_name}:{component_name}#{archetype_field_name}
-
         constexpr ComponentDescriptor(
             std::optional<std::string_view> archetype_name_,
             std::optional<std::string_view> archetype_field_name_, std::string_view component_name_
@@ -56,6 +52,78 @@ namespace rerun {
         constexpr ComponentDescriptor(const char* component_name_)
             : component_name(component_name_) {}
 
-        // TODO: override helpers?
+        /// Unconditionally sets `archetype_name` to the given one.
+        ComponentDescriptor with_archetype_name(std::optional<std::string_view> archetype_name_
+        ) const {
+            ComponentDescriptor descriptor = *this;
+            descriptor.archetype_name = archetype_name_;
+            return descriptor;
+        }
+
+        /// Unconditionally sets `archetype_name` to the given one.
+        ComponentDescriptor with_archetype_name(const char* archetype_name_) const {
+            ComponentDescriptor descriptor = *this;
+            descriptor.archetype_name = archetype_name_;
+            return descriptor;
+        }
+
+        /// Unconditionally sets `archetype_field_name` to the given one.
+        ComponentDescriptor with_archetype_field_name(
+            std::optional<std::string_view> archetype_field_name_
+        ) const {
+            ComponentDescriptor descriptor = *this;
+            descriptor.archetype_field_name = archetype_field_name_;
+            return descriptor;
+        }
+
+        /// Unconditionally sets `archetype_field_name` to the given one.
+        ComponentDescriptor with_archetype_field_name(const char* archetype_field_name_) const {
+            ComponentDescriptor descriptor = *this;
+            descriptor.archetype_field_name = archetype_field_name_;
+            return descriptor;
+        }
+
+        /// Sets `archetype_name` to the given one iff it's not already set.
+        ComponentDescriptor or_with_archetype_name(std::optional<std::string_view> archetype_name_
+        ) const {
+            if (this->archetype_field_name.has_value()) {
+                return *this;
+            }
+            ComponentDescriptor descriptor = *this;
+            descriptor.archetype_name = archetype_name_;
+            return descriptor;
+        }
+
+        /// Sets `archetype_name` to the given one iff it's not already set.
+        ComponentDescriptor or_with_archetype_name(const char* archetype_name_) const {
+            if (this->archetype_field_name.has_value()) {
+                return *this;
+            }
+            ComponentDescriptor descriptor = *this;
+            descriptor.archetype_name = archetype_name_;
+            return descriptor;
+        }
+
+        /// Sets `archetype_field_name` to the given one iff it's not already set.
+        ComponentDescriptor or_with_archetype_field_name(
+            std::optional<std::string_view> archetype_field_name_
+        ) const {
+            if (this->archetype_field_name.has_value()) {
+                return *this;
+            }
+            ComponentDescriptor descriptor = *this;
+            descriptor.archetype_field_name = archetype_field_name_;
+            return descriptor;
+        }
+
+        /// Sets `archetype_field_name` to the given one iff it's not already set.
+        ComponentDescriptor or_with_archetype_field_name(const char* archetype_field_name_) const {
+            if (this->archetype_field_name.has_value()) {
+                return *this;
+            }
+            ComponentDescriptor descriptor = *this;
+            descriptor.archetype_field_name = archetype_field_name_;
+            return descriptor;
+        }
     };
 } // namespace rerun
