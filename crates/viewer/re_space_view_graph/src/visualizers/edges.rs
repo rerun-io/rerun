@@ -1,5 +1,5 @@
 use re_chunk::LatestAtQuery;
-use re_log_types::EntityPath;
+use re_log_types::{EntityPath, Instance};
 use re_space_view::{DataResultQuery, RangeResultsExt};
 use re_types::{
     self, archetypes,
@@ -19,30 +19,30 @@ pub struct EdgesVisualizer {
 }
 
 pub struct EdgeInstance {
+    pub instance: Instance,
     pub source: GraphNode,
     pub target: GraphNode,
     pub source_index: NodeId,
     pub target_index: NodeId,
 }
 
-impl std::hash::Hash for EdgeInstance {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        // We use the more verbose destructring here, to make sure that we
-        // exhaustively consider all fields when hashing (we get a compiler
-        // warning when we forget a field).
-        let Self {
-            // The index fields already uniquely identify `source` and `target`.
-            source: _,
-            target: _,
-            source_index,
-            target_index,
-        } = self;
-        source_index.hash(state);
-        target_index.hash(state);
-    }
-}
+// impl std::hash::Hash for EdgeInstance {
+//     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+//         // We use the more verbose destructring here, to make sure that we
+//         // exhaustively consider all fields when hashing (we get a compiler
+//         // warning when we forget a field).
+//         let Self {
+//             // The index fields already uniquely identify `source` and `target`.
+//             source: _,
+//             target: _,
+//             source_index,
+//             target_index,
+//         } = self;
+//         source_index.hash(state);
+//         target_index.hash(state);
+//     }
+// }
 
-#[derive(Hash)]
 pub struct EdgeData {
     pub graph_type: components::GraphType,
     pub edges: Vec<EdgeInstance>,
@@ -81,7 +81,8 @@ impl VisualizerSystem for EdgesVisualizer {
             for (_index, edges) in all_indexed_edges.component::<GraphEdge>() {
                 let edges = edges
                     .iter()
-                    .map(|edge| {
+                    .enumerate()
+                    .map(|(i, edge)| {
                         let source = GraphNode::from(edge.first.clone());
                         let target = GraphNode::from(edge.second.clone());
 
@@ -90,6 +91,7 @@ impl VisualizerSystem for EdgesVisualizer {
                         let target_index = NodeId::from_entity_node(entity_path, &target);
 
                         EdgeInstance {
+                            instance: Instance::from(i as u64),
                             source,
                             target,
                             source_index,

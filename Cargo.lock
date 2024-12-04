@@ -6242,6 +6242,7 @@ dependencies = [
  "fjadra",
  "nohash-hasher",
  "re_chunk",
+ "re_data_ui",
  "re_entity_db",
  "re_format",
  "re_log_types",

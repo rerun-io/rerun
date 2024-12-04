@@ -5,11 +5,13 @@ use egui::{
     Rect, Response, RichText, Sense, Shape, Stroke, TextWrapMode, Ui, UiBuilder, Vec2, WidgetText,
 };
 use re_chunk::EntityPath;
+use re_data_ui::{item_ui, DataUi as _};
 use re_entity_db::InstancePath;
 use re_types::ArrowString;
+use re_ui::list_item;
 use re_viewer_context::{
-    HoverHighlight, InteractionHighlight, Item, SelectionHighlight, SpaceViewHighlights, ViewQuery,
-    ViewerContext,
+    HoverHighlight, InteractionHighlight, Item, SelectionHighlight, SpaceViewHighlights, UiLayout,
+    ViewQuery, ViewerContext,
 };
 
 use crate::{
@@ -281,29 +283,58 @@ pub fn draw_graph(
         let response = match node {
             Node::Explicit { instance, .. } => {
                 let highlight = entity_highlights.index_highlight(instance.instance_index);
-                let response = draw_node(ui, center, node.label(), highlight);
-
-                let response = if let Label::Text { text, .. } = &instance.label {
-                    response.on_hover_text(format!(
-                        "Graph Node: {}\nLabel: {text}",
-                        instance.graph_node.as_str(),
-                    ))
-                } else {
-                    response.on_hover_text(format!("Graph Node: {}", instance.graph_node.as_str(),))
-                };
+                let mut response = draw_node(ui, center, node.label(), highlight);
 
                 let instance_path =
                     InstancePath::instance(entity_path.clone(), instance.instance_index);
                 ctx.select_hovered_on_click(
                     &response,
-                    vec![(Item::DataResult(query.space_view_id, instance_path), None)].into_iter(),
+                    vec![(
+                        Item::DataResult(query.space_view_id, instance_path.clone()),
+                        None,
+                    )]
+                    .into_iter(),
                 );
+
+                response = response.on_hover_ui_at_pointer(|ui| {
+                    list_item::list_item_scope(ui, "graph_node_hover", |ui| {
+                        item_ui::instance_path_button(
+                            ctx,
+                            &query.latest_at_query(),
+                            ctx.recording(),
+                            ui,
+                            Some(query.space_view_id),
+                            &instance_path,
+                        );
+
+                        instance_path.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                    });
+                });
 
                 response
             }
-            Node::Implicit { graph_node, .. } => {
-                draw_node(ui, center, node.label(), Default::default())
-                    .on_hover_text(format!("Implicit Graph Node: {}", graph_node.as_str(),))
+            Node::Implicit { edge_instance, .. } => {
+                let mut response = draw_node(ui, center, node.label(), Default::default());
+
+                // TODO(#6889): @grtlr This is only somewhat correct until we have tagged components.
+                let instance_path = InstancePath::instance(entity_path.clone(), *edge_instance);
+
+                response = response.on_hover_ui_at_pointer(|ui| {
+                    list_item::list_item_scope(ui, "graph_edge_hover", |ui| {
+                        item_ui::instance_path_button(
+                            ctx,
+                            &query.latest_at_query(),
+                            ctx.recording(),
+                            ui,
+                            Some(query.space_view_id),
+                            &instance_path,
+                        );
+
+                        instance_path.data_ui_recording(ctx, ui, UiLayout::Tooltip);
+                    });
+                });
+
+                response
             }
         };
 

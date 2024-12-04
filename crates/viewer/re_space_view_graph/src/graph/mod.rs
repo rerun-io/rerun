@@ -12,6 +12,7 @@ mod ids;
 pub(crate) use ids::{EdgeId, NodeId};
 
 use re_chunk::EntityPath;
+use re_log_types::Instance;
 use re_types::components::{self, GraphType};
 
 use crate::{
@@ -36,6 +37,7 @@ pub enum Node {
     Implicit {
         id: NodeId,
         graph_node: components::GraphNode,
+        edge_instance: Instance,
         label: DrawableLabel,
     },
 }
@@ -115,6 +117,7 @@ impl Graph {
                         id: edge.source_index,
                         graph_node: edge.source.clone(),
                         label: DrawableLabel::implicit_circle(),
+                        edge_instance: edge.instance,
                     });
                     seen.insert(edge.source_index);
                 }
@@ -123,6 +126,7 @@ impl Graph {
                         id: edge.target_index,
                         graph_node: edge.target.clone(),
                         label: DrawableLabel::implicit_circle(),
+                        edge_instance: edge.instance,
                     });
                     seen.insert(edge.target_index);
                 }
