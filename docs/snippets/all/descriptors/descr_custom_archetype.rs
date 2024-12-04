@@ -82,7 +82,7 @@ impl rerun::AsComponents for CustomPoints3D {
 
 #[allow(clippy::unwrap_used)]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    const APP_ID: &str = "rerun_example_descriptors_custom_component_vanilla";
+    const APP_ID: &str = "rerun_example_descriptors_custom_archetype";
 
     let rec = rerun::RecordingStreamBuilder::new(APP_ID).spawn()?;
 
@@ -126,9 +126,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         descriptors.sort();
 
         let expected = vec![
-            rerun::ComponentBatch::descriptor(&CustomPoints3D::indicator()).into_owned(),
-            CustomPoints3D::overridden_color_descriptor(),
-            CustomPoints3D::overridden_position_descriptor(),
+            ComponentDescriptor {
+                archetype_name: None,
+                archetype_field_name: None,
+                component_name: "user.CustomPoints3DIndicator".into(),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("user.CustomArchetype".into()),
+                archetype_field_name: Some("colors".into()),
+                component_name: rerun::components::Color::name(),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("user.CustomArchetype".into()),
+                archetype_field_name: Some("positions".into()),
+                component_name: "user.CustomPosition3D".into(),
+            },
         ];
 
         similar_asserts::assert_eq!(expected, descriptors);
