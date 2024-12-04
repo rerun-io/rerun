@@ -12,7 +12,7 @@ README = """\
 # Graph view
 
 Please check the following:
-* Run the graph view in an endless loop and see if how it looks good (TM).
+* Run the graph view in an endless loop and see if it looks good (TM).
 * Try scrubbing the timeline to see how the graph layout changes over time.
 """
 
