@@ -279,7 +279,11 @@ fn color_space_ui(
                     ctx.recording(),
                 );
             });
-            ctx.select_hovered_on_click(&interact, Item::DataResult(query.space_view_id, instance));
+            ctx.select_hovered_on_click(
+                &interact,
+                Item::DataResult(query.space_view_id, instance),
+                false,
+            );
         }
     }
 

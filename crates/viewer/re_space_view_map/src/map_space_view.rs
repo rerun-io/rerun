@@ -484,6 +484,7 @@ fn handle_ui_interactions(
         ctx.select_hovered_on_click(
             &map_response,
             Item::DataResult(query.space_view_id, instance_path.clone()),
+            false,
         );
 
         // double click selects the entire entity

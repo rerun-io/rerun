@@ -248,6 +248,7 @@ Display a 1D tensor as a bar chart.
                         query.space_view_id,
                         entity_path.clone().into(),
                     ),
+                    false,
                 );
             }
         });

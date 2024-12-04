@@ -222,7 +222,7 @@ fn app_and_its_recordings_ui(
         app_id.data_ui_recording(ctx, ui, UiLayout::Tooltip);
     });
 
-    ctx.select_hovered_on_click(&item_response, app_item);
+    ctx.select_hovered_on_click(&item_response, app_item, false);
 
     if item_response.clicked() {
         // Switch to this application:

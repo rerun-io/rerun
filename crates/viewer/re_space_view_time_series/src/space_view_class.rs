@@ -536,7 +536,7 @@ Display time series data in a plot.
                     }
                 })
             {
-                ctx.select_hovered_on_click(&response, hovered);
+                ctx.select_hovered_on_click(&response, hovered, false);
             }
         }
 
