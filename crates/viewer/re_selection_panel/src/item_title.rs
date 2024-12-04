@@ -101,7 +101,7 @@ impl ItemTitle {
                                 container_blueprint.container_kind,
                             )
                         } else {
-                            format!("Unnamed {:?} container", container_blueprint.container_kind,)
+                            format!("{:?} container", container_blueprint.container_kind,)
                         };
 
                     let container_name = container_blueprint.display_name_or_default();
@@ -128,12 +128,12 @@ impl ItemTitle {
 
                     let hover_text = if let Some(display_name) = view.display_name.as_ref() {
                         format!(
-                            "Space view {:?} of type {}",
+                            "View {:?} of type {}",
                             display_name,
                             view_class.display_name()
                         )
                     } else {
-                        format!("Unnamed view of type {}", view_class.display_name())
+                        format!("View of type {}", view_class.display_name())
                     };
 
                     let view_name = view.display_name_or_default();
