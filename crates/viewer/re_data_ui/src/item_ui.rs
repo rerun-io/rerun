@@ -65,7 +65,14 @@ pub fn entity_path_parts_buttons(
     let with_individual_icons = false; // too much noise with icons in a path
 
     ui.horizontal(|ui| {
-        ui.spacing_mut().item_spacing.x = 2.0;
+        {
+            ui.spacing_mut().item_spacing.x = 2.0;
+
+            // The last part points to the selected entity, but that's ugly, so remove the highlight:
+            let visuals = ui.visuals_mut();
+            visuals.selection.bg_fill = egui::Color32::TRANSPARENT;
+            visuals.selection.stroke = visuals.widgets.inactive.fg_stroke;
+        }
 
         if !with_individual_icons {
             // Show one single icon up-front instead:

@@ -54,51 +54,69 @@ fn item_heading_contents(
     ui: &mut egui::Ui,
     item: &Item,
 ) {
-    match item {
-        Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) => {
-            // TODO(emilk): maybe some of these could have breadcrumbs
-        }
-        Item::InstancePath(instance_path) => {
-            let InstancePath {
-                entity_path,
-                instance,
-            } = instance_path;
-
-            if instance.is_all() {
-                // Entity path
-                if let [ancestry @ .., _] = entity_path.as_slice() {
-                    entity_path_breadcrumbs(ctx, ui, ancestry);
-                }
-            } else {
-                // Instance path
-                entity_path_breadcrumbs(ctx, ui, entity_path.as_slice());
-            }
-        }
-        Item::ComponentPath(component_path) => {
-            entity_path_breadcrumbs(ctx, ui, component_path.entity_path.as_slice());
-        }
-        Item::Container(container_id) => {
-            if let Some(parent) = viewport.parent(&Contents::Container(*container_id)) {
-                viewport_breadcrumbs(ctx, viewport, ui, Contents::Container(parent));
-            }
-        }
-        Item::SpaceView(view_id) => {
-            if let Some(parent) = viewport.parent(&Contents::SpaceView(*view_id)) {
-                viewport_breadcrumbs(ctx, viewport, ui, Contents::Container(parent));
-            }
-        }
-        Item::DataResult(view_id, _) => {
-            viewport_breadcrumbs(ctx, viewport, ui, Contents::SpaceView(*view_id));
-
-            // TODO(#4491): breadcrumbs for data results entity paths and projections
-            // if let Some(view) = viewport.view(view_id) {
-            //     let query_result = ctx.lookup_query_result(*view_id);
-            //     let result_tree = &query_result.tree;
-            //     let root_node = result_tree.root_node();
-            // let origin =
-            //     DataResultNodeOrPath::from_path_lookup(result_tree, &view.space_origin);
-        }
+    {
+        // No background rectangles, even for hovered items
+        let visuals = ui.visuals_mut();
+        visuals.widgets.active.bg_fill = egui::Color32::TRANSPARENT;
+        visuals.widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
+        visuals.widgets.hovered.bg_fill = egui::Color32::TRANSPARENT;
+        visuals.widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
     }
+
+    ui.scope(|ui| {
+        // Breadcrumbs
+        {
+            // Dimmer colors for breadcrumbs
+            let visuals = ui.visuals_mut();
+            visuals.widgets.inactive.fg_stroke.color = visuals.text_color();
+        }
+
+        match item {
+            Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) => {
+                // TODO(emilk): maybe some of these could have breadcrumbs
+            }
+            Item::InstancePath(instance_path) => {
+                let InstancePath {
+                    entity_path,
+                    instance,
+                } = instance_path;
+
+                if instance.is_all() {
+                    // Entity path
+                    if let [ancestry @ .., _] = entity_path.as_slice() {
+                        entity_path_breadcrumbs(ctx, ui, ancestry);
+                    }
+                } else {
+                    // Instance path
+                    entity_path_breadcrumbs(ctx, ui, entity_path.as_slice());
+                }
+            }
+            Item::ComponentPath(component_path) => {
+                entity_path_breadcrumbs(ctx, ui, component_path.entity_path.as_slice());
+            }
+            Item::Container(container_id) => {
+                if let Some(parent) = viewport.parent(&Contents::Container(*container_id)) {
+                    viewport_breadcrumbs(ctx, viewport, ui, Contents::Container(parent));
+                }
+            }
+            Item::SpaceView(view_id) => {
+                if let Some(parent) = viewport.parent(&Contents::SpaceView(*view_id)) {
+                    viewport_breadcrumbs(ctx, viewport, ui, Contents::Container(parent));
+                }
+            }
+            Item::DataResult(view_id, _) => {
+                viewport_breadcrumbs(ctx, viewport, ui, Contents::SpaceView(*view_id));
+
+                // TODO(#4491): breadcrumbs for data results entity paths and projections
+                // if let Some(view) = viewport.view(view_id) {
+                //     let query_result = ctx.lookup_query_result(*view_id);
+                //     let result_tree = &query_result.tree;
+                //     let root_node = result_tree.root_node();
+                // let origin =
+                //     DataResultNodeOrPath::from_path_lookup(result_tree, &view.space_origin);
+            }
+        }
+    });
 
     let ItemTitle {
         icon,
@@ -107,10 +125,10 @@ fn item_heading_contents(
         tooltip,
     } = ItemTitle::from_item(ctx, viewport, ui.style(), item);
 
-    let mut response = ui.add(egui::Button::image_and_text(
-        icon.as_image().fit_to_original_size(ICON_SCALE),
-        label,
-    ));
+    let mut response = ui.add(
+        egui::Button::image_and_text(icon.as_image().fit_to_original_size(ICON_SCALE), label)
+            .image_tint_follows_text_color(true),
+    );
     if let Some(tooltip) = tooltip {
         response = response.on_hover_text(tooltip);
     }
@@ -129,11 +147,12 @@ fn entity_path_breadcrumbs(
             entity_path_breadcrumbs(ctx, ui, ancestry);
 
             let first_char = last.unescaped_str().chars().next().unwrap_or('?');
-            egui::Button::new(first_char.to_string())
+            egui::Button::new(first_char.to_string()).image_tint_follows_text_color(true)
         }
         _ => {
             // Root
             egui::Button::image(icons::RECORDING.as_image().fit_to_original_size(ICON_SCALE))
+                .image_tint_follows_text_color(true)
         }
     };
 
@@ -143,11 +162,7 @@ fn entity_path_breadcrumbs(
     let item = Item::from(entity_path);
     cursor_interact_with_selectable(ctx, response, item);
 
-    ui.add(
-        icons::BREADCRUMBS_SEPARATOR_ENTITY
-            .as_image()
-            .fit_to_original_size(ICON_SCALE),
-    );
+    separator_icon_ui(ui, icons::BREADCRUMBS_SEPARATOR_ENTITY);
 }
 
 fn viewport_breadcrumbs(
@@ -170,17 +185,22 @@ fn viewport_breadcrumbs(
         tooltip,
     } = ItemTitle::from_item(ctx, viewport, ui.style(), &item);
 
-    let mut response = ui.add(egui::Button::image(
-        icon.as_image().fit_to_original_size(ICON_SCALE),
-    ));
+    let mut response = ui.add(
+        egui::Button::image(icon.as_image().fit_to_original_size(ICON_SCALE))
+            .image_tint_follows_text_color(true),
+    );
     if let Some(tooltip) = tooltip {
         response = response.on_hover_text(tooltip);
     }
     cursor_interact_with_selectable(ctx, response, item);
 
+    separator_icon_ui(ui, icons::BREADCRUMBS_SEPARATOR_BLUEPRINT);
+}
+
+fn separator_icon_ui(ui: &mut egui::Ui, icon: re_ui::Icon) {
     ui.add(
-        icons::BREADCRUMBS_SEPARATOR_BLUEPRINT
-            .as_image()
-            .fit_to_original_size(ICON_SCALE),
+        icon.as_image()
+            .fit_to_original_size(ICON_SCALE)
+            .tint(ui.visuals().text_color()),
     );
 }
