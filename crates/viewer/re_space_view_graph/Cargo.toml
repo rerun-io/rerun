@@ -19,6 +19,7 @@ workspace = true
 all-features = true
 
 [dependencies]
+re_data_ui.workspace = true
 re_chunk.workspace = true
 re_entity_db.workspace = true
 re_format.workspace = true
