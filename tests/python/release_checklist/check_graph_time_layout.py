@@ -9,11 +9,13 @@ import rerun as rr
 import rerun.blueprint as rrb
 
 README = """\
-# Graph view
+# Time-varying graph view
+
+Please watch out for any twitching, jumping, or other wise unexpected changes to
+the layout when navigating the timeline.
 
 Please check the following:
-* Run the graph view in an endless loop and see if it looks good (TM).
-* Try scrubbing the timeline to see how the graph layout changes over time.
+* Scrub the timeline to see how the graph layout changes over time.
 """
 
 
