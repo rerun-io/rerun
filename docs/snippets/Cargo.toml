@@ -29,4 +29,10 @@ rust-format.workspace = true
 
 [package.metadata.cargo-machete]
 # false positives because they aren't used until codegen is run:
-ignored = ["ndarray", "rand", "rand_distr", "rerun"]
+ignored = [
+  "ndarray",
+  "rand",
+  "rand_distr",
+  "rerun",
+  "similar-asserts",
+]
