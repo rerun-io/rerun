@@ -104,15 +104,25 @@ impl LayoutState {
                 self // no op
             }
             // We need to recompute the layout.
-            Self::None | Self::Finished { .. } => {
+            Self::None => {
                 let provider = ForceLayoutProvider::new(new_request);
                 let layout = provider.init();
 
                 Self::InProgress { layout, provider }
             }
-            Self::InProgress { provider, .. } if provider.request != new_request => {
-                let provider = ForceLayoutProvider::new(new_request);
-                let layout = provider.init();
+            Self::Finished { layout, .. } => {
+                let mut provider = ForceLayoutProvider::new_with_previous(new_request, &layout);
+                let mut layout = provider.init();
+                provider.tick(&mut layout);
+
+                Self::InProgress { layout, provider }
+            }
+            Self::InProgress {
+                layout, provider, ..
+            } if provider.request != new_request => {
+                let mut provider = ForceLayoutProvider::new_with_previous(new_request, &layout);
+                let mut layout = provider.init();
+                provider.tick(&mut layout);
 
                 Self::InProgress { layout, provider }
             }

@@ -3,8 +3,8 @@ from __future__ import annotations
 import os
 import random
 from argparse import Namespace
-
 from uuid import uuid4
+
 import rerun as rr
 import rerun.blueprint as rrb
 
@@ -12,7 +12,8 @@ README = """\
 # Graph view
 
 Please check the following:
-* Run the graph view in an endless loop and see if how it looks (TM).
+* Run the graph view in an endless loop and see if how it looks good (TM).
+* Try scrubbing the timeline to see how the graph layout changes over time.
 """
 
 
@@ -24,6 +25,7 @@ def log_graphs() -> None:
     nodes = ["root"]
     edges = []
 
+    # Randomly add nodes and edges to the graph
     for i in range(50):
         existing = random.choice(nodes)
         new_node = str(i)
