@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../component_descriptor.hpp"
 #include "../result.hpp"
 
 #include <cstdint>
@@ -46,7 +47,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<components::TransformRelation> {
-        static constexpr const char Name[] = "rerun.components.TransformRelation";
+        static constexpr ComponentDescriptor Descriptor = "rerun.components.TransformRelation";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();

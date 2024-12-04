@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include "../component_descriptor.hpp"
 #include "../result.hpp"
 #include "utf8.hpp"
 
@@ -43,7 +44,7 @@ namespace rerun {
     /// \private
     template <>
     struct Loggable<datatypes::Utf8Pair> {
-        static constexpr const char Name[] = "rerun.datatypes.Utf8Pair";
+        static constexpr ComponentDescriptor Descriptor = "rerun.datatypes.Utf8Pair";
 
         /// Returns the arrow data type this type corresponds to.
         static const std::shared_ptr<arrow::DataType>& arrow_datatype();

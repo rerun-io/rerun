@@ -4,6 +4,7 @@
 #include <optional>
 
 #include "collection.hpp"
+#include "component_descriptor.hpp"
 #include "component_type.hpp"
 #include "error.hpp"
 #include "loggable.hpp"
@@ -32,6 +33,16 @@ namespace rerun {
         /// Automatically registers the component type the first time this type is encountered.
         template <typename T>
         static Result<ComponentBatch> from_loggable(const rerun::Collection<T>& components) {
+            return from_loggable(components, Loggable<T>::Descriptor);
+        }
+
+        /// Creates a new component batch from a collection of component instances.
+        ///
+        /// Automatically registers the component type the first time this type is encountered.
+        template <typename T>
+        static Result<ComponentBatch> from_loggable(
+            const rerun::Collection<T>& components, const ComponentDescriptor& descriptor
+        ) {
             static_assert(
                 rerun::is_loggable<T>,
                 "The given type does not implement the rerun::Loggable trait."
@@ -39,8 +50,7 @@ namespace rerun {
 
             // Register type, only done once per type (but error check happens every time).
             static const Result<ComponentTypeHandle> component_type =
-                ComponentType(Loggable<T>::Name, Loggable<T>::arrow_datatype())
-                    .register_component();
+                ComponentType(descriptor, Loggable<T>::arrow_datatype()).register_component();
             RR_RETURN_NOT_OK(component_type.error);
 
             /// TODO(#4257) should take a rerun::Collection instead of pointer and size.
@@ -63,6 +73,18 @@ namespace rerun {
             return from_loggable(collection);
         }
 
+        /// Creates a new component batch from a single component instance.
+        ///
+        /// Automatically registers the component type the first time this type is encountered.
+        template <typename T>
+        static Result<ComponentBatch> from_loggable(
+            const T& component, const ComponentDescriptor& descriptor
+        ) {
+            // Collection adapter will automatically borrow for single elements, but let's do this explicitly, avoiding the extra hoop.
+            const auto collection = Collection<T>::borrow(&component, 1);
+            return from_loggable(collection, descriptor);
+        }
+
         /// Creates a new data cell from a single optional component instance.
         ///
         /// None is represented as a data cell with 0 instances.
@@ -74,6 +96,22 @@ namespace rerun {
                 return from_loggable(component.value());
             } else {
                 return from_loggable(Collection<T>());
+            }
+        }
+
+        /// Creates a new data cell from a single optional component instance.
+        ///
+        /// None is represented as a data cell with 0 instances.
+        ///
+        /// Automatically registers the component type the first time this type is encountered.
+        template <typename T>
+        static Result<ComponentBatch> from_loggable(
+            const std::optional<T>& component, const ComponentDescriptor& descriptor
+        ) {
+            if (component.has_value()) {
+                return from_loggable(component.value(), descriptor);
+            } else {
+                return from_loggable(Collection<T>(), descriptor);
             }
         }
 
@@ -90,6 +128,23 @@ namespace rerun {
                 return from_loggable(components.value());
             } else {
                 return from_loggable(Collection<T>());
+            }
+        }
+
+        /// Creates a new data cell from an optional collection of component instances.
+        ///
+        /// None is represented as a data cell with 0 instances.
+        ///
+        /// Automatically registers the component type the first time this type is encountered.
+        template <typename T>
+        static Result<ComponentBatch> from_loggable(
+            const std::optional<rerun::Collection<T>>& components,
+            const ComponentDescriptor& descriptor
+        ) {
+            if (components.has_value()) {
+                return from_loggable(components.value(), descriptor);
+            } else {
+                return from_loggable(Collection<T>(), descriptor);
             }
         }
 

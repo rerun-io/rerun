@@ -7,6 +7,7 @@
 #include "../../collection.hpp"
 #include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
+#include "../../component_descriptor.hpp"
 #include "../../components/tensor_dimension_index_selection.hpp"
 #include "../../components/tensor_height_dimension.hpp"
 #include "../../components/tensor_width_dimension.hpp"

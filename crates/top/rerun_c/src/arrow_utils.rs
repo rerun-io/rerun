@@ -1,6 +1,6 @@
 use crate::{CError, CErrorCode};
 
-/// Converts a C-FFI arrow array into a Rust component batch, taking ownership of the underlying arrow data. ///
+/// Converts a C-FFI arrow array into a Rust component batch, taking ownership of the underlying arrow data.
 ///
 /// Safety:
 /// This must only be ever called once for a given ffi array.

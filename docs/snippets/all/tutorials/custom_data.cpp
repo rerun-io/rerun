@@ -8,10 +8,29 @@ struct Confidence {
     float value;
 };
 
+template <>
+struct rerun::Loggable<Confidence> {
+    static constexpr ComponentDescriptor Descriptor = "user.Confidence";
+
+    static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
+        return rerun::Loggable<rerun::Float32>::arrow_datatype();
+    }
+
+    // TODO(#4257) should take a rerun::Collection instead of pointer and size.
+    static rerun::Result<std::shared_ptr<arrow::Array>> to_arrow(
+        const Confidence* instances, size_t num_instances
+    ) {
+        return rerun::Loggable<rerun::Float32>::to_arrow(
+            reinterpret_cast<const rerun::Float32*>(instances),
+            num_instances
+        );
+    }
+};
+
 /// A custom archetype that extends Rerun's builtin `rerun::Points3D` archetype with a custom component.
 struct CustomPoints3D {
-    static constexpr const char IndicatorName[] = "user.CustomPoints3DIndicator";
-    using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorName>;
+    static constexpr const char IndicatorComponentName[] = "user.CustomPoints3DIndicator";
+    using IndicatorComponent = rerun::components::IndicatorComponent<IndicatorComponentName>;
 
     rerun::Points3D points;
     // Using a rerun::Collection is not strictly necessary, you could also use an std::vector for example,
@@ -30,32 +49,18 @@ struct rerun::AsComponents<CustomPoints3D> {
 
         // Add custom confidence components if present.
         if (archetype.confidences) {
-            batches.push_back(ComponentBatch::from_loggable(*archetype.confidences).value_or_throw()
+            // TODO: with_methods would be nice
+            auto descriptor = rerun::ComponentDescriptor(
+                "user.CustomPoints3D",
+                "confidences",
+                rerun::Loggable<Confidence>::Descriptor.component_name
+            );
+            batches.push_back(
+                ComponentBatch::from_loggable(*archetype.confidences, descriptor).value_or_throw()
             );
         }
 
         return batches;
-    }
-};
-
-// ---
-
-template <>
-struct rerun::Loggable<Confidence> {
-    static constexpr const char Name[] = "user.Confidence";
-
-    static const std::shared_ptr<arrow::DataType>& arrow_datatype() {
-        return rerun::Loggable<rerun::Float32>::arrow_datatype();
-    }
-
-    // TODO(#4257) should take a rerun::Collection instead of pointer and size.
-    static rerun::Result<std::shared_ptr<arrow::Array>> to_arrow(
-        const Confidence* instances, size_t num_instances
-    ) {
-        return rerun::Loggable<rerun::Float32>::to_arrow(
-            reinterpret_cast<const rerun::Float32*>(instances),
-            num_instances
-        );
     }
 };
 

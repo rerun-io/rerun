@@ -285,7 +285,7 @@ impl Chunk {
                 timelines == rhs_timelines
             }
             // TODO(cmc): we cannot compare tags yet, need to support Python & C++ first
-            // && *components == rhs.components
+            && *components == rhs.components // TODO
             && {
                 let lhs_components_no_tags: ChunkComponents = components
                     .clone()

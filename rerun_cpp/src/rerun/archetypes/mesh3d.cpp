@@ -17,47 +17,110 @@ namespace rerun {
         cells.reserve(10);
 
         {
-            auto result = ComponentBatch::from_loggable(archetype.vertex_positions);
+            auto result = ComponentBatch::from_loggable(
+                archetype.vertex_positions,
+                ComponentDescriptor(
+                    "rerun.archetypes.Mesh3D",
+                    "vertex_positions",
+                    "rerun.components.Position3D"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.triangle_indices.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.triangle_indices.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.triangle_indices.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.Mesh3D",
+                    "triangle_indices",
+                    "rerun.components.TriangleIndices"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.vertex_normals.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.vertex_normals.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.vertex_normals.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.Mesh3D",
+                    "vertex_normals",
+                    "rerun.components.Vector3D"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.vertex_colors.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.vertex_colors.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.vertex_colors.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.Mesh3D",
+                    "vertex_colors",
+                    "rerun.components.Color"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.vertex_texcoords.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.vertex_texcoords.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.vertex_texcoords.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.Mesh3D",
+                    "vertex_texcoords",
+                    "rerun.components.Texcoord2D"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.albedo_factor.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.albedo_factor.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.albedo_factor.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.Mesh3D",
+                    "albedo_factor",
+                    "rerun.components.AlbedoFactor"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.albedo_texture_buffer.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.albedo_texture_buffer.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.albedo_texture_buffer.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.Mesh3D",
+                    "albedo_texture_buffer",
+                    "rerun.components.ImageBuffer"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.albedo_texture_format.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.albedo_texture_format.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.albedo_texture_format.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.Mesh3D",
+                    "albedo_texture_format",
+                    "rerun.components.ImageFormat"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.class_ids.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.class_ids.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.class_ids.value(),
+                ComponentDescriptor(
+                    "rerun.archetypes.Mesh3D",
+                    "class_ids",
+                    "rerun.components.ClassId"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
