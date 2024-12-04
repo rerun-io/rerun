@@ -116,7 +116,7 @@ impl Graph {
                     nodes.push(Node::Implicit {
                         id: edge.source_index,
                         graph_node: edge.source.clone(),
-                        label: DrawableLabel::implicit_circle(),
+                        label: DrawableLabel::implicit_circle(ui),
                         edge_instance: edge.instance,
                     });
                     seen.insert(edge.source_index);
@@ -125,7 +125,7 @@ impl Graph {
                     nodes.push(Node::Implicit {
                         id: edge.target_index,
                         graph_node: edge.target.clone(),
-                        label: DrawableLabel::implicit_circle(),
+                        label: DrawableLabel::implicit_circle(ui),
                         edge_instance: edge.instance,
                     });
                     seen.insert(edge.target_index);
