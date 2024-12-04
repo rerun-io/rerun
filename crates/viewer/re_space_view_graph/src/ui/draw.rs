@@ -56,10 +56,10 @@ impl DrawableLabel {
         Self::Circle(CircleLabel { radius, color })
     }
 
-    pub fn implicit_circle() -> Self {
+    pub fn implicit_circle(ui: &Ui) -> Self {
         Self::Circle(CircleLabel {
             radius: 4.0,
-            color: None,
+            color: Some(ui.style().visuals.weak_text_color()),
         })
     }
 
