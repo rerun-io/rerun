@@ -1,7 +1,7 @@
 //! The UI for the selection panel.
 
 mod defaults_ui;
-mod item_heading;
+mod item_heading_with_breadcrumbs;
 mod item_title;
 mod selection_history_ui;
 mod selection_panel;

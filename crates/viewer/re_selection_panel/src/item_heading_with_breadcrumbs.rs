@@ -19,7 +19,7 @@ use crate::ItemTitle;
 const ICON_SCALE: f32 = 0.5; // Because we save all icons as 2x
 
 /// We show this above each item section
-pub fn item_heading(
+pub fn item_heading_with_breadcrumbs(
     ctx: &ViewerContext<'_>,
     viewport: &ViewportBlueprint,
     ui: &mut egui::Ui,

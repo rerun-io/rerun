@@ -20,8 +20,8 @@ use re_viewport_blueprint::{ui::show_add_space_view_or_container_modal, Viewport
 
 use crate::space_view_entity_picker::SpaceViewEntityPicker;
 use crate::{
-    defaults_ui::view_components_defaults_section_ui, item_heading::item_heading,
-    visualizer_ui::visualizer_ui,
+    defaults_ui::view_components_defaults_section_ui,
+    item_heading_with_breadcrumbs::item_heading_with_breadcrumbs, visualizer_ui::visualizer_ui,
 };
 use crate::{
     selection_history_ui::SelectionHistoryUi,
@@ -127,7 +127,7 @@ impl SelectionPanel {
         };
         for (i, item) in selection.iter_items().enumerate() {
             list_item::list_item_scope(ui, item, |ui| {
-                item_heading(ctx, viewport, ui, item);
+                item_heading_with_breadcrumbs(ctx, viewport, ui, item);
                 self.item_ui(ctx, viewport, view_states, ui, item, ui_layout);
             });
 
