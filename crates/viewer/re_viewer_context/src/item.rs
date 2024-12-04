@@ -1,7 +1,7 @@
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{ComponentPath, DataPath, EntityPath};
 
-use crate::{ContainerId, SpaceViewId};
+use crate::{ContainerId, Contents, SpaceViewId};
 
 /// One "thing" in the UI.
 ///
@@ -76,6 +76,16 @@ impl From<InstancePath> for Item {
     #[inline]
     fn from(instance_path: InstancePath) -> Self {
         Self::InstancePath(instance_path)
+    }
+}
+
+impl From<Contents> for Item {
+    #[inline]
+    fn from(contents: Contents) -> Self {
+        match contents {
+            Contents::Container(container_id) => Self::Container(container_id),
+            Contents::SpaceView(space_view_id) => Self::SpaceView(space_view_id),
+        }
     }
 }
 

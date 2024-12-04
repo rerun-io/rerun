@@ -9,11 +9,14 @@
 //! The item is an icon and a name.
 //! Each bread-crumb is clickable, as is the last item.
 
-use re_ui::{list_item, DesignTokens, UiExt as _};
-use re_viewer_context::{Item, SystemCommandSender as _, ViewerContext};
+use re_data_ui::item_ui::cursor_interact_with_selectable;
+use re_ui::{icons, list_item, DesignTokens, UiExt as _};
+use re_viewer_context::{Contents, Item, ViewerContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
 use crate::ItemTitle;
+
+const ICON_SCALE: f32 = 0.5; // Because we save all icons as 2x
 
 /// We show this above each item section
 pub fn item_heading(
@@ -47,25 +50,78 @@ fn item_heading_contents(
     ui: &mut egui::Ui,
     item: &Item,
 ) {
-    let item_title = ItemTitle::from_item(ctx, viewport, ui.style(), item);
+    match item {
+        Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) => {
+            // TODO(emilk): maybe some of these could have
+        }
+        Item::InstancePath(_) => {
+            // TODO: bread-crumbs of the entity path
+        }
+        Item::ComponentPath(component_path) => {
+            // TODO: bread-crumbs of the entity path
+        }
+        Item::Container(container_id) => {
+            if let Some(parent) = viewport.parent(&Contents::Container(*container_id)) {
+                viewport_breadcrumbs(ctx, viewport, ui, Contents::Container(parent));
+            }
+        }
+        Item::SpaceView(view_id) => {
+            if let Some(parent) = viewport.parent(&Contents::SpaceView(*view_id)) {
+                viewport_breadcrumbs(ctx, viewport, ui, Contents::Container(parent));
+            }
+        }
+        Item::DataResult(view_id, _) => {
+            viewport_breadcrumbs(ctx, viewport, ui, Contents::SpaceView(*view_id));
+        }
+    }
 
     let ItemTitle {
         name,
         tooltip,
         icon,
         label_style,
-    } = item_title;
+    } = ItemTitle::from_item(ctx, viewport, ui.style(), item);
 
-    let response = ui.add(egui::Button::image_and_text(icon.as_image(), name));
-
-    if response.clicked() {
-        // If the user has multiple things selected but only wants to have one thing selected,
-        // this is how they can do it.
-        ctx.command_sender
-            .send_system(re_viewer_context::SystemCommand::SetSelection(item.clone()));
-    }
-
+    let mut response = ui.add(egui::Button::image_and_text(
+        icon.as_image().fit_to_original_size(ICON_SCALE),
+        name,
+    ));
     if let Some(tooltip) = tooltip {
-        response.on_hover_text(tooltip);
+        response = response.on_hover_text(tooltip);
     }
+    cursor_interact_with_selectable(ctx, response, item.clone());
+}
+
+fn viewport_breadcrumbs(
+    ctx: &ViewerContext<'_>,
+    viewport: &ViewportBlueprint,
+    ui: &mut egui::Ui,
+    contents: Contents,
+) {
+    let item = Item::from(contents);
+
+    if let Some(parent) = viewport.parent(&contents) {
+        viewport_breadcrumbs(ctx, viewport, ui, parent.into());
+    }
+
+    let ItemTitle {
+        name: _, // ignored: we just show the icon for breadcrumbs
+        tooltip,
+        icon,
+        label_style: _, // no label
+    } = ItemTitle::from_item(ctx, viewport, ui.style(), &item);
+
+    let mut response = ui.add(egui::Button::image(
+        icon.as_image().fit_to_original_size(ICON_SCALE),
+    ));
+    if let Some(tooltip) = tooltip {
+        response = response.on_hover_text(tooltip);
+    }
+    cursor_interact_with_selectable(ctx, response, item);
+
+    ui.add(
+        icons::BREADCRUMBS_SEPARATOR
+            .as_image()
+            .fit_to_original_size(ICON_SCALE),
+    );
 }
