@@ -4,7 +4,7 @@ use re_space_view::{
     view_property_ui,
 };
 use re_types::{
-    blueprint::{self, archetypes::VisualBounds2D},
+    blueprint::{self, archetypes::{ForceLink, VisualBounds2D}},
     SpaceViewClassIdentifier,
 };
 use re_ui::{
@@ -130,6 +130,7 @@ Display a graph of nodes and edges.
         });
 
         view_property_ui::<VisualBounds2D>(ctx, ui, space_view_id, self, state);
+        view_property_ui::<ForceLink>(ctx, ui, space_view_id, self, state);
 
         Ok(())
     }

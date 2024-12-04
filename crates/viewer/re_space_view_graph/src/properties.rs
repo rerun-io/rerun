@@ -1,4 +1,4 @@
-use re_types::blueprint::components::VisualBounds2D;
+use re_types::blueprint::{components::ForceLink, components::VisualBounds2D};
 use re_viewer_context::{SpaceViewStateExt as _, TypedComponentFallbackProvider};
 
 use crate::{ui::GraphSpaceViewState, GraphSpaceView};
@@ -20,4 +20,10 @@ impl TypedComponentFallbackProvider<VisualBounds2D> for GraphSpaceView {
     }
 }
 
-re_viewer_context::impl_component_fallback_provider!(GraphSpaceView => [VisualBounds2D]);
+impl TypedComponentFallbackProvider<ForceLink> for GraphSpaceView {
+    fn fallback_for(&self, _: &re_viewer_context::QueryContext<'_>) -> ForceLink {
+        ForceLink::default()
+    }
+}
+
+re_viewer_context::impl_component_fallback_provider!(GraphSpaceView => [VisualBounds2D, ForceLink]);
