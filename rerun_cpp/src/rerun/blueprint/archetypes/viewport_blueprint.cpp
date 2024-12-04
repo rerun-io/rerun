@@ -18,28 +18,62 @@ namespace rerun {
         cells.reserve(6);
 
         if (archetype.root_container.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.root_container.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.root_container.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.ViewportBlueprint",
+                    "root_container",
+                    "rerun.blueprint.components.RootContainer"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.maximized.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.maximized.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.maximized.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.ViewportBlueprint",
+                    "maximized",
+                    "rerun.blueprint.components.SpaceViewMaximized"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.auto_layout.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.auto_layout.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.auto_layout.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.ViewportBlueprint",
+                    "auto_layout",
+                    "rerun.blueprint.components.AutoLayout"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.auto_space_views.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.auto_space_views.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.auto_space_views.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.ViewportBlueprint",
+                    "auto_space_views",
+                    "rerun.blueprint.components.AutoSpaceViews"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.past_viewer_recommendations.has_value()) {
-            auto result =
-                ComponentBatch::from_loggable(archetype.past_viewer_recommendations.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.past_viewer_recommendations.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.ViewportBlueprint",
+                    "past_viewer_recommendations",
+                    "rerun.blueprint.components.ViewerRecommendationHash"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

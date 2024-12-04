@@ -6,6 +6,7 @@
 #include "../../blueprint/components/visual_bounds2d.hpp"
 #include "../../collection.hpp"
 #include "../../component_batch.hpp"
+#include "../../component_descriptor.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 

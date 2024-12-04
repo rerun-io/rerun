@@ -6,6 +6,7 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
+#include "../component_descriptor.hpp"
 #include "../components/color.hpp"
 #include "../components/text.hpp"
 #include "../components/text_log_level.hpp"

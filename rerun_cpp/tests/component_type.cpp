@@ -7,6 +7,9 @@
 
 #define TEST_TAG "[component_type]"
 
+// TODO: should we keep these tests working by having a special constructor for
+// ComponentType with just a ComponentName?
+
 SCENARIO("Component type registration" TEST_TAG) {
     GIVEN("A valid component type") {
         rerun::ComponentType type("test", arrow::float64());

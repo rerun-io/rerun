@@ -17,12 +17,26 @@ namespace rerun {
         cells.reserve(3);
 
         {
-            auto result = ComponentBatch::from_loggable(archetype.kind);
+            auto result = ComponentBatch::from_loggable(
+                archetype.kind,
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.Background",
+                    "kind",
+                    "rerun.blueprint.components.BackgroundKind"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
         if (archetype.color.has_value()) {
-            auto result = ComponentBatch::from_loggable(archetype.color.value());
+            auto result = ComponentBatch::from_loggable(
+                archetype.color.value(),
+                ComponentDescriptor(
+                    "rerun.blueprint.archetypes.Background",
+                    "color",
+                    "rerun.components.Color"
+                )
+            );
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }

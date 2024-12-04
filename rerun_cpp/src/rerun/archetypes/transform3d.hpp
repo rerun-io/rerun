@@ -6,6 +6,7 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
+#include "../component_descriptor.hpp"
 #include "../components/axis_length.hpp"
 #include "../components/rotation_axis_angle.hpp"
 #include "../components/rotation_quat.hpp"

@@ -6,6 +6,7 @@
 #include "../collection.hpp"
 #include "../compiler_utils.hpp"
 #include "../component_batch.hpp"
+#include "../component_descriptor.hpp"
 #include "../components/draw_order.hpp"
 #include "../components/image_buffer.hpp"
 #include "../components/image_format.hpp"
