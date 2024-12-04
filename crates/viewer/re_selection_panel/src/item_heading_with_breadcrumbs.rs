@@ -14,7 +14,7 @@ use re_data_ui::item_ui::cursor_interact_with_selectable;
 use re_entity_db::InstancePath;
 use re_log_types::EntityPathPart;
 use re_ui::{icons, list_item, DesignTokens, UiExt as _};
-use re_viewer_context::{Contents, Item, ViewerContext};
+use re_viewer_context::{Contents, Item, SpaceViewId, ViewerContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
 use crate::ItemTitle;
@@ -84,15 +84,15 @@ fn item_heading_contents(
                 if instance.is_all() {
                     // Entity path
                     if let [ancestry @ .., _] = entity_path.as_slice() {
-                        entity_path_breadcrumbs(ctx, ui, ancestry);
+                        entity_path_breadcrumbs(ctx, ui, None, ancestry);
                     }
                 } else {
                     // Instance path
-                    entity_path_breadcrumbs(ctx, ui, entity_path.as_slice());
+                    entity_path_breadcrumbs(ctx, ui, None, entity_path.as_slice());
                 }
             }
             Item::ComponentPath(component_path) => {
-                entity_path_breadcrumbs(ctx, ui, component_path.entity_path.as_slice());
+                entity_path_breadcrumbs(ctx, ui, None, component_path.entity_path.as_slice());
             }
             Item::Container(container_id) => {
                 if let Some(parent) = viewport.parent(&Contents::Container(*container_id)) {
@@ -104,16 +104,30 @@ fn item_heading_contents(
                     viewport_breadcrumbs(ctx, viewport, ui, Contents::Container(parent));
                 }
             }
-            Item::DataResult(view_id, _) => {
+            Item::DataResult(view_id, instance_path) => {
                 viewport_breadcrumbs(ctx, viewport, ui, Contents::SpaceView(*view_id));
 
-                // TODO(#4491): breadcrumbs for data results entity paths and projections
-                // if let Some(view) = viewport.view(view_id) {
-                //     let query_result = ctx.lookup_query_result(*view_id);
-                //     let result_tree = &query_result.tree;
-                //     let root_node = result_tree.root_node();
-                // let origin =
-                //     DataResultNodeOrPath::from_path_lookup(result_tree, &view.space_origin);
+                let InstancePath {
+                    entity_path,
+                    instance,
+                } = instance_path;
+
+                if let Some(view) = viewport.view(view_id) {
+                    if entity_path.starts_with(&view.space_origin) {
+                        let relative = &entity_path.as_slice()[view.space_origin.len()..];
+
+                        if instance.is_all() {
+                            // we will show last part in full, later
+                            if let [all_but_last @ .., _] = relative {
+                                entity_path_breadcrumbs(ctx, ui, Some(*view_id), all_but_last);
+                            }
+                        } else {
+                            entity_path_breadcrumbs(ctx, ui, Some(*view_id), relative);
+                        }
+                    } else {
+                        ui.label("TODO"); // TODO
+                    }
+                }
             }
         }
     });
@@ -138,13 +152,14 @@ fn item_heading_contents(
 fn entity_path_breadcrumbs(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
+    view_id: Option<SpaceViewId>,
     entity_parts: &[EntityPathPart],
 ) {
     // Match on everything plus last
     let button = match entity_parts {
         [ancestry @ .., last] => {
             // Recurse!
-            entity_path_breadcrumbs(ctx, ui, ancestry);
+            entity_path_breadcrumbs(ctx, ui, view_id, ancestry);
 
             let first_char = last.unescaped_str().chars().next().unwrap_or('?');
             egui::Button::new(first_char.to_string()).image_tint_follows_text_color(true)
@@ -159,7 +174,11 @@ fn entity_path_breadcrumbs(
     let entity_path = EntityPath::new(entity_parts.to_vec());
     let response = ui.add(button).on_hover_text(entity_path.to_string());
 
-    let item = Item::from(entity_path);
+    let item = if let Some(view_id) = view_id {
+        Item::DataResult(view_id, entity_path.into())
+    } else {
+        Item::from(entity_path)
+    };
     cursor_interact_with_selectable(ctx, response, item);
 
     separator_icon_ui(ui, icons::BREADCRUMBS_SEPARATOR_ENTITY);

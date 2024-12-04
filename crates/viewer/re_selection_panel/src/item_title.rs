@@ -45,10 +45,7 @@ impl ItemTitle {
             Item::SpaceView(view_id) => Self::from_view_id(ctx, viewport, view_id),
 
             Item::DataResult(view_id, instance_path) => {
-                let name = instance_path.syntax_highlighted(style);
-
-                let item_title = Self::new(name, guess_instance_path_icon(ctx, instance_path));
-
+                let item_title = Self::from_instance_path(ctx, style, instance_path);
                 if let Some(view) = viewport.view(view_id) {
                     let kind = item.kind();
                     item_title.with_tooltip(format!(

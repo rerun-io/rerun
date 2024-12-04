@@ -209,25 +209,30 @@ impl SelectionPanel {
             }
 
             Item::DataResult(view_id, instance_path) => {
-                if let Some(view) = viewport.view(view_id) {
+                ui.list_item_flat_noninteractive(PropertyContent::new("Stream entity").value_fn(
+                    |ui, _| {
+                        let (query, db) =
+                            guess_query_and_db_for_selected_entity(ctx, &instance_path.entity_path);
+
+                        item_ui::entity_path_parts_buttons(
+                            ctx,
+                            &query,
+                            db,
+                            ui,
+                            None,
+                            &instance_path.entity_path,
+                        );
+                    },
+                ));
+
+                if instance_path.instance.is_specific() {
                     ui.list_item_flat_noninteractive(
-                        PropertyContent::new("Stream entity").value_fn(|ui, _| {
-                            let (query, db) = guess_query_and_db_for_selected_entity(
-                                ctx,
-                                &instance_path.entity_path,
-                            );
-
-                            item_ui::entity_path_parts_buttons(
-                                ctx,
-                                &query,
-                                db,
-                                ui,
-                                None,
-                                &instance_path.entity_path,
-                            );
-                        }),
+                        PropertyContent::new("Instance")
+                            .value_text(instance_path.instance.to_string()),
                     );
+                }
 
+                if let Some(view) = viewport.view(view_id) {
                     ui.list_item_flat_noninteractive(PropertyContent::new("In view").value_fn(
                         |ui, _| {
                             space_view_button(ctx, ui, view);
