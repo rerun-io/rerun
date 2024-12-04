@@ -30,7 +30,9 @@ pub use query::{
 pub use results_ext::{
     HybridLatestAtResults, HybridResults, HybridResultsChunkIter, RangeResultsExt,
 };
-pub use view_property_ui::view_property_ui;
+pub use view_property_ui::{
+    view_property_component_ui, view_property_component_ui_custom, view_property_ui,
+};
 
 pub mod external {
     pub use re_entity_db::external::*;
