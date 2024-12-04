@@ -41,23 +41,17 @@ struct rerun::AsComponents<CustomPoints3D> {
         CustomPoints3D::IndicatorComponent indicator;
         batches.push_back(ComponentBatch::from_loggable(indicator).value_or_throw());
 
-        // TODO: with_methods would be nice
-        auto positions_descr = rerun::ComponentDescriptor(
-            "user.CustomArchetype",
-            "positions",
-            Loggable<CustomPosition3D>::Descriptor.component_name
-        );
+        auto positions_descr = rerun::Loggable<CustomPosition3D>::Descriptor
+                                   .or_with_archetype_name("user.CustomArchetype")
+                                   .or_with_archetype_field_name("positions");
         batches.push_back(
             ComponentBatch::from_loggable(archetype.positions, positions_descr).value_or_throw()
         );
 
         if (archetype.colors) {
-            // TODO: with_methods would be nice
-            auto colors_descr = rerun::ComponentDescriptor(
-                "user.CustomArchetype",
-                "colors",
-                Loggable<rerun::Color>::Descriptor.component_name
-            );
+            auto colors_descr = rerun::Loggable<rerun::Color>::Descriptor
+                                    .or_with_archetype_name("user.CustomArchetype")
+                                    .or_with_archetype_field_name("colors");
             batches.push_back(
                 ComponentBatch::from_loggable(archetype.colors, colors_descr).value_or_throw()
             );
