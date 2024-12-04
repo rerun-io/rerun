@@ -8,6 +8,7 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
+    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -25,7 +26,7 @@ class RecordingUri(datatypes.Utf8, ComponentMixin):
 
 
 class RecordingUriBatch(datatypes.Utf8Batch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.RecordingUri"
+    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.RecordingUri")
 
 
 # This is patched in late to avoid circular dependencies.

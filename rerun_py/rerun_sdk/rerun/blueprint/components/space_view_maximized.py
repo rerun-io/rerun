@@ -8,6 +8,7 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
+    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -25,7 +26,7 @@ class SpaceViewMaximized(datatypes.Uuid, ComponentMixin):
 
 
 class SpaceViewMaximizedBatch(datatypes.UuidBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.SpaceViewMaximized"
+    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.SpaceViewMaximized")
 
 
 # This is patched in late to avoid circular dependencies.

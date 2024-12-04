@@ -8,6 +8,7 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
+    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -25,7 +26,7 @@ class GraphEdge(datatypes.Utf8Pair, ComponentMixin):
 
 
 class GraphEdgeBatch(datatypes.Utf8PairBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.GraphEdge"
+    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.GraphEdge")
 
 
 # This is patched in late to avoid circular dependencies.

@@ -8,6 +8,7 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
+    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -32,7 +33,7 @@ class FillRatio(datatypes.Float32, ComponentMixin):
 
 
 class FillRatioBatch(datatypes.Float32Batch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.FillRatio"
+    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.FillRatio")
 
 
 # This is patched in late to avoid circular dependencies.

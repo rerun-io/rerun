@@ -12,6 +12,7 @@ import pyarrow as pa
 from .._baseclasses import (
     BaseBatch,
     ComponentBatchMixin,
+    ComponentDescriptor,
 )
 
 __all__ = ["Colormap", "ColormapArrayLike", "ColormapBatch", "ColormapLike"]
@@ -133,7 +134,7 @@ ColormapArrayLike = Union[ColormapLike, Sequence[ColormapLike]]
 
 class ColormapBatch(BaseBatch[ColormapArrayLike], ComponentBatchMixin):
     _ARROW_DATATYPE = pa.uint8()
-    _COMPONENT_NAME: str = "rerun.components.Colormap"
+    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.Colormap")
 
     @staticmethod
     def _native_to_pa_array(data: ColormapArrayLike, data_type: pa.DataType) -> pa.Array:

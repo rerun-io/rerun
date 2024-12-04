@@ -1,6 +1,7 @@
 #![allow(unsafe_op_in_unsafe_fn)] // False positive due to #[pyfunction] macro
 
 use pyo3::{exceptions::PyRuntimeError, pyfunction, Bound, PyAny, PyResult};
+use re_sdk::ComponentDescriptor;
 use re_video::VideoLoadError;
 
 use crate::arrow::array_to_rust;
@@ -17,8 +18,12 @@ pub fn asset_video_read_frame_timestamps_ns(
     video_bytes_arrow_array: &Bound<'_, PyAny>,
     media_type: Option<&str>,
 ) -> PyResult<Vec<i64>> {
-    let video_bytes_arrow_array =
-        array_to_rust(video_bytes_arrow_array, "rerun.components.Blob")?.0;
+    let component_descr = ComponentDescriptor {
+        archetype_name: Some("rerun.archetypes.AssetVideo".into()),
+        archetype_field_name: Some("blob".into()),
+        component_name: "rerun.components.Blob".into(),
+    };
+    let video_bytes_arrow_array = array_to_rust(video_bytes_arrow_array, &component_descr)?.0;
 
     let video_bytes_arrow_uint8_array = video_bytes_arrow_array
         .as_any()

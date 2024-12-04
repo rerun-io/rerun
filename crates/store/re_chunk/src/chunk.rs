@@ -284,23 +284,7 @@ impl Chunk {
                     .collect();
                 timelines == rhs_timelines
             }
-            // TODO(cmc): we cannot compare tags yet, need to support Python & C++ first
-            // && *components == rhs.components
-            && {
-                let lhs_components_no_tags: ChunkComponents = components
-                    .clone()
-                    .into_iter_flattened()
-                    .map(|(descr, list_array)| (ComponentDescriptor::new(descr.component_name), list_array))
-                    .collect();
-                let rhs_components_no_tags: ChunkComponents = rhs
-                    .components
-                    .clone()
-                    .into_iter_flattened()
-                    .map(|(descr, list_array)| (ComponentDescriptor::new(descr.component_name), list_array))
-                    .collect();
-
-                lhs_components_no_tags == rhs_components_no_tags
-            }
+            && *components == rhs.components
     }
 
     /// Check for equality while ignoring possible `Extension` type information

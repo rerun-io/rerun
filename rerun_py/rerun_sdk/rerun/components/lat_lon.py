@@ -8,6 +8,7 @@ from __future__ import annotations
 from .. import datatypes
 from .._baseclasses import (
     ComponentBatchMixin,
+    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -25,7 +26,7 @@ class LatLon(datatypes.DVec2D, ComponentMixin):
 
 
 class LatLonBatch(datatypes.DVec2DBatch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.components.LatLon"
+    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.components.LatLon")
 
 
 # This is patched in late to avoid circular dependencies.

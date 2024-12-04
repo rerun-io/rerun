@@ -8,6 +8,7 @@ from __future__ import annotations
 from ... import datatypes
 from ..._baseclasses import (
     ComponentBatchMixin,
+    ComponentDescriptor,
     ComponentMixin,
 )
 
@@ -25,7 +26,7 @@ class ZoomLevel(datatypes.Float64, ComponentMixin):
 
 
 class ZoomLevelBatch(datatypes.Float64Batch, ComponentBatchMixin):
-    _COMPONENT_NAME: str = "rerun.blueprint.components.ZoomLevel"
+    _COMPONENT_DESCRIPTOR: ComponentDescriptor = ComponentDescriptor("rerun.blueprint.components.ZoomLevel")
 
 
 # This is patched in late to avoid circular dependencies.
