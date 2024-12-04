@@ -2,7 +2,7 @@ use rerun::{ChunkStore, ChunkStoreConfig, Component as _, ComponentDescriptor, V
 
 #[allow(clippy::unwrap_used)]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    const APP_ID: &str = "rerun_example_descriptors_builtin_component_vanilla";
+    const APP_ID: &str = "rerun_example_descriptors_builtin_component";
 
     let rec = rerun::RecordingStreamBuilder::new(APP_ID).spawn()?;
 

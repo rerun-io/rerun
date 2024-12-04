@@ -247,12 +247,7 @@ impl<A: Archetype> crate::ComponentBatch for GenericIndicatorComponent<A> {
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor> {
         let component_name =
             format!("{}Indicator", A::name().full_name()).replace("archetypes", "components");
-        ComponentDescriptor {
-            archetype_name: Some(A::name()),
-            archetype_field_name: None,
-            component_name: component_name.into(),
-        }
-        .into()
+        ComponentDescriptor::new(component_name).into()
     }
 }
 

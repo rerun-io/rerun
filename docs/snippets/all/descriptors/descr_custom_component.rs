@@ -45,7 +45,7 @@ impl Component for CustomPosition3D {
 
 #[allow(clippy::unwrap_used)]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    const APP_ID: &str = "rerun_example_descriptors_custom_component_vanilla";
+    const APP_ID: &str = "rerun_example_descriptors_custom_component";
 
     let rec = rerun::RecordingStreamBuilder::new(APP_ID).spawn()?;
 
@@ -81,7 +81,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             .collect::<Vec<_>>();
         descriptors.sort();
 
-        let expected = vec![CustomPosition3D::descriptor()];
+        let expected = vec![
+            ComponentDescriptor {
+                archetype_name: Some("user.CustomArchetype".into()),
+                archetype_field_name: Some("user.CustomArchetypeField".into()),
+                component_name: "user.CustomPosition3D".into(),
+            }, //
+        ];
 
         similar_asserts::assert_eq!(expected, descriptors);
     }

@@ -2,7 +2,7 @@ use rerun::{ChunkStore, ChunkStoreConfig, ComponentDescriptor, VersionPolicy};
 
 #[allow(clippy::unwrap_used)]
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-    const APP_ID: &str = "rerun_example_descriptors_builtin_archetype_vanilla";
+    const APP_ID: &str = "rerun_example_descriptors_builtin_archetype";
 
     let rec = rerun::RecordingStreamBuilder::new(APP_ID).spawn()?;
 
@@ -42,7 +42,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
         let expected = vec![
             ComponentDescriptor {
-                archetype_name: Some("rerun.archetypes.Points3D".into()),
+                archetype_name: None,
                 archetype_field_name: None,
                 component_name: "rerun.components.Points3DIndicator".into(),
             },
