@@ -33,11 +33,26 @@ pub struct ForceLayoutProvider {
 
 impl ForceLayoutProvider {
     pub fn new(request: LayoutRequest) -> Self {
+        Self::new_impl(request, None)
+    }
+
+    pub fn new_with_previous(request: LayoutRequest, layout: &Layout) -> Self {
+        Self::new_impl(request, Some(layout))
+    }
+
+    // TODO(grtlr): Consider consuming the old layout to avoid re-allocating the extents.
+    // That logic has to be revised when adding the blueprints anyways.
+    fn new_impl(request: LayoutRequest, layout: Option<&Layout>) -> Self {
         let nodes = request.graphs.iter().flat_map(|(_, graph_template)| {
-            graph_template
-                .nodes
-                .iter()
-                .map(|n| (n.0, fj::Node::from(n.1)))
+            graph_template.nodes.iter().map(|n| {
+                let mut fj_node = fj::Node::from(n.1);
+                if let Some(rect) = layout.and_then(|l| l.get_node(n.0)) {
+                    let pos = rect.center();
+                    fj_node = fj_node.position(pos.x as f64, pos.y as f64);
+                }
+
+                (n.0, fj_node)
+            })
         });
 
         let mut node_index = ahash::HashMap::default();
