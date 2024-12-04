@@ -9,22 +9,25 @@ use re_types::blueprint::components::Interactive;
 use re_ui::{
     icons,
     list_item::{self, PropertyContent},
-    ContextExt as _, DesignTokens, UiExt,
+    ContextExt as _, UiExt,
 };
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, ContainerId, Contents, DataQueryResult,
-    DataResult, HoverHighlight, Item, SpaceViewId, SystemCommandSender as _, UiLayout, ViewContext,
-    ViewStates, ViewerContext,
+    DataResult, HoverHighlight, Item, SpaceViewId, UiLayout, ViewContext, ViewStates,
+    ViewerContext,
 };
 use re_viewport_blueprint::{ui::show_add_space_view_or_container_modal, ViewportBlueprint};
 
-use crate::{defaults_ui::view_components_defaults_section_ui, visualizer_ui::visualizer_ui};
+use crate::space_view_entity_picker::SpaceViewEntityPicker;
+use crate::{
+    defaults_ui::view_components_defaults_section_ui, item_heading::item_heading,
+    visualizer_ui::visualizer_ui,
+};
 use crate::{
     selection_history_ui::SelectionHistoryUi,
     visible_time_range_ui::visible_time_range_ui_for_data_result,
     visible_time_range_ui::visible_time_range_ui_for_view,
 };
-use crate::{space_view_entity_picker::SpaceViewEntityPicker, ItemTitle};
 
 // ---
 fn default_selection_panel_width(screen_width: f32) -> f32 {
@@ -433,46 +436,6 @@ The last rule matching `/world/house` is `+ /world/**`, so it is included.
 
             visible_time_range_ui_for_view(ctx, ui, view, view_class, view_state);
         }
-    }
-}
-
-/// We show this above each item section
-fn item_heading(
-    ctx: &ViewerContext<'_>,
-    viewport: &ViewportBlueprint,
-    ui: &mut egui::Ui,
-    item: &Item,
-) {
-    let item_title = ItemTitle::from_item(ctx, viewport, ui.style(), item);
-
-    let ItemTitle {
-        name,
-        tooltip,
-        icon,
-        label_style,
-    } = item_title;
-
-    let mut content = list_item::LabelContent::new(name).with_icon(icon);
-
-    if let Some(label_style) = label_style {
-        content = content.label_style(label_style);
-    }
-
-    let response = ui
-        .list_item()
-        .with_height(DesignTokens::title_bar_height())
-        .selected(true)
-        .show_flat(ui, content);
-
-    if response.clicked() {
-        // If the user has multiple things selected but only wants to have one thing selected,
-        // this is how they can do it.
-        ctx.command_sender
-            .send_system(re_viewer_context::SystemCommand::SetSelection(item.clone()));
-    }
-
-    if let Some(tooltip) = tooltip {
-        response.on_hover_text(tooltip);
     }
 }
 

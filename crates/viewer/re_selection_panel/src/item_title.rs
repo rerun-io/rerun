@@ -1,5 +1,5 @@
 use re_data_ui::item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity};
-use re_ui::{icons, list_item, SyntaxHighlighting as _};
+use re_ui::{icons, SyntaxHighlighting as _};
 use re_viewer_context::{contents_name_style, Item, ViewerContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
