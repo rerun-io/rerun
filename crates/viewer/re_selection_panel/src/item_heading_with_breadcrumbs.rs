@@ -88,21 +88,22 @@ fn item_heading_contents(
             }
         }
         Item::DataResult(view_id, _) => {
-            if let Some(view) = viewport.view(view_id) {
-                let query_result = ctx.lookup_query_result(*view_id);
-                let result_tree = &query_result.tree;
-                let root_node = result_tree.root_node();
-                // let origin =
-                //     DataResultNodeOrPath::from_path_lookup(result_tree, &view.space_origin);
-                viewport_breadcrumbs(ctx, viewport, ui, Contents::SpaceView(*view_id));
-            }
+            viewport_breadcrumbs(ctx, viewport, ui, Contents::SpaceView(*view_id));
+
+            // TODO(#4491): breadcrumbs for data results entity paths and projections
+            // if let Some(view) = viewport.view(view_id) {
+            //     let query_result = ctx.lookup_query_result(*view_id);
+            //     let result_tree = &query_result.tree;
+            //     let root_node = result_tree.root_node();
+            // let origin =
+            //     DataResultNodeOrPath::from_path_lookup(result_tree, &view.space_origin);
         }
     }
 
     let ItemTitle {
         icon,
         label,
-        label_style,
+        label_style: _, // Intentionally ignored
         tooltip,
     } = ItemTitle::from_item(ctx, viewport, ui.style(), item);
 
