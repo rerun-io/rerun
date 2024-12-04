@@ -26,23 +26,6 @@ pub struct EdgeInstance {
     pub target_index: NodeId,
 }
 
-// impl std::hash::Hash for EdgeInstance {
-//     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-//         // We use the more verbose destructring here, to make sure that we
-//         // exhaustively consider all fields when hashing (we get a compiler
-//         // warning when we forget a field).
-//         let Self {
-//             // The index fields already uniquely identify `source` and `target`.
-//             source: _,
-//             target: _,
-//             source_index,
-//             target_index,
-//         } = self;
-//         source_index.hash(state);
-//         target_index.hash(state);
-//     }
-// }
-
 pub struct EdgeData {
     pub graph_type: components::GraphType,
     pub edges: Vec<EdgeInstance>,
