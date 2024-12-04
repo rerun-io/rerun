@@ -161,8 +161,8 @@ impl ItemTitle {
                 if let Some(view) = viewport.view(view_id) {
                     let typ = item.kind();
                     item_title.with_tooltip(format!(
-                        "{typ} '{instance_path}' as shown in view {:?}",
-                        view.display_name
+                        "{typ} '{instance_path}' as shown in view {}",
+                        view.display_name_or_default()
                     ))
                 } else {
                     item_title
