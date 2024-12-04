@@ -9,7 +9,10 @@
 //! The item is an icon and a name.
 //! Each bread-crumb is clickable, as is the last item.
 
+use re_chunk::EntityPath;
 use re_data_ui::item_ui::cursor_interact_with_selectable;
+use re_entity_db::InstancePath;
+use re_log_types::EntityPathPart;
 use re_ui::{icons, list_item, DesignTokens, UiExt as _};
 use re_viewer_context::{Contents, Item, ViewerContext};
 use re_viewport_blueprint::ViewportBlueprint;
@@ -52,13 +55,13 @@ fn item_heading_contents(
 ) {
     match item {
         Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) => {
-            // TODO(emilk): maybe some of these could have
+            // TODO(emilk): maybe some of these could have breadcrumbs
         }
-        Item::InstancePath(_) => {
+        Item::InstancePath(instance_path) => {
             // TODO: bread-crumbs of the entity path
         }
         Item::ComponentPath(component_path) => {
-            // TODO: bread-crumbs of the entity path
+            entity_path_breadcrumbs(ctx, ui, component_path.entity_path.as_slice());
         }
         Item::Container(container_id) => {
             if let Some(parent) = viewport.parent(&Contents::Container(*container_id)) {
@@ -71,25 +74,65 @@ fn item_heading_contents(
             }
         }
         Item::DataResult(view_id, _) => {
-            viewport_breadcrumbs(ctx, viewport, ui, Contents::SpaceView(*view_id));
+            if let Some(view) = viewport.view(view_id) {
+                let query_result = ctx.lookup_query_result(*view_id);
+                let result_tree = &query_result.tree;
+                let root_node = result_tree.root_node();
+                // let origin =
+                //     DataResultNodeOrPath::from_path_lookup(result_tree, &view.space_origin);
+                viewport_breadcrumbs(ctx, viewport, ui, Contents::SpaceView(*view_id));
+            }
         }
     }
 
     let ItemTitle {
-        name,
-        tooltip,
         icon,
+        label,
         label_style,
+        tooltip,
     } = ItemTitle::from_item(ctx, viewport, ui.style(), item);
 
     let mut response = ui.add(egui::Button::image_and_text(
         icon.as_image().fit_to_original_size(ICON_SCALE),
-        name,
+        label,
     ));
     if let Some(tooltip) = tooltip {
         response = response.on_hover_text(tooltip);
     }
     cursor_interact_with_selectable(ctx, response, item.clone());
+}
+
+fn entity_path_breadcrumbs(
+    ctx: &ViewerContext<'_>,
+    ui: &mut egui::Ui,
+    entity_parts: &[EntityPathPart],
+) {
+    // Match on everything plus last
+    let button = match entity_parts {
+        [ancestry @ .., last] => {
+            // Recurse!
+            entity_path_breadcrumbs(ctx, ui, ancestry);
+
+            let first_char = last.unescaped_str().chars().next().unwrap_or('?');
+            egui::Button::new(first_char.to_string())
+        }
+        _ => {
+            // Root
+            egui::Button::image(icons::RECORDING.as_image().fit_to_original_size(ICON_SCALE))
+        }
+    };
+
+    let entity_path = EntityPath::new(entity_parts.to_vec());
+    let response = ui.add(button).on_hover_text(entity_path.to_string());
+
+    let item = Item::from(entity_path);
+    cursor_interact_with_selectable(ctx, response, item);
+
+    ui.add(
+        icons::BREADCRUMBS_SEPARATOR_ENTITY
+            .as_image()
+            .fit_to_original_size(ICON_SCALE),
+    );
 }
 
 fn viewport_breadcrumbs(
@@ -101,14 +144,15 @@ fn viewport_breadcrumbs(
     let item = Item::from(contents);
 
     if let Some(parent) = viewport.parent(&contents) {
+        // Recurse!
         viewport_breadcrumbs(ctx, viewport, ui, parent.into());
     }
 
     let ItemTitle {
-        name: _, // ignored: we just show the icon for breadcrumbs
-        tooltip,
         icon,
+        label: _,       // ignored: we just show the icon for breadcrumbs
         label_style: _, // no label
+        tooltip,
     } = ItemTitle::from_item(ctx, viewport, ui.style(), &item);
 
     let mut response = ui.add(egui::Button::image(
@@ -120,7 +164,7 @@ fn viewport_breadcrumbs(
     cursor_interact_with_selectable(ctx, response, item);
 
     ui.add(
-        icons::BREADCRUMBS_SEPARATOR
+        icons::BREADCRUMBS_SEPARATOR_BLUEPRINT
             .as_image()
             .fit_to_original_size(ICON_SCALE),
     );

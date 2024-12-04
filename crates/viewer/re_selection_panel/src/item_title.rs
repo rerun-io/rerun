@@ -5,10 +5,10 @@ use re_viewport_blueprint::ViewportBlueprint;
 
 #[must_use]
 pub struct ItemTitle {
-    pub name: egui::WidgetText,
-    pub tooltip: Option<String>,
     pub icon: &'static re_ui::Icon,
+    pub label: egui::WidgetText,
     pub label_style: Option<re_ui::LabelStyle>,
+    pub tooltip: Option<String>,
 }
 
 impl ItemTitle {
@@ -173,7 +173,7 @@ impl ItemTitle {
 
     fn new(name: impl Into<egui::WidgetText>, icon: &'static re_ui::Icon) -> Self {
         Self {
-            name: name.into(),
+            label: name.into(),
             tooltip: None,
             icon,
             label_style: None,
