@@ -9,7 +9,7 @@ use re_log_types::EntityPath;
 use re_types::blueprint::components::Visible;
 use re_ui::{drag_and_drop::DropTarget, list_item, ContextExt as _, DesignTokens, UiExt as _};
 use re_viewer_context::{
-    contents_name_style, icon_for_container_kind, CollapseScope, Contents, DataResultTree,
+    contents_name_style, icon_for_container_kind, CollapseScope, Contents, DataResultNodeOrPath,
     SystemCommandSender,
 };
 use re_viewer_context::{
@@ -17,36 +17,6 @@ use re_viewer_context::{
 };
 use re_viewport_blueprint::ui::show_add_space_view_or_container_modal;
 use re_viewport_blueprint::{SpaceViewBlueprint, ViewportBlueprint};
-
-enum DataResultNodeOrPath<'a> {
-    Path(&'a EntityPath),
-    DataResultNode(&'a DataResultNode),
-}
-
-impl<'a> DataResultNodeOrPath<'a> {
-    fn from_path_lookup(result_tree: &'a DataResultTree, path: &'a EntityPath) -> Self {
-        result_tree
-            .lookup_node_by_path(path)
-            .map_or(DataResultNodeOrPath::Path(path), |node| {
-                DataResultNodeOrPath::DataResultNode(node)
-            })
-    }
-
-    fn path(&self) -> &'a EntityPath {
-        match self {
-            DataResultNodeOrPath::Path(path) => path,
-            DataResultNodeOrPath::DataResultNode(node) => &node.data_result.entity_path,
-        }
-    }
-
-    fn data_result_node(&self) -> Option<&'a DataResultNode> {
-        match self {
-            DataResultNodeOrPath::Path(_) => None,
-            DataResultNodeOrPath::DataResultNode(node) => Some(node),
-        }
-    }
-}
-
 /// Holds the state of the blueprint tree UI.
 #[derive(Default)]
 pub struct BlueprintTree {
