@@ -28,6 +28,8 @@ pub fn item_heading_with_breadcrumbs(
     ui: &mut egui::Ui,
     item: &Item,
 ) {
+    re_tracing::profile_function!();
+
     ui.list_item()
         .with_height(DesignTokens::title_bar_height())
         .interactive(false)
@@ -84,15 +86,15 @@ fn item_heading_contents(
                 if instance.is_all() {
                     // Entity path
                     if let [ancestry @ .., _] = entity_path.as_slice() {
-                        entity_path_breadcrumbs(ctx, ui, None, ancestry);
+                        entity_path_breadcrumbs(ctx, ui, None, None, ancestry);
                     }
                 } else {
                     // Instance path
-                    entity_path_breadcrumbs(ctx, ui, None, entity_path.as_slice());
+                    entity_path_breadcrumbs(ctx, ui, None, None, entity_path.as_slice());
                 }
             }
             Item::ComponentPath(component_path) => {
-                entity_path_breadcrumbs(ctx, ui, None, component_path.entity_path.as_slice());
+                entity_path_breadcrumbs(ctx, ui, None, None, component_path.entity_path.as_slice());
             }
             Item::Container(container_id) => {
                 if let Some(parent) = viewport.parent(&Contents::Container(*container_id)) {
@@ -119,10 +121,22 @@ fn item_heading_contents(
                         if instance.is_all() {
                             // we will show last part in full, later
                             if let [all_but_last @ .., _] = relative {
-                                entity_path_breadcrumbs(ctx, ui, Some(*view_id), all_but_last);
+                                entity_path_breadcrumbs(
+                                    ctx,
+                                    ui,
+                                    Some(*view_id),
+                                    Some(&view.space_origin),
+                                    all_but_last,
+                                );
                             }
                         } else {
-                            entity_path_breadcrumbs(ctx, ui, Some(*view_id), relative);
+                            entity_path_breadcrumbs(
+                                ctx,
+                                ui,
+                                Some(*view_id),
+                                Some(&view.space_origin),
+                                relative,
+                            );
                         }
                     } else {
                         ui.label("TODO"); // TODO
@@ -152,14 +166,18 @@ fn item_heading_contents(
 fn entity_path_breadcrumbs(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
+    // If we are in a view
     view_id: Option<SpaceViewId>,
+    // Everything is relative to this
+    origin: Option<&EntityPath>,
+    // Show crumbs for all of these
     entity_parts: &[EntityPathPart],
 ) {
     // Match on everything plus last
     let button = match entity_parts {
         [ancestry @ .., last] => {
             // Recurse!
-            entity_path_breadcrumbs(ctx, ui, view_id, ancestry);
+            entity_path_breadcrumbs(ctx, ui, view_id, origin, ancestry);
 
             let first_char = last.unescaped_str().chars().next().unwrap_or('?');
             egui::Button::new(first_char.to_string()).image_tint_follows_text_color(true)
@@ -171,13 +189,17 @@ fn entity_path_breadcrumbs(
         }
     };
 
-    let entity_path = EntityPath::new(entity_parts.to_vec());
-    let response = ui.add(button).on_hover_text(entity_path.to_string());
+    let full_entity_path = if let Some(origin) = origin {
+        origin.join(&EntityPath::new(entity_parts.to_vec()))
+    } else {
+        EntityPath::new(entity_parts.to_vec())
+    };
+    let response = ui.add(button).on_hover_text(full_entity_path.to_string());
 
     let item = if let Some(view_id) = view_id {
-        Item::DataResult(view_id, entity_path.into())
+        Item::DataResult(view_id, full_entity_path.into())
     } else {
-        Item::from(entity_path)
+        Item::from(full_entity_path)
     };
     cursor_interact_with_selectable(ctx, response, item);
 
