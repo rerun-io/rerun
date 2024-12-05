@@ -2182,7 +2182,7 @@ fn quote_archetype_field_type(hpp_includes: &mut Includes, obj_field: &ObjectFie
             quote! { Collection<#elem_type> }
         }
         // TODO(andreas): This should emit `MonoCollection` which will be a constrained version of `Collection`.
-        // (simply adapting `MonoCollection` breaks some existing code, so this not entirely trivial to do.
+        // (Simply adapting `MonoCollection` breaks some existing code, so this not entirely trivial to do.
         //  Designing constraints for `MonoCollection` is harder still)
         Type::Object(fqname) => quote_fqname_as_type_path(hpp_includes, fqname),
         _ => panic!("Only vectors and objects are allowed in archetypes."),

@@ -370,10 +370,12 @@ fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
 @fragment
 fn fs_main_outline_mask(in: VertexOut) -> @location(0) vec2u {
     // Output is an integer target, can't use coverage therefore.
-    // But we still want to discard fragments where coverage is low.
-    // Since the outline extends a bit, a very low cut off tends to look better.
+    // But we still want to discard fragments where coverage is too low, otherwise
+    // we'd not handle rounded corners etc. correctly.
+    // Note that `compute_coverage` may already give coverage values below 1.0 along the
+    // "main body of the line", not just the caps.
     var coverage = compute_coverage(in);
-    if coverage < 1.0 {
+    if coverage <= 0.0 {
         discard;
     }
     return batch.outline_mask_ids;
