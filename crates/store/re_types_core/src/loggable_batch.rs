@@ -44,6 +44,15 @@ pub trait ComponentBatch: LoggableBatch {
     /// Every component batch is uniquely identified by its [`ComponentDescriptor`].
     fn descriptor(&self) -> Cow<'_, ComponentDescriptor>;
 
+    // Wraps the current [`ComponentBatch`] with the given descriptor.
+    fn with_descriptor(&self, descriptor: ComponentDescriptor) -> MaybeOwnedComponentBatch<'_>
+    where
+        Self: Sized,
+    {
+        MaybeOwnedComponentBatch::new(ComponentBatchCow::Ref(self as &dyn ComponentBatch))
+            .with_descriptor_override(descriptor)
+    }
+
     /// The fully-qualified name of this component batch, e.g. `rerun.components.Position2D`.
     ///
     /// This is a trivial but useful helper for `self.descriptor().component_name`.

@@ -23,7 +23,6 @@ class CustomPoints3D(rr.AsComponents):
         )
 
     def as_component_batches(self) -> Iterable[rr.ComponentBatchLike]:
-        print([rr.IndicatorComponentBatch("user.CustomPoints3D"), self.positions, self.colors])
         return [rr.IndicatorComponentBatch("user.CustomPoints3D"), self.positions, self.colors]
 
 
