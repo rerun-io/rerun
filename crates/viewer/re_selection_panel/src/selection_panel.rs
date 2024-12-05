@@ -186,6 +186,13 @@ impl SelectionPanel {
                     },
                 ));
 
+                if instance_path.instance.is_specific() {
+                    ui.list_item_flat_noninteractive(
+                        PropertyContent::new("Instance")
+                            .value_text(instance_path.instance.to_string()),
+                    );
+                }
+
                 list_existing_data_blueprints(ctx, viewport, ui, instance_path);
             }
 
