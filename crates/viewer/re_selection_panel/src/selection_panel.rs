@@ -2,32 +2,28 @@ use egui::NumExt as _;
 use egui_tiles::ContainerKind;
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
-use re_data_ui::{
-    item_ui,
-    item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity},
-    DataUi,
-};
+use re_data_ui::{item_ui, item_ui::guess_query_and_db_for_selected_entity, DataUi};
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::EntityPathFilter;
 use re_types::blueprint::components::Interactive;
 use re_ui::{
     icons,
     list_item::{self, PropertyContent},
-    ContextExt as _, DesignTokens, SyntaxHighlighting as _, UiExt,
+    ContextExt as _, UiExt,
 };
 use re_viewer_context::{
     contents_name_style, icon_for_container_kind, ContainerId, Contents, DataQueryResult,
-    DataResult, HoverHighlight, Item, SpaceViewId, SystemCommandSender, UiLayout, ViewContext,
-    ViewStates, ViewerContext,
+    DataResult, HoverHighlight, Item, SpaceViewId, UiLayout, ViewContext, ViewStates,
+    ViewerContext,
 };
 use re_viewport_blueprint::{ui::show_add_space_view_or_container_modal, ViewportBlueprint};
 
-use crate::space_view_entity_picker::SpaceViewEntityPicker;
 use crate::{defaults_ui::view_components_defaults_section_ui, visualizer_ui::visualizer_ui};
 use crate::{
     visible_time_range_ui::visible_time_range_ui_for_data_result,
     visible_time_range_ui::visible_time_range_ui_for_view,
 };
+use crate::{space_view_entity_picker::SpaceViewEntityPicker, ItemTitle};
 
 // ---
 fn default_selection_panel_width(screen_width: f32) -> f32 {
@@ -117,6 +113,12 @@ impl SelectionPanel {
         };
         for (i, item) in selection.iter_items().enumerate() {
             list_item::list_item_scope(ui, item, |ui| {
+                if let Some(item_title) = ItemTitle::from_item(ctx, viewport, ui.style(), item) {
+                    item_title.ui(ctx, ui, item);
+                } else {
+                    re_log::warn_once!("Failed to create item title for {item:?}");
+                    return; // WEIRD
+                }
                 self.item_ui(ctx, viewport, view_states, ui, item, ui_layout);
             });
 
@@ -136,12 +138,6 @@ impl SelectionPanel {
         item: &Item,
         ui_layout: UiLayout,
     ) {
-        if let Some(item_title) = item_tile(ctx, viewport, ui.style(), item) {
-            item_title.show(ctx, ui, item);
-        } else {
-            return; // WEIRD
-        }
-
         match item {
             Item::ComponentPath(component_path) => {
                 let entity_path = &component_path.entity_path;
@@ -639,232 +635,6 @@ fn space_view_button(
         )
         .on_hover_text(format!("{} view", class.display_name()));
     item_ui::cursor_interact_with_selectable(ctx, response, item)
-}
-
-fn item_tile(
-    ctx: &ViewerContext<'_>,
-    viewport: &ViewportBlueprint,
-    style: &egui::Style,
-    item: &Item,
-) -> Option<ItemTitle> {
-    match &item {
-        Item::AppId(app_id) => {
-            let title = app_id.to_string();
-            Some(ItemTitle::new(title).with_icon(&icons::APPLICATION))
-        }
-
-        Item::DataSource(data_source) => {
-            let title = data_source.to_string();
-            Some(ItemTitle::new(title).with_icon(&icons::DATA_SOURCE))
-        }
-
-        Item::StoreId(store_id) => {
-            let id_str = format!("{} ID: {}", store_id.kind, store_id);
-
-            let title = if let Some(entity_db) = ctx.store_context.bundle.get(store_id) {
-                if let Some(info) = entity_db.store_info() {
-                    let time = info
-                        .started
-                        .format_time_custom("[hour]:[minute]:[second]", ctx.app_options.time_zone)
-                        .unwrap_or("<unknown time>".to_owned());
-
-                    format!("{} - {}", info.application_id, time)
-                } else {
-                    id_str.clone()
-                }
-            } else {
-                id_str.clone()
-            };
-
-            let icon = match store_id.kind {
-                re_log_types::StoreKind::Recording => &icons::RECORDING,
-                re_log_types::StoreKind::Blueprint => &icons::BLUEPRINT,
-            };
-
-            Some(ItemTitle::new(title).with_icon(icon).with_tooltip(id_str))
-        }
-
-        Item::Container(container_id) => {
-            if let Some(container_blueprint) = viewport.container(container_id) {
-                let hover_text =
-                    if let Some(display_name) = container_blueprint.display_name.as_ref() {
-                        format!(
-                            "{:?} container {display_name:?}",
-                            container_blueprint.container_kind,
-                        )
-                    } else {
-                        format!("Unnamed {:?} container", container_blueprint.container_kind,)
-                    };
-
-                let container_name = container_blueprint.display_name_or_default();
-                Some(
-                    ItemTitle::new(container_name.as_ref())
-                        .with_icon(re_viewer_context::icon_for_container_kind(
-                            &container_blueprint.container_kind,
-                        ))
-                        .with_label_style(contents_name_style(&container_name))
-                        .with_tooltip(hover_text),
-                )
-            } else {
-                None
-            }
-        }
-
-        Item::ComponentPath(component_path) => {
-            let entity_path = &component_path.entity_path;
-            let component_name = &component_path.component_name;
-
-            let (_query, db) = guess_query_and_db_for_selected_entity(ctx, entity_path);
-            let is_static = db
-                .storage_engine()
-                .store()
-                .entity_has_static_component(entity_path, component_name);
-
-            Some(
-                ItemTitle::new(component_name.short_name())
-                    .with_icon(if is_static {
-                        &icons::COMPONENT_STATIC
-                    } else {
-                        &icons::COMPONENT_TEMPORAL
-                    })
-                    .with_tooltip(format!(
-                        "{} component {} of entity '{}'",
-                        if is_static { "Static" } else { "Temporal" },
-                        component_name.full_name(),
-                        entity_path
-                    )),
-            )
-        }
-
-        Item::SpaceView(view_id) => {
-            if let Some(view) = viewport.view(view_id) {
-                let view_class = view.class(ctx.space_view_class_registry);
-
-                let hover_text = if let Some(display_name) = view.display_name.as_ref() {
-                    format!(
-                        "Space view {:?} of type {}",
-                        display_name,
-                        view_class.display_name()
-                    )
-                } else {
-                    format!("Unnamed view of type {}", view_class.display_name())
-                };
-
-                let view_name = view.display_name_or_default();
-
-                Some(
-                    ItemTitle::new(view_name.as_ref())
-                        .with_icon(view.class(ctx.space_view_class_registry).icon())
-                        .with_label_style(contents_name_style(&view_name))
-                        .with_tooltip(hover_text),
-                )
-            } else {
-                None
-            }
-        }
-
-        Item::InstancePath(instance_path) => {
-            let typ = item.kind();
-            let name = instance_path.syntax_highlighted(style);
-
-            Some(
-                ItemTitle::new(name)
-                    .with_icon(guess_instance_path_icon(ctx, instance_path))
-                    .with_tooltip(format!("{typ} '{instance_path}'")),
-            )
-        }
-
-        Item::DataResult(view_id, instance_path) => {
-            let name = instance_path.syntax_highlighted(style);
-
-            if let Some(view) = viewport.view(view_id) {
-                let typ = item.kind();
-                Some(
-                    ItemTitle::new(name)
-                        .with_icon(guess_instance_path_icon(ctx, instance_path))
-                        .with_tooltip(format!(
-                            "{typ} '{instance_path}' as shown in view {:?}",
-                            view.display_name
-                        )),
-                )
-            } else {
-                None
-            }
-        }
-    }
-}
-
-#[must_use]
-struct ItemTitle {
-    name: egui::WidgetText,
-    hover: Option<String>,
-    icon: Option<&'static re_ui::Icon>,
-    label_style: Option<re_ui::LabelStyle>,
-}
-
-impl ItemTitle {
-    fn new(name: impl Into<egui::WidgetText>) -> Self {
-        Self {
-            name: name.into(),
-            hover: None,
-            icon: None,
-            label_style: None,
-        }
-    }
-
-    #[inline]
-    fn with_tooltip(mut self, hover: impl Into<String>) -> Self {
-        self.hover = Some(hover.into());
-        self
-    }
-
-    #[inline]
-    fn with_icon(mut self, icon: &'static re_ui::Icon) -> Self {
-        self.icon = Some(icon);
-        self
-    }
-
-    #[inline]
-    fn with_label_style(mut self, label_style: re_ui::LabelStyle) -> Self {
-        self.label_style = Some(label_style);
-        self
-    }
-
-    fn show(self, ctx: &ViewerContext<'_>, ui: &mut egui::Ui, item: &Item) {
-        let Self {
-            name,
-            hover,
-            icon,
-            label_style,
-        } = self;
-
-        let mut content = list_item::LabelContent::new(name);
-
-        if let Some(icon) = icon {
-            content = content.with_icon(icon);
-        }
-
-        if let Some(label_style) = label_style {
-            content = content.label_style(label_style);
-        }
-
-        let response = ui
-            .list_item()
-            .with_height(DesignTokens::title_bar_height())
-            .selected(true)
-            .show_flat(ui, content);
-
-        if response.clicked() {
-            // If the user has multiple things selected but only wants to have one thing selected,
-            // this is how they can do it.
-            ctx.command_sender
-                .send_system(re_viewer_context::SystemCommand::SetSelection(item.clone()));
-        }
-
-        if let Some(hover) = hover {
-            response.on_hover_text(hover);
-        }
-    }
 }
 
 /// Display a list of all the views an entity appears in.

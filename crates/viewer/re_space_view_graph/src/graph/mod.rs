@@ -1,14 +1,21 @@
+//! Provides a basic abstraction over a graph that was logged to an entity.
+
+// For now this is pretty basic, but in the future we might replace this with
+// something like `petgraph`, which will unlock more user interactions, such as
+// highlighting of neighboring nodes and edges.
+
 mod hash;
 
 use egui::{Pos2, Vec2};
 pub(crate) use hash::GraphNodeHash;
-mod index;
-pub(crate) use index::NodeId;
+mod ids;
+pub(crate) use ids::{EdgeId, NodeId};
 
 use re_chunk::EntityPath;
 use re_types::components::{self, GraphType};
 
 use crate::{
+    layout::EdgeTemplate,
     ui::DrawableLabel,
     visualizers::{EdgeData, NodeData, NodeInstance},
 };
@@ -70,16 +77,10 @@ impl Node {
     }
 }
 
-pub struct Edge {
-    pub from: NodeId,
-    pub to: NodeId,
-    pub arrow: bool,
-}
-
 pub struct Graph {
     entity: EntityPath,
     nodes: Vec<Node>,
-    edges: Vec<Edge>,
+    edges: Vec<EdgeTemplate>,
     kind: GraphType,
 }
 
@@ -113,7 +114,7 @@ impl Graph {
                     nodes.push(Node::Implicit {
                         id: edge.source_index,
                         graph_node: edge.source.clone(),
-                        label: DrawableLabel::implicit_circle(),
+                        label: DrawableLabel::implicit_circle(ui),
                     });
                     seen.insert(edge.source_index);
                 }
@@ -121,16 +122,16 @@ impl Graph {
                     nodes.push(Node::Implicit {
                         id: edge.target_index,
                         graph_node: edge.target.clone(),
-                        label: DrawableLabel::implicit_circle(),
+                        label: DrawableLabel::implicit_circle(ui),
                     });
                     seen.insert(edge.target_index);
                 }
             }
 
-            let es = data.edges.iter().map(|e| Edge {
-                from: e.source_index,
-                to: e.target_index,
-                arrow: data.graph_type == GraphType::Directed,
+            let es = data.edges.iter().map(|e| EdgeTemplate {
+                source: e.source_index,
+                target: e.target_index,
+                target_arrow: data.graph_type == GraphType::Directed,
             });
 
             (es.collect(), data.graph_type)
@@ -150,7 +151,7 @@ impl Graph {
         &self.nodes
     }
 
-    pub fn edges(&self) -> &[Edge] {
+    pub fn edges(&self) -> &[EdgeTemplate] {
         &self.edges
     }
 

@@ -1,12 +1,14 @@
 //! The UI for the selection panel.
 
 mod defaults_ui;
+mod item_title;
 mod selection_panel;
 mod space_view_entity_picker;
 mod space_view_space_origin_ui;
 mod visible_time_range_ui;
 mod visualizer_ui;
 
+pub use item_title::ItemTitle;
 pub use selection_panel::SelectionPanel;
 
 #[cfg(test)]

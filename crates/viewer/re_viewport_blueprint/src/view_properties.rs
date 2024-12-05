@@ -33,10 +33,17 @@ pub struct ViewProperty {
     /// stored.
     pub blueprint_store_path: EntityPath,
 
-    archetype_name: ArchetypeName,
-    component_names: Vec<ComponentName>,
-    query_results: LatestAtResults,
-    blueprint_query: LatestAtQuery,
+    /// Name of the property archetype.
+    pub archetype_name: ArchetypeName,
+
+    /// List of all components in this property.
+    pub component_names: Vec<ComponentName>,
+
+    /// Query results for all queries of this property.
+    pub query_results: LatestAtResults,
+
+    /// Blueprint query used for querying.
+    pub blueprint_query: LatestAtQuery,
 }
 
 impl ViewProperty {
