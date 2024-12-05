@@ -832,7 +832,7 @@ fn quote_trait_impls_from_obj(
             quote_trait_impls_for_datatype_or_component(objects, arrow_registry, obj)
         }
 
-        ObjectKind::Archetype => quote_trait_impls_for_archetype(obj),
+        ObjectKind::Archetype => quote_trait_impls_for_archetype(reporter, obj),
 
         ObjectKind::View => quote_trait_impls_for_view(reporter, obj),
     }
@@ -1038,7 +1038,7 @@ fn quote_trait_impls_for_datatype_or_component(
     }
 }
 
-fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
+fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenStream {
     #![allow(clippy::collapsible_else_if)]
 
     let Object {
@@ -1049,19 +1049,21 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
 
     // sanity check that each field has one of the rerun component type attributes
     for field in &obj.fields {
-        assert!(
-            [
-                ATTR_RERUN_COMPONENT_OPTIONAL,
-                ATTR_RERUN_COMPONENT_RECOMMENDED,
-                ATTR_RERUN_COMPONENT_REQUIRED
-            ]
-            .iter()
-            .any(|attr| field.try_get_attr::<String>(attr).is_some()),
-            "archetype `{}` must add one of the \"attr.rerun.component_{{required|recommended|\
-            optional}}\" attributes to field `{}`",
-            obj.name,
-            field.name
-        );
+        if [
+            ATTR_RERUN_COMPONENT_OPTIONAL,
+            ATTR_RERUN_COMPONENT_RECOMMENDED,
+            ATTR_RERUN_COMPONENT_REQUIRED,
+        ]
+        .iter()
+        .all(|attr| field.try_get_attr::<String>(attr).is_none())
+        {
+            reporter.error(
+                &field.virtpath,
+                &field.fqname,
+                "field must have one of the \"attr.rerun.component_{{required|recommended|\
+                optional}}\" attributes",
+            );
+        }
     }
 
     let display_name = re_case::to_human_case(name);
