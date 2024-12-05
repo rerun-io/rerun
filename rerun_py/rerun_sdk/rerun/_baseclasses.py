@@ -414,6 +414,44 @@ class ComponentBatchMixin(ComponentBatchLike):
         """
         return self._COMPONENT_DESCRIPTOR  # type: ignore[attr-defined, no-any-return]
 
+    def with_descriptor(self, descriptor: ComponentDescriptor) -> DescribedComponentBatch:
+        """Wraps the current `ComponentBatchLike` in a `DescribedComponentBatch` with the given descriptor."""
+        return DescribedComponentBatch(self, descriptor)
+
+    def with_descriptor_overrides(
+        self, *, archetype_name: str | None, archetype_field_name: str | None
+    ) -> ComponentBatchLike:
+        """Unconditionally sets `archetype_name` & `archetype_field_name` to the given ones (if specified)."""
+        descriptor = self.component_descriptor()
+        component_name = descriptor.component_name
+        archetype_name = archetype_name if archetype_name is not None else descriptor.archetype_name
+        archetype_field_name = (
+            archetype_field_name if archetype_field_name is not None else descriptor.archetype_field_name
+        )
+        return DescribedComponentBatch(
+            self,
+            ComponentDescriptor(
+                component_name, archetype_name=archetype_name, archetype_field_name=archetype_field_name
+            ),
+        )
+
+    def or_with_descriptor_overrides(
+        self, *, archetype_name: str | None, archetype_field_name: str | None
+    ) -> ComponentBatchLike:
+        """Sets `archetype_name` & `archetype_field_name` to the given one iff it's not already set."""
+        descriptor = self.component_descriptor()
+        component_name = descriptor.component_name
+        archetype_name = descriptor.archetype_name if descriptor.archetype_name is not None else archetype_name
+        archetype_field_name = (
+            descriptor.archetype_field_name if descriptor.archetype_field_name is not None else archetype_field_name
+        )
+        return DescribedComponentBatch(
+            self,
+            ComponentDescriptor(
+                component_name, archetype_name=archetype_name, archetype_field_name=archetype_field_name
+            ),
+        )
+
     def partition(self, lengths: npt.ArrayLike) -> ComponentColumn:
         """
         Partitions the component into multiple sub-batches. This wraps the inner arrow
