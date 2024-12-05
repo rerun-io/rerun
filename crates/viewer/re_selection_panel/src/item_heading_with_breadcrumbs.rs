@@ -60,7 +60,7 @@ pub fn item_heading_with_breadcrumbs(
                         ui.scope(|ui| {
                             // Dimmer colors for breadcrumbs
                             let visuals = ui.visuals_mut();
-                            visuals.widgets.inactive.fg_stroke.color = visuals.text_color();
+                            visuals.widgets.inactive.fg_stroke.color = egui::hex_color!("#6A8CD0");
                             item_bread_crumbs_ui(ctx, viewport, ui, item);
                         });
 
@@ -236,7 +236,7 @@ fn separator_icon_ui(ui: &mut egui::Ui, icon: re_ui::Icon) {
     ui.add(
         icon.as_image()
             .fit_to_original_size(ICON_SCALE)
-            .tint(ui.visuals().text_color()),
+            .tint(ui.visuals().text_color().gamma_multiply(0.65)),
     );
 }
 
