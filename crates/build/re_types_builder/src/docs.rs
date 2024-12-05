@@ -426,12 +426,14 @@ mod doclink_translation {
         #[test]
         fn test_translate_doclinks() {
             let objects = Objects::default();
+            let (_report, reporter) = crate::report::init();
 
             let input =
                 "A vector `[1, 2, 3]` and a doclink [views.Spatial2DView] and a [url](www.rerun.io).";
 
             assert_eq!(
                 translate_doc_line(
+                    &reporter,
                     &objects,
                     input,
                     Target::Cpp
@@ -441,6 +443,7 @@ mod doclink_translation {
 
             assert_eq!(
                 translate_doc_line(
+                    &reporter,
                     &objects,
                     input,
                     Target::Python
@@ -450,6 +453,7 @@ mod doclink_translation {
 
             assert_eq!(
                 translate_doc_line(
+                    &reporter,
                     &objects,
                     input,
                     Target::Rust
@@ -459,6 +463,7 @@ mod doclink_translation {
 
             assert_eq!(
                 translate_doc_line(
+                    &reporter,
                     &objects,
                     input,
                     Target::WebDocsMarkdown
@@ -477,8 +482,12 @@ mod tests {
     #[test]
     fn test_docs() {
         let objects = Objects::default();
+        let (_report, reporter) = crate::report::init();
 
         let docs = Docs::from_lines(
+            &reporter,
+            "testpath",
+            "testfqname",
             [
                 r" Doclink to [views.Spatial2DView].",
                 r" ",
@@ -498,7 +507,7 @@ mod tests {
         assert_eq!(docs.only_lines_tagged("cpp"), vec!["Only for C++.",]);
 
         assert_eq!(
-            docs.lines_for(&objects, Target::Python),
+            docs.lines_for(&reporter, &objects, Target::Python),
             vec![
                 "Doclink to [`views.Spatial2DView`][rerun.views.Spatial2DView].",
                 "",
@@ -511,7 +520,7 @@ mod tests {
         );
 
         assert_eq!(
-            docs.lines_for(&objects, Target::Cpp),
+            docs.lines_for(&reporter, &objects, Target::Cpp),
             vec![
                 "Doclink to `views::Spatial2DView`.",
                 "",
@@ -524,7 +533,7 @@ mod tests {
         );
 
         assert_eq!(
-            docs.first_line(&objects, Target::Rust),
+            docs.first_line(&reporter, &objects, Target::Rust),
             Some("Doclink to [`views::Spatial2DView`][crate::views::Spatial2DView].".to_owned())
         );
     }

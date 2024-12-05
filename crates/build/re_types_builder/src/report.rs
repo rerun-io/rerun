@@ -103,15 +103,17 @@ impl Report {
 
     /// This outputs all errors and warnings to stderr and panics if there were any errors.
     pub fn finalize(&self) {
+        use colored::*;
+
         let mut errored = false;
 
         while let Ok(warn) = self.warnings.try_recv() {
-            eprintln!("Warning: {warn}");
+            eprintln!("{} {}", "Warning: ".yellow().bold(), warn);
         }
 
         while let Ok(err) = self.errors.try_recv() {
             errored = true;
-            eprintln!("Error: {err}");
+            eprintln!("{} {}", "Error: ".red().bold(), err);
         }
 
         if errored {
