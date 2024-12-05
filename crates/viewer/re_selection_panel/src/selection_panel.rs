@@ -2,7 +2,10 @@ use egui::NumExt as _;
 use egui_tiles::ContainerKind;
 
 use re_context_menu::{context_menu_ui_for_item, SelectionUpdateBehavior};
-use re_data_ui::{item_ui, item_ui::guess_query_and_db_for_selected_entity, DataUi};
+use re_data_ui::{
+    item_ui::{self, cursor_interact_with_selectable, guess_query_and_db_for_selected_entity},
+    DataUi,
+};
 use re_entity_db::{EntityPath, InstancePath};
 use re_log_types::{ComponentPath, EntityPathFilter};
 use re_types::blueprint::components::Interactive;
@@ -226,10 +229,16 @@ impl SelectionPanel {
                 ));
 
                 if instance_path.instance.is_specific() {
-                    ui.list_item_flat_noninteractive(
-                        PropertyContent::new("Instance")
-                            .value_text(instance_path.instance.to_string()),
-                    );
+                    ui.list_item_flat_noninteractive(PropertyContent::new("Instance").value_fn(
+                        |ui, _| {
+                            let response = ui.button(instance_path.instance.to_string());
+                            cursor_interact_with_selectable(
+                                ctx,
+                                response,
+                                Item::from(instance_path.clone()),
+                            );
+                        },
+                    ));
                 }
 
                 if instance_path.is_all() {
