@@ -109,6 +109,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             },
         ),
         (
+            <Enabled as Component>::name(),
+            ComponentReflection {
+                docstring_md: "Whether a procedure is enabled.",
+                custom_placeholder: None,
+                datatype: Enabled::arrow2_datatype(),
+            },
+        ),
+        (
             <FilterByRange as Component>::name(),
             ComponentReflection {
                 docstring_md: "Configuration for a filter-by-range feature of the dataframe view.",
@@ -122,6 +130,14 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
                 docstring_md: "Configuration for the filter is not null feature of the dataframe view.",
                 custom_placeholder: Some(FilterIsNotNull::default().to_arrow2()?),
                 datatype: FilterIsNotNull::arrow2_datatype(),
+            },
+        ),
+        (
+            <ForceDistance as Component>::name(),
+            ComponentReflection {
+                docstring_md: "The target distance between two nodes.\n\nThis is helpful to scale the layout, for example if long labels are involved.",
+                custom_placeholder: Some(ForceDistance::default().to_arrow2()?),
+                datatype: ForceDistance::arrow2_datatype(),
             },
         ),
         (
@@ -1927,6 +1943,22 @@ fn generate_archetype_reflection() -> ArchetypeReflectionMap {
                     "Select", docstring_md :
                     "Selected columns. If unset, all columns are selected.", is_required
                     : false, },
+                ],
+            },
+        ),
+        (
+            ArchetypeName::new("rerun.blueprint.archetypes.ForceLink"),
+            ArchetypeReflection {
+                display_name: "Force link",
+                view_types: &[],
+                fields: vec![
+                    ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.Enabled".into(), display_name :
+                    "Enabled", docstring_md : "Whether the force is enabled.",
+                    is_required : false, }, ArchetypeFieldReflection { component_name :
+                    "rerun.blueprint.components.ForceDistance".into(), display_name :
+                    "Distance", docstring_md : "The target distance between two nodes.",
+                    is_required : false, },
                 ],
             },
         ),

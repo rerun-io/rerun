@@ -70,6 +70,7 @@ class GraphView(SpaceView):
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
         visual_bounds: blueprint_archetypes.VisualBounds2D | None = None,
+        force_link: blueprint_archetypes.ForceLink | None = None,
     ) -> None:
         """
         Construct a blueprint for a new GraphView view.
@@ -104,6 +105,8 @@ class GraphView(SpaceView):
             Everything within these bounds is guaranteed to be visible.
 
             Somethings outside of these bounds may also be visible due to letterboxing.
+        force_link:
+            A link force between nodes in the graph.
 
         """
 
@@ -112,6 +115,11 @@ class GraphView(SpaceView):
             if not isinstance(visual_bounds, blueprint_archetypes.VisualBounds2D):
                 visual_bounds = blueprint_archetypes.VisualBounds2D(visual_bounds)
             properties["VisualBounds2D"] = visual_bounds
+
+        if force_link is not None:
+            if not isinstance(force_link, blueprint_archetypes.ForceLink):
+                force_link = blueprint_archetypes.ForceLink(force_link)
+            properties["ForceLink"] = force_link
 
         super().__init__(
             class_identifier="Graph",
