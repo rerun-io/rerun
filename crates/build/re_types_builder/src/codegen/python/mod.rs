@@ -1889,7 +1889,10 @@ fn quote_arrow_support_from_obj(
     ) {
         Ok(automatic_arrow_serialization) => {
             if ext_class.has_native_to_pa_array {
-                reporter.warn(&obj.virtpath, &obj.fqname, format!("No need to manually implement {NATIVE_TO_PA_ARRAY_METHOD} in {} - we can autogenerate the code for this", ext_class.file_name));
+                // There's usually a good reason why serialization is manually implemented,
+                // so warning about it is just spam.
+                // We could introduce an opt-in flag, but by having a custom method in the first place someone already made the choice.
+                // reporter.warn(&obj.virtpath, &obj.fqname, format!("No need to manually implement {NATIVE_TO_PA_ARRAY_METHOD} in {} - we can autogenerate the code for this", ext_class.file_name));
                 format!(
                     "return {}.{NATIVE_TO_PA_ARRAY_METHOD}(data, data_type)",
                     ext_class.name
