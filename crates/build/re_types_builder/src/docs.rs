@@ -1,4 +1,4 @@
-use crate::{codegen::Target, Objects};
+use crate::{codegen::Target, Objects, Reporter};
 
 /// A high-level representation of the contents of a flatbuffer docstring.
 #[derive(Debug, Clone)]
@@ -15,19 +15,32 @@ pub struct Docs {
 
 impl Docs {
     pub fn from_raw_docs(
+        reporter: &Reporter,
+        virtpath: &str,
+        fqname: &str,
         docs: Option<flatbuffers::Vector<'_, flatbuffers::ForwardsUOffset<&'_ str>>>,
     ) -> Self {
-        Self::from_lines(docs.into_iter().flat_map(|doc| doc.into_iter()))
+        Self::from_lines(
+            reporter,
+            virtpath,
+            fqname,
+            docs.into_iter().flat_map(|doc| doc.into_iter()),
+        )
     }
 
-    pub fn from_lines<'a>(lines: impl Iterator<Item = &'a str>) -> Self {
+    pub fn from_lines<'a>(
+        reporter: &Reporter,
+        virtpath: &str,
+        fqname: &str,
+        lines: impl Iterator<Item = &'a str>,
+    ) -> Self {
         let lines: Vec<(String, String)> = lines.map(parse_line).collect();
 
         for (tag, comment) in &lines {
             assert!(is_known_tag(tag), "Unknown tag: '\\{tag} {comment}'");
 
             if tag.is_empty() {
-                find_and_recommend_doclinks(comment);
+                find_and_recommend_doclinks(reporter, virtpath, fqname, comment);
             }
         }
 
@@ -35,13 +48,18 @@ impl Docs {
     }
 
     /// Get the first line of the documentation untagged.
-    pub fn first_line(&self, objects: &Objects, target: Target) -> Option<String> {
+    pub fn first_line(
+        &self,
+        reporter: &Reporter,
+        objects: &Objects,
+        target: Target,
+    ) -> Option<String> {
         let (tag, line) = self.lines.first()?;
         assert!(
             tag.is_empty(),
             "Expected no tag on first line of docstring. Found: /// \\{tag} {line}"
         );
-        Some(translate_doc_line(objects, line, target))
+        Some(translate_doc_line(reporter, objects, line, target))
     }
 
     /// Get all doc lines that start with the given tag.
@@ -68,7 +86,12 @@ impl Docs {
     /// For instance, pass [`Target::Python`] to get all lines that are untagged or starts with `"\py"`.
     ///
     /// The tagged lines (`\py`) are left as is, but untagged lines will have Rerun doclinks translated to the target language.
-    pub(super) fn lines_for(&self, objects: &Objects, target: Target) -> Vec<String> {
+    pub(super) fn lines_for(
+        &self,
+        reporter: &Reporter,
+        objects: &Objects,
+        target: Target,
+    ) -> Vec<String> {
         let target_tag = match target {
             Target::Cpp => "cpp",
             Target::Python => "py",
@@ -82,7 +105,7 @@ impl Docs {
 
         remove_extra_newlines(self.lines.iter().filter_map(|(tag, line)| {
             if tag.is_empty() {
-                Some(translate_doc_line(objects, line, target))
+                Some(translate_doc_line(reporter, objects, line, target))
             } else if tag == target_tag {
                 // We don't expect doclinks in tagged lines, because tagged lines are usually
                 // language-specific, and thus should have the correct format already.
@@ -144,7 +167,12 @@ fn parse_line(line: &str) -> (String, String) {
 }
 
 /// Look for things that look like doclinks to other types, but aren't in brackets.
-fn find_and_recommend_doclinks(full_comment: &str) {
+fn find_and_recommend_doclinks(
+    reporter: &Reporter,
+    virtpath: &str,
+    fqname: &str,
+    full_comment: &str,
+) {
     let mut comment = full_comment;
     while let Some(start) = comment.find('`') {
         comment = &comment[start + 1..];
@@ -165,7 +193,7 @@ fn find_and_recommend_doclinks(full_comment: &str) {
                 && !matches!(content, "Horizontal" | "Vertical" | "SolidColor");
 
             if looks_like_type_name {
-                re_log::warn!("`{content}` can be written as a doclink, e.g. [archetypes.{content}] in comment: /// {full_comment}");
+                reporter.warn(virtpath, fqname, format!("`{content}` can be written as a doclink, e.g. [archetypes.{content}] in comment: /// {full_comment}"));
             }
             comment = &comment[end + 1..];
         } else {
@@ -188,12 +216,17 @@ use doclink_translation::translate_doc_line;
 ///
 /// The code is not very efficient, but it is simple and works.
 mod doclink_translation {
-    use crate::Objects;
+    use crate::{Objects, Reporter};
 
     use super::Target;
 
     /// Convert Rerun-style doclinks to the target language.
-    pub fn translate_doc_line(objects: &Objects, input: &str, target: Target) -> String {
+    pub fn translate_doc_line(
+        reporter: &Reporter,
+        objects: &Objects,
+        input: &str,
+        target: Target,
+    ) -> String {
         let mut out_tokens: Vec<String> = vec![];
         let mut within_backticks = false;
 
@@ -230,7 +263,12 @@ mod doclink_translation {
                     continue;
                 }
 
-                out_tokens.push(translate_doclink(objects, &doclink_tokens, target));
+                out_tokens.push(translate_doclink(
+                    reporter,
+                    objects,
+                    &doclink_tokens,
+                    target,
+                ));
                 continue;
             }
 
@@ -241,7 +279,12 @@ mod doclink_translation {
         out_tokens.into_iter().collect()
     }
 
-    fn translate_doclink(objects: &Objects, doclink_tokens: &[&str], target: Target) -> String {
+    fn translate_doclink(
+        reporter: &Reporter,
+        objects: &Objects,
+        doclink_tokens: &[&str],
+        target: Target,
+    ) -> String {
         try_translate_doclink(objects, doclink_tokens, target).unwrap_or_else(|err| {
             let original_doclink: String = doclink_tokens.join("");
 
@@ -250,9 +293,9 @@ mod doclink_translation {
                 !original_doclink.contains(' ') && original_doclink.len() > 6;
 
             if looks_like_rerun_doclink {
-                re_log::warn_once!(
+                reporter.warn_no_context(format!(
                     "Looks like a Rerun doclink, but fails to parse: {original_doclink} - {err}"
-                );
+                ));
             }
 
             original_doclink

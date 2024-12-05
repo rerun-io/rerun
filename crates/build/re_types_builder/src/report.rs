@@ -41,20 +41,45 @@ impl Reporter {
     #[allow(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
     pub fn error(&self, virtpath: &str, fqname: &str, text: impl ToString) {
         self.errors
-            .send(format!("{virtpath} {fqname}: {}", text.to_string()))
+            .send(format!(
+                "{} {fqname}: {}",
+                Self::format_virtpath(virtpath),
+                text.to_string()
+            ))
             .ok();
+    }
+
+    #[allow(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
+    pub fn warn_no_context(&self, text: impl ToString) {
+        self.warnings.send(text.to_string()).ok();
     }
 
     #[allow(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
     pub fn warn(&self, virtpath: &str, fqname: &str, text: impl ToString) {
         self.warnings
-            .send(format!("{virtpath} {fqname}: {}", text.to_string()))
+            .send(format!(
+                "{} {fqname}: {}",
+                Self::format_virtpath(virtpath),
+                text.to_string()
+            ))
             .ok();
     }
 
     #[allow(clippy::needless_pass_by_value)] // `&impl ToString` has worse usability
     pub fn error_any(&self, text: impl ToString) {
         self.errors.send(text.to_string()).ok();
+    }
+
+    fn format_virtpath(virtpath: &str) -> String {
+        if let Ok(path) = Utf8Path::new(virtpath).canonicalize() {
+            path.display().to_string()
+        } else if let Ok(path) =
+            Utf8Path::new(&format!("crates/store/re_types/definitions/{virtpath}")).canonicalize()
+        {
+            path.display().to_string()
+        } else {
+            virtpath.to_owned()
+        }
     }
 }
 

@@ -1109,7 +1109,7 @@ fn code_for_union(
         format!("inner: {inner_type} = field({converter} {type_ignore}\n)"),
         1,
     );
-    code.push_indented(1, quote_doc_from_fields(objects, fields), 0);
+    code.push_indented(1, quote_doc_from_fields(reporter, objects, fields), 0);
 
     // if there are duplicate types, we need to add a `kind` field to disambiguate the union
     if has_duplicate_types {
@@ -1125,7 +1125,11 @@ fn code_for_union(
             1,
         );
 
-        code.push_indented(1, quote_union_kind_from_fields(objects, fields), 0);
+        code.push_indented(
+            1,
+            quote_union_kind_from_fields(reporter, objects, fields),
+            0,
+        );
     }
 
     code.push_unindented(quote_union_aliases_from_object(obj, field_types.iter()), 1);
@@ -1240,7 +1244,7 @@ fn lines_from_docs(
     docs: &Docs,
     is_experimental: bool,
 ) -> Vec<String> {
-    let mut lines = docs.lines_for(objects, Target::Python);
+    let mut lines = docs.lines_for(reporter, objects, Target::Python);
 
     if is_experimental {
         lines.push(String::new());
@@ -1298,11 +1302,15 @@ fn quote_doc_lines(lines: Vec<String>) -> String {
     }
 }
 
-fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String {
+fn quote_doc_from_fields(
+    reporter: &Reporter,
+    objects: &Objects,
+    fields: &Vec<ObjectField>,
+) -> String {
     let mut lines = vec!["Must be one of:".to_owned(), String::new()];
 
     for field in fields {
-        let mut content = field.docs.lines_for(objects, Target::Python);
+        let mut content = field.docs.lines_for(reporter, objects, Target::Python);
         for line in &mut content {
             if line.starts_with(char::is_whitespace) {
                 line.remove(0);
@@ -1340,11 +1348,15 @@ fn quote_doc_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String
     format!("\"\"\"\n{doc}\n\"\"\"\n\n")
 }
 
-fn quote_union_kind_from_fields(objects: &Objects, fields: &Vec<ObjectField>) -> String {
+fn quote_union_kind_from_fields(
+    reporter: &Reporter,
+    objects: &Objects,
+    fields: &Vec<ObjectField>,
+) -> String {
     let mut lines = vec!["Possible values:".to_owned(), String::new()];
 
     for field in fields {
-        let mut content = field.docs.lines_for(objects, Target::Python);
+        let mut content = field.docs.lines_for(reporter, objects, Target::Python);
         for line in &mut content {
             if line.starts_with(char::is_whitespace) {
                 line.remove(0);
@@ -2377,7 +2389,7 @@ fn quote_init_method(
         obj.fields
             .iter()
             .filter_map(|field| {
-                let doc_content = field.docs.lines_for(objects, Target::Python);
+                let doc_content = field.docs.lines_for(reporter, objects, Target::Python);
                 if doc_content.is_empty() {
                     if !field.is_testing() && obj.fields.len() > 1 {
                         reporter.error(
