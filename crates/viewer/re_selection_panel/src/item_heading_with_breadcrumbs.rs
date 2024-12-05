@@ -147,8 +147,10 @@ fn item_bread_crumbs_ui(
                 let relative = &entity_path.as_slice()[common_ancestor.len()..];
 
                 let is_projection = !entity_path.starts_with(&view.space_origin);
-                // TODO: the projection breadcrumbs are wrong for nuscenes
-                // (but correct for arkit!)
+                // TODO(#4491): the projection breadcrumbs are wrong for nuscenes (but correct for arkit!),
+                // at least if we consider the blueprint tree panel as "correct".
+                // I fear we need to use the undocumented `DataResultNodeOrPath` and friends to match the
+                // hierarchy of the blueprint tree panel.
 
                 if instance.is_all() {
                     // Entity path. Exclude the last part from the breadcrumbs,
