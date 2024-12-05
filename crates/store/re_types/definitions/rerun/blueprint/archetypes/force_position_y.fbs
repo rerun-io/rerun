@@ -1,8 +1,0 @@
-namespace rerun.blueprint.archetypes;
-
-struct ForcePositionY (
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default"
-) {
-    force: rerun.blueprint.components.ForcePositionY (order: 100);
-}

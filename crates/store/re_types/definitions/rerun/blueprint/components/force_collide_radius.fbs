@@ -1,8 +1,0 @@
-namespace rerun.blueprint.components;
-
-struct ForceCollideRadius (
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default, PartialEq"
-) {
-    center: rerun.blueprint.datatypes.ForceCollideRadius (order: 100);
-}

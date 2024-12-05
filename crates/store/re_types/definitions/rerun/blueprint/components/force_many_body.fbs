@@ -1,8 +1,0 @@
-namespace rerun.blueprint.components;
-
-struct ForceManyBody (
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default, PartialEq"
-) {
-    center: rerun.blueprint.datatypes.ForceManyBody (order: 100);
-}

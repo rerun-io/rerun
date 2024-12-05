@@ -1,8 +1,0 @@
-namespace rerun.blueprint.components;
-
-struct ForceLink (
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default, PartialEq"
-) {
-    center: rerun.blueprint.datatypes.ForceLink (order: 100);
-}

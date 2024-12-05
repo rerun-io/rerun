@@ -1,8 +1,0 @@
-namespace rerun.blueprint.archetypes;
-
-struct ForceCollideRadius (
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default"
-) {
-    force: rerun.blueprint.components.ForceCollideRadius (order: 100);
-}

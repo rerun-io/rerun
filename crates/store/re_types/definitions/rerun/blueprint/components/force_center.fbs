@@ -1,8 +1,0 @@
-namespace rerun.blueprint.components;
-
-struct ForceCenter (
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default, PartialEq"
-) {
-    center: rerun.blueprint.datatypes.ForceCenter (order: 100);
-}

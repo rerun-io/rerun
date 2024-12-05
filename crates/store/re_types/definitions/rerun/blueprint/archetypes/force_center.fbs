@@ -1,8 +1,0 @@
-namespace rerun.blueprint.archetypes;
-
-struct ForceCenter (
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default"
-) {
-    force: rerun.blueprint.components.ForceCenter (order: 100);
-}

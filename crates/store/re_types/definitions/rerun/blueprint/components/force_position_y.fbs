@@ -1,8 +1,0 @@
-namespace rerun.blueprint.components;
-
-struct ForcePositionY (
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "Default, PartialEq"
-) {
-    position_y: rerun.blueprint.datatypes.ForcePositionY (order: 100);
-}

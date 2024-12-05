@@ -70,13 +70,6 @@ class GraphView(SpaceView):
         defaults: list[Union[AsComponents, ComponentBatchLike]] = [],
         overrides: dict[EntityPathLike, list[ComponentBatchLike]] = {},
         visual_bounds: blueprint_archetypes.VisualBounds2D | None = None,
-        force_layout_simulation: blueprint_archetypes.ForceLayoutSimulation | None = None,
-        force_position_x: blueprint_archetypes.ForcePositionX | None = None,
-        force_position_y: blueprint_archetypes.ForcePositionY | None = None,
-        force_center: blueprint_archetypes.ForcePositionX | None = None,
-        force_collide_radius: blueprint_archetypes.ForceCollideRadius | None = None,
-        force_many_body: blueprint_archetypes.ForceManyBody | None = None,
-        force_link: blueprint_archetypes.ForceLink | None = None,
     ) -> None:
         """
         Construct a blueprint for a new GraphView view.
@@ -111,20 +104,6 @@ class GraphView(SpaceView):
             Everything within these bounds is guaranteed to be visible.
 
             Somethings outside of these bounds may also be visible due to letterboxing.
-        force_layout_simulation:
-            The parameters for the force layout simulation.
-        force_position_x:
-            Adds a force that pull nodes towards an `x` position.
-        force_position_y:
-            Adds a force that pull nodes towards an `y` position.
-        force_center:
-            Adds a force that moves the center of mass of all nodes to a given position.
-        force_collide_radius:
-            Adds a force that resolves collisions between graph nodes.
-        force_many_body:
-            Adds a force that acts like an electric charge between nodes.
-        force_link:
-            Adds a force that acts like a spring between nodes.
 
         """
 
@@ -133,41 +112,6 @@ class GraphView(SpaceView):
             if not isinstance(visual_bounds, blueprint_archetypes.VisualBounds2D):
                 visual_bounds = blueprint_archetypes.VisualBounds2D(visual_bounds)
             properties["VisualBounds2D"] = visual_bounds
-
-        if force_layout_simulation is not None:
-            if not isinstance(force_layout_simulation, blueprint_archetypes.ForceLayoutSimulation):
-                force_layout_simulation = blueprint_archetypes.ForceLayoutSimulation(force_layout_simulation)
-            properties["ForceLayoutSimulation"] = force_layout_simulation
-
-        if force_position_x is not None:
-            if not isinstance(force_position_x, blueprint_archetypes.ForcePositionX):
-                force_position_x = blueprint_archetypes.ForcePositionX(force_position_x)
-            properties["ForcePositionX"] = force_position_x
-
-        if force_position_y is not None:
-            if not isinstance(force_position_y, blueprint_archetypes.ForcePositionY):
-                force_position_y = blueprint_archetypes.ForcePositionY(force_position_y)
-            properties["ForcePositionY"] = force_position_y
-
-        if force_center is not None:
-            if not isinstance(force_center, blueprint_archetypes.ForcePositionX):
-                force_center = blueprint_archetypes.ForcePositionX(force_center)
-            properties["ForcePositionX"] = force_center
-
-        if force_collide_radius is not None:
-            if not isinstance(force_collide_radius, blueprint_archetypes.ForceCollideRadius):
-                force_collide_radius = blueprint_archetypes.ForceCollideRadius(force_collide_radius)
-            properties["ForceCollideRadius"] = force_collide_radius
-
-        if force_many_body is not None:
-            if not isinstance(force_many_body, blueprint_archetypes.ForceManyBody):
-                force_many_body = blueprint_archetypes.ForceManyBody(force_many_body)
-            properties["ForceManyBody"] = force_many_body
-
-        if force_link is not None:
-            if not isinstance(force_link, blueprint_archetypes.ForceLink):
-                force_link = blueprint_archetypes.ForceLink(force_link)
-            properties["ForceLink"] = force_link
 
         super().__init__(
             class_identifier="Graph",

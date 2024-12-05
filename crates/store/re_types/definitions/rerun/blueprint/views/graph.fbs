@@ -11,25 +11,4 @@ table GraphView (
     ///
     /// Somethings outside of these bounds may also be visible due to letterboxing.
     visual_bounds: rerun.blueprint.archetypes.VisualBounds2D (order: 1000);
-
-    /// The parameters for the force layout simulation.
-    force_layout_simulation: rerun.blueprint.archetypes.ForceLayoutSimulation (order: 2000);
-
-    /// Adds a force that pull nodes towards an `x` position.
-    force_position_x: rerun.blueprint.archetypes.ForcePositionX (order: 3000);
-
-    /// Adds a force that pull nodes towards an `y` position.
-    force_position_y: rerun.blueprint.archetypes.ForcePositionY (order: 3100);
-
-    /// Adds a force that moves the center of mass of all nodes to a given position.
-    force_center: rerun.blueprint.archetypes.ForcePositionX (order: 4000);
-
-    /// Adds a force that resolves collisions between graph nodes.
-    force_collide_radius: rerun.blueprint.archetypes.ForceCollideRadius (order: 5000);
-
-    /// Adds a force that acts like an electric charge between nodes.
-    force_many_body: rerun.blueprint.archetypes.ForceManyBody (order: 6000);
-
-    /// Adds a force that acts like a spring between nodes.
-    force_link: rerun.blueprint.archetypes.ForceLink (order: 7000);
 }
