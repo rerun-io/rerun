@@ -37,9 +37,9 @@ impl DesignTokens {
         let color_table = load_color_table(&json);
 
         Self {
-            top_bar_color: color_table.grey(S100),
-            bottom_bar_color: color_table.grey(S150),
-            bottom_bar_stroke: egui::Stroke::new(1.0, color_table.grey(S250)),
+            top_bar_color: color_table.gray(S100),
+            bottom_bar_color: color_table.gray(S150),
+            bottom_bar_stroke: egui::Stroke::new(1.0, color_table.gray(S250)),
             bottom_bar_rounding: egui::Rounding {
                 nw: 6.0,
                 ne: 6.0,
@@ -47,8 +47,8 @@ impl DesignTokens {
                 se: 0.0,
             }, // copied from figma, should be top only
             shadow_gradient_dark_start: egui::Color32::from_black_alpha(77), //TODO(ab): use ColorToken!
-            tab_bar_color: color_table.grey(S200),
-            native_frame_stroke: egui::Stroke::new(1.0, color_table.grey(S250)),
+            tab_bar_color: color_table.gray(S200),
+            native_frame_stroke: egui::Stroke::new(1.0, color_table.gray(S250)),
             json,
             color_table,
         }
@@ -131,12 +131,12 @@ impl DesignTokens {
             .text_styles
             .insert(Self::welcome_screen_tag(), egui::FontId::proportional(10.5));
 
-        let panel_bg_color = self.color(ColorToken::grey(S100));
+        let panel_bg_color = self.color(ColorToken::gray(S100));
         // let floating_color = get_aliased_color(&json, "{Alias.Color.Surface.Floating.value}");
-        let floating_color = self.color(ColorToken::grey(S250));
+        let floating_color = self.color(ColorToken::gray(S250));
 
         // For table zebra stripes.
-        egui_style.visuals.faint_bg_color = self.color(ColorToken::grey(S150));
+        egui_style.visuals.faint_bg_color = self.color(ColorToken::gray(S150));
 
         // Used as the background of text edits, scroll bars and others things
         // that needs to look different from other interactive stuff.
@@ -150,11 +150,11 @@ impl DesignTokens {
         egui_style.visuals.widgets.inactive.weak_bg_fill = Default::default(); // Buttons have no background color when inactive
 
         // Fill of unchecked radio buttons, checkboxes, etc. Must be brighter than the background floating_color.
-        egui_style.visuals.widgets.inactive.bg_fill = self.color(ColorToken::grey(S300));
+        egui_style.visuals.widgets.inactive.bg_fill = self.color(ColorToken::gray(S300));
 
         {
             // Background colors for buttons (menu buttons, blueprint buttons, etc) when hovered or clicked:
-            let hovered_color = self.color(ColorToken::grey(S325));
+            let hovered_color = self.color(ColorToken::gray(S325));
             egui_style.visuals.widgets.hovered.weak_bg_fill = hovered_color;
             egui_style.visuals.widgets.hovered.bg_fill = hovered_color;
             egui_style.visuals.widgets.active.weak_bg_fill = hovered_color;
@@ -184,11 +184,11 @@ impl DesignTokens {
 
         // separator lines, panel lines, etc
         egui_style.visuals.widgets.noninteractive.bg_stroke.color =
-            self.color(ColorToken::grey(S250));
+            self.color(ColorToken::gray(S250));
 
-        let subdued = self.color(ColorToken::grey(S550));
-        let default = self.color(ColorToken::grey(S775));
-        let strong = self.color(ColorToken::grey(S1000));
+        let subdued = self.color(ColorToken::gray(S550));
+        let default = self.color(ColorToken::gray(S775));
+        let strong = self.color(ColorToken::gray(S1000));
 
         egui_style.visuals.widgets.noninteractive.fg_stroke.color = subdued; // non-interactive text
         egui_style.visuals.widgets.inactive.fg_stroke.color = default; // button text
@@ -413,7 +413,7 @@ impl DesignTokens {
     /// The color for the background of [`crate::SectionCollapsingHeader`].
     pub fn section_collapsing_header_color(&self) -> egui::Color32 {
         // same as visuals.widgets.inactive.bg_fill
-        self.color(ColorToken::grey(S200))
+        self.color(ColorToken::gray(S200))
     }
 
     /// The color we use to mean "loop this selection"
@@ -428,7 +428,7 @@ impl DesignTokens {
 
     /// Used by the "add view or container" modal.
     pub fn thumbnail_background_color(&self) -> egui::Color32 {
-        self.color(ColorToken::grey(S250))
+        self.color(ColorToken::gray(S250))
     }
 }
 

@@ -27,7 +27,7 @@
   },
   "Global": {
     "Color": {
-      "Grey": {
+      "Gray": {
         "0": {
           "value": "#000000",
           "description": "0 - 0",
@@ -1062,7 +1062,7 @@
           "type": "color"
         }
       },
-      "OpaqueGrey": {
+      "OpaqueGray": {
         "Default": {
           "value": "#7c7c7c20",
           "description": "An opaque grey that picks up some, but not all, of the colors behind it",

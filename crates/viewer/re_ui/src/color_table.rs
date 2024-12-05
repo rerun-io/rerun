@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 /// A hue for a [`ColorToken`].
 #[derive(Debug, Clone, Copy, Hash, PartialEq, Eq)]
 pub enum Hue {
-    Grey,
+    Gray,
     Green,
     Red,
     Blue,
@@ -14,7 +14,7 @@ impl nohash_hasher::IsEnabled for Hue {}
 
 impl Hue {
     pub fn all() -> &'static [Self] {
-        static ALL: [Hue; 5] = [Hue::Grey, Hue::Green, Hue::Red, Hue::Blue, Hue::Purple];
+        static ALL: [Hue; 5] = [Hue::Gray, Hue::Green, Hue::Red, Hue::Blue, Hue::Purple];
         &ALL
     }
 }
@@ -23,7 +23,7 @@ impl Display for Hue {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             // these must be as they appear in `design_token.json`
-            Self::Grey => f.write_str("Grey"),
+            Self::Gray => f.write_str("Gray"),
             Self::Green => f.write_str("Green"),
             Self::Red => f.write_str("Red"),
             Self::Blue => f.write_str("Blue"),
@@ -150,8 +150,8 @@ impl ColorTable {
     }
 
     #[inline]
-    pub fn grey(&self, shade: Shade) -> egui::Color32 {
-        self.get(ColorToken::grey(shade))
+    pub fn gray(&self, shade: Shade) -> egui::Color32 {
+        self.get(ColorToken::gray(shade))
     }
 
     #[inline]
@@ -191,8 +191,8 @@ impl ColorToken {
     }
 
     #[inline]
-    pub fn grey(shade: Shade) -> Self {
-        Self::new(Hue::Grey, shade)
+    pub fn gray(shade: Shade) -> Self {
+        Self::new(Hue::Gray, shade)
     }
 
     #[inline]
