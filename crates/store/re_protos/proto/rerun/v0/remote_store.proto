@@ -6,16 +6,27 @@ import "rerun/v0/common.proto";
 
 service StorageNode {
     // data API calls
-    rpc Query(QueryRequest) returns (stream RerunData) {}
-    rpc FetchRecording(FetchRecordingRequest) returns (stream RerunChunkData) {}
+    rpc Query(QueryRequest) returns (stream DataframePart) {}
+    rpc FetchRecording(FetchRecordingRequest) returns (stream RerunChunk) {}
 
     // metadata API calls
-    rpc QueryCatalog(QueryCatalogRequest) returns (stream RerunData) {}
+    rpc QueryCatalog(QueryCatalogRequest) returns (stream DataframePart) {}
     rpc UpdateCatalog(UpdateCatalogRequest) returns (UpdateCatalogResponse) {}
     // TODO(zehiko) support registering more than one recording at a time
-    rpc RegisterRecording(RegisterRecordingRequest) returns (RerunData) {}
+    rpc RegisterRecording(RegisterRecordingRequest) returns (DataframePart) {}
 }
 
+
+// ---------------- Common response message ------------------
+
+// DataframePart is arrow IPC encoded RecordBatch
+message DataframePart {
+    // encoder version used to encode the data
+    EncoderVersion encoder_version = 1;
+
+    // Data payload is Arrow IPC encoded RecordBatch
+    bytes payload = 2;
+}
 
 // ---------------- RegisterRecording ------------------
 
@@ -28,14 +39,14 @@ message RegisterRecordingRequest {
     RecordingType typ = 3;
     // (optional) any additional metadata that should be associated with the recording
     // You can associate any arbtrirary number of columns with a specific recording
-    RerunData additional_metadata = 4;
+    DataframePart additional_metadata = 4;
 }
 
 // ---------------- UpdateCatalog  -----------------
 
 message UpdateCatalogRequest {
     RecordingId recording_id = 1;
-    RerunData metadata = 2;
+    DataframePart metadata = 2;
 }
 
 message UpdateCatalogResponse {}

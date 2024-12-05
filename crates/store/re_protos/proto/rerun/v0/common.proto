@@ -8,23 +8,14 @@ enum EncoderVersion {
     V0 = 0;
 }
 
-// Message containing data as arrow RecordBatch
-message RerunData {
+// RerunChunk is arrow IPC encoded RecordBatch that has
+// rerun-specific semantic constraints and can be directly
+// converted to a Rerun Chunk (`re_chunk::Chunk`)
+message RerunChunk {
     // encoder version used to encode the data
     EncoderVersion encoder_version = 1;
 
     // Data payload is Arrow IPC encoded RecordBatch
-    bytes payload = 2;
-}
-
-// Message containing Rerun Chunk (which is still a RecordBatch
-// but with lots of Rerun specific constraints
-message RerunChunkData {
-    // encoder version used to encode the data
-    EncoderVersion encoder_version = 1;
-
-    // Data payload is Arrow IPC encoded RecordBatch
-    // that can be converted to an internal Rerun Chunk directly
     bytes payload = 2;
 }
 
