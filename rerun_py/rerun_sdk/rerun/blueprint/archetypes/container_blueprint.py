@@ -49,19 +49,19 @@ class ContainerBlueprint(Archetype):
         col_shares:
             The layout shares of each column in the container.
 
-            For `Horizontal` containers, the length of this list should always match the number of contents.
+            For [`components.ContainerKind.Horizontal`][rerun.components.ContainerKind.Horizontal] containers, the length of this list should always match the number of contents.
 
-            Ignored for `Vertical` containers.
+            Ignored for [`components.ContainerKind.Vertical`][rerun.components.ContainerKind.Vertical] containers.
         row_shares:
             The layout shares of each row of the container.
 
-            For `Vertical` containers, the length of this list should always match the number of contents.
+            For [`components.ContainerKind.Vertical`][rerun.components.ContainerKind.Vertical] containers, the length of this list should always match the number of contents.
 
-            Ignored for `Horizontal` containers.
+            Ignored for [`components.ContainerKind.Horizontal`][rerun.components.ContainerKind.Horizontal] containers.
         active_tab:
             Which tab is active.
 
-            Only applies to `Tabs` containers.
+            Only applies to `Tabs` containers.pixi
         visible:
             Whether this container is visible.
 
@@ -71,7 +71,7 @@ class ContainerBlueprint(Archetype):
 
             If unset, the grid layout will be auto.
 
-            Ignored for `Horizontal`/`Vertical` containers.
+            Ignored for [`components.ContainerKind.Horizontal`][rerun.components.ContainerKind.Horizontal]/[`components.ContainerKind.Vertical`][rerun.components.ContainerKind.Vertical] containers.
 
         """
 
@@ -143,9 +143,9 @@ class ContainerBlueprint(Archetype):
     )
     # The layout shares of each column in the container.
     #
-    # For `Horizontal` containers, the length of this list should always match the number of contents.
+    # For [`components.ContainerKind.Horizontal`][rerun.components.ContainerKind.Horizontal] containers, the length of this list should always match the number of contents.
     #
-    # Ignored for `Vertical` containers.
+    # Ignored for [`components.ContainerKind.Vertical`][rerun.components.ContainerKind.Vertical] containers.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -156,9 +156,9 @@ class ContainerBlueprint(Archetype):
     )
     # The layout shares of each row of the container.
     #
-    # For `Vertical` containers, the length of this list should always match the number of contents.
+    # For [`components.ContainerKind.Vertical`][rerun.components.ContainerKind.Vertical] containers, the length of this list should always match the number of contents.
     #
-    # Ignored for `Horizontal` containers.
+    # Ignored for [`components.ContainerKind.Horizontal`][rerun.components.ContainerKind.Horizontal] containers.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -169,7 +169,7 @@ class ContainerBlueprint(Archetype):
     )
     # Which tab is active.
     #
-    # Only applies to `Tabs` containers.
+    # Only applies to `Tabs` containers.pixi
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
@@ -193,7 +193,7 @@ class ContainerBlueprint(Archetype):
     #
     # If unset, the grid layout will be auto.
     #
-    # Ignored for `Horizontal`/`Vertical` containers.
+    # Ignored for [`components.ContainerKind.Horizontal`][rerun.components.ContainerKind.Horizontal]/[`components.ContainerKind.Vertical`][rerun.components.ContainerKind.Vertical] containers.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 

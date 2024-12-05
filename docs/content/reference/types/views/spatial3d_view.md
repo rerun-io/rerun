@@ -11,7 +11,7 @@ For viewing spatial 3D data.
 Configuration for the background of the view.
 
 * `kind`: The type of the background.
-* `color`: Color used for the `SolidColor` background type.
+* `color`: Color used for the [`components.BackgroundKind#SolidColor`](https://rerun.io/docs/reference/types/components/background_kind) background type.
 ### `time_ranges`
 Configures which range on each timeline is shown by this view (unless specified differently per entity).
 
