@@ -1047,6 +1047,23 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
 
     assert_eq!(kind, &ObjectKind::Archetype);
 
+    // sanity check that each field has one of the rerun component type attributes
+    for field in &obj.fields {
+        assert!(
+            [
+                ATTR_RERUN_COMPONENT_OPTIONAL,
+                ATTR_RERUN_COMPONENT_RECOMMENDED,
+                ATTR_RERUN_COMPONENT_REQUIRED
+            ]
+            .iter()
+            .any(|attr| field.try_get_attr::<String>(attr).is_some()),
+            "archetype `{}` must add one of the \"attr.rerun.component_{{required|recommended|\
+            optional}}\" attributes to field `{}`",
+            obj.name,
+            field.name
+        );
+    }
+
     let display_name = re_case::to_human_case(name);
     let name = format_ident!("{name}");
 
@@ -1078,7 +1095,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
         compute_components(obj, ATTR_RERUN_COMPONENT_RECOMMENDED, [indicator_fqname]);
     let (num_optional, optional) = compute_components(obj, ATTR_RERUN_COMPONENT_OPTIONAL, []);
 
-    let num_components_docstring  = quote_doc_line(&format!(
+    let num_components_docstring = quote_doc_line(&format!(
         "The total number of components in the archetype: {num_required} required, {num_recommended} recommended, {num_optional} optional"
     ));
     let num_all = num_required + num_recommended + num_optional;
@@ -1090,7 +1107,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
         .collect::<Vec<_>>();
 
     let all_component_batches = {
-        std::iter::once(quote!{
+        std::iter::once(quote! {
             Some(Self::indicator())
         }).chain(obj.fields.iter().map(|obj_field| {
             let field_name = format_ident!("{}", obj_field.name);
@@ -1104,7 +1121,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
                     if is_plural {
                         // Always log Option<Vec<C>> as Vec<V>, mapping None to empty batch
                         let component_type = quote_field_type_from_typ(&obj_field.typ, false).0;
-                        quote!{
+                        quote! {
                             Some((
                                 if let Some(comp_batch) = &self.#field_name {
                                     (comp_batch as &dyn ComponentBatch)
@@ -1118,20 +1135,20 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
                         }
                     } else {
                         // Always log Option<C>, mapping None to empty batch
-                        quote!{ Some((&self.#field_name as &dyn ComponentBatch).into()) }
+                        quote! { Some((&self.#field_name as &dyn ComponentBatch).into()) }
                     }
                 } else {
                     if is_plural {
                         // Maybe logging an Option<Vec<C>>
-                        quote!{ self.#field_name.as_ref().map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()) }
+                        quote! { self.#field_name.as_ref().map(|comp_batch| (comp_batch as &dyn ComponentBatch).into()) }
                     } else {
                         // Maybe logging an Option<C>
-                        quote!{ self.#field_name.as_ref().map(|comp| (comp as &dyn ComponentBatch).into()) }
+                        quote! { self.#field_name.as_ref().map(|comp| (comp as &dyn ComponentBatch).into()) }
                     }
                 }
             } else {
                 // Always logging a Vec<C> or C
-                quote!{ Some((&self.#field_name as &dyn ComponentBatch).into()) }
+                quote! { Some((&self.#field_name as &dyn ComponentBatch).into()) }
             }
         }))
     };
@@ -1168,7 +1185,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
 
             // NOTE: An archetype cannot have overlapped component types by definition, so use the
             // component's fqname to do the mapping.
-            let quoted_deser = if is_nullable && !is_plural{
+            let quoted_deser = if is_nullable && !is_plural {
                 // For a nullable mono-component, it's valid for data to be missing
                 // after a clear.
                 let quoted_collection =
