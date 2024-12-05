@@ -50,13 +50,13 @@ impl CustomPoints3D {
 
     fn overridden_position_descriptor() -> ComponentDescriptor {
         CustomPosition3D::descriptor()
-            .or_with_archetype_name(|| "user.CustomArchetype".into())
-            .or_with_archetype_field_name(|| "positions".into())
+            .or_with_archetype_name(|| "user.CustomPoints3D".into())
+            .or_with_archetype_field_name(|| "custom_positions".into())
     }
 
     fn overridden_color_descriptor() -> ComponentDescriptor {
         rerun::components::Color::descriptor()
-            .or_with_archetype_name(|| "user.CustomArchetype".into())
+            .or_with_archetype_name(|| "user.CustomPoints3D".into())
             .or_with_archetype_field_name(|| "colors".into())
     }
 }
@@ -132,13 +132,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 component_name: "user.CustomPoints3DIndicator".into(),
             },
             ComponentDescriptor {
-                archetype_name: Some("user.CustomArchetype".into()),
+                archetype_name: Some("user.CustomPoints3D".into()),
                 archetype_field_name: Some("colors".into()),
                 component_name: rerun::components::Color::name(),
             },
             ComponentDescriptor {
-                archetype_name: Some("user.CustomArchetype".into()),
-                archetype_field_name: Some("positions".into()),
+                archetype_name: Some("user.CustomPoints3D".into()),
+                archetype_field_name: Some("custom_positions".into()),
                 component_name: "user.CustomPosition3D".into(),
             },
         ];
