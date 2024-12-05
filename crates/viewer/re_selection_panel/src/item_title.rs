@@ -5,7 +5,9 @@ use re_log_types::ComponentPath;
 use re_ui::{
     icons, syntax_highlighting::InstanceInBrackets as InstanceWithBrackets, SyntaxHighlighting as _,
 };
-use re_viewer_context::{contents_name_style, ContainerId, Item, SpaceViewId, ViewerContext};
+use re_viewer_context::{
+    contents_name_style, ContainerId, Contents, Item, SpaceViewId, ViewerContext,
+};
 use re_viewport_blueprint::ViewportBlueprint;
 
 #[must_use]
@@ -139,6 +141,17 @@ impl ItemTitle {
             component_name.full_name(),
             entity_path
         ))
+    }
+
+    pub fn from_contents(
+        ctx: &ViewerContext<'_>,
+        viewport: &ViewportBlueprint,
+        contents: &Contents,
+    ) -> Self {
+        match contents {
+            Contents::Container(container_id) => Self::from_container_id(viewport, container_id),
+            Contents::SpaceView(view_id) => Self::from_view_id(ctx, viewport, view_id),
+        }
     }
 
     pub fn from_container_id(viewport: &ViewportBlueprint, container_id: &ContainerId) -> Self {

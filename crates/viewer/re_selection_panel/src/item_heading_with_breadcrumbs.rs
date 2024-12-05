@@ -72,6 +72,7 @@ pub fn item_heading_with_breadcrumbs(
         );
 }
 
+// Show the bread crumbs leading to (but not including) the final item.
 fn item_bread_crumbs_ui(
     ctx: &ViewerContext<'_>,
     viewport: &ViewportBlueprint,
@@ -80,7 +81,8 @@ fn item_bread_crumbs_ui(
 ) {
     match item {
         Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) => {
-            // TODO(emilk): maybe some of these could have breadcrumbs
+            // These have no bread crumbs, at least not currently.
+            // I guess one could argue that the `StoreId` should have the `AppId` as its ancestor?
         }
         Item::InstancePath(instance_path) => {
             let InstancePath {
@@ -174,13 +176,13 @@ fn item_bread_crumbs_ui(
     }
 }
 
+// Show the actual item, after all the bread crumbs:
 fn last_part_of_item_heading(
     ctx: &ViewerContext<'_>,
     viewport: &ViewportBlueprint,
     ui: &mut egui::Ui,
     item: &Item,
 ) {
-    // Show the actual item, after all the bread crumbs:
     let ItemTitle {
         icon,
         label,
@@ -198,6 +200,49 @@ fn last_part_of_item_heading(
     cursor_interact_with_selectable(ctx, response, item.clone());
 }
 
+/// The breadcrumbs of containers and views in the viewport.
+fn viewport_breadcrumbs(
+    ctx: &ViewerContext<'_>,
+    viewport: &ViewportBlueprint,
+    ui: &mut egui::Ui,
+    contents: Contents,
+) {
+    let item = Item::from(contents);
+
+    if let Some(parent) = viewport.parent(&contents) {
+        // Recurse!
+        viewport_breadcrumbs(ctx, viewport, ui, parent.into());
+    }
+
+    let ItemTitle {
+        icon,
+        label: _,       // ignored: we just show the icon for breadcrumbs
+        label_style: _, // no label
+        tooltip,
+    } = ItemTitle::from_contents(ctx, viewport, &contents);
+
+    let mut response = ui.add(
+        egui::Button::image(icon.as_image().fit_to_original_size(ICON_SCALE))
+            .image_tint_follows_text_color(true),
+    );
+    if let Some(tooltip) = tooltip {
+        response = response.on_hover_text(tooltip);
+    }
+    cursor_interact_with_selectable(ctx, response, item);
+
+    separator_icon_ui(ui, icons::BREADCRUMBS_SEPARATOR_BLUEPRINT);
+}
+
+fn separator_icon_ui(ui: &mut egui::Ui, icon: re_ui::Icon) {
+    ui.add(
+        icon.as_image()
+            .fit_to_original_size(ICON_SCALE)
+            .tint(ui.visuals().text_color()),
+    );
+}
+
+/// The breadcrumbs of an entity path,
+/// that may or may not be part of a view.
 fn entity_path_breadcrumbs(
     ctx: &ViewerContext<'_>,
     ui: &mut egui::Ui,
@@ -250,44 +295,4 @@ fn entity_path_breadcrumbs(
     cursor_interact_with_selectable(ctx, response, item);
 
     separator_icon_ui(ui, icons::BREADCRUMBS_SEPARATOR_ENTITY);
-}
-
-fn viewport_breadcrumbs(
-    ctx: &ViewerContext<'_>,
-    viewport: &ViewportBlueprint,
-    ui: &mut egui::Ui,
-    contents: Contents,
-) {
-    let item = Item::from(contents);
-
-    if let Some(parent) = viewport.parent(&contents) {
-        // Recurse!
-        viewport_breadcrumbs(ctx, viewport, ui, parent.into());
-    }
-
-    let ItemTitle {
-        icon,
-        label: _,       // ignored: we just show the icon for breadcrumbs
-        label_style: _, // no label
-        tooltip,
-    } = ItemTitle::from_item(ctx, viewport, ui.style(), &item);
-
-    let mut response = ui.add(
-        egui::Button::image(icon.as_image().fit_to_original_size(ICON_SCALE))
-            .image_tint_follows_text_color(true),
-    );
-    if let Some(tooltip) = tooltip {
-        response = response.on_hover_text(tooltip);
-    }
-    cursor_interact_with_selectable(ctx, response, item);
-
-    separator_icon_ui(ui, icons::BREADCRUMBS_SEPARATOR_BLUEPRINT);
-}
-
-fn separator_icon_ui(ui: &mut egui::Ui, icon: re_ui::Icon) {
-    ui.add(
-        icon.as_image()
-            .fit_to_original_size(ICON_SCALE)
-            .tint(ui.visuals().text_color()),
-    );
 }
