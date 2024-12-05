@@ -6,14 +6,16 @@ import "rerun/v0/common.proto";
 
 service StorageNode {
     // data API calls
-    rpc Query(QueryRequest) returns (stream QueryResponse) {}
-    rpc FetchRecording(FetchRecordingRequest) returns (stream FetchRecordingResponse) {}
+    rpc Query(QueryRequest) returns (stream RerunData) {}
+    rpc FetchRecording(FetchRecordingRequest) returns (stream RerunChunkData) {}
 
     // metadata API calls
-    rpc QueryCatalog(QueryCatalogRequest) returns (stream QueryCatalogResponse) {}
+    rpc QueryCatalog(QueryCatalogRequest) returns (stream RerunData) {}
     rpc UpdateCatalog(UpdateCatalogRequest) returns (UpdateCatalogResponse) {}
-    rpc RegisterRecording(RegisterRecordingRequest) returns (RegisterRecordingResponse) {}
+    // TODO(zehiko) support registering more than one recording at a time
+    rpc RegisterRecording(RegisterRecordingRequest) returns (RerunData) {}
 }
+
 
 // ---------------- RegisterRecording ------------------
 
@@ -26,29 +28,14 @@ message RegisterRecordingRequest {
     RecordingType typ = 3;
     // (optional) any additional metadata that should be associated with the recording
     // You can associate any arbtrirary number of columns with a specific recording
-    RecordingMetadata metadata = 4;
-}
-
-// Recording metadata is single row arrow record batch
-message RecordingMetadata {
-    EncoderVersion encoder_version = 1;
-    bytes payload = 2;
-}
-
-message RegisterRecordingResponse {
-    RecordingId id = 1;
-    // Note / TODO(zehiko): this implies we read the record (for example go through entire .rrd file
-    // chunk by chunk) and extract the metadata. So we might want to 1/ not do this i.e.
-    // only do it as part of explicit GetMetadata request or 2/ do it if Request has "include_metadata=true"
-    // or 3/ do it always
-    RecordingMetadata metadata = 2;
+    RerunData additional_metadata = 4;
 }
 
 // ---------------- UpdateCatalog  -----------------
 
 message UpdateCatalogRequest {
     RecordingId recording_id = 1;
-    RecordingMetadata metadata = 2;
+    RerunData metadata = 2;
 }
 
 message UpdateCatalogResponse {}
@@ -60,20 +47,6 @@ message QueryRequest {
     RecordingId recording_id = 1;
     // query to execute
     Query query = 3;
-}
-
-message QueryResponse {
-    // TODO(zehiko) we need to expand this to become something like 'encoder options'
-    // as we will need to specify additional options like compression, including schema
-    // in payload, etc.
-    EncoderVersion encoder_version = 1;
-    // payload is raw bytes that the relevant codec can interpret
-    bytes payload = 2;
-}
-
-
-enum EncoderVersion {
-    V0 = 0;
 }
 
 
