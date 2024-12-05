@@ -1576,7 +1576,6 @@ fn to_arrow_method(
 
 fn archetype_serialize(type_ident: &Ident, obj: &Object, hpp_includes: &mut Includes) -> Method {
     hpp_includes.insert_rerun("component_batch.hpp");
-    hpp_includes.insert_rerun("component_descriptor.hpp");
     hpp_includes.insert_rerun("collection.hpp");
     hpp_includes.insert_system("vector"); // std::vector
 
