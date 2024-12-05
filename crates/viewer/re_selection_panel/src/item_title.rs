@@ -5,7 +5,9 @@ use re_data_ui::item_ui::{guess_instance_path_icon, guess_query_and_db_for_selec
 use re_entity_db::InstancePath;
 use re_log_types::ComponentPath;
 use re_ui::{
-    icons, syntax_highlighting::InstanceInBrackets as InstanceWithBrackets, SyntaxHighlighting as _,
+    icons,
+    syntax_highlighting::{InstanceInBrackets as InstanceWithBrackets, SyntaxHighlightedBuilder},
+    SyntaxHighlighting as _,
 };
 use re_viewer_context::{
     contents_name_style, ContainerId, Contents, Item, SpaceViewId, ViewerContext,
@@ -53,14 +55,11 @@ impl ItemTitle {
             Item::DataResult(view_id, instance_path) => {
                 let item_title = Self::from_instance_path(ctx, style, instance_path);
                 if let Some(view) = viewport.view(view_id) {
-                    item_title.with_tooltip({
-                        let mut layout_job = egui::text::LayoutJob::default();
-                        let style = ctx.egui_ctx.style();
-                        instance_path.syntax_highlight_into(&style, &mut layout_job);
-                        format!(" in view '{}'", view.display_name_or_default())
-                            .syntax_highlight_into(&style, &mut layout_job);
-                        layout_job
-                    })
+                    item_title.with_tooltip(
+                        SyntaxHighlightedBuilder::new(ctx.egui_ctx.style())
+                            .append(instance_path)
+                            .append(&format!(" in view '{}'", view.display_name_or_default())),
+                    )
                 } else {
                     item_title
                 }
@@ -104,8 +103,6 @@ impl ItemTitle {
             instance,
         } = instance_path;
 
-        let kind = instance_path.kind();
-
         let name = if instance.is_all() {
             // Entity path
             if let Some(last) = entity_path.last() {
@@ -119,7 +116,7 @@ impl ItemTitle {
         };
 
         Self::new(name, guess_instance_path_icon(ctx, instance_path))
-            .with_tooltip(format!("{kind} '{instance_path}'"))
+            .with_tooltip(instance_path.syntax_highlighted(style))
     }
 
     pub fn from_component_path(ctx: &ViewerContext<'_>, component_path: &ComponentPath) -> Self {
