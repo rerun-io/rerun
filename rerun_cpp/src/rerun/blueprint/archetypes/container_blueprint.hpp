@@ -36,21 +36,21 @@ namespace rerun::blueprint::archetypes {
 
         /// The layout shares of each column in the container.
         ///
-        /// For `Horizontal` containers, the length of this list should always match the number of contents.
+        /// For `components::ContainerKind::Horizontal` containers, the length of this list should always match the number of contents.
         ///
-        /// Ignored for `Vertical` containers.
+        /// Ignored for `components::ContainerKind::Vertical` containers.
         std::optional<Collection<rerun::blueprint::components::ColumnShare>> col_shares;
 
         /// The layout shares of each row of the container.
         ///
-        /// For `Vertical` containers, the length of this list should always match the number of contents.
+        /// For `components::ContainerKind::Vertical` containers, the length of this list should always match the number of contents.
         ///
-        /// Ignored for `Horizontal` containers.
+        /// Ignored for `components::ContainerKind::Horizontal` containers.
         std::optional<Collection<rerun::blueprint::components::RowShare>> row_shares;
 
         /// Which tab is active.
         ///
-        /// Only applies to `Tabs` containers.
+        /// Only applies to `Tabs` containers.pixi
         std::optional<rerun::blueprint::components::ActiveTab> active_tab;
 
         /// Whether this container is visible.
@@ -62,7 +62,7 @@ namespace rerun::blueprint::archetypes {
         ///
         /// If unset, the grid layout will be auto.
         ///
-        /// Ignored for `Horizontal`/`Vertical` containers.
+        /// Ignored for `components::ContainerKind::Horizontal`/`components::ContainerKind::Vertical` containers.
         std::optional<rerun::blueprint::components::GridColumns> grid_columns;
 
       public:
@@ -97,9 +97,9 @@ namespace rerun::blueprint::archetypes {
 
         /// The layout shares of each column in the container.
         ///
-        /// For `Horizontal` containers, the length of this list should always match the number of contents.
+        /// For `components::ContainerKind::Horizontal` containers, the length of this list should always match the number of contents.
         ///
-        /// Ignored for `Vertical` containers.
+        /// Ignored for `components::ContainerKind::Vertical` containers.
         ContainerBlueprint with_col_shares(
             Collection<rerun::blueprint::components::ColumnShare> _col_shares
         ) && {
@@ -110,9 +110,9 @@ namespace rerun::blueprint::archetypes {
 
         /// The layout shares of each row of the container.
         ///
-        /// For `Vertical` containers, the length of this list should always match the number of contents.
+        /// For `components::ContainerKind::Vertical` containers, the length of this list should always match the number of contents.
         ///
-        /// Ignored for `Horizontal` containers.
+        /// Ignored for `components::ContainerKind::Horizontal` containers.
         ContainerBlueprint with_row_shares(
             Collection<rerun::blueprint::components::RowShare> _row_shares
         ) && {
@@ -123,7 +123,7 @@ namespace rerun::blueprint::archetypes {
 
         /// Which tab is active.
         ///
-        /// Only applies to `Tabs` containers.
+        /// Only applies to `Tabs` containers.pixi
         ContainerBlueprint with_active_tab(rerun::blueprint::components::ActiveTab _active_tab) && {
             active_tab = std::move(_active_tab);
             // See: https://github.com/rerun-io/rerun/issues/4027
@@ -143,7 +143,7 @@ namespace rerun::blueprint::archetypes {
         ///
         /// If unset, the grid layout will be auto.
         ///
-        /// Ignored for `Horizontal`/`Vertical` containers.
+        /// Ignored for `components::ContainerKind::Horizontal`/`components::ContainerKind::Vertical` containers.
         ContainerBlueprint with_grid_columns(rerun::blueprint::components::GridColumns _grid_columns
         ) && {
             grid_columns = std::move(_grid_columns);

@@ -187,7 +187,10 @@ fn find_and_recommend_doclinks(
                 && !matches!(content, "SpaceViewContents" | "VisibleTimeRanges" | "QueryExpression")
 
                 // In some blueprint code we refer to stuff in Rerun.
-                && !matches!(content, "ChunkStore" | "ContainerId" | "EntityPathFilter" | "Spatial2DView" | "SpaceViewId" | "SpaceView");
+                && !matches!(content, "ChunkStore" | "ContainerId" | "EntityPathFilter" | "Spatial2DView" | "SpaceViewId" | "SpaceView")
+
+                // Doc links to OpenStreetMap may show up
+                && !matches!(content, "OpenStreetMap");
 
             if looks_like_type_name {
                 reporter.warn(virtpath, fqname, format!("`{content}` can be written as a doclink, e.g. [archetypes.{content}] in comment: /// {full_comment}"));
@@ -348,8 +351,8 @@ mod doclink_translation {
             ));
         }
 
-        let mut is_unreleased = false;
-        let mut scope = String::new();
+        let is_unreleased;
+        let scope;
         {
             // Find the target object:
             let mut candidates = vec![];
@@ -358,18 +361,21 @@ mod doclink_translation {
                     candidates.push(obj);
                 }
             }
-            if candidates.is_empty() {
+
+            let Some(object) = candidates.first() else {
                 return Err("No object found for doclink".to_owned());
-            } else if candidates.len() > 2 {
+            };
+
+            if candidates.len() > 2 {
                 use itertools::Itertools as _;
                 return Err(format!(
                     "Multiple objects found for doclink: {}",
                     candidates.iter().map(|obj| &obj.fqname).format(", ")
                 ));
-            } else if let Some(object) = candidates.first() {
-                scope = object.scope().unwrap_or_default();
-                is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
             }
+
+            scope = object.scope().unwrap_or_default();
+            is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
         }
 
         Ok(match target {
@@ -382,18 +388,19 @@ mod doclink_translation {
             }
             Target::Rust => {
                 // https://doc.rust-lang.org/rustdoc/write-documentation/linking-to-items-by-name.html
+                let kind_and_type = format!("{kind}::{type_name}");
                 let object_path = if scope.is_empty() {
-                    format!("{kind}::{type_name}")
+                    kind_and_type.clone()
                 } else {
-                    format!("{scope}::{kind}::{type_name}")
+                    format!("{scope}::{kind_and_type}")
                 };
 
                 if let Some(field_or_enum_name) = field_or_enum_name {
                     format!(
-                            "[`{object_path}::{field_or_enum_name}`][crate::{object_path}::{field_or_enum_name}]"
+                            "[`{kind_and_type}::{field_or_enum_name}`][crate::{object_path}::{field_or_enum_name}]"
                         )
                 } else {
-                    format!("[`{object_path}`][crate::{object_path}]")
+                    format!("[`{kind_and_type}`][crate::{object_path}]")
                 }
             }
             Target::Python => {
@@ -533,7 +540,7 @@ mod doclink_translation {
                     input,
                     Target::Rust
                 ),
-                "A vector `[1, 2, 3]` and a doclink [`views::Spatial2DView`][crate::views::Spatial2DView] and a [url](www.rerun.io)."
+                "A vector `[1, 2, 3]` and a doclink [`views::Spatial2DView`][crate::blueprint::views::Spatial2DView] and a [url](www.rerun.io)."
             );
 
             assert_eq!(
@@ -582,7 +589,7 @@ mod doclink_translation {
                     input,
                     Target::Rust
                 ),
-                "A vector `[1, 2, 3]` and a doclink [`views::Spatial2DView::position`][crate::views::Spatial2DView::position] and a [url](www.rerun.io)."
+                "A vector `[1, 2, 3]` and a doclink [`views::Spatial2DView::position`][crate::blueprint::views::Spatial2DView::position] and a [url](www.rerun.io)."
             );
 
             assert_eq!(
