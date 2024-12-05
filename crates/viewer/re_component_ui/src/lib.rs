@@ -85,11 +85,10 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<Opacity>(edit_f32_zero_to_one);
 
     // Bool components:
-    registry.add_singleline_edit_or_view::<Visible>(edit_bool);
+    registry.add_singleline_edit_or_view::<Enabled>(edit_bool);
     registry.add_singleline_edit_or_view::<LockRangeDuringZoom>(edit_bool);
     registry.add_singleline_edit_or_view::<ShowLabels>(edit_bool);
     registry.add_singleline_edit_or_view::<Visible>(edit_bool);
-    registry.add_singleline_edit_or_view::<Enabled>(edit_bool);
 
     // Text components:
     registry.add_legacy_display_ui(Text::name(), Box::new(display_text_ui)); // TODO(andreas): Why is there a display ui?
@@ -150,11 +149,6 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
 
     registry.add_singleline_edit_or_view(radius::edit_radius_ui);
     registry.add_singleline_edit_or_view(marker_shape::edit_marker_shape_ui);
-
-    registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
-    registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
-    registry.add_multiline_edit_or_view(visual_bounds2d::multiline_edit_visual_bounds2d);
-    registry.add_singleline_edit_or_view(visual_bounds2d::singleline_edit_visual_bounds2d);
 
     registry.add_singleline_edit_or_view(pinhole::singleline_view_pinhole);
     registry.add_multiline_edit_or_view(pinhole::multiline_view_pinhole);
