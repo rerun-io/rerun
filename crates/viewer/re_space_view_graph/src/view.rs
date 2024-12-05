@@ -176,8 +176,8 @@ Display a graph of nodes and edges.
             ctx.blueprint_query,
             query.space_view_id,
         );
-        let force_enabled: blueprint::components::Enabled =
-            force_link_property.component_or_fallback(ctx, self, state)?;
+        let force_enabled: Result<Option<blueprint::components::Enabled>, _> =
+            force_link_property.component_or_empty();
         dbg!(force_enabled);
 
         let rect_in_ui = ui.max_rect();

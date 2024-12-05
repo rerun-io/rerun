@@ -6,11 +6,13 @@
 #include "../../blueprint/components/enabled.hpp"
 #include "../../blueprint/components/force_distance.hpp"
 #include "../../collection.hpp"
+#include "../../compiler_utils.hpp"
 #include "../../component_batch.hpp"
 #include "../../indicator_component.hpp"
 #include "../../result.hpp"
 
 #include <cstdint>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -18,10 +20,10 @@ namespace rerun::blueprint::archetypes {
     /// **Archetype**: The link force pushes linked nodes together or apart according to a desired distance.
     struct ForceLink {
         /// Whether the force is enabled.
-        rerun::blueprint::components::Enabled enabled;
+        std::optional<rerun::blueprint::components::Enabled> enabled;
 
         /// The target distance between two nodes.
-        rerun::blueprint::components::ForceDistance distance;
+        std::optional<rerun::blueprint::components::ForceDistance> distance;
 
       public:
         static constexpr const char IndicatorComponentName[] =
@@ -34,11 +36,19 @@ namespace rerun::blueprint::archetypes {
         ForceLink() = default;
         ForceLink(ForceLink&& other) = default;
 
-        explicit ForceLink(
-            rerun::blueprint::components::Enabled _enabled,
-            rerun::blueprint::components::ForceDistance _distance
-        )
-            : enabled(std::move(_enabled)), distance(std::move(_distance)) {}
+        /// Whether the force is enabled.
+        ForceLink with_enabled(rerun::blueprint::components::Enabled _enabled) && {
+            enabled = std::move(_enabled);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
+
+        /// The target distance between two nodes.
+        ForceLink with_distance(rerun::blueprint::components::ForceDistance _distance) && {
+            distance = std::move(_distance);
+            // See: https://github.com/rerun-io/rerun/issues/4027
+            RR_WITH_MAYBE_UNINITIALIZED_DISABLED(return std::move(*this);)
+        }
     };
 
 } // namespace rerun::blueprint::archetypes

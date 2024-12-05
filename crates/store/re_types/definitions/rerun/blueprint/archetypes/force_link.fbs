@@ -2,12 +2,11 @@ namespace rerun.blueprint.archetypes;
 
 /// The link force pushes linked nodes together or apart according to a desired distance.
 struct ForceLink (
-    "attr.rerun.scope": "blueprint",
-    "attr.rust.derive": "PartialEq"
+    "attr.rerun.scope": "blueprint"
 ) {
     /// Whether the force is enabled.
-    enabled: rerun.blueprint.components.Enabled (order: 100);
+    enabled: rerun.blueprint.components.Enabled ("attr.rerun.component_optional", nullable, order: 100);
 
     /// The target distance between two nodes.
-    distance: rerun.blueprint.components.ForceDistance (order: 200);
+    distance: rerun.blueprint.components.ForceDistance ("attr.rerun.component_optional", nullable, order: 200);
 }

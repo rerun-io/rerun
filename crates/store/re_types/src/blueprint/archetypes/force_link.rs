@@ -19,13 +19,13 @@ use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The link force pushes linked nodes together or apart according to a desired distance.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug)]
 pub struct ForceLink {
     /// Whether the force is enabled.
-    pub enabled: crate::blueprint::components::Enabled,
+    pub enabled: Option<crate::blueprint::components::Enabled>,
 
     /// The target distance between two nodes.
-    pub distance: crate::blueprint::components::ForceDistance,
+    pub distance: Option<crate::blueprint::components::ForceDistance>,
 }
 
 impl ::re_types_core::SizeBytes for ForceLink {
@@ -36,8 +36,8 @@ impl ::re_types_core::SizeBytes for ForceLink {
 
     #[inline]
     fn is_pod() -> bool {
-        <crate::blueprint::components::Enabled>::is_pod()
-            && <crate::blueprint::components::ForceDistance>::is_pod()
+        <Option<crate::blueprint::components::Enabled>>::is_pod()
+            && <Option<crate::blueprint::components::ForceDistance>>::is_pod()
     }
 }
 
@@ -47,15 +47,26 @@ static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
 static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
     once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.ForceLinkIndicator".into()]);
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
-    once_cell::sync::Lazy::new(|| []);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            "rerun.blueprint.components.Enabled".into(),
+            "rerun.blueprint.components.ForceDistance".into(),
+        ]
+    });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.ForceLinkIndicator".into()]);
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [
+            "rerun.blueprint.components.ForceLinkIndicator".into(),
+            "rerun.blueprint.components.Enabled".into(),
+            "rerun.blueprint.components.ForceDistance".into(),
+        ]
+    });
 
 impl ForceLink {
-    /// The total number of components in the archetype: 0 required, 1 recommended, 0 optional
-    pub const NUM_COMPONENTS: usize = 1usize;
+    /// The total number of components in the archetype: 0 required, 1 recommended, 2 optional
+    pub const NUM_COMPONENTS: usize = 3usize;
 }
 
 /// Indicator component for the [`ForceLink`] [`::re_types_core::Archetype`]
@@ -110,32 +121,26 @@ impl ::re_types_core::Archetype for ForceLink {
             .into_iter()
             .map(|(name, array)| (name.full_name(), array))
             .collect();
-        let enabled = {
-            let array = arrays_by_name
-                .get("rerun.blueprint.components.Enabled")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.ForceLink#enabled")?;
+        let enabled = if let Some(array) = arrays_by_name.get("rerun.blueprint.components.Enabled")
+        {
             <crate::blueprint::components::Enabled>::from_arrow2_opt(&**array)
                 .with_context("rerun.blueprint.archetypes.ForceLink#enabled")?
                 .into_iter()
                 .next()
                 .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.ForceLink#enabled")?
+        } else {
+            None
         };
-        let distance = {
-            let array = arrays_by_name
-                .get("rerun.blueprint.components.ForceDistance")
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.ForceLink#distance")?;
-            <crate::blueprint::components::ForceDistance>::from_arrow2_opt(&**array)
-                .with_context("rerun.blueprint.archetypes.ForceLink#distance")?
-                .into_iter()
-                .next()
-                .flatten()
-                .ok_or_else(DeserializationError::missing_data)
-                .with_context("rerun.blueprint.archetypes.ForceLink#distance")?
-        };
+        let distance =
+            if let Some(array) = arrays_by_name.get("rerun.blueprint.components.ForceDistance") {
+                <crate::blueprint::components::ForceDistance>::from_arrow2_opt(&**array)
+                    .with_context("rerun.blueprint.archetypes.ForceLink#distance")?
+                    .into_iter()
+                    .next()
+                    .flatten()
+            } else {
+                None
+            };
         Ok(Self { enabled, distance })
     }
 }
@@ -146,8 +151,12 @@ impl ::re_types_core::AsComponents for ForceLink {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.enabled as &dyn ComponentBatch).into()),
-            Some((&self.distance as &dyn ComponentBatch).into()),
+            self.enabled
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
+            self.distance
+                .as_ref()
+                .map(|comp| (comp as &dyn ComponentBatch).into()),
         ]
         .into_iter()
         .flatten()
@@ -160,13 +169,30 @@ impl ::re_types_core::ArchetypeReflectionMarker for ForceLink {}
 impl ForceLink {
     /// Create a new `ForceLink`.
     #[inline]
-    pub fn new(
+    pub fn new() -> Self {
+        Self {
+            enabled: None,
+            distance: None,
+        }
+    }
+
+    /// Whether the force is enabled.
+    #[inline]
+    pub fn with_enabled(
+        mut self,
         enabled: impl Into<crate::blueprint::components::Enabled>,
+    ) -> Self {
+        self.enabled = Some(enabled.into());
+        self
+    }
+
+    /// The target distance between two nodes.
+    #[inline]
+    pub fn with_distance(
+        mut self,
         distance: impl Into<crate::blueprint::components::ForceDistance>,
     ) -> Self {
-        Self {
-            enabled: enabled.into(),
-            distance: distance.into(),
-        }
+        self.distance = Some(distance.into());
+        self
     }
 }

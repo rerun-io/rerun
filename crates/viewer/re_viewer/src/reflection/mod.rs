@@ -112,7 +112,7 @@ fn generate_component_reflection() -> Result<ComponentReflectionMap, Serializati
             <Enabled as Component>::name(),
             ComponentReflection {
                 docstring_md: "Whether a procedure is enabled.",
-                custom_placeholder: None,
+                custom_placeholder: Some(Enabled::default().to_arrow2()?),
                 datatype: Enabled::arrow2_datatype(),
             },
         ),

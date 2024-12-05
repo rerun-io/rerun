@@ -23,7 +23,9 @@ __all__ = ["ForceLink"]
 class ForceLink(Archetype):
     """**Archetype**: The link force pushes linked nodes together or apart according to a desired distance."""
 
-    def __init__(self: Any, enabled: datatypes.BoolLike, distance: datatypes.Float64Like):
+    def __init__(
+        self: Any, *, enabled: datatypes.BoolLike | None = None, distance: datatypes.Float64Like | None = None
+    ):
         """
         Create a new instance of the ForceLink archetype.
 
@@ -56,17 +58,19 @@ class ForceLink(Archetype):
         inst.__attrs_clear__()
         return inst
 
-    enabled: blueprint_components.EnabledBatch = field(
-        metadata={"component": "required"},
-        converter=blueprint_components.EnabledBatch._required,  # type: ignore[misc]
+    enabled: blueprint_components.EnabledBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=blueprint_components.EnabledBatch._optional,  # type: ignore[misc]
     )
     # Whether the force is enabled.
     #
     # (Docstring intentionally commented out to hide this field from the docs)
 
-    distance: blueprint_components.ForceDistanceBatch = field(
-        metadata={"component": "required"},
-        converter=blueprint_components.ForceDistanceBatch._required,  # type: ignore[misc]
+    distance: blueprint_components.ForceDistanceBatch | None = field(
+        metadata={"component": "optional"},
+        default=None,
+        converter=blueprint_components.ForceDistanceBatch._optional,  # type: ignore[misc]
     )
     # The target distance between two nodes.
     #

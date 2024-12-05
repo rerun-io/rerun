@@ -16,13 +16,13 @@ namespace rerun {
         std::vector<ComponentBatch> cells;
         cells.reserve(3);
 
-        {
-            auto result = ComponentBatch::from_loggable(archetype.enabled);
+        if (archetype.enabled.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.enabled.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
-        {
-            auto result = ComponentBatch::from_loggable(archetype.distance);
+        if (archetype.distance.has_value()) {
+            auto result = ComponentBatch::from_loggable(archetype.distance.value());
             RR_RETURN_NOT_OK(result.error);
             cells.push_back(std::move(result.value));
         }
