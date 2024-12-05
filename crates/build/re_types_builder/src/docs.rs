@@ -1,7 +1,7 @@
 use crate::{codegen::Target, Objects, Reporter};
 
 /// A high-level representation of the contents of a flatbuffer docstring.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Docs {
     /// All docmentation lines, including the leading tag, if any.
     ///
@@ -187,10 +187,7 @@ fn find_and_recommend_doclinks(
                 && !matches!(content, "SpaceViewContents" | "VisibleTimeRanges" | "QueryExpression")
 
                 // In some blueprint code we refer to stuff in Rerun.
-                && !matches!(content, "ChunkStore" | "ContainerId" | "EntityPathFilter" | "Spatial2DView" | "SpaceViewId" | "SpaceView")
-
-                // TODO(emilk): allow doclinks to enum variants.
-                && !matches!(content, "Horizontal" | "Vertical" | "SolidColor");
+                && !matches!(content, "ChunkStore" | "ContainerId" | "EntityPathFilter" | "Spatial2DView" | "SpaceViewId" | "SpaceView");
 
             if looks_like_type_name {
                 reporter.warn(virtpath, fqname, format!("`{content}` can be written as a doclink, e.g. [archetypes.{content}] in comment: /// {full_comment}"));
@@ -216,7 +213,7 @@ use doclink_translation::translate_doc_line;
 ///
 /// The code is not very efficient, but it is simple and works.
 mod doclink_translation {
-    use crate::{Objects, Reporter};
+    use crate::{ObjectKind, Objects, Reporter};
 
     use super::Target;
 
@@ -306,29 +303,53 @@ mod doclink_translation {
         objects: &Objects,
         doclink_tokens: &[&str],
         target: Target,
-    ) -> Result<String, &'static str> {
+    ) -> Result<String, String> {
+        let has_type_or_enum = doclink_tokens.iter().filter(|t| t == &&".").count() == 2;
+
         let mut tokens = doclink_tokens.iter();
         if tokens.next() != Some(&"[") {
-            return Err("Missing opening bracket");
+            return Err("Missing opening bracket".to_owned());
         }
         let kind = *tokens.next().ok_or("Missing kind")?;
         if kind == "`" {
-            return Err("Do not use backticks inside doclinks");
+            return Err("Do not use backticks inside doclinks".to_owned());
         }
         if tokens.next() != Some(&".") {
-            return Err("Missing dot");
+            return Err("Missing dot".to_owned());
         }
         let type_name = *tokens.next().ok_or("Missing type name")?;
+
+        let field_or_enum_name = if has_type_or_enum {
+            if tokens.next() != Some(&".") {
+                return Err("Missing dot".to_owned());
+            }
+            tokens.next()
+        } else {
+            None
+        };
+
         if tokens.next() != Some(&"]") {
-            return Err("Missing closing bracket");
+            return Err("Missing closing bracket".to_owned());
         }
         if tokens.next().is_some() {
-            return Err("Trailing tokens");
+            return Err("Trailing tokens".to_owned());
         }
 
-        // TODO(emilk): support links to fields and enum variants
+        // Validate kind:
+        if ObjectKind::ALL
+            .iter()
+            .all(|object_kind| object_kind.plural_snake_case() != kind)
+        {
+            return Err(format!(
+                "Invalid kind {kind:?}. Valid are: {}",
+                ObjectKind::ALL
+                    .map(|object_kind| object_kind.plural_snake_case())
+                    .join(", ")
+            ));
+        }
 
         let mut is_unreleased = false;
+        let mut scope = String::new();
         {
             // Find the target object:
             let mut candidates = vec![];
@@ -338,29 +359,50 @@ mod doclink_translation {
                 }
             }
             if candidates.is_empty() {
-                // NOTE: we don't error if the target doesn't exists.
-                // Instead we rely on the documentation tools for the different targets,
-                // e.g. `cargo doc` and our url link checker.
-                // Maybe we could change that though to catch errors earlier.
-                re_log::warn_once!("No object found for doclink: [{kind}.{type_name}]");
+                return Err("No object found for doclink".to_owned());
             } else if candidates.len() > 2 {
                 use itertools::Itertools as _;
-                re_log::warn_once!(
-                    "Multiple objects found for doclink: [{kind}.{type_name}]: {}",
+                return Err(format!(
+                    "Multiple objects found for doclink: {}",
                     candidates.iter().map(|obj| &obj.fqname).format(", ")
-                );
+                ));
             } else if let Some(object) = candidates.first() {
+                scope = object.scope().unwrap_or_default();
                 is_unreleased = object.is_attr_set(crate::ATTR_DOCS_UNRELEASED);
             }
         }
 
         Ok(match target {
-            Target::Cpp => format!("`{kind}::{type_name}`"),
+            Target::Cpp => {
+                if let Some(field_or_enum_name) = field_or_enum_name {
+                    format!("`{kind}::{type_name}::{field_or_enum_name}`")
+                } else {
+                    format!("`{kind}::{type_name}`")
+                }
+            }
             Target::Rust => {
                 // https://doc.rust-lang.org/rustdoc/write-documentation/linking-to-items-by-name.html
-                format!("[`{kind}::{type_name}`][crate::{kind}::{type_name}]")
+                let object_path = if scope.is_empty() {
+                    format!("{kind}::{type_name}")
+                } else {
+                    format!("{scope}::{kind}::{type_name}")
+                };
+
+                if let Some(field_or_enum_name) = field_or_enum_name {
+                    format!(
+                            "[`{object_path}::{field_or_enum_name}`][crate::{object_path}::{field_or_enum_name}]"
+                        )
+                } else {
+                    format!("[`{object_path}`][crate::{object_path}]")
+                }
             }
-            Target::Python => format!("[`{kind}.{type_name}`][rerun.{kind}.{type_name}]"),
+            Target::Python => {
+                if let Some(field_or_enum_name) = field_or_enum_name {
+                    format!("[`{kind}.{type_name}.{field_or_enum_name}`][rerun.{kind}.{type_name}.{field_or_enum_name}]")
+                } else {
+                    format!("[`{kind}.{type_name}`][rerun.{kind}.{type_name}]")
+                }
+            }
             Target::WebDocsMarkdown => {
                 // For instance, https://rerun.io/docs/reference/types/views/spatial2d_view
                 // TODO(emilk): relative links would be nicer for the local markdown files
@@ -370,7 +412,15 @@ mod doclink_translation {
                 } else {
                     ""
                 };
-                format!("[`{kind}.{type_name}`](https://rerun.io/docs/reference/types/{kind}/{type_name_snake_case}{query})")
+
+                let url = format!(
+                    "https://rerun.io/docs/reference/types/{kind}/{type_name_snake_case}{query}"
+                );
+                if let Some(field_or_enum_name) = field_or_enum_name {
+                    format!("[`{kind}.{type_name}#{field_or_enum_name}`]({url})")
+                } else {
+                    format!("[`{kind}.{type_name}`]({url})")
+                }
             }
         })
     }
@@ -398,7 +448,32 @@ mod doclink_translation {
 
     #[cfg(test)]
     mod tests {
+        use crate::{Attributes, Docs, Object, Objects};
+
         use super::*;
+
+        fn test_objects() -> Objects {
+            Objects {
+                objects: [(
+                    "rerun.views.Spatial2DView".to_owned(),
+                    Object {
+                        virtpath: "path".to_owned(),
+                        filepath: "path".into(),
+                        fqname: "rerun.views.Spatial2DView".to_owned(),
+                        pkg_name: "test".to_owned(),
+                        name: "Spatial2DView".to_owned(),
+                        docs: Docs::default(),
+                        kind: ObjectKind::View,
+                        attrs: Attributes::default(),
+                        fields: Vec::new(),
+                        class: crate::ObjectClass::Struct,
+                        datatype: None,
+                    },
+                )]
+                .into_iter()
+                .collect(),
+            }
+        }
 
         #[test]
         fn test_tokenize() {
@@ -425,7 +500,7 @@ mod doclink_translation {
 
         #[test]
         fn test_translate_doclinks() {
-            let objects = Objects::default();
+            let objects = test_objects();
             let (_report, reporter) = crate::report::init();
 
             let input =
@@ -469,6 +544,55 @@ mod doclink_translation {
                     Target::WebDocsMarkdown
                 ),
                 "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView`](https://rerun.io/docs/reference/types/views/spatial2d_view) and a [url](www.rerun.io)."
+            );
+        }
+
+        #[test]
+        fn test_translate_doclinks_with_field() {
+            let objects = test_objects();
+            let (_report, reporter) = crate::report::init();
+
+            let input =
+                "A vector `[1, 2, 3]` and a doclink [views.Spatial2DView.position] and a [url](www.rerun.io).";
+
+            assert_eq!(
+                translate_doc_line(
+                    &reporter,
+                    &objects,
+                    input,
+                    Target::Cpp
+                ),
+                "A vector `[1, 2, 3]` and a doclink `views::Spatial2DView::position` and a [url](www.rerun.io)."
+            );
+
+            assert_eq!(
+                translate_doc_line(
+                    &reporter,
+                    &objects,
+                    input,
+                    Target::Python
+                ),
+                "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView.position`][rerun.views.Spatial2DView.position] and a [url](www.rerun.io)."
+            );
+
+            assert_eq!(
+                translate_doc_line(
+                    &reporter,
+                    &objects,
+                    input,
+                    Target::Rust
+                ),
+                "A vector `[1, 2, 3]` and a doclink [`views::Spatial2DView::position`][crate::views::Spatial2DView::position] and a [url](www.rerun.io)."
+            );
+
+            assert_eq!(
+                translate_doc_line(
+                    &reporter,
+                    &objects,
+                    input,
+                    Target::WebDocsMarkdown
+                ),
+                "A vector `[1, 2, 3]` and a doclink [`views.Spatial2DView#position`](https://rerun.io/docs/reference/types/views/spatial2d_view) and a [url](www.rerun.io)."
             );
         }
     }

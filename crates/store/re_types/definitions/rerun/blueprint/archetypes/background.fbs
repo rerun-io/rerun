@@ -14,6 +14,6 @@ table Background (
 
     // --- Optional ---
 
-    /// Color used for the `SolidColor` background type.
+    /// Color used for the [components.BackgroundKind.SolidColor] background type.
     color: rerun.components.Color ("attr.rerun.component_optional", nullable, order: 2000);
 }
