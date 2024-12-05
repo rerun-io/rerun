@@ -289,7 +289,8 @@ pub fn draw_graph(
                     InstancePath::instance(entity_path.clone(), instance.instance_index);
                 ctx.select_hovered_on_click(
                     &response,
-                    Item::DataResult(query.space_view_id, instance_path.clone(), false),
+                    Item::DataResult(query.space_view_id, instance_path.clone()),
+                    false,
                 );
 
                 response = response.on_hover_ui_at_pointer(|ui| {

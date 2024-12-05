@@ -6587,6 +6587,7 @@ dependencies = [
  "egui_extras",
  "egui_kittest",
  "egui_tiles",
+ "nohash-hasher",
  "once_cell",
  "parking_lot",
  "rand",

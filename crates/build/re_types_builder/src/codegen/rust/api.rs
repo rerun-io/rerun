@@ -1085,7 +1085,7 @@ fn quote_trait_impls_for_archetype(obj: &Object) -> TokenStream {
 
     let quoted_field_names = obj
         .fields
-        .iter()
+        .ite
         .map(|field| format_ident!("{}", field.name))
         .collect::<Vec<_>>();
 
