@@ -232,14 +232,6 @@ impl SelectionPanel {
                     );
                 }
 
-                if let Some(view) = viewport.view(view_id) {
-                    ui.list_item_flat_noninteractive(PropertyContent::new("In view").value_fn(
-                        |ui, _| {
-                            space_view_button(ctx, ui, view);
-                        },
-                    ));
-                }
-
                 if instance_path.is_all() {
                     let entity_path = &instance_path.entity_path;
                     let query_result = ctx.lookup_query_result(*view_id);
