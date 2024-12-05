@@ -32,21 +32,21 @@ pub struct ContainerBlueprint {
 
     /// The layout shares of each column in the container.
     ///
-    /// For `Horizontal` containers, the length of this list should always match the number of contents.
+    /// For [`blueprint::components::ContainerKind::Horizontal`][crate::blueprint::components::ContainerKind::Horizontal] containers, the length of this list should always match the number of contents.
     ///
-    /// Ignored for `Vertical` containers.
+    /// Ignored for [`blueprint::components::ContainerKind::Vertical`][crate::blueprint::components::ContainerKind::Vertical] containers.
     pub col_shares: Option<Vec<crate::blueprint::components::ColumnShare>>,
 
     /// The layout shares of each row of the container.
     ///
-    /// For `Vertical` containers, the length of this list should always match the number of contents.
+    /// For [`blueprint::components::ContainerKind::Vertical`][crate::blueprint::components::ContainerKind::Vertical] containers, the length of this list should always match the number of contents.
     ///
-    /// Ignored for `Horizontal` containers.
+    /// Ignored for [`blueprint::components::ContainerKind::Horizontal`][crate::blueprint::components::ContainerKind::Horizontal] containers.
     pub row_shares: Option<Vec<crate::blueprint::components::RowShare>>,
 
     /// Which tab is active.
     ///
-    /// Only applies to `Tabs` containers.
+    /// Only applies to `Tabs` containers.pixi
     pub active_tab: Option<crate::blueprint::components::ActiveTab>,
 
     /// Whether this container is visible.
@@ -58,7 +58,7 @@ pub struct ContainerBlueprint {
     ///
     /// If unset, the grid layout will be auto.
     ///
-    /// Ignored for `Horizontal`/`Vertical` containers.
+    /// Ignored for [`blueprint::components::ContainerKind::Horizontal`][crate::blueprint::components::ContainerKind::Horizontal]/[`blueprint::components::ContainerKind::Vertical`][crate::blueprint::components::ContainerKind::Vertical] containers.
     pub grid_columns: Option<crate::blueprint::components::GridColumns>,
 }
 
@@ -358,9 +358,9 @@ impl ContainerBlueprint {
 
     /// The layout shares of each column in the container.
     ///
-    /// For `Horizontal` containers, the length of this list should always match the number of contents.
+    /// For [`blueprint::components::ContainerKind::Horizontal`][crate::blueprint::components::ContainerKind::Horizontal] containers, the length of this list should always match the number of contents.
     ///
-    /// Ignored for `Vertical` containers.
+    /// Ignored for [`blueprint::components::ContainerKind::Vertical`][crate::blueprint::components::ContainerKind::Vertical] containers.
     #[inline]
     pub fn with_col_shares(
         mut self,
@@ -372,9 +372,9 @@ impl ContainerBlueprint {
 
     /// The layout shares of each row of the container.
     ///
-    /// For `Vertical` containers, the length of this list should always match the number of contents.
+    /// For [`blueprint::components::ContainerKind::Vertical`][crate::blueprint::components::ContainerKind::Vertical] containers, the length of this list should always match the number of contents.
     ///
-    /// Ignored for `Horizontal` containers.
+    /// Ignored for [`blueprint::components::ContainerKind::Horizontal`][crate::blueprint::components::ContainerKind::Horizontal] containers.
     #[inline]
     pub fn with_row_shares(
         mut self,
@@ -386,7 +386,7 @@ impl ContainerBlueprint {
 
     /// Which tab is active.
     ///
-    /// Only applies to `Tabs` containers.
+    /// Only applies to `Tabs` containers.pixi
     #[inline]
     pub fn with_active_tab(
         mut self,
@@ -412,7 +412,7 @@ impl ContainerBlueprint {
     ///
     /// If unset, the grid layout will be auto.
     ///
-    /// Ignored for `Horizontal`/`Vertical` containers.
+    /// Ignored for [`blueprint::components::ContainerKind::Horizontal`][crate::blueprint::components::ContainerKind::Horizontal]/[`blueprint::components::ContainerKind::Vertical`][crate::blueprint::components::ContainerKind::Vertical] containers.
     #[inline]
     pub fn with_grid_columns(
         mut self,

@@ -8,7 +8,7 @@ enum MapProvider: ubyte (
     /// Invalid value. Won't show up in generated types.
     Invalid = 0,
 
-    /// `OpenStreetMap` is the default map provider.
+    /// OpenStreetMap is the default map provider.
     OpenStreetMap (default),
 
     /// Mapbox Streets is a minimalistic map designed by Mapbox.
