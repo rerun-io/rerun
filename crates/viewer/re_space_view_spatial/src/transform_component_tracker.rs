@@ -77,11 +77,11 @@ impl Default for TransformComponentTrackerStoreSubscriber {
         Self {
             transform_components: re_types::archetypes::Transform3D::all_components()
                 .iter()
-                .copied()
+                .map(|descr| descr.component_name)
                 .collect(),
             pose_components: re_types::archetypes::InstancePoses3D::all_components()
                 .iter()
-                .copied()
+                .map(|descr| descr.component_name)
                 .collect(),
             per_store: Default::default(),
         }
@@ -132,8 +132,10 @@ impl ChunkStoreSubscriber for TransformComponentTrackerStoreSubscriber {
                     .chunk
                     .components()
                     .get(&component_name)
-                    .map_or(false, |list_array| {
-                        list_array.offsets().lengths().any(|len| len > 0)
+                    .map_or(false, |per_desc| {
+                        per_desc
+                            .values()
+                            .any(|list_array| list_array.offsets().lengths().any(|len| len > 0))
                     })
             };
 

@@ -1,22 +1,22 @@
 use arrow2::datatypes::DataType as Arrow2Datatype;
 use nohash_hasher::IntMap;
 
-use re_chunk::{Chunk, ComponentName, RangeQuery, RowId, TimePoint, Timeline};
+use re_chunk::{Chunk, RangeQuery, RowId, TimePoint, Timeline};
 use re_log_types::{
     example_components::{MyColor, MyLabel, MyPoint},
     ResolvedTimeRange,
 };
-use re_types_core::{Component as _, Loggable as _};
+use re_types_core::{Component as _, ComponentDescriptor, Loggable as _};
 
 // ---
 
 const ENTITY_PATH: &str = "my/entity";
 
-fn datatypes() -> IntMap<ComponentName, Arrow2Datatype> {
+fn datatypes() -> IntMap<ComponentDescriptor, Arrow2Datatype> {
     [
-        (MyPoint::name(), MyPoint::arrow2_datatype()),
-        (MyColor::name(), MyColor::arrow2_datatype()),
-        (MyLabel::name(), MyLabel::arrow2_datatype()),
+        (MyPoint::descriptor(), MyPoint::arrow2_datatype()),
+        (MyColor::descriptor(), MyColor::arrow2_datatype()),
+        (MyLabel::descriptor(), MyLabel::arrow2_datatype()),
     ]
     .into_iter()
     .collect()
@@ -73,48 +73,48 @@ fn temporal_sorted() -> anyhow::Result<()> {
                 row_id1,
                 timepoint1,
                 [
-                    (MyPoint::name(), Some(points1 as _)),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), None),
+                    (MyPoint::descriptor(), Some(points1 as _)),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), None),
                 ],
             )
             .with_sparse_component_batches(
                 row_id3,
                 timepoint3,
                 [
-                    (MyPoint::name(), Some(points3 as _)),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), None),
+                    (MyPoint::descriptor(), Some(points3 as _)),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), None),
                 ],
             )
             .build_with_datatypes(&datatypes())?;
-        query_and_compare((MyPoint::name(), &query), &chunk, &expected);
+        query_and_compare((MyPoint::descriptor(), &query), &chunk, &expected);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
                 row_id2,
                 timepoint2,
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors2 as _)),
-                    (MyLabel::name(), Some(labels2 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors2 as _)),
+                    (MyLabel::descriptor(), Some(labels2 as _)),
                 ],
             )
             .build_with_datatypes(&datatypes())?;
-        query_and_compare((MyColor::name(), &query), &chunk, &expected);
+        query_and_compare((MyColor::descriptor(), &query), &chunk, &expected);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
                 row_id2,
                 timepoint2,
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors2 as _)),
-                    (MyLabel::name(), Some(labels2 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors2 as _)),
+                    (MyLabel::descriptor(), Some(labels2 as _)),
                 ],
             )
             .build_with_datatypes(&datatypes())?;
-        query_and_compare((MyLabel::name(), &query), &chunk, &expected);
+        query_and_compare((MyLabel::descriptor(), &query), &chunk, &expected);
     }
 
     {
@@ -122,33 +122,33 @@ fn temporal_sorted() -> anyhow::Result<()> {
             RangeQuery::with_extras(Timeline::log_time(), ResolvedTimeRange::new(1020, 1050));
 
         let expected = chunk.emptied();
-        query_and_compare((MyPoint::name(), &query), &chunk, &expected);
+        query_and_compare((MyPoint::descriptor(), &query), &chunk, &expected);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
                 row_id2,
                 timepoint2,
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors2 as _)),
-                    (MyLabel::name(), Some(labels2 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors2 as _)),
+                    (MyLabel::descriptor(), Some(labels2 as _)),
                 ],
             )
             .build_with_datatypes(&datatypes())?;
-        query_and_compare((MyColor::name(), &query), &chunk, &expected);
+        query_and_compare((MyColor::descriptor(), &query), &chunk, &expected);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
                 row_id2,
                 timepoint2,
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors2 as _)),
-                    (MyLabel::name(), Some(labels2 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors2 as _)),
+                    (MyLabel::descriptor(), Some(labels2 as _)),
                 ],
             )
             .build_with_datatypes(&datatypes())?;
-        query_and_compare((MyLabel::name(), &query), &chunk, &expected);
+        query_and_compare((MyLabel::descriptor(), &query), &chunk, &expected);
     }
 
     Ok(())
@@ -202,48 +202,48 @@ fn temporal_unsorted() -> anyhow::Result<()> {
                 row_id1,
                 timepoint1,
                 [
-                    (MyPoint::name(), Some(points1 as _)),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), None),
+                    (MyPoint::descriptor(), Some(points1 as _)),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), None),
                 ],
             )
             .with_sparse_component_batches(
                 row_id3,
                 timepoint3,
                 [
-                    (MyPoint::name(), Some(points3 as _)),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), None),
+                    (MyPoint::descriptor(), Some(points3 as _)),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), None),
                 ],
             )
             .build_with_datatypes(&datatypes())?;
-        query_and_compare((MyPoint::name(), &query), &chunk, &expected);
+        query_and_compare((MyPoint::descriptor(), &query), &chunk, &expected);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
                 row_id2,
                 timepoint2,
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors2 as _)),
-                    (MyLabel::name(), Some(labels2 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors2 as _)),
+                    (MyLabel::descriptor(), Some(labels2 as _)),
                 ],
             )
             .build_with_datatypes(&datatypes())?;
-        query_and_compare((MyColor::name(), &query), &chunk, &expected);
+        query_and_compare((MyColor::descriptor(), &query), &chunk, &expected);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
                 row_id2,
                 timepoint2,
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors2 as _)),
-                    (MyLabel::name(), Some(labels2 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors2 as _)),
+                    (MyLabel::descriptor(), Some(labels2 as _)),
                 ],
             )
             .build_with_datatypes(&datatypes())?;
-        query_and_compare((MyLabel::name(), &query), &chunk, &expected);
+        query_and_compare((MyLabel::descriptor(), &query), &chunk, &expected);
     }
 
     {
@@ -251,33 +251,33 @@ fn temporal_unsorted() -> anyhow::Result<()> {
             RangeQuery::with_extras(Timeline::log_time(), ResolvedTimeRange::new(1020, 1050));
 
         let expected = chunk.emptied();
-        query_and_compare((MyPoint::name(), &query), &chunk, &expected);
+        query_and_compare((MyPoint::descriptor(), &query), &chunk, &expected);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
                 row_id2,
                 timepoint2,
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors2 as _)),
-                    (MyLabel::name(), Some(labels2 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors2 as _)),
+                    (MyLabel::descriptor(), Some(labels2 as _)),
                 ],
             )
             .build_with_datatypes(&datatypes())?;
-        query_and_compare((MyColor::name(), &query), &chunk, &expected);
+        query_and_compare((MyColor::descriptor(), &query), &chunk, &expected);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
                 row_id2,
                 timepoint2,
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors2 as _)),
-                    (MyLabel::name(), Some(labels2 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors2 as _)),
+                    (MyLabel::descriptor(), Some(labels2 as _)),
                 ],
             )
             .build_with_datatypes(&datatypes())?;
-        query_and_compare((MyLabel::name(), &query), &chunk, &expected);
+        query_and_compare((MyLabel::descriptor(), &query), &chunk, &expected);
     }
 
     Ok(())
@@ -326,39 +326,39 @@ fn static_sorted() -> anyhow::Result<()> {
                 row_id3,
                 timepoint.clone(),
                 [
-                    (MyPoint::name(), Some(points3 as _)),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), None),
+                    (MyPoint::descriptor(), Some(points3 as _)),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), None),
                 ],
             )
             .build_with_datatypes(&datatypes())?;
-        query_and_compare((MyPoint::name(), &query), &chunk, &expected);
+        query_and_compare((MyPoint::descriptor(), &query), &chunk, &expected);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
                 row_id2,
                 timepoint.clone(),
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors2 as _)),
-                    (MyLabel::name(), Some(labels2 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors2 as _)),
+                    (MyLabel::descriptor(), Some(labels2 as _)),
                 ],
             )
             .build_with_datatypes(&datatypes())?;
-        query_and_compare((MyColor::name(), &query), &chunk, &expected);
+        query_and_compare((MyColor::descriptor(), &query), &chunk, &expected);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
                 row_id2,
                 timepoint.clone(),
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors2 as _)),
-                    (MyLabel::name(), Some(labels2 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors2 as _)),
+                    (MyLabel::descriptor(), Some(labels2 as _)),
                 ],
             )
             .build_with_datatypes(&datatypes())?;
-        query_and_compare((MyLabel::name(), &query), &chunk, &expected);
+        query_and_compare((MyLabel::descriptor(), &query), &chunk, &expected);
     }
 
     Ok(())
@@ -407,39 +407,39 @@ fn static_unsorted() -> anyhow::Result<()> {
                 row_id3,
                 timepoint.clone(),
                 [
-                    (MyPoint::name(), Some(points3 as _)),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), None),
+                    (MyPoint::descriptor(), Some(points3 as _)),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), None),
                 ],
             )
             .build_with_datatypes(&datatypes())?;
-        query_and_compare((MyPoint::name(), &query), &chunk, &expected);
+        query_and_compare((MyPoint::descriptor(), &query), &chunk, &expected);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
                 row_id2,
                 timepoint.clone(),
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors2 as _)),
-                    (MyLabel::name(), Some(labels2 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors2 as _)),
+                    (MyLabel::descriptor(), Some(labels2 as _)),
                 ],
             )
             .build_with_datatypes(&datatypes())?;
-        query_and_compare((MyColor::name(), &query), &chunk, &expected);
+        query_and_compare((MyColor::descriptor(), &query), &chunk, &expected);
 
         let expected = Chunk::builder_with_id(chunk.id(), ENTITY_PATH.into())
             .with_sparse_component_batches(
                 row_id2,
                 timepoint.clone(),
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors2 as _)),
-                    (MyLabel::name(), Some(labels2 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors2 as _)),
+                    (MyLabel::descriptor(), Some(labels2 as _)),
                 ],
             )
             .build_with_datatypes(&datatypes())?;
-        query_and_compare((MyLabel::name(), &query), &chunk, &expected);
+        query_and_compare((MyLabel::descriptor(), &query), &chunk, &expected);
     }
 
     Ok(())
@@ -448,15 +448,15 @@ fn static_unsorted() -> anyhow::Result<()> {
 // ---
 
 fn query_and_compare(
-    (component_name, query): (ComponentName, &RangeQuery),
+    (component_desc, query): (ComponentDescriptor, &RangeQuery),
     chunk: &Chunk,
     expected: &Chunk,
 ) {
     re_log::setup_logging();
 
-    let results = chunk.range(query, component_name);
+    let results = chunk.range(query, component_desc.component_name);
 
-    eprintln!("Query: {component_name} @ {query:?}");
+    eprintln!("Query: {component_desc} @ {query:?}");
     eprintln!("Data:\n{chunk}");
     eprintln!("Expected:\n{expected}");
     eprintln!("Results:\n{results}");

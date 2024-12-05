@@ -24,7 +24,7 @@ pub fn time_panel_two_sections_should_match_snapshot() {
             builder = builder.with_sparse_component_batches(
                 RowId::new(),
                 [build_frame_nr(frame)],
-                [(MyPoint::name(), Some(&points1 as _))],
+                [(MyPoint::descriptor(), Some(&points1 as _))],
             );
         }
         test_context
@@ -61,7 +61,7 @@ pub fn time_panel_dense_data_should_match_snapshot() {
         builder = builder.with_sparse_component_batches(
             RowId::new(),
             [build_frame_nr(frame)],
-            [(MyPoint::name(), Some(&points1 as _))],
+            [(MyPoint::descriptor(), Some(&points1 as _))],
         );
     }
     test_context

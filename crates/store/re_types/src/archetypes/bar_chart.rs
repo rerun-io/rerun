@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A bar chart.
@@ -55,33 +55,51 @@ pub struct BarChart {
     pub color: Option<crate::components::Color>,
 }
 
-impl ::re_types_core::SizeBytes for BarChart {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.values.heap_size_bytes() + self.color.heap_size_bytes()
-    }
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.BarChart".into()),
+            component_name: "rerun.components.TensorData".into(),
+            archetype_field_name: Some("values".into()),
+        }]
+    });
 
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::components::TensorData>::is_pod() && <Option<crate::components::Color>>::is_pod()
-    }
-}
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.BarChart".into()),
+            component_name: "BarChartIndicator".into(),
+            archetype_field_name: None,
+        }]
+    });
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.TensorData".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.BarChart".into()),
+            component_name: "rerun.components.Color".into(),
+            archetype_field_name: Some("color".into()),
+        }]
+    });
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.BarChartIndicator".into()]);
-
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.Color".into()]);
-
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.TensorData".into(),
-            "rerun.components.BarChartIndicator".into(),
-            "rerun.components.Color".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.BarChart".into()),
+                component_name: "rerun.components.TensorData".into(),
+                archetype_field_name: Some("values".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.BarChart".into()),
+                component_name: "BarChartIndicator".into(),
+                archetype_field_name: None,
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.BarChart".into()),
+                component_name: "rerun.components.Color".into(),
+                archetype_field_name: Some("color".into()),
+            },
         ]
     });
 
@@ -109,26 +127,26 @@ impl ::re_types_core::Archetype for BarChart {
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: BarChartIndicator = BarChartIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -174,10 +192,28 @@ impl ::re_types_core::AsComponents for BarChart {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.values as &dyn ComponentBatch).into()),
-            self.color
+            (Some(&self.values as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.BarChart".into()),
+                        archetype_field_name: Some(("values").into()),
+                        component_name: ("rerun.components.TensorData").into(),
+                    }),
+                }
+            }),
+            (self
+                .color
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.BarChart".into()),
+                    archetype_field_name: Some(("color").into()),
+                    component_name: ("rerun.components.Color").into(),
+                }),
+            }),
         ]
         .into_iter()
         .flatten()
@@ -202,5 +238,17 @@ impl BarChart {
     pub fn with_color(mut self, color: impl Into<crate::components::Color>) -> Self {
         self.color = Some(color.into());
         self
+    }
+}
+
+impl ::re_types_core::SizeBytes for BarChart {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.values.heap_size_bytes() + self.color.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::TensorData>::is_pod() && <Option<crate::components::Color>>::is_pod()
     }
 }

@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Indicate whether the range should be locked when zooming in on the data.
@@ -25,44 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct LockRangeDuringZoom(pub crate::datatypes::Bool);
 
-impl ::re_types_core::SizeBytes for LockRangeDuringZoom {
+impl ::re_types_core::Component for LockRangeDuringZoom {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Bool>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Bool>> From<T> for LockRangeDuringZoom {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Bool> for LockRangeDuringZoom {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Bool {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for LockRangeDuringZoom {
-    type Target = crate::datatypes::Bool;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Bool {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for LockRangeDuringZoom {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Bool {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.LockRangeDuringZoom")
     }
 }
 
@@ -99,9 +65,43 @@ impl ::re_types_core::Loggable for LockRangeDuringZoom {
     }
 }
 
-impl ::re_types_core::Component for LockRangeDuringZoom {
+impl<T: Into<crate::datatypes::Bool>> From<T> for LockRangeDuringZoom {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Bool> for LockRangeDuringZoom {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.LockRangeDuringZoom".into()
+    fn borrow(&self) -> &crate::datatypes::Bool {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for LockRangeDuringZoom {
+    type Target = crate::datatypes::Bool;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Bool {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for LockRangeDuringZoom {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Bool {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for LockRangeDuringZoom {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Bool>::is_pod()
     }
 }

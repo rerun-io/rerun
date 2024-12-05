@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: An N-dimensional array of numbers.
@@ -30,44 +30,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct TensorData(pub crate::datatypes::TensorData);
 
-impl ::re_types_core::SizeBytes for TensorData {
+impl ::re_types_core::Component for TensorData {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::TensorData>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::TensorData>> From<T> for TensorData {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::TensorData> for TensorData {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::TensorData {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for TensorData {
-    type Target = crate::datatypes::TensorData;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::TensorData {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for TensorData {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::TensorData {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.TensorData")
     }
 }
 
@@ -104,9 +70,43 @@ impl ::re_types_core::Loggable for TensorData {
     }
 }
 
-impl ::re_types_core::Component for TensorData {
+impl<T: Into<crate::datatypes::TensorData>> From<T> for TensorData {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::TensorData> for TensorData {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.TensorData".into()
+    fn borrow(&self) -> &crate::datatypes::TensorData {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for TensorData {
+    type Target = crate::datatypes::TensorData;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::TensorData {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for TensorData {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::TensorData {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for TensorData {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::TensorData>::is_pod()
     }
 }

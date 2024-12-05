@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **View**: A view to display any data in a tabular form.
@@ -27,15 +27,10 @@ pub struct DataframeView {
     pub query: crate::blueprint::archetypes::DataframeQuery,
 }
 
-impl ::re_types_core::SizeBytes for DataframeView {
+impl ::re_types_core::View for DataframeView {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.query.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::archetypes::DataframeQuery>::is_pod()
+    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+        "Dataframe".into()
     }
 }
 
@@ -68,9 +63,14 @@ impl std::ops::DerefMut for DataframeView {
     }
 }
 
-impl ::re_types_core::View for DataframeView {
+impl ::re_types_core::SizeBytes for DataframeView {
     #[inline]
-    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
-        "Dataframe".into()
+    fn heap_size_bytes(&self) -> u64 {
+        self.query.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::blueprint::archetypes::DataframeQuery>::is_pod()
     }
 }

@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Hash of a viewer recommendation.
@@ -25,44 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct ViewerRecommendationHash(pub crate::datatypes::UInt64);
 
-impl ::re_types_core::SizeBytes for ViewerRecommendationHash {
+impl ::re_types_core::Component for ViewerRecommendationHash {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::UInt64>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::UInt64>> From<T> for ViewerRecommendationHash {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::UInt64> for ViewerRecommendationHash {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::UInt64 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ViewerRecommendationHash {
-    type Target = crate::datatypes::UInt64;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::UInt64 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ViewerRecommendationHash {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::UInt64 {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.ViewerRecommendationHash")
     }
 }
 
@@ -107,9 +73,43 @@ impl ::re_types_core::Loggable for ViewerRecommendationHash {
     }
 }
 
-impl ::re_types_core::Component for ViewerRecommendationHash {
+impl<T: Into<crate::datatypes::UInt64>> From<T> for ViewerRecommendationHash {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::UInt64> for ViewerRecommendationHash {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.ViewerRecommendationHash".into()
+    fn borrow(&self) -> &crate::datatypes::UInt64 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for ViewerRecommendationHash {
+    type Target = crate::datatypes::UInt64;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::UInt64 {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ViewerRecommendationHash {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::UInt64 {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for ViewerRecommendationHash {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::UInt64>::is_pod()
     }
 }

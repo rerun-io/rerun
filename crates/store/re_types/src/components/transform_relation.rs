@@ -14,9 +14,9 @@
 #![allow(non_camel_case_types)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Specifies relation a spatial transform describes.
@@ -39,43 +39,10 @@ pub enum TransformRelation {
     ChildFromParent = 2,
 }
 
-impl ::re_types_core::reflection::Enum for TransformRelation {
+impl ::re_types_core::Component for TransformRelation {
     #[inline]
-    fn variants() -> &'static [Self] {
-        &[Self::ParentFromChild, Self::ChildFromParent]
-    }
-
-    #[inline]
-    fn docstring_md(self) -> &'static str {
-        match self {
-            Self::ParentFromChild => {
-                "The transform describes how to transform into the parent entity's space.\n\nE.g. a translation of (0, 1, 0) with this [`components::TransformRelation`][crate::components::TransformRelation] logged at `parent/child` means\nthat from the point of view of `parent`, `parent/child` is translated 1 unit along `parent`'s Y axis.\nFrom perspective of `parent/child`, the `parent` entity is translated -1 unit along `parent/child`'s Y axis."
-            }
-            Self::ChildFromParent => {
-                "The transform describes how to transform into the child entity's space.\n\nE.g. a translation of (0, 1, 0) with this [`components::TransformRelation`][crate::components::TransformRelation] logged at `parent/child` means\nthat from the point of view of `parent`, `parent/child` is translated -1 unit along `parent`'s Y axis.\nFrom perspective of `parent/child`, the `parent` entity is translated 1 unit along `parent/child`'s Y axis."
-            }
-        }
-    }
-}
-
-impl ::re_types_core::SizeBytes for TransformRelation {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl std::fmt::Display for TransformRelation {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::ParentFromChild => write!(f, "ParentFromChild"),
-            Self::ChildFromParent => write!(f, "ChildFromParent"),
-        }
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.TransformRelation")
     }
 }
 
@@ -165,9 +132,42 @@ impl ::re_types_core::Loggable for TransformRelation {
     }
 }
 
-impl ::re_types_core::Component for TransformRelation {
+impl std::fmt::Display for TransformRelation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ParentFromChild => write!(f, "ParentFromChild"),
+            Self::ChildFromParent => write!(f, "ChildFromParent"),
+        }
+    }
+}
+
+impl ::re_types_core::reflection::Enum for TransformRelation {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.TransformRelation".into()
+    fn variants() -> &'static [Self] {
+        &[Self::ParentFromChild, Self::ChildFromParent]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::ParentFromChild => {
+                "The transform describes how to transform into the parent entity's space.\n\nE.g. a translation of (0, 1, 0) with this [`components::TransformRelation`][crate::components::TransformRelation] logged at `parent/child` means\nthat from the point of view of `parent`, `parent/child` is translated 1 unit along `parent`'s Y axis.\nFrom perspective of `parent/child`, the `parent` entity is translated -1 unit along `parent/child`'s Y axis."
+            }
+            Self::ChildFromParent => {
+                "The transform describes how to transform into the child entity's space.\n\nE.g. a translation of (0, 1, 0) with this [`components::TransformRelation`][crate::components::TransformRelation] logged at `parent/child` means\nthat from the point of view of `parent`, `parent/child` is translated -1 unit along `parent`'s Y axis.\nFrom perspective of `parent/child`, the `parent` entity is translated 1 unit along `parent/child`'s Y axis."
+            }
+        }
+    }
+}
+
+impl ::re_types_core::SizeBytes for TransformRelation {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }

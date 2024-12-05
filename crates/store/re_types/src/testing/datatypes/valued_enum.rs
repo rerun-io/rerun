@@ -14,9 +14,9 @@
 #![allow(non_camel_case_types)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A test of an enumate with specified values.
@@ -34,46 +34,6 @@ pub enum ValuedEnum {
 
     /// The answer to life, the universe, and everything.
     TheAnswer = 42,
-}
-
-impl ::re_types_core::reflection::Enum for ValuedEnum {
-    #[inline]
-    fn variants() -> &'static [Self] {
-        &[Self::One, Self::Two, Self::Three, Self::TheAnswer]
-    }
-
-    #[inline]
-    fn docstring_md(self) -> &'static str {
-        match self {
-            Self::One => "One.",
-            Self::Two => "Two.",
-            Self::Three => "Three.",
-            Self::TheAnswer => "The answer to life, the universe, and everything.",
-        }
-    }
-}
-
-impl ::re_types_core::SizeBytes for ValuedEnum {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl std::fmt::Display for ValuedEnum {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::One => write!(f, "One"),
-            Self::Two => write!(f, "Two"),
-            Self::Three => write!(f, "Three"),
-            Self::TheAnswer => write!(f, "TheAnswer"),
-        }
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(ValuedEnum);
@@ -161,5 +121,45 @@ impl ::re_types_core::Loggable for ValuedEnum {
             })
             .collect::<DeserializationResult<Vec<Option<_>>>>()
             .with_context("rerun.testing.datatypes.ValuedEnum")?)
+    }
+}
+
+impl std::fmt::Display for ValuedEnum {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::One => write!(f, "One"),
+            Self::Two => write!(f, "Two"),
+            Self::Three => write!(f, "Three"),
+            Self::TheAnswer => write!(f, "TheAnswer"),
+        }
+    }
+}
+
+impl ::re_types_core::reflection::Enum for ValuedEnum {
+    #[inline]
+    fn variants() -> &'static [Self] {
+        &[Self::One, Self::Two, Self::Three, Self::TheAnswer]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::One => "One.",
+            Self::Two => "Two.",
+            Self::Three => "Three.",
+            Self::TheAnswer => "The answer to life, the universe, and everything.",
+        }
+    }
+}
+
+impl ::re_types_core::SizeBytes for ValuedEnum {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }

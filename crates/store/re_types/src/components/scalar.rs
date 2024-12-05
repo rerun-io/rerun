@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A scalar value, encoded as a 64-bit floating point.
@@ -25,44 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct Scalar(pub crate::datatypes::Float64);
 
-impl ::re_types_core::SizeBytes for Scalar {
+impl ::re_types_core::Component for Scalar {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float64>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Float64>> From<T> for Scalar {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Float64> for Scalar {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float64 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Scalar {
-    type Target = crate::datatypes::Float64;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Float64 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Scalar {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float64 {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.Scalar")
     }
 }
 
@@ -107,9 +73,43 @@ impl ::re_types_core::Loggable for Scalar {
     }
 }
 
-impl ::re_types_core::Component for Scalar {
+impl<T: Into<crate::datatypes::Float64>> From<T> for Scalar {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Float64> for Scalar {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.Scalar".into()
+    fn borrow(&self) -> &crate::datatypes::Float64 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for Scalar {
+    type Target = crate::datatypes::Float64;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Float64 {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for Scalar {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Float64 {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for Scalar {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Float64>::is_pod()
     }
 }

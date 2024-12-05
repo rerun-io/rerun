@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: A double-precision scalar, e.g. for use for time-series plots.
@@ -59,32 +59,40 @@ pub struct Scalar {
     pub scalar: crate::components::Scalar,
 }
 
-impl ::re_types_core::SizeBytes for Scalar {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.scalar.heap_size_bytes()
-    }
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Scalar".into()),
+            component_name: "rerun.components.Scalar".into(),
+            archetype_field_name: Some("scalar".into()),
+        }]
+    });
 
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::components::Scalar>::is_pod()
-    }
-}
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Scalar".into()),
+            component_name: "ScalarIndicator".into(),
+            archetype_field_name: None,
+        }]
+    });
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.Scalar".into()]);
-
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.ScalarIndicator".into()]);
-
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Scalar".into(),
-            "rerun.components.ScalarIndicator".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Scalar".into()),
+                component_name: "rerun.components.Scalar".into(),
+                archetype_field_name: Some("scalar".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Scalar".into()),
+                component_name: "ScalarIndicator".into(),
+                archetype_field_name: None,
+            },
         ]
     });
 
@@ -112,26 +120,26 @@ impl ::re_types_core::Archetype for Scalar {
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: ScalarIndicator = ScalarIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -168,7 +176,16 @@ impl ::re_types_core::AsComponents for Scalar {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.scalar as &dyn ComponentBatch).into()),
+            (Some(&self.scalar as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.Scalar".into()),
+                        archetype_field_name: Some(("scalar").into()),
+                        component_name: ("rerun.components.Scalar").into(),
+                    }),
+                }
+            }),
         ]
         .into_iter()
         .flatten()
@@ -185,5 +202,17 @@ impl Scalar {
         Self {
             scalar: scalar.into(),
         }
+    }
+}
+
+impl ::re_types_core::SizeBytes for Scalar {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.scalar.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::Scalar>::is_pod()
     }
 }

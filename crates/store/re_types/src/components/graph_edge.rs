@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: An edge in a graph connecting two nodes.
@@ -23,44 +23,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct GraphEdge(pub crate::datatypes::Utf8Pair);
 
-impl ::re_types_core::SizeBytes for GraphEdge {
+impl ::re_types_core::Component for GraphEdge {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Utf8Pair>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Utf8Pair>> From<T> for GraphEdge {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Utf8Pair> for GraphEdge {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Utf8Pair {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for GraphEdge {
-    type Target = crate::datatypes::Utf8Pair;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Utf8Pair {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for GraphEdge {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8Pair {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.GraphEdge")
     }
 }
 
@@ -97,9 +63,43 @@ impl ::re_types_core::Loggable for GraphEdge {
     }
 }
 
-impl ::re_types_core::Component for GraphEdge {
+impl<T: Into<crate::datatypes::Utf8Pair>> From<T> for GraphEdge {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Utf8Pair> for GraphEdge {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.GraphEdge".into()
+    fn borrow(&self) -> &crate::datatypes::Utf8Pair {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for GraphEdge {
+    type Target = crate::datatypes::Utf8Pair;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Utf8Pair {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for GraphEdge {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8Pair {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for GraphEdge {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Utf8Pair>::is_pod()
     }
 }

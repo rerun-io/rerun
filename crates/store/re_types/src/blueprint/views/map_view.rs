@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **View**: A 2D map view to display geospatial primitives.
@@ -28,6 +28,13 @@ pub struct MapView {
     pub background: crate::blueprint::archetypes::MapBackground,
 }
 
+impl ::re_types_core::View for MapView {
+    #[inline]
+    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+        "Map".into()
+    }
+}
+
 impl ::re_types_core::SizeBytes for MapView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
@@ -38,12 +45,5 @@ impl ::re_types_core::SizeBytes for MapView {
     fn is_pod() -> bool {
         <crate::blueprint::archetypes::MapZoom>::is_pod()
             && <crate::blueprint::archetypes::MapBackground>::is_pod()
-    }
-}
-
-impl ::re_types_core::View for MapView {
-    #[inline]
-    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
-        "Map".into()
     }
 }

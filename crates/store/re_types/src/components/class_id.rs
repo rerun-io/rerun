@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A 16-bit ID representing a type of semantic class.
@@ -28,44 +28,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[cfg_attr(feature = "serde", derive(::serde::Serialize, ::serde::Deserialize))]
 pub struct ClassId(pub crate::datatypes::ClassId);
 
-impl ::re_types_core::SizeBytes for ClassId {
+impl ::re_types_core::Component for ClassId {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::ClassId>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::ClassId>> From<T> for ClassId {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::ClassId> for ClassId {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::ClassId {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ClassId {
-    type Target = crate::datatypes::ClassId;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::ClassId {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ClassId {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::ClassId {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.ClassId")
     }
 }
 
@@ -110,9 +76,43 @@ impl ::re_types_core::Loggable for ClassId {
     }
 }
 
-impl ::re_types_core::Component for ClassId {
+impl<T: Into<crate::datatypes::ClassId>> From<T> for ClassId {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::ClassId> for ClassId {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.ClassId".into()
+    fn borrow(&self) -> &crate::datatypes::ClassId {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for ClassId {
+    type Target = crate::datatypes::ClassId;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::ClassId {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ClassId {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::ClassId {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for ClassId {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::ClassId>::is_pod()
     }
 }

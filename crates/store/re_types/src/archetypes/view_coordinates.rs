@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: How we interpret the coordinate system of an entity/space.
@@ -66,32 +66,40 @@ pub struct ViewCoordinates {
     pub xyz: crate::components::ViewCoordinates,
 }
 
-impl ::re_types_core::SizeBytes for ViewCoordinates {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.xyz.heap_size_bytes()
-    }
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.ViewCoordinates".into()),
+            component_name: "rerun.components.ViewCoordinates".into(),
+            archetype_field_name: Some("xyz".into()),
+        }]
+    });
 
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::components::ViewCoordinates>::is_pod()
-    }
-}
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.ViewCoordinates".into()),
+            component_name: "ViewCoordinatesIndicator".into(),
+            archetype_field_name: None,
+        }]
+    });
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.ViewCoordinates".into()]);
-
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.ViewCoordinatesIndicator".into()]);
-
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.ViewCoordinates".into(),
-            "rerun.components.ViewCoordinatesIndicator".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.ViewCoordinates".into()),
+                component_name: "rerun.components.ViewCoordinates".into(),
+                archetype_field_name: Some("xyz".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.ViewCoordinates".into()),
+                component_name: "ViewCoordinatesIndicator".into(),
+                archetype_field_name: None,
+            },
         ]
     });
 
@@ -119,26 +127,26 @@ impl ::re_types_core::Archetype for ViewCoordinates {
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: ViewCoordinatesIndicator = ViewCoordinatesIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -175,7 +183,16 @@ impl ::re_types_core::AsComponents for ViewCoordinates {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.xyz as &dyn ComponentBatch).into()),
+            (Some(&self.xyz as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.ViewCoordinates".into()),
+                        archetype_field_name: Some(("xyz").into()),
+                        component_name: ("rerun.components.ViewCoordinates").into(),
+                    }),
+                }
+            }),
         ]
         .into_iter()
         .flatten()
@@ -190,5 +207,17 @@ impl ViewCoordinates {
     #[inline]
     pub fn new(xyz: impl Into<crate::components::ViewCoordinates>) -> Self {
         Self { xyz: xyz.into() }
+    }
+}
+
+impl ::re_types_core::SizeBytes for ViewCoordinates {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.xyz.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::ViewCoordinates>::is_pod()
     }
 }

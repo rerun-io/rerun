@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: How we interpret the coordinate system of an entity/space.
@@ -42,32 +42,6 @@ pub struct ViewCoordinates(
     /// The directions of the [x, y, z] axes.
     pub [u8; 3usize],
 );
-
-impl ::re_types_core::SizeBytes for ViewCoordinates {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <[u8; 3usize]>::is_pod()
-    }
-}
-
-impl From<[u8; 3usize]> for ViewCoordinates {
-    #[inline]
-    fn from(coordinates: [u8; 3usize]) -> Self {
-        Self(coordinates)
-    }
-}
-
-impl From<ViewCoordinates> for [u8; 3usize] {
-    #[inline]
-    fn from(value: ViewCoordinates) -> Self {
-        value.0
-    }
-}
 
 ::re_types_core::macros::impl_into_cow!(ViewCoordinates);
 
@@ -265,5 +239,31 @@ impl ::re_types_core::Loggable for ViewCoordinates {
                 slice.iter().copied().map(Self).collect::<Vec<_>>()
             }
         })
+    }
+}
+
+impl From<[u8; 3usize]> for ViewCoordinates {
+    #[inline]
+    fn from(coordinates: [u8; 3usize]) -> Self {
+        Self(coordinates)
+    }
+}
+
+impl From<ViewCoordinates> for [u8; 3usize] {
+    #[inline]
+    fn from(value: ViewCoordinates) -> Self {
+        value.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for ViewCoordinates {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <[u8; 3usize]>::is_pod()
     }
 }

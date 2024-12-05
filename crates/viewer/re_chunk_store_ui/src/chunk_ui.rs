@@ -76,9 +76,12 @@ impl ChunkUi {
 
         let components = chunk
             .components()
-            .iter()
-            .map(|(component_name, list_array)| {
-                (*component_name, format!("{:#?}", list_array.data_type()))
+            .iter_flattened()
+            .map(|(component_desc, list_array)| {
+                (
+                    component_desc.clone(),
+                    format!("{:#?}", list_array.data_type()),
+                )
             })
             .collect::<BTreeMap<_, _>>();
 
@@ -93,13 +96,15 @@ impl ChunkUi {
                 });
             }
 
-            for (component_name, datatype) in &components {
+            for (component_desc, datatype) in &components {
                 row.col(|ui| {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-                    let response = ui.button(component_name.short_name()).on_hover_ui(|ui| {
-                        ui.label(format!("{datatype}\n\nClick header to copy"));
-                    });
+                    let response = ui
+                        .button(component_desc.component_name.short_name())
+                        .on_hover_ui(|ui| {
+                            ui.label(format!("{datatype}\n\nClick header to copy"));
+                        });
 
                     if response.clicked() {
                         ui.output_mut(|o| o.copied_text = datatype.clone());
@@ -136,11 +141,12 @@ impl ChunkUi {
                 });
             }
 
-            for component_name in components.keys() {
+            for component_desc in components.keys() {
                 row.col(|ui| {
                     ui.style_mut().wrap_mode = Some(egui::TextWrapMode::Truncate);
 
-                    let component_data = chunk.component_batch_raw(component_name, row_index);
+                    let component_data =
+                        chunk.component_batch_raw(&component_desc.component_name, row_index);
                     match component_data {
                         Some(Ok(data)) => {
                             crate::arrow_ui::arrow_ui(ui, &*data);

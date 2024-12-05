@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: An RGBA color with unmultiplied/separate alpha, in sRGB gamma space with linear alpha.
@@ -26,44 +26,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct Color(pub crate::datatypes::Rgba32);
 
-impl ::re_types_core::SizeBytes for Color {
+impl ::re_types_core::Component for Color {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Rgba32>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Rgba32>> From<T> for Color {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Rgba32> for Color {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Rgba32 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Color {
-    type Target = crate::datatypes::Rgba32;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Rgba32 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Color {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Rgba32 {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.Color")
     }
 }
 
@@ -108,9 +74,43 @@ impl ::re_types_core::Loggable for Color {
     }
 }
 
-impl ::re_types_core::Component for Color {
+impl<T: Into<crate::datatypes::Rgba32>> From<T> for Color {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Rgba32> for Color {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.Color".into()
+    fn borrow(&self) -> &crate::datatypes::Rgba32 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for Color {
+    type Target = crate::datatypes::Rgba32;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Rgba32 {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for Color {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Rgba32 {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for Color {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Rgba32>::is_pod()
     }
 }

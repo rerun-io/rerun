@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A geospatial position expressed in [EPSG:4326](https://epsg.io/4326) latitude and longitude (North/East-positive degrees).
@@ -23,44 +23,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct LatLon(pub crate::datatypes::DVec2D);
 
-impl ::re_types_core::SizeBytes for LatLon {
+impl ::re_types_core::Component for LatLon {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::DVec2D>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::DVec2D>> From<T> for LatLon {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::DVec2D> for LatLon {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::DVec2D {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for LatLon {
-    type Target = crate::datatypes::DVec2D;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::DVec2D {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for LatLon {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::DVec2D {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.LatLon")
     }
 }
 
@@ -105,9 +71,43 @@ impl ::re_types_core::Loggable for LatLon {
     }
 }
 
-impl ::re_types_core::Component for LatLon {
+impl<T: Into<crate::datatypes::DVec2D>> From<T> for LatLon {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::DVec2D> for LatLon {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.LatLon".into()
+    fn borrow(&self) -> &crate::datatypes::DVec2D {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for LatLon {
+    type Target = crate::datatypes::DVec2D;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::DVec2D {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for LatLon {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::DVec2D {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for LatLon {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::DVec2D>::is_pod()
     }
 }

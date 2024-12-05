@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configuration of the map view zoom level.
@@ -27,32 +27,40 @@ pub struct MapZoom {
     pub zoom: crate::blueprint::components::ZoomLevel,
 }
 
-impl ::re_types_core::SizeBytes for MapZoom {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.zoom.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::components::ZoomLevel>::is_pod()
-    }
-}
-
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.MapZoomIndicator".into()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.MapZoom".into()),
+            component_name: "MapZoomIndicator".into(),
+            archetype_field_name: None,
+        }]
+    });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.ZoomLevel".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.MapZoom".into()),
+            component_name: "rerun.blueprint.components.ZoomLevel".into(),
+            archetype_field_name: Some("zoom".into()),
+        }]
+    });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.MapZoomIndicator".into(),
-            "rerun.blueprint.components.ZoomLevel".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.MapZoom".into()),
+                component_name: "MapZoomIndicator".into(),
+                archetype_field_name: None,
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.MapZoom".into()),
+                component_name: "rerun.blueprint.components.ZoomLevel".into(),
+                archetype_field_name: Some("zoom".into()),
+            },
         ]
     });
 
@@ -80,26 +88,26 @@ impl ::re_types_core::Archetype for MapZoom {
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: MapZoomIndicator = MapZoomIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -136,7 +144,16 @@ impl ::re_types_core::AsComponents for MapZoom {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.zoom as &dyn ComponentBatch).into()),
+            (Some(&self.zoom as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.blueprint.archetypes.MapZoom".into()),
+                        archetype_field_name: Some(("zoom").into()),
+                        component_name: ("rerun.blueprint.components.ZoomLevel").into(),
+                    }),
+                }
+            }),
         ]
         .into_iter()
         .flatten()
@@ -151,5 +168,17 @@ impl MapZoom {
     #[inline]
     pub fn new(zoom: impl Into<crate::blueprint::components::ZoomLevel>) -> Self {
         Self { zoom: zoom.into() }
+    }
+}
+
+impl ::re_types_core::SizeBytes for MapZoom {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.zoom.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::blueprint::components::ZoomLevel>::is_pod()
     }
 }

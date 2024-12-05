@@ -159,8 +159,14 @@ impl Default for TransformContext {
 impl ViewContextSystem for TransformContext {
     fn compatible_component_sets(&self) -> Vec<ComponentNameSet> {
         vec![
-            Transform3D::all_components().iter().copied().collect(),
-            InstancePoses3D::all_components().iter().copied().collect(),
+            Transform3D::all_components()
+                .iter()
+                .map(|descr| descr.component_name)
+                .collect(),
+            InstancePoses3D::all_components()
+                .iter()
+                .map(|descr| descr.component_name)
+                .collect(),
             std::iter::once(PinholeProjection::name()).collect(),
             std::iter::once(DisconnectedSpace::name()).collect(),
         ]

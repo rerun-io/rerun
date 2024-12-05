@@ -77,8 +77,9 @@ pub mod sink {
 /// Things directly related to logging.
 pub mod log {
     pub use re_chunk::{
-        Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, ChunkBatcherResult, ChunkError,
-        ChunkId, ChunkResult, PendingRow, RowId, TimeColumn, TransportChunk,
+        Chunk, ChunkBatcher, ChunkBatcherConfig, ChunkBatcherError, ChunkBatcherResult,
+        ChunkComponents, ChunkError, ChunkId, ChunkResult, PendingRow, RowId, TimeColumn,
+        TransportChunk,
     };
     pub use re_log_types::LogMsg;
 }
@@ -90,9 +91,10 @@ pub mod time {
 pub use time::{Time, TimePoint, Timeline};
 
 pub use re_types_core::{
-    Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentName, DatatypeName,
+    Archetype, ArchetypeName, AsComponents, Component, ComponentBatch, ComponentDescriptor,
+    ComponentName, DatatypeName, DeserializationError, DeserializationResult,
     GenericIndicatorComponent, Loggable, LoggableBatch, MaybeOwnedComponentBatch,
-    NamedIndicatorComponent, SizeBytes,
+    NamedIndicatorComponent, SerializationError, SerializationResult, SizeBytes,
 };
 
 #[cfg(feature = "data_loaders")]

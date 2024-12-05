@@ -13,53 +13,18 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer8(pub Option<f32>);
 
-impl ::re_types_core::SizeBytes for AffixFuzzer8 {
+impl ::re_types_core::Component for AffixFuzzer8 {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<f32>>::is_pod()
-    }
-}
-
-impl From<Option<f32>> for AffixFuzzer8 {
-    #[inline]
-    fn from(single_float_optional: Option<f32>) -> Self {
-        Self(single_float_optional)
-    }
-}
-
-impl From<AffixFuzzer8> for Option<f32> {
-    #[inline]
-    fn from(value: AffixFuzzer8) -> Self {
-        value.0
-    }
-}
-
-impl std::ops::Deref for AffixFuzzer8 {
-    type Target = Option<f32>;
-
-    #[inline]
-    fn deref(&self) -> &Option<f32> {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for AffixFuzzer8 {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Option<f32> {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.testing.components.AffixFuzzer8")
     }
 }
 
@@ -142,9 +107,44 @@ impl ::re_types_core::Loggable for AffixFuzzer8 {
     }
 }
 
-impl ::re_types_core::Component for AffixFuzzer8 {
+impl From<Option<f32>> for AffixFuzzer8 {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.testing.components.AffixFuzzer8".into()
+    fn from(single_float_optional: Option<f32>) -> Self {
+        Self(single_float_optional)
+    }
+}
+
+impl From<AffixFuzzer8> for Option<f32> {
+    #[inline]
+    fn from(value: AffixFuzzer8) -> Self {
+        value.0
+    }
+}
+
+impl std::ops::Deref for AffixFuzzer8 {
+    type Target = Option<f32>;
+
+    #[inline]
+    fn deref(&self) -> &Option<f32> {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for AffixFuzzer8 {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Option<f32> {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for AffixFuzzer8 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<f32>>::is_pod()
     }
 }

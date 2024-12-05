@@ -190,7 +190,7 @@ impl std::fmt::Display for DisplayMetadata<'_> {
         f.write_str(
             &metadata
                 .iter()
-                .map(|(key, value)| format!("{prefix}{}: {value:?}", trim_name(key)))
+                .map(|(key, value)| format!("{prefix}{}: {:?}", trim_name(key), trim_name(value)))
                 .collect::<Vec<_>>()
                 .join("\n"),
         )

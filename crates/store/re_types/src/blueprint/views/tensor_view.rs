@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **View**: A view on a tensor of any dimensionality.
@@ -31,6 +31,13 @@ pub struct TensorView {
     pub view_fit: crate::blueprint::archetypes::TensorViewFit,
 }
 
+impl ::re_types_core::View for TensorView {
+    #[inline]
+    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
+        "Tensor".into()
+    }
+}
+
 impl ::re_types_core::SizeBytes for TensorView {
     #[inline]
     fn heap_size_bytes(&self) -> u64 {
@@ -44,12 +51,5 @@ impl ::re_types_core::SizeBytes for TensorView {
         <crate::blueprint::archetypes::TensorSliceSelection>::is_pod()
             && <crate::blueprint::archetypes::TensorScalarMapping>::is_pod()
             && <crate::blueprint::archetypes::TensorViewFit>::is_pod()
-    }
-}
-
-impl ::re_types_core::View for TensorView {
-    #[inline]
-    fn identifier() -> ::re_types_core::SpaceViewClassIdentifier {
-        "Tensor".into()
     }
 }

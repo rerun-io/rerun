@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Timestamp inside a [`archetypes::AssetVideo`][crate::archetypes::AssetVideo].
@@ -23,44 +23,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct VideoTimestamp(pub crate::datatypes::VideoTimestamp);
 
-impl ::re_types_core::SizeBytes for VideoTimestamp {
+impl ::re_types_core::Component for VideoTimestamp {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::VideoTimestamp>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::VideoTimestamp>> From<T> for VideoTimestamp {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::VideoTimestamp> for VideoTimestamp {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::VideoTimestamp {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for VideoTimestamp {
-    type Target = crate::datatypes::VideoTimestamp;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::VideoTimestamp {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for VideoTimestamp {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::VideoTimestamp {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.VideoTimestamp")
     }
 }
 
@@ -106,9 +72,43 @@ impl ::re_types_core::Loggable for VideoTimestamp {
     }
 }
 
-impl ::re_types_core::Component for VideoTimestamp {
+impl<T: Into<crate::datatypes::VideoTimestamp>> From<T> for VideoTimestamp {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::VideoTimestamp> for VideoTimestamp {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.VideoTimestamp".into()
+    fn borrow(&self) -> &crate::datatypes::VideoTimestamp {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for VideoTimestamp {
+    type Target = crate::datatypes::VideoTimestamp;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::VideoTimestamp {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for VideoTimestamp {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::VideoTimestamp {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for VideoTimestamp {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::VideoTimestamp>::is_pod()
     }
 }

@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The range of values on a given timeline that will be included in a view's query.
@@ -25,44 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct VisibleTimeRange(pub crate::datatypes::VisibleTimeRange);
 
-impl ::re_types_core::SizeBytes for VisibleTimeRange {
+impl ::re_types_core::Component for VisibleTimeRange {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::VisibleTimeRange>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::VisibleTimeRange>> From<T> for VisibleTimeRange {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::VisibleTimeRange> for VisibleTimeRange {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::VisibleTimeRange {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for VisibleTimeRange {
-    type Target = crate::datatypes::VisibleTimeRange;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::VisibleTimeRange {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for VisibleTimeRange {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::VisibleTimeRange {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.VisibleTimeRange")
     }
 }
 
@@ -99,9 +65,43 @@ impl ::re_types_core::Loggable for VisibleTimeRange {
     }
 }
 
-impl ::re_types_core::Component for VisibleTimeRange {
+impl<T: Into<crate::datatypes::VisibleTimeRange>> From<T> for VisibleTimeRange {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::VisibleTimeRange> for VisibleTimeRange {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.VisibleTimeRange".into()
+    fn borrow(&self) -> &crate::datatypes::VisibleTimeRange {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for VisibleTimeRange {
+    type Target = crate::datatypes::VisibleTimeRange;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::VisibleTimeRange {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for VisibleTimeRange {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::VisibleTimeRange {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for VisibleTimeRange {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::VisibleTimeRange>::is_pod()
     }
 }

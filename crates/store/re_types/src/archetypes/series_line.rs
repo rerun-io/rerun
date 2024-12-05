@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Define the style properties for a line series in a chart.
@@ -90,48 +90,72 @@ pub struct SeriesLine {
     pub aggregation_policy: Option<crate::components::AggregationPolicy>,
 }
 
-impl ::re_types_core::SizeBytes for SeriesLine {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.color.heap_size_bytes()
-            + self.width.heap_size_bytes()
-            + self.name.heap_size_bytes()
-            + self.aggregation_policy.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::components::Color>>::is_pod()
-            && <Option<crate::components::StrokeWidth>>::is_pod()
-            && <Option<crate::components::Name>>::is_pod()
-            && <Option<crate::components::AggregationPolicy>>::is_pod()
-    }
-}
-
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.SeriesLineIndicator".into()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.SeriesLine".into()),
+            component_name: "SeriesLineIndicator".into(),
+            archetype_field_name: None,
+        }]
+    });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 4usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 4usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Color".into(),
-            "rerun.components.StrokeWidth".into(),
-            "rerun.components.Name".into(),
-            "rerun.components.AggregationPolicy".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.SeriesLine".into()),
+                component_name: "rerun.components.Color".into(),
+                archetype_field_name: Some("color".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.SeriesLine".into()),
+                component_name: "rerun.components.StrokeWidth".into(),
+                archetype_field_name: Some("width".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.SeriesLine".into()),
+                component_name: "rerun.components.Name".into(),
+                archetype_field_name: Some("name".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.SeriesLine".into()),
+                component_name: "rerun.components.AggregationPolicy".into(),
+                archetype_field_name: Some("aggregation_policy".into()),
+            },
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.SeriesLineIndicator".into(),
-            "rerun.components.Color".into(),
-            "rerun.components.StrokeWidth".into(),
-            "rerun.components.Name".into(),
-            "rerun.components.AggregationPolicy".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.SeriesLine".into()),
+                component_name: "SeriesLineIndicator".into(),
+                archetype_field_name: None,
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.SeriesLine".into()),
+                component_name: "rerun.components.Color".into(),
+                archetype_field_name: Some("color".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.SeriesLine".into()),
+                component_name: "rerun.components.StrokeWidth".into(),
+                archetype_field_name: Some("width".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.SeriesLine".into()),
+                component_name: "rerun.components.Name".into(),
+                archetype_field_name: Some("name".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.SeriesLine".into()),
+                component_name: "rerun.components.AggregationPolicy".into(),
+                archetype_field_name: Some("aggregation_policy".into()),
+            },
         ]
     });
 
@@ -159,26 +183,26 @@ impl ::re_types_core::Archetype for SeriesLine {
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: SeriesLineIndicator = SeriesLineIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -244,18 +268,52 @@ impl ::re_types_core::AsComponents for SeriesLine {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            self.color
+            (self
+                .color
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.width
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.SeriesLine".into()),
+                    archetype_field_name: Some(("color").into()),
+                    component_name: ("rerun.components.Color").into(),
+                }),
+            }),
+            (self
+                .width
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.name
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.SeriesLine".into()),
+                    archetype_field_name: Some(("width").into()),
+                    component_name: ("rerun.components.StrokeWidth").into(),
+                }),
+            }),
+            (self.name.as_ref().map(|comp| (comp as &dyn ComponentBatch))).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.SeriesLine".into()),
+                        archetype_field_name: Some(("name").into()),
+                        component_name: ("rerun.components.Name").into(),
+                    }),
+                }
+            }),
+            (self
+                .aggregation_policy
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.aggregation_policy
-                .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.archetypes.SeriesLine".into()),
+                    archetype_field_name: Some(("aggregation_policy").into()),
+                    component_name: ("rerun.components.AggregationPolicy").into(),
+                }),
+            }),
         ]
         .into_iter()
         .flatten()
@@ -312,5 +370,23 @@ impl SeriesLine {
     ) -> Self {
         self.aggregation_policy = Some(aggregation_policy.into());
         self
+    }
+}
+
+impl ::re_types_core::SizeBytes for SeriesLine {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.color.heap_size_bytes()
+            + self.width.heap_size_bytes()
+            + self.name.heap_size_bytes()
+            + self.aggregation_policy.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::components::Color>>::is_pod()
+            && <Option<crate::components::StrokeWidth>>::is_pod()
+            && <Option<crate::components::Name>>::is_pod()
+            && <Option<crate::components::AggregationPolicy>>::is_pod()
     }
 }

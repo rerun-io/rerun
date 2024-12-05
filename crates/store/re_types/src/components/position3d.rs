@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A position in 3D space.
@@ -23,44 +23,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct Position3D(pub crate::datatypes::Vec3D);
 
-impl ::re_types_core::SizeBytes for Position3D {
+impl ::re_types_core::Component for Position3D {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Vec3D>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Vec3D>> From<T> for Position3D {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Vec3D> for Position3D {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Vec3D {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Position3D {
-    type Target = crate::datatypes::Vec3D;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Vec3D {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Position3D {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec3D {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.Position3D")
     }
 }
 
@@ -105,9 +71,43 @@ impl ::re_types_core::Loggable for Position3D {
     }
 }
 
-impl ::re_types_core::Component for Position3D {
+impl<T: Into<crate::datatypes::Vec3D>> From<T> for Position3D {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Vec3D> for Position3D {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.Position3D".into()
+    fn borrow(&self) -> &crate::datatypes::Vec3D {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for Position3D {
+    type Target = crate::datatypes::Vec3D;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Vec3D {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for Position3D {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec3D {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for Position3D {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Vec3D>::is_pod()
     }
 }

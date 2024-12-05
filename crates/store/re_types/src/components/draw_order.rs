@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Draw order of 2D elements. Higher values are drawn on top of lower values.
@@ -28,44 +28,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct DrawOrder(pub crate::datatypes::Float32);
 
-impl ::re_types_core::SizeBytes for DrawOrder {
+impl ::re_types_core::Component for DrawOrder {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Float32>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Float32>> From<T> for DrawOrder {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Float32> for DrawOrder {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for DrawOrder {
-    type Target = crate::datatypes::Float32;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Float32 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for DrawOrder {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.DrawOrder")
     }
 }
 
@@ -111,9 +77,43 @@ impl ::re_types_core::Loggable for DrawOrder {
     }
 }
 
-impl ::re_types_core::Component for DrawOrder {
+impl<T: Into<crate::datatypes::Float32>> From<T> for DrawOrder {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Float32> for DrawOrder {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.DrawOrder".into()
+    fn borrow(&self) -> &crate::datatypes::Float32 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for DrawOrder {
+    type Target = crate::datatypes::Float32;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Float32 {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for DrawOrder {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Float32 {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for DrawOrder {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Float32>::is_pod()
     }
 }

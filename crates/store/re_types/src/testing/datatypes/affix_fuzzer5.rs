@@ -13,57 +13,14 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct AffixFuzzer5 {
     pub single_optional_union: Option<crate::testing::datatypes::AffixFuzzer4>,
-}
-
-impl ::re_types_core::SizeBytes for AffixFuzzer5 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.single_optional_union.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::testing::datatypes::AffixFuzzer4>>::is_pod()
-    }
-}
-
-impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer4>>> From<T> for AffixFuzzer5 {
-    fn from(v: T) -> Self {
-        Self {
-            single_optional_union: v.into(),
-        }
-    }
-}
-
-impl std::borrow::Borrow<Option<crate::testing::datatypes::AffixFuzzer4>> for AffixFuzzer5 {
-    #[inline]
-    fn borrow(&self) -> &Option<crate::testing::datatypes::AffixFuzzer4> {
-        &self.single_optional_union
-    }
-}
-
-impl std::ops::Deref for AffixFuzzer5 {
-    type Target = Option<crate::testing::datatypes::AffixFuzzer4>;
-
-    #[inline]
-    fn deref(&self) -> &Option<crate::testing::datatypes::AffixFuzzer4> {
-        &self.single_optional_union
-    }
-}
-
-impl std::ops::DerefMut for AffixFuzzer5 {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut Option<crate::testing::datatypes::AffixFuzzer4> {
-        &mut self.single_optional_union
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer5);
@@ -200,5 +157,48 @@ impl ::re_types_core::Loggable for AffixFuzzer5 {
                 .with_context("rerun.testing.datatypes.AffixFuzzer5")?
             }
         })
+    }
+}
+
+impl<T: Into<Option<crate::testing::datatypes::AffixFuzzer4>>> From<T> for AffixFuzzer5 {
+    fn from(v: T) -> Self {
+        Self {
+            single_optional_union: v.into(),
+        }
+    }
+}
+
+impl std::borrow::Borrow<Option<crate::testing::datatypes::AffixFuzzer4>> for AffixFuzzer5 {
+    #[inline]
+    fn borrow(&self) -> &Option<crate::testing::datatypes::AffixFuzzer4> {
+        &self.single_optional_union
+    }
+}
+
+impl std::ops::Deref for AffixFuzzer5 {
+    type Target = Option<crate::testing::datatypes::AffixFuzzer4>;
+
+    #[inline]
+    fn deref(&self) -> &Option<crate::testing::datatypes::AffixFuzzer4> {
+        &self.single_optional_union
+    }
+}
+
+impl std::ops::DerefMut for AffixFuzzer5 {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut Option<crate::testing::datatypes::AffixFuzzer4> {
+        &mut self.single_optional_union
+    }
+}
+
+impl ::re_types_core::SizeBytes for AffixFuzzer5 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.single_optional_union.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::testing::datatypes::AffixFuzzer4>>::is_pod()
     }
 }

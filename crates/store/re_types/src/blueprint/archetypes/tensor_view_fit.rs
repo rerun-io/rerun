@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Configures how a selected tensor slice is shown on screen.
@@ -25,32 +25,40 @@ pub struct TensorViewFit {
     pub scaling: Option<crate::blueprint::components::ViewFit>,
 }
 
-impl ::re_types_core::SizeBytes for TensorViewFit {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.scaling.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <Option<crate::blueprint::components::ViewFit>>::is_pod()
-    }
-}
-
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.TensorViewFitIndicator".into()]);
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.TensorViewFit".into()),
+            component_name: "TensorViewFitIndicator".into(),
+            archetype_field_name: None,
+        }]
+    });
 
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.ViewFit".into()]);
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.TensorViewFit".into()),
+            component_name: "rerun.blueprint.components.ViewFit".into(),
+            archetype_field_name: Some("scaling".into()),
+        }]
+    });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.TensorViewFitIndicator".into(),
-            "rerun.blueprint.components.ViewFit".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.TensorViewFit".into()),
+                component_name: "TensorViewFitIndicator".into(),
+                archetype_field_name: None,
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.TensorViewFit".into()),
+                component_name: "rerun.blueprint.components.ViewFit".into(),
+                archetype_field_name: Some("scaling".into()),
+            },
         ]
     });
 
@@ -78,26 +86,26 @@ impl ::re_types_core::Archetype for TensorViewFit {
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: TensorViewFitIndicator = TensorViewFitIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -131,9 +139,18 @@ impl ::re_types_core::AsComponents for TensorViewFit {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            self.scaling
+            (self
+                .scaling
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.TensorViewFit".into()),
+                    archetype_field_name: Some(("scaling").into()),
+                    component_name: ("rerun.blueprint.components.ViewFit").into(),
+                }),
+            }),
         ]
         .into_iter()
         .flatten()
@@ -158,5 +175,17 @@ impl TensorViewFit {
     ) -> Self {
         self.scaling = Some(scaling.into());
         self
+    }
+}
+
+impl ::re_types_core::SizeBytes for TensorViewFit {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.scaling.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <Option<crate::blueprint::components::ViewFit>>::is_pod()
     }
 }

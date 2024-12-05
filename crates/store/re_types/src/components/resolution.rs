@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Pixel resolution width & height, e.g. of a camera sensor.
@@ -24,44 +24,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[derive(Clone, Debug, Copy, PartialEq)]
 pub struct Resolution(pub crate::datatypes::Vec2D);
 
-impl ::re_types_core::SizeBytes for Resolution {
+impl ::re_types_core::Component for Resolution {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Vec2D>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Vec2D>> From<T> for Resolution {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Vec2D> for Resolution {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Vec2D {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Resolution {
-    type Target = crate::datatypes::Vec2D;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Vec2D {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Resolution {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec2D {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.Resolution")
     }
 }
 
@@ -106,9 +72,43 @@ impl ::re_types_core::Loggable for Resolution {
     }
 }
 
-impl ::re_types_core::Component for Resolution {
+impl<T: Into<crate::datatypes::Vec2D>> From<T> for Resolution {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Vec2D> for Resolution {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.Resolution".into()
+    fn borrow(&self) -> &crate::datatypes::Vec2D {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for Resolution {
+    type Target = crate::datatypes::Vec2D;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Vec2D {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for Resolution {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Vec2D {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for Resolution {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Vec2D>::is_pod()
     }
 }

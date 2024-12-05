@@ -13,32 +13,15 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum AffixFuzzer4 {
     SingleRequired(crate::testing::datatypes::AffixFuzzer3),
     ManyRequired(Vec<crate::testing::datatypes::AffixFuzzer3>),
-}
-
-impl ::re_types_core::SizeBytes for AffixFuzzer4 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        #![allow(clippy::match_same_arms)]
-        match self {
-            Self::SingleRequired(v) => v.heap_size_bytes(),
-            Self::ManyRequired(v) => v.heap_size_bytes(),
-        }
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::testing::datatypes::AffixFuzzer3>::is_pod()
-            && <Vec<crate::testing::datatypes::AffixFuzzer3>>::is_pod()
-    }
 }
 
 ::re_types_core::macros::impl_into_cow!(AffixFuzzer4);
@@ -386,5 +369,22 @@ impl ::re_types_core::Loggable for AffixFuzzer4 {
                     .with_context("rerun.testing.datatypes.AffixFuzzer4")?
             }
         })
+    }
+}
+
+impl ::re_types_core::SizeBytes for AffixFuzzer4 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        #![allow(clippy::match_same_arms)]
+        match self {
+            Self::SingleRequired(v) => v.heap_size_bytes(),
+            Self::ManyRequired(v) => v.heap_size_bytes(),
+        }
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::testing::datatypes::AffixFuzzer3>::is_pod()
+            && <Vec<crate::testing::datatypes::AffixFuzzer3>>::is_pod()
     }
 }

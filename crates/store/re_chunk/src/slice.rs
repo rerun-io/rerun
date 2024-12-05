@@ -7,7 +7,7 @@ use itertools::Itertools;
 use nohash_hasher::IntSet;
 
 use re_log_types::Timeline;
-use re_types_core::ComponentName;
+use re_types_core::{ComponentDescriptor, ComponentName};
 
 use crate::{Chunk, RowId, TimeColumn};
 
@@ -25,9 +25,12 @@ impl Chunk {
     pub fn cell(
         &self,
         row_id: RowId,
-        component_name: &ComponentName,
+        component_desc: &ComponentDescriptor,
     ) -> Option<Box<dyn Arrow2Array>> {
-        let list_array = self.components.get(component_name)?;
+        let list_array = self
+            .components
+            .get(&component_desc.component_name)
+            .and_then(|per_desc| per_desc.get(component_desc))?;
 
         if self.is_sorted() {
             let row_id_128 = row_id.as_u128();
@@ -105,9 +108,12 @@ impl Chunk {
                 .map(|(timeline, time_column)| (*timeline, time_column.row_sliced(index, len)))
                 .collect(),
             components: components
-                .iter()
-                .map(|(component_name, list_array)| {
-                    (*component_name, list_array.clone().sliced(index, len))
+                .iter_flattened()
+                .map(|(component_desc, list_array)| {
+                    (
+                        component_desc.clone(),
+                        list_array.clone().sliced(index, len),
+                    )
                 })
                 .collect(),
         };
@@ -212,11 +218,13 @@ impl Chunk {
             is_sorted: *is_sorted,
             row_ids: row_ids.clone(),
             timelines: timelines.clone(),
-            components: components
-                .get_key_value(&component_name)
-                .map(|(component_name, list_array)| (*component_name, list_array.clone()))
-                .into_iter()
-                .collect(),
+            components: crate::ChunkComponents(
+                components
+                    .get_key_value(&component_name)
+                    .map(|(component_name, list_array)| (*component_name, list_array.clone()))
+                    .into_iter()
+                    .collect(),
+            ),
         };
 
         #[cfg(debug_assertions)]
@@ -298,11 +306,13 @@ impl Chunk {
             is_sorted: *is_sorted,
             row_ids: row_ids.clone(),
             timelines: timelines.clone(),
-            components: components
-                .iter()
-                .filter(|(component_name, _)| component_names.contains(component_name))
-                .map(|(component_name, list_array)| (*component_name, list_array.clone()))
-                .collect(),
+            components: crate::ChunkComponents(
+                components
+                    .iter()
+                    .filter(|(component_name, _)| component_names.contains(component_name))
+                    .map(|(component_name, list_array)| (*component_name, list_array.clone()))
+                    .collect(),
+            ),
         };
 
         #[cfg(debug_assertions)]
@@ -340,7 +350,7 @@ impl Chunk {
             return self.clone();
         }
 
-        let Some(component_list_array) = components.get(&component_name_pov) else {
+        let Some(component_list_array) = self.get_first_component(&component_name_pov) else {
             return self.clone();
         };
 
@@ -365,10 +375,10 @@ impl Chunk {
                 .map(|(&timeline, time_column)| (timeline, time_column.filtered(&validity_filter)))
                 .collect(),
             components: components
-                .iter()
-                .map(|(&component_name, list_array)| {
+                .iter_flattened()
+                .map(|(component_desc, list_array)| {
                     let filtered = crate::util::filter_array(list_array, &validity_filter);
-                    let filtered = if component_name == component_name_pov {
+                    let filtered = if component_desc.component_name == component_name_pov {
                         // Make sure we fully remove the validity bitmap for the densified
                         // component.
                         // This will allow further operations on this densified chunk to take some
@@ -386,7 +396,7 @@ impl Chunk {
                         filtered
                     };
 
-                    (component_name, filtered)
+                    (component_desc.clone(), filtered)
                 })
                 .collect(),
         };
@@ -446,10 +456,10 @@ impl Chunk {
                 .map(|(&timeline, time_column)| (timeline, time_column.emptied()))
                 .collect(),
             components: components
-                .iter()
-                .map(|(&component_name, list_array)| {
+                .iter_flattened()
+                .map(|(component_desc, list_array)| {
                     (
-                        component_name,
+                        component_desc.clone(),
                         Arrow2ListArray::new_empty(list_array.data_type().clone()),
                     )
                 })
@@ -544,10 +554,10 @@ impl Chunk {
                 .collect(),
             components: self
                 .components
-                .iter()
-                .map(|(&component_name, list_array)| {
+                .iter_flattened()
+                .map(|(component_desc, list_array)| {
                     let filtered = crate::util::take_array(list_array, &indices);
-                    (component_name, filtered)
+                    (component_desc.clone(), filtered)
                 })
                 .collect(),
         };
@@ -615,10 +625,10 @@ impl Chunk {
                 .map(|(&timeline, time_column)| (timeline, time_column.filtered(filter)))
                 .collect(),
             components: components
-                .iter()
-                .map(|(&component_name, list_array)| {
+                .iter_flattened()
+                .map(|(component_desc, list_array)| {
                     let filtered = crate::util::filter_array(list_array, filter);
-                    (component_name, filtered)
+                    (component_desc.clone(), filtered)
                 })
                 .collect(),
         };
@@ -695,10 +705,10 @@ impl Chunk {
                 .map(|(&timeline, time_column)| (timeline, time_column.taken(indices)))
                 .collect(),
             components: components
-                .iter()
-                .map(|(&component_name, list_array)| {
+                .iter_flattened()
+                .map(|(component_desc, list_array)| {
                     let taken = crate::util::take_array(list_array, indices);
-                    (component_name, taken)
+                    (component_desc.clone(), taken)
                 })
                 .collect(),
         };
@@ -875,7 +885,7 @@ mod tests {
         example_components::{MyColor, MyLabel, MyPoint},
         TimePoint,
     };
-    use re_types_core::Component;
+    use re_types_core::Component as _;
 
     use crate::{Chunk, RowId, Timeline};
 
@@ -929,45 +939,45 @@ mod tests {
                 row_id2,
                 timepoint4,
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors4 as _)),
-                    (MyLabel::name(), Some(labels4 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors4 as _)),
+                    (MyLabel::descriptor(), Some(labels4 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id5,
                 timepoint5,
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors5 as _)),
-                    (MyLabel::name(), Some(labels5 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors5 as _)),
+                    (MyLabel::descriptor(), Some(labels5 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id1,
                 timepoint3,
                 [
-                    (MyPoint::name(), Some(points1 as _)),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), Some(labels1 as _)),
+                    (MyPoint::descriptor(), Some(points1 as _)),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), Some(labels1 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id4,
                 timepoint2,
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), Some(labels2 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), Some(labels2 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id3,
                 timepoint1,
                 [
-                    (MyPoint::name(), Some(points3 as _)),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), Some(labels3 as _)),
+                    (MyPoint::descriptor(), Some(points3 as _)),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), Some(labels3 as _)),
                 ],
             )
             .build()?;
@@ -975,29 +985,29 @@ mod tests {
         eprintln!("chunk:\n{chunk}");
 
         let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-            (row_id1, MyPoint::name(), Some(points1 as _)),
-            (row_id2, MyLabel::name(), Some(labels4 as _)),
-            (row_id3, MyColor::name(), None),
-            (row_id4, MyLabel::name(), Some(labels2 as _)),
-            (row_id5, MyColor::name(), Some(colors5 as _)),
+            (row_id1, MyPoint::descriptor(), Some(points1 as _)),
+            (row_id2, MyLabel::descriptor(), Some(labels4 as _)),
+            (row_id3, MyColor::descriptor(), None),
+            (row_id4, MyLabel::descriptor(), Some(labels2 as _)),
+            (row_id5, MyColor::descriptor(), Some(colors5 as _)),
         ];
 
         assert!(!chunk.is_sorted());
-        for (row_id, component_name, expected) in expectations {
+        for (row_id, component_desc, expected) in expectations {
             let expected = expected
                 .and_then(|expected| re_types_core::LoggableBatch::to_arrow2(expected).ok());
-            eprintln!("{component_name} @ {row_id}");
-            similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
+            eprintln!("{component_desc} @ {row_id}");
+            similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_desc));
         }
 
         chunk.sort_if_unsorted();
         assert!(chunk.is_sorted());
 
-        for (row_id, component_name, expected) in expectations {
+        for (row_id, component_desc, expected) in expectations {
             let expected = expected
                 .and_then(|expected| re_types_core::LoggableBatch::to_arrow2(expected).ok());
-            eprintln!("{component_name} @ {row_id}");
-            similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
+            eprintln!("{component_desc} @ {row_id}");
+            similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_desc));
         }
 
         Ok(())
@@ -1051,45 +1061,45 @@ mod tests {
                 row_id1,
                 timepoint1,
                 [
-                    (MyPoint::name(), Some(points1 as _)),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), Some(labels1 as _)),
+                    (MyPoint::descriptor(), Some(points1 as _)),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), Some(labels1 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id2,
                 timepoint2,
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), Some(labels2 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), Some(labels2 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id3,
                 timepoint3,
                 [
-                    (MyPoint::name(), Some(points3 as _)),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), Some(labels3 as _)),
+                    (MyPoint::descriptor(), Some(points3 as _)),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), Some(labels3 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id4,
                 timepoint4,
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors4 as _)),
-                    (MyLabel::name(), Some(labels4 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors4 as _)),
+                    (MyLabel::descriptor(), Some(labels4 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id5,
                 timepoint5,
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors5 as _)),
-                    (MyLabel::name(), Some(labels5 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors5 as _)),
+                    (MyLabel::descriptor(), Some(labels5 as _)),
                 ],
             )
             .build()?;
@@ -1102,20 +1112,20 @@ mod tests {
             assert_eq!(2, got.num_rows());
 
             let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-                (row_id3, MyPoint::name(), Some(points3 as _)),
-                (row_id3, MyColor::name(), None),
-                (row_id3, MyLabel::name(), Some(labels3 as _)),
+                (row_id3, MyPoint::descriptor(), Some(points3 as _)),
+                (row_id3, MyColor::descriptor(), None),
+                (row_id3, MyLabel::descriptor(), Some(labels3 as _)),
                 //
-                (row_id5, MyPoint::name(), None),
-                (row_id5, MyColor::name(), Some(colors5 as _)),
-                (row_id5, MyLabel::name(), Some(labels5 as _)),
+                (row_id5, MyPoint::descriptor(), None),
+                (row_id5, MyColor::descriptor(), Some(colors5 as _)),
+                (row_id5, MyLabel::descriptor(), Some(labels5 as _)),
             ];
 
-            for (row_id, component_name, expected) in expectations {
+            for (row_id, component_desc, expected) in expectations {
                 let expected = expected
                     .and_then(|expected| re_types_core::LoggableBatch::to_arrow2(expected).ok());
-                eprintln!("{component_name} @ {row_id}");
-                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
+                eprintln!("{component_desc} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_desc));
             }
         }
 
@@ -1125,28 +1135,28 @@ mod tests {
             assert_eq!(5, got.num_rows());
 
             let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-                (row_id1, MyPoint::name(), Some(points1 as _)),
-                (row_id1, MyColor::name(), None),
-                (row_id1, MyLabel::name(), Some(labels1 as _)),
-                (row_id2, MyPoint::name(), None),
-                (row_id2, MyColor::name(), None),
-                (row_id2, MyLabel::name(), Some(labels2 as _)),
-                (row_id3, MyPoint::name(), Some(points3 as _)),
-                (row_id3, MyColor::name(), None),
-                (row_id3, MyLabel::name(), Some(labels3 as _)),
-                (row_id4, MyPoint::name(), None),
-                (row_id4, MyColor::name(), Some(colors4 as _)),
-                (row_id4, MyLabel::name(), Some(labels4 as _)),
-                (row_id5, MyPoint::name(), None),
-                (row_id5, MyColor::name(), Some(colors5 as _)),
-                (row_id5, MyLabel::name(), Some(labels5 as _)),
+                (row_id1, MyPoint::descriptor(), Some(points1 as _)),
+                (row_id1, MyColor::descriptor(), None),
+                (row_id1, MyLabel::descriptor(), Some(labels1 as _)),
+                (row_id2, MyPoint::descriptor(), None),
+                (row_id2, MyColor::descriptor(), None),
+                (row_id2, MyLabel::descriptor(), Some(labels2 as _)),
+                (row_id3, MyPoint::descriptor(), Some(points3 as _)),
+                (row_id3, MyColor::descriptor(), None),
+                (row_id3, MyLabel::descriptor(), Some(labels3 as _)),
+                (row_id4, MyPoint::descriptor(), None),
+                (row_id4, MyColor::descriptor(), Some(colors4 as _)),
+                (row_id4, MyLabel::descriptor(), Some(labels4 as _)),
+                (row_id5, MyPoint::descriptor(), None),
+                (row_id5, MyColor::descriptor(), Some(colors5 as _)),
+                (row_id5, MyLabel::descriptor(), Some(labels5 as _)),
             ];
 
-            for (row_id, component_name, expected) in expectations {
+            for (row_id, component_desc, expected) in expectations {
                 let expected = expected
                     .and_then(|expected| re_types_core::LoggableBatch::to_arrow2(expected).ok());
-                eprintln!("{component_name} @ {row_id}");
-                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_name));
+                eprintln!("{component_desc} @ {row_id}");
+                similar_asserts::assert_eq!(expected, chunk.cell(*row_id, component_desc));
             }
         }
 
@@ -1182,45 +1192,45 @@ mod tests {
                 row_id1,
                 timepoint_static.clone(),
                 [
-                    (MyPoint::name(), Some(points1 as _)),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), Some(labels1 as _)),
+                    (MyPoint::descriptor(), Some(points1 as _)),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), Some(labels1 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id2,
                 timepoint_static.clone(),
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), Some(labels2 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), Some(labels2 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id3,
                 timepoint_static.clone(),
                 [
-                    (MyPoint::name(), Some(points3 as _)),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), Some(labels3 as _)),
+                    (MyPoint::descriptor(), Some(points3 as _)),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), Some(labels3 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id4,
                 timepoint_static.clone(),
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors4 as _)),
-                    (MyLabel::name(), Some(labels4 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors4 as _)),
+                    (MyLabel::descriptor(), Some(labels4 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id5,
                 timepoint_static.clone(),
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors5 as _)),
-                    (MyLabel::name(), Some(labels5 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors5 as _)),
+                    (MyLabel::descriptor(), Some(labels5 as _)),
                 ],
             )
             .build()?;
@@ -1233,9 +1243,9 @@ mod tests {
             assert_eq!(1, got.num_rows());
 
             let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-                (row_id5, MyPoint::name(), None),
-                (row_id5, MyColor::name(), Some(colors5 as _)),
-                (row_id5, MyLabel::name(), Some(labels5 as _)),
+                (row_id5, MyPoint::descriptor(), None),
+                (row_id5, MyColor::descriptor(), Some(colors5 as _)),
+                (row_id5, MyLabel::descriptor(), Some(labels5 as _)),
             ];
 
             for (row_id, component_name, expected) in expectations {
@@ -1252,9 +1262,9 @@ mod tests {
             assert_eq!(1, got.num_rows());
 
             let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-                (row_id5, MyPoint::name(), None),
-                (row_id5, MyColor::name(), Some(colors5 as _)),
-                (row_id5, MyLabel::name(), Some(labels5 as _)),
+                (row_id5, MyPoint::descriptor(), None),
+                (row_id5, MyColor::descriptor(), Some(colors5 as _)),
+                (row_id5, MyLabel::descriptor(), Some(labels5 as _)),
             ];
 
             for (row_id, component_name, expected) in expectations {
@@ -1316,45 +1326,45 @@ mod tests {
                 row_id1,
                 timepoint1,
                 [
-                    (MyPoint::name(), Some(points1 as _)),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), Some(labels1 as _)),
+                    (MyPoint::descriptor(), Some(points1 as _)),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), Some(labels1 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id2,
                 timepoint2,
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), Some(labels2 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), Some(labels2 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id3,
                 timepoint3,
                 [
-                    (MyPoint::name(), Some(points3 as _)),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), Some(labels3 as _)),
+                    (MyPoint::descriptor(), Some(points3 as _)),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), Some(labels3 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id4,
                 timepoint4,
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors4 as _)),
-                    (MyLabel::name(), Some(labels4 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors4 as _)),
+                    (MyLabel::descriptor(), Some(labels4 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id5,
                 timepoint5,
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors5 as _)),
-                    (MyLabel::name(), Some(labels5 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors5 as _)),
+                    (MyLabel::descriptor(), Some(labels5 as _)),
                 ],
             )
             .build()?;
@@ -1371,17 +1381,17 @@ mod tests {
             assert_eq!(filter.values_iter().filter(|&b| b).count(), got.num_rows());
 
             let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-                (row_id1, MyPoint::name(), Some(points1 as _)),
-                (row_id1, MyColor::name(), None),
-                (row_id1, MyLabel::name(), Some(labels1 as _)),
+                (row_id1, MyPoint::descriptor(), Some(points1 as _)),
+                (row_id1, MyColor::descriptor(), None),
+                (row_id1, MyLabel::descriptor(), Some(labels1 as _)),
                 //
-                (row_id3, MyPoint::name(), Some(points3 as _)),
-                (row_id3, MyColor::name(), None),
-                (row_id3, MyLabel::name(), Some(labels3 as _)),
+                (row_id3, MyPoint::descriptor(), Some(points3 as _)),
+                (row_id3, MyColor::descriptor(), None),
+                (row_id3, MyLabel::descriptor(), Some(labels3 as _)),
                 //
-                (row_id5, MyPoint::name(), None),
-                (row_id5, MyColor::name(), Some(colors5 as _)),
-                (row_id5, MyLabel::name(), Some(labels5 as _)),
+                (row_id5, MyPoint::descriptor(), None),
+                (row_id5, MyColor::descriptor(), Some(colors5 as _)),
+                (row_id5, MyLabel::descriptor(), Some(labels5 as _)),
             ];
 
             for (row_id, component_name, expected) in expectations {
@@ -1461,45 +1471,45 @@ mod tests {
                 row_id1,
                 timepoint1,
                 [
-                    (MyPoint::name(), Some(points1 as _)),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), Some(labels1 as _)),
+                    (MyPoint::descriptor(), Some(points1 as _)),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), Some(labels1 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id2,
                 timepoint2,
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), Some(labels2 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), Some(labels2 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id3,
                 timepoint3,
                 [
-                    (MyPoint::name(), Some(points3 as _)),
-                    (MyColor::name(), None),
-                    (MyLabel::name(), Some(labels3 as _)),
+                    (MyPoint::descriptor(), Some(points3 as _)),
+                    (MyColor::descriptor(), None),
+                    (MyLabel::descriptor(), Some(labels3 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id4,
                 timepoint4,
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors4 as _)),
-                    (MyLabel::name(), Some(labels4 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors4 as _)),
+                    (MyLabel::descriptor(), Some(labels4 as _)),
                 ],
             )
             .with_sparse_component_batches(
                 row_id5,
                 timepoint5,
                 [
-                    (MyPoint::name(), None),
-                    (MyColor::name(), Some(colors5 as _)),
-                    (MyLabel::name(), Some(labels5 as _)),
+                    (MyPoint::descriptor(), None),
+                    (MyColor::descriptor(), Some(colors5 as _)),
+                    (MyLabel::descriptor(), Some(labels5 as _)),
                 ],
             )
             .build()?;
@@ -1518,17 +1528,17 @@ mod tests {
             assert_eq!(indices.len(), got.num_rows());
 
             let expectations: &[(_, _, Option<&dyn re_types_core::ComponentBatch>)] = &[
-                (row_id1, MyPoint::name(), Some(points1 as _)),
-                (row_id1, MyColor::name(), None),
-                (row_id1, MyLabel::name(), Some(labels1 as _)),
+                (row_id1, MyPoint::descriptor(), Some(points1 as _)),
+                (row_id1, MyColor::descriptor(), None),
+                (row_id1, MyLabel::descriptor(), Some(labels1 as _)),
                 //
-                (row_id3, MyPoint::name(), Some(points3 as _)),
-                (row_id3, MyColor::name(), None),
-                (row_id3, MyLabel::name(), Some(labels3 as _)),
+                (row_id3, MyPoint::descriptor(), Some(points3 as _)),
+                (row_id3, MyColor::descriptor(), None),
+                (row_id3, MyLabel::descriptor(), Some(labels3 as _)),
                 //
-                (row_id5, MyPoint::name(), None),
-                (row_id5, MyColor::name(), Some(colors5 as _)),
-                (row_id5, MyLabel::name(), Some(labels5 as _)),
+                (row_id5, MyPoint::descriptor(), None),
+                (row_id5, MyColor::descriptor(), Some(colors5 as _)),
+                (row_id5, MyLabel::descriptor(), Some(labels5 as _)),
             ];
 
             for (row_id, component_name, expected) in expectations {

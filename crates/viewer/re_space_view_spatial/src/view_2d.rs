@@ -369,6 +369,7 @@ fn recommended_space_views_with_image_splits(
         &mut found_image_dimensions,
     );
 
+    use re_types::ComponentBatch as _;
     let image_count = count_non_nested_images_with_component(
         image_dimensions,
         entities,

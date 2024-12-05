@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The metadata describing the contents of a [`components::ImageBuffer`][crate::components::ImageBuffer].
@@ -23,44 +23,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct ImageFormat(pub crate::datatypes::ImageFormat);
 
-impl ::re_types_core::SizeBytes for ImageFormat {
+impl ::re_types_core::Component for ImageFormat {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::ImageFormat>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::ImageFormat>> From<T> for ImageFormat {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::ImageFormat> for ImageFormat {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::ImageFormat {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ImageFormat {
-    type Target = crate::datatypes::ImageFormat;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::ImageFormat {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ImageFormat {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::ImageFormat {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.ImageFormat")
     }
 }
 
@@ -97,9 +63,43 @@ impl ::re_types_core::Loggable for ImageFormat {
     }
 }
 
-impl ::re_types_core::Component for ImageFormat {
+impl<T: Into<crate::datatypes::ImageFormat>> From<T> for ImageFormat {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::ImageFormat> for ImageFormat {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.ImageFormat".into()
+    fn borrow(&self) -> &crate::datatypes::ImageFormat {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for ImageFormat {
+    type Target = crate::datatypes::ImageFormat;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::ImageFormat {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ImageFormat {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::ImageFormat {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for ImageFormat {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::ImageFormat>::is_pod()
     }
 }

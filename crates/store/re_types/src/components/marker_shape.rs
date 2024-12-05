@@ -14,9 +14,9 @@
 #![allow(non_camel_case_types)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: The visual appearance of a point in e.g. a 2D plot.
@@ -55,66 +55,10 @@ pub enum MarkerShape {
     Asterisk = 10,
 }
 
-impl ::re_types_core::reflection::Enum for MarkerShape {
+impl ::re_types_core::Component for MarkerShape {
     #[inline]
-    fn variants() -> &'static [Self] {
-        &[
-            Self::Circle,
-            Self::Diamond,
-            Self::Square,
-            Self::Cross,
-            Self::Plus,
-            Self::Up,
-            Self::Down,
-            Self::Left,
-            Self::Right,
-            Self::Asterisk,
-        ]
-    }
-
-    #[inline]
-    fn docstring_md(self) -> &'static str {
-        match self {
-            Self::Circle => "`⏺`",
-            Self::Diamond => "`◆`",
-            Self::Square => "`◼\u{fe0f}`",
-            Self::Cross => "`x`",
-            Self::Plus => "`+`",
-            Self::Up => "`▲`",
-            Self::Down => "`▼`",
-            Self::Left => "`◀`",
-            Self::Right => "`▶`",
-            Self::Asterisk => "`*`",
-        }
-    }
-}
-
-impl ::re_types_core::SizeBytes for MarkerShape {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        0
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        true
-    }
-}
-
-impl std::fmt::Display for MarkerShape {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Circle => write!(f, "Circle"),
-            Self::Diamond => write!(f, "Diamond"),
-            Self::Square => write!(f, "Square"),
-            Self::Cross => write!(f, "Cross"),
-            Self::Plus => write!(f, "Plus"),
-            Self::Up => write!(f, "Up"),
-            Self::Down => write!(f, "Down"),
-            Self::Left => write!(f, "Left"),
-            Self::Right => write!(f, "Right"),
-            Self::Asterisk => write!(f, "Asterisk"),
-        }
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.MarkerShape")
     }
 }
 
@@ -212,9 +156,65 @@ impl ::re_types_core::Loggable for MarkerShape {
     }
 }
 
-impl ::re_types_core::Component for MarkerShape {
+impl std::fmt::Display for MarkerShape {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Circle => write!(f, "Circle"),
+            Self::Diamond => write!(f, "Diamond"),
+            Self::Square => write!(f, "Square"),
+            Self::Cross => write!(f, "Cross"),
+            Self::Plus => write!(f, "Plus"),
+            Self::Up => write!(f, "Up"),
+            Self::Down => write!(f, "Down"),
+            Self::Left => write!(f, "Left"),
+            Self::Right => write!(f, "Right"),
+            Self::Asterisk => write!(f, "Asterisk"),
+        }
+    }
+}
+
+impl ::re_types_core::reflection::Enum for MarkerShape {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.MarkerShape".into()
+    fn variants() -> &'static [Self] {
+        &[
+            Self::Circle,
+            Self::Diamond,
+            Self::Square,
+            Self::Cross,
+            Self::Plus,
+            Self::Up,
+            Self::Down,
+            Self::Left,
+            Self::Right,
+            Self::Asterisk,
+        ]
+    }
+
+    #[inline]
+    fn docstring_md(self) -> &'static str {
+        match self {
+            Self::Circle => "`⏺`",
+            Self::Diamond => "`◆`",
+            Self::Square => "`◼\u{fe0f}`",
+            Self::Cross => "`x`",
+            Self::Plus => "`+`",
+            Self::Up => "`▲`",
+            Self::Down => "`▼`",
+            Self::Left => "`◀`",
+            Self::Right => "`▶`",
+            Self::Asterisk => "`*`",
+        }
+    }
+}
+
+impl ::re_types_core::SizeBytes for MarkerShape {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        0
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        true
     }
 }

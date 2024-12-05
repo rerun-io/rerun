@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A timeline identified by its name.
@@ -23,44 +23,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct TimelineName(pub crate::datatypes::Utf8);
 
-impl ::re_types_core::SizeBytes for TimelineName {
+impl ::re_types_core::Component for TimelineName {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Utf8>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Utf8>> From<T> for TimelineName {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Utf8> for TimelineName {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Utf8 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for TimelineName {
-    type Target = crate::datatypes::Utf8;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Utf8 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for TimelineName {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.TimelineName")
     }
 }
 
@@ -97,9 +63,43 @@ impl ::re_types_core::Loggable for TimelineName {
     }
 }
 
-impl ::re_types_core::Component for TimelineName {
+impl<T: Into<crate::datatypes::Utf8>> From<T> for TimelineName {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Utf8> for TimelineName {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.TimelineName".into()
+    fn borrow(&self) -> &crate::datatypes::Utf8 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for TimelineName {
+    type Target = crate::datatypes::Utf8;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Utf8 {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for TimelineName {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Utf8 {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for TimelineName {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Utf8>::is_pod()
     }
 }

@@ -1,4 +1,4 @@
-use std::{collections::BTreeSet, sync::Arc};
+use std::{borrow::Cow, collections::BTreeSet, sync::Arc};
 
 use ahash::HashMap;
 use nohash_hasher::IntMap;
@@ -7,7 +7,7 @@ use parking_lot::RwLock;
 use re_chunk::{Chunk, ChunkId};
 use re_chunk_store::{ChunkStore, RangeQuery, TimeInt};
 use re_log_types::{EntityPath, ResolvedTimeRange};
-use re_types_core::{ComponentName, DeserializationError, SizeBytes};
+use re_types_core::{ComponentDescriptor, ComponentName, DeserializationError, SizeBytes};
 
 use crate::{QueryCache, QueryCacheKey};
 
@@ -19,11 +19,11 @@ impl QueryCache {
     /// See [`RangeResults`] for more information about how to handle the results.
     ///
     /// This is a cached API -- data will be lazily cached upon access.
-    pub fn range(
+    pub fn range<'a>(
         &self,
         query: &RangeQuery,
         entity_path: &EntityPath,
-        component_names: impl IntoIterator<Item = ComponentName>,
+        component_descrs: impl IntoIterator<Item = impl Into<Cow<'a, ComponentDescriptor>>>,
     ) -> RangeResults {
         re_tracing::profile_function!(entity_path.to_string());
 
@@ -34,8 +34,15 @@ impl QueryCache {
         // NOTE: This pre-filtering is extremely important: going through all these query layers
         // has non-negligible overhead even if the final result ends up being nothing, and our
         // number of queries for a frame grows linearly with the number of entity paths.
-        let component_names = component_names.into_iter().filter(|component_name| {
-            store.entity_has_component_on_timeline(&query.timeline(), entity_path, component_name)
+        let component_names = component_descrs.into_iter().filter_map(|component_descr| {
+            let component_descr = component_descr.into();
+            store
+                .entity_has_component_on_timeline(
+                    &query.timeline(),
+                    entity_path,
+                    &component_descr.component_name,
+                )
+                .then_some(component_descr.component_name)
         });
 
         for component_name in component_names {

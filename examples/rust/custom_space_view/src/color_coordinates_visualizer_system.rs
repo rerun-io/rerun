@@ -2,7 +2,7 @@ use re_viewer::external::{
     egui,
     re_log_types::{EntityPath, Instance},
     re_renderer,
-    re_types::{self, components::Color, Component as _, ComponentName},
+    re_types::{self, components::Color, Component as _, ComponentDescriptor},
     re_viewer_context::{
         self, IdentifiedViewSystem, SpaceViewSystemExecutionError, ViewContext,
         ViewContextCollection, ViewQuery, ViewSystemIdentifier, VisualizerQueryInfo,
@@ -34,8 +34,8 @@ impl re_types::Archetype for ColorArchetype {
         "Instance Color"
     }
 
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
-        vec![re_types::components::Color::name()].into()
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
+        vec![re_types::components::Color::descriptor()].into()
     }
 }
 

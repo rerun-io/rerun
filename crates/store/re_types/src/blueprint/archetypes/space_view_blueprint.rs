@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: The description of a single view.
@@ -42,49 +42,73 @@ pub struct SpaceViewBlueprint {
     pub visible: Option<crate::blueprint::components::Visible>,
 }
 
-impl ::re_types_core::SizeBytes for SpaceViewBlueprint {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.class_identifier.heap_size_bytes()
-            + self.display_name.heap_size_bytes()
-            + self.space_origin.heap_size_bytes()
-            + self.visible.heap_size_bytes()
-    }
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.SpaceViewBlueprint".into()),
+            component_name: "rerun.blueprint.components.SpaceViewClass".into(),
+            archetype_field_name: Some("class_identifier".into()),
+        }]
+    });
 
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::blueprint::components::SpaceViewClass>::is_pod()
-            && <Option<crate::components::Name>>::is_pod()
-            && <Option<crate::blueprint::components::SpaceViewOrigin>>::is_pod()
-            && <Option<crate::blueprint::components::Visible>>::is_pod()
-    }
-}
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.blueprint.archetypes.SpaceViewBlueprint".into()),
+            component_name: "SpaceViewBlueprintIndicator".into(),
+            archetype_field_name: None,
+        }]
+    });
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.blueprint.components.SpaceViewClass".into()]);
-
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(
-        || ["rerun.blueprint.components.SpaceViewBlueprintIndicator".into()],
-    );
-
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 3usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 3usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.Name".into(),
-            "rerun.blueprint.components.SpaceViewOrigin".into(),
-            "rerun.blueprint.components.Visible".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.SpaceViewBlueprint".into()),
+                component_name: "rerun.components.Name".into(),
+                archetype_field_name: Some("display_name".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.SpaceViewBlueprint".into()),
+                component_name: "rerun.blueprint.components.SpaceViewOrigin".into(),
+                archetype_field_name: Some("space_origin".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.SpaceViewBlueprint".into()),
+                component_name: "rerun.blueprint.components.Visible".into(),
+                archetype_field_name: Some("visible".into()),
+            },
         ]
     });
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 5usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 5usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.blueprint.components.SpaceViewClass".into(),
-            "rerun.blueprint.components.SpaceViewBlueprintIndicator".into(),
-            "rerun.components.Name".into(),
-            "rerun.blueprint.components.SpaceViewOrigin".into(),
-            "rerun.blueprint.components.Visible".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.SpaceViewBlueprint".into()),
+                component_name: "rerun.blueprint.components.SpaceViewClass".into(),
+                archetype_field_name: Some("class_identifier".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.SpaceViewBlueprint".into()),
+                component_name: "SpaceViewBlueprintIndicator".into(),
+                archetype_field_name: None,
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.SpaceViewBlueprint".into()),
+                component_name: "rerun.components.Name".into(),
+                archetype_field_name: Some("display_name".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.SpaceViewBlueprint".into()),
+                component_name: "rerun.blueprint.components.SpaceViewOrigin".into(),
+                archetype_field_name: Some("space_origin".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.blueprint.archetypes.SpaceViewBlueprint".into()),
+                component_name: "rerun.blueprint.components.Visible".into(),
+                archetype_field_name: Some("visible".into()),
+            },
         ]
     });
 
@@ -113,26 +137,26 @@ impl ::re_types_core::Archetype for SpaceViewBlueprint {
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: SpaceViewBlueprintIndicator = SpaceViewBlueprintIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn ::re_types_core::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -203,16 +227,54 @@ impl ::re_types_core::AsComponents for SpaceViewBlueprint {
         use ::re_types_core::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.class_identifier as &dyn ComponentBatch).into()),
-            self.display_name
+            (Some(&self.class_identifier as &dyn ComponentBatch)).map(|batch| {
+                ::re_types_core::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some(
+                            "rerun.blueprint.archetypes.SpaceViewBlueprint".into(),
+                        ),
+                        archetype_field_name: Some(("class_identifier").into()),
+                        component_name: ("rerun.blueprint.components.SpaceViewClass").into(),
+                    }),
+                }
+            }),
+            (self
+                .display_name
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.space_origin
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.SpaceViewBlueprint".into()),
+                    archetype_field_name: Some(("display_name").into()),
+                    component_name: ("rerun.components.Name").into(),
+                }),
+            }),
+            (self
+                .space_origin
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
-            self.visible
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.SpaceViewBlueprint".into()),
+                    archetype_field_name: Some(("space_origin").into()),
+                    component_name: ("rerun.blueprint.components.SpaceViewOrigin").into(),
+                }),
+            }),
+            (self
+                .visible
                 .as_ref()
-                .map(|comp| (comp as &dyn ComponentBatch).into()),
+                .map(|comp| (comp as &dyn ComponentBatch)))
+            .map(|batch| ::re_types_core::MaybeOwnedComponentBatch {
+                batch: batch.into(),
+                descriptor_override: Some(ComponentDescriptor {
+                    archetype_name: Some("rerun.blueprint.archetypes.SpaceViewBlueprint".into()),
+                    archetype_field_name: Some(("visible").into()),
+                    component_name: ("rerun.blueprint.components.Visible").into(),
+                }),
+            }),
         ]
         .into_iter()
         .flatten()
@@ -267,5 +329,23 @@ impl SpaceViewBlueprint {
     ) -> Self {
         self.visible = Some(visible.into());
         self
+    }
+}
+
+impl ::re_types_core::SizeBytes for SpaceViewBlueprint {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.class_identifier.heap_size_bytes()
+            + self.display_name.heap_size_bytes()
+            + self.space_origin.heap_size_bytes()
+            + self.visible.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::blueprint::components::SpaceViewClass>::is_pod()
+            && <Option<crate::components::Name>>::is_pod()
+            && <Option<crate::blueprint::components::SpaceViewOrigin>>::is_pod()
+            && <Option<crate::blueprint::components::Visible>>::is_pod()
     }
 }

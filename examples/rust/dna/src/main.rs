@@ -7,6 +7,7 @@ use itertools::Itertools as _;
 use rerun::{
     demo_util::{bounce_lerp, color_spiral},
     external::glam,
+    ComponentBatch,
 };
 
 const NUM_POINTS: usize = 100;
@@ -16,6 +17,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let (points1, colors1) = color_spiral(NUM_POINTS, 2.0, 0.02, 0.0, 0.1);
     let (points2, colors2) = color_spiral(NUM_POINTS, 2.0, 0.02, TAU * 0.5, 0.1);
+
+    rec.log_component_batches(
+        "data",
+        true,
+        [&rerun::components::Position3D::new(1.0, 2.0, 3.0) as &dyn ComponentBatch],
+    )?;
 
     rec.set_time_seconds("stable_time", 0f64);
 

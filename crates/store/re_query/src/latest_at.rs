@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     collections::{BTreeMap, BTreeSet},
     sync::Arc,
 };
@@ -10,7 +11,9 @@ use parking_lot::RwLock;
 use re_chunk::{Chunk, RowId, UnitChunkShared};
 use re_chunk_store::{ChunkStore, LatestAtQuery, TimeInt};
 use re_log_types::EntityPath;
-use re_types_core::{components::ClearIsRecursive, Component, ComponentName, SizeBytes};
+use re_types_core::{
+    components::ClearIsRecursive, Component, ComponentDescriptor, ComponentName, SizeBytes,
+};
 
 use crate::{QueryCache, QueryCacheKey, QueryError};
 
@@ -39,11 +42,11 @@ impl QueryCache {
     /// See [`LatestAtResults`] for more information about how to handle the results.
     ///
     /// This is a cached API -- data will be lazily cached upon access.
-    pub fn latest_at(
+    pub fn latest_at<'d>(
         &self,
         query: &LatestAtQuery,
         entity_path: &EntityPath,
-        component_names: impl IntoIterator<Item = ComponentName>,
+        component_descrs: impl IntoIterator<Item = impl Into<Cow<'d, ComponentDescriptor>>>,
     ) -> LatestAtResults {
         re_tracing::profile_function!(entity_path.to_string());
 
@@ -54,8 +57,15 @@ impl QueryCache {
         // NOTE: This pre-filtering is extremely important: going through all these query layers
         // has non-negligible overhead even if the final result ends up being nothing, and our
         // number of queries for a frame grows linearly with the number of entity paths.
-        let component_names = component_names.into_iter().filter(|component_name| {
-            store.entity_has_component_on_timeline(&query.timeline(), entity_path, component_name)
+        let component_names = component_descrs.into_iter().filter_map(|component_descr| {
+            let component_descr = component_descr.into();
+            store
+                .entity_has_component_on_timeline(
+                    &query.timeline(),
+                    entity_path,
+                    &component_descr.component_name,
+                )
+                .then_some(component_descr.component_name)
         });
 
         // Query-time clears

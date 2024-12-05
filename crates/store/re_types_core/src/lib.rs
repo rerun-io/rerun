@@ -45,6 +45,9 @@ pub trait AsComponents {
     /// fully custom ones.
     /// Have a look at our [Custom Data Loader] example to learn more about extending archetypes.
     ///
+    /// Implementers of [`AsComponents`] get one last chance to override the tags in the
+    /// [`ComponentDescriptor`], see [`MaybeOwnedComponentBatch::descriptor_override`].
+    ///
     /// [Custom Data Loader]: https://github.com/rerun-io/rerun/tree/latest/examples/rust/custom_data_loader
     //
     // NOTE: Don't bother returning a CoW here: we need to dynamically discard optional components
@@ -66,7 +69,6 @@ pub trait AsComponents {
             .into_iter()
             .map(|comp_batch| {
                 comp_batch
-                    .as_ref()
                     .to_arrow2()
                     .map(|array| {
                         let field = arrow2::datatypes::Field::new(
@@ -76,7 +78,7 @@ pub trait AsComponents {
                         );
                         (field, array)
                     })
-                    .with_context(comp_batch.as_ref().name())
+                    .with_context(comp_batch.name())
             })
             .collect()
     }
@@ -85,14 +87,14 @@ pub trait AsComponents {
 impl<C: Component> AsComponents for C {
     #[inline]
     fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
-        vec![(self as &dyn ComponentBatch).into()]
+        vec![MaybeOwnedComponentBatch::new(self as &dyn ComponentBatch)]
     }
 }
 
 impl AsComponents for dyn ComponentBatch {
     #[inline]
     fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
-        vec![MaybeOwnedComponentBatch::Ref(self)]
+        vec![MaybeOwnedComponentBatch::new(self)]
     }
 }
 
@@ -100,7 +102,7 @@ impl<const N: usize> AsComponents for [&dyn ComponentBatch; N] {
     #[inline]
     fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
         self.iter()
-            .map(|batch| MaybeOwnedComponentBatch::Ref(*batch))
+            .map(|batch| MaybeOwnedComponentBatch::new(*batch))
             .collect()
     }
 }
@@ -109,7 +111,7 @@ impl AsComponents for &[&dyn ComponentBatch] {
     #[inline]
     fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
         self.iter()
-            .map(|batch| MaybeOwnedComponentBatch::Ref(*batch))
+            .map(|batch| MaybeOwnedComponentBatch::new(*batch))
             .collect()
     }
 }
@@ -118,7 +120,7 @@ impl AsComponents for Vec<&dyn ComponentBatch> {
     #[inline]
     fn as_component_batches(&self) -> Vec<MaybeOwnedComponentBatch<'_>> {
         self.iter()
-            .map(|batch| MaybeOwnedComponentBatch::Ref(*batch))
+            .map(|batch| MaybeOwnedComponentBatch::new(*batch))
             .collect()
     }
 }
@@ -128,6 +130,7 @@ impl AsComponents for Vec<&dyn ComponentBatch> {
 mod archetype;
 mod arrow_buffer;
 mod arrow_string;
+mod component_descriptor;
 mod loggable;
 mod loggable_batch;
 pub mod reflection;
@@ -138,16 +141,17 @@ mod view;
 
 pub use self::{
     archetype::{
-        Archetype, ArchetypeName, ArchetypeReflectionMarker, GenericIndicatorComponent,
-        NamedIndicatorComponent,
+        Archetype, ArchetypeFieldName, ArchetypeName, ArchetypeReflectionMarker,
+        GenericIndicatorComponent, NamedIndicatorComponent,
     },
     arrow_buffer::ArrowBuffer,
     arrow_string::ArrowString,
+    component_descriptor::ComponentDescriptor,
     loggable::{
         Component, ComponentName, ComponentNameSet, DatatypeName, Loggable,
         UnorderedComponentNameSet,
     },
-    loggable_batch::{ComponentBatch, LoggableBatch, MaybeOwnedComponentBatch},
+    loggable_batch::{ComponentBatch, ComponentBatchCow, LoggableBatch, MaybeOwnedComponentBatch},
     result::{
         DeserializationError, DeserializationResult, ResultExt, SerializationError,
         SerializationResult, _Backtrace,
@@ -189,7 +193,7 @@ pub mod external {
     pub use re_tuid;
 }
 
-/// Useful macro for staticlly asserting that a `struct` contains some specific fields.
+/// Useful macro for statically asserting that a `struct` contains some specific fields.
 ///
 /// In particular, this is useful to statcially check that an archetype
 /// has a specific component.

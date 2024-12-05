@@ -1,5 +1,6 @@
 use re_entity_db::{EntityDb, InstancePath};
 use re_log_types::{ComponentPath, DataPath, EntityPath};
+use re_types::ComponentDescriptor;
 
 use crate::{ContainerId, SpaceViewId};
 
@@ -201,7 +202,11 @@ pub fn resolve_mono_instance_path(
         for component_name in component_names {
             if let Some(array) = engine
                 .cache()
-                .latest_at(query, &instance.entity_path, [component_name])
+                .latest_at(
+                    query,
+                    &instance.entity_path,
+                    [ComponentDescriptor::new(component_name)],
+                )
                 .component_batch_raw(&component_name)
             {
                 if array.len() > 1 {

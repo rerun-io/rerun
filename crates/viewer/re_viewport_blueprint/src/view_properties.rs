@@ -58,7 +58,10 @@ impl ViewProperty {
             blueprint_query.clone(),
             view_id,
             A::name(),
-            A::all_components().as_ref(),
+            A::all_components()
+                .iter()
+                .map(|descr| descr.component_name)
+                .collect(),
         )
     }
 
@@ -67,7 +70,7 @@ impl ViewProperty {
         blueprint_query: LatestAtQuery,
         space_view_id: SpaceViewId,
         archetype_name: ArchetypeName,
-        component_names: &[ComponentName],
+        component_names: Vec<ComponentName>,
     ) -> Self {
         let blueprint_store_path =
             entity_path_for_view_property(space_view_id, blueprint_db.tree(), archetype_name);
@@ -82,7 +85,7 @@ impl ViewProperty {
             blueprint_store_path,
             archetype_name,
             query_results,
-            component_names: component_names.to_vec(),
+            component_names,
             blueprint_query,
         }
     }

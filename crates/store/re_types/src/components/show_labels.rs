@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Whether the entity's [`components::Text`][crate::components::Text] label is shown.
@@ -29,44 +29,10 @@ pub struct ShowLabels(
     pub crate::datatypes::Bool,
 );
 
-impl ::re_types_core::SizeBytes for ShowLabels {
+impl ::re_types_core::Component for ShowLabels {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Bool>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Bool>> From<T> for ShowLabels {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Bool> for ShowLabels {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Bool {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for ShowLabels {
-    type Target = crate::datatypes::Bool;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Bool {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for ShowLabels {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Bool {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.ShowLabels")
     }
 }
 
@@ -103,9 +69,43 @@ impl ::re_types_core::Loggable for ShowLabels {
     }
 }
 
-impl ::re_types_core::Component for ShowLabels {
+impl<T: Into<crate::datatypes::Bool>> From<T> for ShowLabels {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Bool> for ShowLabels {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.ShowLabels".into()
+    fn borrow(&self) -> &crate::datatypes::Bool {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for ShowLabels {
+    type Target = crate::datatypes::Bool;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Bool {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for ShowLabels {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Bool {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for ShowLabels {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Bool>::is_pod()
     }
 }

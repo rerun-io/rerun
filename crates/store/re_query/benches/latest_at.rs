@@ -278,7 +278,7 @@ fn query_and_visit_points(caches: &QueryCache, paths: &[EntityPath]) -> Vec<Save
         let results: LatestAtResults = caches.latest_at(
             &query,
             entity_path,
-            Points2D::all_components().iter().copied(), // no generics!
+            Points2D::all_components().iter(), // no generics!
         );
 
         let points = results.component_batch_quiet::<Position2D>().unwrap();
@@ -310,7 +310,7 @@ fn query_and_visit_strings(caches: &QueryCache, paths: &[EntityPath]) -> Vec<Sav
         let results: LatestAtResults = caches.latest_at(
             &query,
             entity_path,
-            Points2D::all_components().iter().copied(), // no generics!
+            Points2D::all_components().iter(), // no generics!
         );
 
         let points = results.component_batch_quiet::<Position2D>().unwrap();

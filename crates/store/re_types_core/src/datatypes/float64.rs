@@ -13,41 +13,15 @@
 #![allow(clippy::too_many_lines)]
 
 use crate::external::arrow2;
-use crate::ComponentName;
 use crate::SerializationResult;
 use crate::{ComponentBatch, MaybeOwnedComponentBatch};
+use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Datatype**: A double-precision 64-bit IEEE 754 floating point number.
 #[derive(Clone, Debug, Default, Copy, PartialEq, PartialOrd, bytemuck::Pod, bytemuck::Zeroable)]
 #[repr(transparent)]
 pub struct Float64(pub f64);
-
-impl crate::SizeBytes for Float64 {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <f64>::is_pod()
-    }
-}
-
-impl From<f64> for Float64 {
-    #[inline]
-    fn from(value: f64) -> Self {
-        Self(value)
-    }
-}
-
-impl From<Float64> for f64 {
-    #[inline]
-    fn from(value: Float64) -> Self {
-        value.0
-    }
-}
 
 crate::macros::impl_into_cow!(Float64);
 
@@ -157,5 +131,31 @@ impl crate::Loggable for Float64 {
                 slice.iter().copied().map(Self).collect::<Vec<_>>()
             }
         })
+    }
+}
+
+impl From<f64> for Float64 {
+    #[inline]
+    fn from(value: f64) -> Self {
+        Self(value)
+    }
+}
+
+impl From<Float64> for f64 {
+    #[inline]
+    fn from(value: Float64) -> Self {
+        value.0
+    }
+}
+
+impl crate::SizeBytes for Float64 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <f64>::is_pod()
     }
 }

@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Specifies which dimension to use for height.
@@ -23,44 +23,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct TensorHeightDimension(pub crate::datatypes::TensorDimensionSelection);
 
-impl ::re_types_core::SizeBytes for TensorHeightDimension {
+impl ::re_types_core::Component for TensorHeightDimension {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::TensorDimensionSelection>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::TensorDimensionSelection>> From<T> for TensorHeightDimension {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::TensorDimensionSelection> for TensorHeightDimension {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::TensorDimensionSelection {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for TensorHeightDimension {
-    type Target = crate::datatypes::TensorDimensionSelection;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::TensorDimensionSelection {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for TensorHeightDimension {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::TensorDimensionSelection {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.TensorHeightDimension")
     }
 }
 
@@ -97,9 +63,43 @@ impl ::re_types_core::Loggable for TensorHeightDimension {
     }
 }
 
-impl ::re_types_core::Component for TensorHeightDimension {
+impl<T: Into<crate::datatypes::TensorDimensionSelection>> From<T> for TensorHeightDimension {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::TensorDimensionSelection> for TensorHeightDimension {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.TensorHeightDimension".into()
+    fn borrow(&self) -> &crate::datatypes::TensorDimensionSelection {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for TensorHeightDimension {
+    type Target = crate::datatypes::TensorDimensionSelection;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::TensorDimensionSelection {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for TensorHeightDimension {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::TensorDimensionSelection {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for TensorHeightDimension {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::TensorDimensionSelection>::is_pod()
     }
 }

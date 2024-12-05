@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use crate::external::arrow2;
-use crate::ComponentName;
 use crate::SerializationResult;
 use crate::{ComponentBatch, MaybeOwnedComponentBatch};
+use crate::{ComponentDescriptor, ComponentName};
 use crate::{DeserializationError, DeserializationResult};
 
 /// **Archetype**: Empties all the components of an entity.
@@ -78,32 +78,40 @@ pub struct Clear {
     pub is_recursive: crate::components::ClearIsRecursive,
 }
 
-impl crate::SizeBytes for Clear {
-    #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.is_recursive.heap_size_bytes()
-    }
+static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Clear".into()),
+            component_name: "rerun.components.ClearIsRecursive".into(),
+            archetype_field_name: Some("is_recursive".into()),
+        }]
+    });
 
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::components::ClearIsRecursive>::is_pod()
-    }
-}
+static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 1usize]> =
+    once_cell::sync::Lazy::new(|| {
+        [ComponentDescriptor {
+            archetype_name: Some("rerun.archetypes.Clear".into()),
+            component_name: "ClearIndicator".into(),
+            archetype_field_name: None,
+        }]
+    });
 
-static REQUIRED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.ClearIsRecursive".into()]);
-
-static RECOMMENDED_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 1usize]> =
-    once_cell::sync::Lazy::new(|| ["rerun.components.ClearIndicator".into()]);
-
-static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 0usize]> =
+static OPTIONAL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 0usize]> =
     once_cell::sync::Lazy::new(|| []);
 
-static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentName; 2usize]> =
+static ALL_COMPONENTS: once_cell::sync::Lazy<[ComponentDescriptor; 2usize]> =
     once_cell::sync::Lazy::new(|| {
         [
-            "rerun.components.ClearIsRecursive".into(),
-            "rerun.components.ClearIndicator".into(),
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Clear".into()),
+                component_name: "rerun.components.ClearIsRecursive".into(),
+                archetype_field_name: Some("is_recursive".into()),
+            },
+            ComponentDescriptor {
+                archetype_name: Some("rerun.archetypes.Clear".into()),
+                component_name: "ClearIndicator".into(),
+                archetype_field_name: None,
+            },
         ]
     });
 
@@ -131,26 +139,26 @@ impl crate::Archetype for Clear {
     #[inline]
     fn indicator() -> MaybeOwnedComponentBatch<'static> {
         static INDICATOR: ClearIndicator = ClearIndicator::DEFAULT;
-        MaybeOwnedComponentBatch::Ref(&INDICATOR)
+        MaybeOwnedComponentBatch::new(&INDICATOR as &dyn crate::ComponentBatch)
     }
 
     #[inline]
-    fn required_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn required_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         REQUIRED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn recommended_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         RECOMMENDED_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn optional_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         OPTIONAL_COMPONENTS.as_slice().into()
     }
 
     #[inline]
-    fn all_components() -> ::std::borrow::Cow<'static, [ComponentName]> {
+    fn all_components() -> ::std::borrow::Cow<'static, [ComponentDescriptor]> {
         ALL_COMPONENTS.as_slice().into()
     }
 
@@ -187,7 +195,16 @@ impl crate::AsComponents for Clear {
         use crate::Archetype as _;
         [
             Some(Self::indicator()),
-            Some((&self.is_recursive as &dyn ComponentBatch).into()),
+            (Some(&self.is_recursive as &dyn ComponentBatch)).map(|batch| {
+                crate::MaybeOwnedComponentBatch {
+                    batch: batch.into(),
+                    descriptor_override: Some(ComponentDescriptor {
+                        archetype_name: Some("rerun.archetypes.Clear".into()),
+                        archetype_field_name: Some(("is_recursive").into()),
+                        component_name: ("rerun.components.ClearIsRecursive").into(),
+                    }),
+                }
+            }),
         ]
         .into_iter()
         .flatten()
@@ -204,5 +221,17 @@ impl Clear {
         Self {
             is_recursive: is_recursive.into(),
         }
+    }
+}
+
+impl crate::SizeBytes for Clear {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.is_recursive.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::components::ClearIsRecursive>::is_pod()
     }
 }

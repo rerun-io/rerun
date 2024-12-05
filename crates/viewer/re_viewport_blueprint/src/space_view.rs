@@ -3,7 +3,7 @@ use std::sync::Arc;
 use ahash::HashMap;
 use itertools::{FoldWhile, Itertools};
 use parking_lot::Mutex;
-use re_types::SpaceViewClassIdentifier;
+use re_types::{ComponentDescriptor, SpaceViewClassIdentifier};
 
 use re_chunk::{Chunk, RowId};
 use re_chunk_store::LatestAtQuery;
@@ -135,9 +135,7 @@ impl SpaceViewBlueprint {
         let results = blueprint_db.storage_engine().cache().latest_at(
             query,
             &id.as_entity_path(),
-            blueprint_archetypes::SpaceViewBlueprint::all_components()
-                .iter()
-                .copied(),
+            blueprint_archetypes::SpaceViewBlueprint::all_components().iter(),
         );
 
         // This is a required component. Note that when loading space-views we crawl the subtree and so
@@ -268,17 +266,18 @@ impl SpaceViewBlueprint {
                             .flat_map(|v| v.into_iter())
                             // It's important that we don't include the SpaceViewBlueprint's components
                             // since those will be updated separately and may contain different data.
-                            .filter(|component| {
+                            .filter(|component_name| {
                                 *path != current_path
                                     || !blueprint_archetypes::SpaceViewBlueprint::all_components()
-                                        .contains(component)
+                                        .iter()
+                                        .any(|descr| descr.component_name == *component_name)
                             })
                             .filter_map(|component_name| {
                                 let array = blueprint_engine
                                     .cache()
                                     .latest_at(query, path, [component_name])
                                     .component_batch_raw(&component_name);
-                                array.map(|array| (component_name, array))
+                                array.map(|array| (ComponentDescriptor::new(component_name), array))
                             }),
                     )
                     .build();

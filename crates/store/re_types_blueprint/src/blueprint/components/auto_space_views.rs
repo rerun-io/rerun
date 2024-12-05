@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: Whether or not space views should be created automatically.
@@ -23,44 +23,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct AutoSpaceViews(pub crate::datatypes::Bool);
 
-impl ::re_types_core::SizeBytes for AutoSpaceViews {
+impl ::re_types_core::Component for AutoSpaceViews {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Bool>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Bool>> From<T> for AutoSpaceViews {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Bool> for AutoSpaceViews {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Bool {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for AutoSpaceViews {
-    type Target = crate::datatypes::Bool;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Bool {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for AutoSpaceViews {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Bool {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.blueprint.components.AutoSpaceViews")
     }
 }
 
@@ -97,9 +63,43 @@ impl ::re_types_core::Loggable for AutoSpaceViews {
     }
 }
 
-impl ::re_types_core::Component for AutoSpaceViews {
+impl<T: Into<crate::datatypes::Bool>> From<T> for AutoSpaceViews {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Bool> for AutoSpaceViews {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.blueprint.components.AutoSpaceViews".into()
+    fn borrow(&self) -> &crate::datatypes::Bool {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for AutoSpaceViews {
+    type Target = crate::datatypes::Bool;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Bool {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for AutoSpaceViews {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Bool {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for AutoSpaceViews {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Bool>::is_pod()
     }
 }

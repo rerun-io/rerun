@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A 3x3 transformation matrix Matrix.
@@ -35,44 +35,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct TransformMat3x3(pub crate::datatypes::Mat3x3);
 
-impl ::re_types_core::SizeBytes for TransformMat3x3 {
+impl ::re_types_core::Component for TransformMat3x3 {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Mat3x3>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Mat3x3>> From<T> for TransformMat3x3 {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Mat3x3> for TransformMat3x3 {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Mat3x3 {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for TransformMat3x3 {
-    type Target = crate::datatypes::Mat3x3;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Mat3x3 {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for TransformMat3x3 {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Mat3x3 {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.TransformMat3x3")
     }
 }
 
@@ -117,9 +83,43 @@ impl ::re_types_core::Loggable for TransformMat3x3 {
     }
 }
 
-impl ::re_types_core::Component for TransformMat3x3 {
+impl<T: Into<crate::datatypes::Mat3x3>> From<T> for TransformMat3x3 {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Mat3x3> for TransformMat3x3 {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.TransformMat3x3".into()
+    fn borrow(&self) -> &crate::datatypes::Mat3x3 {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for TransformMat3x3 {
+    type Target = crate::datatypes::Mat3x3;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Mat3x3 {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for TransformMat3x3 {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Mat3x3 {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for TransformMat3x3 {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Mat3x3>::is_pod()
     }
 }

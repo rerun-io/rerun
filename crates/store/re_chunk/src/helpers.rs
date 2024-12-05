@@ -21,19 +21,20 @@ impl Chunk {
         component_name: &ComponentName,
         row_index: usize,
     ) -> Option<ChunkResult<Box<dyn Arrow2Array>>> {
-        self.components.get(component_name).and_then(|list_array| {
-            if list_array.len() > row_index {
-                list_array
-                    .is_valid(row_index)
-                    .then(|| Ok(list_array.value(row_index)))
-            } else {
-                Some(Err(crate::ChunkError::IndexOutOfBounds {
-                    kind: "row".to_owned(),
-                    len: list_array.len(),
-                    index: row_index,
-                }))
-            }
-        })
+        self.get_first_component(component_name)
+            .and_then(|list_array| {
+                if list_array.len() > row_index {
+                    list_array
+                        .is_valid(row_index)
+                        .then(|| Ok(list_array.value(row_index)))
+                } else {
+                    Some(Err(crate::ChunkError::IndexOutOfBounds {
+                        kind: "row".to_owned(),
+                        len: list_array.len(),
+                        index: row_index,
+                    }))
+                }
+            })
     }
 
     /// Returns the deserialized data for the specified component.
@@ -236,13 +237,21 @@ impl UnitChunkShared {
     #[inline]
     pub fn num_instances(&self, component_name: &ComponentName) -> u64 {
         debug_assert!(self.num_rows() == 1);
-        self.components.get(component_name).map_or(0, |list_array| {
-            let array = list_array.value(0);
-            array.validity().map_or_else(
-                || array.len(),
-                |validity| validity.len() - validity.unset_bits(),
-            )
-        }) as u64
+        self.components
+            .values()
+            .flat_map(|per_desc| per_desc.iter())
+            .filter_map(|(descr, list_array)| {
+                (descr.component_name == *component_name).then_some(list_array)
+            })
+            .map(|list_array| {
+                let array = list_array.value(0);
+                array.validity().map_or_else(
+                    || array.len(),
+                    |validity| validity.len() - validity.unset_bits(),
+                )
+            })
+            .max()
+            .unwrap_or(0) as u64
     }
 }
 
@@ -258,8 +267,7 @@ impl UnitChunkShared {
         component_name: &ComponentName,
     ) -> Option<Box<dyn Arrow2Array>> {
         debug_assert!(self.num_rows() == 1);
-        self.components
-            .get(component_name)
+        self.get_first_component(component_name)
             .and_then(|list_array| list_array.is_valid(0).then(|| list_array.value(0)))
     }
 

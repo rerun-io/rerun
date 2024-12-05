@@ -20,10 +20,10 @@ use once_cell::sync::Lazy;
 use arrow_utils::arrow_array_from_c_ffi;
 use re_sdk::{
     external::nohash_hasher::IntMap,
-    log::{Chunk, ChunkId, PendingRow, TimeColumn},
+    log::{Chunk, ChunkComponents, ChunkId, PendingRow, TimeColumn},
     time::TimeType,
-    ComponentName, EntityPath, RecordingStream, RecordingStreamBuilder, StoreKind, TimePoint,
-    Timeline,
+    ComponentDescriptor, ComponentName, EntityPath, RecordingStream, RecordingStreamBuilder,
+    StoreKind, TimePoint, Timeline,
 };
 use recording_streams::{recording_stream, RECORDING_STREAMS};
 
@@ -790,7 +790,7 @@ fn rr_recording_stream_log_impl(
             let component_type = component_type_registry.get(*component_type)?;
             let datatype = component_type.datatype.clone();
             let values = unsafe { arrow_array_from_c_ffi(array, datatype) }?;
-            components.insert(component_type.name, values);
+            components.insert(ComponentDescriptor::new(component_type.name), values);
         }
     }
 
@@ -953,7 +953,7 @@ fn rr_recording_stream_send_columns_impl(
         })
         .collect::<Result<_, CError>>()?;
 
-    let components: IntMap<ComponentName, arrow2::array::ListArray<i32>> = {
+    let components: IntMap<ComponentDescriptor, arrow2::array::ListArray<i32>> = {
         let component_type_registry = COMPONENT_TYPES.read();
         component_columns
             .iter()
@@ -978,10 +978,12 @@ fn rr_recording_stream_send_columns_impl(
                         )
                     })?;
 
-                Ok((component_type.name, component_values.clone()))
+                Ok((ComponentDescriptor::new(component_type.name), component_values.clone()))
             })
             .collect::<Result<_, CError>>()?
     };
+
+    let components: ChunkComponents = components.into_iter().collect();
 
     let chunk = Chunk::from_auto_row_ids(id, entity_path.into(), time_columns, components)
         .map_err(|err| {

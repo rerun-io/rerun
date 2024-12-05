@@ -13,9 +13,9 @@
 #![allow(clippy::too_many_lines)]
 
 use ::re_types_core::external::arrow2;
-use ::re_types_core::ComponentName;
 use ::re_types_core::SerializationResult;
 use ::re_types_core::{ComponentBatch, MaybeOwnedComponentBatch};
+use ::re_types_core::{ComponentDescriptor, ComponentName};
 use ::re_types_core::{DeserializationError, DeserializationResult};
 
 /// **Component**: A binary blob of data.
@@ -25,44 +25,10 @@ use ::re_types_core::{DeserializationError, DeserializationResult};
 #[repr(transparent)]
 pub struct Blob(pub crate::datatypes::Blob);
 
-impl ::re_types_core::SizeBytes for Blob {
+impl ::re_types_core::Component for Blob {
     #[inline]
-    fn heap_size_bytes(&self) -> u64 {
-        self.0.heap_size_bytes()
-    }
-
-    #[inline]
-    fn is_pod() -> bool {
-        <crate::datatypes::Blob>::is_pod()
-    }
-}
-
-impl<T: Into<crate::datatypes::Blob>> From<T> for Blob {
-    fn from(v: T) -> Self {
-        Self(v.into())
-    }
-}
-
-impl std::borrow::Borrow<crate::datatypes::Blob> for Blob {
-    #[inline]
-    fn borrow(&self) -> &crate::datatypes::Blob {
-        &self.0
-    }
-}
-
-impl std::ops::Deref for Blob {
-    type Target = crate::datatypes::Blob;
-
-    #[inline]
-    fn deref(&self) -> &crate::datatypes::Blob {
-        &self.0
-    }
-}
-
-impl std::ops::DerefMut for Blob {
-    #[inline]
-    fn deref_mut(&mut self) -> &mut crate::datatypes::Blob {
-        &mut self.0
+    fn descriptor() -> ComponentDescriptor {
+        ComponentDescriptor::new("rerun.components.Blob")
     }
 }
 
@@ -99,9 +65,43 @@ impl ::re_types_core::Loggable for Blob {
     }
 }
 
-impl ::re_types_core::Component for Blob {
+impl<T: Into<crate::datatypes::Blob>> From<T> for Blob {
+    fn from(v: T) -> Self {
+        Self(v.into())
+    }
+}
+
+impl std::borrow::Borrow<crate::datatypes::Blob> for Blob {
     #[inline]
-    fn name() -> ComponentName {
-        "rerun.components.Blob".into()
+    fn borrow(&self) -> &crate::datatypes::Blob {
+        &self.0
+    }
+}
+
+impl std::ops::Deref for Blob {
+    type Target = crate::datatypes::Blob;
+
+    #[inline]
+    fn deref(&self) -> &crate::datatypes::Blob {
+        &self.0
+    }
+}
+
+impl std::ops::DerefMut for Blob {
+    #[inline]
+    fn deref_mut(&mut self) -> &mut crate::datatypes::Blob {
+        &mut self.0
+    }
+}
+
+impl ::re_types_core::SizeBytes for Blob {
+    #[inline]
+    fn heap_size_bytes(&self) -> u64 {
+        self.0.heap_size_bytes()
+    }
+
+    #[inline]
+    fn is_pod() -> bool {
+        <crate::datatypes::Blob>::is_pod()
     }
 }
