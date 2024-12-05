@@ -176,6 +176,8 @@ impl ColorTable {
 }
 
 /// A token representing a color in the [`ColorTable`].
+///
+/// Use [`crate::DesignTokens::color`] to get the color corresponding to a token.
 #[derive(Debug, Clone, Copy, Hash)]
 pub struct ColorToken {
     hue: Hue,

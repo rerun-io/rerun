@@ -254,6 +254,7 @@ impl DesignTokens {
         ctx.set_style(egui_style);
     }
 
+    /// Get the [`egui::Color32`] corresponding to the provided [`ColorToken`].
     #[inline]
     pub fn color(&self, token: ColorToken) -> egui::Color32 {
         self.color_table.get(token)
