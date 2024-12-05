@@ -1055,12 +1055,14 @@ fn quote_trait_impls_for_archetype(reporter: &Reporter, obj: &Object) -> TokenSt
             ATTR_RERUN_COMPONENT_REQUIRED,
         ]
         .iter()
-        .all(|attr| field.try_get_attr::<String>(attr).is_none())
+        .filter(|attr| field.try_get_attr::<String>(attr).is_some())
+        .count()
+            != 1
         {
             reporter.error(
                 &field.virtpath,
                 &field.fqname,
-                "field must have one of the \"attr.rerun.component_{{required|recommended|\
+                "field must have exactly one of the \"attr.rerun.component_{{required|recommended|\
                 optional}}\" attributes",
             );
         }
