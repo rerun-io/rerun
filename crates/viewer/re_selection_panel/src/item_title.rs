@@ -1,3 +1,5 @@
+use egui::WidgetText;
+
 use re_chunk::EntityPath;
 use re_data_ui::item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity};
 use re_entity_db::InstancePath;
@@ -15,7 +17,7 @@ pub struct ItemTitle {
     pub icon: &'static re_ui::Icon,
     pub label: egui::WidgetText,
     pub label_style: Option<re_ui::LabelStyle>,
-    pub tooltip: Option<String>,
+    pub tooltip: Option<WidgetText>,
 }
 
 impl ItemTitle {
@@ -51,11 +53,14 @@ impl ItemTitle {
             Item::DataResult(view_id, instance_path) => {
                 let item_title = Self::from_instance_path(ctx, style, instance_path);
                 if let Some(view) = viewport.view(view_id) {
-                    let kind = item.kind();
-                    item_title.with_tooltip(format!(
-                        "{kind} '{instance_path}' as shown in view {}",
-                        view.display_name_or_default()
-                    ))
+                    item_title.with_tooltip({
+                        let mut layout_job = egui::text::LayoutJob::default();
+                        let style = ctx.egui_ctx.style();
+                        instance_path.syntax_highlight_into(&style, &mut layout_job);
+                        format!(" in view '{}'", view.display_name_or_default())
+                            .syntax_highlight_into(&style, &mut layout_job);
+                        layout_job
+                    })
                 } else {
                     item_title
                 }
@@ -222,8 +227,8 @@ impl ItemTitle {
     }
 
     #[inline]
-    fn with_tooltip(mut self, hover: impl Into<String>) -> Self {
-        self.tooltip = Some(hover.into());
+    fn with_tooltip(mut self, tooltip: impl Into<WidgetText>) -> Self {
+        self.tooltip = Some(tooltip.into());
         self
     }
 

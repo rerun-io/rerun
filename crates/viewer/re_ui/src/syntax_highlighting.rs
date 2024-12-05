@@ -33,6 +33,12 @@ fn faint_text_format(style: &Style) -> TextFormat {
     }
 }
 
+impl SyntaxHighlighting for String {
+    fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
+        job.append(self, 0.0, text_format(style));
+    }
+}
+
 impl SyntaxHighlighting for EntityPathPart {
     fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
         job.append(&self.ui_string(), 0.0, text_format(style));
