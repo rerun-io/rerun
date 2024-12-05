@@ -3,7 +3,15 @@
 
 use std::fmt::Formatter;
 
-use crate::{Contents, ItemCollection};
+use itertools::Itertools;
+
+use re_ui::{
+    ColorToken, Hue,
+    Shade::{S325, S375},
+    UiExt,
+};
+
+use crate::{Contents, Item, ItemCollection};
 
 //TODO(ab): add more type of things we can drag, in particular entity paths
 #[derive(Debug)]
@@ -30,33 +38,16 @@ impl DragAndDropPayload {
 impl std::fmt::Display for DragAndDropPayload {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::Contents { contents } => {
-                let (container_cnt, view_cnt) = contents.iter().fold(
-                    (0, 0),
-                    |(container_cnt, view_cnt), content| match content {
-                        Contents::Container(_) => (container_cnt + 1, view_cnt),
-                        Contents::SpaceView(_) => (container_cnt, view_cnt + 1),
-                    },
-                );
+            Self::Contents { contents } => items_to_string(
+                contents
+                    .iter()
+                    .map(|content| content.as_item())
+                    .collect_vec()
+                    .iter(),
+            )
+            .fmt(f),
 
-                match (container_cnt, view_cnt) {
-                    (0, 0) => write!(f, "empty"), // should not happen
-                    (n, 0) => write!(f, "{n} container{}", if n > 1 { "s" } else { "" }),
-                    (0, n) => write!(f, "{n} view{}", if n > 1 { "s" } else { "" }),
-                    (container_cnt, view_cnt) => {
-                        write!(
-                            f,
-                            "{container_cnt} container{}, {view_cnt} view{}",
-                            if container_cnt > 1 { "s" } else { "" },
-                            if view_cnt > 1 { "s" } else { "" }
-                        )
-                    }
-                }
-            }
-            Self::Invalid { .. } => {
-                //TODO
-                write!(f, "invalid")
-            }
+            Self::Invalid { items } => items_to_string(items.iter_items()).fmt(f),
         }
     }
 }
@@ -67,34 +58,35 @@ impl std::fmt::Display for DragAndDropPayload {
 pub fn drag_and_drop_payload_cursor_ui(ui: &mut egui::Ui) {
     if let Some(payload) = egui::DragAndDrop::payload::<DragAndDropPayload>(ui.ctx()) {
         if let Some(pointer_pos) = ui.ctx().pointer_interact_pos() {
+            let icon = match payload.as_ref() {
+                DragAndDropPayload::Contents { .. } => &re_ui::icons::DND_MOVE,
+                DragAndDropPayload::Invalid { .. } => &re_ui::icons::DND_CANNOT_USE,
+            };
+
             let layer_id = egui::LayerId::new(
                 egui::Order::Tooltip,
                 egui::Id::new("drag_and_drop_payload_layer"),
             );
             let response = ui
                 .scope_builder(egui::UiBuilder::new().layer_id(layer_id), |ui| {
-                    //TODO: adjust look based on design
-                    egui::Frame {
-                        rounding: egui::Rounding::same(100.0), // max the rounding for a pill look
-                        fill: ui.visuals().widgets.active.text_color(),
-                        inner_margin: egui::Margin {
-                            left: 8.0,
-                            right: 8.0,
-                            top: 4.0,
-                            bottom: 3.0,
-                        },
-                        ..Default::default()
-                    }
+                    drag_pill_frame(matches!(
+                        payload.as_ref(),
+                        &DragAndDropPayload::Invalid { .. }
+                    ))
                     .show(ui, |ui| {
-                        ui.label(
-                            egui::RichText::new(payload.to_string()).color(ui.visuals().panel_fill),
-                        )
+                        let text_color = ui.visuals().widgets.inactive.text_color();
+
+                        ui.horizontal(|ui| {
+                            ui.spacing_mut().item_spacing.x = 2.0;
+
+                            ui.small_icon(icon, Some(text_color));
+                            ui.label(egui::RichText::new(payload.to_string()).color(text_color));
+                        });
                     })
-                    .inner
+                    .response
                 })
                 .response;
 
-            //TODO: adjust geometry
             let delta = pointer_pos - response.rect.right_bottom();
             ui.ctx()
                 .transform_layer_shapes(layer_id, emath::TSTransform::from_translation(delta));
@@ -102,4 +94,82 @@ pub fn drag_and_drop_payload_cursor_ui(ui: &mut egui::Ui) {
     }
 }
 
-//TODO: capture escape key to cancel drag
+fn drag_pill_frame(error_state: bool) -> egui::Frame {
+    let hue = if error_state { Hue::Red } else { Hue::Blue };
+
+    egui::Frame {
+        fill: re_ui::design_tokens().color(ColorToken::new(hue, S325)),
+        stroke: egui::Stroke::new(
+            1.0,
+            re_ui::design_tokens().color(ColorToken::new(hue, S375)),
+        ),
+        rounding: (2.0).into(),
+        inner_margin: egui::Margin {
+            left: 6.0,
+            right: 9.0,
+            top: 5.0,
+            bottom: 4.0,
+        },
+        ..Default::default()
+    }
+}
+
+fn items_to_string<'a>(items: impl Iterator<Item = &'a Item>) -> String {
+    let mut container_cnt = 0u32;
+    let mut view_cnt = 0u32;
+    let mut app_cnt = 0u32;
+    let mut data_source_cnt = 0u32;
+    let mut store_cnt = 0u32;
+    let mut instance_cnt = 0u32;
+    let mut component_cnt = 0u32;
+
+    for item in items {
+        match item {
+            Item::Container(_) => container_cnt += 1,
+            Item::SpaceView(_) => view_cnt += 1,
+            Item::AppId(_) => app_cnt += 1,
+            Item::DataSource(_) => data_source_cnt += 1,
+            Item::StoreId(_) => store_cnt += 1,
+            Item::InstancePath(_) => instance_cnt += 1,
+            Item::ComponentPath(_) => component_cnt += 1,
+            Item::DataResult(_, _) => instance_cnt += 1,
+        }
+    }
+
+    let counts = [
+        &container_cnt,
+        &view_cnt,
+        &app_cnt,
+        &data_source_cnt,
+        &store_cnt,
+        &instance_cnt,
+        &component_cnt,
+    ];
+
+    let names = [
+        "container",
+        "view",
+        "app",
+        "data source",
+        "store",
+        "instance",
+        "component",
+    ];
+
+    counts
+        .iter()
+        .zip(names.iter())
+        .filter_map(|(&&cnt, &name)| {
+            if cnt > 0 {
+                Some(format!(
+                    "{} {}{}",
+                    cnt,
+                    name,
+                    if cnt > 1 { "s" } else { "" }
+                ))
+            } else {
+                None
+            }
+        })
+        .join(", ")
+}
