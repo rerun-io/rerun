@@ -122,6 +122,7 @@ pub const VIDEO_ERROR: Icon = icon_from_path!("../data/icons/video_error.png");
 /// `>`
 pub const BREADCRUMBS_SEPARATOR_BLUEPRINT: Icon =
     icon_from_path!("../data/icons/breadcrumbs_separator_blueprint.png");
+
 /// `/`
 pub const BREADCRUMBS_SEPARATOR_ENTITY: Icon =
     icon_from_path!("../data/icons/breadcrumbs_separator_entity.png");

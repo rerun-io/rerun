@@ -145,6 +145,8 @@ fn item_bread_crumbs_ui(
                 let relative = &entity_path.as_slice()[common_ancestor.len()..];
 
                 let is_projection = !entity_path.starts_with(&view.space_origin);
+                // TODO: the projection breadcrumbs are wrong for nuscenes
+                // (but correct for arkit!)
 
                 if instance.is_all() {
                     // Entity path. Exclude the last part from the breadcrumbs,
