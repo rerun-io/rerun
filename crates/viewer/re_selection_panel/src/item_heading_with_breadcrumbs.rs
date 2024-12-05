@@ -46,6 +46,7 @@ pub fn item_heading_with_breadcrumbs(
                         .layout(egui::Layout::left_to_right(egui::Align::Center)),
                     |ui| {
                         ui.spacing_mut().item_spacing.x = 4.0;
+                        ui.spacing_mut().button_padding = egui::Vec2::ZERO;
 
                         {
                             // No background rectangles, even for hovered items
@@ -56,7 +57,7 @@ pub fn item_heading_with_breadcrumbs(
                             visuals.widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
                         }
 
-                        // First the c/r/u/m/b/s/
+                        // First the C>R>U>M>B>S>
                         ui.scope(|ui| {
                             // Dimmer colors for breadcrumbs
                             let visuals = ui.visuals_mut();
@@ -186,13 +187,29 @@ fn last_part_of_item_heading(
     item: &Item,
 ) {
     let ItemTitle {
-        icon: _, // no icon!
+        icon,
         label,
         label_style: _, // Intentionally ignored
         tooltip,
     } = ItemTitle::from_item(ctx, viewport, ui.style(), item);
 
-    let mut response = ui.add(egui::Button::new(label));
+    let with_icon = match item {
+        Item::AppId { .. }
+        | Item::DataSource { .. }
+        | Item::Container { .. }
+        | Item::SpaceView { .. }
+        | Item::StoreId { .. } => true,
+
+        Item::InstancePath { .. } | Item::DataResult { .. } | Item::ComponentPath { .. } => false,
+    };
+
+    let button = if with_icon {
+        egui::Button::image_and_text(icon.as_image().fit_to_original_size(ICON_SCALE), label)
+            .image_tint_follows_text_color(true)
+    } else {
+        egui::Button::new(label)
+    };
+    let mut response = ui.add(button);
     if let Some(tooltip) = tooltip {
         response = response.on_hover_text(tooltip);
     }
