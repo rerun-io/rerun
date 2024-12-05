@@ -5,14 +5,15 @@
 
 use std::collections::BTreeMap;
 
+use anyhow::Context as _;
+use camino::{Utf8Path, Utf8PathBuf};
+use itertools::Itertools;
+
 use crate::{
     root_as_schema, Docs, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject,
     FbsSchema, FbsType, Reporter, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
     ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_OVERRIDE_TYPE,
 };
-use anyhow::Context as _;
-use camino::{Utf8Path, Utf8PathBuf};
-use itertools::Itertools;
 
 // ---
 
