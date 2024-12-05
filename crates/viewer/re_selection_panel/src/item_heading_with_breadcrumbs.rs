@@ -46,7 +46,6 @@ pub fn item_heading_with_breadcrumbs(
                         .layout(egui::Layout::left_to_right(egui::Align::Center)),
                     |ui| {
                         ui.spacing_mut().item_spacing.x = 4.0;
-                        ui.spacing_mut().button_padding = egui::Vec2::ZERO;
 
                         {
                             // No background rectangles, even for hovered items
@@ -58,12 +57,14 @@ pub fn item_heading_with_breadcrumbs(
                         }
 
                         // First the C>R>U>M>B>S>
-                        ui.scope(|ui| {
+                        {
+                            let previous_style = ui.style().clone();
                             // Dimmer colors for breadcrumbs
                             let visuals = ui.visuals_mut();
                             visuals.widgets.inactive.fg_stroke.color = egui::hex_color!("#6A8CD0");
                             item_bread_crumbs_ui(ctx, viewport, ui, item);
-                        });
+                            ui.set_style(previous_style);
+                        }
 
                         // Then the full name of the main item:
                         last_part_of_item_heading(ctx, viewport, ui, item);
