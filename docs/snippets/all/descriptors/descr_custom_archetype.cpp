@@ -65,7 +65,7 @@ int main() {
     const auto rec = rerun::RecordingStream("rerun_example_descriptors_custom_archetype");
     rec.spawn().exit_on_failure();
 
-    CustomPosition3D positions[1] = {rerun::components::Position3D{1.0f, 2.0f, 3.0f}};
+    CustomPosition3D positions[1] = {{rerun::components::Position3D{1.0f, 2.0f, 3.0f}}};
     rerun::Color colors[1] = {rerun::Color(0xFF00FFFF)};
 
     rec.log_static("data", CustomPoints3D{positions, colors});
