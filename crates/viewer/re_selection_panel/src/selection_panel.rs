@@ -19,11 +19,11 @@ use re_viewer_context::{
 use re_viewport_blueprint::{ui::show_add_space_view_or_container_modal, ViewportBlueprint};
 
 use crate::{defaults_ui::view_components_defaults_section_ui, visualizer_ui::visualizer_ui};
+use crate::{space_view_entity_picker::SpaceViewEntityPicker, ItemTitle};
 use crate::{
     visible_time_range_ui::visible_time_range_ui_for_data_result,
     visible_time_range_ui::visible_time_range_ui_for_view,
 };
-use crate::{space_view_entity_picker::SpaceViewEntityPicker, ItemTitle};
 
 // ---
 fn default_selection_panel_width(screen_width: f32) -> f32 {
