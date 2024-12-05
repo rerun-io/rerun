@@ -186,16 +186,13 @@ fn last_part_of_item_heading(
     item: &Item,
 ) {
     let ItemTitle {
-        icon,
+        icon: _, // no icon!
         label,
         label_style: _, // Intentionally ignored
         tooltip,
     } = ItemTitle::from_item(ctx, viewport, ui.style(), item);
 
-    let mut response = ui.add(
-        egui::Button::image_and_text(icon.as_image().fit_to_original_size(ICON_SCALE), label)
-            .image_tint_follows_text_color(true),
-    );
+    let mut response = ui.add(egui::Button::new(label));
     if let Some(tooltip) = tooltip {
         response = response.on_hover_text(tooltip);
     }
