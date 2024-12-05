@@ -45,6 +45,13 @@ def log_graphs() -> None:
         rr.log("graph", rr.GraphNodes(nodes, labels=nodes), rr.GraphEdges(edges, graph_type=rr.GraphType.Directed))
         rr.log("graph2", rr.GraphNodes(nodes, labels=nodes), rr.GraphEdges(edges, graph_type=rr.GraphType.Undirected))
 
+
+def run(args: Namespace) -> None:
+    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
+
+    log_readme()
+    log_graphs()
+
     rr.send_blueprint(
         rrb.Blueprint(
             rrb.Grid(
@@ -55,13 +62,6 @@ def log_graphs() -> None:
             )
         )
     )
-
-
-def run(args: Namespace) -> None:
-    rr.script_setup(args, f"{os.path.basename(__file__)}", recording_id=uuid4())
-
-    log_readme()
-    log_graphs()
 
 
 if __name__ == "__main__":

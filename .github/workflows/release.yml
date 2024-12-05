@@ -190,6 +190,7 @@ jobs:
                 - [ ] C++ SDK zip: does it contain rerun_c for all platforms?
               - [ ] Populate the release with the changelog and a nice header video/picture, check `Set as latest release`, then click `Publish release`.
               - [ ] Update the [google colab notebooks](https://drive.google.com/drive/folders/0AC0q24MFKh3fUk9PVA) to install this version and re-execute the notebook.
+              - [ ] Update landing's version of the web viewer (@jprochazk)
 
           A few hours after the GitHub release is created, `regro-cf-autotick-bot` will create a
           [conda feedstock PR](https://github.com/conda-forge/rerun-sdk-feedstock/pulls).
@@ -360,10 +361,7 @@ jobs:
           cat <<EOF > comment-body.txt
           GitHub release draft: [$version](https://github.com/rerun-io/rerun/releases/tag/$version)
 
-          Do NOT create a GitHub release yet!
-
-          The release will be automatically un-drafted by the "Sync Release Assets" job, which will run automatically.
-          EOF
+          Add a description, changelog, and a nice header video/picture, then click 'Publish release'.
 
           gh pr comment $pr_number --body-file comment-body.txt
 

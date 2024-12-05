@@ -1,14 +1,17 @@
-use egui::{Pos2, Rect};
+//! Defines the output of a layout algorithm, i.e. everything that we need to render the graph.
 
-use crate::graph::NodeId;
+use egui::Rect;
+use re_chunk::EntityPath;
 
-pub type LineSegment = [Pos2; 2];
+use crate::graph::{EdgeId, NodeId};
 
-#[derive(Debug, PartialEq, Eq)]
+use super::EdgeGeometry;
+
+#[derive(Debug)]
 pub struct Layout {
     pub(super) nodes: ahash::HashMap<NodeId, Rect>,
-    pub(super) edges: ahash::HashMap<(NodeId, NodeId), LineSegment>,
-    // TODO(grtlr): Consider adding the entity rects here too.
+    pub(super) edges: ahash::HashMap<EdgeId, Vec<EdgeGeometry>>,
+    pub(super) entities: Vec<(EntityPath, Rect)>,
 }
 
 fn bounding_rect_from_iter(rectangles: impl Iterator<Item = egui::Rect>) -> egui::Rect {
@@ -29,7 +32,22 @@ impl Layout {
     }
 
     /// Gets the shape of an edge in the final layout.
-    pub fn get_edge(&self, from: NodeId, to: NodeId) -> Option<LineSegment> {
-        self.edges.get(&(from, to)).copied()
+    pub fn get_edge(&self, edge: &EdgeId) -> Option<&[EdgeGeometry]> {
+        self.edges.get(edge).map(|es| es.as_slice())
+    }
+
+    /// Returns an iterator over all edges in the layout.
+    pub fn edges(&self) -> impl Iterator<Item = (EdgeId, &[EdgeGeometry])> {
+        self.edges.iter().map(|(id, es)| (*id, es.as_slice()))
+    }
+
+    /// Returns the number of entities in the layout.
+    pub fn num_entities(&self) -> usize {
+        self.entities.len()
+    }
+
+    /// Returns an iterator over all edges in the layout.
+    pub fn entities(&self) -> impl Iterator<Item = &(EntityPath, Rect)> {
+        self.entities.iter()
     }
 }
