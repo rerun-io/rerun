@@ -2,7 +2,9 @@ use re_chunk::EntityPath;
 use re_data_ui::item_ui::{guess_instance_path_icon, guess_query_and_db_for_selected_entity};
 use re_entity_db::InstancePath;
 use re_log_types::ComponentPath;
-use re_ui::{icons, syntax_highlighting::InstanceWithCarets, SyntaxHighlighting as _};
+use re_ui::{
+    icons, syntax_highlighting::InstanceInBrackets as InstanceWithBrackets, SyntaxHighlighting as _,
+};
 use re_viewer_context::{contents_name_style, ContainerId, Item, SpaceViewId, ViewerContext};
 use re_viewport_blueprint::ViewportBlueprint;
 
@@ -106,7 +108,7 @@ impl ItemTitle {
             }
         } else {
             // Instance path
-            InstanceWithCarets(*instance).syntax_highlighted(style)
+            InstanceWithBrackets(*instance).syntax_highlighted(style)
         };
 
         Self::new(name, guess_instance_path_icon(ctx, instance_path))

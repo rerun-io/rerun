@@ -8,9 +8,12 @@
 //! Each bread-crumb is just an icon or a letter.
 //! The item is an icon and a name.
 //! Each bread-crumb is clickable, as is the last item.
+//!
+//! The bread crumbs hierarchy should be identical to the hierarchy in the
+//! either the blueprint tree panel, or the streams/time panel.
 
 use re_chunk::EntityPath;
-use re_data_ui::item_ui::cursor_interact_with_selectable;
+use re_data_ui::item_ui::{cursor_interact_with_selectable, guess_instance_path_icon};
 use re_entity_db::InstancePath;
 use re_log_types::EntityPathPart;
 use re_ui::{icons, list_item, DesignTokens, SyntaxHighlighting, UiExt as _};
@@ -43,147 +46,141 @@ pub fn item_heading_with_breadcrumbs(
                         .layout(egui::Layout::left_to_right(egui::Align::Center)),
                     |ui| {
                         ui.spacing_mut().item_spacing.x = 4.0;
-                        item_heading_contents(ctx, viewport, ui, item);
+
+                        {
+                            // No background rectangles, even for hovered items
+                            let visuals = ui.visuals_mut();
+                            visuals.widgets.active.bg_fill = egui::Color32::TRANSPARENT;
+                            visuals.widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
+                            visuals.widgets.hovered.bg_fill = egui::Color32::TRANSPARENT;
+                            visuals.widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
+                        }
+
+                        // First the c/r/u/m/b/s/
+                        ui.scope(|ui| {
+                            // Dimmer colors for breadcrumbs
+                            let visuals = ui.visuals_mut();
+                            visuals.widgets.inactive.fg_stroke.color = visuals.text_color();
+                            item_bread_crumbs_ui(ctx, viewport, ui, item);
+                        });
+
+                        // Then the full name of the main item:
+                        last_part_of_item_heading(ctx, viewport, ui, item);
                     },
                 );
             }),
         );
 }
 
-fn item_heading_contents(
+fn item_bread_crumbs_ui(
     ctx: &ViewerContext<'_>,
     viewport: &ViewportBlueprint,
     ui: &mut egui::Ui,
     item: &Item,
 ) {
-    {
-        // No background rectangles, even for hovered items
-        let visuals = ui.visuals_mut();
-        visuals.widgets.active.bg_fill = egui::Color32::TRANSPARENT;
-        visuals.widgets.active.weak_bg_fill = egui::Color32::TRANSPARENT;
-        visuals.widgets.hovered.bg_fill = egui::Color32::TRANSPARENT;
-        visuals.widgets.hovered.weak_bg_fill = egui::Color32::TRANSPARENT;
-    }
-
-    ui.scope(|ui| {
-        // Breadcrumbs
-        {
-            // Dimmer colors for breadcrumbs
-            let visuals = ui.visuals_mut();
-            visuals.widgets.inactive.fg_stroke.color = visuals.text_color();
+    match item {
+        Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) => {
+            // TODO(emilk): maybe some of these could have breadcrumbs
         }
+        Item::InstancePath(instance_path) => {
+            let InstancePath {
+                entity_path,
+                instance,
+            } = instance_path;
 
-        match item {
-            Item::AppId(_) | Item::DataSource(_) | Item::StoreId(_) => {
-                // TODO(emilk): maybe some of these could have breadcrumbs
-            }
-            Item::InstancePath(instance_path) => {
-                let InstancePath {
-                    entity_path,
-                    instance,
-                } = instance_path;
-
-                if instance.is_all() {
-                    // Entity path
-                    if let [ancestry @ .., _] = entity_path.as_slice() {
-                        entity_path_breadcrumbs(ctx, ui, None, None, ancestry, true);
-                    }
-                } else {
-                    // Instance path
-                    entity_path_breadcrumbs(ctx, ui, None, None, entity_path.as_slice(), true);
+            if instance.is_all() {
+                // Entity path. Exclude the last part from the breadcrumbs,
+                // as we will show it in full later on.
+                if let [all_but_last @ .., _] = entity_path.as_slice() {
+                    entity_path_breadcrumbs(ctx, ui, None, &EntityPath::root(), all_but_last, true);
                 }
-            }
-            Item::ComponentPath(component_path) => {
+            } else {
+                // Instance path.
+                // Show the full entity path, and save the `[instance_nr]` for later.
                 entity_path_breadcrumbs(
                     ctx,
                     ui,
                     None,
-                    None,
-                    component_path.entity_path.as_slice(),
+                    &EntityPath::root(),
+                    entity_path.as_slice(),
                     true,
                 );
             }
-            Item::Container(container_id) => {
-                if let Some(parent) = viewport.parent(&Contents::Container(*container_id)) {
-                    viewport_breadcrumbs(ctx, viewport, ui, Contents::Container(parent));
-                }
+        }
+        Item::ComponentPath(component_path) => {
+            entity_path_breadcrumbs(
+                ctx,
+                ui,
+                None,
+                &EntityPath::root(),
+                component_path.entity_path.as_slice(),
+                true,
+            );
+        }
+        Item::Container(container_id) => {
+            if let Some(parent) = viewport.parent(&Contents::Container(*container_id)) {
+                viewport_breadcrumbs(ctx, viewport, ui, Contents::Container(parent));
             }
-            Item::SpaceView(view_id) => {
-                if let Some(parent) = viewport.parent(&Contents::SpaceView(*view_id)) {
-                    viewport_breadcrumbs(ctx, viewport, ui, Contents::Container(parent));
-                }
+        }
+        Item::SpaceView(view_id) => {
+            if let Some(parent) = viewport.parent(&Contents::SpaceView(*view_id)) {
+                viewport_breadcrumbs(ctx, viewport, ui, Contents::Container(parent));
             }
-            Item::DataResult(view_id, instance_path) => {
-                viewport_breadcrumbs(ctx, viewport, ui, Contents::SpaceView(*view_id));
+        }
+        Item::DataResult(view_id, instance_path) => {
+            viewport_breadcrumbs(ctx, viewport, ui, Contents::SpaceView(*view_id));
 
-                let InstancePath {
-                    entity_path,
-                    instance,
-                } = instance_path;
+            let InstancePath {
+                entity_path,
+                instance,
+            } = instance_path;
 
-                if let Some(view) = viewport.view(view_id) {
-                    if entity_path.starts_with(&view.space_origin) {
-                        let relative = &entity_path.as_slice()[view.space_origin.len()..];
+            if let Some(view) = viewport.view(view_id) {
+                let common_ancestor = instance_path
+                    .entity_path
+                    .common_ancestor(&view.space_origin);
 
-                        if instance.is_all() {
-                            // we will show last part in full later
-                            if let [all_but_last @ .., _] = relative {
-                                entity_path_breadcrumbs(
-                                    ctx,
-                                    ui,
-                                    Some(*view_id),
-                                    Some(&view.space_origin),
-                                    all_but_last,
-                                    true,
-                                );
-                            }
-                        } else {
-                            // we show the instance number later
-                            entity_path_breadcrumbs(
-                                ctx,
-                                ui,
-                                Some(*view_id),
-                                Some(&view.space_origin),
-                                relative,
-                                true,
-                            );
-                        }
-                    } else {
-                        // Projections
-                        let common_ancestor = instance_path
-                            .entity_path
-                            .common_ancestor(&view.space_origin);
-                        let relative = &entity_path.as_slice()[common_ancestor.len()..];
+                let relative = &entity_path.as_slice()[common_ancestor.len()..];
 
-                        if instance.is_all() {
-                            // we will show last part in full later
-                            if let [all_but_last @ .., _] = relative {
-                                entity_path_breadcrumbs(
-                                    ctx,
-                                    ui,
-                                    Some(*view_id),
-                                    Some(&common_ancestor),
-                                    all_but_last,
-                                    false,
-                                );
-                            }
-                        } else {
-                            // we show the instance number later
-                            entity_path_breadcrumbs(
-                                ctx,
-                                ui,
-                                Some(*view_id),
-                                Some(&common_ancestor),
-                                relative,
-                                false,
-                            );
-                        }
+                let is_projection = !entity_path.starts_with(&view.space_origin);
+
+                if instance.is_all() {
+                    // Entity path. Exclude the last part from the breadcrumbs,
+                    // as we will show it in full later on.
+                    if let [all_but_last @ .., _] = relative {
+                        entity_path_breadcrumbs(
+                            ctx,
+                            ui,
+                            Some(*view_id),
+                            &common_ancestor,
+                            all_but_last,
+                            !is_projection,
+                        );
                     }
+                } else {
+                    // Instance path.
+                    // Show the full entity path, and save the `[instance_nr]` for later.
+                    entity_path_breadcrumbs(
+                        ctx,
+                        ui,
+                        Some(*view_id),
+                        &common_ancestor,
+                        relative,
+                        !is_projection,
+                    );
                 }
             }
         }
-    });
+    }
+}
 
+fn last_part_of_item_heading(
+    ctx: &ViewerContext<'_>,
+    viewport: &ViewportBlueprint,
+    ui: &mut egui::Ui,
+    item: &Item,
+) {
+    // Show the actual item, after all the bread crumbs:
     let ItemTitle {
         icon,
         label,
@@ -207,7 +204,7 @@ fn entity_path_breadcrumbs(
     // If we are in a view
     view_id: Option<SpaceViewId>,
     // Everything is relative to this
-    origin: Option<&EntityPath>,
+    origin: &EntityPath,
     // Show crumbs for all of these
     entity_parts: &[EntityPathPart],
     include_root: bool,
@@ -220,19 +217,23 @@ fn entity_path_breadcrumbs(
         }
     }
 
-    let full_entity_path = if let Some(origin) = origin {
-        origin.join(&EntityPath::new(entity_parts.to_vec()))
-    } else {
-        EntityPath::new(entity_parts.to_vec())
-    };
+    let full_entity_path = origin.join(&EntityPath::new(entity_parts.to_vec()));
 
     let button = if let Some(last) = full_entity_path.last() {
         let first_char = last.unescaped_str().chars().next().unwrap_or('?');
         egui::Button::new(first_char.to_string())
     } else {
         // Root
-        // TODO: different icon, at least if we are in a space view
-        egui::Button::image(icons::RECORDING.as_image().fit_to_original_size(ICON_SCALE))
+        let icon = if view_id.is_some() {
+            // Inside a space view, we show the root with an icon
+            // that matches the one in the blueprint tree panel.
+            guess_instance_path_icon(ctx, &InstancePath::from(full_entity_path.clone()))
+        } else {
+            // For a streams hierarchy, we show the root using a different icon,
+            // just to make it clear that this is a different kind of hierarchy.
+            &icons::RECORDING // streams hierarchy
+        };
+        egui::Button::image(icon.as_image().fit_to_original_size(ICON_SCALE))
             .image_tint_follows_text_color(true)
     };
 

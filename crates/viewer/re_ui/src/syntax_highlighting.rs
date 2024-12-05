@@ -66,14 +66,15 @@ impl SyntaxHighlighting for InstancePath {
     fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
         self.entity_path.syntax_highlight_into(style, job);
         if self.instance.is_specific() {
-            InstanceWithCarets(self.instance).syntax_highlight_into(style, job);
+            InstanceInBrackets(self.instance).syntax_highlight_into(style, job);
         }
     }
 }
 
-pub struct InstanceWithCarets(pub Instance);
+/// Formats an instance number enclosed in square brackets: `[123]`
+pub struct InstanceInBrackets(pub Instance);
 
-impl SyntaxHighlighting for InstanceWithCarets {
+impl SyntaxHighlighting for InstanceInBrackets {
     fn syntax_highlight_into(&self, style: &Style, job: &mut LayoutJob) {
         job.append("[", 0.0, faint_text_format(style));
         self.0.syntax_highlight_into(style, job);
