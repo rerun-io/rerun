@@ -11,7 +11,8 @@ use itertools::Itertools;
 
 use crate::{
     root_as_schema, Docs, FbsBaseType, FbsEnum, FbsEnumVal, FbsField, FbsKeyValue, FbsObject,
-    FbsSchema, FbsType, Reporter, ATTR_RERUN_OVERRIDE_TYPE,
+    FbsSchema, FbsType, Reporter, ATTR_RERUN_COMPONENT_OPTIONAL, ATTR_RERUN_COMPONENT_RECOMMENDED,
+    ATTR_RERUN_COMPONENT_REQUIRED, ATTR_RERUN_OVERRIDE_TYPE,
 };
 
 // ---
@@ -91,6 +92,8 @@ impl Objects {
                             if field_obj.kind != ObjectKind::Component {
                                 reporter.error(virtpath, field_type_fqname, "Is part of an archetypes but is not a component. Only components are allowed as fields on an archetype.");
                             }
+
+                            validate_archetype_field_attributes(reporter, obj);
                         }
                         ObjectKind::View => {
                             if field_obj.kind != ObjectKind::Archetype {
@@ -171,6 +174,32 @@ impl Objects {
         this.objects.retain(|_, obj| !obj.is_transparent());
 
         this
+    }
+}
+
+/// Ensure that each field of an archetype has exactly one of the
+/// `attr.rerun.component_{required|recommended|optional}` attributes.
+fn validate_archetype_field_attributes(reporter: &Reporter, obj: &Object) {
+    assert_eq!(obj.kind, ObjectKind::Archetype);
+
+    for field in &obj.fields {
+        if [
+            ATTR_RERUN_COMPONENT_OPTIONAL,
+            ATTR_RERUN_COMPONENT_RECOMMENDED,
+            ATTR_RERUN_COMPONENT_REQUIRED,
+        ]
+        .iter()
+        .filter(|attr| field.try_get_attr::<String>(attr).is_some())
+        .count()
+            != 1
+        {
+            reporter.error(
+                &field.virtpath,
+                &field.fqname,
+                "field must have exactly one of the \"attr.rerun.component_{{required|recommended|\
+                optional}}\" attributes",
+            );
+        }
     }
 }
 
