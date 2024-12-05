@@ -173,11 +173,10 @@ fn fs_main_picking_layer(in: VertexOut) -> @location(0) vec4u {
 
 @fragment
 fn fs_main_outline_mask(in: VertexOut) -> @location(0) vec2u {
-    // Output is an integer target, can't use coverage therefore.
-    // But we still want to discard fragments where coverage is low.
-    // Since the outline extends a bit, a very low cut off tends to look better.
+    // Output is an integer target so we can't use coverage even though
+    // the target is anti-aliased.
     let coverage = coverage(in.world_position, in.radius, in.point_center);
-    if coverage < 1.0 {
+    if coverage <= 0.5 {
         discard;
     }
     return batch.outline_mask;

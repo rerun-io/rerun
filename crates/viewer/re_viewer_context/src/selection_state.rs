@@ -6,7 +6,7 @@ use re_entity_db::EntityPath;
 
 use crate::{item::resolve_mono_instance_path_item, ViewerContext};
 
-use super::{Item, SelectionHistory};
+use super::Item;
 
 /// Context information that a space view might attach to an item from [`ItemCollection`] and useful
 /// for how a selection might be displayed and interacted with.
@@ -205,10 +205,6 @@ impl ItemCollection {
 #[derive(Default, serde::Deserialize, serde::Serialize)]
 #[serde(default)]
 pub struct ApplicationSelectionState {
-    /// History of selections (what was selected previously).
-    #[serde(skip)]
-    pub history: Mutex<SelectionHistory>,
-
     /// Selection of the previous frame. Read from this.
     selection_previous_frame: ItemCollection,
 
@@ -235,10 +231,6 @@ impl ApplicationSelectionState {
         // Use a different name so we don't get a collision in puffin.
         re_tracing::profile_scope!("SelectionState::on_frame_start");
 
-        // Purge history of invalid items.
-        let history = self.history.get_mut();
-        history.retain(&item_retain_condition);
-
         // Purge selection of invalid items.
         let selection_this_frame = self.selection_this_frame.get_mut();
         selection_this_frame.retain(|item, _| item_retain_condition(item));
@@ -253,22 +245,7 @@ impl ApplicationSelectionState {
 
         // Selection in contrast, is sticky!
         if selection_this_frame != &self.selection_previous_frame {
-            history.update_selection(selection_this_frame);
             self.selection_previous_frame = selection_this_frame.clone();
-        }
-    }
-
-    /// Selects the previous element in the history if any.
-    pub fn select_previous(&self) {
-        if let Some(selection) = self.history.lock().select_previous() {
-            *self.selection_this_frame.lock() = selection;
-        }
-    }
-
-    /// Selections the next element in the history if any.
-    pub fn select_next(&self) {
-        if let Some(selection) = self.history.lock().select_next() {
-            *self.selection_this_frame.lock() = selection;
         }
     }
 
