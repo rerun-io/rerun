@@ -37,7 +37,7 @@ impl TypedComponentFallbackProvider<Enabled> for GraphSpaceView {
 
 impl TypedComponentFallbackProvider<ForceDistance> for GraphSpaceView {
     fn fallback_for(&self, _ctx: &re_viewer_context::QueryContext<'_>) -> ForceDistance {
-        (50.).into()
+        (42.).into()
     }
 }
 

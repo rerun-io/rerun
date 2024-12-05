@@ -133,8 +133,10 @@ Display a graph of nodes and edges.
             state.debug_ui(ui);
         });
 
-        view_property_ui::<VisualBounds2D>(ctx, ui, space_view_id, self, state);
-        view_property_ui::<ForceLink>(ctx, ui, space_view_id, self, state);
+        re_ui::list_item::list_item_scope(ui, "graph_selection_ui", |ui| {
+            view_property_ui::<VisualBounds2D>(ctx, ui, space_view_id, self, state);
+            view_property_ui::<ForceLink>(ctx, ui, space_view_id, self, state);
+        });
 
         Ok(())
     }
