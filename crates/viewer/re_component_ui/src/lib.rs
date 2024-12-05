@@ -27,14 +27,15 @@ mod zoom_level;
 
 use datatype_uis::{
     display_name_ui, display_text_ui, edit_bool, edit_f32_min_to_max_float, edit_f32_zero_to_max,
-    edit_f32_zero_to_one, edit_multiline_string, edit_or_view_vec3d, edit_singleline_string,
-    edit_view_enum, edit_view_enum_with_variant_available, edit_view_range1d, view_uuid,
-    view_view_id,
+    edit_f32_zero_to_one, edit_f64_zero_to_max, edit_multiline_string, edit_or_view_vec3d,
+    edit_singleline_string, edit_view_enum, edit_view_enum_with_variant_available,
+    edit_view_range1d, view_uuid, view_view_id,
 };
 
 use re_types::{
     blueprint::components::{
-        BackgroundKind, Corner2D, LockRangeDuringZoom, MapProvider, ViewFit, Visible, ZoomLevel,
+        BackgroundKind, Corner2D, Enabled, ForceDistance, LockRangeDuringZoom, MapProvider,
+        ViewFit, Visible, ZoomLevel,
     },
     components::{
         AggregationPolicy, AlbedoFactor, AxisLength, Color, DepthMeter, DrawOrder, FillMode,
@@ -70,6 +71,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<AxisLength>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<DepthMeter>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<FillRatio>(edit_f32_zero_to_max);
+    registry.add_singleline_edit_or_view::<ForceDistance>(edit_f64_zero_to_max);
     registry.add_singleline_edit_or_view::<GammaCorrection>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<ImagePlaneDistance>(edit_f32_zero_to_max);
     registry.add_singleline_edit_or_view::<MarkerSize>(edit_f32_zero_to_max);
@@ -87,6 +89,7 @@ pub fn create_component_ui_registry() -> re_viewer_context::ComponentUiRegistry 
     registry.add_singleline_edit_or_view::<LockRangeDuringZoom>(edit_bool);
     registry.add_singleline_edit_or_view::<ShowLabels>(edit_bool);
     registry.add_singleline_edit_or_view::<Visible>(edit_bool);
+    registry.add_singleline_edit_or_view::<Enabled>(edit_bool);
 
     // Text components:
     registry.add_legacy_display_ui(Text::name(), Box::new(display_text_ui)); // TODO(andreas): Why is there a display ui?
